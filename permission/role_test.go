@@ -60,6 +60,20 @@ func (s *S) TestRoleAddPermissions(c *check.C) {
 	c.Assert(dbR.SchemeNames, check.DeepEquals, expected)
 }
 
+func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
+	r, err := NewRole("myrole", "global")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("")
+	c.Assert(err, check.IsNil)
+	sort.Strings(r.SchemeNames)
+	expected := []string{""}
+	c.Assert(r.SchemeNames, check.DeepEquals, expected)
+	dbR, err := FindRole("myrole")
+	c.Assert(err, check.IsNil)
+	sort.Strings(dbR.SchemeNames)
+	c.Assert(dbR.SchemeNames, check.DeepEquals, expected)
+}
+
 func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {
 	r, err := NewRole("myrole", "team")
 	c.Assert(err, check.IsNil)

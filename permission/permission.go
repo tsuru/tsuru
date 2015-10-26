@@ -113,7 +113,7 @@ func (s *permissionScheme) AllowedContexts() []contextType {
 		}
 		parent = parent.parent
 	}
-	return nil
+	return []contextType{CtxGlobal}
 }
 
 type Permission struct {
@@ -125,14 +125,13 @@ type Token interface {
 	Permissions() ([]Permission, error)
 }
 
-func Check(token Token, schemeString string, contexts ...Context) bool {
+func Check(token Token, scheme *permissionScheme, contexts ...Context) bool {
 	perms, err := token.Permissions()
 	if err != nil {
 		return false
 	}
-	scheme := PermissionRegistry.get(schemeString)
 	for _, perm := range perms {
-		if perm.Scheme.isParent(scheme) || perm.Scheme.name == "" {
+		if perm.Scheme.isParent(scheme) {
 			if perm.Context.CtxType == CtxGlobal {
 				return true
 			}

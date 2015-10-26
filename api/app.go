@@ -77,7 +77,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canDelete := permission.Check(t, "app.delete", []permission.Context{
+	canDelete := permission.Check(t, permission.PermAppDelete, []permission.Context{
 		{CtxType: permission.CtxApp, Value: a.Name},
 		{CtxType: permission.CtxTeam, Value: teams},
 		{CtxType: permission.CtxPool, Value: a.Pool},
@@ -186,7 +186,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, "app.read", []permission.Context{
+	canRead := permission.Check(t, permission.PermAppRead, []permission.Context{
 		{CtxType: permission.CtxApp, Value: app.Name},
 		{CtxType: permission.CtxTeam, Value: teams},
 		{CtxType: permission.CtxPool, Value: app.Pool},

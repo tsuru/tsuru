@@ -39,15 +39,11 @@ func (r *registry) addWithCtx(name string, contextTypes []contextType) *registry
 
 func (r *registry) getSubRegistry(name string) *registry {
 	if name == "" {
-		global := r.get(name)
-		global.contexts = []contextType{CtxGlobal}
-		return &registry{
-			permissionScheme: *global,
-		}
+		return r
 	}
 	parts := strings.Split(name, ".")
 	children := r.children
-	var parent *registry
+	parent := r
 	for len(parts) > 0 {
 		var currentElement *registry
 		for _, child := range children {
@@ -87,9 +83,6 @@ func (r *registry) Permissions() PermissionSchemeList {
 }
 
 func (r *registry) get(name string) *permissionScheme {
-	if name == "" {
-		return &r.permissionScheme
-	}
 	subR := r.getSubRegistry(name)
 	if subR == nil {
 		panic("unregistered permission: " + name)
