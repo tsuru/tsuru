@@ -382,6 +382,12 @@ func (c *help) Run(context *Context, client *Client) error {
 			}
 		}
 		sort.Strings(commands)
+		maxCmdSize := 20
+		for _, command := range commands {
+			if len(command) > maxCmdSize {
+				maxCmdSize = len(command)
+			}
+		}
 		for _, command := range commands {
 			description := c.manager.Commands[command].Info().Desc
 			description = strings.Split(description, "\n")[0]
@@ -389,7 +395,8 @@ func (c *help) Run(context *Context, client *Client) error {
 			if len(description) > 2 {
 				description = strings.ToUpper(description[:1]) + description[1:]
 			}
-			output += fmt.Sprintf("  %-20s %s\n", command, description)
+			fmtStr := fmt.Sprintf("  %%-%ds %%s\n", maxCmdSize)
+			output += fmt.Sprintf(fmtStr, command, description)
 		}
 		output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", c.manager.name)
 		if len(c.manager.topics) > 0 {
