@@ -7,43 +7,13 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/endpoints",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/ec2query",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/query/queryutil",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/rest",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/xml/xmlutil",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/signer/v4",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
+			"Comment": "v0.9.16-3-g4944a94",
+			"Rev": "4944a94a3b092d1dad8a964415700a70f55e580a"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
-			"Comment": "v0.9.1rc2",
-			"Rev": "a11ddd7a070196035bc94b6c04a2a0114c06a395"
+			"Comment": "v0.9.16-3-g4944a94",
+			"Rev": "4944a94a3b092d1dad8a964415700a70f55e580a"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/go-smtpd/smtpd",
