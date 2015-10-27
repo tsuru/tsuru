@@ -115,17 +115,18 @@ func (s *permissionScheme) Identifier() string {
 }
 
 func (s *permissionScheme) AllowedContexts() []contextType {
+	contexts := []contextType{CtxGlobal}
 	if s.contexts != nil {
-		return s.contexts
+		return append(contexts, s.contexts...)
 	}
 	parent := s
 	for parent != nil {
 		if parent.contexts != nil {
-			return parent.contexts
+			return append(contexts, parent.contexts...)
 		}
 		parent = parent.parent
 	}
-	return []contextType{CtxGlobal}
+	return contexts
 }
 
 type Permission struct {

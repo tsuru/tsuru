@@ -72,6 +72,8 @@ func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Strings(dbR.SchemeNames)
 	c.Assert(dbR.SchemeNames, check.DeepEquals, expected)
+	err = r.AddPermissions("app.deploy")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {

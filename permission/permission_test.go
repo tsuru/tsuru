@@ -46,10 +46,10 @@ func (s *S) TestPermissionSchemeAllowedContexts(c *check.C) {
 		ctx []contextType
 	}{
 		{permissionScheme{}, []contextType{CtxGlobal}},
-		{permissionScheme{contexts: []contextType{CtxApp}}, []contextType{CtxApp}},
-		{permissionScheme{parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxApp}},
-		{permissionScheme{contexts: []contextType{}, parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{}},
-		{permissionScheme{contexts: []contextType{CtxTeam}, parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxTeam}},
+		{permissionScheme{contexts: []contextType{CtxApp}}, []contextType{CtxGlobal, CtxApp}},
+		{permissionScheme{parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal, CtxApp}},
+		{permissionScheme{contexts: []contextType{}, parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal}},
+		{permissionScheme{contexts: []contextType{CtxTeam}, parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal, CtxTeam}},
 	}
 	for _, el := range table {
 		c.Check(el.p.AllowedContexts(), check.DeepEquals, el.ctx)

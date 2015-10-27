@@ -51,10 +51,10 @@ func (s *S) TestRecorderPermissions(c *check.C) {
 	c.Assert(perms[8].FullName(), check.Equals, "team")
 	c.Assert(perms[9].FullName(), check.Equals, "team.create")
 	c.Assert(perms[10].FullName(), check.Equals, "team.update")
-	c.Assert(perms[1].AllowedContexts(), check.DeepEquals, []contextType{CtxApp, CtxTeam, CtxPool})
-	c.Assert(perms[5].AllowedContexts(), check.DeepEquals, []contextType{CtxApp, CtxTeam, CtxPool})
-	c.Assert(perms[9].AllowedContexts(), check.DeepEquals, []contextType{})
-	c.Assert(perms[10].AllowedContexts(), check.DeepEquals, []contextType{CtxTeam})
+	c.Assert(perms[1].AllowedContexts(), check.DeepEquals, []contextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
+	c.Assert(perms[5].AllowedContexts(), check.DeepEquals, []contextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
+	c.Assert(perms[9].AllowedContexts(), check.DeepEquals, []contextType{CtxGlobal})
+	c.Assert(perms[10].AllowedContexts(), check.DeepEquals, []contextType{CtxGlobal, CtxTeam})
 }
 
 func (s *S) TestRecorderGet(c *check.C) {
@@ -67,11 +67,11 @@ func (s *S) TestRecorderGet(c *check.C) {
 	perm = r.get("app.update")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "app.update")
-	c.Assert(perm.AllowedContexts(), check.DeepEquals, []contextType{CtxApp, CtxTeam, CtxPool})
+	c.Assert(perm.AllowedContexts(), check.DeepEquals, []contextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
 	perm = r.get("app.update.env.set")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "app.update.env.set")
-	c.Assert(perm.AllowedContexts(), check.DeepEquals, []contextType{CtxApp, CtxTeam, CtxPool})
+	c.Assert(perm.AllowedContexts(), check.DeepEquals, []contextType{CtxGlobal, CtxApp, CtxTeam, CtxPool})
 	perm = r.get("")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "")
