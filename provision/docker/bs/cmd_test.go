@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
+	"github.com/tsuru/tsuru/io"
 	"gopkg.in/check.v1"
 )
 
@@ -150,8 +151,10 @@ func (s *S) TestBsUpgradeRun(c *check.C) {
 		Stderr: &stderr,
 		Args:   []string{"A=1", "B=2"},
 	}
+	msg := io.SimpleJsonMessage{Message: "it worked!"}
+	result, err := json.Marshal(msg)
 	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusNoContent},
+		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.URL.Path == "/docker/bs/upgrade" && req.Method == "POST"
@@ -160,8 +163,8 @@ func (s *S) TestBsUpgradeRun(c *check.C) {
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := UpgradeCmd{}
-	err := cmd.Run(&context, client)
+	err = cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, "bs successfully upgraded.\n")
+	c.Assert(stdout.String(), check.Equals, "it worked!")
 	c.Assert(called, check.Equals, true)
 }

@@ -149,6 +149,5 @@ func (c *UpgradeCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	fmt.Fprintln(context.Stdout, "bs successfully upgraded.")
-	return nil
+	return cmd.StreamJSONResponse(context.Stdout, response)
 }
