@@ -275,12 +275,33 @@ func (s *S) TestGetTargets(c *check.C) {
 	}
 	got, err := getTargets()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(got), check.Equals, len(expected))
-	for k, v := range got {
-		c.Assert(expected[k], check.Equals, v)
-	}
+	c.Assert(got, check.DeepEquals, expected)
 	dir := JoinWithUserDir(".tsuru")
 	c.Assert(rfs.HasAction("mkdirall "+dir+" with mode 0700"), check.Equals, true)
+}
+
+func (s *S) TestGetTargetsLegacy(c *check.C) {
+	var rfs fstest.RecordingFs
+	fsystem = &rfs
+	defer func() { fsystem = nil }()
+	content := "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com\n"
+	f, err := fsystem.Create(JoinWithUserDir(".tsuru_targets"))
+	c.Assert(err, check.IsNil)
+	f.WriteString(content)
+	f.Close()
+	var expected = map[string]string{
+		"first":   "http://tsuru.io/",
+		"default": "http://tsuru.google.com",
+	}
+	got, err := getTargets()
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+	f, err = fsystem.Open(JoinWithUserDir(".tsuru", "targets"))
+	c.Assert(err, check.IsNil)
+	defer f.Close()
+	b, err := ioutil.ReadAll(f)
+	c.Assert(err, check.IsNil)
+	c.Assert(string(b), check.Equals, content)
 }
 
 func (s *S) TestTargetInfo(c *check.C) {

@@ -96,6 +96,10 @@ func ReadTarget() (string, error) {
 		return target, nil
 	}
 	targetPath := JoinWithUserDir(".tsuru", "target")
+	return readTarget(targetPath)
+}
+
+func readTarget(targetPath string) (string, error) {
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
@@ -227,26 +231,46 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 
 func getTargets() (map[string]string, error) {
 	var targets = map[string]string{}
+	legacyTargetsPath := JoinWithUserDir(".tsuru_targets")
 	targetsPath := JoinWithUserDir(".tsuru", "targets")
 	err := filesystem().MkdirAll(JoinWithUserDir(".tsuru"), 0700)
 	if err != nil {
 		return nil, err
 	}
-	if f, err := filesystem().Open(targetsPath); err == nil {
+	var legacy bool
+	f, err := filesystem().Open(targetsPath)
+	if os.IsNotExist(err) {
+		f, err = filesystem().Open(legacyTargetsPath)
+		legacy = true
+	}
+	if err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
 			var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
 
 			for i := range targetLines {
-				var targetSplt = strings.Split(targetLines[i], "\t")
+				var targetSplit = strings.Split(targetLines[i], "\t")
 
-				if len(targetSplt) == 2 {
-					targets[targetSplt[0]] = targetSplt[1]
+				if len(targetSplit) == 2 {
+					targets[targetSplit[0]] = targetSplit[1]
 				}
 			}
 		}
 	}
+	if legacy {
+		copyOldTargets(targets)
+	}
 	return targets, nil
+}
+
+func copyOldTargets(targets map[string]string) {
+	resetTargetList()
+	for label, target := range targets {
+		writeOnTargetList(label, target)
+	}
+	if target, err := readTarget(JoinWithUserDir(".tsuru_token")); err == nil {
+		writeTarget(target)
+	}
 }
 
 type targetList struct{}
