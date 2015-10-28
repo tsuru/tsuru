@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
@@ -417,11 +418,13 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	err = bs.RecreateContainers(mainDockerProvisioner)
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	err = bs.RecreateContainers(mainDockerProvisioner, writer)
 	if err != nil {
-		return err
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
@@ -441,10 +444,12 @@ func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return err
 	}
-	err = bs.RecreateContainers(mainDockerProvisioner)
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	err = bs.RecreateContainers(mainDockerProvisioner, writer)
 	if err != nil {
-		return err
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
