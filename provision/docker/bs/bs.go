@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -332,8 +333,10 @@ func shouldPinBsImage(image string) bool {
 }
 
 // RecreateContainers relaunch all bs containers in the cluster for the given
-// DockerProvisioner.
-func RecreateContainers(p DockerProvisioner) error {
+// DockerProvisioner, logging progress to the given writer.
+//
+// It assumes that the given writer is thread safe.
+func RecreateContainers(p DockerProvisioner, w io.Writer) error {
 	cluster := p.Cluster()
 	nodes, err := cluster.UnfilteredNodes()
 	if err != nil {
@@ -349,6 +352,7 @@ func RecreateContainers(p DockerProvisioner) error {
 			node := &nodes[i]
 			pool := node.Metadata["pool"]
 			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
+			fmt.Fprintf(w, "relaunching bs container in the node %s [%s]\n", node.Address, pool)
 			err := createContainer(node.Address, pool, p, true)
 			if err != nil {
 				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
