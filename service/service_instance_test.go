@@ -496,6 +496,40 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 }
 
+//delete
+func (s *InstanceSuite) TestCreateServiceInstanceWithSameName(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := []Service{
+		{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mongodb2", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mongodb3", Endpoint: map[string]string{"production": ts.URL}},
+	}
+	instance := ServiceInstance{Name: "instance", PlanName: "small"}
+	for _, service := range srv {
+		err := s.conn.Services().Insert(&service)
+		c.Assert(err, check.IsNil)
+		defer s.conn.Services().RemoveId(service.Name)
+		err = CreateServiceInstance(instance, &service, s.user)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	si, err := GetServiceInstance_("mongodb3", "instance", s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(3))
+	c.Assert(si.PlanName, check.Equals, "small")
+	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(si.Name, check.Equals, "instance")
+	c.Assert(si.ServiceName, check.Equals, "mongodb3")
+	err = CreateServiceInstance(instance, &srv[0], s.user)
+	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
+}
+
 func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

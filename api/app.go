@@ -762,16 +762,43 @@ func getServiceInstance(instanceName, appName string, u *auth.User) (*service.Se
 	return instance, &app, nil
 }
 
+//delete - substituir
+func getServiceInstance_(serviceName, instanceName, appName string, u *auth.User) (*service.ServiceInstance, *app.App, error) {
+	var app app.App
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer conn.Close()
+	instance, err := getServiceInstanceOrError_(serviceName, instanceName, u)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
+	if err != nil {
+		err = &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+		return nil, nil, err
+	}
+	if !auth.CheckUserAccess(app.Teams, u) {
+		err = &errors.HTTP{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+		return nil, nil, err
+	}
+	return instance, &app, nil
+}
+
+//delete
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
+		r.URL.Query().Get(":service")
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstance(instanceName, appName, u)
+	instance, a, err := getServiceInstance_(serviceName, instanceName, appName, u)
 	if err != nil {
 		return err
 	}
+	fmt.Println(instanceName, serviceName, instance.Name, instance.ServiceName)
 	rec.Log(u.Email, "bind-app", "instance="+instanceName, "app="+appName)
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
@@ -794,13 +821,15 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	return nil
 }
 
+//delete
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
+		r.URL.Query().Get(":service")
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstance(instanceName, appName, u)
+	instance, a, err := getServiceInstance_(serviceName, instanceName, appName, u)
 	if err != nil {
 		return err
 	}

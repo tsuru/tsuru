@@ -49,15 +49,17 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return service.CreateServiceInstance(instance, &srv, user)
 }
 
+//delete
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	unbindAll := r.URL.Query().Get("unbindall")
-	name := r.URL.Query().Get(":name")
-	rec.Log(u.Email, "remove-service-instance", name)
-	si, err := getServiceInstanceOrError(name, u)
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	rec.Log(u.Email, "remove-service-instance", instanceName)
+	si, err := getServiceInstanceOrError_(serviceName, instanceName, u)
 	if err != nil {
 		return err
 	}
@@ -67,7 +69,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if unbindAll == "true" {
 		if len(si.Apps) > 0 {
 			for _, appName := range si.Apps {
-				_, app, instErr := getServiceInstance(si.Name, appName, u)
+				_, app, instErr := getServiceInstance_(si.ServiceName, si.Name, appName, u)
 				if instErr != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
@@ -80,13 +82,12 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 				}
 				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
 			}
-			si, err = getServiceInstanceOrError(name, u)
+			si, err = getServiceInstanceOrError_(serviceName, instanceName, u)
 			if err != nil {
 				return err
 			}
 		}
 	}
-
 	err = service.DeleteInstance(si)
 	if err != nil {
 		var msg string
@@ -142,13 +143,15 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(instance)
 }
 
+//delete
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	sName := r.URL.Query().Get(":service")
+	si, err := getServiceInstanceOrError_(sName, siName, u)
 	if err != nil {
 		return err
 	}
@@ -253,6 +256,28 @@ func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInsta
 	return si, nil
 }
 
+//delete - substituir
+func getServiceInstanceOrError_(serviceName string, instanceName string, u *auth.User) (*service.ServiceInstance, error) {
+	si, err := service.GetServiceInstance_(serviceName, instanceName, u)
+	if err != nil {
+		switch err {
+		case service.ErrServiceInstanceNotFound:
+			return nil, &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		case service.ErrAccessNotAllowed:
+			return nil, &errors.HTTP{
+				Code:    http.StatusForbidden,
+				Message: err.Error(),
+			}
+		default:
+			return nil, err
+		}
+	}
+	return si, nil
+}
+
 func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -287,13 +312,15 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return service.Proxy(si.Service(), path, w, r)
 }
 
+//delete
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	sName := r.URL.Query().Get(":service")
+	si, err := getServiceInstanceOrError_(sName, siName, u)
 	if err != nil {
 		return err
 	}
@@ -302,13 +329,15 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	return si.Grant(teamName)
 }
 
+//delete
 func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	sName := r.URL.Query().Get(":service")
+	si, err := getServiceInstanceOrError_(sName, siName, u)
 	if err != nil {
 		return err
 	}

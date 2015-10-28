@@ -123,7 +123,7 @@ var bindAppDBAction = action.Action{
 		defer conn.Close()
 		si := args.serviceInstance
 		updateOp := bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}}
-		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "apps": bson.M{"$ne": args.app.GetName()}}, updateOp)
+		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "apps": bson.M{"$ne": args.app.GetName()}}, updateOp)
 		if err != nil {
 			if err == mgo.ErrNotFound {
 				return nil, &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
