@@ -279,6 +279,8 @@ func (s *S) TestGetTargets(c *check.C) {
 	for k, v := range got {
 		c.Assert(expected[k], check.Equals, v)
 	}
+	dir := JoinWithUserDir(".tsuru")
+	c.Assert(rfs.HasAction("mkdirall "+dir+" with mode 0700"), check.Equals, true)
 }
 
 func (s *S) TestTargetInfo(c *check.C) {
