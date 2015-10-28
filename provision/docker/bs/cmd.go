@@ -59,12 +59,12 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	_, err = client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, "Variables successfully set.")
-	return nil
+	defer response.Body.Close()
+	return cmd.StreamJSONResponse(context.Stdout, response)
 }
 
 func (c *EnvSetCmd) Flags() *gnuflag.FlagSet {
