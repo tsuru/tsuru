@@ -23,8 +23,10 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 		Stderr: &stderr,
 		Args:   []string{"A=1", "B=2"},
 	}
+	msg := io.SimpleJsonMessage{Message: "env-set success"}
+	result, _ := json.Marshal(msg)
 	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusNoContent},
+		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -43,7 +45,7 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 	cmd := EnvSetCmd{}
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, "Variables successfully set.\n")
+	c.Assert(stdout.String(), check.Equals, "env-set success")
 }
 
 func (s *S) TestBsEnvSetRunForPool(c *check.C) {
@@ -53,8 +55,10 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 		Stderr: &stderr,
 		Args:   []string{"A=1", "B=2"},
 	}
+	msg := io.SimpleJsonMessage{Message: "env-set success"}
+	result, _ := json.Marshal(msg)
 	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusNoContent},
+		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -78,7 +82,7 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, "Variables successfully set.\n")
+	c.Assert(stdout.String(), check.Equals, "env-set success")
 }
 
 func (s *S) TestBsInfoRun(c *check.C) {
