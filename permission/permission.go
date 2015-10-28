@@ -5,13 +5,15 @@
 package permission
 
 import (
-	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
+
+	"github.com/tsuru/tsuru/errors"
 )
 
-var ErrUnauthorized = errors.New("You don't have permission to do this action")
+var ErrUnauthorized = &errors.HTTP{Code: http.StatusUnauthorized, Message: "You don't have permission to do this action"}
 
 type permissionScheme struct {
 	name     string
@@ -22,18 +24,18 @@ type permissionScheme struct {
 type PermissionSchemeList []*permissionScheme
 
 type permissionContext struct {
-	ctxType contextType
-	value   string
+	CtxType contextType
+	Value   string
 }
 
 func Context(t contextType, v string) permissionContext {
-	return permissionContext{ctxType: t, value: v}
+	return permissionContext{CtxType: t, Value: v}
 }
 
 func Contexts(t contextType, values []string) []permissionContext {
 	contexts := make([]permissionContext, len(values))
 	for i, v := range values {
-		contexts[i] = permissionContext{ctxType: t, value: v}
+		contexts[i] = permissionContext{CtxType: t, Value: v}
 	}
 	return contexts
 }
@@ -145,12 +147,12 @@ func Check(token Token, scheme *permissionScheme, contexts ...permissionContext)
 	}
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
-			if perm.Context.ctxType == CtxGlobal {
+			if perm.Context.CtxType == CtxGlobal {
 				return true
 			}
 			for _, ctx := range contexts {
-				if ctx.ctxType == perm.Context.ctxType {
-					if reflect.DeepEqual(ctx.value, perm.Context.value) {
+				if ctx.CtxType == perm.Context.CtxType {
+					if reflect.DeepEqual(ctx.Value, perm.Context.Value) {
 						return true
 					}
 				}

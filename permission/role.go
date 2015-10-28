@@ -147,8 +147,8 @@ func (r *Role) PermisionsFor(contextValue string) []Permission {
 		permissions[i] = Permission{
 			Scheme: &scheme.permissionScheme,
 			Context: permissionContext{
-				ctxType: r.ContextType,
-				value:   contextValue,
+				CtxType: r.ContextType,
+				Value:   contextValue,
 			},
 		}
 	}

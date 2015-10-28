@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
@@ -135,6 +136,23 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	fp := path.Join(p...)
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
+}
+
+func (s *S) userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
+	user := &auth.User{Email: "majortom@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	if len(perm) > 0 {
+		role, err := permission.NewRole("test-suite-role", string(perm[0].Context.CtxType))
+		c.Assert(err, check.IsNil)
+		err = role.AddPermissions(perm[0].Scheme.FullName())
+		c.Assert(err, check.IsNil)
+		err = user.AddRole(role.Name, perm[0].Context.Value)
+		c.Assert(err, check.IsNil)
+	}
+	return token
 }
 
 func resetHandlers() {

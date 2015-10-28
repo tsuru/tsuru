@@ -228,11 +228,12 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/pool/{name}/team", AdminRequiredHandler(addTeamToPoolHandler))
 	m.Add("Delete", "/pool/{name}/team", AdminRequiredHandler(removeTeamToPoolHandler))
 
-	m.Add("Post", "/role", AdminRequiredHandler(addRole))
-	m.Add("Delete", "/role", AdminRequiredHandler(removeRole))
-	m.Add("Get", "/role", AdminRequiredHandler(listRoles))
-	m.Add("Post", "/role/{name}/permissions", AdminRequiredHandler(addPermissions))
-	m.Add("Delete", "/role/{name}/permissions", AdminRequiredHandler(removePermissions))
+	m.Add("Get", "/roles", authorizationRequiredHandler(listRoles))
+	m.Add("Post", "/roles", authorizationRequiredHandler(addRole))
+	m.Add("Delete", "/roles/{name}", authorizationRequiredHandler(removeRole))
+	m.Add("Post", "/roles/{name}/permissions", authorizationRequiredHandler(addPermissions))
+	m.Add("Delete", "/roles/{name}/permissions/{permission}", authorizationRequiredHandler(removePermissions))
+	m.Add("Post", "/roles/{name}/assign", authorizationRequiredHandler(assignRole))
 
 	m.Add("Get", "/debug/pprof/", AdminRequiredHandler(indexHandler))
 	m.Add("Get", "/debug/pprof/cmdline", AdminRequiredHandler(cmdlineHandler))

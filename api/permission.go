@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"github.com/tsuru/tsuru/errors"
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
@@ -10,26 +10,25 @@ import (
 )
 
 func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
+	if !permission.Check(t, permission.PermRoleCreate) {
+		return permission.ErrUnauthorized
 	}
-	var params map[string]string
-	err = json.Unmarshal(b, &params)
-	_, err = permission.NewRole(params["name"], params["context"])
+	_, err := permission.NewRole(r.FormValue("name"), r.FormValue("context"))
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
 	return err
 }
 
 func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
+	if !permission.Check(t, permission.PermRoleDelete) {
+		return permission.ErrUnauthorized
 	}
-	var params map[string]string
-	err = json.Unmarshal(b, &params)
-	return permission.DestroyRole(params["name"])
+	err := permission.DestroyRole(r.URL.Query().Get(":name"))
+	if err == permission.ErrRoleNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
 }
 
 func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -46,39 +45,45 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdate) {
+		return permission.ErrUnauthorized
+	}
 	roleName := r.URL.Query().Get(":name")
 	role, err := permission.FindRole(roleName)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
+	err = r.ParseForm()
 	if err != nil {
 		return err
 	}
-	var params map[string][]string
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
-	}
-	return role.AddPermissions(params["permissions"]...)
+	return role.AddPermissions(r.Form["permission"]...)
 }
 
 func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdate) {
+		return permission.ErrUnauthorized
+	}
 	roleName := r.URL.Query().Get(":name")
+	permName := r.URL.Query().Get(":permission")
 	role, err := permission.FindRole(roleName)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
+	return role.RemovePermissions(permName)
+}
+
+func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleAssign) {
+		return permission.ErrUnauthorized
+	}
+	roleName := r.URL.Query().Get(":name")
+	email := r.FormValue("email")
+	contextValue := r.FormValue("context")
+	user, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return err
 	}
-	var params map[string][]string
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
-	}
-	return role.RemovePermissions(params["permissions"]...)
+	println("role", roleName, "ctx", contextValue)
+	return user.AddRole(roleName, contextValue)
 }
