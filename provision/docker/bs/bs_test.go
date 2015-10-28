@@ -5,6 +5,7 @@
 package bs
 
 import (
+	"fmt"
 	"runtime"
 	"sort"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -117,7 +119,8 @@ func (s *S) TestRecreateBsContainers(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	err = RecreateContainers(p)
+	var buf safe.Buffer
+	err = RecreateContainers(p, &buf)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -138,6 +141,16 @@ func (s *S) TestRecreateBsContainers(c *check.C) {
 	container, err = client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
+	// It runs in parallel, so we check both ordering
+	output1 := fmt.Sprintf(`relaunching bs container in the node %s []
+relaunching bs container in the node %s []
+`, nodes[0].Address, nodes[1].Address)
+	output2 := fmt.Sprintf(`relaunching bs container in the node %s []
+relaunching bs container in the node %s []
+`, nodes[1].Address, nodes[0].Address)
+	if got := buf.String(); got != output1 && got != output2 {
+		c.Errorf("Wrong output:\n%s", got)
+	}
 }
 
 func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
@@ -150,7 +163,8 @@ func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
 	servers := p.Servers()
 	servers[0].PrepareFailure("failure-create", "/containers/create")
 	defer servers[1].ResetFailure("failure-create")
-	err = RecreateContainers(p)
+	var buf safe.Buffer
+	err = RecreateContainers(p, &buf)
 	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[.*\]: API error \(400\): failure-create.*`)
 	sort.Sort(cluster.NodeList(nodes))
 	client, err := nodes[0].Client()
@@ -197,7 +211,8 @@ func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	err = RecreateContainers(p)
+	var buf safe.Buffer
+	err = RecreateContainers(p, &buf)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -227,7 +242,8 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	err = RecreateContainers(p)
+	var buf safe.Buffer
+	err = RecreateContainers(p, &buf)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
