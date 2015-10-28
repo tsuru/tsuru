@@ -269,6 +269,7 @@ func getTargets() (map[string]string, error) {
 }
 
 func copyTargetFiles() {
+	filesystem().MkdirAll(JoinWithUserDir(".tsuru"), 0700)
 	if src, err := filesystem().Open(JoinWithUserDir(".tsuru_targets")); err == nil {
 		defer src.Close()
 		if dst, err := filesystem().OpenFile(JoinWithUserDir(".tsuru", "targets"), syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600); err == nil {

@@ -75,6 +75,8 @@ func (s *S) TestReadTargetLegacy(c *check.C) {
 	target, err = readTarget(JoinWithUserDir(".tsuru", "target"))
 	c.Assert(err, check.IsNil)
 	c.Assert(target, check.Equals, "http://tsuru.google.com")
+	dir := JoinWithUserDir(".tsuru")
+	c.Assert(rfs.HasAction("mkdirall "+dir+" with mode 0700"), check.Equals, true)
 }
 
 func (s *S) TestReadTargetEnvironmentVariable(c *check.C) {
