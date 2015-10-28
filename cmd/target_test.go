@@ -60,6 +60,23 @@ func (s *S) TestReadTarget(c *check.C) {
 	c.Assert(target, check.Equals, "http://tsuru.google.com")
 }
 
+func (s *S) TestReadTargetLegacy(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
+	var rfs fstest.RecordingFs
+	fsystem = &rfs
+	defer func() { fsystem = nil }()
+	f, err := fsystem.Create(JoinWithUserDir(".tsuru_target"))
+	c.Assert(err, check.IsNil)
+	f.WriteString("http://tsuru.google.com")
+	f.Close()
+	target, err := ReadTarget()
+	c.Assert(err, check.IsNil)
+	c.Assert(target, check.Equals, "http://tsuru.google.com")
+	target, err = readTarget(JoinWithUserDir(".tsuru", "target"))
+	c.Assert(err, check.IsNil)
+	c.Assert(target, check.Equals, "http://tsuru.google.com")
+}
+
 func (s *S) TestReadTargetEnvironmentVariable(c *check.C) {
 	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
 	fsystem = rfs

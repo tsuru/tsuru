@@ -7,6 +7,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -96,7 +97,12 @@ func ReadTarget() (string, error) {
 		return target, nil
 	}
 	targetPath := JoinWithUserDir(".tsuru", "target")
-	return readTarget(targetPath)
+	target, err := readTarget(targetPath)
+	if err == errUndefinedTarget {
+		copyTargetFiles()
+		target, err = readTarget(JoinWithUserDir(".tsuru_target"))
+	}
+	return target, err
 }
 
 func readTarget(targetPath string) (string, error) {
@@ -247,7 +253,6 @@ func getTargets() (map[string]string, error) {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
 			var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
-
 			for i := range targetLines {
 				var targetSplit = strings.Split(targetLines[i], "\t")
 
@@ -258,17 +263,20 @@ func getTargets() (map[string]string, error) {
 		}
 	}
 	if legacy {
-		copyOldTargets(targets)
+		copyTargetFiles()
 	}
 	return targets, nil
 }
 
-func copyOldTargets(targets map[string]string) {
-	resetTargetList()
-	for label, target := range targets {
-		writeOnTargetList(label, target)
+func copyTargetFiles() {
+	if src, err := filesystem().Open(JoinWithUserDir(".tsuru_targets")); err == nil {
+		defer src.Close()
+		if dst, err := filesystem().OpenFile(JoinWithUserDir(".tsuru", "targets"), syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600); err == nil {
+			defer dst.Close()
+			io.Copy(dst, src)
+		}
 	}
-	if target, err := readTarget(JoinWithUserDir(".tsuru_token")); err == nil {
+	if target, err := readTarget(JoinWithUserDir(".tsuru_target")); err == nil {
 		writeTarget(target)
 	}
 }
