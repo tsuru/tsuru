@@ -145,7 +145,7 @@ func (s *S) TestAssignRole(c *check.C) {
 	_, err := permission.NewRole("test", "team")
 	c.Assert(err, check.IsNil)
 	role := bytes.NewBufferString("email=majortom@groundcontrol.com&context=myteam")
-	req, err := http.NewRequest("POST", "/roles/test/assign", role)
+	req, err := http.NewRequest("POST", "/roles/test/user", role)
 	c.Assert(err, check.IsNil)
 	token := s.userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleAssign,
@@ -161,4 +161,30 @@ func (s *S) TestAssignRole(c *check.C) {
 	u, err := auth.GetUserByEmail("majortom@groundcontrol.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Roles, check.HasLen, 2)
+}
+
+func (s *S) TestDissociateRole(c *check.C) {
+	_, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	token := s.userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleAssign,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	u, err := auth.GetUserByEmail("majortom@groundcontrol.com")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("test", "myteam")
+	c.Assert(err, check.IsNil)
+	c.Assert(u.Roles, check.HasLen, 2)
+	req, err := http.NewRequest("DELETE", "/roles/test/user/majortom@groundcontrol.com?context=myteam", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	u, err = auth.GetUserByEmail("majortom@groundcontrol.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(u.Roles, check.HasLen, 1)
 }

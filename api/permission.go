@@ -84,6 +84,16 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	println("role", roleName, "ctx", contextValue)
 	return user.AddRole(roleName, contextValue)
+}
+
+func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	roleName := r.URL.Query().Get(":name")
+	email := r.URL.Query().Get(":email")
+	contextValue := r.URL.Query().Get("context")
+	user, err := auth.GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	return user.RemoveRole(roleName, contextValue)
 }
