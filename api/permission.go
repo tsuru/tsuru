@@ -2,10 +2,10 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/tsuru/tsuru/errors"
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 )
 

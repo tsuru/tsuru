@@ -2,11 +2,11 @@ package api
 
 import (
 	"bytes"
-	"github.com/tsuru/tsuru/auth"
 	"net/http"
 	"net/http/httptest"
 	"sort"
 
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
 	"gopkg.in/check.v1"
 )
