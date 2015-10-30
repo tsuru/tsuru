@@ -98,7 +98,7 @@ var insertServiceInstance = action.Action{
 			return
 		}
 		defer conn.Close()
-		conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
+		conn.ServiceInstances().Remove(bson.M{"name": instance.Name, "service_name": instance.ServiceName})
 	},
 	MinParams: 2,
 }

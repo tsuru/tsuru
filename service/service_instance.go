@@ -175,7 +175,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	}
 	defer conn.Close()
 	updateOp := bson.M{"$addToSet": bson.M{"units": unit.GetID()}}
-	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": bson.M{"$ne": unit.GetID()}}, updateOp)
+	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "units": bson.M{"$ne": unit.GetID()}}, updateOp)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return ErrUnitAlreadyBound
@@ -225,7 +225,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	}
 	defer conn.Close()
 	updateOp := bson.M{"$pull": bson.M{"units": unit.GetID()}}
-	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": unit.GetID()}, updateOp)
+	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "units": unit.GetID()}, updateOp)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return ErrUnitNotBound

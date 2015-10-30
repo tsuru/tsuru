@@ -798,7 +798,6 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
-	fmt.Println(instanceName, serviceName, instance.Name, instance.ServiceName)
 	rec.Log(u.Email, "bind-app", "instance="+instanceName, "app="+appName)
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")

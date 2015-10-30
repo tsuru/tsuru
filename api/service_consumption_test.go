@@ -290,75 +290,20 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 		c.Assert(err, check.IsNil)
 		defer s.conn.Services().Remove(bson.M{"_id": service.Name})
 	}
-	si := []service.ServiceInstance{
-		{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}},
-		{Name: "foo-instance", ServiceName: "foo2", Teams: []string{s.team.Name}},
-	}
-	for _, instance := range si {
-		err := instance.Create()
-		c.Assert(err, check.IsNil)
-	}
-	recorder, request := makeRequestToRemoveInstanceHandler("foo2", "foo-instance", c)
-	err := removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
-	c.Assert(msg.Message, check.Equals, `service instance successfuly removed`)
-	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo2"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{
-		Action: "remove-service-instance",
-		User:   s.user.Email,
-		Extra:  []interface{}{"foo-instance"},
-	}
-	c.Assert(action, rectest.IsRecorded)
-	n, err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 1)
-}
-
-//delete
-func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceNameAndWithBindApp(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
-	services := []service.Service{
-		{Name: "foo", Endpoint: map[string]string{"production": ts.URL}},
-		{Name: "foo2", Endpoint: map[string]string{"production": ts.URL}},
-	}
-	for _, service := range services {
-		err := service.Create()
-		c.Assert(err, check.IsNil)
-		defer s.conn.Services().Remove(bson.M{"_id": service.Name})
-	}
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.pool = "test1"
 	opts := provision.AddPoolOptions{Name: "test1", Default: true}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	a := []app.App{
-		{
-			Name:     "app-instance",
-			Platform: "zend",
-			Teams:    []string{s.team.Name},
-		},
-		{
-			Name:     "app-instance-2",
-			Platform: "zend",
-			Teams:    []string{s.team.Name},
-		},
+	a := app.App{
+		Name:     "app-instance",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
 	}
-	err = app.CreateApp(&a[0], s.user)
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a[0], 1, "web", nil)
-	err = app.CreateApp(&a[1], s.user)
-	c.Assert(err, check.IsNil)
-	units2, _ := s.provisioner.AddUnits(&a[1], 1, "web", nil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
 	si := []service.ServiceInstance{
 		{
 			Name:        "foo-instance",
@@ -371,40 +316,42 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceNameAndWithBi
 			Name:        "foo-instance",
 			ServiceName: "foo2",
 			Teams:       []string{s.team.Name},
-			Apps:        []string{"app-instance", "app-instance-2"},
-			Units:       []string{units[0].ID, units2[0].ID},
+			Apps:        []string{},
 		},
 	}
 	for _, instance := range si {
 		err := instance.Create()
 		c.Assert(err, check.IsNil)
 	}
-	recorder, request := makeRequestToRemoveInstanceHandlerWithUnbind("foo2", "foo-instance", c)
+	recorder, request := makeRequestToRemoveInstanceHandler("foo2", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
 	expected := ""
-	expected += `{"Message":"Unbind app \"app-instance\" ...\n"}` + "\n"
-	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance\" anymore.\n"}` + "\n"
-	expected += `{"Message":"Unbind app \"app-instance-2\" ...\n"}` + "\n"
-	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance-2\" anymore.\n"}` + "\n"
 	expected += `{"Message":"service instance successfuly removed"}` + "\n"
 	c.Assert(string(b), check.Equals, expected)
 	var result []service.ServiceInstance
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo2"}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{
-		Action: "remove-service-instance",
-		User:   s.user.Email,
-		Extra:  []interface{}{"foo-instance"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).All(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 1)
 	c.Assert(result[0].Apps, check.DeepEquals, []string{"app-instance"})
+	recorder, request = makeRequestToRemoveInstanceHandlerWithUnbind("foo", "foo-instance", c)
+	err = removeServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	b, err = ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	expected = ""
+	expected += `{"Message":"Unbind app \"app-instance\" ...\n"}` + "\n"
+	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance\" anymore.\n"}` + "\n"
+	expected += `{"Message":"service instance successfuly removed"}` + "\n"
+	c.Assert(string(b), check.Equals, expected)
+	n, err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *check.C) {
