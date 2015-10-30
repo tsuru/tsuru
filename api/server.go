@@ -94,7 +94,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/info", Handler(info))
 
 	m.Add("Get", "/services/instances", authorizationRequiredHandler(serviceInstances))
-	m.Add("Get", "/services/instances/{name}", authorizationRequiredHandler(serviceInstance))
+	m.Add("Get", "/services/{service}/instances/{instance}", authorizationRequiredHandler(serviceInstance))
 	m.Add("Delete", "/services/{service}/instances/{instance}", authorizationRequiredHandler(removeServiceInstance))
 	m.Add("Post", "/services/instances", authorizationRequiredHandler(createServiceInstance))
 	m.Add("Put", "/services/{service}/instances/{instance}/{app}", authorizationRequiredHandler(bindServiceInstance))
@@ -103,7 +103,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Put", "/services/{service}/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceGrantTeam))
 	m.Add("Delete", "/services/{service}/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceRevokeTeam))
 
-	m.AddAll("/services/proxy/{instance}", authorizationRequiredHandler(serviceInstanceProxy))
+	m.AddAll("/services/{service}/proxy/{instance}", authorizationRequiredHandler(serviceInstanceProxy))
 	m.AddAll("/services/proxy/service/{service}", authorizationRequiredHandler(serviceProxy))
 
 	m.Add("Get", "/services", authorizationRequiredHandler(serviceList))

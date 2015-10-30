@@ -488,7 +488,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	err = CreateServiceInstance(instance, &srv, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	si, err := GetServiceInstance("instance", s.user)
+	si, err := GetServiceInstance("mongodb", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.PlanName, check.Equals, "small")
@@ -496,8 +496,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 }
 
-//delete
-func (s *InstanceSuite) TestCreateServiceInstanceWithSameName(c *check.C) {
+func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -518,7 +517,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameName(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	si, err := GetServiceInstance_("mongodb3", "instance", s.user)
+	si, err := GetServiceInstance("mongodb3", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(3))
 	c.Assert(si.PlanName, check.Equals, "small")
@@ -549,7 +548,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	err = CreateServiceInstance(instance, &srv, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	si, err := GetServiceInstance("instance", s.user)
+	si, err := GetServiceInstance("mongodb", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.TeamOwner, check.Equals, team.Name)
@@ -629,7 +628,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceRestrictedService(c *check.C) {
 	err = CreateServiceInstance(*instance, &srv, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	instance, err = GetServiceInstance("instance", s.user)
+	instance, err = GetServiceInstance("mongodb", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Teams, check.DeepEquals, []string{"painkiller"})
 }
@@ -706,7 +705,7 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 		ServiceInstance{Name: "mongo-5", ServiceName: "mongodb"},
 	)
 	defer s.conn.ServiceInstances().RemoveAll(bson.M{"service_name": "mongodb"})
-	instance, err := GetServiceInstance("mongo-1", s.user)
+	instance, err := GetServiceInstance("mongodb", "mongo-1", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "mongo-1")
 	c.Assert(instance.ServiceName, check.Equals, "mongodb")
@@ -717,10 +716,10 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 		Extra:  []interface{}{"mongo-1"},
 	}
 	c.Assert(action, rectest.IsRecorded)
-	instance, err = GetServiceInstance("mongo-6", s.user)
+	instance, err = GetServiceInstance("mongodb", "mongo-6", s.user)
 	c.Assert(instance, check.IsNil)
 	c.Assert(err, check.Equals, ErrServiceInstanceNotFound)
-	instance, err = GetServiceInstance("mongo-5", s.user)
+	instance, err = GetServiceInstance("mongodb", "mongo-5", s.user)
 	c.Assert(instance, check.IsNil)
 	c.Assert(err, check.Equals, ErrAccessNotAllowed)
 }
@@ -752,11 +751,11 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
-	_, err = GetServiceInstance("j4sql", user)
+	_, err = GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.NotNil)
 	c.Assert(ErrAccessNotAllowed, check.Equals, err)
 	sInstance.Grant(team.Name)
-	si, err := GetServiceInstance("j4sql", user)
+	si, err := GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
 }
@@ -780,11 +779,11 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
-	si, err := GetServiceInstance("j4sql", user)
+	si, err := GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
 	sInstance.Revoke(team.Name)
-	_, err = GetServiceInstance("j4sql", user)
+	_, err = GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.NotNil)
 	c.Assert(ErrAccessNotAllowed, check.Equals, err)
 }
@@ -837,7 +836,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[4].Method, check.Equals, "DELETE")
 	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance("mysql", si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{})
@@ -901,7 +900,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(reqs[5].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[6].Method, check.Equals, "POST")
 	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{instance})
@@ -959,7 +958,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[7].Method, check.Equals, "POST")
 	c.Assert(reqs[7].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 }
@@ -999,7 +998,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[2].Method, check.Equals, "POST")
 	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{
@@ -1051,7 +1050,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	}
 	wg.Wait()
 	c.Assert(reqs, check.HasLen, 300)
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, expectedNames)
@@ -1090,7 +1089,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		err := si.BindApp(app, &buf)
 		c.Assert(err, check.IsNil)
 	}
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	for _, app := range apps {
@@ -1104,7 +1103,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	}
 	wg.Wait()
 	c.Assert(reqs, check.HasLen, 120)
-	siDB, err = GetServiceInstance(si.Name, s.user)
+	siDB, err = GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})

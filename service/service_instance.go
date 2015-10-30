@@ -46,7 +46,6 @@ type ServiceInstance struct {
 	TeamOwner   string
 }
 
-//delete
 // DeleteInstance deletes the service instance from the database.
 func DeleteInstance(si *ServiceInstance) error {
 	if len(si.Apps) > 0 {
@@ -136,7 +135,6 @@ func (si *ServiceInstance) FindApp(appName string) int {
 	return index
 }
 
-//delete
 func (si *ServiceInstance) update(update bson.M) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -283,7 +281,6 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 	return query
 }
 
-//delete
 func validateServiceInstanceName(service string, instance string) error {
 	if !instanceNameRegexp.MatchString(instance) {
 		return ErrInvalidInstanceName
@@ -301,7 +298,6 @@ func validateServiceInstanceName(service string, instance string) error {
 	return nil
 }
 
-//delete
 func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User) error {
 	err := validateServiceInstanceName(service.Name, instance.Name)
 	if err != nil {
@@ -379,26 +375,7 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User, app
 	return instances, err
 }
 
-func GetServiceInstance(name string, u *auth.User) (*ServiceInstance, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	rec.Log(u.Email, "get-service-instance", name)
-	var instance ServiceInstance
-	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&instance)
-	if err != nil {
-		return nil, ErrServiceInstanceNotFound
-	}
-	if !auth.CheckUserAccess(instance.Teams, u) {
-		return nil, ErrAccessNotAllowed
-	}
-	return &instance, nil
-}
-
-//delete - transferir
-func GetServiceInstance_(serviceName string, instanceName string, u *auth.User) (*ServiceInstance, error) {
+func GetServiceInstance(serviceName string, instanceName string, u *auth.User) (*ServiceInstance, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

@@ -372,7 +372,7 @@ func (s *S) TestUnbindUnitsForward(c *check.C) {
 			c.Assert(req.Method, check.Equals, "DELETE")
 		}
 	}
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Units, check.DeepEquals, []string{})
 }
@@ -424,7 +424,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 			c.Assert(req.Method, check.Equals, "POST")
 		}
 	}
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Units)
 	c.Assert(siDB.Units, check.DeepEquals, []string{
@@ -470,7 +470,7 @@ func (s *S) TestUnbindUnitsBackward(c *check.C) {
 	for _, req := range reqs {
 		c.Assert(req.Method, check.Equals, "POST")
 	}
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Units)
 	c.Assert(siDB.Units, check.DeepEquals, []string{
@@ -498,7 +498,7 @@ func (s *S) TestUnbindAppDBForward(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{&args}}
 	_, err = unbindAppDB.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
 }
@@ -519,7 +519,7 @@ func (s *S) TestUnbindAppDBBackward(c *check.C) {
 	}
 	ctx := action.BWContext{Params: []interface{}{&args}}
 	unbindAppDB.Backward(ctx)
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{a.GetName()})
 }

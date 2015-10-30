@@ -2815,7 +2815,6 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	c.Assert(e, check.ErrorMatches, "^This user does not have access to this app$")
 }
 
-//delete
 func (s *S) TestBindWithManyInstanceNameWithSameName(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -2985,7 +2984,6 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-//delete
 func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	var called int32
