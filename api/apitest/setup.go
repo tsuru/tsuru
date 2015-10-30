@@ -36,6 +36,7 @@ type MultiTestHandler struct {
 	ConditionalContent map[string]interface{}
 	Header             []http.Header
 	RspCode            int
+	RspHeader          http.Header
 }
 
 func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +47,13 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Header = append(h.Header, r.Header)
 	if h.RspCode == 0 {
 		h.RspCode = http.StatusOK
+	}
+	if h.RspHeader != nil {
+		for k, values := range h.RspHeader {
+			for _, value := range values {
+				w.Header().Add(k, value)
+			}
+		}
 	}
 	condContent := h.ConditionalContent[r.URL.String()]
 	if content, ok := condContent.(string); ok {
