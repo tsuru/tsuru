@@ -28,6 +28,8 @@ tsurud (tsuru server daemon)
 .. toctree::
    :maxdepth: 1
 
+   tsurud/0.12.4
+
    tsurud/0.12.3
 
    tsurud/0.12.2
