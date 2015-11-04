@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
@@ -329,7 +328,6 @@ func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
 
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	user := &auth.User{Email: "nonadmin@nonadmin.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -696,7 +694,6 @@ func (s *DeploySuite) TestDeployInfoByNonAuthenticated(c *check.C) {
 
 func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)

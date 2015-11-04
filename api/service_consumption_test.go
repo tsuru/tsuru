@@ -319,7 +319,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 		},
 	}
 	for _, instance := range si {
-		err := instance.Create()
+		err = instance.Create()
 		c.Assert(err, check.IsNil)
 	}
 	recorder, request := makeRequestToRemoveInstanceHandler("foo2", "foo-instance", c)

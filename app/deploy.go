@@ -118,7 +118,7 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 	if limit != 0 {
 		query = query.Limit(limit)
 	}
-	if err := query.All(&list); err != nil {
+	if err = query.All(&list); err != nil {
 		return nil, err
 	}
 	validImages := set{}
