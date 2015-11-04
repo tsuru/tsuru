@@ -361,7 +361,7 @@ var bindAndHealthcheck = action.Action{
 				log.Errorf("Removed binding for unit %q: %s", c.ID, err)
 				continue
 			}
-			fmt.Fprintf(w, " ---> Unbinded unit %s [%s]\n", c.ShortID(), c.ProcessName)
+			fmt.Fprintf(w, " ---> Removed bind for unit %s [%s]\n", c.ShortID(), c.ProcessName)
 		}
 	},
 	OnError: rollbackNotice,

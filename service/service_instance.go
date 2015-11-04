@@ -154,7 +154,7 @@ func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
 	actions := []*action.Action{
 		&bindAppDBAction,
 		&bindAppEndpointAction,
-		&setBindedEnvsAction,
+		&setBoundEnvsAction,
 		&bindUnitsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
@@ -184,7 +184,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		rollbackErr := si.update(bson.M{"$pull": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
-			log.Errorf("[bind unit] could remove stil unbinded unit from db after failure: %s", rollbackErr)
+			log.Errorf("[bind unit] could not remove stil unbound unit from db after failure: %s", rollbackErr)
 		}
 		return err
 	}
@@ -205,7 +205,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 		&unbindUnits,
 		&unbindAppDB,
 		&unbindAppEndpoint,
-		&removeBindedEnvs,
+		&removeBoundEnvs,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(&args)
@@ -234,7 +234,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		rollbackErr := si.update(bson.M{"$addToSet": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
-			log.Errorf("[unbind unit] could not add binded unit back to db after failure: %s", rollbackErr)
+			log.Errorf("[unbind unit] could not add bound unit back to db after failure: %s", rollbackErr)
 		}
 		return err
 	}

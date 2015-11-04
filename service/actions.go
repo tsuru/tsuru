@@ -169,8 +169,8 @@ var bindAppEndpointAction = action.Action{
 	MinParams: 1,
 }
 
-var setBindedEnvsAction = action.Action{
-	Name: "set-binded-envs",
+var setBoundEnvsAction = action.Action{
+	Name: "set-bound-envs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
@@ -187,7 +187,7 @@ var setBindedEnvsAction = action.Action{
 		instance := ctx.FWResult.(bind.ServiceInstance)
 		err := args.app.RemoveInstance(args.serviceInstance.ServiceName, instance, args.writer)
 		if err != nil {
-			log.Errorf("[set-binded-envs backward] failed to remove instance: %s", err)
+			log.Errorf("[set-bound-envs backward] failed to remove instance: %s", err)
 		}
 	},
 }
@@ -206,7 +206,7 @@ var bindUnitsAction = action.Action{
 			return nil, err
 		}
 		errCh := make(chan error, len(units))
-		unbindedCh := make(chan bind.Unit, len(units))
+		unboundCh := make(chan bind.Unit, len(units))
 		for i := range units {
 			wg.Add(1)
 			go func(i int) {
@@ -214,7 +214,7 @@ var bindUnitsAction = action.Action{
 				unit := units[i]
 				err := si.BindUnit(args.app, unit)
 				if err == nil || err == ErrUnitAlreadyBound {
-					unbindedCh <- unit
+					unboundCh <- unit
 				} else {
 					errCh <- err
 				}
@@ -222,9 +222,9 @@ var bindUnitsAction = action.Action{
 		}
 		wg.Wait()
 		close(errCh)
-		close(unbindedCh)
+		close(unboundCh)
 		if err := <-errCh; err != nil {
-			for unit := range unbindedCh {
+			for unit := range unboundCh {
 				unbindErr := si.UnbindUnit(args.app, unit)
 				if unbindErr != nil {
 					log.Errorf("[bind-units forward] failed to unbind unit after error: %s", unbindErr)
@@ -252,7 +252,7 @@ var unbindUnits = action.Action{
 			return nil, err
 		}
 		errCh := make(chan error, len(units))
-		unbindedCh := make(chan bind.Unit, len(units))
+		unboundCh := make(chan bind.Unit, len(units))
 		for i := range units {
 			wg.Add(1)
 			go func(i int) {
@@ -260,7 +260,7 @@ var unbindUnits = action.Action{
 				unit := units[i]
 				err := si.UnbindUnit(args.app, unit)
 				if err == nil || err == ErrUnitNotBound {
-					unbindedCh <- unit
+					unboundCh <- unit
 				} else {
 					errCh <- err
 				}
@@ -268,9 +268,9 @@ var unbindUnits = action.Action{
 		}
 		wg.Wait()
 		close(errCh)
-		close(unbindedCh)
+		close(unboundCh)
 		if err := <-errCh; err != nil {
-			for unit := range unbindedCh {
+			for unit := range unboundCh {
 				rebindErr := si.BindUnit(args.app, unit)
 				if rebindErr != nil {
 					log.Errorf("[unbind-units forward] failed to rebind unit after error: %s", rebindErr)
@@ -346,8 +346,8 @@ var unbindAppEndpoint = action.Action{
 	MinParams: 1,
 }
 
-var removeBindedEnvs = action.Action{
-	Name: "remove-binded-envs",
+var removeBoundEnvs = action.Action{
+	Name: "remove-bound-envs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {

@@ -94,12 +94,12 @@ func (s *InstanceSuite) TestFindApp(c *check.C) {
 func (s *InstanceSuite) TestBindApp(c *check.C) {
 	oldBindAppDBAction := bindAppDBAction
 	oldBindAppEndpointAction := bindAppEndpointAction
-	oldSetBindedEnvsAction := setBindedEnvsAction
+	oldSetBoundEnvsAction := setBoundEnvsAction
 	oldBindUnitsAction := bindUnitsAction
 	defer func() {
 		bindAppDBAction = oldBindAppDBAction
 		bindAppEndpointAction = oldBindAppEndpointAction
-		setBindedEnvsAction = oldSetBindedEnvsAction
+		setBoundEnvsAction = oldSetBoundEnvsAction
 		bindUnitsAction = oldBindUnitsAction
 	}()
 	var calls []string
@@ -117,9 +117,9 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 			return nil, nil
 		},
 	}
-	setBindedEnvsAction = action.Action{
+	setBoundEnvsAction = action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
-			calls = append(calls, "setBindedEnvsAction")
+			calls = append(calls, "setBoundEnvsAction")
 			return nil, nil
 		},
 	}
@@ -136,7 +136,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
 		"bindAppDBAction", "bindAppEndpointAction",
-		"setBindedEnvsAction", "bindUnitsAction",
+		"setBoundEnvsAction", "bindUnitsAction",
 	}
 	expectedParams := []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, writer: &buf}}
 	c.Assert(calls, check.DeepEquals, expectedCalls)

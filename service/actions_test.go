@@ -286,18 +286,18 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 	c.Assert(called, check.Equals, true)
 }
 
-func (s *S) TestSetBindedEnvsActionName(c *check.C) {
-	c.Assert(setBindedEnvsAction.Name, check.Equals, "set-binded-envs")
+func (s *S) TestSetBoundEnvsActionName(c *check.C) {
+	c.Assert(setBoundEnvsAction.Name, check.Equals, "set-bound-envs")
 }
 
-func (s *S) TestSetBindedEnvsActionForward(c *check.C) {
+func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	ctx := action.FWContext{
 		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si}},
 		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
 	}
-	result, err := setBindedEnvsAction.Forward(ctx)
+	result, err := setBoundEnvsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	instance := bind.ServiceInstance{
 		Name: "my-mysql",
@@ -308,13 +308,13 @@ func (s *S) TestSetBindedEnvsActionForward(c *check.C) {
 	c.Assert(instances, check.DeepEquals, []bind.ServiceInstance{instance})
 }
 
-func (s *S) TestSetBindedEnvsActionForwardWrongParameter(c *check.C) {
+func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"something"}}
-	_, err := setBindedEnvsAction.Forward(ctx)
+	_, err := setBoundEnvsAction.Forward(ctx)
 	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindPipelineArgs")
 }
 
-func (s *S) TestSetBindedEnvsActionBackward(c *check.C) {
+func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	instance := bind.ServiceInstance{
 		Name: "my-mysql",
 		Envs: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
@@ -327,7 +327,7 @@ func (s *S) TestSetBindedEnvsActionBackward(c *check.C) {
 		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si}},
 		FWResult: instance,
 	}
-	setBindedEnvsAction.Backward(ctx)
+	setBoundEnvsAction.Backward(ctx)
 	instances := a.GetInstances("mysql")
 	c.Assert(instances, check.HasLen, 0)
 }
@@ -579,7 +579,7 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 }
 
-func (s *S) TestRemoveBindedEnvsForward(c *check.C) {
+func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	srv := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srv)
@@ -597,7 +597,7 @@ func (s *S) TestRemoveBindedEnvsForward(c *check.C) {
 		writer:          buf,
 	}
 	ctx := action.FWContext{Params: []interface{}{&args}}
-	_, err = removeBindedEnvs.Forward(ctx)
+	_, err = removeBoundEnvs.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{})
 }
