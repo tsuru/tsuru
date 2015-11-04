@@ -45,6 +45,7 @@ type FakeApp struct {
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
 	instances      map[string][]bind.ServiceInstance
+	instancesLock  sync.Mutex
 	Pool           string
 	UpdatePlatform bool
 	TeamOwner      string
@@ -141,10 +142,14 @@ func (a *FakeApp) SetQuotaInUse(inUse int) error {
 }
 
 func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
+	a.instancesLock.Lock()
+	defer a.instancesLock.Unlock()
 	return a.instances[serviceName]
 }
 
 func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance, w io.Writer) error {
+	a.instancesLock.Lock()
+	defer a.instancesLock.Unlock()
 	instances := a.instances[serviceName]
 	instances = append(instances, instance)
 	a.instances[serviceName] = instances
@@ -155,6 +160,8 @@ func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance,
 }
 
 func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance, w io.Writer) error {
+	a.instancesLock.Lock()
+	defer a.instancesLock.Unlock()
 	instances := a.instances[serviceName]
 	index := -1
 	for i, inst := range instances {
