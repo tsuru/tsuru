@@ -235,6 +235,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/roles/{name}/permissions/{permission}", authorizationRequiredHandler(removePermissions))
 	m.Add("Post", "/roles/{name}/user", authorizationRequiredHandler(assignRole))
 	m.Add("Delete", "/roles/{name}/user/{email}", authorizationRequiredHandler(dissociateRole))
+	m.Add("Get", "/permissions", authorizationRequiredHandler(listPermissions))
 
 	m.Add("Get", "/debug/pprof/", AdminRequiredHandler(indexHandler))
 	m.Add("Get", "/debug/pprof/cmdline", AdminRequiredHandler(cmdlineHandler))

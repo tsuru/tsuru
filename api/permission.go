@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -40,6 +41,7 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(b)
 	return err
 }
@@ -96,4 +98,28 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	return user.RemoveRole(roleName, contextValue)
+}
+
+type permissionData struct {
+	Name     string
+	Contexts []string
+}
+
+func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	lst := permission.PermissionRegistry.Permissions()
+	sort.Sort(lst)
+	permList := make([]permissionData, len(lst))
+	for i, perm := range lst {
+		contexts := perm.AllowedContexts()
+		contextNames := make([]string, len(contexts))
+		for j, ctx := range contexts {
+			contextNames[j] = string(ctx)
+		}
+		permList[i] = permissionData{
+			Name:     perm.FullName(),
+			Contexts: contextNames,
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(permList)
 }

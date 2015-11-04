@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -187,4 +188,27 @@ func (s *S) TestDissociateRole(c *check.C) {
 	u, err = auth.GetUserByEmail("majortom@groundcontrol.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Roles, check.HasLen, 1)
+}
+
+func (s *S) TestListPermissions(c *check.C) {
+	role, err := permission.NewRole("test", "app")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "/permissions", nil)
+	c.Assert(err, check.IsNil)
+	token := s.userWithPermission(c)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	var data []permissionData
+	err = json.Unmarshal(rec.Body.Bytes(), &data)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(data) > 0, check.Equals, true)
+	c.Assert(data[0], check.DeepEquals, permissionData{
+		Name:     "",
+		Contexts: []string{"global"},
+	})
 }
