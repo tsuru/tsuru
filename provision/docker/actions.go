@@ -63,14 +63,14 @@ func runInContainers(containers []container.Container, callback callbackFunc, ro
 	}
 	step := len(containers)/workers + 1
 	toRollback := make(chan *container.Container, len(containers))
-	errors := make(chan error, len(containers))
+	errs := make(chan error, len(containers))
 	var wg sync.WaitGroup
 	runFunc := func(start, end int) error {
 		defer wg.Done()
 		for i := start; i < end; i++ {
 			err := callback(&containers[i], toRollback)
 			if err != nil {
-				errors <- err
+				errs <- err
 				return err
 			}
 		}
@@ -92,9 +92,9 @@ func runInContainers(containers []container.Container, callback callbackFunc, ro
 		}
 	}
 	wg.Wait()
-	close(errors)
+	close(errs)
 	close(toRollback)
-	if err := <-errors; err != nil {
+	if err := <-errs; err != nil {
 		if rollback != nil {
 			for c := range toRollback {
 				rollback(c)
