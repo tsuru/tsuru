@@ -1044,8 +1044,8 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			err := si.BindApp(app, &buf)
-			c.Assert(err, check.IsNil)
+			bindErr := si.BindApp(app, &buf)
+			c.Assert(bindErr, check.IsNil)
 		}(app)
 	}
 	wg.Wait()
@@ -1086,7 +1086,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
 		var buf bytes.Buffer
-		err := si.BindApp(app, &buf)
+		err = si.BindApp(app, &buf)
 		c.Assert(err, check.IsNil)
 	}
 	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
@@ -1097,8 +1097,8 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			err := siDB.UnbindApp(app, &buf)
-			c.Assert(err, check.IsNil)
+			unbindErr := siDB.UnbindApp(app, &buf)
+			c.Assert(unbindErr, check.IsNil)
 		}(app)
 	}
 	wg.Wait()

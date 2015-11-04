@@ -124,16 +124,16 @@ func (s *HandlerSuite) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c 
 }
 
 func (s *HandlerSuite) TestHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *check.C) {
-	recorder := recorder{httptest.NewRecorder(), 0}
+	rec := recorder{httptest.NewRecorder(), 0}
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, check.IsNil)
 	RegisterHandler("/apps", "GET", Handler(errorHandlerWriteHeader))
 	defer resetHandlers()
 	m := RunServer(true)
-	m.ServeHTTP(&recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
-	c.Assert(recorder.Body.String(), check.Equals, "some error\n")
-	c.Assert(recorder.headerWrites, check.Equals, 1)
+	m.ServeHTTP(&rec, request)
+	c.Assert(rec.Code, check.Equals, http.StatusBadGateway)
+	c.Assert(rec.Body.String(), check.Equals, "some error\n")
+	c.Assert(rec.headerWrites, check.Equals, 1)
 }
 
 func (s *HandlerSuite) TestHandlerShouldPassAnHandlerWithoutError(c *check.C) {
@@ -253,17 +253,17 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErr
 }
 
 func (s *HandlerSuite) TestAuthorizetionRequiredHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *check.C) {
-	recorder := recorder{httptest.NewRecorder(), 0}
+	rec := recorder{httptest.NewRecorder(), 0}
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	RegisterHandler("/apps", "GET", authorizationRequiredHandler(authorizedErrorHandlerWriteHeader))
 	defer resetHandlers()
 	m := RunServer(true)
-	m.ServeHTTP(&recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
-	c.Assert(recorder.Body.String(), check.Equals, "some error\n")
-	c.Assert(recorder.headerWrites, check.Equals, 1)
+	m.ServeHTTP(&rec, request)
+	c.Assert(rec.Code, check.Equals, http.StatusBadGateway)
+	c.Assert(rec.Body.String(), check.Equals, "some error\n")
+	c.Assert(rec.headerWrites, check.Equals, 1)
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldRespectTheHandlerStatusCode(c *check.C) {
@@ -378,17 +378,17 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnTheHandlerErrorIfAnyH
 }
 
 func (s *HandlerSuite) TestAdminRequiredHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *check.C) {
-	recorder := recorder{httptest.NewRecorder(), 0}
+	rec := recorder{httptest.NewRecorder(), 0}
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	RegisterHandler("/apps", "GET", AdminRequiredHandler(authorizedErrorHandlerWriteHeader))
 	defer resetHandlers()
 	m := RunServer(true)
-	m.ServeHTTP(&recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
-	c.Assert(recorder.Body.String(), check.Equals, "some error\n")
-	c.Assert(recorder.headerWrites, check.Equals, 1)
+	m.ServeHTTP(&rec, request)
+	c.Assert(rec.Code, check.Equals, http.StatusBadGateway)
+	c.Assert(rec.Body.String(), check.Equals, "some error\n")
+	c.Assert(rec.headerWrites, check.Equals, 1)
 }
 
 func (s *HandlerSuite) TestAdminRequiredHandlerShouldRespectTheHandlerStatusCode(c *check.C) {

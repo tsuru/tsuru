@@ -2355,8 +2355,8 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	a := app.App{Name: "lost1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
-	request, err := http.NewRequest("GET", url, nil)
+	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
+	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -2404,8 +2404,8 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	a := app.App{Name: "lost2", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
-	request, err := http.NewRequest("GET", url, nil)
+	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
+	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -3358,7 +3358,7 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	app, err := getApp(a.Name, s.adminuser, nil)
+	app, err := getAppFromContext(a.Name, s.adminuser, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(app, check.DeepEquals, *expected)
 }

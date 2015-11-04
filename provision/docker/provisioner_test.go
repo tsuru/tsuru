@@ -413,8 +413,8 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 		var result docker.Config
-		err := json.Unmarshal(data, &result)
-		if err == nil {
+		jsonErr := json.Unmarshal(data, &result)
+		if jsonErr == nil {
 			if result.Image == "tsuru/app-appdeployimagetest:v1" {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -626,8 +626,8 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 		var result docker.Config
-		err := json.Unmarshal(data, &result)
-		if err == nil {
+		jsonErr := json.Unmarshal(data, &result)
+		if jsonErr == nil {
 			if result.Image == "tsuru/app-otherapp:v1" {
 				w.WriteHeader(http.StatusInternalServerError)
 				return

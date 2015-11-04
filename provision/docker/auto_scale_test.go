@@ -580,8 +580,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunStress(c *check.C) {
 				GroupByMetadata: "pool",
 			}
 			defer wg.Done()
-			err := a.runOnce()
-			c.Assert(err, check.IsNil)
+			runErr := a.runOnce()
+			c.Assert(runErr, check.IsNil)
 		}()
 	}
 	wg.Wait()

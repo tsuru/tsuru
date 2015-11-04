@@ -42,7 +42,6 @@ var _ = check.Suite(&DeploySuite{})
 
 func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -461,7 +460,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 		{App: "yourblog", Timestamp: timestamp, Duration: duration},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -494,7 +493,7 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 		{App: "yourblog", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -558,7 +557,7 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 		{App: "yourblog", Timestamp: timestamp, Duration: duration},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -650,7 +649,6 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	user = &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -768,7 +766,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -800,7 +798,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -837,7 +835,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)

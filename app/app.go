@@ -1354,7 +1354,7 @@ func List(u *auth.User, filter *Filter) ([]App, error) {
 	defer conn.Close()
 	query := filter.Query()
 	if u == nil || u.IsAdmin() {
-		if err := conn.Apps().Find(query).All(&apps); err != nil {
+		if err = conn.Apps().Find(query).All(&apps); err != nil {
 			return []App{}, err
 		}
 		return apps, nil

@@ -531,7 +531,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	}
 	cluster := p.Cluster()
 	for _, imageId := range images {
-		err := cluster.RemoveImage(imageId)
+		err = cluster.RemoveImage(imageId)
 		if err != nil {
 			log.Errorf("Failed to remove image %s: %s", imageId, err.Error())
 		}

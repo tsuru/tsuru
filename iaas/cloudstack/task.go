@@ -76,7 +76,7 @@ func (t *machineCreate) Run(job monsterqueue.Job) {
 			}
 			param["projectId"] = projectId
 			var result CreateTagsResponse
-			err := t.iaas.do("createTags", param, &result)
+			err = t.iaas.do("createTags", param, &result)
 			if err != nil {
 				job.Error(err)
 				return

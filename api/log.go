@@ -25,7 +25,7 @@ func logRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if err != nil {
 			return err
 		}
-		a, err := getApp(r.URL.Query().Get("app"), u, r)
+		a, err := getAppFromContext(r.URL.Query().Get("app"), u, r)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func addLogs(ws *websocket.Conn) {
 		if len(data) == 0 {
 			continue
 		}
-		err := json.Unmarshal(data, &entry)
+		err = json.Unmarshal(data, &entry)
 		if err != nil {
 			close(logCh)
 			err = fmt.Errorf("wslogs: parsing log line %q: %s", string(data), err)

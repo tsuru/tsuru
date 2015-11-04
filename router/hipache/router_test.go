@@ -79,9 +79,9 @@ func (s *S) TestStressRace(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			conn := rtest.connect()
-			_, err := conn.Do("PING")
-			c.Assert(err, check.IsNil)
+			routerConn := rtest.connect()
+			_, err := routerConn.Do("PING")
+			c.Check(err, check.IsNil)
 		}()
 	}
 	wg.Wait()

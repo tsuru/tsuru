@@ -12,7 +12,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -23,7 +22,6 @@ import (
 
 func (s *S) TestListDeployByNonAdminUsers(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -57,7 +55,6 @@ func (s *S) TestListDeployByNonAdminUsers(c *check.C) {
 
 func (s *S) TestListDeployByAdminUsers(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -216,7 +213,6 @@ func (s *S) TestListServiceDeploys(c *check.C) {
 
 func (s *S) TestListAllDeploys(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -264,7 +260,6 @@ func (s *S) TestListAllDeploys(c *check.C) {
 
 func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -307,7 +302,6 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 
 func (s *S) TestListDeployByAppAndUser(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -348,7 +342,6 @@ func (s *S) TestListDeployByAppAndUser(c *check.C) {
 
 func (s *S) TestGetDeploy(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -383,7 +376,6 @@ func (s *S) TestGetDeploy(c *check.C) {
 
 func (s *S) TestGetDeployWithoutAccess(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -683,7 +675,6 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 
 func (s *S) TestUserHasPermission(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -706,7 +697,6 @@ func (s *S) TestUserHasPermission(c *check.C) {
 
 func (s *S) TestUserHasNoPermission(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -864,7 +854,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -896,7 +886,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -928,7 +918,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -959,7 +949,7 @@ func (s *S) TestGetImageName(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)

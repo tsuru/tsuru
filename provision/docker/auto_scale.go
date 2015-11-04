@@ -221,7 +221,7 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 		} else if len(scalerResult.toRemove) > 0 {
 			event.updateNodes(scalerResult.toRemove)
 			msg := fmt.Sprintf("%s, removing %d nodes", scalerResult.reason, len(scalerResult.toRemove))
-			err := event.update(scaleActionRemove, msg)
+			err = event.update(scaleActionRemove, msg)
 			if err != nil {
 				retErr = fmt.Errorf("error updating event: %s", err)
 				return

@@ -67,7 +67,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if err != nil {
 			return err
 		}
-		app, err = getApp(appName, user, r)
+		app, err = getAppFromContext(appName, user, r)
 		if err != nil {
 			return err
 		}
