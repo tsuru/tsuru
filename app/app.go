@@ -1309,6 +1309,7 @@ type Filter struct {
 	Platform  string
 	TeamOwner string
 	UserOwner string
+	Pool      string
 	Locked    bool
 }
 
@@ -1328,6 +1329,9 @@ func (f *Filter) Query() bson.M {
 	}
 	if f.UserOwner != "" {
 		query["owner"] = f.UserOwner
+	}
+	if f.Pool != "" {
+		query["pool"] = f.Pool
 	}
 	if f.Locked {
 		query["lock.locked"] = true

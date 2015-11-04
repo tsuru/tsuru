@@ -2518,6 +2518,38 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 	c.Assert(len(apps), check.Equals, 1)
 }
 
+func (s *S) TestListFilteringByPool(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test2", Default: false}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	a := App{
+		Name:  "testapp",
+		Teams: []string{s.team.Name},
+		Owner: "foo",
+		Pool:  opts.Name,
+	}
+	a2 := App{
+		Name:  "othertestapp",
+		Teams: []string{s.team.Name},
+		Owner: "bar",
+		Pool:  s.Pool,
+	}
+	err = s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(nil, &Filter{Pool: s.Pool})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps[0].Name, check.Equals, a2.Name)
+	c.Assert(apps[0].Pool, check.Equals, a2.Pool)
+}
+
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(s.user, nil)
 	c.Assert(err, check.IsNil)

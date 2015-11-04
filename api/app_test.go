@@ -219,6 +219,49 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *S) TestAppListFilteringByPool(c *check.C) {
+	opts := []provision.AddPoolOptions{
+		{Name: "pool1", Default: false, Public: true},
+		{Name: "pool2", Default: false, Public: true},
+	}
+	for _, opt := range opts {
+		err := provision.AddPool(opt)
+		c.Assert(err, check.IsNil)
+	}
+	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, Teams: []string{s.team.Name}}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := app.App{Name: "app2", Platform: "zend", Pool: opts[1].Name, Teams: []string{s.team.Name}}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?pool=%s", opts[1].Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = appList(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app2}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
+	}
+	queryString := fmt.Sprintf("pool=%s", opts[1].Name)
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
+	c.Assert(action, rectest.IsRecorded)
+}
+
 func (s *S) TestAppList(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}, CName: []string{"cname.app1"}}
 	err := app.CreateApp(&app1, s.user)
