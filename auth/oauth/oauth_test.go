@@ -126,7 +126,7 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 
 func (s *S) TestOAuthParse(c *check.C) {
 	b := ioutil.NopCloser(bytes.NewBufferString(`{"email":"x@x.com"}`))
-	rsp := &http.Response{Body: b}
+	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := OAuthParser(&OAuthScheme{})
 	email, err := parser.Parse(rsp)
 	c.Assert(err, check.IsNil)
@@ -135,10 +135,18 @@ func (s *S) TestOAuthParse(c *check.C) {
 
 func (s *S) TestOAuthParseInvalid(c *check.C) {
 	b := ioutil.NopCloser(bytes.NewBufferString(`{xxxxxxx}`))
-	rsp := &http.Response{Body: b}
+	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := OAuthParser(&OAuthScheme{})
 	_, err := parser.Parse(rsp)
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `unable to parse user data: {xxxxxxx} - invalid character.*`)
+}
+
+func (s *S) TestOAuthParseInvalidStatus(c *check.C) {
+	b := ioutil.NopCloser(bytes.NewBufferString(`invalid token`))
+	rsp := &http.Response{Body: b, StatusCode: http.StatusUnauthorized}
+	parser := OAuthParser(&OAuthScheme{})
+	_, err := parser.Parse(rsp)
+	c.Assert(err, check.ErrorMatches, `unexpected user data response 401: invalid token`)
 }
 
 func (s *S) TestOAuthAuth(c *check.C) {

@@ -6,6 +6,8 @@ package oauth
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -128,6 +130,9 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	}
 	defer response.Body.Close()
 	email, err := s.Parser.Parse(response)
+	if err != nil {
+		return nil, err
+	}
 	if email == "" {
 		return nil, ErrEmptyUserEmail
 	}
@@ -208,9 +213,16 @@ func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
 	user := struct {
 		Email string `json:"email"`
 	}{}
-	err := json.NewDecoder(infoResponse.Body).Decode(&user)
+	data, err := ioutil.ReadAll(infoResponse.Body)
 	if err != nil {
-		return user.Email, err
+		return "", fmt.Errorf("unable to read user data response: %s", err)
+	}
+	if infoResponse.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected user data response %d: %s", infoResponse.StatusCode, data)
+	}
+	err = json.Unmarshal(data, &user)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse user data: %s - %s", data, err)
 	}
 	return user.Email, nil
 }
