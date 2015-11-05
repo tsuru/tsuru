@@ -17,9 +17,10 @@ import (
 const routerType = "galeb"
 
 type galebRouter struct {
-	client *galebClient.GalebClient
-	domain string
-	prefix string
+	client     *galebClient.GalebClient
+	domain     string
+	prefix     string
+	routerName string
 }
 
 func init() {
@@ -60,19 +61,20 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 		Debug:         debug,
 	}
 	r := galebRouter{
-		client: &client,
-		domain: domain,
-		prefix: configPrefix,
+		client:     &client,
+		domain:     domain,
+		prefix:     configPrefix,
+		routerName: routerName,
 	}
 	return &r, nil
 }
 
-func poolName(base string) string {
-	return fmt.Sprintf("tsuru-backendpool-%s", base)
+func (r *galebRouter) poolName(base string) string {
+	return fmt.Sprintf("tsuru-backendpool-%s-%s", r.routerName, base)
 }
 
-func ruleName(base string) string {
-	return fmt.Sprintf("tsuru-rootrule-%s", base)
+func (r *galebRouter) ruleName(base string) string {
+	return fmt.Sprintf("tsuru-rootrule-%s-%s", r.routerName, base)
 }
 
 func (r *galebRouter) virtualHostName(base string) string {
@@ -80,7 +82,7 @@ func (r *galebRouter) virtualHostName(base string) string {
 }
 
 func (r *galebRouter) AddBackend(name string) error {
-	backendPoolId, err := r.client.AddBackendPool(poolName(name))
+	backendPoolId, err := r.client.AddBackendPool(r.poolName(name))
 	if err == galebClient.ErrItemAlreadyExists {
 		return router.ErrBackendExists
 	}
@@ -91,7 +93,7 @@ func (r *galebRouter) AddBackend(name string) error {
 	if err != nil {
 		return err
 	}
-	ruleId, err := r.client.AddRuleToID(ruleName(name), backendPoolId)
+	ruleId, err := r.client.AddRuleToID(r.ruleName(name), backendPoolId)
 	if err != nil {
 		return err
 	}
@@ -107,7 +109,7 @@ func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.client.AddBackend(address, poolName(backendName))
+	_, err = r.client.AddBackend(address, r.poolName(backendName))
 	if err == galebClient.ErrItemAlreadyExists {
 		return router.ErrRouteExists
 	}
@@ -119,7 +121,7 @@ func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 	if err != nil {
 		return err
 	}
-	targets, err := r.client.FindTargetsByParent(poolName(backendName))
+	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
@@ -150,7 +152,7 @@ func (r *galebRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
-	return r.client.SetRuleVirtualHost(ruleName(backendName), cname)
+	return r.client.SetRuleVirtualHost(r.ruleName(backendName), cname)
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) error {
@@ -158,7 +160,7 @@ func (r *galebRouter) UnsetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
-	err = r.client.RemoveRuleVirtualHost(ruleName(backendName), cname)
+	err = r.client.RemoveRuleVirtualHost(r.ruleName(backendName), cname)
 	if err == galebClient.ErrItemNotFound {
 		return router.ErrCNameNotFound
 	}
@@ -185,7 +187,7 @@ func (r *galebRouter) Routes(name string) ([]*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	targets, err := r.client.FindTargetsByParent(poolName(backendName))
+	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +217,7 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-	rule := ruleName(backendName)
+	rule := r.ruleName(backendName)
 	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
 	if err != nil {
 		return err
@@ -230,18 +232,18 @@ func (r *galebRouter) RemoveBackend(name string) error {
 			return err
 		}
 	}
-	err = r.client.RemoveRule(ruleName(backendName))
+	err = r.client.RemoveRule(r.ruleName(backendName))
 	if err != nil {
 		return err
 	}
-	targets, err := r.client.FindTargetsByParent(poolName(backendName))
+	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
 	for _, target := range targets {
 		r.client.RemoveBackendByID(target.FullId())
 	}
-	err = r.client.RemoveBackendPool(poolName(backendName))
+	err = r.client.RemoveBackendPool(r.poolName(backendName))
 	if err != nil {
 		return err
 	}
