@@ -1,0 +1,34 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+===========================
+tsurud 0.13.0 release notes
+===========================
+
+Welcome to tsurud 0.13.0!
+
+These release notes cover the `new features`_, `bug fixes`_, `general
+improvements`_ and `backward incompatible changes`_ you'll want to be aware of
+when upgrading from tsurud 0.12.x or older versions.
+
+.. _`new features`: `Main new features`_
+.. _`general improvements`: `Other improvements`_
+.. _`backward incompatible changes`: `Backward incompatible changes (action needed)`_
+
+Main new features
+=================
+
+Bug fixes
+=========
+
+* Fix OAuth authentication: the library used by tsuru used to blindly trust the
+  token_type returned by the OAuth provider, but some providers provide
+  mismatching types in the authorization request and the token. See
+  `<https://github.com/golang/oauth2/issues/113>`_ for more details.
+
+Other improvements
+==================
+
+Backward incompatible changes (action needed)
+=============================================
