@@ -288,7 +288,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "ef4eca6b097fad7cec79afcc278d213a6de1c960"
+			"Rev": "038cb4adce85ed41e285c2e7cc6221a92bfa44aa"
 		},
 		{
 			"ImportPath": "gopkg.in/amz.v2/aws",
