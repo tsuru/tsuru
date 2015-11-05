@@ -21,7 +21,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type routerFactory func(string) (Router, error)
+type routerFactory func(routerName, configPrefix string) (Router, error)
 
 var (
 	ErrBackendExists   = errors.New("Backend already exists")
@@ -58,7 +58,7 @@ func Get(name string) (Router, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown router: %q.", routerType)
 	}
-	r, err := factory(prefix)
+	r, err := factory(name, prefix)
 	if err != nil {
 		return nil, err
 	}

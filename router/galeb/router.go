@@ -14,7 +14,7 @@ import (
 	galebClient "github.com/tsuru/tsuru/router/galeb/client"
 )
 
-const routerName = "galeb"
+const routerType = "galeb"
 
 type galebRouter struct {
 	client *galebClient.GalebClient
@@ -23,32 +23,32 @@ type galebRouter struct {
 }
 
 func init() {
-	router.Register(routerName, createRouter)
-	hc.AddChecker("Router galeb", router.BuildHealthCheck(routerName))
+	router.Register(routerType, createRouter)
+	hc.AddChecker("Router galeb", router.BuildHealthCheck(routerType))
 }
 
-func createRouter(prefix string) (router.Router, error) {
-	apiUrl, err := config.GetString(prefix + ":api-url")
+func createRouter(routerName, configPrefix string) (router.Router, error) {
+	apiUrl, err := config.GetString(configPrefix + ":api-url")
 	if err != nil {
 		return nil, err
 	}
-	username, err := config.GetString(prefix + ":username")
+	username, err := config.GetString(configPrefix + ":username")
 	if err != nil {
 		return nil, err
 	}
-	password, err := config.GetString(prefix + ":password")
+	password, err := config.GetString(configPrefix + ":password")
 	if err != nil {
 		return nil, err
 	}
-	domain, err := config.GetString(prefix + ":domain")
+	domain, err := config.GetString(configPrefix + ":domain")
 	if err != nil {
 		return nil, err
 	}
-	environment, _ := config.GetString(prefix + ":environment")
-	project, _ := config.GetString(prefix + ":project")
-	balancePolicy, _ := config.GetString(prefix + ":balance-policy")
-	ruleType, _ := config.GetString(prefix + ":rule-type")
-	debug, _ := config.GetBool(prefix + ":debug")
+	environment, _ := config.GetString(configPrefix + ":environment")
+	project, _ := config.GetString(configPrefix + ":project")
+	balancePolicy, _ := config.GetString(configPrefix + ":balance-policy")
+	ruleType, _ := config.GetString(configPrefix + ":rule-type")
+	debug, _ := config.GetBool(configPrefix + ":debug")
 	client := galebClient.GalebClient{
 		ApiUrl:        apiUrl,
 		Username:      username,
@@ -62,7 +62,7 @@ func createRouter(prefix string) (router.Router, error) {
 	r := galebRouter{
 		client: &client,
 		domain: domain,
-		prefix: prefix,
+		prefix: configPrefix,
 	}
 	return &r, nil
 }
@@ -99,7 +99,7 @@ func (r *galebRouter) AddBackend(name string) error {
 	if err != nil {
 		return err
 	}
-	return router.Store(name, name, routerName)
+	return router.Store(name, name, routerType)
 }
 
 func (r *galebRouter) AddRoute(name string, address *url.URL) error {

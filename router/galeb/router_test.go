@@ -280,7 +280,7 @@ func init() {
 		c.Assert(err, check.IsNil)
 		server = httptest.NewServer(fakeServer)
 		config.Set("routers:galeb:api-url", server.URL+"/api")
-		gRouter, err := createRouter("routers:galeb")
+		gRouter, err := createRouter("galeb", "routers:galeb")
 		c.Assert(err, check.IsNil)
 		suite.Router = gRouter
 		conn, err := db.Conn()

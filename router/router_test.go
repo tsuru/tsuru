@@ -14,7 +14,9 @@ import (
 func (s *S) TestRegisterAndGet(c *check.C) {
 	var r Router
 	var prefixes []string
-	routerCreator := func(prefix string) (Router, error) {
+	var names []string
+	routerCreator := func(name, prefix string) (Router, error) {
+		names = append(names, name)
 		prefixes = append(prefixes, prefix)
 		return r, nil
 	}
@@ -24,6 +26,7 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 	got, err := Get("mine")
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.DeepEquals, got)
+	c.Assert(names, check.DeepEquals, []string{"mine"})
 	c.Assert(prefixes, check.DeepEquals, []string{"routers:mine"})
 	_, err = Get("unknown-router")
 	c.Assert(err, check.Not(check.IsNil))
@@ -36,8 +39,10 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 }
 
 func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
+	var names []string
 	var prefixes []string
-	routerCreator := func(prefix string) (Router, error) {
+	routerCreator := func(name, prefix string) (Router, error) {
+		names = append(names, name)
 		prefixes = append(prefixes, prefix)
 		var r Router
 		return r, nil
@@ -51,6 +56,7 @@ func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = Get("inst2")
 	c.Assert(err, check.IsNil)
+	c.Assert(names, check.DeepEquals, []string{"inst1", "inst2"})
 	c.Assert(prefixes, check.DeepEquals, []string{"routers:inst1", "routers:inst2"})
 }
 
