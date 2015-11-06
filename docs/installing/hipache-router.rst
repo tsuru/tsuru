@@ -6,7 +6,6 @@
 Hipache Router
 ++++++++++++++
 
-
 `Hipache <https://github.com/hipache/hipache/>`_ is a distributed HTTP and
 websocket proxy.
 
