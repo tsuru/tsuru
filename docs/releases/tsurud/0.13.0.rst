@@ -19,6 +19,12 @@ when upgrading from tsurud 0.12.x or older versions.
 Main new features
 =================
 
+* New IaaS: tsuru now supports DigitalOcean, along with Amazon EC2 and
+  CloudStack. Admins are able to spawn droplets on DigitalOcean and use them as
+  managed nodes with tsuru. See :ref:`IaaS configuration <iaas_configuration>`
+  for instructions on how to configure DigitalOcean integration (thanks Hugo
+  Seixas Antunes).
+
 Bug fixes
 =========
 
