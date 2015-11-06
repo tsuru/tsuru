@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -17,6 +18,8 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "provision_tests_s")
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
