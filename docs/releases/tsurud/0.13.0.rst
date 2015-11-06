@@ -40,7 +40,7 @@ Main new features
   longer unique across all services, but it's now unique only inside the
   server, which mean that it's now possible to have different instances of
   different services using the same name (issue `#1299
-  <https://github.com/tsuru/tsuru/issues/1299>`).
+  <https://github.com/tsuru/tsuru/issues/1299>`_).
 
 Bug fixes
 =========
