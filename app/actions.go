@@ -141,7 +141,7 @@ var exportEnvironmentsAction = action.Action{
 		app, err := GetByName(app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
-			app.UnsetEnvs(vars, false, nil)
+			app.UnsetEnvs(vars, false, true, nil)
 		}
 	},
 	MinParams: 1,

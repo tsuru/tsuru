@@ -554,9 +554,14 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	private := r.URL.Query().Get("private")
+	noRestart := r.URL.Query().Get("noRestart")
+	shouldRestart := true
 	isPublicEnv := true
 	if private == "1" {
 		isPublicEnv = false
+	}
+	if noRestart == "true" {
+		shouldRestart = false
 	}
 	extra := fmt.Sprintf("private=%t", !isPublicEnv)
 	appName := r.URL.Query().Get(":app")
@@ -573,7 +578,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.SetEnvs(envs, true, writer)
+	err = app.SetEnvs(envs, true, shouldRestart, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -609,7 +614,12 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.UnsetEnvs(variables, true, writer)
+	shouldRestart := true
+	noRestart := r.URL.Query().Get("noRestart")
+	if noRestart == "true" {
+		shouldRestart = false
+	}
+	err = app.UnsetEnvs(variables, true, shouldRestart, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil

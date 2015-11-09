@@ -959,13 +959,13 @@ func (app *App) Envs() map[string]bind.EnvVar {
 // SetEnvs saves a list of environment variables in the app. The publicOnly
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
-func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error {
+func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, shouldRestart bool, w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {
 		return err
 	}
 	if len(units) > 0 {
-		return app.setEnvsToApp(envs, publicOnly, true, w)
+		return app.setEnvsToApp(envs, publicOnly, shouldRestart, w)
 	}
 	return app.setEnvsToApp(envs, publicOnly, false, w)
 }
@@ -1019,13 +1019,13 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 // Besides the slice with the name of the variables, this method also takes the
 // parameter publicOnly, which indicates whether only public variables can be
 // overridden (if set to false, setEnvsToApp may override a private variable).
-func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) error {
+func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, shouldRestart bool, w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {
 		return err
 	}
 	if len(units) > 0 {
-		return app.unsetEnvsToApp(variableNames, publicOnly, true, w)
+		return app.unsetEnvsToApp(variableNames, publicOnly, shouldRestart, w)
 	}
 	return app.unsetEnvsToApp(variableNames, publicOnly, false, w)
 }
@@ -1174,7 +1174,7 @@ func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, w
 		Value:  string(servicesJson),
 		Public: false,
 	})
-	return app.SetEnvs(envVars, false, writer)
+	return app.SetEnvs(envVars, false, true, writer)
 }
 
 func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string) (string, string) {
@@ -1245,7 +1245,7 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 			return err
 		}
 	}
-	return app.SetEnvs(envsToSet, false, writer)
+	return app.SetEnvs(envsToSet, false, true, writer)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

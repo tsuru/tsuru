@@ -85,7 +85,7 @@ func (s *S) TestSetEnvs(c *check.C) {
 			Public: true,
 		},
 	}
-	app.SetEnvs(envs, false, nil)
+	app.SetEnvs(envs, false, true, nil)
 	expected := map[string]bind.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
@@ -119,7 +119,7 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
-	app.UnsetEnvs([]string{"http_proxy"}, false, nil)
+	app.UnsetEnvs([]string{"http_proxy"}, false, true, nil)
 	c.Assert(app.env, check.DeepEquals, map[string]bind.EnvVar{})
 }
 

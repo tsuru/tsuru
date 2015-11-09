@@ -1854,6 +1854,36 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	c.Assert(app.Env, check.DeepEquals, original)
 }
 
+func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=true", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = setEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName("black-dog")
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
+	envs := map[string]string{
+		"DATABASE_HOST": "localhost",
+	}
+	action := rectest.Action{
+		Action: "set-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Setting 1 new environment variables ----\n"}
+`)
+}
+
 func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
@@ -1925,6 +1955,44 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *check
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = unsetEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName("swift")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Env, check.DeepEquals, expected)
+	action := rectest.Action{
+		Action: "unset-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Unsetting 1 environment variables ----\n"}
+`)
+}
+
+func (s *S) TestUnsetEnvHandlerNoRestart(c *check.C) {
+	a := app.App{
+		Name:     "swift",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	expected := a.Env
+	delete(expected, "DATABASE_HOST")
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=true", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")

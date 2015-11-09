@@ -36,10 +36,10 @@ type App interface {
 	InstanceEnv(string) map[string]EnvVar
 
 	// SetEnvs adds enviroment variables in the app.
-	SetEnvs(envs []EnvVar, publicOnly bool, w io.Writer) error
+	SetEnvs(envs []EnvVar, publicOnly bool, shouldRestart bool, w io.Writer) error
 
 	// UnsetEnvs removes the given enviroment variables from the app.
-	UnsetEnvs(envNames []string, publicOnly bool, w io.Writer) error
+	UnsetEnvs(envNames []string, publicOnly bool, shouldRestart bool, w io.Writer) error
 
 	// AddInstance adds an instance to the application.
 	AddInstance(serviceName string, instance ServiceInstance, writer io.Writer) error

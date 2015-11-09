@@ -247,14 +247,14 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
-func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error {
+func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool, shouldRestart bool, w io.Writer) error {
 	for _, env := range envs {
 		a.SetEnv(env)
 	}
 	return nil
 }
 
-func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool, w io.Writer) error {
+func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool, shouldRestart bool, w io.Writer) error {
 	for _, env := range envs {
 		delete(a.env, env)
 	}
