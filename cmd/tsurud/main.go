@@ -27,6 +27,7 @@ func buildManager() *cmd.Manager {
 	m.Register(&tsurudCommand{Command: tokenCmd{}})
 	m.Register(&tsurudCommand{Command: &migrateCmd{}})
 	m.Register(&tsurudCommand{Command: gandalfSyncCmd{}})
+	m.Register(&tsurudCommand{Command: createRootUserCmd{}})
 	registerProvisionersCommands(m)
 	return m
 }

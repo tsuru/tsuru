@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
 
@@ -24,13 +25,11 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *S) SetUpTest(c *check.C) {
 	config.ReadConfigFile("testdata/tsuru.conf")
-}
-
-func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
+	repositorytest.Reset()
 }
 
 type CommandableProvisioner struct {

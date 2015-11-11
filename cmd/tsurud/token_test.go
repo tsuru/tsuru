@@ -8,8 +8,11 @@ import (
 	"bytes"
 	"net/http"
 	"os"
+	"strings"
 
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/permission"
 	"gopkg.in/check.v1"
 )
 
@@ -40,4 +43,31 @@ func (s *S) TestTokenRun(c *check.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Not(check.Equals), "")
+}
+
+func (s *S) TestCreateRootUserCmdInfo(c *check.C) {
+	c.Assert((&createRootUserCmd{}).Info(), check.NotNil)
+}
+
+func (s *S) TestCreateRootUserCmdRun(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	reader := strings.NewReader("foo123\nfoo123\n")
+	context := cmd.Context{
+		Args:   []string{"my@user.com"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  reader,
+	}
+	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin, nil)
+	client := cmd.NewClient(&http.Client{}, nil, manager)
+	command := createRootUserCmd{}
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "Password: \nConfirm: \nRoot user successfully created.\n")
+	u, err := auth.GetUserByEmail("my@user.com")
+	c.Assert(err, check.IsNil)
+	perms, err := u.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.HasLen, 1)
+	c.Assert(perms[0].Scheme, check.Equals, permission.PermAll)
 }
