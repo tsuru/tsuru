@@ -1706,7 +1706,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *chec
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=false&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1736,7 +1736,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=true&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1766,7 +1766,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=true&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1803,7 +1803,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	a := app.App{Name: "vigil", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=false&noRestart=false", a.Name, a.Name)
 	b := strings.NewReader(`{"DATABASE_HOST": "localhost", "DATABASE_USER": "root"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
@@ -1842,7 +1842,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=false&private=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"http://foo.com:8080"}`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1858,7 +1858,7 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=true", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=true&private=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1911,7 +1911,7 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) 
 
 func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
 	b := strings.NewReader(`{"DATABASE_HOST":"localhost"}`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false&private=false", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.token)
@@ -1927,7 +1927,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false&private=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1954,7 +1954,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *check
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -2028,7 +2028,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2067,7 +2067,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	b := strings.NewReader(`["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD"]`)
 	request, err := http.NewRequest("DELETE", url, b)
 	c.Assert(err, check.IsNil)
@@ -2089,7 +2089,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", b)
 	c.Assert(err, check.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -2100,7 +2100,7 @@ func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
 func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
 	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("[]")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", body)
 		c.Assert(err, check.IsNil)
 		recorder := httptest.NewRecorder()
 		err = unsetEnv(recorder, request, s.token)
@@ -2114,7 +2114,7 @@ func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C
 
 func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
 	b := strings.NewReader(`["DATABASE_HOST"]`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.token)
@@ -2131,7 +2131,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()

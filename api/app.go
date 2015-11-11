@@ -553,17 +553,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	private := r.URL.Query().Get("private")
-	noRestart := r.URL.Query().Get("noRestart")
-	shouldRestart := true
-	isPublicEnv := true
-	if private == "1" {
-		isPublicEnv = false
+	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	if err != nil {
+		return err
 	}
-	if noRestart == "true" {
-		shouldRestart = false
+	isPrivateEnv, err := strconv.ParseBool(r.URL.Query().Get("private"))
+	if err != nil {
+		return err
 	}
-	extra := fmt.Sprintf("private=%t", !isPublicEnv)
+	extra := fmt.Sprintf("private=%t", isPrivateEnv)
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "set-env", "app="+appName, variables, extra)
 	app, err := getAppFromContext(appName, u, r)
@@ -572,13 +570,13 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	envs := make([]bind.EnvVar, 0, len(variables))
 	for k, v := range variables {
-		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: isPublicEnv})
+		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: !isPrivateEnv})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.SetEnvs(envs, true, shouldRestart, writer)
+	err = app.SetEnvs(envs, true, !noRestart, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -614,12 +612,11 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	shouldRestart := true
-	noRestart := r.URL.Query().Get("noRestart")
-	if noRestart == "true" {
-		shouldRestart = false
+	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	if err != nil {
+		return err
 	}
-	err = app.UnsetEnvs(variables, true, shouldRestart, writer)
+	err = app.UnsetEnvs(variables, true, !noRestart, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil

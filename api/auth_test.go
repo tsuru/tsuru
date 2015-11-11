@@ -1822,7 +1822,6 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	//token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	token := s.admintoken
 	c.Assert(err, check.IsNil)
 	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
