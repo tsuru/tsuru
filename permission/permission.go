@@ -50,13 +50,13 @@ var (
 	CtxIaaS            = contextType("iaas")
 	CtxServiceInstance = contextType("service-instance")
 
-	allTypes = []contextType{
+	ContextTypes = []contextType{
 		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxServiceInstance,
 	}
 )
 
 func parseContext(ctx string) (contextType, error) {
-	for _, t := range allTypes {
+	for _, t := range ContextTypes {
 		if string(t) == ctx {
 			return t, nil
 		}

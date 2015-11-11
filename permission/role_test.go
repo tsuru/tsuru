@@ -24,11 +24,24 @@ func (s *S) TestNewRole(c *check.C) {
 }
 
 func (s *S) TestListRoles(c *check.C) {
-	_, err := NewRole("test", "app")
+	r, err := NewRole("test", "app")
 	c.Assert(err, check.IsNil)
 	roles, err := ListRoles()
 	c.Assert(err, check.IsNil)
 	expected := []Role{{Name: "test", ContextType: "app", SchemeNames: []string{}}}
+	c.Assert(roles, check.DeepEquals, expected)
+	err = r.AddPermissions("app.deploy", "app.update")
+	c.Assert(err, check.IsNil)
+	r.SchemeNames = append(r.SchemeNames, "invalid")
+	coll, err := rolesCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	err = coll.UpdateId(r.Name, r)
+	c.Assert(err, check.IsNil)
+	roles, err = ListRoles()
+	expected = []Role{{Name: "test", ContextType: "app", SchemeNames: []string{
+		"app.deploy", "app.update",
+	}}}
 	c.Assert(roles, check.DeepEquals, expected)
 }
 
@@ -64,9 +77,11 @@ func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
 	r, err := NewRole("myrole", "global")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("")
+	c.Assert(err, check.ErrorMatches, "empty permission name")
+	err = r.AddPermissions("*")
 	c.Assert(err, check.IsNil)
 	sort.Strings(r.SchemeNames)
-	expected := []string{""}
+	expected := []string{"*"}
 	c.Assert(r.SchemeNames, check.DeepEquals, expected)
 	dbR, err := FindRole("myrole")
 	c.Assert(err, check.IsNil)
@@ -115,9 +130,14 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	c.Assert(perms, check.DeepEquals, []Permission{})
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
-	perms = r.PermisionsFor("something")
-	c.Assert(perms, check.DeepEquals, []Permission{
+	expected := []Permission{
 		{Scheme: PermissionRegistry.get("app.update"), Context: permissionContext{CtxType: CtxTeam, Value: "something"}},
 		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: permissionContext{CtxType: CtxTeam, Value: "something"}},
-	})
+	}
+	perms = r.PermisionsFor("something")
+	c.Assert(perms, check.DeepEquals, expected)
+	r.SchemeNames = append(r.SchemeNames, "invalidxxx")
+	perms = r.PermisionsFor("something")
+	c.Assert(perms, check.DeepEquals, expected)
+
 }

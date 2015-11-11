@@ -57,7 +57,13 @@ func ListRoles() ([]Role, error) {
 	}
 	defer coll.Close()
 	err = coll.Find(nil).All(&roles)
-	return roles, err
+	if err != nil {
+		return nil, err
+	}
+	for i := range roles {
+		roles[i].filterValidSchemes()
+	}
+	return roles, nil
 }
 
 func FindRole(name string) (Role, error) {
@@ -71,7 +77,11 @@ func FindRole(name string) (Role, error) {
 	if err == mgo.ErrNotFound {
 		return role, ErrRoleNotFound
 	}
-	return role, err
+	if err != nil {
+		return role, err
+	}
+	role.filterValidSchemes()
+	return role, nil
 }
 
 func DestroyRole(name string) error {
@@ -89,6 +99,12 @@ func DestroyRole(name string) error {
 
 func (r *Role) AddPermissions(permNames ...string) error {
 	for _, permName := range permNames {
+		if permName == "" {
+			return fmt.Errorf("empty permission name")
+		}
+		if permName == "*" {
+			permName = ""
+		}
 		reg := PermissionRegistry.getSubRegistry(permName)
 		if reg == nil {
 			return fmt.Errorf("permission named %q not found", permName)
@@ -139,13 +155,33 @@ func (r *Role) RemovePermissions(permNames ...string) error {
 	return nil
 }
 
-func (r *Role) PermisionsFor(contextValue string) []Permission {
-	permissions := make([]Permission, len(r.SchemeNames))
+func (r *Role) filterValidSchemes() PermissionSchemeList {
+	schemes := make(PermissionSchemeList, 0, len(r.SchemeNames))
 	sort.Strings(r.SchemeNames)
-	for i, schemeName := range r.SchemeNames {
+	for i := 0; i < len(r.SchemeNames); i++ {
+		schemeName := r.SchemeNames[i]
+		if schemeName == "*" {
+			schemeName = ""
+		}
 		scheme := PermissionRegistry.getSubRegistry(schemeName)
+		if scheme == nil {
+			// permission schemes might be removed or renamed, invalid entries
+			// in the database shouldn't be a problem.
+			r.SchemeNames = append(r.SchemeNames[:i], r.SchemeNames[i+1:]...)
+			i--
+			continue
+		}
+		schemes = append(schemes, &scheme.permissionScheme)
+	}
+	return schemes
+}
+
+func (r *Role) PermisionsFor(contextValue string) []Permission {
+	schemes := r.filterValidSchemes()
+	permissions := make([]Permission, len(schemes))
+	for i, scheme := range schemes {
 		permissions[i] = Permission{
-			Scheme: &scheme.permissionScheme,
+			Scheme: scheme,
 			Context: permissionContext{
 				CtxType: r.ContextType,
 				Value:   contextValue,
