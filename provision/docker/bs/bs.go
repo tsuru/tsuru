@@ -28,6 +28,18 @@ import (
 
 var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
 
+var dockerHTTPClient := &http.Client{
+	Transport: &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 5 * time.Second,
+	},
+	Timeout: time.Minute,
+}
+
 type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
 	RegistryAuthConfig() docker.AuthConfiguration
@@ -238,6 +250,7 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 	if err != nil {
 		return err
 	}
+	client.HTTPClient = dockerHTTPClient
 	bsConf, err := LoadConfig()
 	if err != nil {
 		if err != mgo.ErrNotFound {
@@ -300,6 +313,7 @@ func pullWithRetry(maxTries int, image, dockerEndpoint string, p DockerProvision
 	if err != nil {
 		return "", err
 	}
+	client.HTTPClient = dockerHTTPClient
 	var buf bytes.Buffer
 	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
 	registryAuth := p.RegistryAuthConfig()
