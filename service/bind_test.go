@@ -118,7 +118,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-		calls++
+		atomic.AddInt32(&calls, 1)
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
