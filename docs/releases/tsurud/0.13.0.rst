@@ -76,6 +76,10 @@ Other improvements
   restart when inject an environment variable (issue `#1271
   <https://github.com/tsuru/tsuru/issues/1271>`_).
 
+* Add a parameter in the token-show and token-regenerate to display/regenerate
+  token for third users. Only admin user can perform this operations 
+  (issue `#1316 <https://github.com/tsuru/tsuru/issues/1316>`_).
+
 * Add a new filter in the app listing API endpoint: now it's possible to filter
   applications by pool (issue `#1311
   <https://github.com/tsuru/tsuru/issues/1311>`_).
