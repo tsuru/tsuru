@@ -9,10 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -28,7 +31,7 @@ import (
 
 var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
 
-var dockerHTTPClient := &http.Client{
+var dockerHTTPClient = &http.Client{
 	Transport: &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout:   5 * time.Second,
