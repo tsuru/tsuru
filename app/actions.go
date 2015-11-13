@@ -129,7 +129,12 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: t.GetValue()},
 		}
-		err = app.setEnvsToApp(envVars, false, false, nil)
+		err = app.setEnvsToApp(
+			bind.SetEnvApp{
+				Envs:          envVars,
+				PublicOnly:    false,
+				ShouldRestart: false,
+			}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +146,12 @@ var exportEnvironmentsAction = action.Action{
 		app, err := GetByName(app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
-			app.UnsetEnvs(vars, false, true, nil)
+			app.UnsetEnvs(
+				bind.UnsetEnvApp{
+					VariableNames: vars,
+					PublicOnly:    false,
+					ShouldRestart: true,
+				}, nil)
 		}
 	},
 	MinParams: 1,

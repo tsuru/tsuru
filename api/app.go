@@ -576,7 +576,12 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.SetEnvs(envs, true, !noRestart, writer)
+	err = app.SetEnvs(
+		bind.SetEnvApp{
+			Envs:          envs,
+			PublicOnly:    true,
+			ShouldRestart: !noRestart,
+		}, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -616,7 +621,12 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = app.UnsetEnvs(variables, true, !noRestart, writer)
+	err = app.UnsetEnvs(
+		bind.UnsetEnvApp{
+			VariableNames: variables,
+			PublicOnly:    true,
+			ShouldRestart: !noRestart,
+		}, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil

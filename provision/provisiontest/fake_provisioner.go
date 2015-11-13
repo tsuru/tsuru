@@ -147,25 +147,25 @@ func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
 	return a.instances[serviceName]
 }
 
-func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, w io.Writer) error {
+func (a *FakeApp) AddInstance(instanceApp bind.InstanceApp, w io.Writer) error {
 	a.instancesLock.Lock()
 	defer a.instancesLock.Unlock()
-	instances := a.instances[serviceName]
-	instances = append(instances, instance)
-	a.instances[serviceName] = instances
+	instances := a.instances[instanceApp.ServiceName]
+	instances = append(instances, instanceApp.Instance)
+	a.instances[instanceApp.ServiceName] = instances
 	if w != nil {
 		w.Write([]byte("add instance"))
 	}
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, w io.Writer) error {
+func (a *FakeApp) RemoveInstance(instanceApp bind.InstanceApp, w io.Writer) error {
 	a.instancesLock.Lock()
 	defer a.instancesLock.Unlock()
-	instances := a.instances[serviceName]
+	instances := a.instances[instanceApp.ServiceName]
 	index := -1
 	for i, inst := range instances {
-		if inst.Name == instance.Name {
+		if inst.Name == instanceApp.Instance.Name {
 			index = i
 			break
 		}
@@ -176,7 +176,7 @@ func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstan
 	for i := index; i < len(instances)-1; i++ {
 		instances[i] = instances[i+1]
 	}
-	a.instances[serviceName] = instances[:len(instances)-1]
+	a.instances[instanceApp.ServiceName] = instances[:len(instances)-1]
 	if w != nil {
 		w.Write([]byte("remove instance"))
 	}
@@ -247,15 +247,15 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
-func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool, shouldRestart bool, w io.Writer) error {
-	for _, env := range envs {
+func (a *FakeApp) SetEnvs(setEnvs bind.SetEnvApp, w io.Writer) error {
+	for _, env := range setEnvs.Envs {
 		a.SetEnv(env)
 	}
 	return nil
 }
 
-func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool, shouldRestart bool, w io.Writer) error {
-	for _, env := range envs {
+func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
+	for _, env := range unsetEnvs.VariableNames {
 		delete(a.env, env)
 	}
 	return nil

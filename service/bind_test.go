@@ -238,7 +238,12 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 2)
-	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, true, ioutil.Discard)
+	app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      bind.ServiceInstance{Name: "my-mysql"},
+			ShouldRestart: true,
+		}, ioutil.Discard)
 	units, err := app.GetUnits()
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
@@ -277,7 +282,12 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 0)
-	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, true, ioutil.Discard)
+	app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      bind.ServiceInstance{Name: "my-mysql"},
+			ShouldRestart: true,
+		}, ioutil.Discard)
 	err = instance.UnbindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
@@ -297,7 +307,12 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 1)
-	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, true, ioutil.Discard)
+	app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      bind.ServiceInstance{Name: "my-mysql"},
+			ShouldRestart: true,
+		}, ioutil.Discard)
 	units, err := app.GetUnits()
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{

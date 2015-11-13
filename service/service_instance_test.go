@@ -813,7 +813,12 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
-	err = a.AddInstance(si.ServiceName, instance, true, nil)
+	err = a.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   si.ServiceName,
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -872,7 +877,12 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
-	err = a.AddInstance(si.ServiceName, instance, true, nil)
+	err = a.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   si.ServiceName,
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)

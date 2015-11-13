@@ -959,15 +959,16 @@ func (app *App) Envs() map[string]bind.EnvVar {
 // SetEnvs saves a list of environment variables in the app. The publicOnly
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
-func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, shouldRestart bool, w io.Writer) error {
+func (app *App) SetEnvs(setEnvs bind.SetEnvApp, w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {
 		return err
 	}
 	if len(units) > 0 {
-		return app.setEnvsToApp(envs, publicOnly, shouldRestart, w)
+		return app.setEnvsToApp(setEnvs, w)
 	}
-	return app.setEnvsToApp(envs, publicOnly, false, w)
+	setEnvs.ShouldRestart = false
+	return app.setEnvsToApp(setEnvs, w)
 }
 
 // setEnvsToApp adds environment variables to an app, serializing the resulting
@@ -979,16 +980,16 @@ func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, shouldRestart bool,
 // overridden (if set to false, setEnvsToApp may override a private variable).
 //
 // shouldRestart defines if the server should be restarted after saving vars.
-func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool, w io.Writer) error {
-	if len(envs) == 0 {
+func (app *App) setEnvsToApp(setEnvs bind.SetEnvApp, w io.Writer) error {
+	if len(setEnvs.Envs) == 0 {
 		return nil
 	}
 	if w != nil {
-		fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
+		fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
 	}
-	for _, env := range envs {
+	for _, env := range setEnvs.Envs {
 		set := true
-		if publicOnly {
+		if setEnvs.PublicOnly {
 			e, err := app.getEnv(env.Name)
 			if err == nil && !e.Public && e.InstanceName != "" {
 				set = false
@@ -1007,7 +1008,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 	if err != nil {
 		return err
 	}
-	if !shouldRestart {
+	if !setEnvs.ShouldRestart {
 		return nil
 	}
 	return Provisioner.Restart(app, "", w)
@@ -1019,28 +1020,29 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 // Besides the slice with the name of the variables, this method also takes the
 // parameter publicOnly, which indicates whether only public variables can be
 // overridden (if set to false, setEnvsToApp may override a private variable).
-func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, shouldRestart bool, w io.Writer) error {
+func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {
 		return err
 	}
 	if len(units) > 0 {
-		return app.unsetEnvsToApp(variableNames, publicOnly, shouldRestart, w)
+		return app.unsetEnvsToApp(unsetEnvs, w)
 	}
-	return app.unsetEnvsToApp(variableNames, publicOnly, false, w)
+	unsetEnvs.ShouldRestart = false
+	return app.unsetEnvsToApp(unsetEnvs, w)
 }
 
-func (app *App) unsetEnvsToApp(variableNames []string, publicOnly, shouldRestart bool, w io.Writer) error {
-	if len(variableNames) == 0 {
+func (app *App) unsetEnvsToApp(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
+	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}
 	if w != nil {
-		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
+		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(unsetEnvs.VariableNames))
 	}
-	for _, name := range variableNames {
+	for _, name := range unsetEnvs.VariableNames {
 		var unset bool
 		e, err := app.getEnv(name)
-		if !publicOnly || (err == nil && e.Public) {
+		if !unsetEnvs.PublicOnly || (err == nil && e.Public) {
 			unset = true
 		}
 		if unset {
@@ -1056,7 +1058,7 @@ func (app *App) unsetEnvsToApp(variableNames []string, publicOnly, shouldRestart
 	if err != nil {
 		return err
 	}
-	if !shouldRestart {
+	if !unsetEnvs.ShouldRestart {
 		return nil
 	}
 	return Provisioner.Restart(app, "", w)
@@ -1148,25 +1150,26 @@ func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 	return tsuruServices
 }
 
-func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
+//func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
+func (app *App) AddInstance(instanceApp bind.InstanceApp, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
-	serviceInstances := tsuruServices[serviceName]
-	serviceInstances = append(serviceInstances, instance)
-	tsuruServices[serviceName] = serviceInstances
+	serviceInstances := tsuruServices[instanceApp.ServiceName]
+	serviceInstances = append(serviceInstances, instanceApp.Instance)
+	tsuruServices[instanceApp.ServiceName] = serviceInstances
 	servicesJson, err := json.Marshal(tsuruServices)
 	if err != nil {
 		return err
 	}
-	if len(instance.Envs) == 0 {
+	if len(instanceApp.Instance.Envs) == 0 {
 		return nil
 	}
-	envVars := make([]bind.EnvVar, 0, len(instance.Envs)+1)
-	for k, v := range instance.Envs {
+	envVars := make([]bind.EnvVar, 0, len(instanceApp.Instance.Envs)+1)
+	for k, v := range instanceApp.Instance.Envs {
 		envVars = append(envVars, bind.EnvVar{
 			Name:         k,
 			Value:        v,
 			Public:       false,
-			InstanceName: instance.Name,
+			InstanceName: instanceApp.Instance.Name,
 		})
 	}
 	envVars = append(envVars, bind.EnvVar{
@@ -1174,7 +1177,12 @@ func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, s
 		Value:  string(servicesJson),
 		Public: false,
 	})
-	return app.SetEnvs(envVars, false, shouldRestart, writer)
+	return app.SetEnvs(
+		bind.SetEnvApp{
+			Envs:          envVars,
+			PublicOnly:    false,
+			ShouldRestart: instanceApp.ShouldRestart,
+		}, writer)
 }
 
 func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string) (string, string) {
@@ -1188,16 +1196,17 @@ func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string
 	return "", ""
 }
 
-func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
+//func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
+func (app *App) RemoveInstance(instanceApp bind.InstanceApp, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
-	toUnsetEnvs := make([]string, 0, len(instance.Envs))
-	for varName := range instance.Envs {
+	toUnsetEnvs := make([]string, 0, len(instanceApp.Instance.Envs))
+	for varName := range instanceApp.Instance.Envs {
 		toUnsetEnvs = append(toUnsetEnvs, varName)
 	}
 	index := -1
-	serviceInstances := tsuruServices[serviceName]
+	serviceInstances := tsuruServices[instanceApp.ServiceName]
 	for i, si := range serviceInstances {
-		if si.Name == instance.Name {
+		if si.Name == instanceApp.Instance.Name {
 			index = i
 			break
 		}
@@ -1208,7 +1217,7 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 		for i := index; i < len(serviceInstances)-1; i++ {
 			serviceInstances[i] = serviceInstances[i+1]
 		}
-		tsuruServices[serviceName] = serviceInstances[:len(serviceInstances)-1]
+		tsuruServices[instanceApp.ServiceName] = serviceInstances[:len(serviceInstances)-1]
 		servicesJson, err = json.Marshal(tsuruServices)
 		if err != nil {
 			return err
@@ -1239,16 +1248,26 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 		if err != nil {
 			return err
 		}
-		restart := shouldRestart
-		if shouldRestart {
+		restart := instanceApp.ShouldRestart
+		if instanceApp.ShouldRestart {
 			restart = len(envsToSet) == 0 && len(units) > 0
 		}
-		err = app.unsetEnvsToApp(toUnsetEnvs, false, restart, writer)
+		err = app.unsetEnvsToApp(
+			bind.UnsetEnvApp{
+				VariableNames: toUnsetEnvs,
+				PublicOnly:    false,
+				ShouldRestart: restart,
+			}, writer)
 		if err != nil {
 			return err
 		}
 	}
-	return app.SetEnvs(envsToSet, false, shouldRestart, writer)
+	return app.SetEnvs(
+		bind.SetEnvApp{
+			Envs:          envsToSet,
+			PublicOnly:    false,
+			ShouldRestart: instanceApp.ShouldRestart,
+		}, writer)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

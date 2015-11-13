@@ -181,12 +181,22 @@ var setBoundEnvsAction = action.Action{
 			Name: args.serviceInstance.Name,
 			Envs: ctx.Previous.(map[string]string),
 		}
-		return instance, args.app.AddInstance(args.serviceInstance.ServiceName, instance, args.shouldRestart, args.writer)
+		return instance, args.app.AddInstance(
+			bind.InstanceApp{
+				ServiceName:   args.serviceInstance.ServiceName,
+				Instance:      instance,
+				ShouldRestart: args.shouldRestart,
+			}, args.writer)
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		instance := ctx.FWResult.(bind.ServiceInstance)
-		err := args.app.RemoveInstance(args.serviceInstance.ServiceName, instance, args.shouldRestart, args.writer)
+		err := args.app.RemoveInstance(
+			bind.InstanceApp{
+				ServiceName:   args.serviceInstance.ServiceName,
+				Instance:      instance,
+				ShouldRestart: args.shouldRestart,
+			}, args.writer)
 		if err != nil {
 			log.Errorf("[set-bound-envs backward] failed to remove instance: %s", err)
 		}
@@ -359,7 +369,12 @@ var removeBoundEnvs = action.Action{
 		for k, envVar := range args.app.InstanceEnv(si.Name) {
 			instance.Envs[k] = envVar.Value
 		}
-		return nil, args.app.RemoveInstance(si.ServiceName, instance, args.shouldRestart, args.writer)
+		return nil, args.app.RemoveInstance(
+			bind.InstanceApp{
+				ServiceName:   si.ServiceName,
+				Instance:      instance,
+				ShouldRestart: args.shouldRestart,
+			}, args.writer)
 	},
 	Backward: func(ctx action.BWContext) {
 	},
