@@ -9,13 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -24,24 +21,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
-
-var dockerHTTPClient = &http.Client{
-	Transport: &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout:   5 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Second,
-	},
-	Timeout: time.Minute,
-}
 
 type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
@@ -248,12 +234,21 @@ func collection() (*storage.Collection, error) {
 	return conn.Collection("bsconfig"), nil
 }
 
+func dockerClient(endpoint string) (*docker.Client, error) {
+	client, err := docker.NewClient(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	client.HTTPClient = net.Dial5Full300Client
+	client.Dialer = net.Dial5Dialer
+	return client, nil
+}
+
 func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
-	client, err := docker.NewClient(dockerEndpoint)
+	client, err := dockerClient(dockerEndpoint)
 	if err != nil {
 		return err
 	}
-	client.HTTPClient = dockerHTTPClient
 	bsConf, err := LoadConfig()
 	if err != nil {
 		if err != mgo.ErrNotFound {
@@ -312,11 +307,10 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 }
 
 func pullWithRetry(maxTries int, image, dockerEndpoint string, p DockerProvisioner) (string, error) {
-	client, err := docker.NewClient(dockerEndpoint)
+	client, err := dockerClient(dockerEndpoint)
 	if err != nil {
 		return "", err
 	}
-	client.HTTPClient = dockerHTTPClient
 	var buf bytes.Buffer
 	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
 	registryAuth := p.RegistryAuthConfig()

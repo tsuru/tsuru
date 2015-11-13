@@ -10,13 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 )
 
 var (
@@ -34,17 +34,6 @@ type GalebClient struct {
 	BalancePolicy string
 	RuleType      string
 	Debug         bool
-}
-
-var timeoutHttpClient = &http.Client{
-	Transport: &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
-	},
-	Timeout: time.Minute,
 }
 
 func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.Response, error) {
@@ -73,7 +62,7 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 	}
 	req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Set("Content-Type", contentType)
-	rsp, err := timeoutHttpClient.Do(req)
+	rsp, err := net.Dial5Full60Client.Do(req)
 	if c.Debug {
 		var code int
 		if err == nil {

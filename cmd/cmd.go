@@ -18,6 +18,7 @@ import (
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
+	"github.com/tsuru/tsuru/net"
 	"launchpad.net/gnuflag"
 )
 
@@ -189,7 +190,7 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
-	client := NewClient(&http.Client{}, context, m)
+	client := NewClient(net.Dial5FullUnlimitedClient, context, m)
 	client.Verbosity = verbosity
 	err = command.Run(context, client)
 	if err == errUnauthorized && name != "login" {

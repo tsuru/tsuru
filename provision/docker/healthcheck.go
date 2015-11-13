@@ -8,31 +8,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
-
-func clientWithTimeout(dialTimeout time.Duration) *http.Client {
-	transport := http.Transport{
-		Dial: (&net.Dialer{
-			Timeout:   dialTimeout,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: dialTimeout,
-	}
-	return &http.Client{
-		Transport: &transport,
-		Timeout:   time.Minute,
-	}
-}
-
-var timeoutHttpClient = clientWithTimeout(5 * time.Second)
 
 func runHealthcheck(cont *container.Container, w io.Writer) error {
 	yamlData, err := getImageTsuruYamlData(cont.Image)
@@ -77,7 +61,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		rsp, err := timeoutHttpClient.Do(req)
+		rsp, err := net.Dial5Full60Client.Do(req)
 		if err != nil {
 			lastError = fmt.Errorf("healthcheck fail(%s): %s", cont.ShortID(), err.Error())
 		} else {
