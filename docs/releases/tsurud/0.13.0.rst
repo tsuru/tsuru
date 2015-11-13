@@ -72,9 +72,9 @@ Other improvements
 * Add a parameter in the service-remove endpoint for unbinding all apps bound
   to the service instance.
 
-* Add a parameter in the env-set and env-unset to prevent the application
-  restart when inject an environment variable (issue `#1271
-  <https://github.com/tsuru/tsuru/issues/1271>`_).
+* Add a parameter in the env-set, env-unset, service-bind and service-unbind 
+  to prevent the application restart when inject an environment variable 
+  (issue `#1271 <https://github.com/tsuru/tsuru/issues/1271>`_). 
 
 * Add a parameter in the token-show and token-regenerate to display/regenerate
   token for third users. Only admin user can perform this operations 
