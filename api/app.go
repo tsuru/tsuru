@@ -785,6 +785,10 @@ func getServiceInstance(serviceName, instanceName, appName string, u *auth.User)
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
+	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	if err != nil {
+		return err
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -798,7 +802,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.BindApp(a, writer)
+	err = instance.BindApp(a, !noRestart, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -818,6 +822,10 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
+	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	if err != nil {
+		return nil
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -831,7 +839,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.UnbindApp(a, writer)
+	err = instance.UnbindApp(a, !noRestart, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil

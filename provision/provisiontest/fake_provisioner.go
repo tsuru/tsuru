@@ -147,7 +147,7 @@ func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
 	return a.instances[serviceName]
 }
 
-func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance, w io.Writer) error {
+func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, w io.Writer) error {
 	a.instancesLock.Lock()
 	defer a.instancesLock.Unlock()
 	instances := a.instances[serviceName]
@@ -159,7 +159,7 @@ func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance,
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance, w io.Writer) error {
+func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, w io.Writer) error {
 	a.instancesLock.Lock()
 	defer a.instancesLock.Unlock()
 	instances := a.instances[serviceName]

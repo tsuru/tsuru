@@ -304,7 +304,7 @@ func (app *App) unbind() error {
 		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
 	}
 	for _, instance := range instances {
-		err = instance.UnbindApp(app, nil)
+		err = instance.UnbindApp(app, true, nil)
 		if err != nil {
 			addMsg(instance.Name, err)
 		}
@@ -1148,7 +1148,7 @@ func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 	return tsuruServices
 }
 
-func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, writer io.Writer) error {
+func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
 	serviceInstances := tsuruServices[serviceName]
 	serviceInstances = append(serviceInstances, instance)
@@ -1174,7 +1174,7 @@ func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, w
 		Value:  string(servicesJson),
 		Public: false,
 	})
-	return app.SetEnvs(envVars, false, true, writer)
+	return app.SetEnvs(envVars, false, shouldRestart, writer)
 }
 
 func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string) (string, string) {
@@ -1188,7 +1188,7 @@ func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string
 	return "", ""
 }
 
-func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance, writer io.Writer) error {
+func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
 	toUnsetEnvs := make([]string, 0, len(instance.Envs))
 	for varName := range instance.Envs {
@@ -1239,13 +1239,16 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 		if err != nil {
 			return err
 		}
-		shouldRestart := len(envsToSet) == 0 && len(units) > 0
-		err = app.unsetEnvsToApp(toUnsetEnvs, false, shouldRestart, writer)
+		restart := shouldRestart
+		if shouldRestart {
+			restart = len(envsToSet) == 0 && len(units) > 0
+		}
+		err = app.unsetEnvsToApp(toUnsetEnvs, false, restart, writer)
 		if err != nil {
 			return err
 		}
 	}
-	return app.SetEnvs(envsToSet, false, true, writer)
+	return app.SetEnvs(envsToSet, false, shouldRestart, writer)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

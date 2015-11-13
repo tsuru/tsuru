@@ -321,7 +321,7 @@ func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	}
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
-	err := a.AddInstance("mysql", instance, nil)
+	err := a.AddInstance("mysql", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si}},
@@ -588,7 +588,7 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
-	err = a.AddInstance(si.ServiceName, instance, nil)
+	err = a.AddInstance(si.ServiceName, instance, true, nil)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	args := bindPipelineArgs{

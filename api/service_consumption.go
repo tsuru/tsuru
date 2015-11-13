@@ -75,7 +75,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 					return nil
 				}
 				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
-				instErr = si.UnbindApp(app, writer)
+				instErr = si.UnbindApp(app, true, writer)
 				if instErr != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil

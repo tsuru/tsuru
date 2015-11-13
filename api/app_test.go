@@ -2720,7 +2720,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2757,7 +2757,7 @@ func (s *S) TestBindHandler(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2820,7 +2820,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2852,7 +2852,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/unknown/instances/unknown/%s?:instance=unknown&:app=%s&:service=unknown", a.Name, a.Name)
+	url := fmt.Sprintf("/services/unknown/instances/unknown/%s?:instance=unknown&:app=%s&:service=unknown&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2872,7 +2872,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2890,7 +2890,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	err := instance.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:instance=%s&:app=unknown&:service=%s", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:instance=%s&:app=unknown&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, instance.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2913,7 +2913,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
 		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2926,7 +2926,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	c.Assert(e, check.ErrorMatches, "^This user does not have access to this app$")
 }
 
-func (s *S) TestBindWithManyInstanceNameWithSameName(c *check.C) {
+func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
@@ -2964,7 +2964,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameName(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instance2.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=true", instance2.ServiceName,
 		instance2.Name, a.Name, instance2.Name, a.Name, instance2.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2984,15 +2984,14 @@ func (s *S) TestBindWithManyInstanceNameWithSameName(c *check.C) {
 	c.Assert(a.Env["DATABASE_USER"], check.DeepEquals, expectedUser)
 	c.Assert(a.Env["DATABASE_PASSWORD"], check.DeepEquals, expectedPassword)
 	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 8)
+	c.Assert(parts, check.HasLen, 7)
 	c.Assert(parts[0], check.Equals, `{"Message":"---- Setting 3 new environment variables ----\n"}`)
-	c.Assert(parts[1], check.Equals, `{"Message":"restarting app"}`)
-	c.Assert(parts[2], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
-	c.Assert(parts[3], check.Equals, `{"Message":"The following environment variables are available for use in your app:\n\n"}`)
+	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
+	c.Assert(parts[2], check.Equals, `{"Message":"The following environment variables are available for use in your app:\n\n"}`)
+	c.Assert(parts[3], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
 	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
-	c.Assert(parts[5], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
-	c.Assert(parts[6], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
-	c.Assert(parts[7], check.Equals, "")
+	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
+	c.Assert(parts[6], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	action := rectest.Action{
 		Action: "bind-app",
@@ -3048,7 +3047,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
 	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s", instance.ServiceName, instance.Name, a.Name,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3086,6 +3085,94 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(parts[1], check.Equals, `{"Message":"restarting app"}`)
 	c.Assert(parts[2], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
 	c.Assert(parts[3], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	action := rectest.Action{
+		Action: "unbind-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestUnbindNoRestartFlag(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
+	var called int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
+			atomic.StoreInt32(&called, 1)
+		}
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	a := app.App{
+		Name:     "painkiller",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{units[0].ID},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	otherApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
+		Name:         "DATABASE_HOST",
+		Value:        "arrea",
+		Public:       false,
+		InstanceName: instance.Name,
+	}
+	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
+	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=true", instance.ServiceName, instance.Name, a.Name,
+		instance.ServiceName, instance.Name, a.Name)
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unbindServiceInstance(recorder, req, s.token)
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Apps, check.DeepEquals, []string{})
+	otherApp, err = app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{
+		Name:  "MY_VAR",
+		Value: "123",
+	}
+	c.Assert(otherApp.Env["MY_VAR"], check.DeepEquals, expected)
+	_, ok := otherApp.Env["DATABASE_HOST"]
+	c.Assert(ok, check.Equals, false)
+	ch := make(chan bool)
+	go func() {
+		t := time.Tick(1)
+		for _ = <-t; atomic.LoadInt32(&called) == 0; _ = <-t {
+		}
+		ch <- true
+	}()
+	select {
+	case <-ch:
+		c.Succeed()
+	case <-time.After(1e9):
+		c.Errorf("Failed to call API after 1 second.")
+	}
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 3)
+	c.Assert(parts[0], check.Equals, `{"Message":"---- Unsetting 1 environment variables ----\n"}`)
+	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
+	c.Assert(parts[2], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	action := rectest.Action{
 		Action: "unbind-app",
@@ -3143,7 +3230,7 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 		c.Assert(err, check.IsNil)
 		defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name, "service_name": instance.ServiceName})
 	}
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s", instances[1].ServiceName, instances[1].Name, a.Name,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=true", instances[1].ServiceName, instances[1].Name, a.Name,
 		instances[1].Name, a.Name, instances[1].ServiceName)
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3163,7 +3250,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3183,7 +3270,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s", instance.ServiceName, instance.Name,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name,
 		a.Name, instance.ServiceName, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3201,7 +3288,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	err := instance.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:service=%s&:instance=%s&:app=unknown", instance.ServiceName,
+	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:service=%s&:instance=%s&:app=unknown&noRestart=false", instance.ServiceName,
 		instance.Name, instance.ServiceName, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3224,7 +3311,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s", instance.ServiceName, instance.Name,
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name,
 		a.Name, instance.ServiceName, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)

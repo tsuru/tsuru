@@ -91,7 +91,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 1)
 	c.Assert(err, check.IsNil)
-	err = instance.BindApp(app, nil)
+	err = instance.BindApp(app, true, nil)
 	c.Assert(err, check.NotNil)
 }
 
@@ -108,7 +108,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 1)
-	err = instance.BindApp(app, nil)
+	err = instance.BindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{app.GetName()})
@@ -134,7 +134,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 2)
-	err = instance.BindApp(app, nil)
+	err = instance.BindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(2e9, func() bool {
 		return atomic.LoadInt32(&calls) == 3
@@ -157,7 +157,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 1)
-	err = instance.BindApp(app, nil)
+	err = instance.BindApp(app, true, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
@@ -179,7 +179,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 0)
-	err = instance.BindApp(app, nil)
+	err = instance.BindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	expectedInstances := []bind.ServiceInstance{
 		{
@@ -238,7 +238,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 2)
-	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, ioutil.Discard)
+	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, true, ioutil.Discard)
 	units, err := app.GetUnits()
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
@@ -250,7 +250,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	err = instance.UnbindApp(app, nil)
+	err = instance.UnbindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
 		return atomic.LoadInt32(&calls) > 1
@@ -277,8 +277,8 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 0)
-	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, ioutil.Discard)
-	err = instance.UnbindApp(app, nil)
+	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, true, ioutil.Discard)
+	err = instance.UnbindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
@@ -297,7 +297,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 1)
-	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, ioutil.Discard)
+	app.AddInstance("mysql", bind.ServiceInstance{Name: "my-mysql"}, true, ioutil.Discard)
 	units, err := app.GetUnits()
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
@@ -310,7 +310,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	err = instance.UnbindApp(app, nil)
+	err = instance.UnbindApp(app, true, nil)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
 		return atomic.LoadInt32(&called) > 0
@@ -331,7 +331,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 0)
-	err = instance.UnbindApp(app, nil)
+	err = instance.UnbindApp(app, true, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)

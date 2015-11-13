@@ -1551,7 +1551,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 			"DATABASE_USER": "root",
 		},
 	}
-	err = a.AddInstance("myservice", instance, nil)
+	err = a.AddInstance("myservice", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1603,7 +1603,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 			"DATABASE_HOST": "localhost",
 		},
 	}
-	err = a.AddInstance("myservice", instance, nil)
+	err = a.AddInstance("myservice", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1628,6 +1628,46 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
 
+func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
+	a := &App{Name: "dark", Quota: quota.Quota{Limit: 10}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	instance := bind.ServiceInstance{
+		Name: "myinstance",
+		Envs: map[string]string{
+			"DATABASE_HOST": "localhost",
+		},
+	}
+	err = a.AddInstance("myservice", instance, false, nil)
+	c.Assert(err, check.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
+	env, ok := a.Env[TsuruServicesEnvVar]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(env.Public, check.Equals, false)
+	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
+	var got map[string][]bind.ServiceInstance
+	err = json.Unmarshal([]byte(env.Value), &got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+	delete(a.Env, TsuruServicesEnvVar)
+	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:         "DATABASE_HOST",
+			Value:        "localhost",
+			Public:       false,
+			InstanceName: "myinstance",
+		},
+	})
+	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
+}
+
 func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	a := &App{
 		Name: "dark",
@@ -1648,13 +1688,13 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 		Name: "myinstance",
 		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
 	}
-	err = a.AddInstance("mysql", instance1, nil)
+	err = a.AddInstance("mysql", instance1, true, nil)
 	c.Assert(err, check.IsNil)
 	instance2 := bind.ServiceInstance{
 		Name: "yourinstance",
 		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
 	}
-	err = a.AddInstance("mongodb", instance2, nil)
+	err = a.AddInstance("mongodb", instance2, true, nil)
 	c.Assert(err, check.IsNil)
 	expected := map[string][]bind.ServiceInstance{
 		"mysql":   {bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}, instance1},
@@ -1687,15 +1727,15 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 		Name: "myinstance",
 		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
 	}
-	err = a.AddInstance("mysql", instance1, nil)
+	err = a.AddInstance("mysql", instance1, true, nil)
 	c.Assert(err, check.IsNil)
 	instance2 := bind.ServiceInstance{
 		Name: "yourinstance",
 		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
 	}
-	err = a.AddInstance("mongodb", instance2, nil)
+	err = a.AddInstance("mongodb", instance2, true, nil)
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance("mysql", instance1, nil)
+	err = a.RemoveInstance("mysql", instance1, true, nil)
 	c.Assert(err, check.IsNil)
 	expected := map[string][]bind.ServiceInstance{
 		"mysql":   {},
@@ -1738,7 +1778,7 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
-	err = a.RemoveInstance("mysql", instance, nil)
+	err = a.RemoveInstance("mysql", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1775,7 +1815,7 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "hisdb"}
-	err = a.RemoveInstance("mysql", instance, nil)
+	err = a.RemoveInstance("mysql", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	expected := map[string][]bind.ServiceInstance{
 		"mysql": {
@@ -1814,7 +1854,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "yourdb"}
-	err = a.RemoveInstance("mysql", instance, nil)
+	err = a.RemoveInstance("mysql", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1846,7 +1886,7 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "mydb"}
-	err = a.RemoveInstance("mongodb", instance, nil)
+	err = a.RemoveInstance("mongodb", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1887,7 +1927,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
-	err = a.RemoveInstance("mysql", instance, nil)
+	err = a.RemoveInstance("mysql", instance, true, nil)
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1899,6 +1939,46 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
+}
+
+func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
+	a := &App{
+		Name: "dark",
+		Env: map[string]bind.EnvVar{
+			TsuruServicesEnvVar: {
+				Name:   TsuruServicesEnvVar,
+				Public: false,
+				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
+			},
+			"DATABASE_NAME": {
+				Name:         "DATABASE_NAME",
+				Public:       false,
+				Value:        "mydb",
+				InstanceName: "mydb",
+			},
+		},
+		Quota: quota.Quota{Limit: 10},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
+	err = a.RemoveInstance("mysql", instance, false, nil)
+	c.Assert(err, check.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	env, ok := a.Env[TsuruServicesEnvVar]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(env.Value, check.Equals, `{"mysql":[]}`)
+	c.Assert(env.Public, check.Equals, false)
+	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
+	delete(a.Env, TsuruServicesEnvVar)
+	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
 func (s *S) TestIsValid(c *check.C) {

@@ -145,11 +145,12 @@ func (si *ServiceInstance) update(update bson.M) error {
 }
 
 // BindApp makes the bind between the service instance and an app.
-func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
+func (si *ServiceInstance) BindApp(app bind.App, shouldRestart bool, writer io.Writer) error {
 	args := bindPipelineArgs{
 		serviceInstance: si,
 		app:             app,
 		writer:          writer,
+		shouldRestart:   shouldRestart,
 	}
 	actions := []*action.Action{
 		&bindAppDBAction,
@@ -192,7 +193,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
-func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
+func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer) error {
 	if si.FindApp(app.GetName()) == -1 {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
 	}
@@ -200,6 +201,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 		serviceInstance: si,
 		app:             app,
 		writer:          writer,
+		shouldRestart:   shouldRestart,
 	}
 	actions := []*action.Action{
 		&unbindUnits,

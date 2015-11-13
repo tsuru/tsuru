@@ -42,10 +42,10 @@ type App interface {
 	UnsetEnvs(envNames []string, publicOnly bool, shouldRestart bool, w io.Writer) error
 
 	// AddInstance adds an instance to the application.
-	AddInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
+	AddInstance(serviceName string, instance ServiceInstance, shouldRestart bool, writer io.Writer) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
+	RemoveInstance(serviceName string, instance ServiceInstance, shouldRestart bool, writer io.Writer) error
 }
 
 type ServiceInstance struct {
