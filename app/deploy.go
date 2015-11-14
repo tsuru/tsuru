@@ -179,6 +179,9 @@ func GetDeploy(id string, u *auth.User) (*DeployData, error) {
 		return nil, err
 	}
 	defer conn.Close()
+	if !bson.IsObjectIdHex(id) {
+		return nil, fmt.Errorf("id parameter is not ObjectId: %s", id)
+	}
 	if err := conn.Deploys().FindId(bson.ObjectIdHex(id)).One(&dep); err != nil {
 		return nil, err
 	}

@@ -404,6 +404,13 @@ func (s *S) TestGetDeployNotFound(c *check.C) {
 	c.Assert(deploy, check.IsNil)
 }
 
+func (s *S) TestGetDeployInvalidHex(c *check.C) {
+	lastDeploy, err := GetDeploy("abc123", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "id parameter is not ObjectId: abc123")
+	c.Assert(lastDeploy, check.IsNil)
+}
+
 func (s *S) TestGetDiffInDeploys(c *check.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	myDeploy := DeployData{
