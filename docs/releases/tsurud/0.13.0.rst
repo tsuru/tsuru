@@ -56,6 +56,8 @@ Bug fixes
 * Fix the behavior of app-restart when the app is stopped: now it actually
   starts the app (issue `#1281 <https://github.com/tsuru/tsuru/issues/1281>`_).
 
+* Deploy info now returns 404 when the id is an invalid mongo ObjectId.
+
 Other improvements
 ==================
 
