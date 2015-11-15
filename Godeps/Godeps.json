@@ -206,15 +206,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "103b612ef0cea6c5bb0b60831a41afec8c2880d9"
+			"Rev": "dc30a120470755dd9c50934a1c0c851ea143873d"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/log",
-			"Rev": "103b612ef0cea6c5bb0b60831a41afec8c2880d9"
+			"Rev": "dc30a120470755dd9c50934a1c0c851ea143873d"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "103b612ef0cea6c5bb0b60831a41afec8c2880d9"
+			"Rev": "dc30a120470755dd9c50934a1c0c851ea143873d"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/db",
