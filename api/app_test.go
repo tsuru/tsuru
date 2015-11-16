@@ -403,7 +403,7 @@ func (s *S) TestDeleteAdminAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.adminuser.AddRole("superadmin", "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("")
+	err = role.AddPermissions("*")
 	c.Assert(err, check.IsNil)
 	defer s.adminuser.RemoveRole("superadmin", "global")
 	defer permission.DestroyRole("superadmin")

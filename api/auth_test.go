@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/tsuru/tsuru/permission"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -1890,9 +1891,66 @@ func (s *AuthSuite) TestUserInfo(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	expected := apiUser{Email: s.user.Email, Teams: []string{s.team.Name}}
+	expected := apiUser{
+		Email:       s.user.Email,
+		Teams:       []string{s.team.Name},
+		Roles:       []rolePermissionData{},
+		Permissions: []rolePermissionData{},
+	}
 	var got apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+type rolePermList []rolePermissionData
+
+func (l rolePermList) Len() int      { return len(l) }
+func (l rolePermList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+func (l rolePermList) Less(i, j int) bool {
+	return l[i].Name+l[i].ContextValue < l[j].Name+l[j].ContextValue
+}
+
+func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	token, err := nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	r, err := permission.NewRole("myrole", "team")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("app.create", "app.deploy")
+	c.Assert(err, check.IsNil)
+	err = s.user.AddRole("myrole", "a")
+	c.Assert(err, check.IsNil)
+	err = s.user.AddRole("myrole", "b")
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/users/info", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	expected := apiUser{
+		Email: s.user.Email,
+		Teams: []string{s.team.Name},
+		Roles: []rolePermissionData{
+			{Name: "myrole", ContextType: "team", ContextValue: "a"},
+			{Name: "myrole", ContextType: "team", ContextValue: "b"},
+		},
+		Permissions: []rolePermissionData{
+			{Name: "app.create", ContextType: "team", ContextValue: "a"},
+			{Name: "app.create", ContextType: "team", ContextValue: "b"},
+			{Name: "app.deploy", ContextType: "team", ContextValue: "a"},
+			{Name: "app.deploy", ContextType: "team", ContextValue: "b"},
+		},
+	}
+	var got apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	sort.Sort(rolePermList(got.Permissions))
+	sort.Sort(rolePermList(got.Roles))
 	c.Assert(got, check.DeepEquals, expected)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/mgo.v2/bson"
@@ -582,9 +583,54 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(apiKey)
 }
 
+type rolePermissionData struct {
+	Name         string
+	ContextType  string
+	ContextValue string
+}
+
 type apiUser struct {
-	Email string
-	Teams []string
+	Email       string
+	Teams       []string
+	Roles       []rolePermissionData
+	Permissions []rolePermissionData
+}
+
+func createApiUser(user *auth.User) (apiUser, error) {
+	var teamsNames []string
+	if teams, err := user.Teams(); err == nil {
+		teamsNames = auth.GetTeamsNames(teams)
+	}
+	permissions, err := user.Permissions()
+	if err != nil {
+		return apiUser{}, err
+	}
+	permData := make([]rolePermissionData, len(permissions))
+	for i, p := range permissions {
+		permData[i] = rolePermissionData{
+			Name:         p.Scheme.FullName(),
+			ContextType:  string(p.Context.CtxType),
+			ContextValue: p.Context.Value,
+		}
+	}
+	roleData := make([]rolePermissionData, len(user.Roles))
+	for i, userRole := range user.Roles {
+		r, err := permission.FindRole(userRole.Name)
+		if err != nil {
+			return apiUser{}, err
+		}
+		roleData[i] = rolePermissionData{
+			Name:         userRole.Name,
+			ContextType:  string(r.ContextType),
+			ContextValue: userRole.ContextValue,
+		}
+	}
+	return apiUser{
+		Email:       user.Email,
+		Teams:       teamsNames,
+		Roles:       roleData,
+		Permissions: permData,
+	}, nil
 }
 
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -594,11 +640,10 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	apiUsers := make([]apiUser, len(users))
 	for i, user := range users {
-		var teamsNames []string
-		if teams, err := user.Teams(); err == nil {
-			teamsNames = auth.GetTeamsNames(teams)
+		apiUsers[i], err = createApiUser(&user)
+		if err != nil {
+			return err
 		}
-		apiUsers[i] = apiUser{Email: user.Email, Teams: teamsNames}
 	}
 	return json.NewEncoder(w).Encode(apiUsers)
 }
@@ -608,13 +653,10 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	var teamNames []string
-	if teams, err := user.Teams(); err == nil {
-		teamNames = make([]string, len(teams))
-		for i, team := range teams {
-			teamNames[i] = team.Name
-		}
+	userData, err := createApiUser(user)
+	if err != nil {
+		return err
 	}
 	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(apiUser{Email: user.Email, Teams: teamNames})
+	return json.NewEncoder(w).Encode(userData)
 }

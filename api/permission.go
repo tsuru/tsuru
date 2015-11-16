@@ -119,7 +119,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return err
 }
 
-type permissionData struct {
+type permissionSchemeData struct {
 	Name     string
 	Contexts []string
 }
@@ -127,14 +127,14 @@ type permissionData struct {
 func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	lst := permission.PermissionRegistry.Permissions()
 	sort.Sort(lst)
-	permList := make([]permissionData, len(lst))
+	permList := make([]permissionSchemeData, len(lst))
 	for i, perm := range lst {
 		contexts := perm.AllowedContexts()
 		contextNames := make([]string, len(contexts))
 		for j, ctx := range contexts {
 			contextNames[j] = string(ctx)
 		}
-		permList[i] = permissionData{
+		permList[i] = permissionSchemeData{
 			Name:     perm.FullName(),
 			Contexts: contextNames,
 		}

@@ -203,11 +203,11 @@ func (s *S) TestListPermissions(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	var data []permissionData
+	var data []permissionSchemeData
 	err = json.Unmarshal(rec.Body.Bytes(), &data)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(data) > 0, check.Equals, true)
-	c.Assert(data[0], check.DeepEquals, permissionData{
+	c.Assert(data[0], check.DeepEquals, permissionSchemeData{
 		Name:     "",
 		Contexts: []string{"global"},
 	})
