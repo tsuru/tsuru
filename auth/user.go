@@ -29,7 +29,7 @@ var (
 	ErrKeyDisabled  = stderrors.New("key management is disabled")
 )
 
-type roleInstance struct {
+type RoleInstance struct {
 	Name         string
 	ContextValue string
 }
@@ -39,7 +39,7 @@ type User struct {
 	Email    string
 	Password string
 	APIKey   string
-	Roles    []roleInstance `bson:",omitempty"`
+	Roles    []RoleInstance `bson:",omitempty"`
 }
 
 // ListUsers list all users registred in tsuru

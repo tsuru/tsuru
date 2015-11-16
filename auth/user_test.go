@@ -319,7 +319,7 @@ func (s *S) TestListAllUsers(c *check.C) {
 	c.Assert(len(users), check.Equals, 1)
 }
 
-type roleInstanceList []roleInstance
+type roleInstanceList []RoleInstance
 
 func (l roleInstanceList) Len() int      { return len(l) }
 func (l roleInstanceList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
@@ -351,7 +351,7 @@ func (s *S) TestUserAddRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = u.AddRole("r3", "a")
 	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
-	expected := []roleInstance{
+	expected := []RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
 		{Name: "r1", ContextValue: "c2"},
 		{Name: "r2", ContextValue: "x"},
@@ -369,7 +369,7 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	u := User{
 		Email:    "me@tsuru.com",
 		Password: "123",
-		Roles: []roleInstance{
+		Roles: []RoleInstance{
 			{Name: "r1", ContextValue: "c1"},
 			{Name: "r1", ContextValue: "c2"},
 			{Name: "r2", ContextValue: "x"},
@@ -381,7 +381,7 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = u.RemoveRole("r1", "c2")
 	c.Assert(err, check.IsNil)
-	expected := []roleInstance{
+	expected := []RoleInstance{
 		{Name: "r1", ContextValue: "c1"},
 		{Name: "r2", ContextValue: "x"},
 	}
