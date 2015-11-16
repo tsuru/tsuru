@@ -29,6 +29,9 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err == permission.ErrRoleNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
 	return err
 }
 
@@ -59,7 +62,11 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	return role.AddPermissions(r.Form["permission"]...)
+	err = role.AddPermissions(r.Form["permission"]...)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
+	return err
 }
 
 func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -72,7 +79,11 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	return role.RemovePermissions(permName)
+	err = role.RemovePermissions(permName)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
+	return err
 }
 
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -86,7 +97,11 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return user.AddRole(roleName, contextValue)
+	err = user.AddRole(roleName, contextValue)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
+	return err
 }
 
 func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -97,7 +112,11 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	return user.RemoveRole(roleName, contextValue)
+	err = user.RemoveRole(roleName, contextValue)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
+	return err
 }
 
 type permissionData struct {
