@@ -126,6 +126,23 @@ func (s *S) TestStringWithSeparator(c *check.C) {
 	c.Assert(table.String(), check.Equals, expected)
 }
 
+func (s *S) TestStringWithNewLineMultipleColumns(c *check.C) {
+	table := NewTable()
+	table.AddRow(Row{"One", "1", ""})
+	table.AddRow(Row{"Two", "xxx\nyyy", "aa\nbb\ncc\ndd"})
+	table.AddRow(Row{"Three", "3", ""})
+	expected := `+-------+-----+----+
+| One   | 1   |    |
+| Two   | xxx | aa |
+|       | yyy | bb |
+|       |     | cc |
+|       |     | dd |
+| Three | 3   |    |
++-------+-----+----+
+`
+	c.Assert(table.String(), check.Equals, expected)
+}
+
 func (s *S) TestStringWithNewLine(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "xxx\nyyy"})

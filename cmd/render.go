@@ -74,9 +74,14 @@ func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
 			parts := strings.Split(field, "\n")
 			field = parts[0]
 			for i := range parts[1:] {
-				newRow := Row(make([]string, len(row)))
+				var newRow Row
+				if len(extraRows) > i {
+					newRow = extraRows[i]
+				} else {
+					newRow = Row(make([]string, len(row)))
+					extraRows.add(newRow)
+				}
 				newRow[column] = parts[i+1]
-				extraRows.add(newRow)
 			}
 			result += "| " + field
 			result += strings.Repeat(" ", sizes[column]+1-runeLen(field))
