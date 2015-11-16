@@ -38,7 +38,7 @@ func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		}
 		fmt.Fprintln(context.Stdout, "Root user successfully updated.")
 	}
-	var password string
+	var confirm, password string
 	if scheme == "native" {
 		fmt.Fprint(context.Stdout, "Password: ")
 		password, err = cmd.PasswordFromReader(context.Stdin)
@@ -46,7 +46,7 @@ func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
 			return err
 		}
 		fmt.Fprint(context.Stdout, "\nConfirm: ")
-		confirm, err := cmd.PasswordFromReader(context.Stdin)
+		confirm, err = cmd.PasswordFromReader(context.Stdin)
 		if err != nil {
 			return err
 		}
