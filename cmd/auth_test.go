@@ -304,6 +304,41 @@ Teams: frontend, backend, sysadmin, full stack
 	c.Assert(called, check.Equals, true)
 }
 
+func (s *S) TestUserInfoWithRolesRun(c *check.C) {
+	var called bool
+	expected := `Email: myuser@company.com
+Teams: frontend, backend, sysadmin, full stack
+Roles:
+	x(y a)
+	x(y b)
+Permissions:
+	a(y q)
+`
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	command := userInfo{}
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: `{"Email":"myuser@company.com","Teams":["frontend","backend","sysadmin","full stack"],"Roles":[
+	{"Name":"x","ContextType":"y","ContextValue":"a"},
+	{"Name":"x","ContextType":"y","ContextValue":"b"}
+],
+"Permissions":[
+	{"Name":"a","ContextType":"y","ContextValue":"q"}
+]}`,
+			Status: http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "GET" && req.URL.Path == "/users/info"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(called, check.Equals, true)
+}
+
 func (s *S) TestPasswordFromReaderUsingFile(c *check.C) {
 	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
 	filename := path.Join(tmpdir, "password-reader.txt")

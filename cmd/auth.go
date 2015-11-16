@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -129,10 +130,45 @@ func (c *logout) Run(context *Context, client *Client) error {
 	return nil
 }
 
+type APIRolePermissionData struct {
+	Name         string
+	ContextType  string
+	ContextValue string
+}
+
 // APIUser is a user in the tsuru API.
 type APIUser struct {
-	Email string
-	Teams []string
+	Email       string
+	Teams       []string
+	Roles       []APIRolePermissionData
+	Permissions []APIRolePermissionData
+}
+
+func (u *APIUser) RoleInstances() []string {
+	roles := make([]string, len(u.Roles))
+	for i, r := range u.Roles {
+		if r.ContextValue != "" {
+			r.ContextValue = " " + r.ContextValue
+		}
+		roles[i] = fmt.Sprintf("%s(%s%s)", r.Name, r.ContextType, r.ContextValue)
+	}
+	sort.Strings(roles)
+	return roles
+}
+
+func (u *APIUser) PermissionInstances() []string {
+	permissions := make([]string, len(u.Permissions))
+	for i, r := range u.Permissions {
+		if r.Name == "" {
+			r.Name = "*"
+		}
+		if r.ContextValue != "" {
+			r.ContextValue = " " + r.ContextValue
+		}
+		permissions[i] = fmt.Sprintf("%s(%s%s)", r.Name, r.ContextType, r.ContextValue)
+	}
+	sort.Strings(permissions)
+	return permissions
 }
 
 func GetUser(client *Client) (*APIUser, error) {
@@ -171,6 +207,14 @@ func (userInfo) Run(context *Context, client *Client) error {
 	}
 	fmt.Fprintf(context.Stdout, "Email: %s\n", u.Email)
 	fmt.Fprintf(context.Stdout, "Teams: %s\n", strings.Join(u.Teams, ", "))
+	roles := u.RoleInstances()
+	if len(roles) > 0 {
+		fmt.Fprintf(context.Stdout, "Roles:\n\t%s\n", strings.Join(roles, "\n\t"))
+	}
+	perms := u.PermissionInstances()
+	if len(perms) > 0 {
+		fmt.Fprintf(context.Stdout, "Permissions:\n\t%s\n", strings.Join(perms, "\n\t"))
+	}
 	return nil
 }
 
