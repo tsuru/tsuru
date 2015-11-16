@@ -237,7 +237,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *check.C) {

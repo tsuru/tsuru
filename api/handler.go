@@ -19,7 +19,7 @@ var (
 	}
 	adminRequiredErr = &errors.HTTP{
 		Code:    http.StatusForbidden,
-		Message: "You must be an admin",
+		Message: "User does not have access to this app",
 	}
 )
 

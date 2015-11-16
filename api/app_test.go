@@ -387,7 +387,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheAp
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e, check.ErrorMatches, "^user does not have access to this app$")
+	c.Assert(e, check.ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *check.C) {
@@ -443,7 +443,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *c
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e, check.ErrorMatches, "^user does not have access to this app$")
+	c.Assert(e, check.ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
@@ -779,7 +779,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e.Message, check.Equals, "user does not have access to this app")
+	c.Assert(e.Message, check.Equals, "User does not have access to this app")
 }
 
 func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
@@ -906,7 +906,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e.Message, check.Equals, "user does not have access to this app")
+	c.Assert(e.Message, check.Equals, "User does not have access to this app")
 }
 
 func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
@@ -1196,7 +1196,7 @@ func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
@@ -1306,7 +1306,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
@@ -3711,7 +3711,7 @@ func (s *S) TestForceDeleteLockOnlyAdmins(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "You must be an admin\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
 	c.Assert(err, check.IsNil)
@@ -3989,7 +3989,7 @@ func (s *S) TestChangePoolForbiddenIfTheUserDoesNotHaveAcces(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestChangePoolWhenAppDoesNotExist(c *check.C) {
@@ -4030,7 +4030,7 @@ func (s *S) TestMetricEnvsWhenUserDoesNotHaveAcces(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {

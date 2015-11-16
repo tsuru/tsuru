@@ -322,7 +322,7 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnForbiddenIfTheUserIsN
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "You must be an admin\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnTheHandlerResultIfTheTokenIsOk(c *check.C) {
