@@ -51,7 +51,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	user, err := t.User()
-	a, err := getApp(r.URL.Query().Get(":appname"), user, r)
+	a, err := getApp(r.URL.Query().Get(":appname"), user)
 	if err != nil {
 		return err
 	}
