@@ -842,6 +842,14 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 
 // PlatformAdd build and push a new docker platform to register
 func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
+	return p.buildPlatform(name, args, w)
+}
+
+func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+	return p.buildPlatform(name, args, w)
+}
+
+func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer) error {
 	if args["dockerfile"] == "" {
 		return stderr.New("Dockerfile is required.")
 	}
@@ -852,6 +860,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 	cluster := p.Cluster()
 	buildOptions := docker.BuildImageOptions{
 		Name:           imageName,
+		Pull:           true,
 		NoCache:        true,
 		RmTmpContainer: true,
 		Remote:         args["dockerfile"],
@@ -875,10 +884,6 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 		tag = "latest"
 	}
 	return p.PushImage(imageName, tag)
-}
-
-func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
-	return p.PlatformAdd(name, args, w)
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {
