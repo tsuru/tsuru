@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
@@ -127,7 +128,7 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	name := "test_platform_add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, args, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, check.IsNil)
 	platform := provisioner.GetPlatform(name)
@@ -150,11 +151,11 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 	name := "test_platform_add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, args, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, check.IsNil)
 	provisioner.PlatformRemove(name)
-	err = PlatformAdd(name, args, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	_, ok := err.(DuplicatePlatformError)
 	c.Assert(ok, check.Equals, true)
 }
@@ -174,7 +175,7 @@ func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
 	name := "test_platform_add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, args, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, check.NotNil)
 	count, err := conn.Platforms().FindId(name).Count()
@@ -183,7 +184,7 @@ func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAddNotExtensibleProvisioner(c *check.C) {
-	err := PlatformAdd("python", nil, nil)
+	err := PlatformAdd(provision.PlatformOptions{Name: "python"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Provisioner is not extensible")
 }
@@ -196,7 +197,7 @@ func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
 	defer func() {
 		Provisioner = s.provisioner
 	}()
-	err := PlatformAdd("", nil, nil)
+	err := PlatformAdd(provision.PlatformOptions{Name: ""})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Platform name is required.")
 }
@@ -216,13 +217,13 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = ""
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Platform doesn't exist.")
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 }
 
@@ -241,7 +242,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "true"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_app_1"
@@ -252,7 +253,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"_id": appName})
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -277,7 +278,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisabletrueWithoutDockerfile(c *check.
 	args := make(map[string]string)
 	args["dockerfile"] = ""
 	args["disabled"] = "true"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_app_2"
@@ -288,7 +289,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisabletrueWithoutDockerfile(c *check.
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"_id": appName})
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	platf, err := getPlatform(name)
 	c.Assert(err, check.IsNil)
@@ -313,7 +314,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "false"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_app_3"
@@ -324,7 +325,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"_id": appName})
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -349,7 +350,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 	args := make(map[string]string)
 	args["dockerfile"] = ""
 	args["disabled"] = "false"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_app_4"
@@ -360,7 +361,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"_id": appName})
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	platf, err := getPlatform(name)
 	c.Assert(err, check.IsNil)
@@ -375,7 +376,7 @@ func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
 	defer func() {
 		Provisioner = s.provisioner
 	}()
-	err := PlatformUpdate("", nil, nil)
+	err := PlatformUpdate(provision.PlatformOptions{Name: ""})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Platform name is required.")
 }
@@ -394,7 +395,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_app"
@@ -405,7 +406,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"_id": appName})
-	err = PlatformUpdate(name, args, nil)
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -428,7 +429,7 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	err = PlatformRemove(name)
@@ -455,7 +456,7 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_another_app"
@@ -486,7 +487,7 @@ func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *check.C) {
 	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, nil, nil)
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	provisioner.PlatformRemove(name)
 	defer conn.Platforms().Remove(bson.M{"_id": name})

@@ -1691,7 +1691,7 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 		cluster.Node{Address: server.URL()})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
+	err = p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: args, Output: bytes.NewBuffer(nil)})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 3, check.Equals, true)
 	requests = requests[len(requests)-3:]
@@ -1704,7 +1704,7 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 }
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *check.C) {
-	err := s.p.PlatformAdd("test", nil, nil)
+	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Dockerfile is required.")
 }
@@ -1712,7 +1712,7 @@ func (s *S) TestProvisionerPlatformAddWithoutArgs(c *check.C) {
 func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *check.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "not_a_url"
-	err := s.p.PlatformAdd("test", args, bytes.NewBuffer(nil))
+	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: args, Output: bytes.NewBuffer(nil)})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "dockerfile parameter should be an url.")
 }
@@ -1732,7 +1732,7 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
+	err = p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: args, Output: bytes.NewBuffer(nil)})
 	c.Assert(err, check.NotNil)
 }
 
@@ -1754,7 +1754,7 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	var buf bytes.Buffer
-	err = p.PlatformAdd("test", map[string]string{"dockerfile": "http://localhost/Dockerfile"}, &buf)
+	err = p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: map[string]string{"dockerfile": "http://localhost/Dockerfile"}, Output: &buf})
 	c.Assert(err, check.IsNil)
 	err = p.PlatformRemove("test")
 	c.Assert(err, check.IsNil)

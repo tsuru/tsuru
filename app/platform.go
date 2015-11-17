@@ -7,7 +7,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 
 	"github.com/tsuru/tsuru/db"
@@ -39,7 +38,7 @@ func Platforms(enabledOnly bool) ([]Platform, error) {
 }
 
 // PlatformAdd add a new platform to tsuru
-func PlatformAdd(name string, args map[string]string, w io.Writer) error {
+func PlatformAdd(opts provision.PlatformOptions) error {
 	var (
 		provisioner provision.ExtensibleProvisioner
 		ok          bool
@@ -47,10 +46,10 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
 		return errors.New("Provisioner is not extensible")
 	}
-	if name == "" {
+	if opts.Name == "" {
 		return errors.New("Platform name is required.")
 	}
-	p := Platform{Name: name}
+	p := Platform{Name: opts.Name}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -63,7 +62,7 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 		}
 		return err
 	}
-	err = provisioner.PlatformAdd(name, args, w)
+	err = provisioner.PlatformAdd(opts)
 	if err != nil {
 		dbErr := conn.Platforms().RemoveId(p.Name)
 		if dbErr != nil {
@@ -80,7 +79,7 @@ func (DuplicatePlatformError) Error() string {
 	return "Duplicate platform"
 }
 
-func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+func PlatformUpdate(opts provision.PlatformOptions) error {
 	var (
 		provisioner provision.ExtensibleProvisioner
 		platform    Platform
@@ -89,7 +88,7 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
 		return errors.New("Provisioner is not extensible")
 	}
-	if name == "" {
+	if opts.Name == "" {
 		return errors.New("Platform name is required.")
 	}
 	conn, err := db.Conn()
@@ -97,20 +96,20 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Platforms().Find(bson.M{"_id": name}).One(&platform)
+	err = conn.Platforms().Find(bson.M{"_id": opts.Name}).One(&platform)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return errors.New("Platform doesn't exist.")
 		}
 		return err
 	}
-	if args["dockerfile"] != "" {
-		err = provisioner.PlatformUpdate(name, args, w)
+	if opts.Args["dockerfile"] != "" {
+		err = provisioner.PlatformUpdate(opts)
 		if err != nil {
 			return err
 		}
 		var apps []App
-		err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
+		err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
 		if err != nil {
 			return err
 		}
@@ -118,12 +117,12 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 			app.SetUpdatePlatform(true)
 		}
 	}
-	if args["disabled"] != "" {
-		disableBool, err := strconv.ParseBool(args["disabled"])
+	if opts.Args["disabled"] != "" {
+		disableBool, err := strconv.ParseBool(opts.Args["disabled"])
 		if err != nil {
 			return err
 		}
-		err = conn.Platforms().Update(bson.M{"_id": name}, bson.M{"$set": bson.M{"disabled": disableBool}})
+		err = conn.Platforms().Update(bson.M{"_id": opts.Name}, bson.M{"$set": bson.M{"disabled": disableBool}})
 		if err != nil {
 			return err
 		}

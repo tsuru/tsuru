@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/provision"
 )
 
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -23,7 +24,11 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "text")
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
-	err := app.PlatformAdd(name, args, writer)
+	err := app.PlatformAdd(provision.PlatformOptions{
+		Name:   name,
+		Args:   args,
+		Output: writer,
+	})
 	if err != nil {
 		return err
 	}
@@ -45,7 +50,11 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.PlatformUpdate(name, args, writer)
+	err = app.PlatformUpdate(provision.PlatformOptions{
+		Name:   name,
+		Args:   args,
+		Output: writer,
+	})
 	if err != nil {
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
 		writer.Write([]byte("Failed to update platform!\n"))

@@ -884,7 +884,7 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 func (s *S) TestExtensiblePlatformAdd(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	platform := p.GetPlatform("python")
 	c.Assert(platform.Name, check.Equals, "python")
@@ -895,9 +895,9 @@ func (s *S) TestExtensiblePlatformAdd(c *check.C) {
 func (s *S) TestExtensiblePlatformAddTwice(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
-	err = p.PlatformAdd("python", nil, nil)
+	err = p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: nil})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "duplicate platform")
 }
@@ -905,10 +905,10 @@ func (s *S) TestExtensiblePlatformAddTwice(c *check.C) {
 func (s *S) TestExtensiblePlatformUpdate(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	args["something"] = "wat"
-	err = p.PlatformUpdate("python", args, nil)
+	err = p.PlatformUpdate(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	platform := p.GetPlatform("python")
 	c.Assert(platform.Name, check.Equals, "python")
@@ -918,7 +918,7 @@ func (s *S) TestExtensiblePlatformUpdate(c *check.C) {
 
 func (s *S) TestExtensiblePlatformUpdateNotFound(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
-	err := p.PlatformUpdate("python", nil, nil)
+	err := p.PlatformUpdate(provision.PlatformOptions{Name: "python", Args: nil})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "platform not found")
 }
@@ -926,7 +926,7 @@ func (s *S) TestExtensiblePlatformUpdateNotFound(c *check.C) {
 func (s *S) TestExtensiblePlatformRemove(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	err = p.PlatformRemove("python")
 	c.Assert(err, check.IsNil)

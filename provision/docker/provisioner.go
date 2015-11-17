@@ -841,12 +841,12 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 }
 
 // PlatformAdd build and push a new docker platform to register
-func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
-	return p.buildPlatform(name, args, w)
+func (p *dockerProvisioner) PlatformAdd(opts provision.PlatformOptions) error {
+	return p.buildPlatform(opts.Name, opts.Args, opts.Output)
 }
 
-func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
-	return p.buildPlatform(name, args, w)
+func (p *dockerProvisioner) PlatformUpdate(opts provision.PlatformOptions) error {
+	return p.buildPlatform(opts.Name, opts.Args, opts.Output)
 }
 
 func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer) error {

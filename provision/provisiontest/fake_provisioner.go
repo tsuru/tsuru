@@ -1023,24 +1023,24 @@ func (p *ExtensibleFakeProvisioner) getPlatform(name string) (int, *provisionedP
 	return -1, nil
 }
 
-func (p *ExtensibleFakeProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
+func (p *ExtensibleFakeProvisioner) PlatformAdd(opts provision.PlatformOptions) error {
 	if err := p.getError("PlatformAdd"); err != nil {
 		return err
 	}
-	if p.GetPlatform(name) != nil {
+	if p.GetPlatform(opts.Name) != nil {
 		return errors.New("duplicate platform")
 	}
-	p.platforms = append(p.platforms, provisionedPlatform{Name: name, Args: args, Version: 1})
+	p.platforms = append(p.platforms, provisionedPlatform{Name: opts.Name, Args: opts.Args, Version: 1})
 	return nil
 }
 
-func (p *ExtensibleFakeProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
-	index, platform := p.getPlatform(name)
+func (p *ExtensibleFakeProvisioner) PlatformUpdate(opts provision.PlatformOptions) error {
+	index, platform := p.getPlatform(opts.Name)
 	if platform == nil {
 		return errors.New("platform not found")
 	}
 	platform.Version += 1
-	platform.Args = args
+	platform.Args = opts.Args
 	p.platforms[index] = *platform
 	return nil
 }
