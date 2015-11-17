@@ -14,6 +14,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",
+	"app.update.teamowner",
 	"app.deploy",
 	"app.read",
 	"app.delete",

@@ -19,6 +19,7 @@ var (
 	PermAppUpdateEnvSet             = PermissionRegistry.get("app.update.env.set")
 	PermAppUpdateEnvUnset           = PermissionRegistry.get("app.update.env.unset")
 	PermAppUpdateRestart            = PermissionRegistry.get("app.update.restart")
+	PermAppUpdateTeamowner          = PermissionRegistry.get("app.update.teamowner")
 	PermIaas                        = PermissionRegistry.get("iaas")
 	PermIaasRead                    = PermissionRegistry.get("iaas.read")
 	PermNode                        = PermissionRegistry.get("node")
