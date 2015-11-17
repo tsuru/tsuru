@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -63,7 +64,7 @@ func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	err := app.PlatformAdd("wat", nil, nil)
+	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
@@ -88,7 +89,7 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	err := app.PlatformAdd("wat", nil, nil)
+	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfile_url := ""
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
@@ -113,7 +114,7 @@ func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	err := app.PlatformAdd("wat", nil, nil)
+	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
@@ -138,7 +139,7 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	err := app.PlatformAdd("wat", nil, nil)
+	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfile_url := ""
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
@@ -163,7 +164,7 @@ func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	err := app.PlatformAdd("wat", nil, nil)
+	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
@@ -188,7 +189,7 @@ func (p *PlatformSuite) TestPlatformRemove(c *check.C) {
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	err := app.PlatformAdd("test", nil, nil)
+	err := app.PlatformAdd(provision.PlatformOptions{Name: "test", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("DELETE", "/platforms/test?:name=test", nil)
 	recorder := httptest.NewRecorder()
