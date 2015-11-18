@@ -1,6 +1,5 @@
 #tsuru
 
-[![Build Status](https://drone.io/github.com/tsuru/tsuru/status.png?branch=master)](https://drone.io/github.com/tsuru/tsuru/latest)
 [![Build Status](https://travis-ci.org/tsuru/tsuru.png?branch=master)](https://travis-ci.org/tsuru/tsuru)
 
 ##What is tsuru?
