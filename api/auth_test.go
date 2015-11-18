@@ -679,7 +679,7 @@ func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) 
 	err := conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	defer conn.Teams().Remove(bson.M{"_id": team.Name})
-	a := app.App{Name: "i-should", Platform: "python", Teams: []string{team.Name}, TeamOwner: team.Name}
+	a := app.App{Name: "i-should", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -880,7 +880,7 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInRepository(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	a := app.App{Name: "i-should", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "i-should", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -953,11 +953,11 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInReposi
 	err = conn.Teams().Insert(&team2)
 	c.Assert(err, check.IsNil)
 	defer conn.Teams().RemoveId(team2.Name)
-	app1 := app.App{Name: "app1", Platform: "python", Teams: []string{s.team.Name}}
+	app1 := app.App{Name: "app1", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&app1, nil)
-	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name, team2.Name}}
+	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&app2, nil)
@@ -1059,7 +1059,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInRepository(c *check.C) 
 	recorder = httptest.NewRecorder()
 	err = addUserToTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "myapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)

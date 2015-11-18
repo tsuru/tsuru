@@ -225,7 +225,7 @@ func (s *S) TestChangePlan(c *check.C) {
 		c.Assert(err, check.IsNil)
 		defer app.PlanRemove(plan.Name)
 	}
-	a := app.App{Name: "someapp", Platform: "zend", Teams: []string{s.team.Name}, Plan: plans[1]}
+	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.logConn.Logs(a.Name).DropCollection()
@@ -247,7 +247,7 @@ func (s *S) TestChangePlanNotFound(c *check.C) {
 	err := plan.Save()
 	c.Assert(err, check.IsNil)
 	defer app.PlanRemove(plan.Name)
-	a := app.App{Name: "someapp", Platform: "zend", Teams: []string{s.team.Name}, Plan: plan}
+	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.logConn.Logs(a.Name).DropCollection()

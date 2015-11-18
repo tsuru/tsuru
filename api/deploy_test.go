@@ -20,17 +20,18 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type DeploySuite struct {
+	baseSuite   *S
 	conn        *db.Storage
 	logConn     *db.LogStorage
 	token       auth.Token
@@ -49,8 +50,17 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
+	s.token = s.baseSuite.userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+}
+
+func (s *DeploySuite) customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) auth.Token {
+	return s.baseSuite.customUserWithPermission(c, baseName, perm...)
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
@@ -64,8 +74,6 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.provisioner = provisiontest.NewFakeProvisioner()
-	app.Provisioner = s.provisioner
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
@@ -75,6 +83,8 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
+	s.provisioner = provisiontest.NewFakeProvisioner()
+	app.Provisioner = s.provisioner
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
@@ -90,7 +100,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -112,7 +122,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -126,13 +136,12 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -158,7 +167,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -182,7 +191,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -269,7 +278,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	user, _ := s.token.User()
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -291,7 +300,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 
 func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -310,7 +319,7 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 
 func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -337,9 +346,11 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	team := &auth.Team{Name: "newteam", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	a := app.App{Name: "g1", Platform: "python", Teams: []string{team.Name}}
+	token := s.customUserWithPermission(c, "apponlyg1", permission.Permission{
+		Scheme:  permission.PermAppReadDeploy,
+		Context: permission.Context(permission.CtxApp, "g1"),
+	})
+	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -360,6 +371,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.NotNil)
 	c.Assert(result[0].App, check.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.Add(time.Minute).In(time.UTC))
@@ -368,11 +380,11 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 
 func (s *DeploySuite) TestDeployList(c *check.C) {
 	user, _ := s.token.User()
-	app1 := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	app1 := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&app1, nil)
-	app2 := app.App{Name: "ge", Platform: "python", Teams: []string{s.team.Name}}
+	app2 := app.App{Name: "ge", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&app2, nil)
@@ -403,53 +415,9 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	c.Assert(result[1].Duration, check.DeepEquals, duration)
 }
 
-func (s *DeploySuite) TestDeployListByService(c *check.C) {
-	user, _ := s.token.User()
-	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
-	err := app.CreateApp(&a, user)
-	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	var result []app.DeployData
-	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
-	err = srv.Create()
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{
-		Name:        "redis-g1",
-		ServiceName: "redis",
-		Apps:        []string{"g1", "qwerty"},
-		Teams:       []string{s.team.Name},
-	}
-	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	defer func() {
-		srv.Delete()
-		service.DeleteInstance(&instance)
-	}()
-	request, err := http.NewRequest("GET", "/deploys?service=redis", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	err = s.conn.Deploys().Insert(app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration})
-	c.Assert(err, check.IsNil)
-	err = s.conn.Deploys().Insert(app.DeployData{App: "ge", Timestamp: timestamp, Duration: duration})
-	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 1)
-	c.Assert(result[0].App, check.Equals, "g1")
-	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.In(time.UTC))
-	c.Assert(result[0].Duration, check.DeepEquals, duration)
-}
-
 func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -482,7 +450,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 
 func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -516,7 +484,7 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 
 func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -529,49 +497,8 @@ func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
-func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
-	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
-	err := srv.Create()
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{
-		Name:        "redis-myblog",
-		ServiceName: "redis",
-		Apps:        []string{"yourblog"},
-		Teams:       []string{s.team.Name},
-	}
-	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	defer func() {
-		srv.Delete()
-		service.DeleteInstance(&instance)
-	}()
-	user, _ := s.token.User()
-	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
-	err = app.CreateApp(&a, user)
-	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []app.DeployData{
-		{App: "myblog", Timestamp: timestamp, Duration: duration},
-		{App: "yourblog", Timestamp: timestamp, Duration: duration},
-	}
-	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/deploys?app=myblog&service=redis", nil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-}
-
 func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
-	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -593,7 +520,11 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	url := fmt.Sprintf("/deploys/%s", lastDeployId)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	token := s.customUserWithPermission(c, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppReadDeploy,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -607,8 +538,8 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
-	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
 	user, _ := s.token.User()
+	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -645,7 +576,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 
 func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -706,6 +637,9 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	team := &auth.Team{Name: "team", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
+	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(team)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -736,7 +670,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 
 func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -756,7 +690,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -788,7 +722,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -820,12 +754,12 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	defer s.logConn.Logs(a.Name).DropCollection()
-	b := app.App{Name: "otherapp2", Platform: "python", Teams: []string{s.team.Name}}
+	b := app.App{Name: "otherapp2", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&b, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&b, nil)

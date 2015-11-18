@@ -10,123 +10,14 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
-
-func (s *S) TestListDeployByNonAdminUsers(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer nativeScheme.Remove(user)
-	team := &auth.Team{Name: "someteam", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().RemoveId("someteam")
-	s.conn.Deploys().RemoveAll(nil)
-	a := App{Name: "g1", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "ge"}
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	deploys := []DeployData{
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		{App: "ge", Timestamp: time.Now()},
-	}
-	for _, deploy := range deploys {
-		s.conn.Deploys().Insert(deploy)
-	}
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(nil, nil, user, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 1)
-	c.Assert(result[0].App, check.Equals, "g1")
-}
-
-func (s *S) TestListDeployByAdminUsers(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer nativeScheme.Remove(user)
-	team := &auth.Team{Name: "adminteam", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().RemoveId("adminteam")
-	s.conn.Deploys().RemoveAll(nil)
-	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, check.IsNil)
-	config.Set("admin-team", "adminteam")
-	defer config.Set("admin-team", adminTeamName)
-	a := App{Name: "g1", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "ge"}
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	deploys := []DeployData{
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		{App: "ge", Timestamp: time.Now()},
-	}
-	for _, deploy := range deploys {
-		s.conn.Deploys().Insert(deploy)
-	}
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(nil, nil, user, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 2)
-	c.Assert(result[0].App, check.Equals, "ge")
-	c.Assert(result[1].App, check.Equals, "g1")
-}
-
-func (s *S) TestListDeployByAppAndService(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
-	srv := service.Service{Name: "mysql"}
-	instance := service.ServiceInstance{
-		Name:        "myinstance",
-		ServiceName: "mysql",
-		Apps:        []string{"g1"},
-	}
-	err := s.conn.ServiceInstances().Insert(instance)
-	err = s.conn.Services().Insert(srv)
-	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"apps": instance.Apps})
-	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
-	a := App{Name: "g1"}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "ge"}
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	deploys := []DeployData{
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		{App: "ge", Timestamp: time.Now()},
-	}
-	for _, deploy := range deploys {
-		s.conn.Deploys().Insert(deploy)
-	}
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(&a2, &srv, nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.IsNil)
-}
 
 func (s *S) TestListAppDeploys(c *check.C) {
 	s.conn.Deploys().RemoveAll(nil)
@@ -141,7 +32,7 @@ func (s *S) TestListAppDeploys(c *check.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
-	deploys, err := a.ListDeploys(nil)
+	deploys, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -170,7 +61,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	expected := []DeployData{expectedDeploy[1].(DeployData), expectedDeploy[0].(DeployData)}
-	deploys, err := a.ListDeploys(nil)
+	deploys, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -182,53 +73,14 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
-func (s *S) TestListServiceDeploys(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
-	srv := service.Service{Name: "mysql"}
-	instance := service.ServiceInstance{
-		Name:        "myinstance",
-		ServiceName: "mysql",
-		Apps:        []string{"g1"},
-	}
-	err := s.conn.ServiceInstances().Insert(instance)
-	err = s.conn.Services().Insert(srv)
+func (s *S) TestListFilteredDeploys(c *check.C) {
+	team := &auth.Team{Name: "team"}
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"apps": instance.Apps})
-	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
-	insert := []interface{}{
-		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		DeployData{App: "g1", Timestamp: time.Now()},
-	}
-	s.conn.Deploys().Insert(insert...)
-	defer s.conn.Deploys().RemoveAll(bson.M{"apps": instance.Apps})
-	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
-	deploys, err := ListDeploys(nil, &srv, nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	for i := 0; i < 2; i++ {
-		ts := expected[i].Timestamp
-		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-		ts = deploys[i].Timestamp
-		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-		expected[i].ID = deploys[i].ID
-	}
-	c.Assert(deploys, check.DeepEquals, expected)
-}
-
-func (s *S) TestListAllDeploys(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
 	a := App{
 		Name:     "g1",
 		Platform: "zend",
-		Teams:    []string{team.Name},
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -241,7 +93,6 @@ func (s *S) TestListAllDeploys(c *check.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
 		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		DeployData{App: "ge", Timestamp: time.Now(), Image: "app-image"},
@@ -250,16 +101,27 @@ func (s *S) TestListAllDeploys(c *check.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
 	expected[0].CanRollback = true
-	deploys, err := ListDeploys(nil, nil, user, 0, 0)
+	normalizeTS(expected)
+	f := &Filter{}
+	f.ExtraIn("teams", team.Name)
+	deploys, err := ListDeploys(f, 0, 0)
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 2; i++ {
-		ts := expected[i].Timestamp
-		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-		ts = deploys[i].Timestamp
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0]})
+	f = &Filter{}
+	f.ExtraIn("name", "g1")
+	deploys, err = ListDeploys(f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[1]})
+}
+
+func normalizeTS(deploys []DeployData) {
+	for i := 0; i < len(deploys); i++ {
+		ts := deploys[i].Timestamp
 		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-		expected[i].ID = deploys[i].ID
+		deploys[i].ID = "-ignored-"
 	}
-	c.Assert(deploys, check.DeepEquals, expected)
 }
 
 func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
@@ -291,7 +153,7 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := []DeployData{insert[2].(DeployData), insert[1].(DeployData)}
-	deploys, err := ListDeploys(nil, nil, user, 1, 2)
+	deploys, err := ListDeploys(nil, 1, 2)
 	c.Assert(err, check.IsNil)
 	c.Assert(deploys, check.HasLen, 2)
 	for i := 0; i < len(deploys); i++ {
@@ -305,64 +167,12 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
-func (s *S) TestListDeployByAppAndUser(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
-	a := App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{team.Name},
-	}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	a = App{
-		Name:     "ge",
-		Platform: "zend",
-		Teams:    []string{team.Name},
-	}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.conn.Deploys().RemoveAll(nil)
-	insert := []interface{}{
-		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		DeployData{App: "ge", Timestamp: time.Now()},
-	}
-	s.conn.Deploys().Insert(insert...)
-	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []DeployData{insert[1].(DeployData)}
-	deploys, err := ListDeploys(&a, nil, user, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(expected[0].App, check.DeepEquals, deploys[0].App)
-	c.Assert(len(expected), check.Equals, len(deploys))
-}
-
 func (s *S) TestGetDeploy(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
 	a := App{
 		Name:     "g1",
 		Platform: "zend",
-		Teams:    []string{team.Name},
 	}
-	err = s.conn.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.conn.Deploys().RemoveAll(nil)
@@ -370,7 +180,7 @@ func (s *S) TestGetDeploy(c *check.C) {
 	err = s.conn.Deploys().Insert(&newDeploy)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().Remove(bson.M{"name": newDeploy.App})
-	lastDeploy, err := GetDeploy(newDeploy.ID.Hex(), user)
+	lastDeploy, err := GetDeploy(newDeploy.ID.Hex())
 	c.Assert(err, check.IsNil)
 	ts := lastDeploy.Timestamp
 	lastDeploy.Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
@@ -381,33 +191,9 @@ func (s *S) TestGetDeploy(c *check.C) {
 	c.Assert(lastDeploy.Timestamp, check.Equals, newDeploy.Timestamp)
 }
 
-func (s *S) TestGetDeployWithoutAccess(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	a := App{
-		Name:     "g1",
-		Platform: "zend",
-	}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.conn.Deploys().RemoveAll(nil)
-	newDeploy := DeployData{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
-	err = s.conn.Deploys().Insert(&newDeploy)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().Remove(bson.M{"name": newDeploy.App})
-	result, err := GetDeploy(newDeploy.ID.Hex(), user)
-	c.Assert(err.Error(), check.Equals, "Deploy not found.")
-	c.Assert(result, check.IsNil)
-}
-
 func (s *S) TestGetDeployNotFound(c *check.C) {
 	idTest := bson.NewObjectId()
-	deploy, err := GetDeploy(idTest.Hex(), nil)
+	deploy, err := GetDeploy(idTest.Hex())
 	c.Assert(err.Error(), check.Equals, "not found")
 	c.Assert(deploy, check.IsNil)
 }
@@ -681,51 +467,6 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	c.Assert(result["error"], check.NotNil)
 }
 
-func (s *S) TestUserHasPermission(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
-	a := App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{team.Name},
-	}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	hasPermission := userHasPermission(user, a.Name)
-	c.Assert(hasPermission, check.Equals, true)
-}
-
-func (s *S) TestUserHasNoPermission(c *check.C) {
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
-	a := App{
-		Name:     "g1",
-		Platform: "zend",
-	}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	hasPermission := userHasPermission(user, a.Name)
-	c.Assert(hasPermission, check.Equals, false)
-}
-
 func (s *S) TestIncrementDeploy(c *check.C) {
 	a := App{
 		Name:     "otherapp",
@@ -831,13 +572,13 @@ func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(nil, nil, s.admin, 0, 0)
+	result, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].Image, check.Equals, "myid")
 	err = markDeploysAsRemoved(a.Name)
 	c.Assert(err, check.IsNil)
-	result, err = ListDeploys(nil, nil, s.admin, 0, 0)
+	result, err = ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 0)
 	var allDeploys []DeployData

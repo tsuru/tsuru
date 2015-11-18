@@ -337,9 +337,9 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithUnbindA
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
-		Name:     "painkiller",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -387,9 +387,9 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
-		Name:     "app1",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -433,14 +433,14 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
-		Name:     "app",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "app",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
 	ab := app.App{
-		Name:     "app2",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "app2",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)

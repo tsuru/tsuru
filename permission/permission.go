@@ -140,6 +140,29 @@ type Token interface {
 	Permissions() ([]Permission, error)
 }
 
+func ContextsForPermission(token Token, scheme *permissionScheme, ctxTypes ...contextType) []permissionContext {
+	perms, err := token.Permissions()
+	if err != nil {
+		return []permissionContext{}
+	}
+	var contexts []permissionContext
+	for _, perm := range perms {
+		if perm.Scheme.isParent(scheme) {
+			if len(ctxTypes) > 0 {
+				for _, t := range ctxTypes {
+					if t == perm.Context.CtxType {
+						contexts = append(contexts, perm.Context)
+					}
+				}
+			} else {
+				contexts = append(contexts, perm.Context)
+
+			}
+		}
+	}
+	return contexts
+}
+
 func Check(token Token, scheme *permissionScheme, contexts ...permissionContext) bool {
 	perms, err := token.Permissions()
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/permission"
 )
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -50,29 +50,28 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	var userName string
-	var instance *app.App
 	if t.IsAppToken() {
 		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
 			return &errors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
 		}
-		instance, err = app.GetByName(appName)
-		if err != nil {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
 		userName = r.PostFormValue("user")
 	} else {
-		var user *auth.User
-		var app app.App
-		user, err = t.User()
-		if err != nil {
-			return err
-		}
-		app, err = getApp(appName, user, r)
-		if err != nil {
-			return err
-		}
-		instance = &app
 		userName = t.GetUserName()
+	}
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if t.GetAppName() != app.InternalAppName {
+		canDeploy := permission.Check(t, permission.PermAppDeploy,
+			append(permission.Contexts(permission.CtxTeam, instance.Teams),
+				permission.Context(permission.CtxApp, appName),
+				permission.Context(permission.CtxPool, instance.Pool),
+			)...,
+		)
+		if !canDeploy {
+			return &errors.HTTP{Code: http.StatusForbidden, Message: "user does not have access to this app"}
+		}
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
@@ -122,33 +121,32 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 }
 
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
+	contexts := permission.ContextsForPermission(t, permission.PermAppReadDeploy)
+	if len(contexts) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	}
-	var s *service.Service
-	var a *app.App
-	appName := r.URL.Query().Get("app")
-	if appName != "" {
-		a, err = app.GetByName(appName)
-		if err != nil {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	filter := app.Filter{}
+contextsLoop:
+	for _, c := range contexts {
+		switch c.CtxType {
+		case permission.CtxGlobal:
+			filter.Extra = nil
+			break contextsLoop
+		case permission.CtxTeam:
+			filter.ExtraIn("teams", c.Value)
+		case permission.CtxApp:
+			filter.ExtraIn("name", c.Value)
+		case permission.CtxPool:
+			filter.ExtraIn("pool", c.Value)
 		}
 	}
-	serviceName := r.URL.Query().Get("service")
-	if serviceName != "" {
-		var srv service.Service
-		srv, err = getServiceOrError(serviceName, u)
-		s = &srv
-		if err != nil {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
-	}
+	filter.Name = r.URL.Query().Get("app")
 	skip := r.URL.Query().Get("skip")
 	limit := r.URL.Query().Get("limit")
 	skipInt, _ := strconv.Atoi(skip)
 	limitInt, _ := strconv.Atoi(limit)
-	deploys, err := app.ListDeploys(a, s, u, skipInt, limitInt)
+	deploys, err := app.ListDeploys(&filter, skipInt, limitInt)
 	if err != nil {
 		return err
 	}
@@ -160,14 +158,23 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
+	depId := r.URL.Query().Get(":deploy")
+	deploy, err := app.GetDeploy(depId)
 	if err != nil {
 		return err
 	}
-	depId := r.URL.Query().Get(":deploy")
-	deploy, err := app.GetDeploy(depId, u)
+	dbApp, err := app.GetByName(deploy.App)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return err
+	}
+	canGet := permission.Check(t, permission.PermAppReadDeploy,
+		append(permission.Contexts(permission.CtxTeam, dbApp.Teams),
+			permission.Context(permission.CtxApp, dbApp.Name),
+			permission.Context(permission.CtxPool, dbApp.Pool),
+		)...,
+	)
+	if !canGet {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 	}
 	var data interface{}
 	if deploy.Origin == "git" {

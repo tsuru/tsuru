@@ -77,7 +77,7 @@ func Sync(w io.Writer) error {
 			return err
 		}
 	}
-	apps, err := app.List(nil, nil)
+	apps, err := app.List(nil)
 	if err != nil {
 		return err
 	}

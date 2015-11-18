@@ -32,9 +32,9 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": instance.Name})
 	a := App{
-		Name:     "whichapp",
-		Platform: "python",
-		Teams:    []string{},
+		Name:      "whichapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)

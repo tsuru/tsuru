@@ -7,13 +7,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"regexp"
-	"time"
-
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
@@ -21,6 +15,9 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
+	"io"
+	"regexp"
+	"time"
 )
 
 type DeployData struct {
@@ -54,61 +51,20 @@ func (d *DiffDeployData) MarshalJSON() ([]byte, error) {
 	return json.Marshal(*d)
 }
 
-func (app *App) ListDeploys(u *auth.User) ([]DeployData, error) {
-	return listDeploys(app, nil, u, 0, 0)
-}
-
-// ListDeploys returns the list of deploy that the given user has access to.
-//
-// If the user does not have acces to any deploy, this function returns an empty
-// list and a nil error.
-//
-// The deploy list can be filtered by app or service.
-func ListDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([]DeployData, error) {
-	return listDeploys(app, s, u, skip, limit)
-}
-
-func userHasPermission(u *auth.User, appName string) bool {
-	appsByUser, err := List(u, nil)
-	if err != nil {
-		return false
-	}
-	for _, app := range appsByUser {
-		if app.Name == appName {
-			return true
-		}
-	}
-	return false
-}
-
-func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([]DeployData, error) {
+// ListDeploys returns the list of deploy that match a given filter.
+func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	appsByName := set{}
-	if app != nil {
-		appsByName.Add(app.Name)
+	appsList, err := List(filter)
+	if err != nil {
+		return nil, err
 	}
-	appsByUser := set{}
-	if u != nil {
-		appsList, _ := List(u, nil)
-		for _, a := range appsList {
-			appsByUser.Add(a.Name)
-		}
-	}
-	appsByService := set{}
-	if s != nil {
-		appList := listAppsByService(s.Name)
-		for _, a := range appList {
-			appsByService.Add(a)
-		}
-	}
-	appsIntersection := appsByService.Intersection(appsByUser.Intersection(appsByName))
-	apps := []string{}
-	for key := range appsIntersection {
-		apps = append(apps, key)
+	apps := make([]string, len(appsList))
+	for i, a := range appsList {
+		apps[i] = a.Name
 	}
 	var list []DeployData
 	query := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}).Sort("-timestamp")
@@ -172,7 +128,7 @@ func listAppsByService(serviceName string) []string {
 	return apps
 }
 
-func GetDeploy(id string, u *auth.User) (*DeployData, error) {
+func GetDeploy(id string) (*DeployData, error) {
 	var dep DeployData
 	conn, err := db.Conn()
 	if err != nil {
@@ -182,10 +138,7 @@ func GetDeploy(id string, u *auth.User) (*DeployData, error) {
 	if err := conn.Deploys().FindId(bson.ObjectIdHex(id)).One(&dep); err != nil {
 		return nil, err
 	}
-	if userHasPermission(u, dep.App) {
-		return &dep, nil
-	}
-	return nil, errors.New("Deploy not found.")
+	return &dep, nil
 }
 
 func GetDiffInDeploys(d *DeployData) (string, error) {

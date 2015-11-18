@@ -153,7 +153,26 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		filter.Locked = true
 	}
 	rec.Log(u.Email, "app-list", extra...)
-	apps, err := app.List(u, filter)
+	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
+	if len(contexts) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+contextsLoop:
+	for _, c := range contexts {
+		switch c.CtxType {
+		case permission.CtxGlobal:
+			filter.Extra = nil
+			break contextsLoop
+		case permission.CtxTeam:
+			filter.ExtraIn("teams", c.Value)
+		case permission.CtxApp:
+			filter.ExtraIn("name", c.Value)
+		case permission.CtxPool:
+			filter.ExtraIn("pool", c.Value)
+		}
+	}
+	apps, err := app.List(filter)
 	if err != nil {
 		return err
 	}
@@ -209,9 +228,30 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err = json.Unmarshal(body, &a); err != nil {
 		return err
 	}
+	teamContexts := permission.ContextsForPermission(t, permission.PermAppCreate, permission.CtxTeam)
+	if a.TeamOwner == "" && len(teamContexts) == 1 {
+		a.TeamOwner = teamContexts[0].Value
+	}
+	canCreate := permission.Check(t, permission.PermAppCreate,
+		permission.Context(permission.CtxTeam, a.TeamOwner),
+	)
+	if !canCreate {
+		return permission.ErrUnauthorized
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
+	}
+	platform, err := app.GetPlatform(a.Platform)
+	if err != nil {
+		return err
+	}
+	if platform.Disabled {
+		canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+			permission.Check(t, permission.PermPlatformCreate)
+		if !canUsePlat {
+			return app.InvalidPlatformError{}
+		}
 	}
 	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name)
 	err = app.CreateApp(&a, u)

@@ -139,17 +139,21 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 }
 
 func (s *S) userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
-	user := &auth.User{Email: "majortom@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
+	return s.customUserWithPermission(c, "majortom", perm...)
+}
+
+func (s *S) customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) auth.Token {
+	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	if len(perm) > 0 {
-		role, err := permission.NewRole("test-suite-role", string(perm[0].Context.CtxType))
+	for _, p := range perm {
+		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType))
 		c.Assert(err, check.IsNil)
-		err = role.AddPermissions(perm[0].Scheme.FullName())
+		err = role.AddPermissions(p.Scheme.FullName())
 		c.Assert(err, check.IsNil)
-		err = user.AddRole(role.Name, perm[0].Context.Value)
+		err = user.AddRole(role.Name, p.Context.Value)
 		c.Assert(err, check.IsNil)
 	}
 	return token

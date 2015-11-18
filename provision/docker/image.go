@@ -38,7 +38,7 @@ func MigrateImages() error {
 	if err != nil {
 		return err
 	}
-	apps, err := app.List(nil, nil)
+	apps, err := app.List(nil)
 	if err != nil {
 		return err
 	}

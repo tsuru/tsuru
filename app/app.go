@@ -208,21 +208,8 @@ func GetByName(name string) (*App, error) {
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(app *App, user *auth.User) error {
-	teams, err := user.Teams()
-	if err != nil {
-		return err
-	}
-	if len(teams) == 0 {
-		return NoTeamsError{}
-	}
-	platform, err := getPlatform(app.Platform)
-	if err != nil {
-		return err
-	}
-	if platform.Disabled && !user.IsAdmin() {
-		return InvalidPlatformError{}
-	}
 	var plan *Plan
+	var err error
 	if app.Plan.Name == "" {
 		plan, err = DefaultPlan()
 	} else {
@@ -231,13 +218,7 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	if app.TeamOwner == "" {
-		if len(teams) > 1 {
-			return ManyTeamsError{}
-		}
-		app.TeamOwner = teams[0].Name
-	}
-	err = app.ValidateTeamOwner(user)
+	err = app.validateTeamOwner()
 	if err != nil {
 		return err
 	}
@@ -632,7 +613,7 @@ func (app *App) GetTeams() []auth.Team {
 // SetTeamOwner sets the TeamOwner value.
 func (app *App) SetTeamOwner(team *auth.Team, u *auth.User) error {
 	app.TeamOwner = team.Name
-	err := app.ValidateTeamOwner(u)
+	err := app.validateTeamOwner()
 	if err != nil {
 		return err
 	}
@@ -649,24 +630,9 @@ func (app *App) SetTeamOwner(team *auth.Team, u *auth.User) error {
 	return nil
 }
 
-func (app *App) ValidateTeamOwner(user *auth.User) error {
-	if _, err := auth.GetTeam(app.TeamOwner); err == auth.ErrTeamNotFound {
-		return err
-	}
-	if user.IsAdmin() {
-		return nil
-	}
-	teams, err := user.Teams()
-	if err != nil {
-		return err
-	}
-	for _, t := range teams {
-		if t.Name == app.TeamOwner {
-			return nil
-		}
-	}
-	errorMsg := fmt.Sprintf("You can not set %s team as app's owner. Please set one of your teams as app's owner.", app.TeamOwner)
-	return stderr.New(errorMsg)
+func (app *App) validateTeamOwner() error {
+	_, err := auth.GetTeam(app.TeamOwner)
+	return err
 }
 
 func (app *App) SetPool() error {
@@ -1310,15 +1276,36 @@ type Filter struct {
 	TeamOwner string
 	UserOwner string
 	Locked    bool
+	Extra     bson.M
+}
+
+func (f *Filter) ExtraIn(name string, value string) {
+	if f.Extra == nil {
+		f.Extra = bson.M{}
+	}
+	if f.Extra[name] == nil {
+		f.Extra[name] = bson.M{"$in": []string{}}
+	}
+	f.Extra[name].(bson.M)["$in"] = append(f.Extra[name].(bson.M)["$in"].([]string), value)
 }
 
 func (f *Filter) Query() bson.M {
-	query := bson.M{}
 	if f == nil {
-		return query
+		return bson.M{}
 	}
+	if f.Extra == nil {
+		f.Extra = bson.M{}
+	}
+	query := f.Extra
 	if f.Name != "" {
-		query["name"] = bson.M{"$regex": f.Name}
+		if f.Extra["name"] != nil {
+			query["$and"] = []bson.M{
+				{"name": bson.M{"$regex": f.Name}},
+				f.Extra["name"].(bson.M),
+			}
+		} else {
+			query["name"] = bson.M{"$regex": f.Name}
+		}
 	}
 	if f.TeamOwner != "" {
 		query["teamowner"] = f.TeamOwner
@@ -1335,13 +1322,8 @@ func (f *Filter) Query() bson.M {
 	return query
 }
 
-// List returns the list of apps that the given user has access to.
-//
-// If the user does not have access to any app, this function returns an empty
-// list and a nil error.
-//
-// The list can be filtered through the filter parameter.
-func List(u *auth.User, filter *Filter) ([]App, error) {
+// List returns the list of apps filtered through the filter parameter.
+func List(filter *Filter) ([]App, error) {
 	var apps []App
 	conn, err := db.Conn()
 	if err != nil {
@@ -1349,18 +1331,6 @@ func List(u *auth.User, filter *Filter) ([]App, error) {
 	}
 	defer conn.Close()
 	query := filter.Query()
-	if u == nil || u.IsAdmin() {
-		if err := conn.Apps().Find(query).All(&apps); err != nil {
-			return []App{}, err
-		}
-		return apps, nil
-	}
-	ts, err := u.Teams()
-	if err != nil {
-		return []App{}, err
-	}
-	teams := auth.GetTeamsNames(ts)
-	query["teams"] = bson.M{"$in": teams}
 	if err := conn.Apps().Find(query).All(&apps); err != nil {
 		return []App{}, err
 	}

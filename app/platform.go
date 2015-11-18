@@ -158,7 +158,7 @@ func PlatformRemove(name string) error {
 	return conn.Platforms().Remove(bson.M{"_id": name})
 }
 
-func getPlatform(name string) (*Platform, error) {
+func GetPlatform(name string) (*Platform, error) {
 	var p Platform
 	conn, err := db.Conn()
 	if err != nil {

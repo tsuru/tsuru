@@ -9,14 +9,16 @@ package permission
 var PermissionRegistry = (&registry{}).addWithCtx(
 	"app", []contextType{CtxApp, CtxTeam, CtxPool},
 ).addWithCtx(
-	"app.create", []contextType{CtxTeam, CtxPool},
+	"app.create", []contextType{CtxTeam},
 ).add(
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",
 	"app.update.teamowner",
 	"app.deploy",
+	"app.deploy.rollback",
 	"app.read",
+	"app.read.deploy",
 	"app.delete",
 ).addWithCtx(
 	"node", []contextType{CtxPool},
@@ -56,4 +58,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"role.delete",
 	"role.update",
 	"role.assign",
+).add(
+	"platform.create",
+	"platform.delete",
+	"platform.update",
 )

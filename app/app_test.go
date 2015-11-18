@@ -94,8 +94,9 @@ func (s *S) TestDelete(c *check.C) {
 
 func (s *S) TestDeleteWithDeploys(c *check.C) {
 	a := App{
-		Name:     "ritual",
-		Platform: "python",
+		Name:      "ritual",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -121,7 +122,7 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 }
 
 func (s *S) TestDeleteWithoutUnits(c *check.C) {
-	app := App{Name: "x4", Platform: "python"}
+	app := App{Name: "x4", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&app)
@@ -165,8 +166,9 @@ func (s *S) TestDeleteSwappedApp(c *check.C) {
 
 func (s *S) TestCreateApp(c *check.C) {
 	a := App{
-		Name:     "appname",
-		Platform: "python",
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -195,8 +197,9 @@ func (s *S) TestCreateApp(c *check.C) {
 
 func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	a := App{
-		Name:     "appname",
-		Platform: "python",
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -218,8 +221,9 @@ func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
 	defer s.conn.Plans().Insert(s.defaultPlan)
 	a := App{
-		Name:     "appname",
-		Platform: "python",
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -253,9 +257,10 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer PlanRemove(myPlan.Name)
 	a := App{
-		Name:     "appname",
-		Platform: "python",
-		Plan:     Plan{Name: "myplan"},
+		Name:      "appname",
+		Platform:  "python",
+		Plan:      Plan{Name: "myplan"},
+		TeamOwner: s.team.Name,
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -273,7 +278,7 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
-	app := App{Name: "america", Platform: "python"}
+	app := App{Name: "america", Platform: "python", TeamOwner: s.team.Name}
 	s.conn.Users().Update(
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota.limit": 0}},
@@ -297,25 +302,6 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
 }
 
-func (s *S) TestCreateAppTeamOwnerOneTeam(c *check.C) {
-	app := App{Name: "america", Platform: "python"}
-	err := CreateApp(&app, s.user)
-	c.Assert(err, check.IsNil)
-	defer Delete(&app, nil)
-	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
-}
-
-func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *check.C) {
-	app := App{Name: "america", Platform: "python"}
-	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
-	err := s.conn.Teams().Insert(team)
-	c.Check(err, check.IsNil)
-	defer s.conn.Teams().RemoveId(team.Name)
-	err = CreateApp(&app, s.user)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.FitsTypeOf, ManyTeamsError{})
-}
-
 func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
 	app := App{
 		Name:      "someapp",
@@ -327,83 +313,21 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "team not found")
 }
 
-func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
-	platform := Platform{Name: "ruby20", Disabled: true}
-	s.conn.Platforms().Insert(platform)
-	a := App{
-		Name:     "appname",
-		Platform: "ruby20",
-	}
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
-	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
-	config.Set("quota:units-per-app", 3)
-	defer config.Unset("quota:units-per-app")
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, InvalidPlatformError{}.Error())
-	defer Delete(&a, nil)
-}
-
-func (s *S) TestCreateAppWithDisabledPlatformAndIsAdminUser(c *check.C) {
-	platform := Platform{Name: "ruby20", Disabled: true}
-	s.conn.Platforms().Insert(platform)
-	a := App{
-		Name:     "adminappname",
-		Platform: "ruby20",
-	}
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	s.createAdminUserAndTeam(c)
-	defer s.removeAdminUserAndTeam(c)
-	s.conn.Users().Update(bson.M{"email": s.admin.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
-	defer s.conn.Users().Update(bson.M{"email": s.admin.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
-	config.Set("quota:units-per-app", 3)
-	defer config.Unset("quota:units-per-app")
-	err := CreateApp(&a, s.admin)
-	c.Assert(err, check.IsNil)
-	defer Delete(&a, nil)
-	retrievedApp, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(retrievedApp.Name, check.Equals, a.Name)
-	c.Assert(retrievedApp.Platform, check.Equals, a.Platform)
-	c.Assert(retrievedApp.Teams, check.DeepEquals, []string{s.adminTeam.Name})
-	c.Assert(retrievedApp.Owner, check.Equals, s.admin.Email)
-	env := retrievedApp.InstanceEnv("")
-	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
-	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
-	err = auth.ReserveApp(s.admin)
-	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, check.Equals, true)
-	_, err = repository.Manager().GetRepository(a.Name)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestCannotCreateAppWithUnknownPlatform(c *check.C) {
-	a := App{Name: "paradisum", Platform: "unknown"}
-	err := CreateApp(&a, s.user)
-	_, ok := err.(InvalidPlatformError)
-	c.Assert(ok, check.Equals, true)
-}
-
-func (s *S) TestCannotCreateAppWithoutTeams(c *check.C) {
+func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	u := auth.User{Email: "perpetual@yes.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "beyond"}
 	err = CreateApp(&a, &u)
-	c.Check(err, check.NotNil)
-	_, ok := err.(NoTeamsError)
-	c.Check(ok, check.Equals, true)
+	c.Check(err, check.Equals, auth.ErrTeamNotFound)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
 	err := s.conn.Apps().Insert(bson.M{"name": "appname"})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
-	a := App{Name: "appname", Platform: "python"}
+	a := App{Name: "appname", Platform: "python", TeamOwner: s.team.Name}
 	err = CreateApp(&a, s.user)
 	defer Delete(&a, nil) // clean mess if test fail
 	c.Assert(err, check.NotNil)
@@ -416,8 +340,9 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
 
 func (s *S) TestCantCreateAppWithInvalidName(c *check.C) {
 	a := App{
-		Name:     "1123app",
-		Platform: "python",
+		Name:      "1123app",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.NotNil)
@@ -432,8 +357,9 @@ func (s *S) TestCantCreateAppWithInvalidName(c *check.C) {
 func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 	s.provisioner.PrepareFailure("Provision", fmt.Errorf("exit status 1"))
 	a := App{
-		Name:     "theirapp",
-		Platform: "python",
+		Name:      "theirapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
 	}
 	err := CreateApp(&a, s.user)
 	defer Delete(&a, nil) // clean mess if test fail
@@ -2258,7 +2184,7 @@ func (s *S) TestListReturnsAppsForAGivenUser(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, nil)
+	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2287,7 +2213,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	apps, err := List(s.user, &Filter{Name: "app\\d{1}"})
+	apps, err := List(&Filter{Name: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2311,7 +2237,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &Filter{Platform: "ruby"})
+	apps, err := List(&Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2335,7 +2261,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &Filter{TeamOwner: "foo"})
+	apps, err := List(&Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2359,7 +2285,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &Filter{UserOwner: "foo"})
+	apps, err := List(&Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2389,7 +2315,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &Filter{Locked: true})
+	apps, err := List(&Filter{Locked: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 	c.Assert(apps[0].Name, check.Equals, "othertestapp")
@@ -2412,7 +2338,7 @@ func (s *S) TestListAll(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, nil)
+	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2441,7 +2367,7 @@ func (s *S) TestListFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	apps, err := List(nil, &Filter{Name: "app\\d{1}"})
+	apps, err := List(&Filter{Name: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2465,7 +2391,7 @@ func (s *S) TestListFilteringByPlatform(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, &Filter{Platform: "ruby"})
+	apps, err := List(&Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2489,7 +2415,7 @@ func (s *S) TestListFilteringByOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, &Filter{UserOwner: "foo"})
+	apps, err := List(&Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2513,13 +2439,13 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, &Filter{TeamOwner: "foo"})
+	apps, err := List(&Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
 
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
-	apps, err := List(s.user, nil)
+	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.DeepEquals, []App(nil))
 }
@@ -2531,7 +2457,7 @@ func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.createAdminUserAndTeam(c)
 	defer s.removeAdminUserAndTeam(c)
-	apps, err := List(s.admin, nil)
+	apps, err := List(nil)
 	c.Assert(len(apps), Greater, 0)
 	c.Assert(apps[0].Name, check.Equals, "testApp")
 	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
@@ -2839,54 +2765,23 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 }
 
 func (s *S) TestAppValidateTeamOwner(c *check.C) {
-	team := auth.Team{Name: "test", Users: []string{s.user.Email}}
+	team := auth.Team{Name: "test"}
 	err := s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	err = a.ValidateTeamOwner(s.user)
+	err = a.validateTeamOwner()
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestAppValidateTeamOwnerSetAnTeamWhichNotExistsAndUserIsAdmin(c *check.C) {
+func (s *S) TestAppValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	err := a.ValidateTeamOwner(s.admin)
-	c.Assert(err, check.NotNil)
+	err := a.validateTeamOwner()
 	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
-}
-
-func (s *S) TestAppValidateTeamOwnerToUserWhoIsNotThatTeam(c *check.C) {
-	team := auth.Team{Name: "test"}
-	err := s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
-	c.Assert(err, check.IsNil)
-	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	err = a.ValidateTeamOwner(s.user)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "You can not set test team as app's owner. Please set one of your teams as app's owner.")
-}
-
-func (s *S) TestAppValidateTeamOwnerAdminCanSetAppToAnyTeam(c *check.C) {
-	admin := &auth.User{Email: "admin@a.com"}
-	teamAdmin := auth.Team{Name: "admin", Users: []string{admin.Email}}
-	err := s.conn.Teams().Insert(teamAdmin)
-	defer s.conn.Teams().Remove(bson.M{"_id": teamAdmin.Name})
-	c.Assert(err, check.IsNil)
-	team := auth.Team{Name: "test"}
-	err = s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
-	c.Assert(err, check.IsNil)
-	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	err = a.ValidateTeamOwner(admin)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
