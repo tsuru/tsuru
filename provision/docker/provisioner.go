@@ -851,16 +851,13 @@ func (p *dockerProvisioner) PlatformUpdate(opts provision.PlatformOptions) error
 }
 
 func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer, r io.Reader) error {
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	if len(data) == 0 && args["dockerfile"] == "" {
-		return stderr.New("Dockerfile is required")
-	}
 	var inputStream io.Reader
 	var dockerfileURL string
-	if len(data) > 0 {
+	if r != nil {
+		data, err := ioutil.ReadAll(r)
+		if err != nil {
+			return err
+		}
 		var buf bytes.Buffer
 		writer := tar.NewWriter(&buf)
 		writer.WriteHeader(&tar.Header{
@@ -873,6 +870,9 @@ func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w
 		inputStream = &buf
 	} else {
 		dockerfileURL = args["dockerfile"]
+		if dockerfileURL == "" {
+			return stderr.New("Dockerfile is required")
+		}
 		if _, err := url.ParseRequestURI(dockerfileURL); err != nil {
 			return stderr.New("dockerfile parameter must be a URL")
 		}
@@ -888,7 +888,7 @@ func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w
 		InputStream:    inputStream,
 		OutputStream:   w,
 	}
-	err = cluster.BuildImage(buildOptions)
+	err := cluster.BuildImage(buildOptions)
 	if err != nil {
 		return err
 	}

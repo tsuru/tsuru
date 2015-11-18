@@ -1695,7 +1695,6 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
-		Input:  bytes.NewReader(nil),
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 3, check.Equals, true)
@@ -1740,7 +1739,7 @@ func (s *S) TestProvisionerPlatformAddData(c *check.C) {
 }
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *check.C) {
-	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test", Input: bytes.NewReader(nil)})
+	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Dockerfile is required")
 }
@@ -1752,7 +1751,6 @@ func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *check.C) {
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
-		Input:  bytes.NewReader(nil),
 	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "dockerfile parameter must be a URL")
@@ -1777,7 +1775,6 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 		Name:   "test",
 		Args:   args,
 		Output: ioutil.Discard,
-		Input:  bytes.NewReader(nil),
 	})
 	c.Assert(err, check.NotNil)
 }
@@ -1804,7 +1801,6 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 		Name:   "test",
 		Args:   map[string]string{"dockerfile": "http://localhost/Dockerfile"},
 		Output: &buf,
-		Input:  bytes.NewReader(nil),
 	})
 	c.Assert(err, check.IsNil)
 	err = p.PlatformRemove("test")
