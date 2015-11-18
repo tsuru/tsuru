@@ -54,6 +54,13 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 }
 
+func (s *QuotaSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

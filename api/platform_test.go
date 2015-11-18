@@ -38,6 +38,13 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
+func (s *PlatformSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),

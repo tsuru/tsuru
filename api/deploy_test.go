@@ -68,6 +68,8 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	provision.RemovePool("pool1")
+	s.conn.Apps().Database.DropDatabase()
+	s.logConn.Logs("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
 }

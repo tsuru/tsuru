@@ -68,6 +68,13 @@ func (s *ConsumptionSuite) TearDownTest(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *ConsumptionSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(params)

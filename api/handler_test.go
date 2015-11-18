@@ -56,6 +56,13 @@ func (s *HandlerSuite) TearDownTest(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *HandlerSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func errorHandler(w http.ResponseWriter, r *http.Request) error {
 	return fmt.Errorf("some error")
 }

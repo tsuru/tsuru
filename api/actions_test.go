@@ -39,6 +39,13 @@ func (s *ActionsSuite) TearDownTest(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *ActionsSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *ActionsSuite) TestAddUserToTeamInRepository(c *check.C) {
 	c.Assert(addUserToTeamInRepositoryAction.Name, check.Equals, "add-user-to-team-in-repository")
 }

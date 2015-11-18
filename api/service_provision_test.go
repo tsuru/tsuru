@@ -69,6 +69,13 @@ func (s *ProvisionSuite) TearDownTest(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *ProvisionSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *ProvisionSuite) makeRequestToServicesHandler(c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	request, err := http.NewRequest("GET", "/services", nil)
 	c.Assert(err, check.IsNil)

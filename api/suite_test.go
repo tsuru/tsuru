@@ -130,6 +130,17 @@ func (s *S) TearDownTest(c *check.C) {
 	context.Purge(-1)
 }
 
+func (s *S) TestDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+	logConn, err := db.LogConn()
+	c.Assert(err, check.IsNil)
+	defer logConn.Close()
+	logConn.Logs("myapp").Database.DropDatabase()
+}
+
 func (s *S) getTestData(p ...string) io.ReadCloser {
 	p = append([]string{}, ".", "testdata")
 	fp := path.Join(p...)

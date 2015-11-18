@@ -66,6 +66,17 @@ func (s *LogSuite) TearDownTest(c *check.C) {
 	s.logConn.Close()
 }
 
+func (s *LogSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+	logConn, err := db.LogConn()
+	c.Assert(err, check.IsNil)
+	defer logConn.Close()
+	logConn.Logs("myapp").Database.DropDatabase()
+}
+
 func (s *LogSuite) TestLogRemoveAll(c *check.C) {
 	a := app.App{Name: "words"}
 	request, err := http.NewRequest("DELETE", "/logs", nil)
