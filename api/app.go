@@ -309,11 +309,23 @@ func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	u, err := t.User()
+	a, err := app.GetByName(r.URL.Query().Get(":app"))
 	if err != nil {
 		return err
 	}
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+	canSetTeamOwner := permission.Check(t, permission.PermAppUpdateTeamowner,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !canSetTeamOwner {
+		return &errors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: permission.ErrUnauthorized.Error(),
+		}
+	}
+	u, err := t.User()
 	if err != nil {
 		return err
 	}
