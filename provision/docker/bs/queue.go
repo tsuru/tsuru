@@ -65,7 +65,7 @@ func (t *runBs) Run(job monsterqueue.Job) {
 }
 
 func (t *runBs) waitDocker(endpoint string) error {
-	client, err := docker.NewClient(endpoint)
+	client, err := dockerClient(endpoint)
 	if err != nil {
 		return err
 	}

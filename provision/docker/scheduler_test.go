@@ -353,7 +353,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
 		cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
-		err := contColl.Insert(cont)
+		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
@@ -436,7 +436,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
 		cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
-		err := contColl.Insert(cont)
+		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
@@ -494,10 +494,10 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 		go func(i int) {
 			defer wg.Done()
 			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}
-			err := contColl.Insert(cont)
-			c.Assert(err, check.IsNil)
-			node, err := sched.chooseNode(nodes, cont.Name, "coolapp9", "web")
-			c.Assert(err, check.IsNil)
+			insertErr := contColl.Insert(cont)
+			c.Assert(insertErr, check.IsNil)
+			node, insertErr := sched.chooseNode(nodes, cont.Name, "coolapp9", "web")
+			c.Assert(insertErr, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
 	}
@@ -542,10 +542,10 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 		go func(i int) {
 			defer wg.Done()
 			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion", ProcessName: "web"}
-			err := contColl.Insert(cont)
-			c.Assert(err, check.IsNil)
-			node, err := sched.chooseNode(nodes, cont.Name, "oblivion", "web")
-			c.Assert(err, check.IsNil)
+			insertErr := contColl.Insert(cont)
+			c.Assert(insertErr, check.IsNil)
+			node, insertErr := sched.chooseNode(nodes, cont.Name, "oblivion", "web")
+			c.Assert(insertErr, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
 	}
@@ -586,10 +586,10 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 		go func(i int) {
 			defer wg.Done()
 			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "skyrim", ProcessName: "worker"}
-			err := contColl.Insert(cont)
-			c.Assert(err, check.IsNil)
-			node, err := sched.chooseNode(nodes, cont.Name, "skyrim", "worker")
-			c.Assert(err, check.IsNil)
+			insertErr := contColl.Insert(cont)
+			c.Assert(insertErr, check.IsNil)
+			node, insertErr := sched.chooseNode(nodes, cont.Name, "skyrim", "worker")
+			c.Assert(insertErr, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
 	}

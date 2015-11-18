@@ -54,6 +54,13 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 }
 
+func (s *QuotaSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -213,6 +220,11 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	conn, err := db.Conn()
+	app := &app.App{
+		Name:  "shangrila",
+		Quota: quota.Quota{Limit: 4, InUse: 2},
+	}
+	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	user := &auth.User{
@@ -240,7 +252,7 @@ func (s *QuotaSuite) TestGetAppQuotaAppNotFound(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, app.ErrAppNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, "App shangrila not found.\n")
 }
 
 func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {

@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -19,7 +19,7 @@ var (
 	}
 	adminRequiredErr = &errors.HTTP{
 		Code:    http.StatusForbidden,
-		Message: "You must be an admin",
+		Message: "User does not have access to this app",
 	}
 )
 

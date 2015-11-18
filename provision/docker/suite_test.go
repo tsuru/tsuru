@@ -153,10 +153,16 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.clusterSess.Close()
-	s.storage.Close()
+	defer s.clusterSess.Close()
+	defer s.storage.Close()
 	os.Unsetenv("TSURU_TARGET")
 	app.Provisioner = s.oldProvisioner
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+	clusterDbName, _ := config.GetString("docker:cluster:mongo-database")
+	conn.Apps().Database.Session.DB(clusterDbName).DropDatabase()
 }
 
 func clearClusterStorage(sess *mgo.Session) error {

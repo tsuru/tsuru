@@ -56,6 +56,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
+	s.conn.ServiceInstances().Database.DropDatabase()
 	s.conn.Close()
 }
 
@@ -94,12 +95,12 @@ func (s *InstanceSuite) TestFindApp(c *check.C) {
 func (s *InstanceSuite) TestBindApp(c *check.C) {
 	oldBindAppDBAction := bindAppDBAction
 	oldBindAppEndpointAction := bindAppEndpointAction
-	oldSetBindedEnvsAction := setBindedEnvsAction
+	oldSetBoundEnvsAction := setBoundEnvsAction
 	oldBindUnitsAction := bindUnitsAction
 	defer func() {
 		bindAppDBAction = oldBindAppDBAction
 		bindAppEndpointAction = oldBindAppEndpointAction
-		setBindedEnvsAction = oldSetBindedEnvsAction
+		setBoundEnvsAction = oldSetBoundEnvsAction
 		bindUnitsAction = oldBindUnitsAction
 	}()
 	var calls []string
@@ -117,9 +118,9 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 			return nil, nil
 		},
 	}
-	setBindedEnvsAction = action.Action{
+	setBoundEnvsAction = action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
-			calls = append(calls, "setBindedEnvsAction")
+			calls = append(calls, "setBoundEnvsAction")
 			return nil, nil
 		},
 	}
@@ -132,13 +133,13 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	var si ServiceInstance
 	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
-	err := si.BindApp(a, &buf)
+	err := si.BindApp(a, true, &buf)
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
 		"bindAppDBAction", "bindAppEndpointAction",
-		"setBindedEnvsAction", "bindUnitsAction",
+		"setBoundEnvsAction", "bindUnitsAction",
 	}
-	expectedParams := []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, writer: &buf}}
+	expectedParams := []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, writer: &buf, shouldRestart: true}}
 	c.Assert(calls, check.DeepEquals, expectedCalls)
 	c.Assert(params, check.DeepEquals, expectedParams)
 	c.Assert(buf.String(), check.Equals, "")
@@ -488,12 +489,45 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	err = CreateServiceInstance(instance, &srv, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	si, err := GetServiceInstance("instance", s.user)
+	si, err := GetServiceInstance("mongodb", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := []Service{
+		{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mongodb2", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mongodb3", Endpoint: map[string]string{"production": ts.URL}},
+	}
+	instance := ServiceInstance{Name: "instance", PlanName: "small"}
+	for _, service := range srv {
+		err := s.conn.Services().Insert(&service)
+		c.Assert(err, check.IsNil)
+		defer s.conn.Services().RemoveId(service.Name)
+		err = CreateServiceInstance(instance, &service, s.user)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	si, err := GetServiceInstance("mongodb3", "instance", s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(3))
+	c.Assert(si.PlanName, check.Equals, "small")
+	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(si.Name, check.Equals, "instance")
+	c.Assert(si.ServiceName, check.Equals, "mongodb3")
+	err = CreateServiceInstance(instance, &srv[0], s.user)
+	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
 func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
@@ -515,7 +549,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	err = CreateServiceInstance(instance, &srv, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	si, err := GetServiceInstance("instance", s.user)
+	si, err := GetServiceInstance("mongodb", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.TeamOwner, check.Equals, team.Name)
@@ -595,7 +629,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceRestrictedService(c *check.C) {
 	err = CreateServiceInstance(*instance, &srv, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	instance, err = GetServiceInstance("instance", s.user)
+	instance, err = GetServiceInstance("mongodb", "instance", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Teams, check.DeepEquals, []string{"painkiller"})
 }
@@ -672,7 +706,7 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 		ServiceInstance{Name: "mongo-5", ServiceName: "mongodb"},
 	)
 	defer s.conn.ServiceInstances().RemoveAll(bson.M{"service_name": "mongodb"})
-	instance, err := GetServiceInstance("mongo-1", s.user)
+	instance, err := GetServiceInstance("mongodb", "mongo-1", s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "mongo-1")
 	c.Assert(instance.ServiceName, check.Equals, "mongodb")
@@ -683,10 +717,10 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 		Extra:  []interface{}{"mongo-1"},
 	}
 	c.Assert(action, rectest.IsRecorded)
-	instance, err = GetServiceInstance("mongo-6", s.user)
+	instance, err = GetServiceInstance("mongodb", "mongo-6", s.user)
 	c.Assert(instance, check.IsNil)
 	c.Assert(err, check.Equals, ErrServiceInstanceNotFound)
-	instance, err = GetServiceInstance("mongo-5", s.user)
+	instance, err = GetServiceInstance("mongodb", "mongo-5", s.user)
 	c.Assert(instance, check.IsNil)
 	c.Assert(err, check.Equals, ErrAccessNotAllowed)
 }
@@ -718,11 +752,11 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
-	_, err = GetServiceInstance("j4sql", user)
+	_, err = GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.NotNil)
 	c.Assert(ErrAccessNotAllowed, check.Equals, err)
 	sInstance.Grant(team.Name)
-	si, err := GetServiceInstance("j4sql", user)
+	si, err := GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
 }
@@ -746,11 +780,11 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
-	si, err := GetServiceInstance("j4sql", user)
+	si, err := GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
 	sInstance.Revoke(team.Name)
-	_, err = GetServiceInstance("j4sql", user)
+	_, err = GetServiceInstance("mysql", "j4sql", user)
 	c.Assert(err, check.NotNil)
 	c.Assert(ErrAccessNotAllowed, check.Equals, err)
 }
@@ -780,7 +814,12 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
-	err = a.AddInstance(si.ServiceName, instance, nil)
+	err = a.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   si.ServiceName,
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -789,7 +828,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, &buf)
+	err = si.UnbindApp(a, false, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "remove instance")
 	c.Assert(reqs, check.HasLen, 5)
@@ -803,7 +842,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[4].Method, check.Equals, "DELETE")
 	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance("mysql", si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{})
@@ -839,7 +878,12 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
-	err = a.AddInstance(si.ServiceName, instance, nil)
+	err = a.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   si.ServiceName,
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -848,7 +892,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, &buf)
+	err = si.UnbindApp(a, true, &buf)
 	c.Assert(err, check.ErrorMatches, `Failed to unbind \("/resources/my-mysql/bind-app"\): my unbind app err`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -867,7 +911,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(reqs[5].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[6].Method, check.Equals, "POST")
 	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{instance})
@@ -904,7 +948,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, &buf)
+	err = si.UnbindApp(a, true, &buf)
 	c.Assert(err, check.ErrorMatches, `instance not found`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -925,7 +969,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[7].Method, check.Equals, "POST")
 	c.Assert(reqs[7].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 }
@@ -955,7 +999,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
-	err = si.BindApp(a, &buf)
+	err = si.BindApp(a, true, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "add instance")
 	c.Assert(reqs, check.HasLen, 3)
@@ -965,7 +1009,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[2].Method, check.Equals, "POST")
 	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 	c.Assert(a.GetInstances("mysql"), check.DeepEquals, []bind.ServiceInstance{
@@ -1011,13 +1055,13 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			err := si.BindApp(app, &buf)
-			c.Assert(err, check.IsNil)
+			bindErr := si.BindApp(app, true, &buf)
+			c.Assert(bindErr, check.IsNil)
 		}(app)
 	}
 	wg.Wait()
 	c.Assert(reqs, check.HasLen, 300)
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, expectedNames)
@@ -1053,10 +1097,10 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
 		var buf bytes.Buffer
-		err := si.BindApp(app, &buf)
+		err = si.BindApp(app, true, &buf)
 		c.Assert(err, check.IsNil)
 	}
-	siDB, err := GetServiceInstance(si.Name, s.user)
+	siDB, err := GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	for _, app := range apps {
@@ -1064,13 +1108,13 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			err := siDB.UnbindApp(app, &buf)
-			c.Assert(err, check.IsNil)
+			unbindErr := siDB.UnbindApp(app, false, &buf)
+			c.Assert(unbindErr, check.IsNil)
 		}(app)
 	}
 	wg.Wait()
 	c.Assert(reqs, check.HasLen, 120)
-	siDB, err = GetServiceInstance(si.Name, s.user)
+	siDB, err = GetServiceInstance(si.ServiceName, si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})

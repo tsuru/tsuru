@@ -85,7 +85,12 @@ func (s *S) TestSetEnvs(c *check.C) {
 			Public: true,
 		},
 	}
-	app.SetEnvs(envs, false, nil)
+	app.SetEnvs(
+		bind.SetEnvApp{
+			Envs:          envs,
+			PublicOnly:    false,
+			ShouldRestart: true,
+		}, nil)
 	expected := map[string]bind.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
@@ -119,7 +124,12 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
-	app.UnsetEnvs([]string{"http_proxy"}, false, nil)
+	app.UnsetEnvs(
+		bind.UnsetEnvApp{
+			VariableNames: []string{"http_proxy"},
+			PublicOnly:    false,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(app.env, check.DeepEquals, map[string]bind.EnvVar{})
 }
 
@@ -189,9 +199,19 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance("mysql", instance1, nil)
+	err := app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      instance1,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err, check.IsNil)
-	err = app.AddInstance("mongodb", instance2, nil)
+	err = app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mongodb",
+			Instance:      instance2,
+			ShouldRestart: false,
+		}, nil)
 	c.Assert(err, check.IsNil)
 	instances := app.GetInstances("mysql")
 	c.Assert(instances, check.DeepEquals, []bind.ServiceInstance{instance1})
@@ -205,9 +225,24 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	app.AddInstance("mysql", instance1, nil)
-	app.AddInstance("mongodb", instance2, nil)
-	err := app.RemoveInstance("mysql", instance1, nil)
+	app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      instance1,
+			ShouldRestart: true,
+		}, nil)
+	app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mongodb",
+			Instance:      instance2,
+			ShouldRestart: false,
+		}, nil)
+	err := app.RemoveInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      instance1,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err, check.IsNil)
 	instances := app.GetInstances("mysql")
 	c.Assert(instances, check.HasLen, 0)
@@ -219,15 +254,30 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	app.AddInstance("mysql", instance1, nil)
-	err := app.RemoveInstance("mysql", instance2, nil)
+	app.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      instance1,
+			ShouldRestart: true,
+		}, nil)
+	err := app.RemoveInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      instance2,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err.Error(), check.Equals, "instance not found")
 }
 
 func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
 	instance := bind.ServiceInstance{Name: "inst1"}
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.RemoveInstance("mysql", instance, nil)
+	err := app.RemoveInstance(
+		bind.InstanceApp{
+			ServiceName:   "mysql",
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
 	c.Assert(err.Error(), check.Equals, "instance not found")
 }
 
@@ -834,7 +884,7 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 func (s *S) TestExtensiblePlatformAdd(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	platform := p.GetPlatform("python")
 	c.Assert(platform.Name, check.Equals, "python")
@@ -845,9 +895,9 @@ func (s *S) TestExtensiblePlatformAdd(c *check.C) {
 func (s *S) TestExtensiblePlatformAddTwice(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
-	err = p.PlatformAdd("python", nil, nil)
+	err = p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: nil})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "duplicate platform")
 }
@@ -855,10 +905,10 @@ func (s *S) TestExtensiblePlatformAddTwice(c *check.C) {
 func (s *S) TestExtensiblePlatformUpdate(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	args["something"] = "wat"
-	err = p.PlatformUpdate("python", args, nil)
+	err = p.PlatformUpdate(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	platform := p.GetPlatform("python")
 	c.Assert(platform.Name, check.Equals, "python")
@@ -868,7 +918,7 @@ func (s *S) TestExtensiblePlatformUpdate(c *check.C) {
 
 func (s *S) TestExtensiblePlatformUpdateNotFound(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
-	err := p.PlatformUpdate("python", nil, nil)
+	err := p.PlatformUpdate(provision.PlatformOptions{Name: "python", Args: nil})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "platform not found")
 }
@@ -876,7 +926,7 @@ func (s *S) TestExtensiblePlatformUpdateNotFound(c *check.C) {
 func (s *S) TestExtensiblePlatformRemove(c *check.C) {
 	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
-	err := p.PlatformAdd("python", args, nil)
+	err := p.PlatformAdd(provision.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
 	err = p.PlatformRemove("python")
 	c.Assert(err, check.IsNil)

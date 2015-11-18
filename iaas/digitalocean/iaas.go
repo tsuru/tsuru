@@ -6,7 +6,6 @@ package digitalocean
 
 import (
 	"errors"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/digitalocean/godo"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/net"
 	"golang.org/x/oauth2"
 )
 
@@ -37,10 +37,10 @@ func (i *digitalOceanIaas) Auth() error {
 	if err != nil {
 		return err
 	}
-	client := http.Client{
-		Transport: &oauth2.Transport{
-			Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
-		},
+	client := *net.Dial5Full300Client
+	client.Transport = &oauth2.Transport{
+		Source: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
+		Base:   net.Dial5Full300Client.Transport,
 	}
 	i.client = godo.NewClient(&client)
 	if u != "" {

@@ -50,8 +50,15 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestTearDownTest(c *check.C) {
+func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
+}
+
+func (s *S) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
 }
 
 func (s *S) removeTestContainer(c *Container) error {

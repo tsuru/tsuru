@@ -240,6 +240,53 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *S) TestAppListFilteringByPool(c *check.C) {
+	token := s.userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	opts := []provision.AddPoolOptions{
+		{Name: "pool1", Default: false, Public: true},
+		{Name: "pool2", Default: false, Public: true},
+	}
+	for _, opt := range opts {
+		err := provision.AddPool(opt)
+		c.Assert(err, check.IsNil)
+	}
+	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := app.App{Name: "app2", Platform: "zend", Pool: opts[1].Name, TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?pool=%s", opts[1].Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = appList(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app2}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
+	}
+	queryString := fmt.Sprintf("pool=%s", opts[1].Name)
+	action := rectest.Action{Action: "app-list", User: token.GetUserName(), Extra: []interface{}{queryString}}
+	c.Assert(action, rectest.IsRecorded)
+}
+
 func (s *S) TestAppList(c *check.C) {
 	token := s.userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
@@ -377,7 +424,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheA
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e, check.ErrorMatches, "^user does not have access to this app$")
+	c.Assert(e, check.ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *check.C) {
@@ -482,7 +529,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *c
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e, check.ErrorMatches, "^user does not have access to this app$")
+	c.Assert(e, check.ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
@@ -874,7 +921,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e.Message, check.Equals, "user does not have access to this app")
+	c.Assert(e.Message, check.Equals, "User does not have access to this app")
 }
 
 func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
@@ -1001,7 +1048,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	c.Assert(e.Message, check.Equals, "user does not have access to this app")
+	c.Assert(e.Message, check.Equals, "User does not have access to this app")
 }
 
 func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
@@ -1291,7 +1338,7 @@ func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
@@ -1401,7 +1448,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
@@ -1801,7 +1848,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *chec
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=false&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1831,7 +1878,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=true&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1861,7 +1908,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=true&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1898,7 +1945,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	a := app.App{Name: "vigil", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=false&noRestart=false", a.Name, a.Name)
 	b := strings.NewReader(`{"DATABASE_HOST": "localhost", "DATABASE_USER": "root"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
@@ -1937,7 +1984,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=false&private=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"http://foo.com:8080"}`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1947,6 +1994,36 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	app, err := app.GetByName("losers")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, original)
+}
+
+func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=true&private=false", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = setEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName("black-dog")
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
+	envs := map[string]string{
+		"DATABASE_HOST": "localhost",
+	}
+	action := rectest.Action{
+		Action: "set-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Setting 1 new environment variables ----\n"}
+`)
 }
 
 func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
@@ -1976,7 +2053,7 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) 
 
 func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
 	b := strings.NewReader(`{"DATABASE_HOST":"localhost"}`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false&private=false", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.token)
@@ -1992,7 +2069,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false&private=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2019,7 +2096,45 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *check
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = unsetEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName("swift")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Env, check.DeepEquals, expected)
+	action := rectest.Action{
+		Action: "unset-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Unsetting 1 environment variables ----\n"}
+`)
+}
+
+func (s *S) TestUnsetEnvHandlerNoRestart(c *check.C) {
+	a := app.App{
+		Name:     "swift",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	expected := a.Env
+	delete(expected, "DATABASE_HOST")
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=true", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -2055,7 +2170,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2094,7 +2209,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	b := strings.NewReader(`["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD"]`)
 	request, err := http.NewRequest("DELETE", url, b)
 	c.Assert(err, check.IsNil)
@@ -2116,7 +2231,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", b)
 	c.Assert(err, check.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -2127,7 +2242,7 @@ func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
 func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
 	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("[]")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", body)
 		c.Assert(err, check.IsNil)
 		recorder := httptest.NewRecorder()
 		err = unsetEnv(recorder, request, s.token)
@@ -2141,7 +2256,7 @@ func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C
 
 func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
 	b := strings.NewReader(`["DATABASE_HOST"]`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.token)
@@ -2158,7 +2273,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2450,8 +2565,8 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
-	request, err := http.NewRequest("GET", url, nil)
+	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
+	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -2499,8 +2614,8 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	a := app.App{Name: "lost2", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
-	request, err := http.NewRequest("GET", url, nil)
+	path := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
+	request, err := http.NewRequest("GET", path, nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -2747,7 +2862,8 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
+		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2783,7 +2899,8 @@ func (s *S) TestBindHandler(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
+		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2845,7 +2962,8 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
+		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2876,7 +2994,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/services/unknown/instances/unknown/%s?:instance=unknown&:app=%s&:service=unknown&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2896,7 +3014,8 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
+		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2913,7 +3032,8 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	err := instance.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:instance=%s&:app=unknown&:service=%s&noRestart=false", instance.ServiceName,
+		instance.Name, instance.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2935,7 +3055,8 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=false", instance.ServiceName,
+		instance.Name, a.Name, instance.Name, a.Name, instance.ServiceName)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2945,6 +3066,85 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 	c.Assert(e, check.ErrorMatches, "^This user does not have access to this app$")
+}
+
+func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	srvc := []service.Service{
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}},
+	}
+	for _, service := range srvc {
+		err := service.Create()
+		c.Assert(err, check.IsNil)
+		defer s.conn.Services().Remove(bson.M{"_id": service.Name})
+	}
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err := instance.Create()
+	c.Assert(err, check.IsNil)
+	instance2 := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql2",
+		Teams:       []string{s.team.Name},
+	}
+	err = instance2.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	a := app.App{
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Env:       map[string]bind.EnvVar{},
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=true", instance2.ServiceName,
+		instance2.Name, a.Name, instance2.Name, a.Name, instance2.ServiceName)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	s.provisioner.PrepareOutput([]byte("exported"))
+	err = bindServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var result service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance2.Name, "service_name": instance2.ServiceName}).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Apps, check.DeepEquals, []string{a.Name})
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(err, check.IsNil)
+	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, InstanceName: instance.Name}
+	expectedPassword := bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, InstanceName: instance.Name}
+	c.Assert(a.Env["DATABASE_USER"], check.DeepEquals, expectedUser)
+	c.Assert(a.Env["DATABASE_PASSWORD"], check.DeepEquals, expectedPassword)
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 7)
+	c.Assert(parts[0], check.Equals, `{"Message":"---- Setting 3 new environment variables ----\n"}`)
+	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
+	c.Assert(parts[2], check.Equals, `{"Message":"The following environment variables are available for use in your app:\n\n"}`)
+	c.Assert(parts[3], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
+	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
+	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
+	c.Assert(parts[6], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	action := rectest.Action{
+		Action: "bind-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name, "service_name": instance.ServiceName}).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Apps, check.DeepEquals, []string{})
+
 }
 
 func (s *S) TestUnbindHandler(c *check.C) {
@@ -2989,8 +3189,8 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
 	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name,
-		instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name, a.Name,
+		instance.ServiceName, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3036,11 +3236,163 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *S) TestUnbindNoRestartFlag(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
+	var called int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
+			atomic.StoreInt32(&called, 1)
+		}
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	a := app.App{
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{units[0].ID},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	otherApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
+		Name:         "DATABASE_HOST",
+		Value:        "arrea",
+		Public:       false,
+		InstanceName: instance.Name,
+	}
+	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
+	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=true", instance.ServiceName, instance.Name, a.Name,
+		instance.ServiceName, instance.Name, a.Name)
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unbindServiceInstance(recorder, req, s.token)
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Apps, check.DeepEquals, []string{})
+	otherApp, err = app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{
+		Name:  "MY_VAR",
+		Value: "123",
+	}
+	c.Assert(otherApp.Env["MY_VAR"], check.DeepEquals, expected)
+	_, ok := otherApp.Env["DATABASE_HOST"]
+	c.Assert(ok, check.Equals, false)
+	ch := make(chan bool)
+	go func() {
+		t := time.Tick(1)
+		for _ = <-t; atomic.LoadInt32(&called) == 0; _ = <-t {
+		}
+		ch <- true
+	}()
+	select {
+	case <-ch:
+		c.Succeed()
+	case <-time.After(1e9):
+		c.Errorf("Failed to call API after 1 second.")
+	}
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 3)
+	c.Assert(parts[0], check.Equals, `{"Message":"---- Unsetting 1 environment variables ----\n"}`)
+	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
+	c.Assert(parts[2], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	action := rectest.Action{
+		Action: "unbind-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
+	var called int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
+			atomic.StoreInt32(&called, 1)
+		}
+	}))
+	defer ts.Close()
+	srvc := []service.Service{
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}},
+	}
+	for _, service := range srvc {
+		err := service.Create()
+		c.Assert(err, check.IsNil)
+		defer s.conn.Services().Remove(bson.M{"_id": service.Name})
+	}
+	a := app.App{
+		Name:      "painkiller",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+
+	instances := []service.ServiceInstance{
+		{
+			Name:        "my-mysql",
+			ServiceName: "mysql",
+			Teams:       []string{s.team.Name},
+			Apps:        []string{"painkiller"},
+			Units:       []string{units[0].ID},
+		},
+		{
+			Name:        "my-mysql",
+			ServiceName: "mysql2",
+			Teams:       []string{s.team.Name},
+			Apps:        []string{"painkiller"},
+			Units:       []string{units[0].ID},
+		},
+	}
+	for _, instance := range instances {
+		err = instance.Create()
+		c.Assert(err, check.IsNil)
+		defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name, "service_name": instance.ServiceName})
+	}
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:instance=%s&:app=%s&:service=%s&noRestart=true", instances[1].ServiceName, instances[1].Name, a.Name,
+		instances[1].Name, a.Name, instances[1].ServiceName)
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unbindServiceInstance(recorder, req, s.token)
+	c.Assert(err, check.IsNil)
+	var result service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[1].Name, "service_name": instances[1].ServiceName}).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Apps, check.DeepEquals, []string{})
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[0].Name, "service_name": instances[0].ServiceName}).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Apps, check.DeepEquals, []string{a.Name})
+}
+
 func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s&noRestart=false", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3060,7 +3412,8 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	a := app.App{Name: "serviceapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name,
+		a.Name, instance.ServiceName, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3077,7 +3430,8 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
 	err := instance.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/unknown?:service=%s&:instance=%s&:app=unknown&noRestart=false", instance.ServiceName,
+		instance.Name, instance.ServiceName, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3099,7 +3453,8 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name,
+		a.Name, instance.ServiceName, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3300,7 +3655,7 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	app, err := getApp(a.Name, s.adminuser, nil)
+	app, err := getAppFromContext(a.Name, s.adminuser, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(app, check.DeepEquals, *expected)
 }
@@ -3498,7 +3853,7 @@ func (s *S) TestForceDeleteLockOnlyAdmins(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "You must be an admin\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
 	c.Assert(err, check.IsNil)
@@ -3776,7 +4131,7 @@ func (s *S) TestChangePoolForbiddenIfTheUserDoesNotHaveAcces(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestChangePoolWhenAppDoesNotExist(c *check.C) {
@@ -3817,7 +4172,7 @@ func (s *S) TestMetricEnvsWhenUserDoesNotHaveAcces(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {

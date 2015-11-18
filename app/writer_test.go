@@ -32,6 +32,11 @@ func (s *WriterSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
+func (s *WriterSuite) TearDownSuite(c *check.C) {
+	s.conn.Apps().Database.DropDatabase()
+	s.conn.Close()
+}
+
 func (s *WriterSuite) TestLogWriter(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)

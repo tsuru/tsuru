@@ -55,38 +55,40 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	unbindAll := r.URL.Query().Get("unbindall")
-	name := r.URL.Query().Get(":name")
-	rec.Log(u.Email, "remove-service-instance", name)
-	si, err := getServiceInstanceOrError(name, u)
-	if err != nil {
-		return err
-	}
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	rec.Log(u.Email, "remove-service-instance", instanceName)
+	si, err := getServiceInstanceOrError(serviceName, instanceName, u)
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	if err != nil {
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		return nil
+	}
 	if unbindAll == "true" {
 		if len(si.Apps) > 0 {
 			for _, appName := range si.Apps {
-				_, app, instErr := getServiceInstance(si.Name, appName, u)
+				_, app, instErr := getServiceInstance(si.ServiceName, si.Name, appName, u)
 				if instErr != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
 				}
 				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
-				instErr = si.UnbindApp(app, writer)
+				instErr = si.UnbindApp(app, true, writer)
 				if instErr != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
 				}
 				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
 			}
-			si, err = getServiceInstanceOrError(name, u)
+			si, err = getServiceInstanceOrError(serviceName, instanceName, u)
 			if err != nil {
-				return err
+				writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+				return nil
 			}
 		}
 	}
-
 	err = service.DeleteInstance(si)
 	if err != nil {
 		var msg string
@@ -135,7 +137,9 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	instance, err := getServiceInstanceOrError(r.URL.Query().Get(":name"), u)
+	sName := r.URL.Query().Get(":service")
+	siName := r.URL.Query().Get(":instance")
+	instance, err := getServiceInstanceOrError(sName, siName, u)
 	if err != nil {
 		return err
 	}
@@ -148,7 +152,8 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	sName := r.URL.Query().Get(":service")
+	si, err := getServiceInstanceOrError(sName, siName, u)
 	if err != nil {
 		return err
 	}
@@ -232,8 +237,8 @@ func getServiceOrError(name string, u *auth.User) (service.Service, error) {
 	return s, err
 }
 
-func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInstance, error) {
-	si, err := service.GetServiceInstance(name, u)
+func getServiceInstanceOrError(serviceName string, instanceName string, u *auth.User) (*service.ServiceInstance, error) {
+	si, err := service.GetServiceInstance(serviceName, instanceName, u)
 	if err != nil {
 		switch err {
 		case service.ErrServiceInstanceNotFound:
@@ -277,8 +282,9 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
+	sName := r.URL.Query().Get(":service")
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	si, err := getServiceInstanceOrError(sName, siName, u)
 	if err != nil {
 		return err
 	}
@@ -293,7 +299,8 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 		return err
 	}
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	sName := r.URL.Query().Get(":service")
+	si, err := getServiceInstanceOrError(sName, siName, u)
 	if err != nil {
 		return err
 	}
@@ -308,7 +315,8 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 		return err
 	}
 	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(siName, u)
+	sName := r.URL.Query().Get(":service")
+	si, err := getServiceInstanceOrError(sName, siName, u)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bytes"
 	stderr "errors"
 	"fmt"
@@ -33,7 +34,6 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/galeb"
-	_ "github.com/tsuru/tsuru/router/galebv2"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
@@ -532,7 +532,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	}
 	cluster := p.Cluster()
 	for _, imageId := range images {
-		err := cluster.RemoveImage(imageId)
+		err = cluster.RemoveImage(imageId)
 		if err != nil {
 			log.Errorf("Failed to remove image %s: %s", imageId, err.Error())
 		}
@@ -842,21 +842,50 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 }
 
 // PlatformAdd build and push a new docker platform to register
-func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
-	if args["dockerfile"] == "" {
-		return stderr.New("Dockerfile is required.")
-	}
-	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
-		return stderr.New("dockerfile parameter should be an url.")
+func (p *dockerProvisioner) PlatformAdd(opts provision.PlatformOptions) error {
+	return p.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
+}
+
+func (p *dockerProvisioner) PlatformUpdate(opts provision.PlatformOptions) error {
+	return p.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
+}
+
+func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer, r io.Reader) error {
+	var inputStream io.Reader
+	var dockerfileURL string
+	if r != nil {
+		data, err := ioutil.ReadAll(r)
+		if err != nil {
+			return err
+		}
+		var buf bytes.Buffer
+		writer := tar.NewWriter(&buf)
+		writer.WriteHeader(&tar.Header{
+			Name: "Dockerfile",
+			Mode: 0644,
+			Size: int64(len(data)),
+		})
+		writer.Write(data)
+		writer.Close()
+		inputStream = &buf
+	} else {
+		dockerfileURL = args["dockerfile"]
+		if dockerfileURL == "" {
+			return stderr.New("Dockerfile is required")
+		}
+		if _, err := url.ParseRequestURI(dockerfileURL); err != nil {
+			return stderr.New("dockerfile parameter must be a URL")
+		}
 	}
 	imageName := platformImageName(name)
 	cluster := p.Cluster()
 	buildOptions := docker.BuildImageOptions{
 		Name:           imageName,
+		Pull:           true,
 		NoCache:        true,
 		RmTmpContainer: true,
-		Remote:         args["dockerfile"],
-		InputStream:    nil,
+		Remote:         dockerfileURL,
+		InputStream:    inputStream,
 		OutputStream:   w,
 	}
 	err := cluster.BuildImage(buildOptions)
@@ -876,10 +905,6 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 		tag = "latest"
 	}
 	return p.PushImage(imageName, tag)
-}
-
-func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
-	return p.PlatformAdd(name, args, w)
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {

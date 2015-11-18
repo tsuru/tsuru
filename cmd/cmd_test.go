@@ -64,30 +64,30 @@ func (s *S) TestRegisterDeprecated(c *check.C) {
 }
 
 func (s *S) TestRegisterTopic(c *check.C) {
-	manager := Manager{}
-	manager.RegisterTopic("target", "targetting everything!")
-	c.Assert(manager.topics["target"], check.Equals, "targetting everything!")
+	mngr := Manager{}
+	mngr.RegisterTopic("target", "targetting everything!")
+	c.Assert(mngr.topics["target"], check.Equals, "targetting everything!")
 }
 
 func (s *S) TestRegisterTopicDuplicated(c *check.C) {
-	manager := Manager{}
-	manager.RegisterTopic("target", "targetting everything!")
+	mngr := Manager{}
+	mngr.RegisterTopic("target", "targetting everything!")
 	defer func() {
 		r := recover()
 		c.Assert(r, check.NotNil)
 	}()
-	manager.RegisterTopic("target", "wat")
+	mngr.RegisterTopic("target", "wat")
 }
 
 func (s *S) TestRegisterTopicMultiple(c *check.C) {
-	manager := Manager{}
-	manager.RegisterTopic("target", "targetted")
-	manager.RegisterTopic("app", "what's an app?")
+	mngr := Manager{}
+	mngr.RegisterTopic("target", "targetted")
+	mngr.RegisterTopic("app", "what's an app?")
 	expected := map[string]string{
 		"target": "targetted",
 		"app":    "what's an app?",
 	}
-	c.Assert(manager.topics, check.DeepEquals, expected)
+	c.Assert(mngr.topics, check.DeepEquals, expected)
 }
 
 func (s *S) TestCustomLookup(c *check.C) {
@@ -96,8 +96,8 @@ func (s *S) TestCustomLookup(c *check.C) {
 		return nil
 	}
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
-	manager.Run([]string{"custom"})
+	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	mngr.Run([]string{"custom"})
 	c.Assert(stdout.String(), check.Equals, "test")
 }
 
@@ -106,12 +106,12 @@ func (s *S) TestCustomLookupNotFound(c *check.C) {
 		return os.ErrNotExist
 	}
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
 	var exiter recordingExiter
-	manager.e = &exiter
-	manager.Run([]string{"custom"})
+	mngr.e = &exiter
+	mngr.Run([]string{"custom"})
 	c.Assert(strings.Replace(stderr.String(), "\n", "\\n", -1), check.Matches, `.*: "custom" is not a tsuru command. See "tsuru help".*`)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *check.C) {
@@ -450,12 +450,12 @@ Foo do anything or nothing.
 
 func (s *S) TestVersion(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
-	command := version{manager: manager}
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	command := version{manager: mngr}
+	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, "tsuru version 5.0.\n")
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "tsuru version 5.0.\n")
 }
 
 func (s *S) TestDashDashVersion(c *check.C) {
@@ -535,13 +535,13 @@ Foo do anything or nothing.
 
 `
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
-	manager.Register(&TestCommand{})
-	context := Context{[]string{"foo"}, manager.stdout, manager.stderr, manager.stdin}
-	command := help{manager: manager}
+	mngr := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	mngr.Register(&TestCommand{})
+	context := Context{[]string{"foo"}, mngr.stdout, mngr.stderr, mngr.stdin}
+	command := help{manager: mngr}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestExtractProgramNameWithAbsolutePath(c *check.C) {
@@ -571,43 +571,43 @@ func (s *S) TestFinisherReturnTheDefinedE(c *check.C) {
 }
 
 func (s *S) TestLoginIsRegistered(c *check.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	lgn, ok := manager.Commands["login"]
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
+	lgn, ok := mngr.Commands["login"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(lgn, check.FitsTypeOf, &login{})
 }
 
 func (s *S) TestLogoutIsRegistered(c *check.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	lgt, ok := manager.Commands["logout"]
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
+	lgt, ok := mngr.Commands["logout"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(lgt, check.FitsTypeOf, &logout{})
 }
 
 func (s *S) TestTargetListIsRegistered(c *check.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	tgt, ok := manager.Commands["target-list"]
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
+	tgt, ok := mngr.Commands["target-list"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(tgt, check.FitsTypeOf, &targetList{})
 }
 
 func (s *S) TestTargetTopicIsRegistered(c *check.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	expected := fmt.Sprintf(targetTopic, "tsuru")
-	c.Assert(manager.topics["target"], check.Equals, expected)
+	c.Assert(mngr.topics["target"], check.Equals, expected)
 }
 
 func (s *S) TestVersionIsRegisteredByNewManager(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
-	ver, ok := manager.Commands["version"]
+	mngr := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	ver, ok := mngr.Commands["version"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(ver, check.FitsTypeOf, &version{})
 }
 
 func (s *S) TestUserInfoIsRegisteredByBaseManager(c *check.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	info, ok := manager.Commands["user-info"]
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
+	info, ok := mngr.Commands["user-info"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(info, check.FitsTypeOf, userInfo{})
 }
@@ -616,13 +616,13 @@ func (s *S) TestInvalidCommandFuzzyMatch01(c *check.C) {
 	lookup := func(ctx *Context) error {
 		return os.ErrNotExist
 	}
-	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
-	manager.e = &exiter
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"target"})
+	mngr.e = &exiter
+	mngr.stdout = &stdout
+	mngr.stderr = &stderr
+	mngr.Run([]string{"target"})
 	expectedOutput := `.*: "target" is not a tsuru command. See "tsuru help".
 
 Did you mean?
@@ -634,20 +634,20 @@ Did you mean?
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
 	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch02(c *check.C) {
 	lookup := func(ctx *Context) error {
 		return os.ErrNotExist
 	}
-	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
-	manager.e = &exiter
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"target-lisr"})
+	mngr.e = &exiter
+	mngr.stdout = &stdout
+	mngr.stderr = &stderr
+	mngr.Run([]string{"target-lisr"})
 	expectedOutput := `.*: "target-lisr" is not a tsuru command. See "tsuru help".
 
 Did you mean?
@@ -656,20 +656,20 @@ Did you mean?
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
 	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch03(c *check.C) {
 	lookup := func(ctx *Context) error {
 		return os.ErrNotExist
 	}
-	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
-	manager.e = &exiter
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"list"})
+	mngr.e = &exiter
+	mngr.stdout = &stdout
+	mngr.stderr = &stderr
+	mngr.Run([]string{"list"})
 	expectedOutput := `.*: "list" is not a tsuru command. See "tsuru help".
 
 Did you mean?
@@ -678,26 +678,26 @@ Did you mean?
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
 	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch04(c *check.C) {
 	lookup := func(ctx *Context) error {
 		return os.ErrNotExist
 	}
-	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
-	manager.e = &exiter
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"not-command"})
+	mngr.e = &exiter
+	mngr.stdout = &stdout
+	mngr.stderr = &stderr
+	mngr.Run([]string{"not-command"})
 	expectedOutput := `.*: "not-command" is not a tsuru command. See "tsuru help".
 `
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
 	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestFileSystem(c *check.C) {

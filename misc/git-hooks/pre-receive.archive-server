@@ -18,7 +18,7 @@
 while read oldrev newrev refname
 do
         set +e
-        echo $refname | grep -q /master$
+        echo $refname | grep -v tags/master$ | grep -q /master$
         status=$?
         set -e
         if [ $status = 0 ]

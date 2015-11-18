@@ -74,7 +74,7 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	if limit != 0 {
 		query = query.Limit(limit)
 	}
-	if err := query.All(&list); err != nil {
+	if err = query.All(&list); err != nil {
 		return nil, err
 	}
 	validImages := set{}
@@ -117,6 +117,9 @@ func GetDeploy(id string) (*DeployData, error) {
 		return nil, err
 	}
 	defer conn.Close()
+	if !bson.IsObjectIdHex(id) {
+		return nil, fmt.Errorf("id parameter is not ObjectId: %s", id)
+	}
 	if err := conn.Deploys().FindId(bson.ObjectIdHex(id)).One(&dep); err != nil {
 		return nil, err
 	}

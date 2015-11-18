@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -50,13 +50,9 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	a, err := app.GetByName(r.URL.Query().Get(":appname"))
-	if err == app.ErrAppNotFound {
-		return &errors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: err.Error(),
-		}
-	} else if err != nil {
+	user, err := t.User()
+	a, err := getApp(r.URL.Query().Get(":appname"), user)
+	if err != nil {
 		return err
 	}
 	return json.NewEncoder(w).Encode(a.Quota)

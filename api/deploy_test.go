@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/permission"
@@ -43,7 +42,6 @@ var _ = check.Suite(&DeploySuite{})
 
 func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -78,6 +76,8 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	provision.RemovePool("pool1")
+	s.conn.Apps().Database.DropDatabase()
+	s.logConn.Logs("myapp").Database.DropDatabase()
 	s.conn.Close()
 	s.logConn.Close()
 }
@@ -248,7 +248,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 }
 
 func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *check.C) {
@@ -339,7 +339,6 @@ func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
 
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	user := &auth.User{Email: "nonadmin@nonadmin.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -429,7 +428,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 		{App: "yourblog", Timestamp: timestamp, Duration: duration},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -462,7 +461,7 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 		{App: "yourblog", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -581,7 +580,6 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	user = &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -629,7 +627,6 @@ func (s *DeploySuite) TestDeployInfoByNonAuthenticated(c *check.C) {
 
 func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -702,7 +699,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -734,7 +731,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -771,7 +768,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2", CanRollback: true},
 	}
 	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
+		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)

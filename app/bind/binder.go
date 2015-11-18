@@ -36,19 +36,37 @@ type App interface {
 	InstanceEnv(string) map[string]EnvVar
 
 	// SetEnvs adds enviroment variables in the app.
-	SetEnvs(envs []EnvVar, publicOnly bool, w io.Writer) error
+	SetEnvs(setEnvs SetEnvApp, w io.Writer) error
 
 	// UnsetEnvs removes the given enviroment variables from the app.
-	UnsetEnvs(envNames []string, publicOnly bool, w io.Writer) error
+	UnsetEnvs(unsetEnvs UnsetEnvApp, w io.Writer) error
 
 	// AddInstance adds an instance to the application.
-	AddInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
+	AddInstance(instanceApp InstanceApp, writer io.Writer) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
+	RemoveInstance(instanceApp InstanceApp, writer io.Writer) error
 }
 
 type ServiceInstance struct {
 	Name string            `json:"instance_name"`
 	Envs map[string]string `json:"envs"`
+}
+
+type SetEnvApp struct {
+	Envs          []EnvVar
+	PublicOnly    bool
+	ShouldRestart bool
+}
+
+type UnsetEnvApp struct {
+	VariableNames []string
+	PublicOnly    bool
+	ShouldRestart bool
+}
+
+type InstanceApp struct {
+	ServiceName   string
+	Instance      ServiceInstance
+	ShouldRestart bool
 }

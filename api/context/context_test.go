@@ -51,6 +51,13 @@ func (s *S) SetUpTest(c *check.C) {
 	s.app = &app.App{Name: "app"}
 }
 
+func (s *S) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *S) TestClear(c *check.C) {
 	r, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)

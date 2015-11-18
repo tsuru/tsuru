@@ -520,11 +520,6 @@ func (s *S) TestEndpointProxy(c *check.C) {
 	err = client.Proxy("/backup", recorder, request)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-	client = &Client{endpoint: "http://10.1.2.3:12345", username: "user", password: "abcde"}
-	recorder = httptest.NewRecorder()
-	err = client.Proxy("/backup", recorder, request)
-	c.Assert(recorder.Code, check.Equals, 500)
-	c.Assert(recorder.Body.String(), check.Equals, "")
 }
 
 func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {

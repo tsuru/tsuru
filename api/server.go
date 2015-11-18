@@ -27,7 +27,7 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 )
 
-const Version = "0.12.4-rc4"
+const Version = "0.13.0-rc1"
 
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
@@ -94,16 +94,16 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/info", Handler(info))
 
 	m.Add("Get", "/services/instances", authorizationRequiredHandler(serviceInstances))
-	m.Add("Get", "/services/instances/{name}", authorizationRequiredHandler(serviceInstance))
-	m.Add("Delete", "/services/instances/{name}", authorizationRequiredHandler(removeServiceInstance))
+	m.Add("Get", "/services/{service}/instances/{instance}", authorizationRequiredHandler(serviceInstance))
+	m.Add("Delete", "/services/{service}/instances/{instance}", authorizationRequiredHandler(removeServiceInstance))
 	m.Add("Post", "/services/instances", authorizationRequiredHandler(createServiceInstance))
-	m.Add("Put", "/services/instances/{instance}/{app}", authorizationRequiredHandler(bindServiceInstance))
-	m.Add("Delete", "/services/instances/{instance}/{app}", authorizationRequiredHandler(unbindServiceInstance))
-	m.Add("Get", "/services/instances/{instance}/status", authorizationRequiredHandler(serviceInstanceStatus))
-	m.Add("Put", "/services/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceGrantTeam))
-	m.Add("Delete", "/services/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceRevokeTeam))
+	m.Add("Put", "/services/{service}/instances/{instance}/{app}", authorizationRequiredHandler(bindServiceInstance))
+	m.Add("Delete", "/services/{service}/instances/{instance}/{app}", authorizationRequiredHandler(unbindServiceInstance))
+	m.Add("Get", "/services/{service}/instances/{instance}/status", authorizationRequiredHandler(serviceInstanceStatus))
+	m.Add("Put", "/services/{service}/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceGrantTeam))
+	m.Add("Delete", "/services/{service}/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceRevokeTeam))
 
-	m.AddAll("/services/proxy/{instance}", authorizationRequiredHandler(serviceInstanceProxy))
+	m.AddAll("/services/{service}/proxy/{instance}", authorizationRequiredHandler(serviceInstanceProxy))
 	m.AddAll("/services/proxy/service/{service}", authorizationRequiredHandler(serviceProxy))
 
 	m.Add("Get", "/services", authorizationRequiredHandler(serviceList))
@@ -127,7 +127,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{app}/restart", authorizationRequiredHandler(restart))
 	m.Add("Post", "/apps/{app}/start", authorizationRequiredHandler(start))
 	m.Add("Post", "/apps/{app}/stop", authorizationRequiredHandler(stop))
-	m.Add("Get", "/apps/{appname}/quota", AdminRequiredHandler(getAppQuota))
+	m.Add("Get", "/apps/{appname}/quota", authorizationRequiredHandler(getAppQuota))
 	m.Add("Post", "/apps/{appname}/quota", AdminRequiredHandler(changeAppQuota))
 	m.Add("Get", "/apps/{app}/env", authorizationRequiredHandler(getEnv))
 	m.Add("Post", "/apps/{app}/env", authorizationRequiredHandler(setEnv))

@@ -24,11 +24,11 @@ func init() {
 	router.Register("fake-hc", createHCRouter)
 }
 
-func createRouter(prefix string) (router.Router, error) {
+func createRouter(name, prefix string) (router.Router, error) {
 	return &FakeRouter, nil
 }
 
-func createHCRouter(prefix string) (router.Router, error) {
+func createHCRouter(name, prefix string) (router.Router, error) {
 	return &HCRouter, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -232,8 +234,18 @@ func collection() (*storage.Collection, error) {
 	return conn.Collection("bsconfig"), nil
 }
 
+func dockerClient(endpoint string) (*docker.Client, error) {
+	client, err := docker.NewClient(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	client.HTTPClient = net.Dial5Full300Client
+	client.Dialer = net.Dial5Dialer
+	return client, nil
+}
+
 func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
-	client, err := docker.NewClient(dockerEndpoint)
+	client, err := dockerClient(dockerEndpoint)
 	if err != nil {
 		return err
 	}
@@ -295,7 +307,7 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 }
 
 func pullWithRetry(maxTries int, image, dockerEndpoint string, p DockerProvisioner) (string, error) {
-	client, err := docker.NewClient(dockerEndpoint)
+	client, err := dockerClient(dockerEndpoint)
 	if err != nil {
 		return "", err
 	}
@@ -332,8 +344,10 @@ func shouldPinBsImage(image string) bool {
 }
 
 // RecreateContainers relaunch all bs containers in the cluster for the given
-// DockerProvisioner.
-func RecreateContainers(p DockerProvisioner) error {
+// DockerProvisioner, logging progress to the given writer.
+//
+// It assumes that the given writer is thread safe.
+func RecreateContainers(p DockerProvisioner, w io.Writer) error {
 	cluster := p.Cluster()
 	nodes, err := cluster.UnfilteredNodes()
 	if err != nil {
@@ -349,6 +363,7 @@ func RecreateContainers(p DockerProvisioner) error {
 			node := &nodes[i]
 			pool := node.Metadata["pool"]
 			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
+			fmt.Fprintf(w, "relaunching bs container in the node %s [%s]\n", node.Address, pool)
 			err := createContainer(node.Address, pool, p, true)
 			if err != nil {
 				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)

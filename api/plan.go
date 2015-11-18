@@ -87,7 +87,7 @@ func changePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	a, err := getApp(r.URL.Query().Get(":app"), user, r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), user, r)
 	if err != nil {
 		return err
 	}

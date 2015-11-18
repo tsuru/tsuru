@@ -30,19 +30,19 @@ type vulcandRouter struct {
 	domain string
 }
 
-func createRouter(prefix string) (router.Router, error) {
-	vURL, err := config.GetString(prefix + ":api-url")
+func createRouter(routerName, configPrefix string) (router.Router, error) {
+	vURL, err := config.GetString(configPrefix + ":api-url")
 	if err != nil {
 		return nil, err
 	}
-	domain, err := config.GetString(prefix + ":domain")
+	domain, err := config.GetString(configPrefix + ":domain")
 	if err != nil {
 		return nil, err
 	}
 	client := api.NewClient(vURL, registry.GetRegistry())
 	vRouter := &vulcandRouter{
 		client: client,
-		prefix: prefix,
+		prefix: configPrefix,
 		domain: domain,
 	}
 	return vRouter, nil
@@ -123,7 +123,7 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 		}
 	}
 	for _, fk := range toRemove {
-		err := r.client.DeleteFrontend(fk)
+		err = r.client.DeleteFrontend(fk)
 		if err != nil {
 			if _, ok := err.(*engine.NotFoundError); ok {
 				return router.ErrBackendNotFound

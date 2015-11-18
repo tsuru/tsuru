@@ -40,7 +40,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "64c100a0b566fb3569431b9416eb5a794a322981"
+			"Rev": "c3e8735e510cf8bc6d439300ff2fc247b1f2867c"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -206,15 +206,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "de8183cd89b0f47a597ebbd53f6b8aa9a2060693"
+			"Rev": "0082d7a11e270680e395e6bf240be705748c37f2"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/log",
-			"Rev": "de8183cd89b0f47a597ebbd53f6b8aa9a2060693"
+			"Rev": "0082d7a11e270680e395e6bf240be705748c37f2"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "de8183cd89b0f47a597ebbd53f6b8aa9a2060693"
+			"Rev": "0082d7a11e270680e395e6bf240be705748c37f2"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/db",
@@ -288,7 +288,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "ef4eca6b097fad7cec79afcc278d213a6de1c960"
+			"Rev": "038cb4adce85ed41e285c2e7cc6221a92bfa44aa"
 		},
 		{
 			"ImportPath": "gopkg.in/amz.v2/aws",

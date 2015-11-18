@@ -32,8 +32,8 @@ func init() {
 	hc.AddChecker("Router Hipache", router.BuildHealthCheck("hipache"))
 }
 
-func createRouter(prefix string) (router.Router, error) {
-	return &hipacheRouter{prefix: prefix}, nil
+func createRouter(routerName, configPrefix string) (router.Router, error) {
+	return &hipacheRouter{prefix: configPrefix}, nil
 }
 
 func (r *hipacheRouter) connect() redis.Conn {

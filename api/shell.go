@@ -47,7 +47,7 @@ func remoteShellHandler(ws *websocket.Conn) {
 		return
 	}
 	appName := r.URL.Query().Get(":appname")
-	app, err := getApp(appName, user, r)
+	app, err := getAppFromContext(appName, user, r)
 	if err != nil {
 		if herr, ok := err.(*errors.HTTP); ok {
 			httpErr = herr

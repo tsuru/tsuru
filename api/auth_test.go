@@ -70,6 +70,10 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
 	s.server.Stop()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
@@ -1816,6 +1820,47 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	c.Assert(count, check.Equals, 1)
 }
 
+func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "user@example.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token := s.admintoken
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("POST", "/users/api-key?user=user@example.com", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = regenerateAPIToken(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 1)
+}
+
+func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "user@example.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("POST", "/users/api-key?user=myadmin@arrakis.com", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = regenerateAPIToken(recorder, request, token)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "you're not an admin user")
+}
+
 func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1858,6 +1903,61 @@ func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.Equals, "238hd23ubd923hd923j9d23ndibde")
+}
+
+func (s *AuthSuite) TestShowAPITokenOtherUserAndIsAdminUser(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	user := auth.User{
+		Email:    "user@example.com",
+		Password: "123456",
+		APIKey:   "334hd23ubd923hd923j9d23ndibdf",
+	}
+	_, err := nativeScheme.Create(&user)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	token := s.admintoken
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/api-key?user=user@example.com", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.Equals, "334hd23ubd923hd923j9d23ndibdf")
+}
+
+func (s *AuthSuite) TestShowAPITokenOtherUserAndIsNotAdminUser(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	users := []auth.User{
+		{
+			Email:    "user1@example.com",
+			Password: "123456",
+			APIKey:   "238hd23ubd923hd923j9d23ndibde",
+		},
+		{
+			Email:    "user2@example.com",
+			Password: "123456",
+			APIKey:   "334hd23ubd923hd923j9d23ndibdf",
+		},
+	}
+	for _, u := range users {
+		_, err := nativeScheme.Create(&u)
+		c.Assert(err, check.IsNil)
+		defer conn.Users().Remove(bson.M{"email": u.Email})
+	}
+	token, err := nativeScheme.Login(map[string]string{"email": users[0].Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/api-key?user=user@example.com", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "you're not an admin user")
 }
 
 func (s *AuthSuite) TestListUsers(c *check.C) {

@@ -7,17 +7,18 @@ package galeb
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/router"
+	galebClient "github.com/tsuru/tsuru/router/galeb/client"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -26,440 +27,274 @@ func Test(t *testing.T) {
 	check.TestingT(t)
 }
 
-type S struct {
-	conn       *db.Storage
-	server     *httptest.Server
-	rawHandler http.Handler
-	handler    apitest.MultiTestHandler
+type fakeGalebServer struct {
+	targets      map[string]interface{}
+	pools        map[string]interface{}
+	virtualhosts map[string]interface{}
+	rules        map[string]interface{}
+	items        map[string]map[string]interface{}
+	ruleVh       map[string][]string
+	idCounter    int
+	router       *mux.Router
 }
 
-var _ = check.Suite(&S{})
+func NewFakeGalebServer() (*fakeGalebServer, error) {
+	server := &fakeGalebServer{
+		targets:      make(map[string]interface{}),
+		pools:        make(map[string]interface{}),
+		virtualhosts: make(map[string]interface{}),
+		rules:        make(map[string]interface{}),
+		ruleVh:       make(map[string][]string),
+	}
+	server.items = map[string]map[string]interface{}{
+		"target":      server.targets,
+		"pool":        server.pools,
+		"virtualhost": server.virtualhosts,
+		"rule":        server.rules,
+	}
+	r := mux.NewRouter()
+	r.HandleFunc("/api/target", server.createTarget).Methods("POST")
+	r.HandleFunc("/api/pool", server.createPool).Methods("POST")
+	r.HandleFunc("/api/rule", server.createRule).Methods("POST")
+	r.HandleFunc("/api/virtualhost", server.createVirtualhost).Methods("POST")
+	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
+	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
+	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
+	r.HandleFunc("/api/rule/{id}/parents", server.addRuleVirtualhost).Methods("PATCH")
+	r.HandleFunc("/api/rule/{id}/parents", server.findVirtualhostByRule).Methods("GET")
+	r.HandleFunc("/api/rule/{id}/parents/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
+	r.HandleFunc("/api/target/search/findByParentName", server.findTargetsByParent).Methods("GET")
+	server.router = r
+	return server, nil
+}
+
+func (s *fakeGalebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.router.ServeHTTP(w, r)
+}
+
+func (s *fakeGalebServer) findItem(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	item := mux.Vars(r)["item"]
+	obj, ok := s.items[item][id]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(obj)
+}
+
+type searchRsp struct {
+	Embedded map[string][]interface{} `json:"_embedded"`
+}
+
+func makeSearchRsp(itemName string, items ...interface{}) searchRsp {
+	return searchRsp{Embedded: map[string][]interface{}{itemName: items}}
+}
+
+func (s *fakeGalebServer) findItemByNameHandler(w http.ResponseWriter, r *http.Request) {
+	itemName := mux.Vars(r)["item"]
+	wantedName := r.URL.Query().Get("name")
+	ret := s.findItemByName(itemName, wantedName)
+	json.NewEncoder(w).Encode(makeSearchRsp(itemName, ret...))
+}
+
+func (s *fakeGalebServer) findItemByName(itemName string, wantedName string) []interface{} {
+	items := s.items[itemName]
+	var ret []interface{}
+	for i, item := range items {
+		name := item.(interface {
+			GetName() string
+		}).GetName()
+		if name == wantedName {
+			ret = append(ret, items[i])
+		}
+	}
+	return ret
+}
+
+func (s *fakeGalebServer) findTargetsByParent(w http.ResponseWriter, r *http.Request) {
+	parentName := r.URL.Query().Get("name")
+	var pool *galebClient.Pool
+	var ret []interface{}
+	for _, item := range s.pools {
+		p := item.(*galebClient.Pool)
+		if p.Name == parentName {
+			pool = p
+		}
+	}
+	for i, item := range s.targets {
+		target := item.(*galebClient.Target)
+		if target.BackendPool == pool.FullId() {
+			ret = append(ret, s.targets[i])
+		}
+	}
+	json.NewEncoder(w).Encode(makeSearchRsp("target", ret...))
+}
+
+func (s *fakeGalebServer) destroyItem(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	item := mux.Vars(r)["item"]
+	_, ok := s.items[item][id]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	delete(s.items[item], id)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
+	var target galebClient.Target
+	target.Status = "OK"
+	json.NewDecoder(r.Body).Decode(&target)
+	targetsWithName := s.findItemByName("target", target.Name)
+	for _, item := range targetsWithName {
+		otherTarget := item.(*galebClient.Target)
+		if otherTarget.BackendPool == target.BackendPool {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+	}
+	s.idCounter++
+	target.ID = s.idCounter
+	target.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), target.ID)
+	s.targets[strconv.Itoa(target.ID)] = &target
+	w.Header().Set("Location", target.Links.Self.Href)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *fakeGalebServer) createPool(w http.ResponseWriter, r *http.Request) {
+	var pool galebClient.Pool
+	pool.Status = "OK"
+	json.NewDecoder(r.Body).Decode(&pool)
+	poolsWithName := s.findItemByName("pool", pool.Name)
+	if len(poolsWithName) > 0 {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+	s.idCounter++
+	pool.ID = s.idCounter
+	pool.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), pool.ID)
+	s.pools[strconv.Itoa(pool.ID)] = &pool
+	w.Header().Set("Location", pool.Links.Self.Href)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
+	var rule galebClient.Rule
+	rule.Status = "OK"
+	json.NewDecoder(r.Body).Decode(&rule)
+	s.idCounter++
+	rule.ID = s.idCounter
+	rule.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), rule.ID)
+	s.rules[strconv.Itoa(rule.ID)] = &rule
+	w.Header().Set("Location", rule.Links.Self.Href)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	parts := strings.Split(string(data), "\n")
+	if len(parts) == 0 || parts[0] == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	vhId := parts[0][strings.LastIndex(parts[0], "/")+1:]
+	baseRule := s.rules[id].(*galebClient.Rule)
+	baseVirtualHost := s.virtualhosts[vhId].(*galebClient.VirtualHost)
+	if baseRule == nil || baseVirtualHost == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	s.ruleVh[id] = append(s.ruleVh[id], vhId)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *fakeGalebServer) destroyRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
+	ruleId := mux.Vars(r)["id"]
+	vhId := mux.Vars(r)["vhid"]
+	idx := -1
+	for i, currentVh := range s.ruleVh[ruleId] {
+		if currentVh == vhId {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	s.ruleVh[ruleId] = append(s.ruleVh[ruleId][:idx], s.ruleVh[ruleId][idx+1:]...)
+	if len(s.ruleVh[ruleId]) == 0 {
+		delete(s.ruleVh, ruleId)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *fakeGalebServer) findVirtualhostByRule(w http.ResponseWriter, r *http.Request) {
+	ruleId := mux.Vars(r)["id"]
+	var ret []interface{}
+	for _, vhId := range s.ruleVh[ruleId] {
+		ret = append(ret, s.virtualhosts[vhId])
+	}
+	json.NewEncoder(w).Encode(makeSearchRsp("virtualhost", ret...))
+}
+
+func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Request) {
+	var virtualhost galebClient.VirtualHost
+	virtualhost.Status = "OK"
+	json.NewDecoder(r.Body).Decode(&virtualhost)
+	if len(s.findItemByName("virtualhost", virtualhost.Name)) > 0 {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+	s.idCounter++
+	virtualhost.ID = s.idCounter
+	virtualhost.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), virtualhost.ID)
+	s.virtualhosts[strconv.Itoa(virtualhost.ID)] = &virtualhost
+	w.Header().Set("Location", virtualhost.Links.Self.Href)
+	w.WriteHeader(http.StatusCreated)
+}
 
 func init() {
-	base := &S{}
 	suite := &routertest.RouterSuite{
-		SetUpSuiteFunc:   base.SetUpSuite,
-		TearDownTestFunc: base.TearDownTest,
+		SetUpSuiteFunc: func(c *check.C) {
+			config.Set("routers:galeb:username", "myusername")
+			config.Set("routers:galeb:password", "mypassword")
+			config.Set("routers:galeb:domain", "galeb.com")
+			config.Set("routers:galeb:type", "galeb")
+			config.Set("database:url", "127.0.0.1:27017")
+			config.Set("database:name", "router_galeb_tests")
+		},
 	}
-	var (
-		idCounters map[string]int
-		createdIds map[string]bool
-	)
+	var server *httptest.Server
+	var fakeServer *fakeGalebServer
 	suite.SetUpTestFunc = func(c *check.C) {
-		config.Set("database:name", "router_generic_galeb_tests")
-		idCounters = map[string]int{}
-		createdIds = map[string]bool{}
-		base.rawHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case "POST":
-				idCounters[r.URL.Path]++
-				id := idCounters[r.URL.Path]
-				idStr := fmt.Sprintf("%s%d", r.URL.Path, id)
-				createdIds[idStr] = true
-				w.WriteHeader(http.StatusCreated)
-				w.Write([]byte(fmt.Sprintf(`{"_links":{"self":"%s"}}`, idStr)))
-			case "DELETE":
-				idStr := strings.TrimPrefix(r.URL.Path, "/api")
-				if _, present := createdIds[idStr]; present {
-					delete(createdIds, idStr)
-					w.WriteHeader(http.StatusNoContent)
-				} else {
-					w.WriteHeader(http.StatusNotFound)
-				}
-			default:
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-		})
-		base.SetUpTest(c)
-		gRouter, err := createRouter("routers:galeb")
+		var err error
+		fakeServer, err = NewFakeGalebServer()
+		c.Assert(err, check.IsNil)
+		server = httptest.NewServer(fakeServer)
+		config.Set("routers:galeb:api-url", server.URL+"/api")
+		gRouter, err := createRouter("galeb", "routers:galeb")
 		c.Assert(err, check.IsNil)
 		suite.Router = gRouter
+		conn, err := db.Conn()
+		c.Assert(err, check.IsNil)
+		defer conn.Close()
+		dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
 	}
 	suite.TearDownTestFunc = func(c *check.C) {
-		base.TearDownTest(c)
-		c.Assert(createdIds, check.DeepEquals, map[string]bool{})
+		server.Close()
+		c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
+		c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
+		c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
+		c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
+		c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
 	}
 	check.Suite(suite)
-}
-
-func (s *S) SetUpSuite(c *check.C) {
-	config.Set("routers:galeb:username", "myusername")
-	config.Set("routers:galeb:password", "mypassword")
-	config.Set("routers:galeb:domain", "galeb.com")
-	config.Set("routers:galeb:type", "galeb")
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "router_galeb_tests_s")
-}
-
-func (s *S) SetUpTest(c *check.C) {
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
-	s.handler = apitest.MultiTestHandler{}
-	var handler http.Handler
-	if s.rawHandler != nil {
-		handler = s.rawHandler
-	} else {
-		handler = &s.handler
-	}
-	s.server = httptest.NewServer(handler)
-	config.Set("routers:galeb:api-url", s.server.URL+"/api")
-	dbtest.ClearAllCollections(s.conn.Collection("router_galeb_tests").Database)
-}
-
-func (s *S) TearDownTest(c *check.C) {
-	s.server.Close()
-	s.conn.Close()
-}
-
-func (s *S) TestAddBackend(c *check.C) {
-	s.handler.ConditionalContent = map[string]interface{}{
-		"/api/backendpool/": `{"_links":{"self":"pool1"}}`,
-		"/api/rule/":        `{"_links":{"self":"rule1"}}`,
-		"/api/virtualhost/": `{"_links":{"self":"vh1"}}`,
-	}
-	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backendpool/", "/api/rule/", "/api/virtualhost/"})
-	data, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(*data, check.DeepEquals, galebData{
-		Name:          "myapp",
-		BackendPoolId: "pool1",
-		RootRuleId:    "rule1",
-		VirtualHostId: "vh1",
-		CNames:        []galebCNameData{},
-		Reals:         []galebRealData{},
-	})
-	result := map[string]string{}
-	err = json.Unmarshal(s.handler.Body[0], &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]string{
-		"name": "tsuru-backendpool-myapp", "environment": "", "farmtype": "", "plan": "", "project": "", "loadbalancepolicy": "",
-	})
-	result = map[string]string{}
-	err = json.Unmarshal(s.handler.Body[1], &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]string{
-		"name": "tsuru-rootrule-myapp", "match": "/", "backendpool": "pool1", "ruletype": "", "project": "",
-	})
-	result = map[string]string{}
-	err = json.Unmarshal(s.handler.Body[2], &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]string{
-		"name": "myapp.galeb.com", "farmtype": "", "plan": "", "environment": "", "project": "", "rule_default": "rule1",
-	})
-	backendName, err := router.Retrieve("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(backendName, check.Equals, "myapp")
-}
-
-func (s *S) TestRemoveBackend(c *check.C) {
-	s.handler.RspCode = http.StatusNoContent
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name:          "myapp",
-		BackendPoolId: s.server.URL + "/api/backend1",
-		RootRuleId:    s.server.URL + "/api/rule1",
-		VirtualHostId: s.server.URL + "/api/vh1",
-		CNames: []galebCNameData{
-			{CName: "my.1.cname", VirtualHostId: s.server.URL + "/api/vh2"},
-			{CName: "my.2.cname", VirtualHostId: s.server.URL + "/api/vh3"},
-		},
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	err = gRouter.RemoveBackend("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{
-		"/api/vh1", "/api/vh2", "/api/vh3", "/api/rule1", "/api/backend1",
-	})
-	_, err = router.Retrieve("myapp")
-	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-	_, err = getGalebData("myapp")
-	c.Assert(err, check.ErrorMatches, "not found")
-}
-
-func (s *S) TestAddRoute(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name:          "myapp",
-		BackendPoolId: "mybackendpoolid",
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	s.handler.ConditionalContent = map[string]interface{}{
-		"/api/backend/": `{"_links":{"self":"backend1"}}`,
-	}
-	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	addr, _ := url.Parse("http://10.9.2.1:44001")
-	err = gRouter.AddRoute("myapp", addr)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend/"})
-	dbData, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbData.Reals, check.DeepEquals, []galebRealData{
-		{Real: "10.9.2.1:44001", BackendId: "backend1"},
-	})
-	result := map[string]interface{}{}
-	err = json.Unmarshal(s.handler.Body[0], &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]interface{}{
-		"ip": "10.9.2.1", "port": float64(44001), "backendpool": "mybackendpoolid",
-	})
-}
-
-func (s *S) TestAddRouteParsesURL(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name:          "myapp",
-		BackendPoolId: "mybackendpoolid",
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	s.handler.ConditionalContent = map[string]interface{}{
-		"/api/backend/": `{"_links":{"self":"backend1"}}`,
-	}
-	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	addr, _ := url.Parse("http://10.9.9.9:11001/")
-	err = gRouter.AddRoute("myapp", addr)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend/"})
-	dbData, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbData.Reals, check.DeepEquals, []galebRealData{
-		{Real: "10.9.9.9:11001", BackendId: "backend1"},
-	})
-	result := map[string]interface{}{}
-	err = json.Unmarshal(s.handler.Body[0], &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]interface{}{
-		"ip": "10.9.9.9", "port": float64(11001), "backendpool": "mybackendpoolid",
-	})
-}
-
-func (s *S) TestRemoveRoute(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name: "myapp",
-		Reals: []galebRealData{
-			{Real: "10.1.1.10", BackendId: s.server.URL + "/api/backend1"},
-		},
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	s.handler.RspCode = http.StatusNoContent
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	addr, _ := url.Parse("http://10.1.1.10")
-	err = gRouter.RemoveRoute("myapp", addr)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend1"})
-	dbData, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbData.Reals, check.DeepEquals, []galebRealData{})
-}
-
-func (s *S) TestRemoveRouteParsesURL(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name: "myapp",
-		Reals: []galebRealData{
-			{Real: "10.1.1.10:1010", BackendId: s.server.URL + "/api/backend1"},
-		},
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	s.handler.RspCode = http.StatusNoContent
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	addr, _ := url.Parse("https://10.1.1.10:1010/")
-	err = gRouter.RemoveRoute("myapp", addr)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend1"})
-	dbData, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbData.Reals, check.DeepEquals, []galebRealData{})
-}
-
-func (s *S) TestSetCName(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name:       "myapp",
-		RootRuleId: "myrootrule",
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	s.handler.ConditionalContent = map[string]interface{}{
-		"/api/virtualhost/": `{"_links":{"self":"vhX"}}`,
-	}
-	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	err = gRouter.SetCName("my.new.cname", "myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/virtualhost/"})
-	dbData, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbData.CNames, check.DeepEquals, []galebCNameData{
-		{CName: "my.new.cname", VirtualHostId: "vhX"},
-	})
-	result := map[string]interface{}{}
-	err = json.Unmarshal(s.handler.Body[0], &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]interface{}{
-		"name": "my.new.cname", "farmtype": "", "plan": "", "environment": "", "project": "", "rule_default": "myrootrule",
-	})
-}
-
-func (s *S) TestUnsetCName(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name: "myapp",
-		CNames: []galebCNameData{
-			{CName: "my.new.cname", VirtualHostId: s.server.URL + "/api/vh999"},
-		},
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	s.handler.RspCode = http.StatusNoContent
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	err = gRouter.UnsetCName("my.new.cname", "myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/vh999"})
-	dbData, err := getGalebData("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbData.CNames, check.DeepEquals, []galebCNameData{})
-}
-
-func (s *S) TestRoutes(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name: "myapp",
-		Reals: []galebRealData{
-			{Real: "10.1.1.10", BackendId: s.server.URL + "/api/backend1"},
-			{Real: "10.1.1.11", BackendId: s.server.URL + "/api/backend2"},
-		},
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	routes, err := gRouter.Routes("myapp")
-	c.Assert(err, check.IsNil)
-	route1, _ := url.Parse("http://10.1.1.10")
-	route2, _ := url.Parse("http://10.1.1.11")
-	c.Assert(routes, check.DeepEquals, []*url.URL{route1, route2})
-}
-
-func (s *S) TestSwap(c *check.C) {
-	s.handler.RspCode = http.StatusNoContent
-	s.handler.ConditionalContent = map[string]interface{}{
-		"/api/backendpool/": []string{"201", `{"_links":{"self":"/pool1"}}`},
-		"/api/rule/":        []string{"201", `{"_links":{"self":"/rule1"}}`},
-		"/api/virtualhost/": []string{"201", `{"_links":{"self":"/vh1"}}`},
-		"/api/backend/":     []string{"201", `{"_links":{"self":"/backendX"}}`},
-	}
-	backend1 := "b1"
-	backend2 := "b2"
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(backend1)
-	c.Assert(err, check.IsNil)
-	addr1, _ := url.Parse("http://127.0.0.1")
-	err = gRouter.AddRoute(backend1, addr1)
-	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(backend2)
-	c.Assert(err, check.IsNil)
-	addr2, _ := url.Parse("http://10.10.10.10")
-	err = gRouter.AddRoute(backend2, addr2)
-	c.Assert(err, check.IsNil)
-	err = gRouter.Swap(backend1, backend2)
-	c.Assert(err, check.IsNil)
-	data1, err := getGalebData(backend1)
-	c.Assert(err, check.IsNil)
-	c.Assert(data1.Reals, check.DeepEquals, []galebRealData{{Real: "10.10.10.10", BackendId: "/backendX"}})
-	data2, err := getGalebData(backend2)
-	c.Assert(err, check.IsNil)
-	c.Assert(data2.Reals, check.DeepEquals, []galebRealData{{Real: "127.0.0.1", BackendId: "/backendX"}})
-}
-
-func (s *S) TestAddr(c *check.C) {
-	err := router.Store("myapp", "myapp", routerName)
-	c.Assert(err, check.IsNil)
-	data := galebData{
-		Name: "myapp",
-	}
-	err = data.save()
-	c.Assert(err, check.IsNil)
-	gRouter, err := createRouter("routers:galeb")
-	c.Assert(err, check.IsNil)
-	addr, err := gRouter.Addr("myapp")
-	c.Assert(addr, check.Equals, "myapp.galeb.com")
-}
-
-func (s *S) TestShouldBeRegistered(c *check.C) {
-	r, err := router.Get("galeb")
-	c.Assert(err, check.IsNil)
-	_, ok := r.(*galebRouter)
-	c.Assert(ok, check.Equals, true)
-}
-
-func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
-	config.Set("routers:inst1:api-url", "url1")
-	config.Set("routers:inst1:username", "username1")
-	config.Set("routers:inst1:password", "pass1")
-	config.Set("routers:inst1:domain", "domain1")
-	config.Set("routers:inst2:api-url", "url2")
-	config.Set("routers:inst2:username", "username2")
-	config.Set("routers:inst2:password", "pass2")
-	config.Set("routers:inst2:domain", "domain2")
-	config.Set("routers:inst1:type", "galeb")
-	config.Set("routers:inst2:type", "galeb")
-	defer config.Unset("routers:inst1:type")
-	defer config.Unset("routers:inst2:type")
-	defer config.Unset("routers:inst1:api-url")
-	defer config.Unset("routers:inst1:username")
-	defer config.Unset("routers:inst1:password")
-	defer config.Unset("routers:inst1:domain")
-	defer config.Unset("routers:inst2:api-url")
-	defer config.Unset("routers:inst2:username")
-	defer config.Unset("routers:inst2:password")
-	defer config.Unset("routers:inst2:domain")
-	got1, err := router.Get("inst1")
-	c.Assert(err, check.IsNil)
-	got2, err := router.Get("inst2")
-	c.Assert(err, check.IsNil)
-	r1, ok := got1.(*galebRouter)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(r1.prefix, check.Equals, "routers:inst1")
-	c.Assert(r1.client.ApiUrl, check.Equals, "url1")
-	c.Assert(r1.client.Username, check.Equals, "username1")
-	c.Assert(r1.client.Password, check.Equals, "pass1")
-	c.Assert(r1.domain, check.Equals, "domain1")
-	r2, ok := got2.(*galebRouter)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(r2.prefix, check.Equals, "routers:inst2")
-	c.Assert(r2.client.ApiUrl, check.Equals, "url2")
-	c.Assert(r2.client.Username, check.Equals, "username2")
-	c.Assert(r2.client.Password, check.Equals, "pass2")
-	c.Assert(r2.domain, check.Equals, "domain2")
 }

@@ -44,7 +44,7 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 		}
 	} else if user, err := t.User(); err == nil {
 		if q := r.URL.Query().Get(":app"); q != "" {
-			_, err = getApp(q, user, r)
+			_, err = getAppFromContext(q, user, r)
 			if err != nil {
 				return nil, err
 			}

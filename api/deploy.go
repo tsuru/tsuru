@@ -70,7 +70,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			)...,
 		)
 		if !canDeploy {
-			return &errors.HTTP{Code: http.StatusForbidden, Message: "user does not have access to this app"}
+			return &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 		}
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")

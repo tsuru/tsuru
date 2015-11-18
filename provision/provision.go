@@ -316,11 +316,20 @@ type InitializableProvisioner interface {
 	Initialize() error
 }
 
+// PlatformOptions is the set of options provided to PlatformAdd and
+// PlatformUpdate, in the ExtensibleProvisioner.
+type PlatformOptions struct {
+	Name   string
+	Args   map[string]string
+	Input  io.Reader
+	Output io.Writer
+}
+
 // ExtensibleProvisioner is a provisioner where administrators can manage
 // platforms (automatically adding, removing and updating platforms).
 type ExtensibleProvisioner interface {
-	PlatformAdd(name string, args map[string]string, w io.Writer) error
-	PlatformUpdate(name string, args map[string]string, w io.Writer) error
+	PlatformAdd(PlatformOptions) error
+	PlatformUpdate(PlatformOptions) error
 	PlatformRemove(name string) error
 }
 

@@ -42,6 +42,13 @@ func (s *S) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
+func (s *S) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *S) TestNewFakeDockerProvisioner(c *check.C) {
 	server, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

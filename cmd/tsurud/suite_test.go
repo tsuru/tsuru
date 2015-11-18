@@ -32,6 +32,13 @@ func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 }
 
+func (s *S) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 type CommandableProvisioner struct {
 	provisiontest.FakeProvisioner
 	cmd *FakeCommand

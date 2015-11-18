@@ -47,8 +47,8 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
-	manager := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
-	client := NewClient(http.DefaultClient, &context, manager)
+	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := NewClient(http.DefaultClient, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
@@ -74,8 +74,8 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
-	manager := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
-	client := NewClient(http.DefaultClient, &context, manager)
+	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := NewClient(http.DefaultClient, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")

@@ -564,6 +564,15 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if err != nil {
 		return err
 	}
+	email := r.URL.Query().Get("user")
+	if email != "" && u.IsAdmin() {
+		u, err = auth.GetUserByEmail(email)
+		if err != nil {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+	} else if email != "" {
+		return &errors.HTTP{Code: http.StatusForbidden, Message: "you're not an admin user"}
+	}
 	apiKey, err := u.RegenerateAPIKey()
 	if err != nil {
 		return err
@@ -575,6 +584,15 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
+	}
+	email := r.URL.Query().Get("user")
+	if email != "" && u.IsAdmin() {
+		u, err = auth.GetUserByEmail(email)
+		if err != nil {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+	} else if email != "" {
+		return &errors.HTTP{Code: http.StatusForbidden, Message: "you're not an admin user"}
 	}
 	apiKey, err := u.ShowAPIKey()
 	if err != nil {

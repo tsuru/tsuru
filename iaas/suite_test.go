@@ -31,6 +31,13 @@ func (s *S) SetUpTest(c *check.C) {
 	tplColl.RemoveAll(nil)
 }
 
+func (s *S) TearDownSuite(c *check.C) {
+	coll, err := collection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	coll.Database.DropDatabase()
+}
+
 type TestIaaS struct {
 	someField string
 	cmds      []string

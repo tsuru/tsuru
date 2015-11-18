@@ -41,6 +41,10 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 
 func (s *GandalfSuite) TearDownSuite(c *check.C) {
 	s.server.Stop()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
 }
 
 func (s *GandalfSuite) TearDownTest(c *check.C) {
