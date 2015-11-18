@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -25,7 +24,9 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		args[key] = values[0]
 	}
 	w.Header().Set("Content-Type", "text")
-	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err := app.PlatformAdd(provision.PlatformOptions{
 		Name:   name,
 		Args:   args,
@@ -33,9 +34,11 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Output: writer,
 	})
 	if err != nil {
-		return err
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		writer.Write([]byte("Failed to add platform!\n"))
+		return nil
 	}
-	fmt.Fprintln(w, "\nOK!")
+	writer.Write([]byte("Platform successfully added!\n"))
 	return nil
 }
 
