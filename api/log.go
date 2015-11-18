@@ -74,7 +74,7 @@ func addLogs(ws *websocket.Conn) {
 		}
 		select {
 		case logCh <- &entry:
-		case err := <-errCh:
+		case err = <-errCh:
 			close(logCh)
 			err = fmt.Errorf("wslogs: storing log: %s", err)
 			return
