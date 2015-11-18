@@ -110,24 +110,6 @@ func markDeploysAsRemoved(appName string) error {
 	return err
 }
 
-func listAppsByService(serviceName string) []string {
-	var apps []string
-	var instances []service.ServiceInstance
-	q := bson.M{"service_name": serviceName}
-	conn, err := db.Conn()
-	if err != nil {
-		return nil
-	}
-	defer conn.Close()
-	conn.ServiceInstances().Find(q).All(&instances)
-	for _, instance := range instances {
-		for _, app := range instance.Apps {
-			apps = append(apps, app)
-		}
-	}
-	return apps
-}
-
 func GetDeploy(id string) (*DeployData, error) {
 	var dep DeployData
 	conn, err := db.Conn()
