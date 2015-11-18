@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bytes"
 	stderr "errors"
 	"fmt"
@@ -842,19 +843,39 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 
 // PlatformAdd build and push a new docker platform to register
 func (p *dockerProvisioner) PlatformAdd(opts provision.PlatformOptions) error {
-	return p.buildPlatform(opts.Name, opts.Args, opts.Output)
+	return p.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
 }
 
 func (p *dockerProvisioner) PlatformUpdate(opts provision.PlatformOptions) error {
-	return p.buildPlatform(opts.Name, opts.Args, opts.Output)
+	return p.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
 }
 
-func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer) error {
-	if args["dockerfile"] == "" {
-		return stderr.New("Dockerfile is required.")
+func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer, r io.Reader) error {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
 	}
-	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
-		return stderr.New("dockerfile parameter should be an url.")
+	if len(data) == 0 && args["dockerfile"] == "" {
+		return stderr.New("Dockerfile is required")
+	}
+	var inputStream io.Reader
+	var dockerfileURL string
+	if len(data) > 0 {
+		var buf bytes.Buffer
+		writer := tar.NewWriter(&buf)
+		writer.WriteHeader(&tar.Header{
+			Name: "Dockerfile",
+			Mode: 0644,
+			Size: int64(len(data)),
+		})
+		writer.Write(data)
+		writer.Close()
+		inputStream = &buf
+	} else {
+		dockerfileURL = args["dockerfile"]
+		if _, err := url.ParseRequestURI(dockerfileURL); err != nil {
+			return stderr.New("dockerfile parameter must be a URL")
+		}
 	}
 	imageName := platformImageName(name)
 	cluster := p.Cluster()
@@ -863,11 +884,11 @@ func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w
 		Pull:           true,
 		NoCache:        true,
 		RmTmpContainer: true,
-		Remote:         args["dockerfile"],
-		InputStream:    nil,
+		Remote:         dockerfileURL,
+		InputStream:    inputStream,
 		OutputStream:   w,
 	}
-	err := cluster.BuildImage(buildOptions)
+	err = cluster.BuildImage(buildOptions)
 	if err != nil {
 		return err
 	}

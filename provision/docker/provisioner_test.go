@@ -1691,7 +1691,12 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 		cluster.Node{Address: server.URL()})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: args, Output: bytes.NewBuffer(nil)})
+	err = p.PlatformAdd(provision.PlatformOptions{
+		Name:   "test",
+		Args:   args,
+		Output: ioutil.Discard,
+		Input:  bytes.NewReader(nil),
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 3, check.Equals, true)
 	requests = requests[len(requests)-3:]
@@ -1703,18 +1708,54 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
 }
 
+func (s *S) TestProvisionerPlatformAddData(c *check.C) {
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{Address: server.URL()})
+	dockerfile := "FROM tsuru/java"
+	err = p.PlatformAdd(provision.PlatformOptions{
+		Name:   "test",
+		Args:   map[string]string{"dockerfile": "http://localhost"},
+		Output: ioutil.Discard,
+		Input:  strings.NewReader(dockerfile),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(requests) >= 3, check.Equals, true)
+	requests = requests[len(requests)-3:]
+	c.Assert(requests[0].URL.Path, check.Equals, "/build")
+	queryString := requests[0].URL.Query()
+	c.Assert(queryString.Get("t"), check.Equals, platformImageName("test"))
+	c.Assert(queryString.Get("remote"), check.Equals, "")
+	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test:latest/json")
+	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
+}
+
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *check.C) {
-	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test"})
+	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test", Input: bytes.NewReader(nil)})
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Dockerfile is required.")
+	c.Assert(err.Error(), check.Equals, "Dockerfile is required")
 }
 
 func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *check.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "not_a_url"
-	err := s.p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: args, Output: bytes.NewBuffer(nil)})
+	err := s.p.PlatformAdd(provision.PlatformOptions{
+		Name:   "test",
+		Args:   args,
+		Output: ioutil.Discard,
+		Input:  bytes.NewReader(nil),
+	})
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "dockerfile parameter should be an url.")
+	c.Assert(err.Error(), check.Equals, "dockerfile parameter must be a URL")
 }
 
 func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
@@ -1732,7 +1773,12 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: args, Output: bytes.NewBuffer(nil)})
+	err = p.PlatformAdd(provision.PlatformOptions{
+		Name:   "test",
+		Args:   args,
+		Output: ioutil.Discard,
+		Input:  bytes.NewReader(nil),
+	})
 	c.Assert(err, check.NotNil)
 }
 
@@ -1754,7 +1800,12 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	var buf bytes.Buffer
-	err = p.PlatformAdd(provision.PlatformOptions{Name: "test", Args: map[string]string{"dockerfile": "http://localhost/Dockerfile"}, Output: &buf})
+	err = p.PlatformAdd(provision.PlatformOptions{
+		Name:   "test",
+		Args:   map[string]string{"dockerfile": "http://localhost/Dockerfile"},
+		Output: &buf,
+		Input:  bytes.NewReader(nil),
+	})
 	c.Assert(err, check.IsNil)
 	err = p.PlatformRemove("test")
 	c.Assert(err, check.IsNil)
