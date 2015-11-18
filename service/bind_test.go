@@ -57,6 +57,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {
+	s.conn.Apps().Database.DropDatabase()
 	s.conn.Close()
 }
 

@@ -56,6 +56,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
+	s.conn.ServiceInstances().Database.DropDatabase()
 	s.conn.Close()
 }
 

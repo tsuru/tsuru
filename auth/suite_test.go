@@ -51,6 +51,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
+	s.conn.Users().Database.DropDatabase()
 	s.conn.Close()
 }
 

@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"sort"
 
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/check.v1"
 )
@@ -35,6 +37,12 @@ func (s *RouterSuite) SetUpTest(c *check.C) {
 func (s *RouterSuite) TearDownSuite(c *check.C) {
 	if s.TearDownSuiteFunc != nil {
 		s.TearDownSuiteFunc(c)
+	}
+	if _, err := config.GetString("database:name"); err == nil {
+		conn, err := db.Conn()
+		c.Assert(err, check.IsNil)
+		defer conn.Close()
+		conn.Apps().Database.DropDatabase()
 	}
 }
 

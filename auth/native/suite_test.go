@@ -68,4 +68,8 @@ func (s *S) TearDownTest(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	s.server.Stop()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
 }

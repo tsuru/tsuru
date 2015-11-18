@@ -9,7 +9,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"gopkg.in/check.v1"
 )
 
@@ -30,8 +29,7 @@ func (RecSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Apps().Database)
-	c.Assert(err, check.IsNil)
+	conn.Apps().Database.DropDatabase()
 }
 
 func (RecSuite) TestLog(c *check.C) {

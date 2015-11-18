@@ -130,12 +130,13 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 }
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
-	s.clusterSess.Close()
+	defer s.clusterSess.Close()
+	defer s.conn.Close()
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
-	err := dbtest.ClearAllCollections(coll.Database)
-	c.Assert(err, check.IsNil)
-	s.conn.Close()
+	coll.Database.DropDatabase()
+	databaseName, _ := config.GetString("docker:cluster:mongo-database")
+	s.clusterSess.DB(databaseName).DropDatabase()
 }
 
 func (s *HandlersSuite) startFakeDockerNode(c *check.C) (*testing.DockerServer, func()) {

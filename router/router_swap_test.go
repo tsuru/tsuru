@@ -40,6 +40,13 @@ func (s *ExternalSuite) TearDownTest(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *ExternalSuite) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *ExternalSuite) TestSwap(c *check.C) {
 	backend1 := "b1"
 	backend2 := "b2"

@@ -58,3 +58,10 @@ func (s *S) SetUpTest(c *check.C) {
 func (s *S) TearDownTest(c *check.C) {
 	os.Unsetenv("TSURU_TARGET")
 }
+
+func (s *S) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}

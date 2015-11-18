@@ -25,6 +25,11 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TearDownSuite(c *check.C) {
+	s.storage.Apps().Database.DropDatabase()
+	s.storage.Close()
+}
+
 func (s *S) TestAddPool(c *check.C) {
 	coll := s.storage.Collection(poolCollection)
 	defer coll.RemoveId("pool1")

@@ -68,3 +68,8 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens", "teams"})
 }
+
+func (s *S) TearDownSuite(c *check.C) {
+	s.conn.Services().Database.DropDatabase()
+	s.conn.Close()
+}

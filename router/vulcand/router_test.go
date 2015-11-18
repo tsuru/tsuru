@@ -80,6 +80,13 @@ func (s *S) TearDownTest(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *S) TearDownSuite(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *S) TestShouldBeRegistered(c *check.C) {
 	got, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
