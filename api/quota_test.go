@@ -7,6 +7,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/tsuru/tsuru/permission"
 	"net/http"
 	"net/http/httptest"
 
@@ -202,12 +203,17 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	app := &app.App{
 		Name:  "civil",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
+		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
 	request, _ := http.NewRequest("GET", "/apps/civil/quota", nil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
@@ -241,8 +247,8 @@ func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, adminRequiredErr.Code)
-	c.Assert(recorder.Body.String(), check.Equals, adminRequiredErr.Message+"\n")
+	c.Assert(recorder.Code, check.Equals, permission.ErrUnauthorized.Code)
+	c.Assert(recorder.Body.String(), check.Equals, permission.ErrUnauthorized.Message+"\n")
 }
 
 func (s *QuotaSuite) TestGetAppQuotaAppNotFound(c *check.C) {

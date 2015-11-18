@@ -19,6 +19,7 @@ okhandlers2=$(oracle -pos=./permission/permission.go:#$pos callers github.com/ts
 okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") | sort | uniq)
 
 ignored=$(cat <<EOF
+github.com/tsuru/tsuru/api.addKeyToUser
 EOF
 )
 ignored=$(echo "$ignored" | sort)

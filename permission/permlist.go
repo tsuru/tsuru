@@ -11,15 +11,27 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).addWithCtx(
 	"app.create", []contextType{CtxTeam},
 ).add(
+	"app.update.log",
+	"app.update.pool",
+	"app.update.unit.add",
+	"app.update.unit.remove",
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",
+	"app.update.grant",
+	"app.update.revoke",
 	"app.update.teamowner",
+	"app.update.cname.add",
+	"app.update.cname.remove",
 	"app.deploy",
 	"app.deploy.rollback",
 	"app.read",
 	"app.read.deploy",
+	"app.read.env",
+	"app.read.metric",
+	"app.read.log",
 	"app.delete",
+	"app.run",
 ).addWithCtx(
 	"node", []contextType{CtxPool},
 ).add(

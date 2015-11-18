@@ -13,10 +13,11 @@ import (
 )
 
 func (s *S) TestAddRole(c *check.C) {
+	s.conn.Roles().DropCollection()
 	role := bytes.NewBufferString("name=test&context=global")
 	req, err := http.NewRequest("POST", "/roles", role)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleCreate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -36,22 +37,23 @@ func (s *S) TestAddRoleUnauthorized(c *check.C) {
 	role := bytes.NewBufferString("name=test&context=global")
 	req, err := http.NewRequest("POST", "/roles", role)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c)
+	token := userWithPermission(c)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestRemoveRole(c *check.C) {
+	s.conn.Roles().DropCollection()
 	_, err := permission.NewRole("test", "app")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/roles/test", nil)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleDelete,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -71,16 +73,17 @@ func (s *S) TestRemoveRoleUnauthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/roles/test", nil)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c)
+	token := userWithPermission(c)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestListRoles(c *check.C) {
+	s.conn.Roles().DropCollection()
 	role, err := permission.NewRole("test", "app")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app")
@@ -88,7 +91,7 @@ func (s *S) TestListRoles(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/roles", nil)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c)
+	token := userWithPermission(c)
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	expected := `[{"name":"test","context":"app","scheme_names":["app"]}]`
 	server := RunServer(true)
@@ -104,7 +107,7 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	b := bytes.NewBufferString(`permission=app.update&permission=app.deploy`)
 	req, err := http.NewRequest("POST", "/roles/test/permissions", b)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -128,7 +131,7 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("DELETE", "/roles/test/permissions/app.update", nil)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -148,7 +151,7 @@ func (s *S) TestAssignRole(c *check.C) {
 	role := bytes.NewBufferString("email=majortom@groundcontrol.com&context=myteam")
 	req, err := http.NewRequest("POST", "/roles/test/user", role)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -167,7 +170,7 @@ func (s *S) TestAssignRole(c *check.C) {
 func (s *S) TestDissociateRole(c *check.C) {
 	_, err := permission.NewRole("test", "team")
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -198,7 +201,7 @@ func (s *S) TestListPermissions(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/permissions", nil)
 	c.Assert(err, check.IsNil)
-	token := s.userWithPermission(c)
+	token := userWithPermission(c)
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)

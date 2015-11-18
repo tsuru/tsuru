@@ -30,7 +30,6 @@ import (
 )
 
 type DeploySuite struct {
-	baseSuite   *S
 	conn        *db.Storage
 	logConn     *db.LogStorage
 	token       auth.Token
@@ -48,17 +47,13 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.token = s.baseSuite.userWithPermission(c, permission.Permission{
+	s.token = userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-}
-
-func (s *DeploySuite) customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) auth.Token {
-	return s.baseSuite.customUserWithPermission(c, baseName, perm...)
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
@@ -345,7 +340,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	team := &auth.Team{Name: "newteam", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	token := s.customUserWithPermission(c, "apponlyg1", permission.Permission{
+	token := customUserWithPermission(c, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxApp, "g1"),
 	})
@@ -519,7 +514,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	url := fmt.Sprintf("/deploys/%s", lastDeployId)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
-	token := s.customUserWithPermission(c, "myadmin", permission.Permission{
+	token := customUserWithPermission(c, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})

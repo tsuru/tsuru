@@ -251,25 +251,6 @@ func (s *S) TestAuthTokenMiddlewareUserTokenAppNotFound(c *check.C) {
 	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestAuthTokenMiddlewareUserTokenNoAccessToTheApp(c *check.C) {
-	a := app.App{Name: "something"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:app=something", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	h, log := doHandler()
-	authTokenMiddleware(recorder, request, h)
-	c.Assert(log.called, check.Equals, false)
-	err = context.GetRequestError(request)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-}
-
 func (s *S) TestRunDelayedHandlerWithoutHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)

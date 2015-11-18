@@ -42,9 +42,9 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 				Message: fmt.Sprintf("app token mismatch, token for %q, request for %q", t.GetAppName(), q),
 			}
 		}
-	} else if user, err := t.User(); err == nil {
+	} else {
 		if q := r.URL.Query().Get(":app"); q != "" {
-			_, err = getAppFromContext(q, user, r)
+			_, err = getAppFromContext(q, r)
 			if err != nil {
 				return nil, err
 			}

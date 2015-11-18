@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 )
 
 func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -22,7 +23,8 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Code:    http.StatusNotFound,
 			Message: err.Error(),
 		}
-	} else if err != nil {
+	}
+	if err != nil {
 		return err
 	}
 	return json.NewEncoder(w).Encode(user.Quota)
@@ -50,10 +52,18 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	user, err := t.User()
-	a, err := getApp(r.URL.Query().Get(":appname"), user)
+	a, err := getAppFromContext(r.URL.Query().Get(":appname"), r)
 	if err != nil {
 		return err
+	}
+	canRead := permission.Check(t, permission.PermAppRead,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !canRead {
+		return permission.ErrUnauthorized
 	}
 	return json.NewEncoder(w).Encode(a.Quota)
 }

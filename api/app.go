@@ -32,11 +32,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func getAppFromContext(name string, u *auth.User, r *http.Request) (app.App, error) {
+func getAppFromContext(name string, r *http.Request) (app.App, error) {
 	var err error
 	a := context.GetApp(r)
 	if a == nil {
-		a, err = getApp(name, u)
+		a, err = getApp(name)
 		if err != nil {
 			return app.App{}, err
 		}
@@ -45,16 +45,10 @@ func getAppFromContext(name string, u *auth.User, r *http.Request) (app.App, err
 	return *a, nil
 }
 
-func getApp(name string, u *auth.User) (*app.App, error) {
+func getApp(name string) (*app.App, error) {
 	a, err := app.GetByName(name)
 	if err != nil {
 		return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
-	}
-	if u == nil || u.IsAdmin() {
-		return a, nil
-	}
-	if !auth.CheckUserAccess(a.Teams, u) {
-		return a, &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
 	return a, nil
 }
@@ -76,17 +70,12 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "app-delete", "app="+r.URL.Query().Get(":app"))
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), u, r)
-	if err != nil {
-		return err
-	}
-	teams, err := u.TeamNames()
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}
 	canDelete := permission.Check(t, permission.PermAppDelete,
-		append(permission.Contexts(permission.CtxTeam, teams),
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
 			permission.Context(permission.CtxApp, a.Name),
 			permission.Context(permission.CtxPool, a.Pool),
 		)...,
@@ -94,6 +83,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
+	rec.Log(u.Email, "app-delete", "app="+a.Name)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
@@ -209,26 +199,22 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "app-info", "app="+r.URL.Query().Get(":app"))
-	app, err := getAppFromContext(r.URL.Query().Get(":app"), u, r)
-	if err != nil {
-		return err
-	}
-	teams, err := u.TeamNames()
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}
 	canRead := permission.Check(t, permission.PermAppRead,
-		append(permission.Contexts(permission.CtxTeam, teams),
-			permission.Context(permission.CtxApp, app.Name),
-			permission.Context(permission.CtxPool, app.Pool),
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
 		)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
+	rec.Log(u.Email, "app-info", "app="+a.Name)
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(&app)
+	return json.NewEncoder(w).Encode(&a)
 }
 
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -327,7 +313,7 @@ func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), u, r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}
@@ -367,16 +353,25 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "add-units", "app="+appName, fmt.Sprintf("units=%d", n))
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateUnitAdd,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "add-units", "app="+appName, fmt.Sprintf("units=%d", n))
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.AddUnits(n, processName, writer)
+	err = a.AddUnits(n, processName, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -395,16 +390,25 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	processName := r.FormValue("process")
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateUnitRemove,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.RemoveUnits(uint(n), processName, writer)
+	err = a.RemoveUnits(uint(n), processName, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -469,12 +473,21 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	rec.Log(u.Email, "grant-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
-	a, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateGrant,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "grant-app-access", "app="+appName, "team="+teamName)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -500,9 +513,18 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	teamName := r.URL.Query().Get(":team")
 	rec.Log(u.Email, "revoke-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
-	a, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateRevoke,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -547,15 +569,24 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	appName := r.URL.Query().Get(":app")
 	once := r.URL.Query().Get("once")
-	rec.Log(u.Email, "run-command", "app="+appName, "command="+string(c))
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppRun,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "run-command", "app="+appName, "command="+string(c))
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.Run(string(c), writer, once == "true")
+	err = a.Run(string(c), writer, once == "true")
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
@@ -575,18 +606,27 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	var u *auth.User
 	var err error
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
 	if !t.IsAppToken() {
 		u, err = t.User()
 		if err != nil {
 			return err
 		}
 		rec.Log(u.Email, "get-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
+		allowed := permission.Check(t, permission.PermAppReadEnv,
+			append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
 	}
-	app, err := getAppFromContext(appName, u, r)
-	if err != nil {
-		return err
-	}
-	return writeEnvVars(w, &app, variables...)
+	return writeEnvVars(w, &a, variables...)
 }
 
 func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error {
@@ -630,11 +670,20 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	extra := fmt.Sprintf("private=%t", isPrivateEnv)
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "set-env", "app="+appName, variables, extra)
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateEnvSet,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "set-env", "app="+appName, variables, extra)
 	envs := make([]bind.EnvVar, 0, len(variables))
 	for k, v := range variables {
 		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: !isPrivateEnv})
@@ -643,7 +692,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.SetEnvs(
+	err = a.SetEnvs(
 		bind.SetEnvApp{
 			Envs:          envs,
 			PublicOnly:    true,
@@ -675,11 +724,20 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "unset-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateEnvUnset,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "unset-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -688,7 +746,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = app.UnsetEnvs(
+	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: variables,
 			PublicOnly:    true,
@@ -721,11 +779,20 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	rawCName := strings.Join(v["cname"], ", ")
 	rec.Log(u.Email, "add-cname", "app="+appName, "cname="+rawCName)
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
-	if err = app.AddCName(v["cname"]...); err == nil {
+	allowed := permission.Check(t, permission.PermAppUpdateCnameAdd,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	if err = a.AddCName(v["cname"]...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
@@ -753,12 +820,21 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	appName := r.URL.Query().Get(":app")
 	rawCName := strings.Join(v["cname"], ", ")
-	rec.Log(u.Email, "remove-cname", "app="+appName, "cnames="+rawCName)
-	app, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
-	if err = app.RemoveCName(v["cname"]...); err == nil {
+	allowed := permission.Check(t, permission.PermAppUpdateCnameRemove,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "remove-cname", "app="+appName, "cnames="+rawCName)
+	if err = a.RemoveCName(v["cname"]...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
@@ -803,9 +879,18 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	rec.Log(u.Email, "app-log", extra...)
 	filterLog := app.Applog{Source: source, Unit: unit}
-	a, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermAppReadLog,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	logs, err := a.LastLogs(lines, filterLog)
 	if err != nil {
@@ -933,15 +1018,24 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "restart", "app="+appName)
-	instance, err := getAppFromContext(appName, u, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateRestart,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "restart", "app="+appName)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = instance.Restart(process, writer)
+	err = a.Restart(process, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
@@ -951,7 +1045,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	queryValues := r.URL.Query()
-	app, err := app.GetByName(queryValues.Get(":app"))
+	a, err := app.GetByName(queryValues.Get(":app"))
 	if err != nil {
 		return err
 	}
@@ -959,6 +1053,15 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateLog,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	var logs []string
 	err = json.Unmarshal(body, &logs)
@@ -968,7 +1071,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	unit := queryValues.Get("unit")
 	for _, log := range logs {
-		err := app.Log(log, source, unit)
+		err := a.Log(log, source, unit)
 		if err != nil {
 			return err
 		}
@@ -1013,14 +1116,14 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	defer app.ReleaseApplicationLock(app2Name)
 
-	app1, err := getApp(app1Name, u)
+	app1, err := getApp(app1Name)
 	if err != nil {
 		return err
 	}
 	if !locked1 {
 		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app1.Name, &app1.Lock)}
 	}
-	app2, err := getApp(app2Name, u)
+	app2, err := getApp(app2Name)
 	if err != nil {
 		return err
 	}
@@ -1063,7 +1166,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "start", "app="+appName)
-	app, err := getAppFromContext(appName, u, r)
+	app, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
@@ -1079,7 +1182,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "stop", "app="+appName)
-	app, err := getAppFromContext(appName, u, r)
+	app, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
@@ -1131,9 +1234,18 @@ func appChangePool(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), u, r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdatePool,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	defer r.Body.Close()
 	data, err := ioutil.ReadAll(r.Body)
@@ -1153,9 +1265,18 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), u, r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermAppReadMetric,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "app-metric-envs", "app="+r.URL.Query().Get(":app"))
 	w.Header().Set("Content-Type", "application/json")
@@ -1168,7 +1289,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	rec.Log(u.Email, "app-rebuild-routes", "app="+r.URL.Query().Get(":app"))
-	app, err := getAppFromContext(r.URL.Query().Get(":app"), u, r)
+	app, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 )
 
-var ErrUnauthorized = &errors.HTTP{Code: http.StatusUnauthorized, Message: "You don't have permission to do this action"}
+var ErrUnauthorized = &errors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
 
 type permissionScheme struct {
 	name     string

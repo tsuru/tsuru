@@ -70,19 +70,21 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 var HasAccessTo check.Checker = &hasAccessToChecker{}
 
 func (s *S) createUserAndTeam(c *check.C) {
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456", Quota: quota.Unlimited}
-	_, err := nativeScheme.Create(s.user)
-	c.Assert(err, check.IsNil)
+	// TODO: remove this token from the suite, each test should create their
+	// own user with specific permissions.
+	s.token = customUserWithPermission(c, "super-root-toremove", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	s.user, _ = s.token.User()
 	s.adminuser = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
-	_, err = nativeScheme.Create(s.adminuser)
+	_, err := nativeScheme.Create(s.adminuser)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.adminteam = &auth.Team{Name: "admin", Users: []string{s.adminuser.Email}}
 	err = s.conn.Teams().Insert(s.adminteam)
-	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	s.admintoken, err = nativeScheme.Login(map[string]string{"email": s.adminuser.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -149,11 +151,11 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-func (s *S) userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
-	return s.customUserWithPermission(c, "majortom", perm...)
+func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
+	return customUserWithPermission(c, "majortom", perm...)
 }
 
-func (s *S) customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) auth.Token {
+func customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) auth.Token {
 	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -162,7 +164,11 @@ func (s *S) customUserWithPermission(c *check.C, baseName string, perm ...permis
 	for _, p := range perm {
 		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType))
 		c.Assert(err, check.IsNil)
-		err = role.AddPermissions(p.Scheme.FullName())
+		name := p.Scheme.FullName()
+		if name == "" {
+			name = "*"
+		}
+		err = role.AddPermissions(name)
 		c.Assert(err, check.IsNil)
 		err = user.AddRole(role.Name, p.Context.Value)
 		c.Assert(err, check.IsNil)

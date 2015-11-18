@@ -83,11 +83,7 @@ func changePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Message: "unable to parse request body",
 		}
 	}
-	user, err := t.User()
-	if err != nil {
-		return err
-	}
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), user, r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}

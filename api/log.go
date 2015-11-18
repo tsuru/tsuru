@@ -21,11 +21,7 @@ import (
 func logRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get("app")
 	if appName != "" {
-		u, err := t.User()
-		if err != nil {
-			return err
-		}
-		a, err := getAppFromContext(r.URL.Query().Get("app"), u, r)
+		a, err := getAppFromContext(r.URL.Query().Get("app"), r)
 		if err != nil {
 			return err
 		}
