@@ -4040,7 +4040,7 @@ func (s *S) TestSetTeamOwnerWithoutTeam(c *check.C) {
 
 func (s *S) TestSetTeamOwner(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
 	})
@@ -4091,7 +4091,7 @@ func (s *S) TestSetTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 
 func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	token := s.userWithPermission(c, permission.Permission{
+	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateTeamowner,
 		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
 	})
