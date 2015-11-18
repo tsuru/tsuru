@@ -19,6 +19,9 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	name := r.FormValue("name")
 	file, _, _ := r.FormFile("dockerfile_content")
+	if file != nil {
+		defer file.Close()
+	}
 	args := make(map[string]string)
 	for key, values := range r.Form {
 		args[key] = values[0]
@@ -46,6 +49,9 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	defer r.Body.Close()
 	name := r.URL.Query().Get(":name")
 	file, _, _ := r.FormFile("dockerfile_content")
+	if file != nil {
+		defer file.Close()
+	}
 	args := make(map[string]string)
 	for key, values := range r.Form {
 		args[key] = values[0]
