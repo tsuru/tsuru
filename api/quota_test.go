@@ -7,7 +7,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/tsuru/tsuru/permission"
 	"net/http"
 	"net/http/httptest"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
