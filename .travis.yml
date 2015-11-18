@@ -21,6 +21,7 @@ script:
   - make test
   - ./check-fmt.sh
   - make deadcode
+  - ./check-handlers.sh
 notifications:
   email:
     on_success: change

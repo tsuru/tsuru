@@ -11,7 +11,12 @@ handlers2=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/c
 allhandlers=$(echo "$handlers1"$'\n'"$handlers2" | sort)
 
 pos=$(($(cat ./permission/permission.go | grep -ob "func Check" | egrep -o "^\d+")+5))
-okhandlers=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail +2 | egrep -o " github.*" | awk '{print $1}' | sort)
+okhandlers1=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail +2 | egrep -o " github.*" | awk '{print $1}' | sort)
+
+pos=$(($(cat ./permission/permission.go | grep -ob "func ContextsForPermission" | egrep -o "^\d+")+5))
+okhandlers2=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail +2 | egrep -o " github.*" | awk '{print $1}' | sort)
+
+okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") | sort | uniq)
 
 ignored=$(cat <<EOF
 EOF
@@ -19,9 +24,15 @@ EOF
 ignored=$(echo "$ignored" | sort)
 
 allhandlers=$(comm -23 <(echo "$allhandlers") <(echo "$ignored"))
-missing=$(comm -23 <(echo "$allhandlers") <(echo "$okhandlers"))
+allhandlers=$(comm -23 <(echo "$allhandlers") <(echo "$okhandlers"))
 
-if [ -n "$missing" ]; then
-    echo "Misssing handlers:"$'\n'"$missing"
+if [ -n "$okhandlers" ]; then
+    len=$(echo "$okhandlers" | wc -l)
+    echo "OK handlers: $len"$'\n'"$okhandlers"
+fi
+
+if [ -n "$allhandlers" ]; then
+    len=$(echo "$allhandlers" | wc -l)
+    echo "Misssing handlers: $len"$'\n'"$allhandlers"
     exit 1
 fi
