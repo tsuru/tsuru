@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/tsuru/config"
@@ -263,6 +264,41 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	c.Assert(platf.Disabled, check.Equals, true)
 }
 
+func (s *PlatformSuite) TestPlatformUpdateDisabletrueFileIn(c *check.C) {
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	name := "test_platform_update"
+	args := make(map[string]string)
+	args["disabled"] = "true"
+	err = PlatformAdd(provision.PlatformOptions{Name: name})
+	c.Assert(err, check.IsNil)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+	appName := "test_app_2"
+	app := App{
+		Name:     appName,
+		Platform: name,
+	}
+	err = conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appName})
+	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args, Input: bytes.NewReader(nil)})
+	c.Assert(err, check.IsNil)
+	platf, err := getPlatform(name)
+	c.Assert(err, check.IsNil)
+	c.Assert(platf.Disabled, check.Equals, true)
+	a, err := GetByName(appName)
+	c.Assert(err, check.IsNil)
+	c.Assert(a.UpdatePlatform, check.Equals, true)
+}
+
 func (s *PlatformSuite) TestPlatformUpdateDisabletrueWithoutDockerfile(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
@@ -288,7 +324,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisabletrueWithoutDockerfile(c *check.
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"_id": appName})
+	defer conn.Apps().Remove(bson.M{"name": appName})
 	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	platf, err := getPlatform(name)

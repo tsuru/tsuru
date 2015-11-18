@@ -103,7 +103,7 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 		}
 		return err
 	}
-	if opts.Args["dockerfile"] != "" {
+	if opts.Args["dockerfile"] != "" || opts.Input != nil {
 		err = provisioner.PlatformUpdate(opts)
 		if err != nil {
 			return err
