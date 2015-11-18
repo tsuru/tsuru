@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 
 go get golang.org/x/tools/cmd/oracle
 
