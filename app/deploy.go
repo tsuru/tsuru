@@ -8,16 +8,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"regexp"
+	"time"
+
 	"github.com/tsuru/tsuru/db"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"regexp"
-	"time"
 )
 
 type DeployData struct {
