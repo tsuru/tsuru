@@ -10,7 +10,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -34,7 +33,7 @@ func (s *PlatformSuite) SetUpSuite(c *check.C) {
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	conn.Apps().Database.DropDatabase()
 	conn.Close()
 }
 

@@ -107,8 +107,10 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Close()
-	s.logConn.Close()
+	defer s.conn.Close()
+	defer s.logConn.Close()
+	s.conn.Apps().Database.DropDatabase()
+	s.logConn.Logs("myapp").Database.DropDatabase()
 }
 
 func (s *S) SetUpTest(c *check.C) {
