@@ -19,6 +19,7 @@ import (
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	name := r.FormValue("name")
+	file, _, _ := r.FormFile("dockerfile_content")
 	args := make(map[string]string)
 	for key, values := range r.Form {
 		args[key] = values[0]
@@ -28,7 +29,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := app.PlatformAdd(provision.PlatformOptions{
 		Name:   name,
 		Args:   args,
-		Input:  r.Body,
+		Input:  file,
 		Output: writer,
 	})
 	if err != nil {
@@ -41,10 +42,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	name := r.URL.Query().Get(":name")
-	err := r.ParseForm()
-	if err != nil {
-		return err
-	}
+	file, _, _ := r.FormFile("dockerfile_content")
 	args := make(map[string]string)
 	for key, values := range r.Form {
 		args[key] = values[0]
@@ -53,10 +51,10 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = app.PlatformUpdate(provision.PlatformOptions{
+	err := app.PlatformUpdate(provision.PlatformOptions{
 		Name:   name,
 		Args:   args,
-		Input:  r.Body,
+		Input:  file,
 		Output: writer,
 	})
 	if err != nil {

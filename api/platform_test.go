@@ -5,10 +5,12 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -45,10 +47,17 @@ func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
 	defer func() {
 		app.Provisioner = oldProvisioner
 	}()
-	dockerfile_url := "http://localhost/Dockerfile"
-	body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
-	request, _ := http.NewRequest("POST", "/platforms/add", strings.NewReader(body))
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	var buf bytes.Buffer
+	dockerfileURL := "http://localhost/Dockerfile"
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("name", "test")
+	writer.WriteField("dockerfile", dockerfileURL)
+	fileWriter, err := writer.CreateFormFile("dockerfile_content", "Dockerfile")
+	c.Assert(err, check.IsNil)
+	fileWriter.Write([]byte("FROM tsuru/java"))
+	writer.Close()
+	request, _ := http.NewRequest("POST", "/platforms/add", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	result := platformAdd(recorder, request, nil)
 	c.Assert(result, check.IsNil)
@@ -66,10 +75,13 @@ func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
-	dockerfile_url := "http://localhost/Dockerfile"
-	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
-	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", strings.NewReader(body))
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	var buf bytes.Buffer
+	dockerfileURL := "http://localhost/Dockerfile"
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("dockerfile", dockerfileURL)
+	writer.Close()
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
@@ -94,7 +106,7 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	dockerfile_url := ""
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
@@ -119,7 +131,7 @@ func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
@@ -144,7 +156,7 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	dockerfile_url := ""
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
@@ -169,7 +181,7 @@ func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
