@@ -2754,7 +2754,7 @@ func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) 
 	c.Assert(apps, check.DeepEquals, []App(nil))
 }
 
-func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *check.C) {
+func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 	a := App{Name: "testApp", Teams: []string{"notAdmin", "noSuperUser"}}
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
@@ -2765,6 +2765,52 @@ func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *check.C) {
 	c.Assert(len(apps), Greater, 0)
 	c.Assert(apps[0].Name, check.Equals, "testApp")
 	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
+}
+
+func (s *S) TestListFilteringExtraWithOr(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test2", Default: false}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	a := App{
+		Name:  "testapp1",
+		Teams: []string{s.team.Name},
+		Owner: "foo",
+		Pool:  opts.Name,
+	}
+	a2 := App{
+		Name:  "testapp2",
+		Teams: []string{s.team.Name},
+		Owner: "bar",
+		Pool:  s.Pool,
+	}
+	a3 := App{
+		Name:  "testapp3",
+		Teams: []string{"otherteam"},
+		Owner: "bar",
+		Pool:  opts.Name,
+	}
+	err = s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a3)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Apps().Remove(bson.M{"name": a3.Name})
+	}()
+	f := &Filter{}
+	f.ExtraIn("pool", s.Pool)
+	f.ExtraIn("teams", "otherteam")
+	apps, err := List(f)
+	c.Assert(err, check.IsNil)
+	var appNames []string
+	for _, a := range apps {
+		appNames = append(appNames, a.Name)
+	}
+	sort.Strings(appNames)
+	c.Assert(appNames, check.DeepEquals, []string{a2.Name, a3.Name})
 }
 
 func (s *S) TestGetName(c *check.C) {

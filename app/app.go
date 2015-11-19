@@ -1299,36 +1299,32 @@ type Filter struct {
 	UserOwner string
 	Pool      string
 	Locked    bool
-	Extra     bson.M
+	Extra     map[string][]string
 }
 
 func (f *Filter) ExtraIn(name string, value string) {
 	if f.Extra == nil {
-		f.Extra = bson.M{}
+		f.Extra = make(map[string][]string)
 	}
-	if f.Extra[name] == nil {
-		f.Extra[name] = bson.M{"$in": []string{}}
-	}
-	f.Extra[name].(bson.M)["$in"] = append(f.Extra[name].(bson.M)["$in"].([]string), value)
+	f.Extra[name] = append(f.Extra[name], value)
 }
 
 func (f *Filter) Query() bson.M {
 	if f == nil {
 		return bson.M{}
 	}
-	if f.Extra == nil {
-		f.Extra = bson.M{}
-	}
-	query := f.Extra
-	if f.Name != "" {
-		if f.Extra["name"] != nil {
-			query["$and"] = []bson.M{
-				{"name": bson.M{"$regex": f.Name}},
-				f.Extra["name"].(bson.M),
-			}
-		} else {
-			query["name"] = bson.M{"$regex": f.Name}
+	query := bson.M{}
+	if f.Extra != nil {
+		var orBlock []bson.M
+		for field, values := range f.Extra {
+			orBlock = append(orBlock, bson.M{
+				field: bson.M{"$in": values},
+			})
 		}
+		query["$or"] = orBlock
+	}
+	if f.Name != "" {
+		query["name"] = bson.M{"$regex": f.Name}
 	}
 	if f.TeamOwner != "" {
 		query["teamowner"] = f.TeamOwner
