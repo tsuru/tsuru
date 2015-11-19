@@ -199,8 +199,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/teams", authorizationRequiredHandler(createTeam))
 	m.Add("Get", "/teams/{name}", authorizationRequiredHandler(getTeam))
 	m.Add("Delete", "/teams/{name}", authorizationRequiredHandler(removeTeam))
-	m.Add("Put", "/teams/{team}/{user}", authorizationRequiredHandler(addUserToTeam))
-	m.Add("Delete", "/teams/{team}/{user}", authorizationRequiredHandler(removeUserFromTeam))
 
 	m.Add("Put", "/swap", authorizationRequiredHandler(swap))
 
