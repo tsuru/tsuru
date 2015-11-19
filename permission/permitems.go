@@ -14,6 +14,7 @@ var (
 	PermAppAdminQuota               = PermissionRegistry.get("app.admin.quota")
 	PermAppAdminRoutes              = PermissionRegistry.get("app.admin.routes")
 	PermAppAdminUnlock              = PermissionRegistry.get("app.admin.unlock")
+	PermAppBind                     = PermissionRegistry.get("app.bind")
 	PermAppCreate                   = PermissionRegistry.get("app.create")
 	PermAppDelete                   = PermissionRegistry.get("app.delete")
 	PermAppDeploy                   = PermissionRegistry.get("app.deploy")
