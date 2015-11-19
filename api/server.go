@@ -214,19 +214,18 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/iaas/templates/{template_name}", AdminRequiredHandler(templateDestroy))
 
 	m.Add("Get", "/plans", authorizationRequiredHandler(listPlans))
-	m.Add("Post", "/plans", AdminRequiredHandler(addPlan))
-	m.Add("Delete", "/plans/{planname}", AdminRequiredHandler(removePlan))
-	m.Add("Get", "/plans/routers", AdminRequiredHandler(listRouters))
+	m.Add("Post", "/plans", authorizationRequiredHandler(addPlan))
+	m.Add("Delete", "/plans/{planname}", authorizationRequiredHandler(removePlan))
+	m.Add("Get", "/plans/routers", authorizationRequiredHandler(listRouters))
 
 	m.Add("Get", "/debug/goroutines", AdminRequiredHandler(dumpGoroutines))
 
 	m.Add("Get", "/pools", authorizationRequiredHandler(listPoolsToUser))
-	m.Add("Get", "/pool", AdminRequiredHandler(listPoolHandler))
-	m.Add("Post", "/pool", AdminRequiredHandler(addPoolHandler))
-	m.Add("Delete", "/pool", AdminRequiredHandler(removePoolHandler))
-	m.Add("Post", "/pool/{name}", AdminRequiredHandler(poolUpdateHandler))
-	m.Add("Post", "/pool/{name}/team", AdminRequiredHandler(addTeamToPoolHandler))
-	m.Add("Delete", "/pool/{name}/team", AdminRequiredHandler(removeTeamToPoolHandler))
+	m.Add("Post", "/pool", authorizationRequiredHandler(addPoolHandler))
+	m.Add("Delete", "/pool", authorizationRequiredHandler(removePoolHandler))
+	m.Add("Post", "/pool/{name}", authorizationRequiredHandler(poolUpdateHandler))
+	m.Add("Post", "/pool/{name}/team", authorizationRequiredHandler(addTeamToPoolHandler))
+	m.Add("Delete", "/pool/{name}/team", authorizationRequiredHandler(removeTeamToPoolHandler))
 
 	m.Add("Get", "/roles", authorizationRequiredHandler(listRoles))
 	m.Add("Post", "/roles", authorizationRequiredHandler(addRole))

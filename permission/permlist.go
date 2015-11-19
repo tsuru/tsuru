@@ -23,6 +23,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.teamowner",
 	"app.update.cname.add",
 	"app.update.cname.remove",
+	"app.update.plan",
 	"app.deploy",
 	"app.deploy.rollback",
 	"app.read",
@@ -74,4 +75,11 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"platform.create",
 	"platform.delete",
 	"platform.update",
+).add(
+	"plan.create",
+	"plan.delete",
+).add(
+	"pool.create",
+	"pool.update",
+	"pool.delete",
 )

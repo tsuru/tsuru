@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -23,7 +24,7 @@ func (s *S) TestAddPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	defer provision.RemovePool("pool1")
-	err = addPoolHandler(rec, req, nil)
+	err = addPoolHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	pools, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
@@ -33,7 +34,7 @@ func (s *S) TestAddPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	rec = httptest.NewRecorder()
 	defer provision.RemovePool("pool2")
-	err = addPoolHandler(rec, req, nil)
+	err = addPoolHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	pools, err = provision.ListPools(bson.M{"_id": "pool2"})
 	c.Assert(err, check.IsNil)
@@ -50,29 +51,11 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	req, err := http.NewRequest("DELETE", "/pool", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = removePoolHandler(rec, req, nil)
+	err = removePoolHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(p), check.Equals, 0)
-}
-
-func (s *S) TestListPoolsHandler(c *check.C) {
-	pool := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam", "ateam"}}
-	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(pool.Name)
-	req, err := http.NewRequest("GET", "/pool", nil)
-	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = listPoolHandler(rec, req, nil)
-	c.Assert(err, check.IsNil)
-	var pools []provision.Pool
-	err = json.NewDecoder(rec.Body).Decode(&pools)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
@@ -85,7 +68,7 @@ func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/pool/pool1/team?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addTeamToPoolHandler(rec, req, nil)
+	err = addTeamToPoolHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
@@ -104,7 +87,7 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	req, err := http.NewRequest("DELETE", "/pool/pool1/team?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = removeTeamToPoolHandler(rec, req, nil)
+	err = removeTeamToPoolHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	p, err := provision.ListPools(nil)
 	c.Assert(err, check.IsNil)
@@ -112,17 +95,13 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 }
 
 func (s *S) TestListPoolsToUserHandler(c *check.C) {
-	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	team := auth.Team{Name: "angra"}
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	team := auth.Team{Name: "angra", Users: []string{s.user.Email, u.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "angra"),
+	})
 	pool := provision.Pool{Name: "pool1", Teams: []string{"angra"}}
 	opts := provision.AddPoolOptions{Name: pool.Name}
 	err = provision.AddPool(opts)
@@ -181,7 +160,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = poolUpdateHandler(rec, req, nil)
+	err = poolUpdateHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
@@ -198,7 +177,7 @@ func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = poolUpdateHandler(rec, req, nil)
+	err = poolUpdateHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
@@ -219,7 +198,7 @@ func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool2&force=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = poolUpdateHandler(rec, req, nil)
+	err = poolUpdateHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	p, err := provision.ListPools(bson.M{"_id": "pool2"})
 	c.Assert(err, check.IsNil)
@@ -240,7 +219,7 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/pool/pool2?:name=pool2", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = poolUpdateHandler(rec, req, nil)
+	err = poolUpdateHandler(rec, req, s.token)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)

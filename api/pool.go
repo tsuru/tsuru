@@ -10,12 +10,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/tsuru/tsuru/auth"
 	terrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/rec"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type PoolsByTeam struct {
@@ -29,19 +29,36 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	rec.Log(u.Email, "pool-list")
-	teams, err := u.Teams()
+	teams := []string{}
+	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
+	for _, c := range contexts {
+		if c.CtxType == permission.CtxGlobal {
+			teams = nil
+			break
+		}
+		if c.CtxType != permission.CtxTeam {
+			continue
+		}
+		teams = append(teams, c.Value)
+	}
+	var filter bson.M
+	if teams != nil {
+		filter = bson.M{"teams": bson.M{"$in": teams}}
+	}
+	pools, err := provision.ListPools(filter)
 	if err != nil {
 		return err
 	}
 	poolsByTeam := []PoolsByTeam{}
-	for _, t := range teams {
-		var pools []provision.Pool
-		pools, err = provision.ListPools(bson.M{"teams": t.Name})
-		if err != nil {
-			return err
+	poolsByTeamMap := map[string]*PoolsByTeam{}
+	for _, p := range pools {
+		for _, t := range p.Teams {
+			if poolsByTeamMap[t] == nil {
+				poolsByTeam = append(poolsByTeam, PoolsByTeam{Team: t})
+				poolsByTeamMap[t] = &poolsByTeam[len(poolsByTeam)-1]
+			}
+			poolsByTeamMap[t].Pools = append(poolsByTeamMap[t].Pools, p.Name)
 		}
-		pbt := PoolsByTeam{Team: t.Name, Pools: provision.GetPoolsNames(pools)}
-		poolsByTeam = append(poolsByTeam, pbt)
 	}
 	publicPools, err := provision.ListPools(bson.M{"public": true})
 	if err != nil {
@@ -56,6 +73,10 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPoolCreate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -81,6 +102,10 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 }
 
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPoolDelete)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -93,19 +118,15 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return provision.RemovePool(params["pool"])
 }
 
-func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	pools, err := provision.ListPools(nil)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(pools)
-}
-
 type teamsToPoolParams struct {
 	Teams []string `json:"teams"`
 }
 
 func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPoolUpdate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -120,6 +141,10 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 }
 
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPoolUpdate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -134,6 +159,10 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 }
 
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPoolUpdate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err

@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -24,6 +25,10 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Code:    http.StatusBadRequest,
 			Message: "unable to parse request body",
 		}
+	}
+	allowed := permission.Check(t, permission.PermPlanCreate)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	err = plan.Save()
 	if _, ok := err.(app.PlanValidationError); ok {
@@ -54,6 +59,10 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPlanDelete)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	planName := r.URL.Query().Get(":planname")
 	err := app.PlanRemove(planName)
 	if err == app.ErrPlanNotFound {
@@ -66,6 +75,10 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermPlanCreate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	routers, err := router.List()
 	if err != nil {
 		return err
@@ -86,6 +99,15 @@ func changePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdatePlan,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
