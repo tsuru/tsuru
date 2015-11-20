@@ -131,8 +131,8 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
 	expected := []Permission{
-		{Scheme: PermissionRegistry.get("app.update"), Context: permissionContext{CtxType: CtxTeam, Value: "something"}},
-		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: permissionContext{CtxType: CtxTeam, Value: "something"}},
+		{Scheme: PermissionRegistry.get("app.update"), Context: PermissionContext{CtxType: CtxTeam, Value: "something"}},
+		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: PermissionContext{CtxType: CtxTeam, Value: "something"}},
 	}
 	perms = r.PermisionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)

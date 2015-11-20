@@ -5,9 +5,12 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/repository"
 )
 
 func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -49,6 +52,78 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+func deployableApps(u *auth.User) ([]string, error) {
+	perms, err := u.Permissions()
+	if err != nil {
+		return nil, err
+	}
+	contexts := permission.ContextsFromListForPermission(perms, permission.PermAppDeploy)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	filter := appFilterByContext(contexts, nil)
+	apps, err := app.List(filter)
+	if err != nil {
+		return nil, err
+	}
+	appNames := make([]string, len(apps))
+	for i := range apps {
+		appNames[i] = apps[i].Name
+	}
+	return appNames, nil
+}
+
+func syncRepositoryApps(user *auth.User, beforeApps []string) error {
+	afterApps, err := deployableApps(user)
+	if err != nil {
+		return err
+	}
+	afterMap := map[string]struct{}{}
+	for _, a := range afterApps {
+		afterMap[a] = struct{}{}
+	}
+	manager := repository.Manager()
+	for _, a := range beforeApps {
+		var err error
+		if _, ok := afterMap[a]; !ok {
+			err = manager.RevokeAccess(a, user.Email)
+		}
+		if err != nil {
+			log.Errorf("error revoking gandalf access for app %s, user %s: %s", a, user.Email, err)
+		}
+	}
+	for _, a := range afterApps {
+		err := manager.GrantAccess(a, user.Email)
+		if err != nil {
+			log.Errorf("error granting gandalf access for app %s, user %s: %s", a, user.Email, err)
+		}
+	}
+	return nil
+}
+
+func runWithPermSync(users []auth.User, callback func() error) error {
+	usersMap := make(map[*auth.User][]string)
+	for i := range users {
+		u := &users[i]
+		apps, err := deployableApps(u)
+		if err != nil {
+			return err
+		}
+		usersMap[u] = apps
+	}
+	err := callback()
+	if err != nil {
+		return err
+	}
+	for u, apps := range usersMap {
+		err = syncRepositoryApps(u, apps)
+		if err != nil {
+			log.Errorf("unable to sync gandalf repositories updating permissions: %s", err)
+		}
+	}
+	return nil
+}
+
 func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
@@ -62,7 +137,13 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	err = role.AddPermissions(r.Form["permission"]...)
+	users, err := auth.ListUsersWithRole(roleName)
+	if err != nil {
+		return err
+	}
+	err = runWithPermSync(users, func() error {
+		return role.AddPermissions(r.Form["permission"]...)
+	})
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -79,7 +160,13 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	err = role.RemovePermissions(permName)
+	users, err := auth.ListUsersWithRole(roleName)
+	if err != nil {
+		return err
+	}
+	err = runWithPermSync(users, func() error {
+		return role.RemovePermissions(permName)
+	})
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -97,7 +184,9 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = user.AddRole(roleName, contextValue)
+	err = runWithPermSync([]auth.User{*user}, func() error {
+		return user.AddRole(roleName, contextValue)
+	})
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -112,7 +201,9 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	err = user.RemoveRole(roleName, contextValue)
+	err = runWithPermSync([]auth.User{*user}, func() error {
+		return user.RemoveRole(roleName, contextValue)
+	})
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
 	}

@@ -126,27 +126,13 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	filter := app.Filter{}
-contextsLoop:
-	for _, c := range contexts {
-		switch c.CtxType {
-		case permission.CtxGlobal:
-			filter.Extra = nil
-			break contextsLoop
-		case permission.CtxTeam:
-			filter.ExtraIn("teams", c.Value)
-		case permission.CtxApp:
-			filter.ExtraIn("name", c.Value)
-		case permission.CtxPool:
-			filter.ExtraIn("pool", c.Value)
-		}
-	}
+	filter := appFilterByContext(contexts, nil)
 	filter.Name = r.URL.Query().Get("app")
 	skip := r.URL.Query().Get("skip")
 	limit := r.URL.Query().Get("limit")
 	skipInt, _ := strconv.Atoi(skip)
 	limitInt, _ := strconv.Atoi(limit)
-	deploys, err := app.ListDeploys(&filter, skipInt, limitInt)
+	deploys, err := app.ListDeploys(filter, skipInt, limitInt)
 	if err != nil {
 		return err
 	}

@@ -118,6 +118,27 @@ func minifyApp(app app.App) (miniApp, error) {
 	}, nil
 }
 
+func appFilterByContext(contexts []permission.PermissionContext, filter *app.Filter) *app.Filter {
+	if filter == nil {
+		filter = &app.Filter{}
+	}
+contextsLoop:
+	for _, c := range contexts {
+		switch c.CtxType {
+		case permission.CtxGlobal:
+			filter.Extra = nil
+			break contextsLoop
+		case permission.CtxTeam:
+			filter.ExtraIn("teams", c.Value)
+		case permission.CtxApp:
+			filter.ExtraIn("name", c.Value)
+		case permission.CtxPool:
+			filter.ExtraIn("pool", c.Value)
+		}
+	}
+	return filter
+}
+
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -161,21 +182,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-contextsLoop:
-	for _, c := range contexts {
-		switch c.CtxType {
-		case permission.CtxGlobal:
-			filter.Extra = nil
-			break contextsLoop
-		case permission.CtxTeam:
-			filter.ExtraIn("teams", c.Value)
-		case permission.CtxApp:
-			filter.ExtraIn("name", c.Value)
-		case permission.CtxPool:
-			filter.ExtraIn("pool", c.Value)
-		}
-	}
-	apps, err := app.List(filter)
+	apps, err := app.List(appFilterByContext(contexts, filter))
 	if err != nil {
 		return err
 	}

@@ -42,19 +42,27 @@ type User struct {
 	Roles    []RoleInstance `bson:",omitempty"`
 }
 
-// ListUsers list all users registred in tsuru
-func ListUsers() ([]User, error) {
+func listUsers(filter bson.M) ([]User, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var users []User
-	err = conn.Users().Find(nil).All(&users)
+	err = conn.Users().Find(filter).All(&users)
 	if err != nil {
 		return nil, err
 	}
 	return users, nil
+}
+
+// ListUsers list all users registred in tsuru
+func ListUsers() ([]User, error) {
+	return listUsers(nil)
+}
+
+func ListUsersWithRole(role string) ([]User, error) {
+	return listUsers(bson.M{"roles.name": role})
 }
 
 func GetUserByEmail(email string) (*User, error) {

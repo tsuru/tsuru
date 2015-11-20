@@ -3,12 +3,15 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/tsuru/tsuru/repository"
 	"net/http"
 	"net/http/httptest"
 	"sort"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
 
@@ -122,6 +125,38 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{"app.deploy", "app.update"})
 }
 
+func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
+	_, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	user := &auth.User{Email: "userWithRole@groundcontrol.com", Password: "123456"}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("test", s.team.Name)
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	users, err := repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.DeepEquals, []string{s.user.Email})
+	rec := httptest.NewRecorder()
+	b := bytes.NewBufferString(`permission=app.update&permission=app.deploy`)
+	req, err := http.NewRequest("POST", "/roles/test/permissions", b)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	users, err = repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.DeepEquals, []string{s.user.Email, user.Email})
+}
+
 func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	r, err := permission.NewRole("test", "team")
 	c.Assert(err, check.IsNil)
@@ -143,6 +178,41 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	r, err = permission.FindRole("test")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{})
+}
+
+func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
+	r, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	defer permission.DestroyRole(r.Name)
+	err = r.AddPermissions("app.deploy")
+	c.Assert(err, check.IsNil)
+	user := &auth.User{Email: "userWithRole@groundcontrol.com", Password: "123456"}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("test", s.team.Name)
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	err = repository.Manager().GrantAccess(a.Name, user.Email)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("DELETE", "/roles/test/permissions/app.deploy", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	r, err = permission.FindRole("test")
+	c.Assert(err, check.IsNil)
+	c.Assert(r.SchemeNames, check.DeepEquals, []string{})
+	users, err := repositorytest.Granted(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *S) TestAssignRole(c *check.C) {

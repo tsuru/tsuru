@@ -182,7 +182,7 @@ func (r *Role) PermisionsFor(contextValue string) []Permission {
 	for i, scheme := range schemes {
 		permissions[i] = Permission{
 			Scheme: scheme,
-			Context: permissionContext{
+			Context: PermissionContext{
 				CtxType: r.ContextType,
 				Value:   contextValue,
 			},

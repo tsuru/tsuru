@@ -23,19 +23,19 @@ type permissionScheme struct {
 
 type PermissionSchemeList []*permissionScheme
 
-type permissionContext struct {
+type PermissionContext struct {
 	CtxType contextType
 	Value   string
 }
 
-func Context(t contextType, v string) permissionContext {
-	return permissionContext{CtxType: t, Value: v}
+func Context(t contextType, v string) PermissionContext {
+	return PermissionContext{CtxType: t, Value: v}
 }
 
-func Contexts(t contextType, values []string) []permissionContext {
-	contexts := make([]permissionContext, len(values))
+func Contexts(t contextType, values []string) []PermissionContext {
+	contexts := make([]PermissionContext, len(values))
 	for i, v := range values {
-		contexts[i] = permissionContext{CtxType: t, Value: v}
+		contexts[i] = PermissionContext{CtxType: t, Value: v}
 	}
 	return contexts
 }
@@ -133,19 +133,15 @@ func (s *permissionScheme) AllowedContexts() []contextType {
 
 type Permission struct {
 	Scheme  *permissionScheme
-	Context permissionContext
+	Context PermissionContext
 }
 
 type Token interface {
 	Permissions() ([]Permission, error)
 }
 
-func ContextsForPermission(token Token, scheme *permissionScheme, ctxTypes ...contextType) []permissionContext {
-	perms, err := token.Permissions()
-	if err != nil {
-		return []permissionContext{}
-	}
-	var contexts []permissionContext
+func ContextsFromListForPermission(perms []Permission, scheme *permissionScheme, ctxTypes ...contextType) []PermissionContext {
+	var contexts []PermissionContext
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
 			if len(ctxTypes) > 0 {
@@ -163,7 +159,15 @@ func ContextsForPermission(token Token, scheme *permissionScheme, ctxTypes ...co
 	return contexts
 }
 
-func Check(token Token, scheme *permissionScheme, contexts ...permissionContext) bool {
+func ContextsForPermission(token Token, scheme *permissionScheme, ctxTypes ...contextType) []PermissionContext {
+	perms, err := token.Permissions()
+	if err != nil {
+		return []PermissionContext{}
+	}
+	return ContextsFromListForPermission(perms, scheme, ctxTypes...)
+}
+
+func Check(token Token, scheme *permissionScheme, contexts ...PermissionContext) bool {
 	perms, err := token.Permissions()
 	if err != nil {
 		return false
