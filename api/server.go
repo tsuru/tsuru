@@ -204,12 +204,12 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("Get", "/healthcheck/", http.HandlerFunc(healthcheck))
 
-	m.Add("Get", "/iaas/machines", AdminRequiredHandler(machinesList))
-	m.Add("Delete", "/iaas/machines/{machine_id}", AdminRequiredHandler(machineDestroy))
-	m.Add("Get", "/iaas/templates", AdminRequiredHandler(templatesList))
-	m.Add("Post", "/iaas/templates", AdminRequiredHandler(templateCreate))
-	m.Add("Put", "/iaas/templates/{template_name}", AdminRequiredHandler(templateUpdate))
-	m.Add("Delete", "/iaas/templates/{template_name}", AdminRequiredHandler(templateDestroy))
+	m.Add("Get", "/iaas/machines", authorizationRequiredHandler(machinesList))
+	m.Add("Delete", "/iaas/machines/{machine_id}", authorizationRequiredHandler(machineDestroy))
+	m.Add("Get", "/iaas/templates", authorizationRequiredHandler(templatesList))
+	m.Add("Post", "/iaas/templates", authorizationRequiredHandler(templateCreate))
+	m.Add("Put", "/iaas/templates/{template_name}", authorizationRequiredHandler(templateUpdate))
+	m.Add("Delete", "/iaas/templates/{template_name}", authorizationRequiredHandler(templateDestroy))
 
 	m.Add("Get", "/plans", authorizationRequiredHandler(listPlans))
 	m.Add("Post", "/plans", authorizationRequiredHandler(addPlan))
