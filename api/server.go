@@ -216,8 +216,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/plans/{planname}", authorizationRequiredHandler(removePlan))
 	m.Add("Get", "/plans/routers", authorizationRequiredHandler(listRouters))
 
-	m.Add("Get", "/debug/goroutines", AdminRequiredHandler(dumpGoroutines))
-
 	m.Add("Get", "/pools", authorizationRequiredHandler(listPoolsToUser))
 	m.Add("Post", "/pool", authorizationRequiredHandler(addPoolHandler))
 	m.Add("Delete", "/pool", authorizationRequiredHandler(removePoolHandler))
@@ -234,14 +232,15 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/roles/{name}/user/{email}", authorizationRequiredHandler(dissociateRole))
 	m.Add("Get", "/permissions", authorizationRequiredHandler(listPermissions))
 
-	m.Add("Get", "/debug/pprof/", AdminRequiredHandler(indexHandler))
-	m.Add("Get", "/debug/pprof/cmdline", AdminRequiredHandler(cmdlineHandler))
-	m.Add("Get", "/debug/pprof/profile", AdminRequiredHandler(profileHandler))
-	m.Add("Get", "/debug/pprof/symbol", AdminRequiredHandler(symbolHandler))
-	m.Add("Get", "/debug/pprof/heap", AdminRequiredHandler(indexHandler))
-	m.Add("Get", "/debug/pprof/goroutine", AdminRequiredHandler(indexHandler))
-	m.Add("Get", "/debug/pprof/threadcreate", AdminRequiredHandler(indexHandler))
-	m.Add("Get", "/debug/pprof/block", AdminRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/goroutines", authorizationRequiredHandler(dumpGoroutines))
+	m.Add("Get", "/debug/pprof/", authorizationRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/cmdline", authorizationRequiredHandler(cmdlineHandler))
+	m.Add("Get", "/debug/pprof/profile", authorizationRequiredHandler(profileHandler))
+	m.Add("Get", "/debug/pprof/symbol", authorizationRequiredHandler(symbolHandler))
+	m.Add("Get", "/debug/pprof/heap", authorizationRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/goroutine", authorizationRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/threadcreate", authorizationRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/block", authorizationRequiredHandler(indexHandler))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

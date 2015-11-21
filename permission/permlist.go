@@ -18,6 +18,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",
+	"app.update.start",
+	"app.update.stop",
+	"app.update.swap",
 	"app.update.grant",
 	"app.update.revoke",
 	"app.update.teamowner",
@@ -85,4 +88,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"pool.create",
 	"pool.update",
 	"pool.delete",
+).add(
+	"debug",
 )

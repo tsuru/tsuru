@@ -1134,7 +1134,6 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer app.ReleaseApplicationLock(app2Name)
-
 	app1, err := getApp(app1Name)
 	if err != nil {
 		return err
@@ -1148,6 +1147,21 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if !locked2 {
 		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app2.Name, &app2.Lock)}
+	}
+	allowed1 := permission.Check(t, permission.PermAppUpdateSwap,
+		append(permission.Contexts(permission.CtxTeam, app1.Teams),
+			permission.Context(permission.CtxApp, app1.Name),
+			permission.Context(permission.CtxPool, app1.Pool),
+		)...,
+	)
+	allowed2 := permission.Check(t, permission.PermAppUpdateSwap,
+		append(permission.Contexts(permission.CtxTeam, app2.Teams),
+			permission.Context(permission.CtxApp, app2.Name),
+			permission.Context(permission.CtxPool, app2.Pool),
+		)...,
+	)
+	if !allowed1 || !allowed2 {
+		return permission.ErrUnauthorized
 	}
 	// compare apps by platform type and number of units
 	if forceSwap == "false" {
@@ -1185,11 +1199,20 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "start", "app="+appName)
-	app, err := getAppFromContext(appName, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
-	return app.Start(w, process)
+	allowed := permission.Check(t, permission.PermAppUpdateStart,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	return a.Start(w, process)
 }
 
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -1201,11 +1224,20 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "stop", "app="+appName)
-	app, err := getAppFromContext(appName, r)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
-	return app.Stop(w, process)
+	allowed := permission.Check(t, permission.PermAppUpdateStop,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	return a.Stop(w, process)
 }
 
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error {
