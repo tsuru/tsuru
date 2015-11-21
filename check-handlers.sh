@@ -21,6 +21,8 @@ okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") | sort | uniq)
 ignored=$(cat <<EOF
 github.com/tsuru/tsuru/api.addKeyToUser
 github.com/tsuru/tsuru/api.listPlans
+github.com/tsuru/tsuru/api.login
+github.com/tsuru/tsuru/api.logout
 EOF
 )
 ignored=$(echo "$ignored" | sort)

@@ -4,7 +4,7 @@
 
 package permission
 
-//go:generate go run ./generator/main.go -o permitems.go
+//go:generate bash -c "rm -f permitems.go && go run ./generator/main.go -o permitems.go"
 
 var PermissionRegistry = (&registry{}).addWithCtx(
 	"app", []contextType{CtxApp, CtxTeam, CtxPool},
@@ -70,6 +70,17 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.delete",
 	"user.list",
 	"user.update",
+).addWithCtx(
+	"service", []contextType{CtxService, CtxTeam},
+).addWithCtx(
+	"service.create", []contextType{CtxTeam},
+).add(
+	"service.read",
+	"service.update.proxy",
+	"service.update.revoke-access",
+	"service.update.grant-access",
+	"service.update.doc",
+	"service.delete",
 ).addWithCtx(
 	"service-instance", []contextType{CtxServiceInstance, CtxTeam},
 ).addWithCtx(

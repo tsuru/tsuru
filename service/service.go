@@ -152,21 +152,28 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) ([]Ser
 	return services, err
 }
 
-func GetServicesByOwnerTeams(teamKind string, u *auth.User) ([]Service, error) {
-	teams, err := u.Teams()
-	if err != nil {
-		return nil, err
-	}
+func GetServicesByFilter(filter bson.M) ([]Service, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	teamsNames := auth.GetTeamsNames(teams)
-	q := bson.M{teamKind: bson.M{"$in": teamsNames}}
 	var services []Service
-	err = conn.Services().Find(q).All(&services)
+	err = conn.Services().Find(filter).All(&services)
 	return services, err
+}
+
+func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Service, error) {
+	var filter bson.M
+	if teams != nil || services != nil {
+		filter = bson.M{
+			"$or": []bson.M{
+				{"owner_teams": bson.M{"$in": teams}},
+				{"_id": bson.M{"$in": services}},
+			},
+		}
+	}
+	return GetServicesByFilter(filter)
 }
 
 type ServiceModel struct {

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -230,7 +231,7 @@ func (s *S) TestServiceByTeamKindShouldNotReturnsDeletedServices(c *check.C) {
 	c.Assert(expected, check.DeepEquals, result)
 }
 
-func (s *S) TestGetServicesByOwnerTeams(c *check.C) {
+func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -239,12 +240,31 @@ func (s *S) TestGetServicesByOwnerTeams(c *check.C) {
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
 	defer srvc2.Delete()
-	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
+	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
+	c.Assert(err, check.IsNil)
 	expected := []Service{srvc}
 	c.Assert(services, check.DeepEquals, expected)
 }
 
-func (s *S) TestGetServicesByOwnerTeamsShouldNotReturnsDeletedServices(c *check.C) {
+func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
+	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	srvc2 := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	err = srvc2.Create()
+	c.Assert(err, check.IsNil)
+	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, []string{srvc2.Name})
+	c.Assert(err, check.IsNil)
+	c.Assert(services, check.HasLen, 2)
+	var names []string
+	for _, s := range services {
+		names = append(names, s.Name)
+	}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{"mongodb", "mysql"})
+}
+
+func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedServices(c *check.C) {
 	service := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
@@ -252,7 +272,9 @@ func (s *S) TestGetServicesByOwnerTeamsShouldNotReturnsDeletedServices(c *check.
 	err = deletedService.Create()
 	c.Assert(err, check.IsNil)
 	err = deletedService.Delete()
-	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
+	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := []Service{service}
 	c.Assert(services, check.DeepEquals, expected)
 }

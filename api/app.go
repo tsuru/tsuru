@@ -54,11 +54,22 @@ func getApp(name string) (*app.App, error) {
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	app, err := app.GetByName(r.URL.Query().Get(":appname"))
+	a, err := app.GetByName(r.URL.Query().Get(":appname"))
 	if err != nil {
 		return err
 	}
-	if !app.Available() {
+	if t.GetAppName() != app.InternalAppName {
+		allowed := permission.Check(t, permission.PermAppUpdateUnitAdd,
+			append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
+	}
+	if !a.Available() {
 		return fmt.Errorf("App must be available to receive pushs.")
 	}
 	w.WriteHeader(http.StatusOK)

@@ -11,11 +11,10 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v1"
 )
 
@@ -24,6 +23,7 @@ type serviceYaml struct {
 	Username string
 	Password string
 	Endpoint map[string]string
+	Team     string
 }
 
 func (sy *serviceYaml) validate() error {
@@ -40,12 +40,34 @@ func (sy *serviceYaml) validate() error {
 }
 
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
+	rec.Log(t.GetUserName(), "list-services")
+	teams := []string{}
+	serviceNames := []string{}
+	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)
+	for _, c := range contexts {
+		if c.CtxType == permission.CtxGlobal {
+			teams = nil
+			serviceNames = nil
+			break
+		}
+		switch c.CtxType {
+		case permission.CtxService:
+			serviceNames = append(serviceNames, c.Value)
+		case permission.CtxTeam:
+			teams = append(teams, c.Value)
+		}
 	}
-	rec.Log(u.Email, "list-services")
-	results := servicesAndInstancesByOwner(u)
+	services, _ := service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
+	sInstances, _ := service.GetServiceInstancesByServices(services)
+	results := make([]service.ServiceModel, len(services))
+	for i, s := range services {
+		results[i].Service = s.Name
+		for _, si := range sInstances {
+			if si.ServiceName == s.Name {
+				results[i].Instances = append(results[i].Instances, si.Name)
+			}
+		}
+	}
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -68,35 +90,30 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	teamContexts := permission.ContextsForPermission(t, permission.PermServiceCreate, permission.CtxTeam)
+	if sy.Team == "" && len(teamContexts) == 1 {
+		sy.Team = teamContexts[0].Value
+	}
 	err = sy.validate()
 	if err != nil {
 		return err
 	}
-	u, err := t.User()
-	if err != nil {
-		return err
+	if sy.Team == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team responsible for this service in the manifest file."}
 	}
-	rec.Log(u.Email, "create-service", sy.Id, sy.Endpoint)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
+	allowed := permission.Check(t, permission.PermServiceCreate,
+		permission.Context(permission.CtxTeam, sy.Team),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
-	defer conn.Close()
-	var teams []auth.Team
-	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
-	if err != nil {
-		return err
-	}
-	if len(teams) == 0 {
-		msg := "In order to create a service, you should be member of at least one team"
-		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
-	}
+	rec.Log(t.GetUserName(), "create-service", sy.Id, sy.Endpoint)
 	s := service.Service{
 		Name:       sy.Id,
 		Username:   sy.Username,
 		Endpoint:   sy.Endpoint,
 		Password:   sy.Password,
-		OwnerTeams: auth.GetTeamsNames(teams),
+		OwnerTeams: []string{sy.Team},
 	}
 	err = s.Create()
 	if err != nil {
@@ -125,15 +142,19 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	u, err := t.User()
+	s, err := getService(y.Id)
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "update-service", y.Id, y.Endpoint)
-	s, err := getServiceByOwner(y.Id, u)
-	if err != nil {
-		return err
+	allowed := permission.Check(t, permission.PermServiceUpdate,
+		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+			permission.Context(permission.CtxService, s.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
+	rec.Log(t.GetUserName(), "update-service", y.Id, y.Endpoint)
 	s.Endpoint = y.Endpoint
 	s.Password = y.Password
 	s.Username = y.Username
@@ -145,25 +166,24 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
+	s, err := getService(r.URL.Query().Get(":name"))
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "delete-service", r.URL.Query().Get(":name"))
-	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
+	allowed := permission.Check(t, permission.PermServiceDelete,
+		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+			permission.Context(permission.CtxService, s.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(t.GetUserName(), "delete-service", r.URL.Query().Get(":name"))
+	instances, err := service.GetServiceInstancesByServices([]service.Service{s})
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	n, err := conn.ServiceInstances().Find(bson.M{"service_name": s.Name}).Count()
-	if err != nil {
-		return err
-	}
-	if n > 0 {
+	if len(instances) > 0 {
 		msg := "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service."
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
@@ -177,139 +197,115 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
-	user, err := t.User()
+	s, err := getService(serviceName)
 	if err != nil {
 		return err
 	}
-	se, err := getServiceByOwner(serviceName, user)
-	if err != nil {
-		return err
+	allowed := permission.Check(t, permission.PermServiceUpdateProxy,
+		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+			permission.Context(permission.CtxService, s.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	path := r.URL.Query().Get("callback")
-	return service.Proxy(&se, path, w, r)
-}
-
-func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*service.Service, *auth.Team, error) {
-	service := &service.Service{Name: serviceName}
-	err := service.Get()
-	if err != nil {
-		return nil, nil, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
-	}
-	if !auth.CheckUserAccess(service.Teams, u) {
-		msg := "This user does not have access to this service"
-		return nil, nil, &errors.HTTP{Code: http.StatusForbidden, Message: msg}
-	}
-	t := new(auth.Team)
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, nil, err
-	}
-	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
-	if err != nil {
-		return nil, nil, &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
-	}
-	return service, t, nil
+	return service.Proxy(&s, path, w, r)
 }
 
 func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	serviceName := r.URL.Query().Get(":service")
-	teamName := r.URL.Query().Get(":team")
-	rec.Log(u.Email, "grant-service-access", "service="+serviceName, "team="+teamName)
-	service, team, err := getServiceAndTeam(serviceName, teamName, u)
+	s, err := getService(serviceName)
 	if err != nil {
 		return err
 	}
-	err = service.GrantAccess(team)
+	allowed := permission.Check(t, permission.PermServiceUpdateGrantAccess,
+		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+			permission.Context(permission.CtxService, s.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	teamName := r.URL.Query().Get(":team")
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		if err == auth.ErrTeamNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+		}
+		return err
+	}
+	rec.Log(t.GetUserName(), "grant-service-access", "service="+serviceName, "team="+teamName)
+	err = s.GrantAccess(team)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Services().Update(bson.M{"_id": service.Name}, service)
+	return s.Update()
 }
 
 func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	serviceName := r.URL.Query().Get(":service")
-	teamName := r.URL.Query().Get(":team")
-	rec.Log(u.Email, "revoke-service-access", "service="+serviceName, "team="+teamName)
-	service, team, err := getServiceAndTeam(serviceName, teamName, u)
+	s, err := getService(serviceName)
 	if err != nil {
 		return err
 	}
-	if len(service.Teams) < 2 {
+	allowed := permission.Check(t, permission.PermServiceUpdateRevokeAccess,
+		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+			permission.Context(permission.CtxService, s.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	teamName := r.URL.Query().Get(":team")
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		if err == auth.ErrTeamNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+		}
+		return err
+	}
+	if len(s.Teams) < 2 {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = service.RevokeAccess(team)
+	rec.Log(t.GetUserName(), "revoke-service-access", "service="+serviceName, "team="+teamName)
+	err = s.RevokeAccess(team)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Services().Update(bson.M{"_id": service.Name}, service)
+	return s.Update()
 }
 
 func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "service-add-doc", r.URL.Query().Get(":name"), string(body))
-	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
+	serviceName := r.URL.Query().Get(":name")
+	s, err := getService(serviceName)
 	if err != nil {
 		return err
 	}
-	s.Doc = string(body)
-	if err = s.Update(); err != nil {
-		return err
+	allowed := permission.Check(t, permission.PermServiceUpdateDoc,
+		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+			permission.Context(permission.CtxService, s.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
-	return nil
+	rec.Log(t.GetUserName(), "service-add-doc", serviceName, string(body))
+	s.Doc = string(body)
+	return s.Update()
 }
 
-func getServiceByOwner(name string, u *auth.User) (service.Service, error) {
+func getService(name string) (service.Service, error) {
 	s := service.Service{Name: name}
 	err := s.Get()
 	if err != nil {
 		return s, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}
-	if !auth.CheckUserAccess(s.OwnerTeams, u) {
-		msg := "This user does not have access to this service"
-		return s, &errors.HTTP{Code: http.StatusForbidden, Message: msg}
-	}
 	return s, err
-}
-
-func servicesAndInstancesByOwner(u *auth.User) []service.ServiceModel {
-	services, _ := service.GetServicesByOwnerTeams("owner_teams", u)
-	sInstances, _ := service.GetServiceInstancesByServices(services)
-	results := make([]service.ServiceModel, len(services))
-	for i, s := range services {
-		results[i].Service = s.Name
-		for _, si := range sInstances {
-			if si.ServiceName == s.Name {
-				results[i].Instances = append(results[i].Instances, si.Name)
-			}
-		}
-	}
-	return results
 }

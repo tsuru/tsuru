@@ -48,6 +48,7 @@ var (
 	CtxTeam            = contextType("team")
 	CtxPool            = contextType("pool")
 	CtxIaaS            = contextType("iaas")
+	CtxService         = contextType("service")
 	CtxServiceInstance = contextType("service-instance")
 
 	ContextTypes = []contextType{
