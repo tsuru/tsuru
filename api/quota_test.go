@@ -43,13 +43,14 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	repositorytest.Reset()
-	s.user = &auth.User{Email: "unspoken@gotthard.com", Password: "123456"}
-	_, err := nativeScheme.Create(s.user)
+	s.team = &auth.Team{Name: "superteam", Users: []string{"quotauser@groundcontrol.com"}}
+	err := conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "superteam", Users: []string{s.user.Email}}
-	err = conn.Teams().Insert(s.team)
-	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	s.token = customUserWithPermission(c, "quotauser", permission.Permission{
+		Scheme:  permission.PermAppAdminQuota,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	config.Set("admin-team", s.team.Name)
 	app.AuthScheme = nativeScheme
@@ -268,6 +269,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	a := &app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
+		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -293,19 +295,15 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	app := app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
+		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": app.Name})
-	user := &auth.User{
-		Email:    "radio@gaga.com",
-		Password: "qwe123",
-	}
-	_, err = nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
-	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "other", permission.Permission{
+		Scheme:  permission.PermAppAdminQuota,
+		Context: permission.Context(permission.CtxTeam, "-other-"),
+	})
 	body := bytes.NewBufferString("limit=40")
 	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -313,8 +311,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, adminRequiredErr.Code)
-	c.Assert(recorder.Body.String(), check.Equals, adminRequiredErr.Message+"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {

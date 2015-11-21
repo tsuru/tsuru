@@ -10,6 +10,10 @@ package permission
 var (
 	PermAll                         = PermissionRegistry.get("")
 	PermApp                         = PermissionRegistry.get("app")
+	PermAppAdmin                    = PermissionRegistry.get("app.admin")
+	PermAppAdminQuota               = PermissionRegistry.get("app.admin.quota")
+	PermAppAdminRoutes              = PermissionRegistry.get("app.admin.routes")
+	PermAppAdminUnlock              = PermissionRegistry.get("app.admin.unlock")
 	PermAppCreate                   = PermissionRegistry.get("app.create")
 	PermAppDelete                   = PermissionRegistry.get("app.delete")
 	PermAppDeploy                   = PermissionRegistry.get("app.deploy")

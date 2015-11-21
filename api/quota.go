@@ -77,9 +77,18 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		}
 	}
 	appName := r.URL.Query().Get(":appname")
-	a, err := app.GetByName(appName)
+	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
-	return app.ChangeQuota(a, limit)
+	allowed := permission.Check(t, permission.PermAppAdminQuota,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	return app.ChangeQuota(&a, limit)
 }

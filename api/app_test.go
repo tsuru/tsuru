@@ -3875,7 +3875,7 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
@@ -3886,19 +3886,19 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	c.Assert(dbApp.Lock.Locked, check.Equals, false)
 }
 
-func (s *S) TestForceDeleteLockOnlyAdmins(c *check.C) {
+func (s *S) TestForceDeleteLockOnlyWithPermission(c *check.C) {
 	a := app.App{Name: "locked", Lock: app.AppLock{Locked: true}, Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	token := userWithPermission(c)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
 	c.Assert(err, check.IsNil)
@@ -4223,7 +4223,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	request, err := http.NewRequest("POST", "/apps/myappx/routes", nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)

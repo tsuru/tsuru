@@ -1210,7 +1210,20 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
-	app.ReleaseApplicationLock(appName)
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppAdminUnlock,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	app.ReleaseApplicationLock(a.Name)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -1307,13 +1320,22 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "app-rebuild-routes", "app="+r.URL.Query().Get(":app"))
-	app, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}
+	allowed := permission.Check(t, permission.PermAppAdminRoutes,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(u.Email, "app-rebuild-routes", "app="+r.URL.Query().Get(":app"))
 	w.Header().Set("Content-Type", "application/json")
-	result, err := app.RebuildRoutes()
+	result, err := a.RebuildRoutes()
 	if err != nil {
 		return err
 	}
