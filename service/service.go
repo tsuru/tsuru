@@ -132,26 +132,6 @@ func GetServicesNames(services []Service) []string {
 	return sNames
 }
 
-func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) ([]Service, error) {
-	teams, err := u.Teams()
-	if err != nil {
-		return nil, err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	teamsNames := auth.GetTeamsNames(teams)
-	q := bson.M{"$or": []bson.M{
-		{teamKind: bson.M{"$in": teamsNames}},
-		{"is_restricted": false},
-	}}
-	var services []Service
-	err = conn.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
-	return services, err
-}
-
 func GetServicesByFilter(filter bson.M) ([]Service, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -161,6 +141,20 @@ func GetServicesByFilter(filter bson.M) ([]Service, error) {
 	var services []Service
 	err = conn.Services().Find(filter).All(&services)
 	return services, err
+}
+
+func GetServicesByTeamsAndServices(teams []string, services []string) ([]Service, error) {
+	var filter bson.M
+	if teams != nil || services != nil {
+		filter = bson.M{
+			"$or": []bson.M{
+				{"teams": bson.M{"$in": teams}},
+				{"_id": bson.M{"$in": services}},
+				{"is_restricted": false},
+			},
+		}
+	}
+	return GetServicesByFilter(filter)
 }
 
 func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Service, error) {

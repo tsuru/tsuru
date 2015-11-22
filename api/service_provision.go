@@ -57,8 +57,14 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			teams = append(teams, c.Value)
 		}
 	}
-	services, _ := service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
-	sInstances, _ := service.GetServiceInstancesByServices(services)
+	services, err := service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
+	if err != nil {
+		return err
+	}
+	sInstances, err := service.GetServiceInstancesByServices(services)
+	if err != nil {
+		return err
+	}
 	results := make([]service.ServiceModel, len(services))
 	for i, s := range services {
 		results[i].Service = s.Name

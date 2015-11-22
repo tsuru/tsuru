@@ -951,24 +951,20 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-func getServiceInstance(serviceName, instanceName, appName string, u *auth.User) (*service.ServiceInstance, *app.App, error) {
+func getServiceInstance(serviceName, instanceName, appName string) (*service.ServiceInstance, *app.App, error) {
 	var app app.App
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, nil, err
 	}
 	defer conn.Close()
-	instance, err := getServiceInstanceOrError(serviceName, instanceName, u)
+	instance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return nil, nil, err
 	}
 	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
 	if err != nil {
 		err = &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
-		return nil, nil, err
-	}
-	if !auth.CheckUserAccess(app.Teams, u) {
-		err = &errors.HTTP{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
 		return nil, nil, err
 	}
 	return instance, &app, nil
@@ -981,15 +977,28 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
-	u, err := t.User()
+	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstance(serviceName, instanceName, appName, u)
-	if err != nil {
-		return err
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateBind,
+		append(permission.Contexts(permission.CtxTeam, instance.Teams),
+			permission.Context(permission.CtxServiceInstance, instance.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "bind-app", "instance="+instanceName, "app="+appName)
+	allowed = permission.Check(t, permission.PermAppUpdateBind,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(t.GetUserName(), "bind-app", "instance="+instanceName, "app="+appName)
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1022,9 +1031,26 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstance(serviceName, instanceName, appName, u)
+	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
+	}
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
+		append(permission.Contexts(permission.CtxTeam, instance.Teams),
+			permission.Context(permission.CtxServiceInstance, instance.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	allowed = permission.Check(t, permission.PermAppUpdateUnbind,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "unbind-app", "instance="+instanceName, "app="+appName)
 	w.Header().Set("Content-Type", "application/json")

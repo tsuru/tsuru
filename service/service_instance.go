@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/rec"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,7 +27,7 @@ var (
 	ErrInvalidInstanceName       = stderrors.New("invalid service instance name")
 	ErrInstanceNameAlreadyExists = stderrors.New("instance name already exists.")
 	ErrAccessNotAllowed          = stderrors.New("user does not have access to this service instance")
-	ErrMultipleTeams             = stderrors.New("user is member of multiple teams, please specify the team that owns the service instance")
+	ErrTeamMandatory             = stderrors.New("please specify the team that owns the service instance")
 	ErrUnitAlreadyBound          = stderrors.New("unit is already bound to this service instance")
 	ErrUnitNotBound              = stderrors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound      = stderrors.New("This service instance is bound to at least one app. Unbind them before removing it")
@@ -306,33 +305,10 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 		return err
 	}
 	instance.ServiceName = service.Name
-	teams, err := user.Teams()
-	if err != nil {
-		return err
-	}
-	instance.Teams = make([]string, 0, len(teams))
-	for _, team := range teams {
-		if service.HasTeam(&team) || !service.IsRestricted {
-			instance.Teams = append(instance.Teams, team.Name)
-		}
-	}
 	if instance.TeamOwner == "" {
-		if len(instance.Teams) > 1 {
-			return ErrMultipleTeams
-		}
-		instance.TeamOwner = instance.Teams[0]
-	} else {
-		var found bool
-		for _, team := range instance.Teams {
-			if instance.TeamOwner == team {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return auth.ErrTeamNotFound
-		}
+		return ErrTeamMandatory
 	}
+	instance.Teams = []string{instance.TeamOwner}
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(*service, instance, user.Email)
@@ -351,46 +327,42 @@ func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error
 	return instances, err
 }
 
-func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User, appName string) ([]ServiceInstance, error) {
-	var instances []ServiceInstance
-	teams, err := u.Teams()
-	if err != nil {
-		return nil, err
+func GetServicesInstancesByTeamsAndNames(teams []string, names []string, appName, serviceName string) ([]ServiceInstance, error) {
+	filter := bson.M{}
+	if teams != nil || names != nil {
+		filter = bson.M{
+			"$or": []bson.M{
+				{"teams": bson.M{"$in": teams}},
+				{"name": bson.M{"$in": names}},
+			},
+		}
 	}
-	if len(teams) == 0 {
-		return nil, nil
+	if appName != "" {
+		filter["apps"] = appName
+	}
+	if serviceName != "" {
+		filter["service_name"] = serviceName
 	}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var teamNames []string
-	if !u.IsAdmin() {
-		teamNames = auth.GetTeamsNames(teams)
-	}
-	query := genericServiceInstancesFilter(services, teamNames)
-	if appName != "" {
-		query["apps"] = appName
-	}
-	err = conn.ServiceInstances().Find(query).All(&instances)
+	var instances []ServiceInstance
+	err = conn.ServiceInstances().Find(filter).All(&instances)
 	return instances, err
 }
 
-func GetServiceInstance(serviceName string, instanceName string, u *auth.User) (*ServiceInstance, error) {
+func GetServiceInstance(serviceName string, instanceName string) (*ServiceInstance, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	rec.Log(u.Email, "get-service-instance", instanceName)
 	var instance ServiceInstance
 	err = conn.ServiceInstances().Find(bson.M{"name": instanceName, "service_name": serviceName}).One(&instance)
 	if err != nil {
 		return nil, ErrServiceInstanceNotFound
-	}
-	if !auth.CheckUserAccess(instance.Teams, u) {
-		return nil, ErrAccessNotAllowed
 	}
 	return &instance, nil
 }

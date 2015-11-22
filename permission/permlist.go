@@ -27,6 +27,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.cname.add",
 	"app.update.cname.remove",
 	"app.update.plan",
+	"app.update.bind",
+	"app.update.unbind",
 	"app.deploy",
 	"app.deploy.rollback",
 	"app.read",
@@ -75,7 +77,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).addWithCtx(
 	"service.create", []contextType{CtxTeam},
 ).add(
-	"service.read",
+	"service.read.doc",
+	"service.read.plans",
 	"service.update.proxy",
 	"service.update.revoke-access",
 	"service.update.grant-access",
@@ -84,10 +87,11 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).addWithCtx(
 	"service-instance", []contextType{CtxServiceInstance, CtxTeam},
 ).addWithCtx(
-	"service-instance.create", []contextType{},
+	"service-instance.create", []contextType{CtxTeam},
 ).add(
-	"service-instance.read",
+	"service-instance.read.status",
 	"service-instance.delete",
+	"service-instance.update.proxy",
 	"service-instance.update.bind",
 	"service-instance.update.unbind",
 	"service-instance.update.grant",
