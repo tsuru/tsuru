@@ -52,7 +52,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	s.user.Create()
-	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
+	s.team = auth.Team{Name: "metallica"}
 	s.conn.Teams().Insert(s.team)
 }
 

@@ -49,7 +49,7 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 func (s *InstanceSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
-	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
+	s.team = &auth.Team{Name: "Raul"}
 	s.conn.Users().Insert(s.user)
 	s.conn.Teams().Insert(s.team)
 }
@@ -408,7 +408,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	team := auth.Team{Name: "owner", Users: []string{s.user.Email}}
+	team := auth.Team{Name: "owner"}
 	err := s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
@@ -433,7 +433,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	team := auth.Team{Name: "owner", Users: []string{s.user.Email}}
+	team := auth.Team{Name: "owner"}
 	err := s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
@@ -559,7 +559,7 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 
 func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	team := &auth.Team{Name: "test2", Users: []string{user.Email}}
+	team := &auth.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(team)
@@ -582,7 +582,7 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 
 func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	user := &auth.User{Email: "test@raul.com", Password: "123"}
-	team := &auth.Team{Name: "test2", Users: []string{user.Email}}
+	team := &auth.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(team)
