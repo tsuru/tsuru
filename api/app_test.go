@@ -3660,7 +3660,7 @@ func (s *S) TestPlatformList(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestPlatformListAdminList(c *check.C) {
+func (s *S) TestPlatformListGetDisabledPlatforms(c *check.C) {
 	platforms := []app.Platform{
 		{Name: "python", Disabled: true},
 		{Name: "java"},
@@ -3676,14 +3676,19 @@ func (s *S) TestPlatformListAdminList(c *check.C) {
 	want = append(want, platforms...)
 	request, _ := http.NewRequest("GET", "/platforms", nil)
 	recorder := httptest.NewRecorder()
-	err := platformList(recorder, request, s.admintoken)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermPlatformCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	err := platformList(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got []app.Platform
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, want)
-	action := rectest.Action{Action: "platform-list", User: s.adminuser.Email}
+	u, _ := token.User()
+	action := rectest.Action{Action: "platform-list", User: u.Email}
 	c.Assert(action, rectest.IsRecorded)
 }
 
@@ -3707,14 +3712,19 @@ func (s *S) TestPlatformListUserList(c *check.C) {
 	want = append(want, expectedPlatforms...)
 	request, _ := http.NewRequest("GET", "/platforms", nil)
 	recorder := httptest.NewRecorder()
-	err := platformList(recorder, request, s.token)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	err := platformList(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got []app.Platform
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, want)
-	action := rectest.Action{Action: "platform-list", User: s.user.Email}
+	u, _ := token.User()
+	action := rectest.Action{Action: "platform-list", User: u.Email}
 	c.Assert(action, rectest.IsRecorded)
 }
 

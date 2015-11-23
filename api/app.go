@@ -1142,7 +1142,9 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "platform-list")
-	platforms, err := app.Platforms(!u.IsAdmin())
+	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+		permission.Check(t, permission.PermPlatformCreate)
+	platforms, err := app.Platforms(!canUsePlat)
 	if err != nil {
 		return err
 	}
