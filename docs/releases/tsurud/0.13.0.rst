@@ -63,6 +63,9 @@ Bug fixes
 * Fix the behavior of app-restart when the app is stopped: now it actually
   starts the app (issue `#1281 <https://github.com/tsuru/tsuru/issues/1281>`_).
 
+* Fix bug that disabled usage tracking for quota management when quota was
+  unlimited (issue `#1279 <https://github.com/tsuru/tsuru/issues/1279>`_).
+
 * Deploy info now returns 404 when the provided id is not a valid MongoDB
   ObjectId.
 
