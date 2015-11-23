@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -25,6 +26,10 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	args := make(map[string]string)
 	for key, values := range r.Form {
 		args[key] = values[0]
+	}
+	canCreatePlatform := permission.Check(t, permission.PermPlatformCreate)
+	if !canCreatePlatform {
+		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "text")
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
@@ -56,6 +61,10 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	for key, values := range r.Form {
 		args[key] = values[0]
 	}
+	canUpdatePlatform := permission.Check(t, permission.PermPlatformUpdate)
+	if !canUpdatePlatform {
+		return permission.ErrUnauthorized
+	}
 	w.Header().Set("Content-Type", "text")
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -76,6 +85,10 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 }
 
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
+	if !canDeletePlatform {
+		return permission.ErrUnauthorized
+	}
 	name := r.URL.Query().Get(":name")
 	return app.PlatformRemove(name)
 }
