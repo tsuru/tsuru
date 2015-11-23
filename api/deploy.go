@@ -107,7 +107,15 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-
+	canRollback := permission.Check(t, permission.PermAppDeployRollback,
+		append(permission.Contexts(permission.CtxTeam, instance.Teams),
+			permission.Context(permission.CtxApp, instance.Name),
+			permission.Context(permission.CtxPool, instance.Pool),
+		)...,
+	)
+	if !canRollback {
+		return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
+	}
 	err = app.Rollback(app.DeployOptions{
 		App:          instance,
 		OutputStream: writer,
