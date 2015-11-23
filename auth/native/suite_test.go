@@ -52,7 +52,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "cobrateam", Users: []string{s.user.Email}}
+	team := &auth.Team{Name: "cobrateam"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	s.team = team
