@@ -10,7 +10,7 @@ handlers2=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/c
 
 allhandlers=$(echo "$handlers1"$'\n'"$handlers2" | sort)
 
-pos=$(($(cat ./permission/permission.go | grep -ob "func Check" | egrep -o "^[0-9]+")+5))
+pos=$(($(cat ./permission/permission.go | grep -ob "func Check(" | egrep -o "^[0-9]+")+5))
 okhandlers1=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
 
 pos=$(($(cat ./permission/permission.go | grep -ob "func ContextsForPermission" | egrep -o "^[0-9]+")+5))
