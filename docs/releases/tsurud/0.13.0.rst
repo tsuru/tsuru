@@ -8,12 +8,13 @@ tsurud 0.13.0 release notes
 
 Welcome to tsurud 0.13.0!
 
-These release notes cover the `new features`_, `bug fixes`_ and `general
-improvements`_ you'll want to be aware of when upgrading from tsurud 0.12.x or
-older versions.
+These release notes cover the `new features`_, `bug fixes`_, `general
+improvements`_ and `backward incompatible changes`_ you'll want to be aware of
+when upgrading from tsurud 0.12.x or older versions.
 
 .. _`new features`: `Main new features`_
 .. _`general improvements`: `Other improvements`_
+.. _`backward incompatible changes`: `Backward incompatible changes (action needed)`_
 
 Main new features
 =================
@@ -42,6 +43,12 @@ Main new features
   different services using the same name (issue `#1299
   <https://github.com/tsuru/tsuru/issues/1299>`_).
 
+* Handlers for adding and updating platforms now accept uploading a Dockerfile,
+  which means that users can provide local Dockerfiles or use prebuilt images
+  in platform-add/platform-update (issues `#781
+  <https://github.com/tsuru/tsuru/issues/781>`_ and `#1252
+  <https://github.com/tsuru/tsuru/issues/1252>`_).
+
 Bug fixes
 =========
 
@@ -56,7 +63,8 @@ Bug fixes
 * Fix the behavior of app-restart when the app is stopped: now it actually
   starts the app (issue `#1281 <https://github.com/tsuru/tsuru/issues/1281>`_).
 
-* Deploy info now returns 404 when the id is an invalid mongo ObjectId.
+* Deploy info now returns 404 when the provided id is not a valid MongoDB
+  ObjectId.
 
 Other improvements
 ==================
@@ -74,13 +82,13 @@ Other improvements
 * Add a parameter in the service-remove endpoint for unbinding all apps bound
   to the service instance.
 
-* Add a parameter in the env-set, env-unset, service-bind and service-unbind 
-  to prevent the application restart when inject an environment variable 
-  (issue `#1271 <https://github.com/tsuru/tsuru/issues/1271>`_). 
+* Add a parameter in the env-set, env-unset, service-bind and service-unbind
+  to prevent the application restart when inject an environment variable
+  (issue `#1271 <https://github.com/tsuru/tsuru/issues/1271>`_).
 
 * Add a parameter in the token-show and token-regenerate to display/regenerate
-  token for third users. Only admin user can perform this operations 
-  (issue `#1316 <https://github.com/tsuru/tsuru/issues/1316>`_).
+  token for third users. Only admins can perform this operations (issue `#1316
+  <https://github.com/tsuru/tsuru/issues/1316>`_).
 
 * Add a new filter in the app listing API endpoint: now it's possible to filter
   applications by pool (issue `#1311
@@ -100,3 +108,12 @@ Other improvements
   avoiding database connections leakage.
 
 * Improve documentation for the Java platform (thanks Manoel Domingues Junior).
+
+Backward incompatible changes (action needed)
+=============================================
+
+* The post-receive hook is no longer supported, please update to one of the
+  `available pre-receive hooks
+  <https://github.com/tsuru/tsuru/tree/master/misc/git-hooks>`_. You may stick
+  to a post-receive hook that invokes git-archive and uploads it to tsuru, but
+  we recommend using a pre-receive hook.
