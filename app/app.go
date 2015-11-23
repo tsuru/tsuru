@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -536,8 +537,16 @@ func (app *App) Grant(team *auth.Team) error {
 	if err != nil {
 		return err
 	}
-	for _, user := range team.Users {
-		err = repository.Manager().GrantAccess(app.Name, user)
+	users, err := auth.ListUsersWithPermissions(permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, team.Name),
+	})
+	if err != nil {
+		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
+		return err
+	}
+	for _, user := range users {
+		err = repository.Manager().GrantAccess(app.Name, user.Email)
 		if err != nil {
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
 			return err
@@ -568,33 +577,36 @@ func (app *App) Revoke(team *auth.Team) error {
 	if err != nil {
 		return err
 	}
-	for _, user := range app.usersToRevoke(team) {
-		err = repository.Manager().RevokeAccess(app.Name, user)
+	users, err := auth.ListUsersWithPermissions(permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, team.Name),
+	})
+	if err != nil {
+		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
+		return err
+	}
+	for _, user := range users {
+		perms, err := user.Permissions()
+		if err != nil {
+			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
+			return err
+		}
+		canDeploy := permission.CheckFromPermList(perms, permission.PermAppDeploy,
+			append(permission.Contexts(permission.CtxTeam, app.Teams),
+				permission.Context(permission.CtxApp, app.Name),
+				permission.Context(permission.CtxPool, app.Pool),
+			)...,
+		)
+		if canDeploy {
+			continue
+		}
+		err = repository.Manager().RevokeAccess(app.Name, user.Email)
 		if err != nil {
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
 			return err
 		}
 	}
 	return nil
-}
-
-func (app *App) usersToRevoke(t *auth.Team) []string {
-	teams := app.GetTeams()
-	users := make([]string, 0, len(t.Users))
-	for _, email := range t.Users {
-		found := false
-		user := auth.User{Email: email}
-		for _, team := range teams {
-			if team.ContainsUser(&user) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			users = append(users, email)
-		}
-	}
-	return users
 }
 
 // GetTeams returns a slice of teams that have access to the app.

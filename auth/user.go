@@ -65,6 +65,29 @@ func ListUsersWithRole(role string) ([]User, error) {
 	return listUsers(bson.M{"roles.name": role})
 }
 
+func ListUsersWithPermissions(wantedPerms ...permission.Permission) ([]User, error) {
+	allUsers, err := ListUsers()
+	if err != nil {
+		return nil, err
+	}
+	var filteredUsers []User
+	// TODO(cezarsa): Too slow! Think about faster implementation in the future.
+usersLoop:
+	for _, u := range allUsers {
+		perms, err := u.Permissions()
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range perms {
+			if permission.CheckFromPermList(perms, p.Scheme, p.Context) {
+				filteredUsers = append(filteredUsers, u)
+				continue usersLoop
+			}
+		}
+	}
+	return filteredUsers, nil
+}
+
 func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
 		return nil, &errors.ValidationError{Message: "invalid email"}
@@ -132,29 +155,6 @@ func (u *User) Update() error {
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
-// Teams returns a slice containing all teams that the user is member of.
-func (u *User) Teams() ([]Team, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var teams []Team
-	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
-	if err != nil {
-		return nil, err
-	}
-	return teams, nil
-}
-
-func (u *User) TeamNames() ([]string, error) {
-	teams, err := u.Teams()
-	if err != nil {
-		return nil, err
-	}
-	return GetTeamsNames(teams), nil
-}
-
 func (u *User) AddKey(key repository.Key, force bool) error {
 	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
 		if key.Name == "" {
@@ -174,46 +174,6 @@ func (u *User) RemoveKey(key repository.Key) error {
 		return mngr.RemoveKey(u.Email, key)
 	}
 	return ErrKeyDisabled
-}
-
-func (u *User) IsAdmin() bool {
-	adminTeamName, err := config.GetString("admin-team")
-	if err != nil {
-		return false
-	}
-	teams, err := u.Teams()
-	if err != nil {
-		return false
-	}
-	for _, t := range teams {
-		if t.Name == adminTeamName {
-			return true
-		}
-	}
-	return false
-}
-
-func (u *User) AllowedApps() ([]string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var alwdApps []map[string]string
-	teams, err := u.Teams()
-	if err != nil {
-		return nil, err
-	}
-	teamNames := GetTeamsNames(teams)
-	q := bson.M{"teams": bson.M{"$in": teamNames}}
-	if err := conn.Apps().Find(q).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
-		return nil, err
-	}
-	appNames := make([]string, len(alwdApps))
-	for i, v := range alwdApps {
-		appNames[i] = v["name"]
-	}
-	return appNames, nil
 }
 
 func (u *User) ListKeys() (map[string]string, error) {

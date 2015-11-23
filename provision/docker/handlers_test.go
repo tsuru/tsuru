@@ -108,7 +108,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
+	s.team = &auth.Team{Name: "admin"}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})

@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/hc"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/check.v1"
 )
@@ -90,9 +91,17 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	user2 := auth.User{Email: "user2@company.com"}
 	err = conn.Users().Insert(user1, user2)
 	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole("deployRole", string(permission.CtxTeam))
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.deploy")
+	c.Assert(err, check.IsNil)
+	err = user1.AddRole(role.Name, "superteam")
+	c.Assert(err, check.IsNil)
+	err = user2.AddRole(role.Name, "superteam")
+	c.Assert(err, check.IsNil)
 	err = manager.CreateUser(user1.Email)
 	c.Assert(err, check.IsNil)
-	team := auth.Team{Name: "superteam", Users: []string{user1.Email, user2.Email}}
+	team := auth.Team{Name: "superteam"}
 	err = conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{Name: "myapp", Teams: []string{team.Name}}

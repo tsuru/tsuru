@@ -671,7 +671,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 }
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
-	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
+	team := auth.Team{Name: "tsurutwo"}
 	err := s.conn.Teams().Insert(team)
 	c.Check(err, check.IsNil)
 	defer s.conn.Teams().RemoveId(team.Name)
@@ -1262,7 +1262,7 @@ func (s *S) TestSetUnitsStatusNonInternalToken(c *check.C) {
 }
 
 func (s *S) TestAddTeamToTheApp(c *check.C) {
-	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
+	t := auth.Team{Name: "itshardteam"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().RemoveAll(bson.M{"_id": t.Name})
@@ -1349,14 +1349,13 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 }
 
 func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
-	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
+	t := &auth.Team{Name: "anything"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "tsuru",
 		Platform:  "zend",
-		Teams:     []string{t.Name},
 		TeamOwner: t.Name,
 	}
 	err = app.CreateApp(&a, s.user)
@@ -1375,7 +1374,7 @@ func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessFromTeam(c *check.C) {
-	t := auth.Team{Name: "abcd", Users: []string{s.user.Email}}
+	t := auth.Team{Name: "abcd"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
@@ -1490,7 +1489,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 		Context: permission.Context(permission.CtxApp, "tsuru"),
 	})
 	u, _ := newToken.User()
-	t := auth.Team{Name: "anything", Users: []string{u.Email}}
+	t := auth.Team{Name: "anything"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
@@ -1502,6 +1501,9 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "bearer "+newToken.GetValue())
+	grants, err := repositorytest.Granted(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email, newToken.GetUserName()})
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -1512,9 +1514,9 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 	handler = RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	grants, err := repositorytest.Granted(a.Name)
+	grants, err = repositorytest.Granted(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{newToken.GetUserName()})
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *check.C) {
@@ -1523,7 +1525,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	repository.Manager().CreateUser(u.Email)
-	t := auth.Team{Name: "anything", Users: []string{s.user.Email, u.Email}}
+	t := auth.Team{Name: "anything"}
 	err = s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
@@ -4105,7 +4107,7 @@ func (s *S) TestSetTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newowner", Users: []string{user.Email}}
+	team := &auth.Team{Name: "newowner"}
 	err = s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)

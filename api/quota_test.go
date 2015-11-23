@@ -43,12 +43,15 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	repositorytest.Reset()
-	s.team = &auth.Team{Name: "superteam", Users: []string{"quotauser@groundcontrol.com"}}
+	s.team = &auth.Team{Name: "superteam"}
 	err := conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.token = customUserWithPermission(c, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermUserUpdateQuota,
+		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
@@ -87,7 +90,7 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	c.Assert(qt, check.DeepEquals, user.Quota)
 }
 
-func (s *QuotaSuite) TestGetUserQuotaRequiresAdmin(c *check.C) {
+func (s *QuotaSuite) TestGetUserQuotaRequiresPermission(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -97,16 +100,13 @@ func (s *QuotaSuite) TestGetUserQuotaRequiresAdmin(c *check.C) {
 	}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
-	c.Assert(err, check.IsNil)
+	token := userWithPermission(c)
 	request, _ := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, adminRequiredErr.Code)
-	c.Assert(recorder.Body.String(), check.Equals, adminRequiredErr.Message+"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *QuotaSuite) TestGetUserQuotaUserNotFound(c *check.C) {
@@ -145,7 +145,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	c.Assert(user.Quota.InUse, check.Equals, 2)
 }
 
-func (s *QuotaSuite) TestChangeUserQuotaRequiresAdmin(c *check.C) {
+func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -156,9 +156,7 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresAdmin(c *check.C) {
 	}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": user.Email})
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
-	c.Assert(err, check.IsNil)
+	token := userWithPermission(c)
 	body := bytes.NewBufferString("limit=40")
 	request, _ := http.NewRequest("POST", "/users/radio@gaga.com/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -166,8 +164,7 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresAdmin(c *check.C) {
 	recorder := httptest.NewRecorder()
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, adminRequiredErr.Code)
-	c.Assert(recorder.Body.String(), check.Equals, adminRequiredErr.Message+"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {

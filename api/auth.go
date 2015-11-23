@@ -13,13 +13,11 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -55,11 +53,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return createDisabledErr
 		}
-		user, err := t.User()
-		if err != nil {
-			return createDisabledErr
-		}
-		if !user.IsAdmin() {
+		if !permission.Check(t, permission.PermUserCreate) {
 			return createDisabledErr
 		}
 	}
@@ -93,8 +87,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	rec.Log(u.Email, "login")
-	fmt.Fprintf(w, `{"token":"%s","is_admin":%v}`, token.GetValue(), u.IsAdmin())
-	return nil
+	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 }
 
 func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -158,6 +151,10 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	allowed := permission.Check(t, permission.PermTeamCreate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	name := params["name"]
 	u, err := t.User()
 	if err != nil {
@@ -176,15 +173,14 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
-	rec.Log(t.GetUserName(), "remove-team", name)
-	user, err := t.User()
-	if err != nil {
-		return err
-	}
-	if !user.IsAdmin() && !auth.CheckUserAccess([]string{name}, user) {
+	allowed := permission.Check(t, permission.PermTeamDelete,
+		permission.Context(permission.CtxTeam, name),
+	)
+	if !allowed {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
-	err = auth.RemoveTeam(name)
+	rec.Log(t.GetUserName(), "remove-team", name)
+	err := auth.RemoveTeam(name)
 	if err != nil {
 		if _, ok := err.(*auth.ErrTeamStillUsed); ok {
 			msg := fmt.Sprintf("This team cannot be removed because there are still references to it:\n%s", err)
@@ -199,62 +195,80 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
+	rec.Log(t.GetUserName(), "list-teams")
+	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
+	teams, err := auth.ListTeams()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "list-teams")
-	var teams []auth.Team
-	if u.IsAdmin() {
-		teams, err = auth.ListTeams()
-	} else {
-		teams, err = u.Teams()
+	teamsMap := map[string][]string{}
+	for _, team := range teams {
+		for _, p := range permsForTeam {
+			if permission.Check(t, p, permission.Context(permission.CtxTeam, team.Name)) {
+				teamsMap[team.Name] = append(teamsMap[team.Name], p.FullName())
+			}
+		}
 	}
-	if err != nil {
-		return err
-	}
-	if len(teams) > 0 {
-		var result []map[string]interface{}
-		for _, team := range teams {
-			result = append(result, map[string]interface{}{
-				"name":   team.Name,
-				"member": team.ContainsUser(u),
-			})
-		}
-		w.Header().Set("Content-Type", "application/json")
-		b, err := json.Marshal(result)
-		if err != nil {
-			return err
-		}
-		n, err := w.Write(b)
-		if err != nil {
-			return err
-		}
-		if n != len(b) {
-			return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
-		}
-	} else {
+	if len(teamsMap) == 0 {
 		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	var result []map[string]interface{}
+	for name, permissions := range teamsMap {
+		result = append(result, map[string]interface{}{
+			"name":        name,
+			"permissions": permissions,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	b, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+	n, err := w.Write(b)
+	if err != nil {
+		return err
+	}
+	if n != len(b) {
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
 	}
 	return nil
 }
 
 func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":name")
-	user, err := t.User()
-	if err != nil {
-		return err
-	}
-	rec.Log(user.Email, "get-team", teamName)
-	team, err := auth.GetTeam(teamName)
+	_, err := auth.GetTeam(teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	if !team.ContainsUser(user) {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "User is not member of this team"}
+	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
+	var permissions []string
+	for _, p := range permsForTeam {
+		if permission.Check(t, p, permission.Context(permission.CtxTeam, teamName)) {
+			permissions = append(permissions, p.FullName())
+		}
+	}
+	if len(permissions) == 0 {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	rec.Log(t.GetUserName(), "get-team", teamName)
+	result := map[string]interface{}{
+		"name":        teamName,
+		"permissions": permissions,
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(team)
+	b, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+	n, err := w.Write(b)
+	if err != nil {
+		return err
+	}
+	if n != len(b) {
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+	}
+	return nil
 }
 
 type keyBody struct {
@@ -356,49 +370,22 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	email := r.URL.Query().Get("user")
-	if email != "" && u.IsAdmin() {
+	if email != "" {
+		if !permission.Check(t, permission.PermUserDelete) {
+			return permission.ErrUnauthorized
+		}
 		u, err = auth.GetUserByEmail(email)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
-	} else if u.IsAdmin() {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "please specify the user you want to remove"}
-	} else if email != "" {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "you're not allowed to remove this user"}
 	}
-	alwdApps, err := u.AllowedApps()
+	appNames, err := deployableApps(u)
 	if err != nil {
 		return err
 	}
 	manager := repository.Manager()
-	for _, app := range alwdApps {
-		manager.RevokeAccess(app, u.Email)
-	}
-	teams, err := u.Teams()
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	for _, team := range teams {
-		if len(team.Users) < 2 {
-			msg := fmt.Sprintf(`This user is the last member of the team "%s", so it cannot be removed.
-
-Please remove the team, then remove the user.`, team.Name)
-			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
-		}
-		err = team.RemoveUser(u)
-		if err != nil {
-			return err
-		}
-		// this can be done without the loop
-		err = conn.Teams().Update(bson.M{"_id": team.Name}, team)
-		if err != nil {
-			return err
-		}
+	for _, name := range appNames {
+		manager.RevokeAccess(name, u.Email)
 	}
 	rec.Log(u.Email, "remove-user")
 	if err := manager.RemoveUser(u.Email); err != nil {
@@ -427,13 +414,14 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		return err
 	}
 	email := r.URL.Query().Get("user")
-	if email != "" && u.IsAdmin() {
+	if email != "" {
+		if !permission.Check(t, permission.PermUserUpdateToken) {
+			return permission.ErrUnauthorized
+		}
 		u, err = auth.GetUserByEmail(email)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
-	} else if email != "" {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "you're not an admin user"}
 	}
 	apiKey, err := u.RegenerateAPIKey()
 	if err != nil {
@@ -448,13 +436,14 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	email := r.URL.Query().Get("user")
-	if email != "" && u.IsAdmin() {
+	if email != "" {
+		if !permission.Check(t, permission.PermUserUpdateToken) {
+			return permission.ErrUnauthorized
+		}
 		u, err = auth.GetUserByEmail(email)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
-	} else if email != "" {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "you're not an admin user"}
 	}
 	apiKey, err := u.ShowAPIKey()
 	if err != nil {
@@ -471,22 +460,20 @@ type rolePermissionData struct {
 
 type apiUser struct {
 	Email       string
-	Teams       []string
 	Roles       []rolePermissionData
 	Permissions []rolePermissionData
 }
 
-func createApiUser(user *auth.User) (apiUser, error) {
-	var teamsNames []string
-	if teams, err := user.Teams(); err == nil {
-		teamsNames = auth.GetTeamsNames(teams)
-	}
+func createApiUser(t auth.Token, user *auth.User) (*apiUser, error) {
 	permissions, err := user.Permissions()
 	if err != nil {
-		return apiUser{}, err
+		return nil, err
 	}
 	permData := make([]rolePermissionData, len(permissions))
 	for i, p := range permissions {
+		if !permission.Check(t, p.Scheme, p.Context) {
+			return nil, nil
+		}
 		permData[i] = rolePermissionData{
 			Name:         p.Scheme.FullName(),
 			ContextType:  string(p.Context.CtxType),
@@ -497,7 +484,7 @@ func createApiUser(user *auth.User) (apiUser, error) {
 	for i, userRole := range user.Roles {
 		r, err := permission.FindRole(userRole.Name)
 		if err != nil {
-			return apiUser{}, err
+			return nil, err
 		}
 		roleData[i] = rolePermissionData{
 			Name:         userRole.Name,
@@ -505,9 +492,8 @@ func createApiUser(user *auth.User) (apiUser, error) {
 			ContextValue: userRole.ContextValue,
 		}
 	}
-	return apiUser{
+	return &apiUser{
 		Email:       user.Email,
-		Teams:       teamsNames,
 		Roles:       roleData,
 		Permissions: permData,
 	}, nil
@@ -518,11 +504,14 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	apiUsers := make([]apiUser, len(users))
-	for i, user := range users {
-		apiUsers[i], err = createApiUser(&user)
+	apiUsers := make([]apiUser, 0, len(users))
+	for _, user := range users {
+		usrData, err := createApiUser(t, &user)
 		if err != nil {
 			return err
+		}
+		if usrData != nil {
+			apiUsers = append(apiUsers, *usrData)
 		}
 	}
 	return json.NewEncoder(w).Encode(apiUsers)
@@ -533,7 +522,7 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	userData, err := createApiUser(user)
+	userData, err := createApiUser(t, user)
 	if err != nil {
 		return err
 	}

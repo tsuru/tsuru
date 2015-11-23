@@ -188,64 +188,9 @@ func (s *S) TestRemoveKeyDisabled(c *check.C) {
 	c.Assert(err, check.Equals, ErrKeyDisabled)
 }
 
-func (s *S) TestTeams(c *check.C) {
-	u := User{Email: "me@tsuru.com", Password: "123"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	s.team.AddUser(&u)
-	err = s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
-	c.Assert(err, check.IsNil)
-	defer func(u *User, t *Team) {
-		t.RemoveUser(u)
-		s.conn.Teams().Update(bson.M{"_id": t.Name}, t)
-	}(&u, s.team)
-	t := Team{Name: "abc", Users: []string{u.Email}}
-	err = s.conn.Teams().Insert(t)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
-	teams, err := u.Teams()
-	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.HasLen, 2)
-	c.Assert(teams[0].Name, check.Equals, s.team.Name)
-	c.Assert(teams[1].Name, check.Equals, t.Name)
-}
-
-func (s *S) TestIsAdminReturnsTrueWhenUserHasATeamNamedWithAdminTeamConf(c *check.C) {
-	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, check.IsNil)
-	t := Team{Name: adminTeamName, Users: []string{s.user.Email}}
-	err = s.conn.Teams().Insert(&t)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().RemoveId(t.Name)
-	c.Assert(s.user.IsAdmin(), check.Equals, true)
-}
-
-func (s *S) TestIsAdminReturnsFalseWhenUserDoNotHaveATeamNamedWithAdminTeamConf(c *check.C) {
-	c.Assert(s.user.IsAdmin(), check.Equals, false)
-}
-
 type testApp struct {
 	Name  string
 	Teams []string
-}
-
-func (s *S) TestUserAllowedApps(c *check.C) {
-	team := Team{Name: "teamname", Users: []string{s.user.Email}}
-	err := s.conn.Teams().Insert(&team)
-	c.Assert(err, check.IsNil)
-	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
-	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, check.IsNil)
-	a2 := testApp{Name: "myotherapp", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(&a2)
-	c.Assert(err, check.IsNil)
-	defer func() {
-		s.conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
-		s.conn.Teams().RemoveId(team.Name)
-	}()
-	aApps, err := s.user.AllowedApps()
-	c.Assert(aApps, check.DeepEquals, []string{a.Name, a2.Name})
 }
 
 func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {

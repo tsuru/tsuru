@@ -11,27 +11,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type userPresenceChecker struct{}
-
-func (c *userPresenceChecker) Info() *check.CheckerInfo {
-	return &check.CheckerInfo{Name: "ContainsUser", Params: []string{"team", "user"}}
-}
-
-func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool, string) {
-	team, ok := params[0].(*Team)
-	if !ok {
-		return false, "first parameter should be a pointer to a team instance"
-	}
-
-	user, ok := params[1].(*User)
-	if !ok {
-		return false, "second parameter should be a pointer to a user instance"
-	}
-	return team.ContainsUser(user), ""
-}
-
-var ContainsUser check.Checker = &userPresenceChecker{}
-
 func (s *S) TestGetTeamsNames(c *check.C) {
 	team := Team{Name: "cheese"}
 	team2 := Team{Name: "eggs"}
@@ -39,48 +18,8 @@ func (s *S) TestGetTeamsNames(c *check.C) {
 	c.Assert(teamNames, check.DeepEquals, []string{"cheese", "eggs"})
 }
 
-func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *check.C) {
-	u := &User{Email: "nobody@globo.com"}
-	t := new(Team)
-	err := t.AddUser(u)
-	c.Assert(err, check.IsNil)
-	c.Assert(t, ContainsUser, u)
-}
-
-func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *check.C) {
-	u := &User{Email: "nobody@globo.com"}
-	t := &Team{Name: "timeredbull"}
-	err := t.AddUser(u)
-	c.Assert(err, check.IsNil)
-	err = t.AddUser(u)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com is already in the team timeredbull.$")
-}
-
-func (s *S) TestRemoveUserFromTeam(c *check.C) {
-	users := []string{"somebody@globo.com", "nobody@globo.com", "anybody@globo.com", "everybody@globo.com"}
-	t := &Team{Name: "timeredbull", Users: users}
-	err := t.RemoveUser(&User{Email: "somebody@globo.com"})
-	c.Assert(err, check.IsNil)
-	c.Assert(t.Users, check.DeepEquals, []string{"everybody@globo.com", "nobody@globo.com", "anybody@globo.com"})
-	err = t.RemoveUser(&User{Email: "anybody@globo.com"})
-	c.Assert(err, check.IsNil)
-	c.Assert(t.Users, check.DeepEquals, []string{"everybody@globo.com", "nobody@globo.com"})
-	err = t.RemoveUser(&User{Email: "everybody@globo.com"})
-	c.Assert(err, check.IsNil)
-	c.Assert(t.Users, check.DeepEquals, []string{"nobody@globo.com"})
-}
-
-func (s *S) TestShouldReturnErrorWhenTryingToRemoveAUserThatIsNotInTheTeam(c *check.C) {
-	u := &User{Email: "nobody@globo.com"}
-	t := &Team{Name: "timeredbull"}
-	err := t.RemoveUser(u)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com is not in the team timeredbull.$")
-}
-
 func (s *S) TestTeamAllowedApps(c *check.C) {
-	team := Team{Name: "teamname", Users: []string{s.user.Email}}
+	team := Team{Name: "teamname"}
 	err := s.conn.Teams().Insert(&team)
 	c.Assert(err, check.IsNil)
 	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
@@ -98,78 +37,26 @@ func (s *S) TestTeamAllowedApps(c *check.C) {
 	c.Assert(alwdApps, check.DeepEquals, []string{a2.Name})
 }
 
-func (s *S) TestCheckUserAccess(c *check.C) {
-	u1 := User{Email: "how-many-more-times@ledzeppelin.com"}
-	err := u1.Create()
-	c.Assert(err, check.IsNil)
-	defer u1.Delete()
-	u2 := User{Email: "whola-lotta-love@ledzeppelin.com"}
-	err = u2.Create()
-	c.Assert(err, check.IsNil)
-	defer u2.Delete()
-	u3 := User{Email: "admin@company.com"}
-	err = u3.Create()
-	c.Assert(err, check.IsNil)
-	defer u3.Delete()
-	t := Team{Name: "ledzeppelin", Users: []string{u1.Email}}
-	err = s.conn.Teams().Insert(t)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
-	adminTeam := Team{Name: "admin", Users: []string{u3.Email}}
-	err = s.conn.Teams().Insert(adminTeam)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": adminTeam.Name})
-	c.Assert(CheckUserAccess([]string{t.Name}, &u1), check.Equals, true)
-	c.Assert(CheckUserAccess([]string{t.Name}, &u2), check.Equals, false)
-	c.Assert(CheckUserAccess([]string{t.Name}, &u3), check.Equals, true)
-}
-
-func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *check.C) {
-	one := User{Email: "imone@thewho.com", Password: "123"}
-	punk := User{Email: "punk@thewho.com", Password: "123"}
-	cut := User{Email: "cutmyhair@thewho.com", Password: "123"}
-	who := Team{Name: "TheWho", Users: []string{one.Email, punk.Email, cut.Email}}
-	err := s.conn.Teams().Insert(who)
-	defer s.conn.Teams().Remove(bson.M{"_id": who.Name})
-	c.Assert(err, check.IsNil)
-	what := Team{Name: "TheWhat", Users: []string{one.Email, punk.Email}}
-	err = s.conn.Teams().Insert(what)
-	defer s.conn.Teams().Remove(bson.M{"_id": what.Name})
-	c.Assert(err, check.IsNil)
-	where := Team{Name: "TheWhere", Users: []string{one.Email}}
-	err = s.conn.Teams().Insert(where)
-	defer s.conn.Teams().Remove(bson.M{"_id": where.Name})
-	c.Assert(err, check.IsNil)
-	teams := []string{who.Name, what.Name, where.Name}
-	defer s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$in": teams}})
-	c.Assert(CheckUserAccess(teams, &cut), check.Equals, true)
-	c.Assert(CheckUserAccess(teams, &punk), check.Equals, true)
-	c.Assert(CheckUserAccess(teams, &one), check.Equals, true)
-}
-
 func (s *S) TestCreateTeam(c *check.C) {
 	one := User{Email: "king@pos.com"}
-	two := User{Email: "reconc@pos.com"}
-	three := User{Email: "song@pos.com"}
-	err := CreateTeam("pos", &one, &two, &three)
+	err := CreateTeam("pos", &one)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	team, err := GetTeam("pos")
 	c.Assert(err, check.IsNil)
-	expectedUsers := []string{"king@pos.com", "reconc@pos.com", "song@pos.com"}
-	c.Assert(team.Users, check.DeepEquals, expectedUsers)
+	c.Assert(team.CreatingUser, check.Equals, one.Email)
 }
 
 func (s *S) TestCreateTeamDuplicate(c *check.C) {
-	err := CreateTeam("pos")
+	err := CreateTeam("pos", nil)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
-	err = CreateTeam("pos")
+	err = CreateTeam("pos", nil)
 	c.Assert(err, check.Equals, ErrTeamAlreadyExists)
 }
 
 func (s *S) TestCreateTeamTrimsName(c *check.C) {
-	err := CreateTeam("pos    ")
+	err := CreateTeam("pos    ", nil)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	_, err = GetTeam("pos")
@@ -194,7 +81,7 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		{"tsuru@corp.globo.com", nil},
 	}
 	for _, t := range tests {
-		err := CreateTeam(t.input)
+		err := CreateTeam(t.input, nil)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}
@@ -209,7 +96,6 @@ func (s *S) TestGetTeam(c *check.C) {
 	t, err := GetTeam("symfonia")
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Name, check.Equals, team.Name)
-	c.Assert(t.Users, check.HasLen, 0)
 	t, err = GetTeam("wat")
 	c.Assert(err, check.Equals, ErrTeamNotFound)
 	c.Assert(t, check.IsNil)

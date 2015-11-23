@@ -61,7 +61,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
 	s.hashed = s.user.Password
-	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
+	team := &Team{Name: "cobrateam"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	s.team = team

@@ -1,4 +1,6 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2015 tsuruWithContextType authors. All rights reserved.
+
+// Copyright 2015 tsuru authors. All rights reserved.}
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -63,6 +65,20 @@ func (r *registry) getSubRegistry(name string) *registry {
 		}
 	}
 	return parent
+}
+
+func (r *registry) PermissionsWithContextType(ctxType contextType) PermissionSchemeList {
+	perms := r.Permissions()
+	var ret []*permissionScheme
+	for _, p := range perms {
+		for _, ctx := range p.AllowedContexts() {
+			if ctx == ctxType {
+				ret = append(ret, p)
+				break
+			}
+		}
+	}
+	return ret
 }
 
 func (r *registry) Permissions() PermissionSchemeList {

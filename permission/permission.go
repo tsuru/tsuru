@@ -173,16 +173,18 @@ func Check(token Token, scheme *permissionScheme, contexts ...PermissionContext)
 	if err != nil {
 		return false
 	}
+	return CheckFromPermList(perms, scheme, contexts...)
+}
+
+func CheckFromPermList(perms []Permission, scheme *permissionScheme, contexts ...PermissionContext) bool {
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
 			if perm.Context.CtxType == CtxGlobal {
 				return true
 			}
 			for _, ctx := range contexts {
-				if ctx.CtxType == perm.Context.CtxType {
-					if reflect.DeepEqual(ctx.Value, perm.Context.Value) {
-						return true
-					}
+				if ctx.CtxType == perm.Context.CtxType && ctx.Value == perm.Context.Value {
+					return true
 				}
 			}
 		}

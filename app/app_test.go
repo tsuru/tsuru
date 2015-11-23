@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
@@ -734,6 +735,10 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 }
 
 func (s *S) TestGrantAccess(c *check.C) {
+	user := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
 	app := App{Name: "appName", Platform: "django", Teams: []string{"acid-rain", "zito"}}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -747,7 +752,7 @@ func (s *S) TestGrantAccess(c *check.C) {
 	c.Assert(app.Teams, check.DeepEquals, []string{"acid-rain", "zito", s.team.Name})
 	grants, err := repositorytest.Granted(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
+	c.Assert(grants, check.DeepEquals, []string{user.Email})
 }
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
@@ -757,6 +762,10 @@ func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 }
 
 func (s *S) TestRevokeAccess(c *check.C) {
+	user := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
 	team := auth.Team{Name: "abcd"}
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
@@ -766,7 +775,7 @@ func (s *S) TestRevokeAccess(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err = repository.Manager().CreateRepository(app.Name, nil)
 	c.Assert(err, check.IsNil)
-	err = repository.Manager().GrantAccess(app.Name, s.user.Email)
+	err = repository.Manager().GrantAccess(app.Name, user.Email)
 	c.Assert(err, check.IsNil)
 	err = app.Revoke(&s.team)
 	c.Assert(err, check.IsNil)
@@ -780,21 +789,21 @@ func (s *S) TestRevokeAccess(c *check.C) {
 }
 
 func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
-	user := auth.User{Email: "me@company.com"}
-	err := user.Create()
+	team := auth.Team{Name: "abcd"}
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	defer user.Delete()
-	team := auth.Team{Name: "abcd", Users: []string{s.user.Email, user.Email}}
-	err = s.conn.Teams().Insert(team)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	user := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, team.Name),
+	})
 	app := App{Name: "appName", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err = s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err = repository.Manager().CreateRepository(app.Name, nil)
-	c.Assert(err, check.IsNil)
-	err = repository.Manager().GrantAccess(app.Name, s.user.Email)
 	c.Assert(err, check.IsNil)
 	err = repository.Manager().GrantAccess(app.Name, user.Email)
 	c.Assert(err, check.IsNil)
@@ -806,7 +815,7 @@ func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	c.Assert(found, check.Equals, false)
 	grants, err := repositorytest.Granted(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
+	c.Assert(grants, check.DeepEquals, []string{user.Email})
 }
 
 func (s *S) TestRevokeAccessDoesntLeaveOrphanApps(c *check.C) {
@@ -2759,8 +2768,6 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.createAdminUserAndTeam(c)
-	defer s.removeAdminUserAndTeam(c)
 	apps, err := List(nil)
 	c.Assert(len(apps), Greater, 0)
 	c.Assert(apps[0].Name, check.Equals, "testApp")

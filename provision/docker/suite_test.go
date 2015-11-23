@@ -105,7 +105,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
+	s.team = &auth.Team{Name: "admin"}
 	c.Assert(err, check.IsNil)
 	err = s.storage.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)

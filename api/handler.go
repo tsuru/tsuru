@@ -17,10 +17,6 @@ var (
 		Code:    http.StatusUnauthorized,
 		Message: "You must provide a valid Authorization header",
 	}
-	adminRequiredErr = &errors.HTTP{
-		Code:    http.StatusForbidden,
-		Message: "User does not have access to this app",
-	}
 )
 
 type Handler func(http.ResponseWriter, *http.Request) error
@@ -43,12 +39,13 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 
 type AdminRequiredHandler authorizationRequiredHandler
 
+// TODO(cezarsa): temporary to avoid breaking other packages, this will
+// vanish.
 func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t := context.GetAuthToken(r)
 	if t == nil {
+		w.Header().Set("WWW-Authenticate", "Bearer realm=\"tsuru\" scope=\"tsuru\"")
 		context.AddRequestError(r, tokenRequiredErr)
-	} else if user, err := t.User(); err != nil || !user.IsAdmin() {
-		context.AddRequestError(r, adminRequiredErr)
 	} else {
 		context.AddRequestError(r, fn(w, r, t))
 	}

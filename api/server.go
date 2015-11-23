@@ -174,15 +174,15 @@ func RunServer(dry bool) http.Handler {
 	// with websocket.
 	m.Add("Get", "/apps/{appname}/shell", websocket.Handler(remoteShellHandler))
 
-	m.Add("Get", "/users", AdminRequiredHandler(listUsers))
+	m.Add("Get", "/users", authorizationRequiredHandler(listUsers))
 	m.Add("Post", "/users", Handler(createUser))
 	m.Add("Get", "/users/info", authorizationRequiredHandler(userInfo))
 	m.Add("Get", "/auth/scheme", Handler(authScheme))
 	m.Add("Post", "/auth/login", Handler(login))
 	m.Add("Post", "/users/{email}/password", Handler(resetPassword))
 	m.Add("Post", "/users/{email}/tokens", Handler(login))
-	m.Add("Get", "/users/{email}/quota", AdminRequiredHandler(getUserQuota))
-	m.Add("Post", "/users/{email}/quota", AdminRequiredHandler(changeUserQuota))
+	m.Add("Get", "/users/{email}/quota", authorizationRequiredHandler(getUserQuota))
+	m.Add("Post", "/users/{email}/quota", authorizationRequiredHandler(changeUserQuota))
 	m.Add("Delete", "/users/tokens", authorizationRequiredHandler(logout))
 	m.Add("Put", "/users/password", authorizationRequiredHandler(changePassword))
 	m.Add("Delete", "/users", authorizationRequiredHandler(removeUser))

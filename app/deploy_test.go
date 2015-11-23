@@ -129,7 +129,7 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	team := &auth.Team{Name: "team"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(team)
@@ -563,7 +563,6 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 }
 
 func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
-	s.createAdminUserAndTeam(c)
 	a := App{Name: "someApp"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)

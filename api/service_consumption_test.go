@@ -160,7 +160,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerHasAccessToTheServiceInTheIn
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	t := auth.Team{Name: "judaspriest", Users: []string{s.user.Email}}
+	t := auth.Team{Name: "judaspriest"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true, Endpoint: map[string]string{"production": ts.URL}}
@@ -1190,7 +1190,7 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
-	team := auth.Team{Name: "test", Users: []string{s.user.Email}}
+	team := auth.Team{Name: "test"}
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si.ServiceName, si.Name,
@@ -1234,7 +1234,7 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(c *c
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si2)
-	team := auth.Team{Name: "test", Users: []string{s.user.Email}}
+	team := auth.Team{Name: "test"}
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
 	url := fmt.Sprintf("/services/%s/instances/permission/%s/%s?:instance=%s&:team=%s&:service=%s", si2.ServiceName, si2.Name,

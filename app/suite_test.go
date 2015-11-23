@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
@@ -38,8 +39,6 @@ type S struct {
 	logConn     *db.LogStorage
 	team        auth.Team
 	user        *auth.User
-	adminTeam   auth.Team
-	admin       *auth.User
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
 	Pool        string
@@ -75,6 +74,25 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 
 var Greater check.Checker = &greaterChecker{}
 
+func customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) *auth.User {
+	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	for _, p := range perm {
+		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType))
+		c.Assert(err, check.IsNil)
+		name := p.Scheme.FullName()
+		if name == "" {
+			name = "*"
+		}
+		err = role.AddPermissions(name)
+		c.Assert(err, check.IsNil)
+		err = user.AddRole(role.Name, p.Context.Value)
+		c.Assert(err, check.IsNil)
+	}
+	return user
+}
+
 func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{
 		Email: "whydidifall@thewho.com",
@@ -82,7 +100,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	s.team = auth.Team{Name: "tsuruteam"}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 }
@@ -146,24 +164,6 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	fp := path.Join(p...)
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
-}
-
-func (s *S) createAdminUserAndTeam(c *check.C) {
-	s.admin = &auth.User{Email: "superuser@gmail.com"}
-	err := s.admin.Create()
-	c.Assert(err, check.IsNil)
-	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, check.IsNil)
-	s.adminTeam = auth.Team{Name: adminTeamName, Users: []string{s.admin.Email}}
-	err = s.conn.Teams().Insert(&s.adminTeam)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) removeAdminUserAndTeam(c *check.C) {
-	err := s.conn.Teams().RemoveId(s.adminTeam.Name)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Users().Remove(bson.M{"email": s.admin.Email})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {

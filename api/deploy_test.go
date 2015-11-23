@@ -44,7 +44,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
+	s.team = &auth.Team{Name: "tsuruteam"}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
@@ -337,7 +337,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newteam", Users: []string{user.Email}}
+	team := &auth.Team{Name: "newteam"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	token := customUserWithPermission(c, "apponlyg1", permission.Permission{
@@ -579,7 +579,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	team := &auth.Team{Name: "team"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(team)
@@ -626,7 +626,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	defer user.Delete()
-	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	team := &auth.Team{Name: "team"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}

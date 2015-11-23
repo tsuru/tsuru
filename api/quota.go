@@ -16,6 +16,10 @@ import (
 )
 
 func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermUserUpdateQuota)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	email := r.URL.Query().Get(":email")
 	user, err := auth.GetUserByEmail(email)
 	if err == auth.ErrUserNotFound {
@@ -31,6 +35,10 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowed := permission.Check(t, permission.PermUserUpdateQuota)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	limit, err := strconv.Atoi(r.FormValue("limit"))
 	if err != nil {
 		return &errors.HTTP{

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/hc"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 )
 
@@ -82,12 +83,32 @@ func Sync(w io.Writer) error {
 		return err
 	}
 	for _, app := range apps {
-		var users []string
-		for _, team := range app.GetTeams() {
-			users = append(users, team.Users...)
+		allowedPerms := []permission.Permission{
+			{
+				Scheme:  permission.PermAppDeploy,
+				Context: permission.Context(permission.CtxGlobal, ""),
+			},
+			{
+				Scheme:  permission.PermAppDeploy,
+				Context: permission.Context(permission.CtxPool, app.Pool),
+			},
+		}
+		for _, t := range app.GetTeams() {
+			allowedPerms = append(allowedPerms, permission.Permission{
+				Scheme:  permission.PermAppDeploy,
+				Context: permission.Context(permission.CtxTeam, t.Name),
+			})
+		}
+		users, err := auth.ListUsersWithPermissions(allowedPerms...)
+		if err != nil {
+			return err
+		}
+		userNames := make([]string, len(users))
+		for i := range users {
+			userNames[i] = users[i].Email
 		}
 		fmt.Fprintf(w, "Syncing app %q... ", app.Name)
-		err = m.CreateRepository(app.Name, users)
+		err = m.CreateRepository(app.Name, userNames)
 		switch err {
 		case repository.ErrRepositoryAlreadExists:
 			fmt.Fprintln(w, "already present in Gandalf")
@@ -96,7 +117,7 @@ func Sync(w io.Writer) error {
 		default:
 			return err
 		}
-		for _, user := range users {
+		for _, user := range userNames {
 			m.GrantAccess(app.Name, user)
 		}
 	}
