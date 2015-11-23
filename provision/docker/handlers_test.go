@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -47,6 +48,22 @@ type TestIaaS struct{}
 
 func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
 	return nil
+}
+
+func createToken(c *check.C) auth.Token {
+	user := &auth.User{Email: "provisioner-docker" + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
+	nativeScheme.Remove(user)
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole("provisioner-docker", string(permission.CtxGlobal))
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("*")
+	c.Assert(err, check.IsNil)
+	err = user.AddRole(role.Name, "")
+	c.Assert(err, check.IsNil)
+	return token
 }
 
 func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
@@ -75,6 +92,7 @@ type HandlersSuite struct {
 }
 
 var _ = check.Suite(&HandlersSuite{})
+var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "docker_provision_handlers_tests_s")
@@ -104,7 +122,6 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
@@ -170,7 +187,8 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
 	c.Assert(err, check.IsNil)
 	waitQueue()
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
@@ -196,7 +214,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
 	c.Assert(err, check.IsNil)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
@@ -235,7 +254,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
 	c.Assert(err, check.IsNil)
 	waitQueue()
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
@@ -263,7 +283,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
 	c.Assert(err, check.IsNil)
 	waitQueue()
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
@@ -283,7 +304,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
@@ -298,7 +320,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
 	c.Assert(err, check.IsNil)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
@@ -309,7 +332,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	req, err = http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec = httptest.NewRecorder()
-	err = addNodeHandler(rec, req, nil)
+	err = addNodeHandler(rec, req, token)
 	c.Assert(err, check.IsNil)
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)

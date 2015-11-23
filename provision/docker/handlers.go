@@ -25,6 +25,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/digitalocean"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/queue"
@@ -145,6 +146,10 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
+	}
+	canCreateNode := permission.Check(t, permission.PermNodeCreate)
+	if !canCreateNode {
+		return permission.ErrUnauthorized
 	}
 	isRegister, _ := strconv.ParseBool(r.URL.Query().Get("register"))
 	response, err := mainDockerProvisioner.addNodeForParams(params, isRegister)
