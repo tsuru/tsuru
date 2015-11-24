@@ -224,7 +224,8 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !allowedNodeRemove {
 		return permission.ErrUnauthorized
 	}
-	if ok, _ := strconv.ParseBool(params["remove_iaas"]); ok {
+	removeIaaS, _ := strconv.ParseBool(params["remove_iaas"])
+	if removeIaaS {
 		allowedIaasRemove := permission.Check(t, permission.PermMachineDelete,
 			permission.Context(permission.CtxIaaS, node.Metadata["iaas"]),
 		)
@@ -236,7 +237,6 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	removeIaaS, _ := strconv.ParseBool(params["remove_iaas"])
 	if removeIaaS {
 		var m iaas.Machine
 		m, err = iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(address))
