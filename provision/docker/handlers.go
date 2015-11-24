@@ -444,6 +444,16 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			Message: fmt.Sprintf("unable to parse body as json: %s", err),
 		}
 	}
+	if len(requestConfig.Envs) > 0 && !permission.Check(t, permission.PermNodeBs) {
+		return permission.ErrUnauthorized
+	}
+	for _, poolEnv := range requestConfig.Pools {
+		hasPermission := permission.Check(t, permission.PermNodeBs,
+			permission.Context(permission.CtxPool, poolEnv.Name))
+		if !hasPermission {
+			return permission.ErrUnauthorized
+		}
+	}
 	currentConfig, err := bs.LoadConfig(nil)
 	if err != nil {
 		if err != mgo.ErrNotFound {
