@@ -55,6 +55,10 @@ func createToken(c *check.C) auth.Token {
 	nativeScheme.Remove(user)
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
+	return createTokenForUser(user, c)
+}
+
+func createTokenForUser(user *auth.User, c *check.C) auth.Token {
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole("provisioner-docker", string(permission.CtxGlobal))
@@ -366,8 +370,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	token := createToken(c)
-	err = removeNodeHandler(rec, req, token)
+	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
@@ -387,8 +390,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	token := createToken(c)
-	err = removeNodeHandler(rec, req, token)
+	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
@@ -411,8 +413,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	token := createToken(c)
-	err = removeNodeHandler(rec, req, token)
+	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
@@ -461,8 +462,7 @@ func (s *S) TestRemoveNodeHandlerRebalanceContainers(c *check.C) {
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, check.IsNil)
 	rec := tsurutest.NewSafeResponseRecorder()
-	token := createToken(c)
-	err = removeNodeHandler(rec, req, token)
+	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 1)
@@ -482,7 +482,13 @@ func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
 	p.Provision(appInstance)
 	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
+	coll.Insert(container.Container{
+		ID:          "container-id",
+		AppName:     appInstance.GetName(),
+		Version:     "container-version",
+		Image:       "tsuru/python",
+		ProcessName: "web",
+	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -512,8 +518,7 @@ func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
 	req, err := http.NewRequest("POST", "/node/remove?no-rebalance=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	token := createToken(c)
-	err = removeNodeHandler(rec, req, token)
+	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 1)

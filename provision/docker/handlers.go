@@ -219,7 +219,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return fmt.Errorf("node with address %q not found in cluster", address)
 	}
 	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
-		permission.Context(permission.CtxIaaS, node.Metadata["iaas"]),
+		permission.Context(permission.CtxPool, node.Metadata["pool"]),
 	)
 	if !allowedNodeRemove {
 		return permission.ErrUnauthorized

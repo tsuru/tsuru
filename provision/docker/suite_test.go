@@ -108,8 +108,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.storage.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -140,6 +138,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
+	s.token = createTokenForUser(s.user, c)
 }
 
 func (s *S) TearDownTest(c *check.C) {
