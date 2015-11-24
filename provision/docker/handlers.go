@@ -421,6 +421,9 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 }
 
 func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermNodeAutoscale) {
+		return permission.ErrUnauthorized
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
