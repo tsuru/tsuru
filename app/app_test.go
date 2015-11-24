@@ -2855,9 +2855,15 @@ func (s *S) TestSetQuotaInUseNotFound(c *check.C) {
 
 func (s *S) TestSetQuotaInUseUnlimited(c *check.C) {
 	app := App{Name: "someapp", Quota: quota.Unlimited}
-	err := app.SetQuotaInUse(1)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cannot set quota usage for unlimited quota")
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err = app.SetQuotaInUse(3)
+	c.Assert(err, check.IsNil)
+	a, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 3})
+
 }
 
 func (s *S) TestSetQuotaInUseInvalid(c *check.C) {

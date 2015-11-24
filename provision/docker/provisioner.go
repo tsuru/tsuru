@@ -462,9 +462,6 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 }
 
 func setQuota(app provision.App, toAdd map[string]*containersToAdd) error {
-	if quota := app.GetQuota(); quota.Unlimited() {
-		return nil
-	}
 	var total int
 	for _, ct := range toAdd {
 		total += ct.Quantity

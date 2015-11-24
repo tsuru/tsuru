@@ -895,13 +895,10 @@ func (app *App) GetQuota() quota.Quota {
 }
 
 func (app *App) SetQuotaInUse(inUse int) error {
-	if app.Quota.Unlimited() {
-		return stderr.New("cannot set quota usage for unlimited quota")
-	}
 	if inUse < 0 {
 		return stderr.New("invalid value, cannot be lesser than 0")
 	}
-	if inUse > app.Quota.Limit {
+	if !app.Quota.Unlimited() && inUse > app.Quota.Limit {
 		return &quota.QuotaExceededError{
 			Requested: uint(inUse),
 			Available: uint(app.Quota.Limit),
