@@ -396,6 +396,9 @@ func unmarshal(body io.ReadCloser) (map[string]string, error) {
 }
 
 func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermHealing) {
+		return permission.ErrUnauthorized
+	}
 	filter := r.URL.Query().Get("filter")
 	if filter != "" && filter != "node" && filter != "container" {
 		return &errors.HTTP{
