@@ -46,6 +46,7 @@ var (
 	PermAppUpdateUnit               = PermissionRegistry.get("app.update.unit")
 	PermAppUpdateUnitAdd            = PermissionRegistry.get("app.update.unit.add")
 	PermAppUpdateUnitRemove         = PermissionRegistry.get("app.update.unit.remove")
+	PermAutoscale                   = PermissionRegistry.get("autoscale")
 	PermDebug                       = PermissionRegistry.get("debug")
 	PermMachine                     = PermissionRegistry.get("machine")
 	PermMachineCreate               = PermissionRegistry.get("machine.create")
