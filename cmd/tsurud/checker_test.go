@@ -17,7 +17,6 @@ var configFixture = `
 listen: 0.0.0.0:8080
 host: http://127.0.0.1:8080
 debug: true
-admin-team: admin
 
 database:
   url: 127.0.0.1:3435

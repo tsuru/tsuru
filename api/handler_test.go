@@ -48,7 +48,6 @@ func (s *HandlerSuite) SetUpTest(c *check.C) {
 	team := auth.Team{Name: "tsuruteam"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	config.Set("admin-team", team.Name)
 	app.AuthScheme = nativeScheme
 }
 

@@ -55,7 +55,6 @@ configuration is described below, please note that you should replace the values
     listen: "0.0.0.0:8080"
     debug: true
     host: http://<machine-public-addr>:8080 # This port must be the same as in the "listen" conf
-    admin-team: admin
     auth:
         user-registration: true
         scheme: native

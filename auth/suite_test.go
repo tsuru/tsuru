@@ -38,7 +38,6 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	config.Set("admin-team", "admin")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_test")
 	s.conn, _ = db.Conn()

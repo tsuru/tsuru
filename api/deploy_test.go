@@ -59,8 +59,7 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 func (s *DeploySuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
-	config.Set("aut:hash-cost", 4)
-	config.Set("admin-team", "tsuruteam")
+	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
 	var err error
 	s.conn, err = db.Conn()

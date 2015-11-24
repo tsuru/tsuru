@@ -30,7 +30,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "docker_provision_bs_tests")
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_bs_tests_cluster_stor")
-	config.Set("admin-team", "admin")
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	conn, err := db.Conn()

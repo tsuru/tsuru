@@ -458,22 +458,6 @@ Deprecated. See ``pubsub:redis-db``.
 
 .. _config_admin_user:
 
-Admin users
------------
-
-tsuru has a very simple way to identify admin users: an admin user is a user
-that is the member of the admin team, and the admin team is defined in the
-configuration file, using the ``admin-team`` setting.
-
-.. _config_admin_team:
-
-admin-team
-++++++++++
-
-``admin-team`` is the name of the administration team for the current tsuru
-installation. All members of the administration team is able to use the
-``tsuru-admin`` command.
-
 Quota management
 ----------------
 
@@ -1153,7 +1137,6 @@ Here is a complete example:
     listen: "0.0.0.0:8080"
     debug: true
     host: http://<machine-public-addr>:8080 # This port must be the same as in the "listen" conf
-    admin-team: admin
     auth:
         user-registration: true
         scheme: native

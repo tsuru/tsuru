@@ -41,7 +41,6 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_instance_test")
-	config.Set("admin-team", "admin")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 }

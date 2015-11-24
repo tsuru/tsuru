@@ -33,7 +33,6 @@ var _ = check.Suite(&QuotaSuite{})
 func (s *QuotaSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_quota_test")
-	config.Set("admin-team", "superteam")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
 }
@@ -55,7 +54,6 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	})
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
-	config.Set("admin-team", s.team.Name)
 	app.AuthScheme = nativeScheme
 }
 

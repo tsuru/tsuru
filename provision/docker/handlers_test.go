@@ -107,7 +107,6 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
-	config.Set("admin-team", "admin")
 	config.Set("routers:fake:type", "fake")
 	var err error
 	s.conn, err = db.Conn()
