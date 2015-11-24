@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
@@ -391,18 +392,35 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 	return nil
 }
 
-//listContainersHandler call scheduler.Containers to list all containers into it.
 func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
 	if address != "" {
+		node, err := mainDockerProvisioner.Cluster().GetNode(address)
+		if err != nil {
+			return err
+		}
+		hasAccess := permission.Check(t, permission.PermNodeRead,
+			permission.Context(permission.CtxPool, node.Metadata["pool"]))
+		if !hasAccess {
+			return permission.ErrUnauthorized
+		}
 		containerList, err := mainDockerProvisioner.listContainersByHost(address)
 		if err != nil {
 			return err
 		}
 		return json.NewEncoder(w).Encode(containerList)
 	}
-	app := r.URL.Query().Get(":appname")
-	containerList, err := mainDockerProvisioner.listContainersByApp(app)
+	appName := r.URL.Query().Get(":appname")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	hasAccess := permission.Check(t, permission.PermNodeRead,
+		permission.Context(permission.CtxPool, a.Pool))
+	if !hasAccess {
+		return permission.ErrUnauthorized
+	}
+	containerList, err := mainDockerProvisioner.listContainersByApp(appName)
 	if err != nil {
 		return err
 	}
