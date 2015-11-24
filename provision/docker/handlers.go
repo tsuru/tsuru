@@ -493,13 +493,16 @@ func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 }
 
 func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := bs.SaveImage("")
-	if err != nil {
-		return err
+	if !permission.Check(t, permission.PermNodeBs) {
+		return permission.ErrUnauthorized
 	}
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	err := bs.SaveImage("")
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+	}
 	err = bs.RecreateContainers(mainDockerProvisioner, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
