@@ -411,6 +411,9 @@ func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermNodeAutoscale) {
+		return permission.ErrUnauthorized
+	}
 	skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	history, err := listAutoScaleEvents(skip, limit)
