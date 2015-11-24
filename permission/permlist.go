@@ -51,6 +51,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"node.update",
 	"node.delete",
 	"node.bs",
+	"node.autoscale",
 ).addWithCtx(
 	"machine", []contextType{CtxIaaS},
 ).add(
@@ -115,6 +116,4 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"pool.delete",
 ).add(
 	"debug",
-).add(
-	"autoscale",
 )

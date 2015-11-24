@@ -57,7 +57,7 @@ func init() {
 }
 
 func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedGetConfig := permission.Check(t, permission.PermAutoscale)
+	allowedGetConfig := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedGetConfig {
 		return permission.ErrUnauthorized
 	}
@@ -66,7 +66,7 @@ func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) er
 }
 
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedListRule := permission.Check(t, permission.PermAutoscale)
+	allowedListRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedListRule {
 		return permission.ErrUnauthorized
 	}
@@ -78,7 +78,7 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 }
 
 func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedSetRule := permission.Check(t, permission.PermAutoscale)
+	allowedSetRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedSetRule {
 		return permission.ErrUnauthorized
 	}
@@ -91,7 +91,7 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 }
 
 func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedDeleteRule := permission.Check(t, permission.PermAutoscale)
+	allowedDeleteRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedDeleteRule {
 		return permission.ErrUnauthorized
 	}
