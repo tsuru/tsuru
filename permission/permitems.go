@@ -61,6 +61,7 @@ var (
 	PermMachineTemplateUpdate       = PermissionRegistry.get("machine.template.update")
 	PermMachineUpdate               = PermissionRegistry.get("machine.update")
 	PermNode                        = PermissionRegistry.get("node")
+	PermNodeBs                      = PermissionRegistry.get("node.bs")
 	PermNodeCreate                  = PermissionRegistry.get("node.create")
 	PermNodeDelete                  = PermissionRegistry.get("node.delete")
 	PermNodeRead                    = PermissionRegistry.get("node.read")
