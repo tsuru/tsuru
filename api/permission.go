@@ -39,6 +39,13 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !(permission.Check(t, permission.PermRoleUpdate) ||
+		permission.Check(t, permission.PermRoleUpdateAssign) ||
+		permission.Check(t, permission.PermRoleUpdateDissociate) ||
+		permission.Check(t, permission.PermRoleCreate) ||
+		permission.Check(t, permission.PermRoleDelete)) {
+		return permission.ErrUnauthorized
+	}
 	roles, err := permission.ListRoles()
 	if err != nil {
 		return err
@@ -174,7 +181,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 }
 
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermRoleAssign) {
+	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
@@ -194,6 +201,9 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+		return permission.ErrUnauthorized
+	}
 	roleName := r.URL.Query().Get(":name")
 	email := r.URL.Query().Get(":email")
 	contextValue := r.URL.Query().Get("context")
@@ -216,6 +226,9 @@ type permissionSchemeData struct {
 }
 
 func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdate) {
+		return permission.ErrUnauthorized
+	}
 	lst := permission.PermissionRegistry.Permissions()
 	sort.Sort(lst)
 	permList := make([]permissionSchemeData, len(lst))

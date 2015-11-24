@@ -87,16 +87,15 @@ func (s *S) TestRemoveRoleUnauthorized(c *check.C) {
 
 func (s *S) TestListRoles(c *check.C) {
 	s.conn.Roles().DropCollection()
-	role, err := permission.NewRole("test", "app")
-	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("app")
-	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/roles", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
-	expected := `[{"name":"test","context":"app","scheme_names":["app"]}]`
+	expected := `[{"name":"majortomrole.update","context":"global","scheme_names":["role.update"]}]`
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
@@ -222,7 +221,7 @@ func (s *S) TestAssignRole(c *check.C) {
 	req, err := http.NewRequest("POST", "/roles/test/user", role)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermRoleAssign,
+		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -241,7 +240,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 	_, err := permission.NewRole("test", "team")
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermRoleAssign,
+		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	u, err := auth.GetUserByEmail("majortom@groundcontrol.com")
@@ -271,7 +270,10 @@ func (s *S) TestListPermissions(c *check.C) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/permissions", nil)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)

@@ -25,6 +25,11 @@ github.com/tsuru/tsuru/api.login
 github.com/tsuru/tsuru/api.logout
 github.com/tsuru/tsuru/api.changePassword
 github.com/tsuru/tsuru/api.userInfo
+github.com/tsuru/tsuru/api.serviceInfo
+github.com/tsuru/tsuru/api.serviceInstances
+github.com/tsuru/tsuru/api.listKeys
+github.com/tsuru/tsuru/api.listUsers
+github.com/tsuru/tsuru/api.removeKeyFromUser
 EOF
 )
 ignored=$(echo "$ignored" | sort)

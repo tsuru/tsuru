@@ -97,8 +97,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"role.create",
 	"role.delete",
-	"role.update",
-	"role.assign",
+	"role.update.assign",
+	"role.update.dissociate",
 ).add(
 	"platform.create",
 	"platform.delete",
