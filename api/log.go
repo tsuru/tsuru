@@ -9,26 +9,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/log"
 	"golang.org/x/net/websocket"
 )
-
-func logRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	appName := r.URL.Query().Get("app")
-	if appName != "" {
-		a, err := getAppFromContext(r.URL.Query().Get("app"), r)
-		if err != nil {
-			return err
-		}
-		return app.LogRemove(&a)
-	}
-	return app.LogRemove(nil)
-}
 
 func addLogs(ws *websocket.Conn) {
 	var err error

@@ -6,7 +6,6 @@ package api
 
 import (
 	"fmt"
-	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"time"
@@ -19,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type LogSuite struct {
@@ -75,50 +73,6 @@ func (s *LogSuite) TearDownSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer logConn.Close()
 	logConn.Logs("myapp").Database.DropDatabase()
-}
-
-func (s *LogSuite) TestLogRemoveAll(c *check.C) {
-	a := app.App{Name: "words"}
-	request, err := http.NewRequest("DELETE", "/logs", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = a.Log("last log msg", "tsuru", "")
-	c.Assert(err, check.IsNil)
-	err = logRemove(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	count, err := s.logConn.Logs(a.Name).Find(nil).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
-}
-
-func (s *LogSuite) TestLogRemoveByApp(c *check.C) {
-	a := app.App{
-		Name:  "words",
-		Teams: []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = a.Log("last log msg", "tsuru", "")
-	c.Assert(err, check.IsNil)
-	a2 := app.App{Name: "words2"}
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	err = a2.Log("last log msg2", "tsuru", "")
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/logs?app=%s", a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = logRemove(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	count, err := s.logConn.Logs(a2.Name).Find(nil).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
 }
 
 func (s *S) TestAddLogsHandler(c *check.C) {

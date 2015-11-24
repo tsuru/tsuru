@@ -95,29 +95,6 @@ func notify(appName string, messages []interface{}) {
 	}
 }
 
-// LogRemove removes the app log.
-func LogRemove(a *App) error {
-	conn, err := db.LogConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	if a != nil {
-		return conn.Logs(a.Name).DropCollection()
-	}
-	colls, err := conn.LogsCollections()
-	if err != nil {
-		return err
-	}
-	for _, coll := range colls {
-		err = coll.DropCollection()
-		if err != nil {
-			log.Errorf("Error trying to drop collection %s", coll.Name)
-		}
-	}
-	return nil
-}
-
 func LogReceiver() (chan<- *Applog, <-chan error) {
 	ch := make(chan *Applog)
 	errCh := make(chan error)

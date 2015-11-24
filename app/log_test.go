@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestNewLogListener(c *check.C) {
@@ -174,48 +173,4 @@ func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
 		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
 	}
 	notify(app.Name, ms)
-}
-
-func (s *S) TestLogRemove(c *check.C) {
-	a := App{Name: "newApp"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "newApp2"}
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().RemoveAll(nil)
-	err = a.Log("last log msg", "tsuru", "hari")
-	c.Assert(err, check.IsNil)
-	err = LogRemove(nil)
-	c.Assert(err, check.IsNil)
-	count, err := s.logConn.Logs(a.Name).Find(nil).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
-	count, err = s.logConn.Logs(a2.Name).Find(nil).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
-}
-
-func (s *S) TestLogRemoveByApp(c *check.C) {
-	a := App{Name: "newApp"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = a.Log("last log msg", "tsuru", "hari")
-	c.Assert(err, check.IsNil)
-	a2 := App{Name: "oldApp"}
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	defer func() {
-		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Apps().Remove(bson.M{"name": a2.Name})
-		s.logConn.Logs(a.Name).DropCollection()
-		s.logConn.Logs(a2.Name).DropCollection()
-	}()
-	err = a2.Log("last log msg", "tsuru", "hari")
-	c.Assert(err, check.IsNil)
-	err = LogRemove(&a)
-	c.Assert(err, check.IsNil)
-	count, err := s.logConn.Logs(a2.Name).Find(nil).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 1)
 }
