@@ -38,7 +38,20 @@ func ParseToken(header string) (string, error) {
 
 func BaseTokenPermission(t Token) ([]permission.Permission, error) {
 	if t.IsAppToken() {
-		return nil, nil
+		return []permission.Permission{
+			{
+				Scheme:  permission.PermAppUpdateUnitRegister,
+				Context: permission.Context(permission.CtxApp, t.GetAppName()),
+			},
+			{
+				Scheme:  permission.PermAppUpdateLog,
+				Context: permission.Context(permission.CtxApp, t.GetAppName()),
+			},
+			{
+				Scheme:  permission.PermAppUpdateUnitStatus,
+				Context: permission.Context(permission.CtxApp, t.GetAppName()),
+			},
+		}, nil
 	}
 	user, err := t.User()
 	if err != nil {

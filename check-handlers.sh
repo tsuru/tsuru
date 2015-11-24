@@ -30,6 +30,7 @@ github.com/tsuru/tsuru/api.serviceInstances
 github.com/tsuru/tsuru/api.listKeys
 github.com/tsuru/tsuru/api.listUsers
 github.com/tsuru/tsuru/api.removeKeyFromUser
+github.com/tsuru/tsuru/api.setUnitsStatus
 EOF
 )
 ignored=$(echo "$ignored" | sort)

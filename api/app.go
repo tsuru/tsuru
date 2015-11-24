@@ -467,6 +467,15 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	allowed := permission.Check(t, permission.PermAppUpdateUnitStatus,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	err = a.SetUnitStatus(unitName, status)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -1110,14 +1119,16 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateLog,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
-		)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
+	if t.GetAppName() != app.InternalAppName {
+		allowed := permission.Check(t, permission.PermAppUpdateLog,
+			append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
 	}
 	var logs []string
 	err = json.Unmarshal(body, &logs)
@@ -1301,6 +1312,19 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error
 
 func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateUnitRegister,
+		append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -1317,10 +1341,6 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if err != nil {
 			return err
 		}
-	}
-	a, err := app.GetByName(appName)
-	if err != nil {
-		return err
 	}
 	err = a.RegisterUnit(hostname, customData)
 	if err != nil {
