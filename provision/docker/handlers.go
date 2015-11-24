@@ -444,7 +444,7 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			Message: fmt.Sprintf("unable to parse body as json: %s", err),
 		}
 	}
-	currentConfig, err := bs.LoadConfig()
+	currentConfig, err := bs.LoadConfig(nil)
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return err
@@ -482,7 +482,19 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	currentConfig, err := bs.LoadConfig()
+	contexts := permission.ContextsForPermission(t, permission.PermNodeBs)
+	if len(contexts) == 0 {
+		return permission.ErrUnauthorized
+	}
+	pools := make([]string, 0, len(contexts))
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			pools = nil
+			break
+		}
+		pools = append(pools, ctx.Value)
+	}
+	currentConfig, err := bs.LoadConfig(pools)
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return err

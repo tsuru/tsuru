@@ -88,7 +88,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := LoadConfig()
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
@@ -143,7 +143,7 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := LoadConfig()
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 }
@@ -198,7 +198,7 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := LoadConfig()
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
 }
@@ -260,7 +260,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := LoadConfig()
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs")
 }

@@ -212,7 +212,7 @@ func SaveEnvs(envMap EnvMap, poolEnvMap PoolEnvMap) error {
 	return err
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig(pools []string) (*Config, error) {
 	var config Config
 	coll, err := collection()
 	if err != nil {
@@ -222,6 +222,18 @@ func LoadConfig() (*Config, error) {
 	err = coll.FindId(bsUniqueID).One(&config)
 	if err != nil {
 		return nil, err
+	}
+	if pools != nil {
+		poolEnvs := make([]PoolEnvs, 0, len(pools))
+		for _, pool := range pools {
+			for _, poolEnv := range config.Pools {
+				if poolEnv.Name == pool {
+					poolEnvs = append(poolEnvs, poolEnv)
+					break
+				}
+			}
+		}
+		config.Pools = poolEnvs
 	}
 	return &config, nil
 }
@@ -249,7 +261,7 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 	if err != nil {
 		return err
 	}
-	bsConf, err := LoadConfig()
+	bsConf, err := LoadConfig(nil)
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return err

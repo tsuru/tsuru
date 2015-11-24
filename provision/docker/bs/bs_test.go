@@ -21,6 +21,37 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func (s *S) TestLoadConfigPoolFiltering(c *check.C) {
+	coll, err := collection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	err = coll.Insert(Config{
+		ID:    bsUniqueID,
+		Image: "tsuru/bss",
+		Envs:  []Env{{Name: "USER", Value: "root"}},
+		Pools: []PoolEnvs{
+			{Name: "pool1", Envs: []Env{{Name: "USER", Value: "nonroot"}}},
+			{Name: "pool2", Envs: []Env{{Name: "USER", Value: "superroot"}}},
+			{Name: "pool3", Envs: []Env{{Name: "USER", Value: "watroot"}}},
+			{Name: "pool4", Envs: []Env{{Name: "USER", Value: "kindaroot"}}},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(bsUniqueID)
+	conf, err := LoadConfig([]string{"pool1", "pool4"})
+	c.Assert(err, check.IsNil)
+	expectedConfig := Config{
+		ID:    bsUniqueID,
+		Image: "tsuru/bss",
+		Envs:  []Env{{Name: "USER", Value: "root"}},
+		Pools: []PoolEnvs{
+			{Name: "pool1", Envs: []Env{{Name: "USER", Value: "nonroot"}}},
+			{Name: "pool4", Envs: []Env{{Name: "USER", Value: "kindaroot"}}},
+		},
+	}
+	c.Assert(*conf, check.DeepEquals, expectedConfig)
+}
+
 func (s *S) TestGetImageFromDatabase(c *check.C) {
 	imageName := "tsuru/bsss"
 	coll, err := collection()
@@ -29,7 +60,7 @@ func (s *S) TestGetImageFromDatabase(c *check.C) {
 	err = coll.Insert(Config{ID: bsUniqueID, Image: imageName})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"image": imageName})
-	conf, err := LoadConfig()
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	image := conf.getImage()
 	c.Assert(image, check.Equals, imageName)

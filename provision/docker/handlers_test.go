@@ -1161,7 +1161,7 @@ func (s *HandlersSuite) TestBsEnvSetHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := bs.LoadConfig()
+	conf, err := bs.LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "")
 	sort.Sort(bsEnvList(conf.Envs))
@@ -1192,7 +1192,7 @@ func (s *HandlersSuite) TestBsEnvSetHandlerForbiddenVar(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "cannot set TSURU_ENDPOINT variable\n")
-	_, err = bs.LoadConfig()
+	_, err = bs.LoadConfig(nil)
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
@@ -1228,7 +1228,7 @@ func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := bs.LoadConfig()
+	conf, err := bs.LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "myimg")
 	sort.Sort(bsEnvList(conf.Envs))
@@ -1259,11 +1259,50 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	}
 	err = bs.SaveEnvs(envMap, poolEnvMap)
 	c.Assert(err, check.IsNil)
-	expected, err = bs.LoadConfig()
+	expected, err = bs.LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	c.Assert(err, check.IsNil)
+	c.Assert(conf, check.DeepEquals, *expected)
+}
+
+func (s *HandlersSuite) TestBsConfigGetFilteringPools(c *check.C) {
+	role, err := permission.NewRole("bs-config-get", string(permission.CtxPool))
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions(permission.PermNodeBs.FullName())
+	c.Assert(err, check.IsNil)
+	user := &auth.User{Email: "provisioner-docker-bs-env@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
+	nativeScheme.Remove(user)
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	user.AddRole(role.Name, "POOL1")
+	user.AddRole(role.Name, "POOL3")
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/docker/bs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	err = bs.SaveImage("myimg")
+	c.Assert(err, check.IsNil)
+	envMap := bs.EnvMap{"VAR1": "VAL1", "VAR2": "VAL2"}
+	poolEnvMap := bs.PoolEnvMap{
+		"POOL1": bs.EnvMap{"VAR3": "VAL3", "VAR4": "VAL4"},
+		"POOL2": bs.EnvMap{"VAR3": "VAL4", "VAR4": "VAL5"},
+		"POOL3": bs.EnvMap{"VAR3": "VAL5", "VAR4": "VAL6"},
+		"POOL4": bs.EnvMap{"VAR3": "VAL7", "VAR4": "VAL7"},
+	}
+	err = bs.SaveEnvs(envMap, poolEnvMap)
+	c.Assert(err, check.IsNil)
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	expected, err := bs.LoadConfig([]string{"POOL1", "POOL3"})
+	c.Assert(err, check.IsNil)
+	var conf bs.Config
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf, check.DeepEquals, *expected)
@@ -1279,7 +1318,7 @@ func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := bs.LoadConfig()
+	conf, err := bs.LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "")
 }

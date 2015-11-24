@@ -1028,7 +1028,7 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 
 func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 	envMap := map[string]string{}
-	bsConf, err := bs.LoadConfig()
+	bsConf, err := bs.LoadConfig(nil)
 	if err != nil {
 		return envMap
 	}
