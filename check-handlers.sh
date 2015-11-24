@@ -2,11 +2,8 @@
 
 go get golang.org/x/tools/cmd/oracle
 
-pos=$(cat ./api/handler.go  | grep -ob "fn authorizationRequiredHandler" | egrep -o "^[0-9]+")
+pos=$(cat ./api/handler.go  | grep -ob "fn AuthorizationRequiredHandler" | egrep -o "^[0-9]+")
 handlers1=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | awk '{print $2}')
-
-pos=$(cat ./api/handler.go  | grep -ob "fn AdminRequiredHandler" | egrep -o "^[0-9]+")
-handlers2=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | awk '{print $2}')
 
 allhandlers=$(echo "$handlers1"$'\n'"$handlers2" | sort)
 

@@ -25,23 +25,9 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	context.AddRequestError(r, fn(w, r))
 }
 
-type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, auth.Token) error
+type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, auth.Token) error
 
-func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	t := context.GetAuthToken(r)
-	if t == nil {
-		w.Header().Set("WWW-Authenticate", "Bearer realm=\"tsuru\" scope=\"tsuru\"")
-		context.AddRequestError(r, tokenRequiredErr)
-	} else {
-		context.AddRequestError(r, fn(w, r, t))
-	}
-}
-
-type AdminRequiredHandler authorizationRequiredHandler
-
-// TODO(cezarsa): temporary to avoid breaking other packages, this will
-// vanish.
-func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t := context.GetAuthToken(r)
 	if t == nil {
 		w.Header().Set("WWW-Authenticate", "Bearer realm=\"tsuru\" scope=\"tsuru\"")

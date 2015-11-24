@@ -20,7 +20,7 @@ func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *check.C) {
-	RegisterHandler("/foo/bar", "GET", authorizationRequiredHandler(authorizedTsuruHandler))
+	RegisterHandler("/foo/bar", "GET", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/foo/bar", nil)
@@ -34,7 +34,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *check.C) {
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPost(c *check.C) {
-	RegisterHandler("/foo/bar", "POST", authorizationRequiredHandler(authorizedTsuruHandler))
+	RegisterHandler("/foo/bar", "POST", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
@@ -48,7 +48,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPost(c *check.C) {
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPut(c *check.C) {
-	RegisterHandler("/foo/bar", "PUT", authorizationRequiredHandler(authorizedTsuruHandler))
+	RegisterHandler("/foo/bar", "PUT", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("PUT", "http://example.com/foo/bar", nil)
@@ -62,7 +62,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPut(c *check.C) {
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *check.C) {
-	RegisterHandler("/foo/bar", "DELETE", authorizationRequiredHandler(authorizedTsuruHandler))
+	RegisterHandler("/foo/bar", "DELETE", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("DELETE", "http://example.com/foo/bar", nil)
@@ -76,7 +76,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *check.C) {
 }
 
 func (s *S) TestIsNotAdmin(c *check.C) {
-	RegisterHandler("/foo/bar", "POST", authorizationRequiredHandler(authorizedTsuruHandler))
+	RegisterHandler("/foo/bar", "POST", AuthorizationRequiredHandler(authorizedTsuruHandler))
 	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
