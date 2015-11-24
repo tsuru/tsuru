@@ -340,6 +340,23 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	c.Assert(result["error"], check.Matches, `Invalid address url: scheme must be http\[s\]`)
 }
 
+func (s *HandlersSuite) TestAddNodeHandlerNoPool(c *check.C) {
+	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:cluster:redis-server")
+	b := bytes.NewBufferString(`{"address": "http://192.168.50.4:2375"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	token := createToken(c)
+	err = addNodeHandler(rec, req, token)
+	c.Assert(err, check.IsNil)
+	var result map[string]string
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], check.Matches, `pool is required`)
+}
+
 func (s *HandlersSuite) TestValidateNodeAddress(c *check.C) {
 	err := validateNodeAddress("/invalid")
 	c.Assert(err, check.ErrorMatches, "Invalid address url: host cannot be empty")

@@ -163,22 +163,27 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	if !permission.Check(t, permission.PermNodeCreate) {
+	if templateName, ok := params["template"]; ok {
+		params, err = iaas.ExpandTemplate(templateName)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		}
+	}
+	pool := params["pool"]
+	if pool == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return json.NewEncoder(w).Encode(map[string]string{"error": "pool is required"})
+	}
+	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, pool)) {
 		return permission.ErrUnauthorized
 	}
 	isRegister, _ := strconv.ParseBool(r.URL.Query().Get("register"))
 	if !isRegister {
-		if templateName, ok := params["template"]; ok {
-			params, err = iaas.ExpandTemplate(templateName)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			}
-			canCreateMachine := permission.Check(t, permission.PermMachineCreate,
-				permission.Context(permission.CtxIaaS, params["iaas"]))
-			if !canCreateMachine {
-				return permission.ErrUnauthorized
-			}
+		canCreateMachine := permission.Check(t, permission.PermMachineCreate,
+			permission.Context(permission.CtxIaaS, params["iaas"]))
+		if !canCreateMachine {
+			return permission.ErrUnauthorized
 		}
 	}
 	response, err := mainDockerProvisioner.addNodeForParams(params, isRegister)
