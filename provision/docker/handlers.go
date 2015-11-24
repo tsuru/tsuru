@@ -218,6 +218,20 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if node == nil {
 		return fmt.Errorf("node with address %q not found in cluster", address)
 	}
+	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
+		permission.Context(permission.CtxIaaS, node.Metadata["iaas"]),
+	)
+	if !allowedNodeRemove {
+		return permission.ErrUnauthorized
+	}
+	if ok, _ := strconv.ParseBool(params["remove_iaas"]); ok {
+		allowedIaasRemove := permission.Check(t, permission.PermMachineDelete,
+			permission.Context(permission.CtxIaaS, node.Metadata["iaas"]),
+		)
+		if !allowedIaasRemove {
+			return permission.ErrUnauthorized
+		}
+	}
 	err = mainDockerProvisioner.Cluster().Unregister(address)
 	if err != nil {
 		return err
