@@ -278,6 +278,33 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if address == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+	if err != nil {
+		return err
+	}
+	var oldNode *cluster.Node
+	for i := range nodes {
+		if nodes[i].Address == address {
+			oldNode = &nodes[i]
+			break
+		}
+	}
+	oldPool, _ := oldNode.Metadata["pool"]
+	allowedOldPool := permission.Check(t, permission.PermNodeUpdate,
+		permission.Context(permission.CtxPool, oldPool),
+	)
+	if !allowedOldPool {
+		return permission.ErrUnauthorized
+	}
+	newPool, ok := params["pool"]
+	if ok {
+		allowedNewPool := permission.Check(t, permission.PermNodeUpdate,
+			permission.Context(permission.CtxPool, newPool),
+		)
+		if !allowedNewPool {
+			return permission.ErrUnauthorized
+		}
+	}
 	delete(params, "address")
 	node := cluster.Node{Address: address, Metadata: params}
 	disabled, _ := strconv.ParseBool(r.URL.Query().Get("disabled"))
