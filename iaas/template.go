@@ -38,6 +38,14 @@ func FindTemplate(name string) (*Template, error) {
 	return &template, err
 }
 
+func ExpandTemplate(name string) (map[string]string, error) {
+	template, err := FindTemplate(name)
+	if err != nil {
+		return nil, err
+	}
+	return template.paramsMap(), nil
+}
+
 func ListTemplates() ([]Template, error) {
 	coll := template_collection()
 	defer coll.Close()

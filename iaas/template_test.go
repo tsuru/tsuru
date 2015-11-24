@@ -173,3 +173,23 @@ func (s *S) TestDestroyTemplate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(templates, check.HasLen, 0)
 }
+
+func (s *S) TestExpandTemplate(c *check.C) {
+	tpl1 := Template{
+		Name:     "tpl1",
+		IaaSName: "test-iaas",
+		Data: TemplateDataList{
+			{Name: "key1", Value: "val1"},
+			{Name: "key2", Value: "val2"},
+		},
+	}
+	err := tpl1.Save()
+	c.Assert(err, check.IsNil)
+	data, err := ExpandTemplate("tpl1")
+	c.Assert(err, check.IsNil)
+	c.Assert(data, check.DeepEquals, map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+		"iaas": "test-iaas",
+	})
+}
