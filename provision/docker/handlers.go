@@ -57,11 +57,19 @@ func init() {
 }
 
 func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowedGetConfig := permission.Check(t, permission.PermAutoscale)
+	if !allowedGetConfig {
+		return permission.ErrUnauthorized
+	}
 	config := mainDockerProvisioner.initAutoScaleConfig()
 	return json.NewEncoder(w).Encode(config)
 }
 
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowedListRule := permission.Check(t, permission.PermAutoscale)
+	if !allowedListRule {
+		return permission.ErrUnauthorized
+	}
 	rules, err := listAutoScaleRules()
 	if err != nil {
 		return err
@@ -70,6 +78,10 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 }
 
 func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowedSetRule := permission.Check(t, permission.PermAutoscale)
+	if !allowedSetRule {
+		return permission.ErrUnauthorized
+	}
 	var rule autoScaleRule
 	err := json.NewDecoder(r.Body).Decode(&rule)
 	if err != nil {
@@ -79,6 +91,10 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 }
 
 func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	allowedDeleteRule := permission.Check(t, permission.PermAutoscale)
+	if !allowedDeleteRule {
+		return permission.ErrUnauthorized
+	}
 	ruleID := r.URL.Query().Get(":id")
 	err := deleteAutoScaleRule(ruleID)
 	if err == mgo.ErrNotFound {
