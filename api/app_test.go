@@ -119,7 +119,10 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.adminteam.Name}
+	team2 := auth.Team{Name: "angra"}
+	err = s.conn.Teams().Insert(team2)
+	c.Assert(err, check.IsNil)
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name}
 	err = app.CreateApp(&app2, u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?teamowner=%s", s.team.Name), nil)
@@ -455,16 +458,7 @@ func (s *S) TestDeleteAdminAuthorized(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("superadmin", "global")
-	c.Assert(err, check.IsNil)
-	err = s.adminuser.AddRole("superadmin", "")
-	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("*")
-	c.Assert(err, check.IsNil)
-	defer s.adminuser.RemoveRole("superadmin", "global")
-	defer permission.DestroyRole("superadmin")
-	err = appDelete(recorder, request, s.admintoken)
+	err = appDelete(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 }
 

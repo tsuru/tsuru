@@ -37,9 +37,6 @@ type S struct {
 	team        *auth.Team
 	user        *auth.User
 	token       auth.Token
-	adminteam   *auth.Team
-	adminuser   *auth.User
-	admintoken  auth.Token
 	provisioner *provisiontest.FakeProvisioner
 	Pool        string
 }
@@ -76,17 +73,11 @@ func (s *S) createUserAndTeam(c *check.C) {
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
-	s.user, _ = s.token.User()
-	s.adminuser = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
-	_, err := nativeScheme.Create(s.adminuser)
+	var err error
+	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, check.IsNil)
-	s.adminteam = &auth.Team{Name: "admin"}
-	err = s.conn.Teams().Insert(s.adminteam)
-	c.Assert(err, check.IsNil)
-	s.admintoken, err = nativeScheme.Login(map[string]string{"email": s.adminuser.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 }
 
@@ -120,7 +111,6 @@ func (s *S) SetUpTest(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
-	repository.Manager().CreateUser(s.adminuser.Email)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	factory.Reset()
