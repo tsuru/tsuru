@@ -116,4 +116,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"pool.delete",
 ).add(
 	"debug",
+).add(
+	"healing",
 )
