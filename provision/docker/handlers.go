@@ -347,9 +347,26 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if from == "" || to == "" {
 		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(w),
+	originHost, err := mainDockerProvisioner.getNodeByHost(from)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	destinationHost, err := mainDockerProvisioner.getNodeByHost(to)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	var permContexts []permission.PermissionContext
+	originPool, ok := originHost.Metadata["pool"]
+	if ok {
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, originPool))
+	}
+	if pool, ok := destinationHost.Metadata["pool"]; ok && pool != originPool {
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
+	}
+	if !permission.Check(t, permission.PermNode, permContexts...) {
+		return permission.ErrUnauthorized
+	}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = mainDockerProvisioner.MoveContainers(from, to, writer)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to move containers: %s\n", err.Error())

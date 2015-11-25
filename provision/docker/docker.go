@@ -51,16 +51,24 @@ func urlToHost(urlStr string) string {
 }
 
 func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
-	nodes, err := p.Cluster().Nodes()
+	node, err := p.getNodeByHost(host)
 	if err != nil {
 		return "", err
 	}
+	return node.Address, nil
+}
+
+func (p *dockerProvisioner) getNodeByHost(host string) (cluster.Node, error) {
+	nodes, err := p.Cluster().Nodes()
+	if err != nil {
+		return cluster.Node{}, err
+	}
 	for _, node := range nodes {
 		if urlToHost(node.Address) == host {
-			return node.Address, nil
+			return node, nil
 		}
 	}
-	return "", fmt.Errorf("Host `%s` not found", host)
+	return cluster.Node{}, fmt.Errorf("Host `%s` not found", host)
 }
 
 func randomString() string {
