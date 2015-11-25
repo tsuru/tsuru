@@ -224,6 +224,18 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return permission.ErrUnauthorized
 		}
 	}
+	node.CreationStatus = cluster.NodeCreationStatusDisabled
+	_, err = mainDockerProvisioner.Cluster().UpdateNode(*node)
+	if err != nil {
+		return err
+	}
+	noRebalance, err := strconv.ParseBool(r.URL.Query().Get("no-rebalance"))
+	if !noRebalance {
+		err = mainDockerProvisioner.rebalanceContainersByHost(urlToHost(address), w)
+		if err != nil {
+			return err
+		}
+	}
 	err = mainDockerProvisioner.Cluster().Unregister(address)
 	if err != nil {
 		return err
@@ -235,10 +247,6 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return err
 		}
 		return m.Destroy()
-	}
-	noRebalance, err := strconv.ParseBool(r.URL.Query().Get("no-rebalance"))
-	if !noRebalance {
-		return mainDockerProvisioner.rebalanceContainersByHost(urlToHost(address), w)
 	}
 	return nil
 }
