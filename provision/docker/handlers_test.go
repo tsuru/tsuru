@@ -781,7 +781,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	c.Assert(len(result), check.Equals, 14)
 	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
 	c.Assert(result[1].Message, check.Matches, "(?s)Moving unit .*")
-	c.Assert(result[13].Message, check.Equals, "Containers rebalanced successfully!\n")
+	c.Assert(result[13].Message, check.Equals, "Containers successfully rebalanced!\n")
 }
 
 func (s *S) TestRebalanceContainersFilters(c *check.C) {
@@ -833,7 +833,7 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 2)
 	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance\n")
-	c.Assert(result[1].Message, check.Equals, "Containers rebalanced successfully!\n")
+	c.Assert(result[1].Message, check.Equals, "Containers successfully rebalanced!\n")
 }
 
 func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
@@ -887,7 +887,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	c.Assert(len(result), check.Equals, 8)
 	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
 	c.Assert(result[1].Message, check.Matches, "(?s)Would move unit .*")
-	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!\n")
+	c.Assert(result[7].Message, check.Equals, "Containers successfully rebalanced!\n")
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {

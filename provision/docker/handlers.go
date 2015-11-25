@@ -360,24 +360,29 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	dry := false
-	params := struct {
+	var dry bool
+	var params struct {
 		Dry            string
 		MetadataFilter map[string]string
 		AppFilter      []string
-	}{}
+	}
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err == nil {
 		dry, _ = strconv.ParseBool(params.Dry)
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(w),
+	var permContexts []permission.PermissionContext
+	if pool, ok := params.MetadataFilter["pool"]; ok {
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
 	}
+	if !permission.Check(t, permission.PermNode, permContexts...) {
+		return permission.ErrUnauthorized
+	}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	_, err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, dry)
 	if err != nil {
-		fmt.Fprintf(writer, "Error trying to rebalance containers: %s\n", err.Error())
+		fmt.Fprintf(writer, "Error trying to rebalance containers: %s\n", err)
 	} else {
-		fmt.Fprintf(writer, "Containers rebalanced successfully!\n")
+		fmt.Fprintf(writer, "Containers successfully rebalanced!\n")
 	}
 	return nil
 }
