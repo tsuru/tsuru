@@ -69,6 +69,9 @@ Bug fixes
 * Deploy info now returns 404 when the provided id is not a valid MongoDB
   ObjectId.
 
+* Deploy now increments unit usage
+  (issue `#1279 <https://github.com/tsuru/tsuru/issues/1279>`_).
+
 Other improvements
 ==================
 
@@ -111,6 +114,10 @@ Other improvements
   avoiding database connections leakage.
 
 * Improve documentation for the Java platform (thanks Manoel Domingues Junior).
+
+* Improved the docker-node-remove command to disable the node, rebalance and
+  then unregister or remove the node
+  (issue `#1319 <https://github.com/tsuru/tsuru/issues/1319>`_).
 
 Backward incompatible changes (action needed)
 =============================================
