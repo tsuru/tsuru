@@ -1409,7 +1409,6 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&addNodeToSchedulerCmd{},
 		&removeNodeFromSchedulerCmd{},
 		&listNodesInTheSchedulerCmd{},
-		fixContainersCmd{},
 		&healer.ListHealingHistoryCmd{},
 		&autoScaleRunCmd{},
 		&listAutoScaleHistoryCmd{},

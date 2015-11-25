@@ -816,7 +816,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&addNodeToSchedulerCmd{},
 		&removeNodeFromSchedulerCmd{},
 		&listNodesInTheSchedulerCmd{},
-		fixContainersCmd{},
 		&healer.ListHealingHistoryCmd{},
 		&autoScaleRunCmd{},
 		&listAutoScaleHistoryCmd{},

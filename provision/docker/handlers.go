@@ -43,7 +43,6 @@ func init() {
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AuthorizationRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/docker/containers/rebalance", "POST", api.AuthorizationRequiredHandler(rebalanceContainersHandler))
-	api.RegisterHandler("/docker/fix-containers", "POST", api.AuthorizationRequiredHandler(fixContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AuthorizationRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/config", "GET", api.AuthorizationRequiredHandler(autoScaleGetConfig))
@@ -343,15 +342,6 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	return err
-}
-
-func fixContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := mainDockerProvisioner.fixContainers()
-	if err != nil {
-		return err
-	}
-	w.WriteHeader(http.StatusNoContent)
-	return nil
 }
 
 func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

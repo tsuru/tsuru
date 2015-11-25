@@ -236,31 +236,3 @@ func (s *S) TestRebalanceContainersRunGivingUp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "Are you sure you want to rebalance containers? (y/n) Abort.\n")
 }
-
-func (s *S) TestFixContainersCmdRun(c *check.C) {
-	var buf bytes.Buffer
-	context := cmd.Context{Stdout: &buf, Stderr: &buf}
-	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/fix-containers" && req.Method == "POST"
-		},
-	}
-	manager := cmd.NewManager("admin", "0.1", "admin-ver", &buf, &buf, nil, nil)
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := fixContainersCmd{}
-	err := cmd.Run(&context, client)
-	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "")
-}
-
-func (s *S) TestFixContainersCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:  "fix-containers",
-		Usage: "fix-containers",
-		Desc:  "Fix containers that are broken in the cluster.",
-	}
-	command := fixContainersCmd{}
-	info := command.Info()
-	c.Assert(*info, check.DeepEquals, expected)
-}

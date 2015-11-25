@@ -66,71 +66,67 @@ func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner)
 	}, server, &p
 }
 
-func (s *S) TestFixContainers(c *check.C) {
+func (s *S) TestFixContainer(c *check.C) {
 	cleanup, server, p := startDocker("9999")
 	defer cleanup()
 	coll := p.Collection()
 	defer coll.Close()
-	err := coll.Insert(
-		container.Container{
-			ID:       "9930c24f1c4x",
-			AppName:  "makea",
-			Type:     "python",
-			Status:   provision.StatusStarted.String(),
-			IP:       "127.0.0.4",
-			HostPort: "9025",
-			HostAddr: "127.0.0.1",
-		},
-	)
+	cont := container.Container{
+		ID:       "9930c24f1c4x",
+		AppName:  "makea",
+		Type:     "python",
+		Status:   provision.StatusStarted.String(),
+		IP:       "127.0.0.4",
+		HostPort: "9025",
+		HostAddr: "127.0.0.1",
+	}
+	err := coll.Insert(cont)
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	err = s.storage.Apps().Insert(&app.App{Name: "makea"})
+	defer coll.RemoveAll(bson.M{"appname": cont.AppName})
+	err = s.storage.Apps().Insert(&app.App{Name: cont.AppName})
 	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("makea", "python", 0)
+	appInstance := provisiontest.NewFakeApp(cont.AppName, cont.Type, 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	var storage cluster.MapStorage
-	storage.StoreContainer("9930c24f1c4x", server.URL)
+	storage.StoreContainer(cont.ID, server.URL)
 	p.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)
-	err = p.fixContainers()
+	info, err := cont.NetworkInfo(p)
 	c.Assert(err, check.IsNil)
-	cont, err := p.GetContainer("9930c24f1c4x")
+	err = p.fixContainer(&cont, info)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont.IP, check.Equals, "127.0.0.9")
-	c.Assert(cont.HostPort, check.Equals, "9999")
+	conta, err := p.GetContainer("9930c24f1c4x")
+	c.Assert(err, check.IsNil)
+	c.Assert(conta.IP, check.Equals, "127.0.0.9")
+	c.Assert(conta.HostPort, check.Equals, "9999")
 }
 
-func (s *S) TestFixContainersEmptyPortDoesNothing(c *check.C) {
-	cleanup, server, p := startDocker("")
+func (s *S) TestCheckContainer(c *check.C) {
+	cleanup, server, p := startDocker("9999")
 	defer cleanup()
 	coll := p.Collection()
 	defer coll.Close()
-	err := coll.Insert(
-		container.Container{
-			ID:       "9930c24f1c4x",
-			AppName:  "makea",
-			Type:     "python",
-			Status:   provision.StatusStarted.String(),
-			IP:       "",
-			HostPort: "",
-			HostAddr: "127.0.0.1",
-		},
-	)
+	cont := container.Container{
+		ID:       "9930c24f1c4x",
+		AppName:  "makea",
+		Type:     "python",
+		Status:   provision.StatusStarted.String(),
+		IP:       "127.0.0.9",
+		HostPort: "9999",
+		HostAddr: "127.0.0.1",
+	}
+	err := coll.Insert(cont)
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	defer coll.RemoveAll(bson.M{"appname": cont.AppName})
 	var storage cluster.MapStorage
-	storage.StoreContainer("9930c24f1c4x", server.URL)
+	storage.StoreContainer(cont.ID, server.URL)
 	p.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)
-	err = p.fixContainers()
+	err = p.checkContainer(&cont)
 	c.Assert(err, check.IsNil)
-	cont, err := p.GetContainer("9930c24f1c4x")
-	c.Assert(err, check.IsNil)
-	c.Assert(cont.IP, check.Equals, "")
-	c.Assert(cont.HostPort, check.Equals, "")
 }

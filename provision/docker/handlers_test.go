@@ -559,48 +559,6 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	c.Assert(result.Nodes[1].Metadata, check.DeepEquals, map[string]string{"pool": "pool2", "foo": "bar"})
 }
 
-func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
-	queue.ResetQueue()
-	cleanup, server, p := startDocker("9999")
-	defer cleanup()
-	coll := p.Collection()
-	defer coll.Close()
-	err := s.conn.Apps().Insert(&app.App{Name: "makea"})
-	c.Assert(err, check.IsNil)
-	err = coll.Insert(
-		container.Container{
-			ID:       "9930c24f1c4x",
-			AppName:  "makea",
-			Type:     "python",
-			Status:   provision.StatusStarted.String(),
-			IP:       "127.0.0.4",
-			HostPort: "9025",
-			HostAddr: "127.0.0.1",
-		},
-	)
-	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	var storage cluster.MapStorage
-	storage.StoreContainer("9930c24f1c4x", server.URL)
-	mainDockerProvisioner = p
-	mainDockerProvisioner.cluster, err = cluster.New(nil, &storage,
-		cluster.Node{Address: server.URL},
-	)
-	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("makea", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	request, err := http.NewRequest("POST", "/fix-containers", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = fixContainersHandler(recorder, request, nil)
-	c.Assert(err, check.IsNil)
-	cont, err := p.GetContainer("9930c24f1c4x")
-	c.Assert(err, check.IsNil)
-	c.Assert(cont.IP, check.Equals, "127.0.0.9")
-	c.Assert(cont.HostPort, check.Equals, "9999")
-}
-
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container.Container
 	var err error

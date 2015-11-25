@@ -12,20 +12,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (p *dockerProvisioner) fixContainers() error {
-	containers, err := p.listAllContainers()
-	if err != nil {
-		return err
-	}
-	err = runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
-		return p.checkContainer(c)
-	}, nil, true)
-	if err != nil {
-		log.Errorf("error checking containers for fixing: %s", err.Error())
-	}
-	return err
-}
-
 func (p *dockerProvisioner) checkContainer(container *container.Container) error {
 	if container.Available() {
 		info, err := container.NetworkInfo(p)
