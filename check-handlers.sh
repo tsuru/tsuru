@@ -3,9 +3,7 @@
 go get golang.org/x/tools/cmd/oracle
 
 pos=$(cat ./api/handler.go  | grep -ob "fn AuthorizationRequiredHandler" | egrep -o "^[0-9]+")
-handlers1=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | awk '{print $2}')
-
-allhandlers=$(echo "$handlers1"$'\n'"$handlers2" | sort)
+allhandlers=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | awk '{print $2}' | sort)
 
 pos=$(($(cat ./permission/permission.go | grep -ob "func Check(" | egrep -o "^[0-9]+")+5))
 okhandlers1=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
