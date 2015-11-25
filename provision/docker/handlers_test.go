@@ -713,22 +713,16 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 	})
 }
 
-func (s *HandlersSuite) TestMoveContainerHandler(c *check.C) {
+func (s *HandlersSuite) TestMoveContainerHandlerNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
+	mainDockerProvisioner.Cluster().Register(cluster.Node{Address: "http://127.0.0.1:2375"})
 	b := bytes.NewBufferString(`{"to": "127.0.0.1"}`)
 	request, err := http.NewRequest("POST", "/docker/container/myid/move", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	var result tsuruIo.SimpleJsonMessage
-	err = json.Unmarshal(body, &result)
-	c.Assert(err, check.IsNil)
-	expected := tsuruIo.SimpleJsonMessage{Message: "Error trying to move container: unit \"myid\" not found\n"}
-	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {

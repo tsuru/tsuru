@@ -325,9 +325,18 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if to == "" {
 		return fmt.Errorf("Invalid params: id: %s - to: %s", contId, to)
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(w),
+	cont, err := mainDockerProvisioner.GetContainer(contId)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	permContexts, err := moveContainersPermissionContexts(cont.HostAddr, to)
+	if err != nil {
+		return err
+	}
+	if !permission.Check(t, permission.PermNode, permContexts...) {
+		return permission.ErrUnauthorized
+	}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to move container: %s\n", err.Error())
@@ -347,21 +356,9 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if from == "" || to == "" {
 		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
 	}
-	originHost, err := mainDockerProvisioner.getNodeByHost(from)
+	permContexts, err := moveContainersPermissionContexts(from, to)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	destinationHost, err := mainDockerProvisioner.getNodeByHost(to)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	var permContexts []permission.PermissionContext
-	originPool, ok := originHost.Metadata["pool"]
-	if ok {
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, originPool))
-	}
-	if pool, ok := destinationHost.Metadata["pool"]; ok && pool != originPool {
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
+		return err
 	}
 	if !permission.Check(t, permission.PermNode, permContexts...) {
 		return permission.ErrUnauthorized
@@ -374,6 +371,26 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		fmt.Fprintf(writer, "Containers moved successfully!\n")
 	}
 	return nil
+}
+
+func moveContainersPermissionContexts(from, to string) ([]permission.PermissionContext, error) {
+	originHost, err := mainDockerProvisioner.getNodeByHost(from)
+	if err != nil {
+		return nil, &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	destinationHost, err := mainDockerProvisioner.getNodeByHost(to)
+	if err != nil {
+		return nil, &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	var permContexts []permission.PermissionContext
+	originPool, ok := originHost.Metadata["pool"]
+	if ok {
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, originPool))
+	}
+	if pool, ok := destinationHost.Metadata["pool"]; ok && pool != originPool {
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
+	}
+	return permContexts, nil
 }
 
 func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
