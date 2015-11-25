@@ -15,15 +15,11 @@ install:
 before_script:
   - rsyslogd &
   - sleep 1
-  - df -h
-  - df -hi
 script:
   - make test
   - ./check-fmt.sh
   - make deadcode
   - ./check-handlers.sh
-  - df -h
-  - df -hi
 notifications:
   email:
     on_success: change
