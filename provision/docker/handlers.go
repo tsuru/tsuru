@@ -224,7 +224,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		}
 	}
 	node.CreationStatus = cluster.NodeCreationStatusDisabled
-	_, err = mainDockerProvisioner.Cluster().UpdateNode(*node)
+	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		return err
 	}
