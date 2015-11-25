@@ -69,7 +69,7 @@ type Action struct {
 	// Minimum number of parameters that this action requires to run.
 	MinParams int
 
-	// Function taht will be invoked after some failure occurured in the
+	// Function that will be invoked after some failure occurured in the
 	// Forward phase of this same action.
 	OnError OnErrorFunc
 
