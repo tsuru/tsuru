@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	api.RegisterHandler("/docker/node", "GET", api.AuthorizationRequiredHandler(listNodeHandler))
+	api.RegisterHandler("/docker/node", "GET", api.AuthorizationRequiredHandler(listNodesHandler))
 	api.RegisterHandler("/docker/node/apps/{appname}/containers", "GET", api.AuthorizationRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/docker/node/{address}/containers", "GET", api.AuthorizationRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/docker/node", "POST", api.AuthorizationRequiredHandler(addNodeHandler))
@@ -243,9 +243,28 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return nil
 }
 
-//listNodeHandler call scheduler.Nodes to list all nodes into it.
-func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	nodeList, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	pools, err := listContextValues(t, permission.PermNodeRead, false)
+	if err != nil {
+		return err
+	}
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+	if err != nil {
+		return err
+	}
+	if pools != nil {
+		filteredNodes := make([]cluster.Node, 0, len(nodes))
+		for _, node := range nodes {
+			for _, pool := range pools {
+				if node.Metadata["pool"] == pool {
+					filteredNodes = append(filteredNodes, node)
+					break
+				}
+			}
+		}
+		nodes = filteredNodes
+	}
+	iaases, err := listContextValues(t, permission.PermMachineRead, false)
 	if err != nil {
 		return err
 	}
@@ -253,8 +272,20 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
+	if iaases != nil {
+		filteredMachines := make([]iaas.Machine, 0, len(machines))
+		for _, machine := range machines {
+			for _, iaas := range iaases {
+				if machine.Iaas == iaas {
+					filteredMachines = append(filteredMachines, machine)
+					break
+				}
+			}
+		}
+		machines = filteredMachines
+	}
 	result := map[string]interface{}{
-		"nodes":    nodeList,
+		"nodes":    nodes,
 		"machines": machines,
 	}
 	return json.NewEncoder(w).Encode(result)
@@ -575,17 +606,9 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	contexts := permission.ContextsForPermission(t, permission.PermNodeBs)
-	if len(contexts) == 0 {
-		return permission.ErrUnauthorized
-	}
-	pools := make([]string, 0, len(contexts))
-	for _, ctx := range contexts {
-		if ctx.CtxType == permission.CtxGlobal {
-			pools = nil
-			break
-		}
-		pools = append(pools, ctx.Value)
+	pools, err := listContextValues(t, permission.PermNodeBs, true)
+	if err != nil {
+		return err
 	}
 	currentConfig, err := bs.LoadConfig(pools)
 	if err != nil {
@@ -613,4 +636,19 @@ func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
 	return nil
+}
+
+func listContextValues(t permission.Token, scheme *permission.PermissionScheme, failIfEmpty bool) ([]string, error) {
+	contexts := permission.ContextsForPermission(t, scheme)
+	if len(contexts) == 0 && failIfEmpty {
+		return nil, permission.ErrUnauthorized
+	}
+	values := make([]string, 0, len(contexts))
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			return nil, nil
+		}
+		values = append(values, ctx.Value)
+	}
+	return values, nil
 }

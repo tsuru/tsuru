@@ -547,7 +547,7 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/", nil)
 	rec := httptest.NewRecorder()
-	err = listNodeHandler(rec, req, nil)
+	err = listNodesHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
