@@ -10,14 +10,14 @@ import (
 
 func (s *S) TestPermissionSchemeFullName(c *check.C) {
 	table := []struct {
-		p      permissionScheme
+		p      PermissionScheme
 		result string
 	}{
-		{permissionScheme{}, ""},
-		{permissionScheme{name: "app"}, "app"},
-		{permissionScheme{name: "app", parent: &permissionScheme{}}, "app"},
-		{permissionScheme{name: "env", parent: &permissionScheme{name: "app"}}, "app.env"},
-		{permissionScheme{name: "set", parent: &permissionScheme{name: "en-nv", parent: &permissionScheme{name: "app"}}}, "app.en-nv.set"},
+		{PermissionScheme{}, ""},
+		{PermissionScheme{name: "app"}, "app"},
+		{PermissionScheme{name: "app", parent: &PermissionScheme{}}, "app"},
+		{PermissionScheme{name: "env", parent: &PermissionScheme{name: "app"}}, "app.env"},
+		{PermissionScheme{name: "set", parent: &PermissionScheme{name: "en-nv", parent: &PermissionScheme{name: "app"}}}, "app.en-nv.set"},
 	}
 	for _, el := range table {
 		c.Check(el.p.FullName(), check.Equals, el.result)
@@ -26,14 +26,14 @@ func (s *S) TestPermissionSchemeFullName(c *check.C) {
 
 func (s *S) TestPermissionSchemeIdentifier(c *check.C) {
 	table := []struct {
-		p      permissionScheme
+		p      PermissionScheme
 		result string
 	}{
-		{permissionScheme{}, "All"},
-		{permissionScheme{name: "app"}, "App"},
-		{permissionScheme{name: "app", parent: &permissionScheme{}}, "App"},
-		{permissionScheme{name: "env", parent: &permissionScheme{name: "app"}}, "AppEnv"},
-		{permissionScheme{name: "set", parent: &permissionScheme{name: "en-nv", parent: &permissionScheme{name: "app"}}}, "AppEnNvSet"},
+		{PermissionScheme{}, "All"},
+		{PermissionScheme{name: "app"}, "App"},
+		{PermissionScheme{name: "app", parent: &PermissionScheme{}}, "App"},
+		{PermissionScheme{name: "env", parent: &PermissionScheme{name: "app"}}, "AppEnv"},
+		{PermissionScheme{name: "set", parent: &PermissionScheme{name: "en-nv", parent: &PermissionScheme{name: "app"}}}, "AppEnNvSet"},
 	}
 	for _, el := range table {
 		c.Check(el.p.Identifier(), check.Equals, el.result)
@@ -42,14 +42,14 @@ func (s *S) TestPermissionSchemeIdentifier(c *check.C) {
 
 func (s *S) TestPermissionSchemeAllowedContexts(c *check.C) {
 	table := []struct {
-		p   permissionScheme
+		p   PermissionScheme
 		ctx []contextType
 	}{
-		{permissionScheme{}, []contextType{CtxGlobal}},
-		{permissionScheme{contexts: []contextType{CtxApp}}, []contextType{CtxGlobal, CtxApp}},
-		{permissionScheme{parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal, CtxApp}},
-		{permissionScheme{contexts: []contextType{}, parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal}},
-		{permissionScheme{contexts: []contextType{CtxTeam}, parent: &permissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal, CtxTeam}},
+		{PermissionScheme{}, []contextType{CtxGlobal}},
+		{PermissionScheme{contexts: []contextType{CtxApp}}, []contextType{CtxGlobal, CtxApp}},
+		{PermissionScheme{parent: &PermissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal, CtxApp}},
+		{PermissionScheme{contexts: []contextType{}, parent: &PermissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal}},
+		{PermissionScheme{contexts: []contextType{CtxTeam}, parent: &PermissionScheme{contexts: []contextType{CtxApp}}}, []contextType{CtxGlobal, CtxTeam}},
 	}
 	for _, el := range table {
 		c.Check(el.p.AllowedContexts(), check.DeepEquals, el.ctx)

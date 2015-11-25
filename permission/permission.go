@@ -15,13 +15,13 @@ import (
 
 var ErrUnauthorized = &errors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
 
-type permissionScheme struct {
+type PermissionScheme struct {
 	name     string
-	parent   *permissionScheme
+	parent   *PermissionScheme
 	contexts []contextType
 }
 
-type PermissionSchemeList []*permissionScheme
+type PermissionSchemeList []*PermissionScheme
 
 type PermissionContext struct {
 	CtxType contextType
@@ -69,7 +69,7 @@ func (l PermissionSchemeList) Len() int           { return len(l) }
 func (l PermissionSchemeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l PermissionSchemeList) Less(i, j int) bool { return l[i].FullName() < l[j].FullName() }
 
-func (s *permissionScheme) nameParts() []string {
+func (s *PermissionScheme) nameParts() []string {
 	parent := s
 	var parts []string
 	for parent != nil {
@@ -81,7 +81,7 @@ func (s *permissionScheme) nameParts() []string {
 	return parts
 }
 
-func (s *permissionScheme) isParent(other *permissionScheme) bool {
+func (s *PermissionScheme) isParent(other *PermissionScheme) bool {
 	root := other
 	myPointer := reflect.ValueOf(s).Pointer()
 	for root != nil {
@@ -93,7 +93,7 @@ func (s *permissionScheme) isParent(other *permissionScheme) bool {
 	return false
 }
 
-func (s *permissionScheme) FullName() string {
+func (s *PermissionScheme) FullName() string {
 	parts := s.nameParts()
 	var str string
 	for i := len(parts) - 1; i >= 0; i-- {
@@ -105,7 +105,7 @@ func (s *permissionScheme) FullName() string {
 	return str
 }
 
-func (s *permissionScheme) Identifier() string {
+func (s *PermissionScheme) Identifier() string {
 	parts := s.nameParts()
 	var str string
 	for i := len(parts) - 1; i >= 0; i-- {
@@ -117,7 +117,7 @@ func (s *permissionScheme) Identifier() string {
 	return str
 }
 
-func (s *permissionScheme) AllowedContexts() []contextType {
+func (s *PermissionScheme) AllowedContexts() []contextType {
 	contexts := []contextType{CtxGlobal}
 	if s.contexts != nil {
 		return append(contexts, s.contexts...)
@@ -133,7 +133,7 @@ func (s *permissionScheme) AllowedContexts() []contextType {
 }
 
 type Permission struct {
-	Scheme  *permissionScheme
+	Scheme  *PermissionScheme
 	Context PermissionContext
 }
 
@@ -141,7 +141,7 @@ type Token interface {
 	Permissions() ([]Permission, error)
 }
 
-func ContextsFromListForPermission(perms []Permission, scheme *permissionScheme, ctxTypes ...contextType) []PermissionContext {
+func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme, ctxTypes ...contextType) []PermissionContext {
 	var contexts []PermissionContext
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
@@ -160,7 +160,7 @@ func ContextsFromListForPermission(perms []Permission, scheme *permissionScheme,
 	return contexts
 }
 
-func ContextsForPermission(token Token, scheme *permissionScheme, ctxTypes ...contextType) []PermissionContext {
+func ContextsForPermission(token Token, scheme *PermissionScheme, ctxTypes ...contextType) []PermissionContext {
 	perms, err := token.Permissions()
 	if err != nil {
 		return []PermissionContext{}
@@ -168,7 +168,7 @@ func ContextsForPermission(token Token, scheme *permissionScheme, ctxTypes ...co
 	return ContextsFromListForPermission(perms, scheme, ctxTypes...)
 }
 
-func Check(token Token, scheme *permissionScheme, contexts ...PermissionContext) bool {
+func Check(token Token, scheme *PermissionScheme, contexts ...PermissionContext) bool {
 	perms, err := token.Permissions()
 	if err != nil {
 		return false
@@ -176,7 +176,7 @@ func Check(token Token, scheme *permissionScheme, contexts ...PermissionContext)
 	return CheckFromPermList(perms, scheme, contexts...)
 }
 
-func CheckFromPermList(perms []Permission, scheme *permissionScheme, contexts ...PermissionContext) bool {
+func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ...PermissionContext) bool {
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
 			if perm.Context.CtxType == CtxGlobal {

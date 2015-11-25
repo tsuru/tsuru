@@ -171,7 +171,7 @@ func (r *Role) filterValidSchemes() PermissionSchemeList {
 			i--
 			continue
 		}
-		schemes = append(schemes, &scheme.permissionScheme)
+		schemes = append(schemes, &scheme.PermissionScheme)
 	}
 	return schemes
 }

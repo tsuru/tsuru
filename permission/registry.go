@@ -11,7 +11,7 @@ import (
 )
 
 type registry struct {
-	permissionScheme
+	PermissionScheme
 	children []*registry
 }
 
@@ -28,11 +28,11 @@ func (r *registry) addWithCtx(name string, contextTypes []contextType) *registry
 	for i, part := range parts {
 		subR := parent.getSubRegistry(part)
 		if subR == nil {
-			subR = &registry{permissionScheme: permissionScheme{name: part}}
+			subR = &registry{PermissionScheme: PermissionScheme{name: part}}
 			parent.children = append(parent.children, subR)
 		}
 		if i == len(parts)-1 {
-			subR.permissionScheme.contexts = contextTypes
+			subR.PermissionScheme.contexts = contextTypes
 		}
 		parent = subR
 	}
@@ -51,7 +51,7 @@ func (r *registry) getSubRegistry(name string) *registry {
 		for _, child := range children {
 			if child.name == parts[0] {
 				if parent != nil {
-					child.permissionScheme.parent = &parent.permissionScheme
+					child.PermissionScheme.parent = &parent.PermissionScheme
 				}
 				currentElement = child
 				parts = parts[1:]
@@ -69,7 +69,7 @@ func (r *registry) getSubRegistry(name string) *registry {
 
 func (r *registry) PermissionsWithContextType(ctxType contextType) PermissionSchemeList {
 	perms := r.Permissions()
-	var ret []*permissionScheme
+	var ret []*PermissionScheme
 	for _, p := range perms {
 		for _, ctx := range p.AllowedContexts() {
 			if ctx == ctxType {
@@ -82,26 +82,26 @@ func (r *registry) PermissionsWithContextType(ctxType contextType) PermissionSch
 }
 
 func (r *registry) Permissions() PermissionSchemeList {
-	var ret []*permissionScheme
+	var ret []*PermissionScheme
 	stack := []*registry{r}
 	for len(stack) > 0 {
 		last := len(stack) - 1
 		el := stack[last]
 		stack = stack[:last]
-		ret = append(ret, &el.permissionScheme)
+		ret = append(ret, &el.PermissionScheme)
 		for i := len(el.children) - 1; i >= 0; i-- {
 			child := el.children[i]
-			child.parent = &el.permissionScheme
+			child.parent = &el.PermissionScheme
 			stack = append(stack, child)
 		}
 	}
 	return ret
 }
 
-func (r *registry) get(name string) *permissionScheme {
+func (r *registry) get(name string) *PermissionScheme {
 	subR := r.getSubRegistry(name)
 	if subR == nil {
 		panic("unregistered permission: " + name)
 	}
-	return &subR.permissionScheme
+	return &subR.PermissionScheme
 }
