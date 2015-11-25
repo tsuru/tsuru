@@ -23,6 +23,7 @@ type Service struct {
 	Teams        []string
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
+	Instances    []ServiceInstance
 }
 
 var (

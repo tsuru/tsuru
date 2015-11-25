@@ -231,7 +231,7 @@ func (s *S) TestServiceByTeamKindShouldNotReturnsDeletedServices(c *check.C) {
 }
 
 func (s *S) TestGetServicesByOwnerTeams(c *check.C) {
-	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}, Instances: []ServiceInstance{}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer srvc.Delete()
@@ -245,7 +245,7 @@ func (s *S) TestGetServicesByOwnerTeams(c *check.C) {
 }
 
 func (s *S) TestGetServicesByOwnerTeamsShouldNotReturnsDeletedServices(c *check.C) {
-	service := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	service := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}, Instances: []ServiceInstance{}}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	deletedService := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
