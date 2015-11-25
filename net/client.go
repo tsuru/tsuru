@@ -17,10 +17,9 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration)
 	}
 	client := &http.Client{
 		Transport: &http.Transport{
-			Dial:                  dialer.Dial,
-			TLSHandshakeTimeout:   dialTimeout,
-			ResponseHeaderTimeout: dialTimeout,
-			MaxIdleConnsPerHost:   5,
+			Dial:                dialer.Dial,
+			TLSHandshakeTimeout: dialTimeout,
+			MaxIdleConnsPerHost: 5,
 		},
 		Timeout: fullTimeout,
 	}
