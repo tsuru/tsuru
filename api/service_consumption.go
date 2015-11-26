@@ -45,9 +45,22 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		TeamOwner: body["owner"],
 	}
 	if instance.TeamOwner == "" {
-		teamContexts := permission.ContextsForPermission(t, permission.PermServiceCreate, permission.CtxTeam)
-		if len(teamContexts) == 1 {
-			instance.TeamOwner = teamContexts[0].Value
+		allContexts := permission.ContextsForPermission(t, permission.PermServiceInstanceCreate)
+		teams := make([]string, 0, len(allContexts))
+		for _, ctx := range allContexts {
+			if ctx.CtxType == permission.CtxGlobal {
+				teams = nil
+				break
+			}
+			if ctx.CtxType == permission.CtxTeam {
+				teams = append(teams, ctx.Value)
+			}
+		}
+		if teams != nil && len(teams) == 0 {
+			return permission.ErrUnauthorized
+		}
+		if len(teams) == 1 {
+			instance.TeamOwner = teams[0]
 		}
 	}
 	if instance.TeamOwner == "" {

@@ -124,6 +124,41 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *check.C) {
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, check.Equals, "brainSQL")
 	c.Assert(si.ServiceName, check.Equals, "mysql")
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+}
+
+func (s *ConsumptionSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan":         "small",
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	err := createServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	var si service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan_name":    "small",
+	}).One(&si)
+	c.Assert(err, check.IsNil)
+	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
+	c.Assert(si.Name, check.Equals, "brainSQL")
+	c.Assert(si.ServiceName, check.Equals, "mysql")
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *check.C) {
@@ -218,6 +253,18 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Name, check.Equals, "brainSQL")
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+}
+
+func (s *ConsumptionSuite) TestCreateInstanceHandlerNoPermission(c *check.C) {
+	token := customUserWithPermission(c, "cantdoanything")
+	srvc := service.Service{Name: "mysql"}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	params := map[string]string{"name": "brainSQL", "service_name": "mysql"}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	err = createServiceInstance(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *check.C) {
