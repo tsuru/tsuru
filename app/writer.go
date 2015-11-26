@@ -33,7 +33,6 @@ func (w *LogWriter) Async() {
 			err := w.write(msg)
 			if err != nil {
 				log.Errorf("[LogWriter] failed to write async logs: %s", err)
-				return
 			}
 		}
 	}()
