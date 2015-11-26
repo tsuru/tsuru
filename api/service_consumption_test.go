@@ -7,7 +7,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -332,7 +331,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "remove-service-instance",
 		User:   s.user.Email,
-		Extra:  []interface{}{"foo-instance"},
+		Extra:  []interface{}{"foo", "foo-instance"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -431,7 +430,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn
 	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(b, &msg)
-	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, permission.ErrUnauthorized.Error())
+	c.Assert(msg.Error, check.Equals, permission.ErrUnauthorized.Error())
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *check.C) {
@@ -450,7 +449,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(b, &msg)
-	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
+	c.Assert(msg.Error, check.Equals, "This service instance is bound to at least one app. Unbind them before removing it")
 }
 
 func makeRequestToRemoveInstanceHandlerWithUnbind(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -555,7 +554,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(b, &msg)
-	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, service.ErrServiceInstanceBound.Error())
+	c.Assert(msg.Error, check.Equals, service.ErrServiceInstanceBound.Error())
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbindAllListAllApp(c *check.C) {
@@ -609,7 +608,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(b, &msg)
-	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, service.ErrServiceInstanceBound.Error())
+	c.Assert(msg.Error, check.Equals, service.ErrServiceInstanceBound.Error())
 	expectedMsg := "app,app2"
 	c.Assert(msg.Message, check.Equals, expectedMsg)
 }
@@ -836,7 +835,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "service-instance-status",
 		User:   s.user.Email,
-		Extra:  []interface{}{"my_nosql"},
+		Extra:  []interface{}{srv.Name, "my_nosql"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -876,7 +875,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusWithSameInstanceName(c *chec
 	action := rectest.Action{
 		Action: "service-instance-status",
 		User:   s.user.Email,
-		Extra:  []interface{}{"my_nosql"},
+		Extra:  []interface{}{srv2.Name, "my_nosql"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }

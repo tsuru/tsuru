@@ -89,53 +89,54 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
+	permissionValue := serviceName + "/" + instanceName
 
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	si, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
 		return nil
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceDelete,
-		append(permission.Contexts(permission.CtxTeam, si.Teams),
-			permission.Context(permission.CtxServiceInstance, si.Name),
+		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
 		)...,
 	)
 	if !allowed {
 		writer.Encode(io.SimpleJsonMessage{Error: permission.ErrUnauthorized.Error()})
 		return nil
 	}
-	rec.Log(t.GetUserName(), "remove-service-instance", instanceName)
+	rec.Log(t.GetUserName(), "remove-service-instance", serviceName, instanceName)
 	if unbindAll == "true" {
-		if len(si.Apps) > 0 {
-			for _, appName := range si.Apps {
-				_, app, instErr := getServiceInstance(si.ServiceName, si.Name, appName)
+		if len(serviceInstance.Apps) > 0 {
+			for _, appName := range serviceInstance.Apps {
+				_, app, instErr := getServiceInstance(serviceInstance.ServiceName, serviceInstance.Name, appName)
 				if instErr != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
 				}
 				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
-				instErr = si.UnbindApp(app, true, writer)
+				instErr = serviceInstance.UnbindApp(app, true, writer)
 				if instErr != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
 				}
-				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
+				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
 			}
-			si, err = getServiceInstanceOrError(serviceName, instanceName)
+			serviceInstance, err = getServiceInstanceOrError(serviceName, instanceName)
 			if err != nil {
 				writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
 				return nil
 			}
 		}
 	}
-	err = service.DeleteInstance(si)
+	err = service.DeleteInstance(serviceInstance)
 	if err != nil {
 		var msg string
 		if err == service.ErrServiceInstanceBound {
-			msg = strings.Join(si.Apps, ",")
+			msg = strings.Join(serviceInstance.Apps, ",")
 		}
 		writer.Encode(io.SimpleJsonMessage{Message: msg, Error: err.Error()})
 		return nil
@@ -156,7 +157,10 @@ func readableInstances(t auth.Token, appName, serviceName string) ([]service.Ser
 		}
 		switch c.CtxType {
 		case permission.CtxServiceInstance:
-			instanceNames = append(instanceNames, c.Value)
+			parts := strings.SplitAfterN(c.Value, "/", 2)
+			if len(parts) == 2 && parts[0] == serviceName {
+				instanceNames = append(instanceNames, parts[1])
+			}
 		case permission.CtxTeam:
 			teams = append(teams, c.Value)
 		}
@@ -187,7 +191,7 @@ func readableServices(t auth.Token) ([]service.Service, error) {
 func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get("app")
 	rec.Log(t.GetUserName(), "list-service-instances", "app="+appName)
-	sInstances, err := readableInstances(t, appName, "")
+	instances, err := readableInstances(t, appName, "")
 	if err != nil {
 		return err
 	}
@@ -204,12 +208,12 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 			}
 		}
 	}
-	for _, si := range sInstances {
-		entry := servicesMap[si.ServiceName]
+	for _, instance := range instances {
+		entry := servicesMap[instance.ServiceName]
 		if entry == nil {
 			continue
 		}
-		entry.Instances = append(entry.Instances, si.Name)
+		entry.Instances = append(entry.Instances, instance.Name)
 	}
 	result := []service.ServiceModel{}
 	for _, entry := range servicesMap {
@@ -227,15 +231,16 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 }
 
 func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	sName := r.URL.Query().Get(":service")
-	siName := r.URL.Query().Get(":instance")
-	instance, err := getServiceInstanceOrError(sName, siName)
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	permissionValue := serviceName + "/" + instanceName
+	instance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceInstanceRead,
 		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxServiceInstance, instance.Name),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
 		)...,
 	)
 	if !allowed {
@@ -245,27 +250,28 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	siName := r.URL.Query().Get(":instance")
-	sName := r.URL.Query().Get(":service")
-	si, err := getServiceInstanceOrError(sName, siName)
+	instanceName := r.URL.Query().Get(":instance")
+	serviceName := r.URL.Query().Get(":service")
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
 	}
+	permissionValue := serviceName + "/" + instanceName
 	allowed := permission.Check(t, permission.PermServiceInstanceReadStatus,
-		append(permission.Contexts(permission.CtxTeam, si.Teams),
-			permission.Context(permission.CtxServiceInstance, si.Name),
+		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
 		)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "service-instance-status", siName)
+	rec.Log(t.GetUserName(), "service-instance-status", serviceName, instanceName)
 	var b string
-	if b, err = si.Status(); err != nil {
+	if b, err = serviceInstance.Status(); err != nil {
 		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err)
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}
-	b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
+	b = fmt.Sprintf(`Service instance "%s" is %s`, instanceName, b)
 	n, err := w.Write([]byte(b))
 	if n != len(b) {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
@@ -293,9 +299,9 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	sName := r.URL.Query().Get(":name")
-	rec.Log(t.GetUserName(), "service-doc", sName)
-	s, err := getService(sName)
+	serviceName := r.URL.Query().Get(":name")
+	rec.Log(t.GetUserName(), "service-doc", serviceName)
+	s, err := getService(serviceName)
 	if err != nil {
 		return err
 	}
@@ -314,7 +320,7 @@ func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func getServiceInstanceOrError(serviceName string, instanceName string) (*service.ServiceInstance, error) {
-	si, err := service.GetServiceInstance(serviceName, instanceName)
+	serviceInstance, err := service.GetServiceInstance(serviceName, instanceName)
 	if err != nil {
 		switch err {
 		case service.ErrServiceInstanceNotFound:
@@ -326,7 +332,7 @@ func getServiceInstanceOrError(serviceName string, instanceName string) (*servic
 			return nil, err
 		}
 	}
-	return si, nil
+	return serviceInstance, nil
 }
 
 func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -359,61 +365,64 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	sName := r.URL.Query().Get(":service")
-	siName := r.URL.Query().Get(":instance")
-	si, err := getServiceInstanceOrError(sName, siName)
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
 	}
+	permissionValue := serviceName + "/" + instanceName
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateProxy,
-		append(permission.Contexts(permission.CtxTeam, si.Teams),
-			permission.Context(permission.CtxServiceInstance, si.Name),
+		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
 		)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	path := r.URL.Query().Get("callback")
-	rec.Log(t.GetUserName(), "service-instance-proxy", siName, path)
-	return service.Proxy(si.Service(), path, w, r)
+	rec.Log(t.GetUserName(), "service-instance-proxy", serviceName, instanceName, path)
+	return service.Proxy(serviceInstance.Service(), path, w, r)
 }
 
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	siName := r.URL.Query().Get(":instance")
-	sName := r.URL.Query().Get(":service")
-	si, err := getServiceInstanceOrError(sName, siName)
+	instanceName := r.URL.Query().Get(":instance")
+	serviceName := r.URL.Query().Get(":service")
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
 	}
+	permissionValue := serviceName + "/" + instanceName
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateGrant,
-		append(permission.Contexts(permission.CtxTeam, si.Teams),
-			permission.Context(permission.CtxServiceInstance, si.Name),
+		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
 		)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	rec.Log(t.GetUserName(), "service-grant-team", siName, teamName)
-	return si.Grant(teamName)
+	rec.Log(t.GetUserName(), "service-grant-team", serviceName, instanceName, teamName)
+	return serviceInstance.Grant(teamName)
 }
 
 func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	siName := r.URL.Query().Get(":instance")
-	sName := r.URL.Query().Get(":service")
-	si, err := getServiceInstanceOrError(sName, siName)
+	instanceName := r.URL.Query().Get(":instance")
+	serviceName := r.URL.Query().Get(":service")
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
 	}
+	permissionValue := serviceName + "/" + instanceName
 	allowed := permission.Check(t, permission.PermServiceInstanceUpdateRevoke,
-		append(permission.Contexts(permission.CtxTeam, si.Teams),
-			permission.Context(permission.CtxServiceInstance, si.Name),
+		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
 		)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	rec.Log(t.GetUserName(), "service-revoke-team", siName, teamName)
-	return si.Revoke(teamName)
+	rec.Log(t.GetUserName(), "service-revoke-team", serviceName, instanceName, teamName)
+	return serviceInstance.Revoke(teamName)
 }
