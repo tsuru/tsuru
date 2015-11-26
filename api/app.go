@@ -699,14 +699,8 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
-	if err != nil {
-		return err
-	}
-	isPrivateEnv, err := strconv.ParseBool(r.URL.Query().Get("private"))
-	if err != nil {
-		return err
-	}
+	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	isPrivateEnv, _ := strconv.ParseBool(r.URL.Query().Get("private"))
 	extra := fmt.Sprintf("private=%t", isPrivateEnv)
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -781,10 +775,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
-	if err != nil {
-		return err
-	}
+	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
 	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: variables,
@@ -982,10 +973,7 @@ func getServiceInstance(serviceName, instanceName, appName string) (*service.Ser
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
-	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
-	if err != nil {
-		return err
-	}
+	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
@@ -1032,10 +1020,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
-	noRestart, err := strconv.ParseBool(r.URL.Query().Get("noRestart"))
-	if err != nil {
-		return nil
-	}
+	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
 	u, err := t.User()
 	if err != nil {
 		return err
