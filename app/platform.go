@@ -18,7 +18,7 @@ import (
 
 type Platform struct {
 	Name     string `bson:"_id"`
-	Disabled bool
+	Disabled bool   `bson:",omitempty"`
 }
 
 // Platforms returns the list of available platforms.
@@ -31,7 +31,7 @@ func Platforms(enabledOnly bool) ([]Platform, error) {
 	defer conn.Close()
 	var query bson.M
 	if enabledOnly {
-		query = bson.M{"disabled": false}
+		query = bson.M{"$or": []bson.M{{"disabled": false}, {"disabled": bson.M{"$exists": false}}}}
 	}
 	err = conn.Platforms().Find(query).All(&platforms)
 	return platforms, err
