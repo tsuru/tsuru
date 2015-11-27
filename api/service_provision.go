@@ -91,35 +91,35 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	var sy serviceYaml
-	err = yaml.Unmarshal(body, &sy)
+	var input serviceYaml
+	err = yaml.Unmarshal(body, &input)
 	if err != nil {
 		return err
 	}
-	teamContexts := permission.ContextsForPermission(t, permission.PermServiceCreate, permission.CtxTeam)
-	if sy.Team == "" && len(teamContexts) == 1 {
-		sy.Team = teamContexts[0].Value
+	input.Team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
+	if err != nil && err != permission.ErrTooManyTeams {
+		return err
 	}
-	err = sy.validate()
+	err = input.validate()
 	if err != nil {
 		return err
 	}
-	if sy.Team == "" {
+	if input.Team == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team responsible for this service in the manifest file."}
 	}
 	allowed := permission.Check(t, permission.PermServiceCreate,
-		permission.Context(permission.CtxTeam, sy.Team),
+		permission.Context(permission.CtxTeam, input.Team),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "create-service", sy.Id, sy.Endpoint)
+	rec.Log(t.GetUserName(), "create-service", input.Id, input.Endpoint)
 	s := service.Service{
-		Name:       sy.Id,
-		Username:   sy.Username,
-		Endpoint:   sy.Endpoint,
-		Password:   sy.Password,
-		OwnerTeams: []string{sy.Team},
+		Name:       input.Id,
+		Username:   input.Username,
+		Endpoint:   input.Endpoint,
+		Password:   input.Password,
+		OwnerTeams: []string{input.Team},
 	}
 	err = s.Create()
 	if err != nil {
