@@ -245,9 +245,12 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err = json.Unmarshal(body, &a); err != nil {
 		return err
 	}
-	teamContexts := permission.ContextsForPermission(t, permission.PermAppCreate, permission.CtxTeam)
-	if a.TeamOwner == "" && len(teamContexts) == 1 {
-		a.TeamOwner = teamContexts[0].Value
+	if a.TeamOwner == "" {
+		teamOwner, err := permission.TeamForPermission(t, permission.PermAppCreate)
+		if err != nil {
+			return err
+		}
+		a.TeamOwner = teamOwner
 	}
 	canCreate := permission.Check(t, permission.PermAppCreate,
 		permission.Context(permission.CtxTeam, a.TeamOwner),
