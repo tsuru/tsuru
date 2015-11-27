@@ -98,7 +98,7 @@ func (s *S) TestGetTeamForPermission(c *check.C) {
 			{Scheme: PermAppUpdate, Context: PermissionContext{CtxType: CtxTeam, Value: "team1"}},
 		},
 	}
-	team, err := GetTeamForPermission(t, PermAppUpdate)
+	team, err := TeamForPermission(t, PermAppUpdate)
 	c.Assert(err, check.IsNil)
 	c.Assert(team, check.Equals, "team1")
 }
@@ -110,7 +110,7 @@ func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
 			{Scheme: PermAppUpdate, Context: PermissionContext{CtxType: CtxTeam, Value: "team2"}},
 		},
 	}
-	_, err := GetTeamForPermission(t, PermAppUpdate)
+	_, err := TeamForPermission(t, PermAppUpdate)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrTooManyTeams)
 }
@@ -121,7 +121,7 @@ func (s *S) TestGetTeamForPermissionGlobalMustSpecifyTeam(c *check.C) {
 			{Scheme: PermAll, Context: PermissionContext{CtxType: CtxGlobal, Value: ""}},
 		},
 	}
-	_, err := GetTeamForPermission(t, PermAppUpdate)
+	_, err := TeamForPermission(t, PermAppUpdate)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrTooManyTeams)
 }

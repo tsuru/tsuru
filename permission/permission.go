@@ -193,7 +193,7 @@ func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ..
 	return false
 }
 
-func GetTeamForPermission(t Token, scheme *PermissionScheme) (string, error) {
+func TeamForPermission(t Token, scheme *PermissionScheme) (string, error) {
 	allContexts := ContextsForPermission(t, scheme)
 	teams := make([]string, 0, len(allContexts))
 	for _, ctx := range allContexts {
