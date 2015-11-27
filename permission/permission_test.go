@@ -91,3 +91,37 @@ func (s *S) TestCheckSuperToken(c *check.C) {
 	c.Assert(Check(t, PermAppDeploy, PermissionContext{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
 	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
 }
+
+func (s *S) TestGetTeamForPermission(c *check.C) {
+	t := &userToken{
+		permissions: []Permission{
+			{Scheme: PermAppUpdate, Context: PermissionContext{CtxType: CtxTeam, Value: "team1"}},
+		},
+	}
+	team, err := GetTeamForPermission(t, PermAppUpdate)
+	c.Assert(err, check.IsNil)
+	c.Assert(team, check.Equals, "team1")
+}
+
+func (s *S) TestGetTeamForPermissionManyTeams(c *check.C) {
+	t := &userToken{
+		permissions: []Permission{
+			{Scheme: PermAppUpdate, Context: PermissionContext{CtxType: CtxTeam, Value: "team1"}},
+			{Scheme: PermAppUpdate, Context: PermissionContext{CtxType: CtxTeam, Value: "team2"}},
+		},
+	}
+	_, err := GetTeamForPermission(t, PermAppUpdate)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrTooManyTeams)
+}
+
+func (s *S) TestGetTeamForPermissionGlobalMustSpecifyTeam(c *check.C) {
+	t := &userToken{
+		permissions: []Permission{
+			{Scheme: PermAll, Context: PermissionContext{CtxType: CtxGlobal, Value: ""}},
+		},
+	}
+	_, err := GetTeamForPermission(t, PermAppUpdate)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrTooManyTeams)
+}

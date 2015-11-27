@@ -14,6 +14,7 @@ import (
 )
 
 var ErrUnauthorized = &errors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
+var ErrTooManyTeams = &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team to execute this action."}
 
 type PermissionScheme struct {
 	name     string
@@ -190,4 +191,25 @@ func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ..
 		}
 	}
 	return false
+}
+
+func GetTeamForPermission(t Token, scheme *PermissionScheme) (string, error) {
+	allContexts := ContextsForPermission(t, scheme)
+	teams := make([]string, 0, len(allContexts))
+	for _, ctx := range allContexts {
+		if ctx.CtxType == CtxGlobal {
+			teams = nil
+			break
+		}
+		if ctx.CtxType == CtxTeam {
+			teams = append(teams, ctx.Value)
+		}
+	}
+	if teams != nil && len(teams) == 0 {
+		return "", ErrUnauthorized
+	}
+	if len(teams) == 1 {
+		return teams[0], nil
+	}
+	return "", ErrTooManyTeams
 }
