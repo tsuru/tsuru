@@ -57,7 +57,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"machine.create",
 	"machine.delete",
-	"machine.update",
 	"machine.read",
 	"machine.template.create",
 	"machine.template.delete",

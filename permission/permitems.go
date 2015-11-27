@@ -59,7 +59,6 @@ var (
 	PermMachineTemplateDelete       = PermissionRegistry.get("machine.template.delete")
 	PermMachineTemplateRead         = PermissionRegistry.get("machine.template.read")
 	PermMachineTemplateUpdate       = PermissionRegistry.get("machine.template.update")
-	PermMachineUpdate               = PermissionRegistry.get("machine.update")
 	PermNode                        = PermissionRegistry.get("node")
 	PermNodeAutoscale               = PermissionRegistry.get("node.autoscale")
 	PermNodeBs                      = PermissionRegistry.get("node.bs")
