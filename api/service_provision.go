@@ -96,16 +96,21 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	input.Team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
-	if err != nil && err != permission.ErrTooManyTeams {
-		return err
+	if input.Team == "" {
+		input.Team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
+		if err == permission.ErrTooManyTeams {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: "You must provide a team responsible for this service in the manifest file.",
+			}
+		}
+		if err != nil {
+			return err
+		}
 	}
 	err = input.validate()
 	if err != nil {
 		return err
-	}
-	if input.Team == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team responsible for this service in the manifest file."}
 	}
 	allowed := permission.Check(t, permission.PermServiceCreate,
 		permission.Context(permission.CtxTeam, input.Team),
