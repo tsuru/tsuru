@@ -742,57 +742,6 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
-func (s *AuthSuite) TestGetTeam(c *check.C) {
-	team, err := auth.GetTeam(s.team.Name)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = getTeam(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var got auth.Team
-	err = json.NewDecoder(recorder.Body).Decode(&got)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, *team)
-	action := rectest.Action{
-		User:   s.user.Email,
-		Action: "get-team",
-		Extra:  []interface{}{team.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
-}
-
-func (s *AuthSuite) TestGetTeamNotFound(c *check.C) {
-	url := "/teams/unknown?:name=unknown"
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = getTeam(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-	c.Assert(e.Message, check.Equals, "Team not found")
-}
-
-func (s *AuthSuite) TestGetTeamForbidden(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, "other-team"),
-	})
-	url := fmt.Sprintf("/teams/%s?:name=%s", s.team.Name, s.team.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = getTeam(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-}
-
 func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()

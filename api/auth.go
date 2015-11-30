@@ -235,42 +235,6 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	teamName := r.URL.Query().Get(":name")
-	_, err := auth.GetTeam(teamName)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
-	}
-	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
-	var permissions []string
-	for _, p := range permsForTeam {
-		if permission.Check(t, p, permission.Context(permission.CtxTeam, teamName)) {
-			permissions = append(permissions, p.FullName())
-		}
-	}
-	if len(permissions) == 0 {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
-	}
-	rec.Log(t.GetUserName(), "get-team", teamName)
-	result := map[string]interface{}{
-		"name":        teamName,
-		"permissions": permissions,
-	}
-	w.Header().Set("Content-Type", "application/json")
-	b, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-	n, err := w.Write(b)
-	if err != nil {
-		return err
-	}
-	if n != len(b) {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
-	}
-	return nil
-}
-
 type keyBody struct {
 	Name  string
 	Key   string
