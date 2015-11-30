@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -215,14 +216,48 @@ func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
 }
 
 func (s *S) TestAssignRole(c *check.C) {
-	_, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team")
 	c.Assert(err, check.IsNil)
-	role := bytes.NewBufferString("email=majortom@groundcontrol.com&context=myteam")
-	req, err := http.NewRequest("POST", "/roles/test/user", role)
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	emptyToken := customUserWithPermission(c, "user2")
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
+	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	emptyUser, err := emptyToken.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(emptyUser.Roles, check.HasLen, 1)
+}
+
+func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
+	role, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	emptyToken := customUserWithPermission(c, "user2")
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
+	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "otherteam"),
 	})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -230,26 +265,33 @@ func (s *S) TestAssignRole(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	u, err := auth.GetUserByEmail("majortom@groundcontrol.com")
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "User not authorized to use permission app.create(team myteam)\n")
+	emptyUser, err := emptyToken.User()
 	c.Assert(err, check.IsNil)
-	c.Assert(u.Roles, check.HasLen, 2)
+	c.Assert(emptyUser.Roles, check.HasLen, 0)
 }
 
 func (s *S) TestDissociateRole(c *check.C) {
-	_, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team")
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	otherToken := customUserWithPermission(c, "user2")
+	otherUser, err := otherToken.User()
+	c.Assert(err, check.IsNil)
+	err = otherUser.AddRole(role.Name, "myteam")
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "myteam"),
 	})
-	u, err := auth.GetUserByEmail("majortom@groundcontrol.com")
-	c.Assert(err, check.IsNil)
-	err = u.AddRole("test", "myteam")
-	c.Assert(err, check.IsNil)
-	c.Assert(u.Roles, check.HasLen, 2)
-	req, err := http.NewRequest("DELETE", "/roles/test/user/majortom@groundcontrol.com?context=myteam", nil)
-	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -257,9 +299,42 @@ func (s *S) TestDissociateRole(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	u, err = auth.GetUserByEmail("majortom@groundcontrol.com")
+	otherUser, err = otherToken.User()
 	c.Assert(err, check.IsNil)
-	c.Assert(u.Roles, check.HasLen, 1)
+	c.Assert(otherUser.Roles, check.HasLen, 0)
+}
+
+func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
+	role, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	otherToken := customUserWithPermission(c, "user2")
+	otherUser, err := otherToken.User()
+	c.Assert(err, check.IsNil)
+	err = otherUser.AddRole(role.Name, "myteam")
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateDissociate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "otherteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "User not authorized to use permission app.create(team myteam)\n")
+	otherUser, err = otherToken.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(otherUser.Roles, check.HasLen, 1)
 }
 
 func (s *S) TestListPermissions(c *check.C) {

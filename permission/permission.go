@@ -138,6 +138,14 @@ type Permission struct {
 	Context PermissionContext
 }
 
+func (p *Permission) String() string {
+	value := p.Context.Value
+	if value != "" {
+		value = " " + value
+	}
+	return fmt.Sprintf("%s(%s%s)", p.Scheme.FullName(), p.Context.CtxType, value)
+}
+
 type Token interface {
 	Permissions() ([]Permission, error)
 }

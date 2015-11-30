@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -180,6 +181,23 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return err
 }
 
+func canUseRole(t auth.Token, roleName, contextValue string) error {
+	role, err := permission.FindRole(roleName)
+	if err != nil {
+		return err
+	}
+	perms := role.PermisionsFor(contextValue)
+	for _, p := range perms {
+		if !permission.Check(t, p.Scheme, p.Context) {
+			return &errors.HTTP{
+				Code:    http.StatusForbidden,
+				Message: fmt.Sprintf("User not authorized to use permission %s", p.String()),
+			}
+		}
+	}
+	return nil
+}
+
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
@@ -188,6 +206,10 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	email := r.FormValue("email")
 	contextValue := r.FormValue("context")
 	user, err := auth.GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	err = canUseRole(t, roleName, contextValue)
 	if err != nil {
 		return err
 	}
@@ -208,6 +230,10 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	email := r.URL.Query().Get(":email")
 	contextValue := r.URL.Query().Get("context")
 	user, err := auth.GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	err = canUseRole(t, roleName, contextValue)
 	if err != nil {
 		return err
 	}
