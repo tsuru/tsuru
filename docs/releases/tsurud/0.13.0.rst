@@ -31,8 +31,15 @@ Main new features
   can now choose to use Galeb, along with `Vulcand <http://vulcand.io/>`_ and
   `Hipache <https://github.com/hipache/hipache>`_.
 
-* Add the capability of enabling and disabling platforms. Disabled platforms
-  can be used and updated by admin users, but no new apps can be created with a
+* New authorization system: tsuru now supports more granular authorization
+  system, with roles and permissions. Roles group permissions, and are
+  associated with users. For more details, see :doc:`permissions management
+  documentation </managing/users-and-permissions>`. See issues `#1220
+  <https://github.com/tsuru/tsuru/issues/1220>`_ and `#1278
+  <https://github.com/tsuru/tsuru/issues/1278>`_).
+
+* Add the ability to enabling and disabling platforms. Disabled platforms can
+  be used and updated by admin users, but no new apps can be created with a
   disable platform. It's useful for testing new platforms, as well as disabling
   deprecated platforms (issue `#1284
   <https://github.com/tsuru/tsuru/issues/1284>`_).

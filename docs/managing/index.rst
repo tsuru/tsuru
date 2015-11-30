@@ -18,3 +18,4 @@ Managing
     segregate-scheduler
     upgrading-docker
     repositories
+    users-and-permissions
