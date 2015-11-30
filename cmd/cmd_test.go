@@ -63,6 +63,17 @@ func (s *S) TestRegisterDeprecated(c *check.C) {
 	c.Assert(manager.Commands["foo"], check.Equals, originalCmd)
 }
 
+func (s *S) TestRegisterRemoved(c *check.C) {
+	manager.RegisterRemoved("spoon", "There is no spoon.")
+	_, ok := manager.Commands["spoon"].(*RemovedCommand)
+	c.Assert(ok, check.Equals, true)
+	var stdout, stderr bytes.Buffer
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"spoon"})
+	c.Assert(stdout.String(), check.Matches, "(?s).*This command was removed. There is no spoon.*")
+}
+
 func (s *S) TestRegisterTopic(c *check.C) {
 	mngr := Manager{}
 	mngr.RegisterTopic("target", "targetting everything!")

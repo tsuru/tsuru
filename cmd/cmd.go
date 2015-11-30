@@ -97,6 +97,35 @@ func (m *Manager) RegisterDeprecated(command Command, oldName string) {
 	m.Commands[oldName] = &DeprecatedCommand{Command: command, oldName: oldName}
 }
 
+type RemovedCommand struct {
+	name string
+	help string
+}
+
+func (c *RemovedCommand) Info() *Info {
+	return &Info{
+		Name:  c.name,
+		Usage: c.name,
+		Desc:  fmt.Sprintf("This command was removed. %s", c.help),
+		fail:  true,
+	}
+}
+
+func (c *RemovedCommand) Run(context *Context, client *Client) error {
+	return ErrAbortCommand
+}
+
+func (m *Manager) RegisterRemoved(name string, help string) {
+	if m.Commands == nil {
+		m.Commands = make(map[string]Command)
+	}
+	_, found := m.Commands[name]
+	if found {
+		panic(fmt.Sprintf("command already registered: %s", name))
+	}
+	m.Commands[name] = &RemovedCommand{name: name, help: help}
+}
+
 func (m *Manager) RegisterTopic(name, content string) {
 	if m.topics == nil {
 		m.topics = make(map[string]string)
@@ -180,6 +209,11 @@ func (m *Manager) Run(args []string) {
 		fmt.Fprint(m.stderr, err)
 		m.finisher().Exit(1)
 		return
+	}
+	if info.fail {
+		command = m.Commands["help"]
+		args = []string{name}
+		status = 1
 	}
 	if length := len(args); (length < info.MinArgs || (info.MaxArgs > 0 && length > info.MaxArgs)) &&
 		name != "help" {
@@ -322,6 +356,7 @@ type Info struct {
 	MaxArgs int
 	Usage   string
 	Desc    string
+	fail    bool
 }
 
 // Implementing the Commandable interface allows extending
