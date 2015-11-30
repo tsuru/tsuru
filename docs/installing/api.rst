@@ -119,11 +119,16 @@ Now you only need to start your tsuru API server:
 Creating admin user
 ===================
 
-The creation of an admin user is necessary for the next steps, so we're going
-to describe how to install the ``tsuru`` and create a new user belonging to the
-admin team configured in your ``tsuru.conf`` file. For a description of each
-command shown below please refer to the :doc:`client documentation
-</reference/tsuru-client>`.
+The creation of an admin user is necessary before interaction with the API is
+possible. This can be done using the ``root-user-create`` command as shown
+below. This command will create a new authorization role with a global
+permission allowing this user run any action on tsuru. More fine-grained roles
+can be created later, please refer to :doc:`managing users and permissions
+</managing/users-and-permissions>` for more details.
+
+Here we're also going to describe how to install the ``tsuru`` client
+application. For a description of each command shown below please refer to the
+:doc:`client documentation </reference/tsuru-client>`.
 
 For a description
 
@@ -131,20 +136,18 @@ For a description
 
 ::
 
-    $ sudo apt-get install tsuru-client
+    $ tsurud [--config <path to tsuru.conf>] root-user-create myemail@somewhere.com
+    # type a password and confirmation (only if using native auth scheme)
 
+    $ sudo apt-get install tsuru-client
     $ tsuru target-add default http://<your-tsuru-api-addr>:8080
     $ tsuru target-set default
-    $ tsuru user-create myemail@somewhere.com
-    # type a password and confirmation
-
     $ tsuru login myemail@somewhere.com
     # type the chosen password
 
-    $ tsuru team-create admin
 
-And that's it, you now have registered a user in your tsuru API server ready to
-run admin commands.
+And that's it, you now have registered a user in your tsuru API server and its 
+ready to run any commands.
 
 
 .. _gandalf_auth_token:

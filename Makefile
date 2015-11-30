@@ -27,7 +27,7 @@ FATAL: You need Bazaar (bzr) to download tsuru dependencies.
        http://docs.tsuru.io/en/latest/contributing/vagrant.html
 endef
 
-.PHONY: all check-path get hg git bzr get-code test race
+.PHONY: all check-path get hg git bzr get-code test race docs
 
 all: check-path get test
 
@@ -92,6 +92,8 @@ race:
 
 doc:
 	@cd docs && make html SPHINXOPTS="-N -W"
+
+docs: doc
 
 release:
 	@if [ ! $(version) ]; then \
