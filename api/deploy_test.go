@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"time"
 
@@ -542,7 +543,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"}
 	err = s.conn.Deploys().Insert(previousDeploy)
 	c.Assert(err, check.IsNil)
-	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git"}
+	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"}
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -558,13 +559,12 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	lastDeploy.ID = d["_id"].(bson.ObjectId)
-	expected := app.DiffDeployData{DeployData: lastDeploy, Diff: repositorytest.Diff}
-	var result app.DiffDeployData
+	var result app.DeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	result.Timestamp = lastDeploy.Timestamp
 	result.RemoveDate = lastDeploy.RemoveDate
-	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(result, check.DeepEquals, lastDeploy)
 }
 
 func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
@@ -778,4 +778,46 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+}
+
+func (s *DeploySuite) TestDiffDeploy(c *check.C) {
+	diff := `--- hello.go	2015-11-25 16:04:22.409241045 +0000
++++ hello.go	2015-11-18 18:40:21.385697080 +0000
+@@ -1,10 +1,7 @@
+ package main
+
+-import (
+-    "fmt"
+-)
++import "fmt"
+
+-func main() {
+-	fmt.Println("Hello")
++func main2() {
++	fmt.Println("Hello World!")
+ }
+`
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.conn.Deploys().Remove(bson.M{"app": a.Name})
+	v := url.Values{}
+	v.Set("customdata", diff)
+	body := strings.NewReader(v.Encode())
+	url := fmt.Sprintf("/apps/%s/diff?:appname=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Saving the difference between the old and new code\n")
+	var deploy []app.DeployData
+	err = s.conn.Deploys().Find(bson.M{"app": a.Name}).All(&deploy)
+	c.Assert(err, check.IsNil)
+	c.Assert(deploy, check.HasLen, 1)
+	c.Assert(deploy[0].Diff, check.Equals, diff)
 }

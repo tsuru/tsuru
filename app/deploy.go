@@ -16,7 +16,6 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -33,17 +32,13 @@ type DeployData struct {
 	Origin      string
 	CanRollback bool
 	RemoveDate  time.Time `bson:",omitempty"`
+	Diff        string
 }
 
-type DiffDeployData struct {
-	DeployData
-	Diff string
-}
-
-func (d *DiffDeployData) MarshalJSON() ([]byte, error) {
+func (d *DeployData) MarshalJSON() ([]byte, error) {
 	var err error
 	if d.Diff == "" {
-		d.Diff, err = GetDiffInDeploys(&d.DeployData)
+		d.Diff, err = GetDiffInDeploys(d)
 		if err != nil {
 			return nil, err
 		}
@@ -127,22 +122,16 @@ func GetDeploy(id string) (*DeployData, error) {
 }
 
 func GetDiffInDeploys(d *DeployData) (string, error) {
-	var list []DeployData
+	var dep DeployData
 	conn, err := db.Conn()
 	if err != nil {
 		return "", err
 	}
 	defer conn.Close()
-	if err := conn.Deploys().Find(bson.M{"app": d.App, "_id": bson.M{"$lte": d.ID}}).Sort("-timestamp").Limit(2).All(&list); err != nil {
+	if err := conn.Deploys().Find(bson.M{"app": d.App, "_id": bson.M{"$lte": d.ID}}).Sort("-timestamp").One(&dep); err != nil {
 		return "", err
 	}
-	if len(list) < 2 {
-		return "The deployment must have at least two commits for the diff.", nil
-	}
-	if list[0].Origin != "git" || list[1].Origin != "git" {
-		return fmt.Sprintf("Cannot have diffs between %s based and %s based deployments", list[1].Origin, list[0].Origin), nil
-	}
-	return repository.Manager().Diff(d.App, list[1].Commit, list[0].Commit)
+	return dep.Diff, nil
 }
 
 type DeployOptions struct {
@@ -166,9 +155,14 @@ func Deploy(opts DeployOptions) error {
 	logWriter.Async()
 	defer logWriter.Close()
 	writer := io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &outBuffer, &logWriter)
-	imageId, err := deployToProvisioner(&opts, writer)
 	elapsed := time.Since(start)
-	saveErr := saveDeployData(&opts, imageId, outBuffer.String(), elapsed, err)
+	saveErr := saveDeployData(&opts, "diff", "", elapsed, nil)
+	if saveErr != nil {
+		log.Errorf("WARNING: couldn't save deploy data, deploy opts: %#v", opts)
+	}
+	imageId, err := deployToProvisioner(&opts, writer)
+	elapsed = time.Since(start)
+	saveErr = saveDeployData(&opts, imageId, outBuffer.String(), elapsed, err)
 	if saveErr != nil {
 		log.Errorf("WARNING: couldn't save deploy data, deploy opts: %#v", opts)
 	}
@@ -229,7 +223,33 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 	if deployError != nil {
 		deploy.Error = deployError.Error()
 	}
-	return conn.Deploys().Insert(deploy)
+	var dep []DeployData
+	err = conn.Deploys().Find(bson.M{"app": opts.App.Name, "image": "diff"}).All(&dep)
+	if err != nil {
+		return err
+	}
+	if len(dep) == 1 {
+		deploy.Diff = dep[0].Diff
+	}
+	query := bson.M{"$set": deploy}
+	_, err = conn.Deploys().Upsert(bson.M{"app": deploy.App, "image": "diff"}, query)
+	return err
+}
+
+func SaveDiffData(diff string, appName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	deploy := DeployData{
+		App:   appName,
+		Image: "diff",
+		Diff:  diff,
+	}
+	query := bson.M{"$set": deploy}
+	_, err = conn.Deploys().Upsert(bson.M{"app": deploy.App, "image": "diff"}, query)
+	return err
 }
 
 func incrementDeploy(app *App) error {

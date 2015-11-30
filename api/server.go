@@ -169,6 +169,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/apps/{appname}/available", AuthorizationRequiredHandler(appIsAvailable))
 	m.Add("Post", "/apps/{appname}/repository/clone", AuthorizationRequiredHandler(deploy))
 	m.Add("Post", "/apps/{appname}/deploy", AuthorizationRequiredHandler(deploy))
+	diffDeployHandler := AuthorizationRequiredHandler(diffDeploy)
+	m.Add("Post", "/apps/{appname}/diff", diffDeployHandler)
 
 	// Shell also doesn't use {app} on purpose. Middlewares don't play well
 	// with websocket.
@@ -255,6 +257,7 @@ func RunServer(dry bool) http.Handler {
 		forceDeleteLockHandler,
 		registerUnitHandler,
 		setUnitStatusHandler,
+		diffDeployHandler,
 	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 

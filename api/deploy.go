@@ -7,8 +7,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -88,6 +90,35 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
+
+func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	writer := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer writer.Stop()
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return err
+	}
+	fmt.Fprint(w, "Saving the difference between the old and new code\n")
+	appName := r.URL.Query().Get(":appname")
+	val, err := url.ParseQuery(string(data))
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return err
+	}
+	diff := val.Get("customdata")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return err
+	}
+	err = app.SaveDiffData(diff, instance.Name)
+	if err != nil {
+		fmt.Fprintln(w, err.Error())
+		return err
+	}
+	return nil
 }
 
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -171,10 +202,6 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 	}
 	var data interface{}
-	if deploy.Origin == "git" {
-		data = &app.DiffDeployData{DeployData: *deploy}
-	} else {
-		data = deploy
-	}
+	data = deploy
 	return json.NewEncoder(w).Encode(data)
 }

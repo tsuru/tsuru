@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -210,12 +209,13 @@ func (s *S) TestGetDiffInDeploys(c *check.C) {
 		Timestamp: time.Now().Add(-3600 * time.Second),
 		Commit:    "545b1904af34458704e2aa06ff1aaffad5289f8g",
 		Origin:    "git",
+		Diff:      "fake-diff",
 	}
 	deploys := []DeployData{
 		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x", Origin: "git"},
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f", Origin: "git"},
 		myDeploy,
-		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10", Origin: "git"},
+		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10", Origin: "git", Diff: "fake-diff-2"},
 	}
 	for _, d := range deploys {
 		s.conn.Deploys().Insert(d)
@@ -223,22 +223,9 @@ func (s *S) TestGetDiffInDeploys(c *check.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateRepository("g1", nil)
 	diffOutput, err := GetDiffInDeploys(&myDeploy)
 	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.Equals, repositorytest.Diff)
-}
-
-func (s *S) TestGetDiffInDeploysWithOneCommit(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
-	lastDeploy := DeployData{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"}
-	s.conn.Deploys().Insert(lastDeploy)
-	defer s.conn.Deploys().RemoveAll(nil)
-	err := s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&lastDeploy)
-	c.Assert(err, check.IsNil)
-	diffOutput, err := GetDiffInDeploys(&lastDeploy)
-	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.Equals, "The deployment must have at least two commits for the diff.")
+	c.Assert(diffOutput, check.Equals, "fake-diff")
 }
 
 func (s *S) TestGetDiffInDeploysNoGit(c *check.C) {
@@ -248,6 +235,7 @@ func (s *S) TestGetDiffInDeploysNoGit(c *check.C) {
 		Timestamp: time.Now().Add(-3600 * time.Second),
 		Commit:    "545b1904af34458704e2aa06ff1aaffad5289f8g",
 		Origin:    "app-deploy",
+		Diff:      "deploy-diff",
 	}
 	deploys := []DeployData{
 		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x", Origin: "git"},
@@ -264,7 +252,43 @@ func (s *S) TestGetDiffInDeploysNoGit(c *check.C) {
 	repository.Manager().CreateRepository("g1", nil)
 	diffOutput, err := GetDiffInDeploys(&myDeploy)
 	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.Equals, "Cannot have diffs between git based and app-deploy based deployments")
+	c.Assert(diffOutput, check.Equals, myDeploy.Diff)
+}
+
+func (s *S) TestDeploySavaDataAndDiff(c *check.C) {
+	a := App{Name: "someApp"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	opts := DeployOptions{
+		App:     &a,
+		Version: "",
+		Commit:  "",
+	}
+	err = saveDeployData(&opts, "diff", "", time.Second, nil)
+	c.Assert(err, check.IsNil)
+	result, err := ListDeploys(nil, 0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].Image, check.Equals, "diff")
+	c.Assert(result[0].Log, check.Equals, "")
+	c.Assert(result[0].Diff, check.DeepEquals, "")
+	err = SaveDiffData("testDiff", a.Name)
+	c.Assert(err, check.IsNil)
+	result, err = ListDeploys(nil, 0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].Image, check.Equals, "diff")
+	c.Assert(result[0].Log, check.Equals, "")
+	c.Assert(result[0].Diff, check.DeepEquals, "testDiff")
+	err = saveDeployData(&opts, "myid", "mylog", time.Second, nil)
+	c.Assert(err, check.IsNil)
+	result, err = ListDeploys(nil, 0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].Image, check.Equals, "myid")
+	c.Assert(result[0].Log, check.Equals, "mylog")
+	c.Assert(result[0].Diff, check.DeepEquals, "testDiff")
 }
 
 func (s *S) TestDeployApp(c *check.C) {
