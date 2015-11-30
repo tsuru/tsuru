@@ -37,6 +37,8 @@ func (t *APIToken) GetAppName() string {
 }
 
 func (t *APIToken) Permissions() ([]permission.Permission, error) {
+	// TODO(cezarsa): Allow creation of api tokens with a subset of user's
+	// permissions.
 	return BaseTokenPermission(t)
 }
 

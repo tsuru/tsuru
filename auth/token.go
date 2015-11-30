@@ -38,6 +38,9 @@ func ParseToken(header string) (string, error) {
 
 func BaseTokenPermission(t Token) ([]permission.Permission, error) {
 	if t.IsAppToken() {
+		// TODO(cezarsa): Improve handling of app tokens. These permissions
+		// listed here are the ones required by deploy-agent and legacy tsuru-
+		// unit-agent.
 		return []permission.Permission{
 			{
 				Scheme:  permission.PermAppUpdateUnitRegister,
