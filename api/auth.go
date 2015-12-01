@@ -428,7 +428,7 @@ type apiUser struct {
 	Permissions []rolePermissionData
 }
 
-func createApiUser(t auth.Token, user *auth.User, roleMap map[string]*permission.Role) (*apiUser, error) {
+func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role) (*apiUser, error) {
 	permData := make([]rolePermissionData, 0, len(user.Roles))
 	roleData := make([]rolePermissionData, len(user.Roles))
 	if roleMap == nil {
@@ -451,7 +451,7 @@ func createApiUser(t auth.Token, user *auth.User, roleMap map[string]*permission
 		}
 		permissions := role.PermissionsFor(userRole.ContextValue)
 		for _, p := range permissions {
-			if !permission.Check(t, p.Scheme, p.Context) {
+			if !permission.CheckFromPermList(perms, p.Scheme, p.Context) {
 				return nil, nil
 			}
 			permData = append(permData, rolePermissionData{
@@ -475,8 +475,12 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	apiUsers := make([]apiUser, 0, len(users))
 	roleMap := make(map[string]*permission.Role)
+	perms, err := t.Permissions()
+	if err != nil {
+		return err
+	}
 	for _, user := range users {
-		usrData, err := createApiUser(t, &user, roleMap)
+		usrData, err := createApiUser(perms, &user, roleMap)
 		if err != nil {
 			return err
 		}
@@ -492,7 +496,11 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	userData, err := createApiUser(t, user, nil)
+	perms, err := t.Permissions()
+	if err != nil {
+		return err
+	}
+	userData, err := createApiUser(perms, user, nil)
 	if err != nil {
 		return err
 	}
