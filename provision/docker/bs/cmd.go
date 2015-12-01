@@ -39,11 +39,10 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	for _, arg := range context.Args {
 		parts := strings.SplitN(arg, "=", 2)
 		if len(parts) < 2 {
-			return fmt.Errorf("cannot set variable")
+			return fmt.Errorf("invalid variable values")
 		}
-
-		if parts[0] == "" || parts[1] == "" {
-			return fmt.Errorf("cannot set variable")
+		if parts[0] == "" {
+			return fmt.Errorf("invalid variable values")
 		}
 		envList = append(envList, Env{Name: parts[0], Value: parts[1]})
 	}
