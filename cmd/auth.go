@@ -139,7 +139,6 @@ type APIRolePermissionData struct {
 // APIUser is a user in the tsuru API.
 type APIUser struct {
 	Email       string
-	Teams       []string
 	Roles       []APIRolePermissionData
 	Permissions []APIRolePermissionData
 }
@@ -206,7 +205,6 @@ func (userInfo) Run(context *Context, client *Client) error {
 		return err
 	}
 	fmt.Fprintf(context.Stdout, "Email: %s\n", u.Email)
-	fmt.Fprintf(context.Stdout, "Teams: %s\n", strings.Join(u.Teams, ", "))
 	roles := u.RoleInstances()
 	if len(roles) > 0 {
 		fmt.Fprintf(context.Stdout, "Roles:\n\t%s\n", strings.Join(roles, "\n\t"))

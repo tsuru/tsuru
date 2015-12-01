@@ -263,7 +263,7 @@ func (s *S) TestReadTokenEnvironmentVariable(c *check.C) {
 func (s *S) TestGetUser(c *check.C) {
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{
-			Message: `{"Email":"myuser@company.com","Teams":["frontend","backend","sysadmin","full stack"]}`,
+			Message: `{"Email":"myuser@company.com"}`,
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
@@ -273,7 +273,6 @@ func (s *S) TestGetUser(c *check.C) {
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
 	expected := &APIUser{
 		Email: "myuser@company.com",
-		Teams: []string{"frontend", "backend", "sysadmin", "full stack"},
 	}
 	user, err := GetUser(client)
 	c.Assert(err, check.IsNil)
@@ -283,31 +282,6 @@ func (s *S) TestGetUser(c *check.C) {
 func (s *S) TestUserInfoRun(c *check.C) {
 	var called bool
 	expected := `Email: myuser@company.com
-Teams: frontend, backend, sysadmin, full stack
-`
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
-	command := userInfo{}
-	transport := cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{
-			Message: `{"Email":"myuser@company.com","Teams":["frontend","backend","sysadmin","full stack"]}`,
-			Status:  http.StatusOK,
-		},
-		CondFunc: func(req *http.Request) bool {
-			called = true
-			return req.Method == "GET" && req.URL.Path == "/users/info"
-		},
-	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
-	err := command.Run(&context, client)
-	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-	c.Assert(called, check.Equals, true)
-}
-
-func (s *S) TestUserInfoWithRolesRun(c *check.C) {
-	var called bool
-	expected := `Email: myuser@company.com
-Teams: frontend, backend, sysadmin, full stack
 Roles:
 	x(y a)
 	x(y b)
@@ -318,7 +292,7 @@ Permissions:
 	command := userInfo{}
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{
-			Message: `{"Email":"myuser@company.com","Teams":["frontend","backend","sysadmin","full stack"],"Roles":[
+			Message: `{"Email":"myuser@company.com","Roles":[
 	{"Name":"x","ContextType":"y","ContextValue":"a"},
 	{"Name":"x","ContextType":"y","ContextValue":"b"}
 ],
