@@ -12,7 +12,10 @@ function missing_handlers {
     pos=$(($(cat ./permission/permission.go | grep -ob "func ContextsForPermission" | egrep -o "^[0-9]+")+5))
     okhandlers2=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
 
-    okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") | sort | uniq)
+    pos=$(($(cat ./permission/permission.go | grep -ob "func CheckFromPermList" | egrep -o "^[0-9]+")+5))
+    okhandlers3=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
+
+    okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") <(echo "$okhandlers3") | sort | uniq)
 
     ignored=$(cat <<EOF
 github.com/tsuru/tsuru/api.addKeyToUser
