@@ -202,9 +202,19 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	teamsMap := map[string][]string{}
+	perms, err := t.Permissions()
+	if err != nil {
+		return err
+	}
 	for _, team := range teams {
+		teamCtx := permission.Context(permission.CtxTeam, team.Name)
+		var parent *permission.PermissionScheme
 		for _, p := range permsForTeam {
-			if permission.Check(t, p, permission.Context(permission.CtxTeam, team.Name)) {
+			if parent != nil && parent.IsParent(p) {
+				continue
+			}
+			if permission.CheckFromPermList(perms, p, teamCtx) {
+				parent = p
 				teamsMap[team.Name] = append(teamsMap[team.Name], p.FullName())
 			}
 		}

@@ -82,7 +82,7 @@ func (s *PermissionScheme) nameParts() []string {
 	return parts
 }
 
-func (s *PermissionScheme) isParent(other *PermissionScheme) bool {
+func (s *PermissionScheme) IsParent(other *PermissionScheme) bool {
 	root := other
 	myPointer := reflect.ValueOf(s).Pointer()
 	for root != nil {
@@ -153,7 +153,7 @@ type Token interface {
 func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme, ctxTypes ...contextType) []PermissionContext {
 	var contexts []PermissionContext
 	for _, perm := range perms {
-		if perm.Scheme.isParent(scheme) {
+		if perm.Scheme.IsParent(scheme) {
 			if len(ctxTypes) > 0 {
 				for _, t := range ctxTypes {
 					if t == perm.Context.CtxType {
@@ -187,7 +187,7 @@ func Check(token Token, scheme *PermissionScheme, contexts ...PermissionContext)
 
 func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ...PermissionContext) bool {
 	for _, perm := range perms {
-		if perm.Scheme.isParent(scheme) {
+		if perm.Scheme.IsParent(scheme) {
 			if perm.Context.CtxType == CtxGlobal {
 				return true
 			}

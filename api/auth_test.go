@@ -699,6 +699,38 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermApp,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	request, err := http.NewRequest("GET", "/teams", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	mux := RunServer(true)
+	mux.ServeHTTP(recorder, request)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var m []map[string]interface{}
+	err = json.Unmarshal(b, &m)
+	c.Assert(err, check.IsNil)
+	c.Assert(m, check.HasLen, 1)
+	c.Assert(m[0]["name"], check.Equals, s.team.Name)
+	c.Assert(m[0]["permissions"], check.DeepEquals, []interface{}{
+		"app",
+	})
+	action := rectest.Action{
+		Action: "list-teams",
+		User:   token.GetUserName(),
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
 func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, check.IsNil)
