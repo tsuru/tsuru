@@ -176,7 +176,7 @@ func (r *Role) filterValidSchemes() PermissionSchemeList {
 	return schemes
 }
 
-func (r *Role) PermisionsFor(contextValue string) []Permission {
+func (r *Role) PermissionsFor(contextValue string) []Permission {
 	schemes := r.filterValidSchemes()
 	permissions := make([]Permission, len(schemes))
 	for i, scheme := range schemes {

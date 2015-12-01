@@ -126,7 +126,7 @@ func (s *S) TestDestroyRole(c *check.C) {
 func (s *S) TestPermissionsFor(c *check.C) {
 	r, err := NewRole("myrole", "team")
 	c.Assert(err, check.IsNil)
-	perms := r.PermisionsFor("something")
+	perms := r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, []Permission{})
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
@@ -134,10 +134,10 @@ func (s *S) TestPermissionsFor(c *check.C) {
 		{Scheme: PermissionRegistry.get("app.update"), Context: PermissionContext{CtxType: CtxTeam, Value: "something"}},
 		{Scheme: PermissionRegistry.get("app.update.env.set"), Context: PermissionContext{CtxType: CtxTeam, Value: "something"}},
 	}
-	perms = r.PermisionsFor("something")
+	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)
 	r.SchemeNames = append(r.SchemeNames, "invalidxxx")
-	perms = r.PermisionsFor("something")
+	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)
 
 }

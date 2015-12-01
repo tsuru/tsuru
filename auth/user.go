@@ -231,12 +231,18 @@ func (u *User) reload() error {
 
 func (u *User) Permissions() ([]permission.Permission, error) {
 	var permissions []permission.Permission
+	roles := make(map[string]*permission.Role)
 	for _, roleData := range u.Roles {
-		role, err := permission.FindRole(roleData.Name)
-		if err != nil {
-			return nil, err
+		role := roles[roleData.Name]
+		if role == nil {
+			foundRole, err := permission.FindRole(roleData.Name)
+			if err != nil {
+				return nil, err
+			}
+			role = &foundRole
+			roles[roleData.Name] = role
 		}
-		permissions = append(permissions, role.PermisionsFor(roleData.ContextValue)...)
+		permissions = append(permissions, role.PermissionsFor(roleData.ContextValue)...)
 	}
 	return permissions, nil
 }

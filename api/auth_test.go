@@ -1604,3 +1604,45 @@ func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
 	sort.Sort(rolePermList(got.Roles))
 	c.Assert(got, check.DeepEquals, expected)
 }
+
+func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
+	c.StopTimer()
+	perm := permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}
+	expectedNames := []string{}
+	nUsers := 100
+	for i := 0; i < nUsers; i++ {
+		email := fmt.Sprintf("user-%d", i)
+		expectedNames = append(expectedNames, email+"@groundcontrol.com")
+		t := customUserWithPermission(c, email, perm)
+		u, err := t.User()
+		c.Assert(err, check.IsNil)
+		err = u.AddRole(u.Roles[0].Name, "someothervalue")
+		c.Assert(err, check.IsNil)
+	}
+	request, err := http.NewRequest("GET", "/users", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	c.StartTimer()
+	for i := 0; i < c.N; i++ {
+		m.ServeHTTP(recorder, request)
+	}
+	c.StopTimer()
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var users []apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(users), check.Equals, nUsers+1)
+	expectedNames = append(expectedNames, s.user.Email)
+	names := []string{}
+	for _, u := range users {
+		names = append(names, u.Email)
+	}
+	sort.Strings(names)
+	sort.Strings(expectedNames)
+	c.Assert(names, check.DeepEquals, expectedNames)
+}

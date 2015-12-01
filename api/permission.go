@@ -186,7 +186,7 @@ func canUseRole(t auth.Token, roleName, contextValue string) error {
 	if err != nil {
 		return err
 	}
-	perms := role.PermisionsFor(contextValue)
+	perms := role.PermissionsFor(contextValue)
 	for _, p := range perms {
 		if !permission.Check(t, p.Scheme, p.Context) {
 			return &errors.HTTP{
