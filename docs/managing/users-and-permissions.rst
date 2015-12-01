@@ -45,9 +45,10 @@ Contexts
 ========
 
 When applying permissions to a user one do so in regard to a context. Each
-permission declares which contexts can be used. When a permission is assigned to
-a user it needs a context and a value for the chosen context. Examples of
-available contexts are:
+permission declares which contexts can be used and it's possible see the
+available contexts using the command ``tsuru permission-list``. When a
+permission is assigned to a user it needs a context and a value for the chosen
+context. Examples of available contexts are:
 
 * ``team``
 * ``app``
