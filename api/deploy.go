@@ -110,8 +110,18 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	diff := val.Get("customdata")
 	instance, err := app.GetByName(appName)
 	if err != nil {
-		fmt.Fprint(w, err.Error())
-		return err
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if t.GetAppName() != app.InternalAppName {
+		canDiffDeploy := permission.Check(t, permission.PermAppReadDeploy,
+			append(permission.Contexts(permission.CtxTeam, instance.Teams),
+				permission.Context(permission.CtxApp, instance.Name),
+				permission.Context(permission.CtxPool, instance.Pool),
+			)...,
+		)
+		if !canDiffDeploy {
+			return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
+		}
 	}
 	err = app.SaveDiffData(diff, instance.Name)
 	if err != nil {
