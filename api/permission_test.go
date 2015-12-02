@@ -362,3 +362,57 @@ func (s *S) TestListPermissions(c *check.C) {
 		Contexts: []string{"global"},
 	})
 }
+
+func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
+	c.StopTimer()
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	nUsers := 100
+	var userEmails []string
+	for i := 0; i < nUsers; i++ {
+		email := fmt.Sprintf("user-%d@somewhere.com", i)
+		userEmails = append(userEmails, email)
+		user := &auth.User{Email: email, Password: "123456"}
+		_, err = nativeScheme.Create(user)
+		c.Assert(err, check.IsNil)
+		err = user.AddRole("test", s.team.Name)
+		c.Assert(err, check.IsNil)
+	}
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	c.StartTimer()
+	for i := 0; i < c.N; i++ {
+		b := bytes.NewBufferString(body)
+		request, err := http.NewRequest("POST", "/roles/test/permissions", b)
+		c.Assert(err, check.IsNil)
+		request.Header.Add("Authorization", "bearer "+s.token.GetValue())
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		m.ServeHTTP(recorder, request)
+	}
+	c.StopTimer()
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	return userEmails
+}
+
+func (s *S) BenchmarkAddPermissionToRoleWithDeploy(c *check.C) {
+	userEmails := s.benchmarkAddPermissionToRole(c, `permission=app.update&permission=app.deploy`)
+	users, err := repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
+	userEmails = append(userEmails, s.user.Email)
+	sort.Strings(users)
+	sort.Strings(userEmails)
+	c.Assert(users, check.DeepEquals, userEmails)
+}
+
+func (s *S) BenchmarkAddPermissionToRoleWithoutDeploy(c *check.C) {
+	s.benchmarkAddPermissionToRole(c, `permission=app.update&permission=app.read`)
+	users, err := repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
+	sort.Strings(users)
+	c.Assert(users, check.DeepEquals, []string{s.user.Email})
+}
