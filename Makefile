@@ -6,13 +6,6 @@ BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = cmd/tsurud/*.go
 
-define HG_ERROR
-
-FATAL: You need Mercurial (hg) to download tsuru dependencies.
-       For more details, please check
-       http://docs.tsuru.io/en/latest/contributing/vagrant.html
-endef
-
 define GIT_ERROR
 
 FATAL: You need Git to download tsuru dependencies.
@@ -27,7 +20,7 @@ FATAL: You need Bazaar (bzr) to download tsuru dependencies.
        http://docs.tsuru.io/en/latest/contributing/vagrant.html
 endef
 
-.PHONY: all check-path get hg git bzr get-code test race docs
+.PHONY: all check-path get git bzr get-code test race docs
 
 all: check-path get test
 
@@ -47,10 +40,7 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
 endif
 	@exit 0
 
-get: hg git bzr godep
-
-hg:
-	$(if $(shell hg), , $(error $(HG_ERROR)))
+get: git bzr godep
 
 git:
 	$(if $(shell git), , $(error $(GIT_ERROR)))
