@@ -54,6 +54,10 @@ func BaseTokenPermission(t Token) ([]permission.Permission, error) {
 				Scheme:  permission.PermAppUpdateUnitStatus,
 				Context: permission.Context(permission.CtxApp, t.GetAppName()),
 			},
+			{
+				Scheme:  permission.PermAppReadDeploy,
+				Context: permission.Context(permission.CtxApp, t.GetAppName()),
+			},
 		}, nil
 	}
 	user, err := t.User()
