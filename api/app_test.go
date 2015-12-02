@@ -1478,33 +1478,31 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 }
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) {
-	newToken := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateGrant,
-		Context: permission.Context(permission.CtxApp, "tsuru"),
-	})
-	u, _ := newToken.User()
-	t := auth.Team{Name: "anything"}
+	t := auth.Team{Name: "any-team"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
-	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: t.Name}
-	err = app.CreateApp(&a, u)
+	newToken := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, t.Name),
+	})
+	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
+	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+newToken.GetValue())
-	grants, err := repositorytest.Granted(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email, newToken.GetUserName()})
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	grants, err := repositorytest.Granted(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email, newToken.GetUserName()})
 	request, err = http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	recorder = httptest.NewRecorder()
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
 	handler = RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

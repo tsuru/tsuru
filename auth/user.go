@@ -78,7 +78,7 @@ usersLoop:
 		if err != nil {
 			return nil, err
 		}
-		for _, p := range perms {
+		for _, p := range wantedPerms {
 			if permission.CheckFromPermList(perms, p.Scheme, p.Context) {
 				filteredUsers = append(filteredUsers, u)
 				continue usersLoop
