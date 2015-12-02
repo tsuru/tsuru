@@ -126,6 +126,11 @@ Other improvements
   then unregister or remove the node
   (issue `#1319 <https://github.com/tsuru/tsuru/issues/1319>`_).
 
+* Supports differences between the new and old code on app-deploy.
+  The differences is generated ignoring the patterns listed in .gitignore file.
+  Obs. The .gitignore file must be in the root directory application
+  (issue `#1315 <https://github.com/tsuru/tsuru/issues/1315>`_).
+
 Backward incompatible changes (action needed)
 =============================================
 
