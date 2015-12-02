@@ -186,9 +186,13 @@ func canUseRole(t auth.Token, roleName, contextValue string) error {
 	if err != nil {
 		return err
 	}
+	userPerms, err := t.Permissions()
+	if err != nil {
+		return err
+	}
 	perms := role.PermissionsFor(contextValue)
 	for _, p := range perms {
-		if !permission.Check(t, p.Scheme, p.Context) {
+		if !permission.CheckFromPermList(userPerms, p.Scheme, p.Context) {
 			return &errors.HTTP{
 				Code:    http.StatusForbidden,
 				Message: fmt.Sprintf("User not authorized to use permission %s", p.String()),
