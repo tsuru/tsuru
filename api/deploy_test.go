@@ -184,6 +184,25 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	c.Assert(s.provisioner.Version(&a), check.Equals, "a345f3e")
 }
 
+func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/otherapp"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Image deploy called\nOK\n")
+}
+
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
@@ -309,7 +328,7 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	message := recorder.Body.String()
-	c.Assert(message, check.Equals, "you must specify either the version, the archive-url or upload a file\n")
+	c.Assert(message, check.Equals, "you must specify either the version, the archive-url, a image url or upload a file.\n")
 }
 
 func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {

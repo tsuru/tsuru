@@ -36,10 +36,11 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	version := r.PostFormValue("version")
 	archiveURL := r.PostFormValue("archive-url")
-	if version == "" && archiveURL == "" && file == nil {
+	image := r.PostFormValue("image")
+	if image == "" && version == "" && archiveURL == "" && file == nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "you must specify either the version, the archive-url or upload a file",
+			Message: "you must specify either the version, the archive-url, a image url or upload a file.",
 		}
 	}
 	if version != "" && archiveURL != "" {
@@ -85,6 +86,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		ArchiveURL:   archiveURL,
 		OutputStream: writer,
 		User:         userName,
+		Image:        image,
 	})
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
