@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -116,8 +117,8 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
-	c.Assert(containers[0].HostAddr, check.Equals, urlToHost(node1.URL()))
-	c.Assert(containers[1].HostAddr, check.Equals, urlToHost(node1.URL()))
+	c.Assert(containers[0].HostAddr, check.Equals, net.URLToHost(node1.URL()))
+	c.Assert(containers[1].HostAddr, check.Equals, net.URLToHost(node1.URL()))
 	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
 	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 
@@ -167,8 +168,8 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 
 	containers := p.AllContainers()
 	c.Assert(containers, check.HasLen, 2)
-	c.Assert(containers[0].HostAddr, check.Equals, urlToHost(node1.URL()))
-	c.Assert(containers[1].HostAddr, check.Equals, urlToHost(node1.URL()))
+	c.Assert(containers[0].HostAddr, check.Equals, net.URLToHost(node1.URL()))
+	c.Assert(containers[1].HostAddr, check.Equals, net.URLToHost(node1.URL()))
 	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
 	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 	toMoveCont := containers[1]
@@ -232,8 +233,8 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
-	c.Assert(containers[0].HostAddr, check.Equals, urlToHost(node1.URL()))
-	c.Assert(containers[1].HostAddr, check.Equals, urlToHost(node1.URL()))
+	c.Assert(containers[0].HostAddr, check.Equals, net.URLToHost(node1.URL()))
+	c.Assert(containers[1].HostAddr, check.Equals, net.URLToHost(node1.URL()))
 	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
 	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 	toMoveCont := containers[1]
@@ -360,8 +361,8 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
-	c.Assert(containers[0].HostAddr, check.Equals, urlToHost(node1.URL()))
-	c.Assert(containers[1].HostAddr, check.Equals, urlToHost(node1.URL()))
+	c.Assert(containers[0].HostAddr, check.Equals, net.URLToHost(node1.URL()))
+	c.Assert(containers[1].HostAddr, check.Equals, net.URLToHost(node1.URL()))
 	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
 	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 
@@ -385,8 +386,8 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
-	c.Assert(hosts[0], check.Equals, urlToHost(node1.URL()))
-	c.Assert(hosts[1], check.Equals, urlToHost(node1.URL()))
+	c.Assert(hosts[0], check.Equals, net.URLToHost(node1.URL()))
+	c.Assert(hosts[1], check.Equals, net.URLToHost(node1.URL()))
 
 	healingColl, err := healingCollection()
 	c.Assert(err, check.IsNil)

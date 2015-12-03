@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
@@ -275,7 +276,7 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 			return nil, err
 		}
 		for _, n := range nodes {
-			hostsFilter = append(hostsFilter, urlToHost(n.Address))
+			hostsFilter = append(hostsFilter, net.URLToHost(n.Address))
 		}
 		if len(hostsFilter) == 0 {
 			fmt.Fprintf(writer, "No hosts matching metadata filters\n")

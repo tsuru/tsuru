@@ -26,6 +26,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/digitalocean"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/healer"
@@ -230,7 +231,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	noRebalance, err := strconv.ParseBool(r.URL.Query().Get("no-rebalance"))
 	if !noRebalance {
-		err = mainDockerProvisioner.rebalanceContainersByHost(urlToHost(address), w)
+		err = mainDockerProvisioner.rebalanceContainersByHost(net.URLToHost(address), w)
 		if err != nil {
 			return err
 		}
@@ -241,7 +242,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	if removeIaaS {
 		var m iaas.Machine
-		m, err = iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(address))
+		m, err = iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], net.URLToHost(address))
 		if err != nil && err != mgo.ErrNotFound {
 			return err
 		}
@@ -462,7 +463,7 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		if !hasAccess {
 			return permission.ErrUnauthorized
 		}
-		containerList, err := mainDockerProvisioner.listContainersByHost(urlToHost(address))
+		containerList, err := mainDockerProvisioner.listContainersByHost(net.URLToHost(address))
 		if err != nil {
 			return err
 		}

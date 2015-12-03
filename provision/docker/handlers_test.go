@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
@@ -466,7 +467,7 @@ func (s *S) TestRemoveNodeHandlerRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 1)
-	containerList, err := mainDockerProvisioner.listContainersByHost(urlToHost(nodes[0].Address))
+	containerList, err := mainDockerProvisioner.listContainersByHost(tsuruNet.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(len(containerList), check.Equals, 5)
 }
@@ -522,7 +523,7 @@ func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 1)
-	containerList, err := mainDockerProvisioner.listContainersByHost(urlToHost(nodes[0].Address))
+	containerList, err := mainDockerProvisioner.listContainersByHost(tsuruNet.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(len(containerList), check.Equals, 0)
 }

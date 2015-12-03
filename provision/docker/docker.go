@@ -9,8 +9,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"net"
-	"net/url"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -19,6 +17,7 @@ import (
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/safe"
@@ -38,18 +37,6 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return storage, nil
 }
 
-func urlToHost(urlStr string) string {
-	url, _ := url.Parse(urlStr)
-	if url == nil || url.Host == "" {
-		return urlStr
-	}
-	host, _, _ := net.SplitHostPort(url.Host)
-	if host == "" {
-		return url.Host
-	}
-	return host
-}
-
 func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
 	node, err := p.getNodeByHost(host)
 	if err != nil {
@@ -64,7 +51,7 @@ func (p *dockerProvisioner) getNodeByHost(host string) (cluster.Node, error) {
 		return cluster.Node{}, err
 	}
 	for _, node := range nodes {
-		if urlToHost(node.Address) == host {
+		if net.URLToHost(node.Address) == host {
 			return node, nil
 		}
 	}

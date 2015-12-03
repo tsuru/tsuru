@@ -7,8 +7,6 @@ package dockertest
 import (
 	"fmt"
 	"io"
-	"net"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
@@ -315,7 +314,7 @@ func (p *FakeDockerProvisioner) StartContainers(args StartContainersArgs) ([]con
 			Image: args.Image,
 		},
 	}
-	hostAddr := urlToHost(args.Endpoint)
+	hostAddr := net.URLToHost(args.Endpoint)
 	createdContainers := make([]container.Container, 0, len(args.Amount))
 	for processName, amount := range args.Amount {
 		opts.Config.Cmd = []string{processName}
@@ -354,16 +353,4 @@ func (p *FakeDockerProvisioner) findContainer(id string) (container.Container, i
 		}
 	}
 	return container.Container{}, -1, &docker.NoSuchContainer{ID: id}
-}
-
-func urlToHost(urlStr string) string {
-	url, _ := url.Parse(urlStr)
-	if url == nil || url.Host == "" {
-		return urlStr
-	}
-	host, _, _ := net.SplitHostPort(url.Host)
-	if host == "" {
-		return url.Host
-	}
-	return host
 }

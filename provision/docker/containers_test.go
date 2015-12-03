@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -312,7 +313,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	err = p.Cluster().Unregister(otherUrl)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	err = p.rebalanceContainersByHost(urlToHost(otherUrl), buf)
+	err = p.rebalanceContainersByHost(net.URLToHost(otherUrl), buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.scheduler.ignoredContainers, check.IsNil)
 	c2, err = p.listContainersByHost("127.0.0.1")

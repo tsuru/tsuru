@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/queue"
 )
@@ -48,7 +49,7 @@ func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	emptyNode := cluster.Node{}
 	failingAddr := node.Address
 	nodeMetadata := node.CleanMetadata()
-	failingHost := urlToHost(failingAddr)
+	failingHost := net.URLToHost(failingAddr)
 	failures := node.FailureCount()
 	machine, err := iaas.CreateMachineForIaaS(nodeMetadata["iaas"], nodeMetadata)
 	if err != nil {

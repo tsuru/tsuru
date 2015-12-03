@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
@@ -116,7 +117,7 @@ func (p *dockerProvisioner) listAppsForNodes(nodes []*cluster.Node) ([]string, e
 	defer coll.Close()
 	nodeNames := make([]string, len(nodes))
 	for i, n := range nodes {
-		nodeNames[i] = urlToHost(n.Address)
+		nodeNames[i] = net.URLToHost(n.Address)
 	}
 	var appNames []string
 	err := coll.Find(bson.M{"hostaddr": bson.M{"$in": nodeNames}}).Distinct("appname", &appNames)

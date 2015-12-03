@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -20,6 +19,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -131,7 +131,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		return err
 	}
 	c.ID = cont.ID
-	c.HostAddr = urlToHost(addr)
+	c.HostAddr = net.URLToHost(addr)
 	c.User = user
 	return nil
 }
@@ -142,7 +142,7 @@ func (c *Container) hostToNodeAddress(p DockerProvisioner, host string) (string,
 		return "", err
 	}
 	for _, node := range nodes {
-		if urlToHost(node.Address) == host {
+		if net.URLToHost(node.Address) == host {
 			return node.Address, nil
 		}
 	}
@@ -570,18 +570,6 @@ func getPort() (string, error) {
 		return "", err
 	}
 	return fmt.Sprint(port), nil
-}
-
-func urlToHost(urlStr string) string {
-	url, _ := url.Parse(urlStr)
-	if url == nil || url.Host == "" {
-		return urlStr
-	}
-	host, _, _ := net.SplitHostPort(url.Host)
-	if host == "" {
-		return url.Host
-	}
-	return host
 }
 
 type waitResult struct {

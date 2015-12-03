@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -64,7 +65,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	}
 	hosts := make([]string, len(nodes))
 	for i := range nodes {
-		hosts[i] = urlToHost(nodes[i].Address)
+		hosts[i] = net.URLToHost(nodes[i].Address)
 	}
 	containers, err := s.provisioner.ListContainers(bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}})
 	if err != nil {
@@ -85,7 +86,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 		shouldAdd := true
 		if totalMemory != 0 {
 			maxMemory := totalMemory * float64(maxMemoryRatio)
-			host := urlToHost(node.Address)
+			host := net.URLToHost(node.Address)
 			nodeReserved := hostReserved[host] + a.Plan.Memory
 			if nodeReserved > int64(maxMemory) {
 				shouldAdd = false
@@ -228,7 +229,7 @@ func (s *segregatedScheduler) nodesToHosts(nodes []cluster.Node) ([]string, map[
 	// Only hostname is saved in the docker containers collection
 	// so we need to extract and map then to the original node.
 	for i, node := range nodes {
-		host := urlToHost(node.Address)
+		host := net.URLToHost(node.Address)
 		hosts[i] = host
 		hostsMap[host] = node.Address
 	}

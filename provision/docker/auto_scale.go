@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/queue"
@@ -368,7 +369,7 @@ func (a *autoScaleConfig) removeMultipleNodes(event *autoScaleEvent, chosenNodes
 			return fmt.Errorf("no IaaS information in node (%s) metadata: %#v", node.Address, node.Metadata)
 		}
 		nodeAddrs[i] = node.Address
-		nodeHosts[i] = urlToHost(node.Address)
+		nodeHosts[i] = net.URLToHost(node.Address)
 	}
 	err := a.provisioner.Cluster().UnregisterNodes(nodeAddrs...)
 	if err != nil {
@@ -388,7 +389,7 @@ func (a *autoScaleConfig) removeMultipleNodes(event *autoScaleEvent, chosenNodes
 		go func(i int) {
 			defer wg.Done()
 			node := chosenNodes[i]
-			m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(node.Address))
+			m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], net.URLToHost(node.Address))
 			if err != nil {
 				event.logMsg("unable to find machine for removal in iaas: %s", err)
 				return
@@ -543,7 +544,7 @@ func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[
 	}
 	result := map[string][]container.Container{}
 	for _, n := range nodes {
-		nodeConts, err := p.listRunningContainersByHost(urlToHost(n.Address))
+		nodeConts, err := p.listRunningContainersByHost(net.URLToHost(n.Address))
 		if err != nil {
 			return nil, err
 		}

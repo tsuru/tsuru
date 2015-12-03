@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
@@ -416,5 +417,5 @@ func (s *S) TestStartContainers(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 3)
-	c.Assert(p.Containers(urlToHost(p.Servers()[0].URL())), check.DeepEquals, containers)
+	c.Assert(p.Containers(net.URLToHost(p.Servers()[0].URL())), check.DeepEquals, containers)
 }

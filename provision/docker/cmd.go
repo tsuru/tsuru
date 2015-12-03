@@ -17,6 +17,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/net"
 	"launchpad.net/gnuflag"
 )
 
@@ -284,7 +285,7 @@ func (c *listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 			}
 		}
 		sort.Strings(result)
-		m, ok := machineMap[urlToHost(addr)]
+		m, ok := machineMap[net.URLToHost(addr)]
 		var iaasId string
 		if ok {
 			iaasId = m["Id"].(string)

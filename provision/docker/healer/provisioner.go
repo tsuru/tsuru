@@ -6,8 +6,6 @@ package healer
 
 import (
 	"io"
-	"net"
-	"net/url"
 	"sync"
 
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -26,16 +24,4 @@ type DockerProvisioner interface {
 type AppLocker interface {
 	Lock(appName string) bool
 	Unlock(appName string)
-}
-
-func urlToHost(urlStr string) string {
-	url, _ := url.Parse(urlStr)
-	if url == nil || url.Host == "" {
-		return urlStr
-	}
-	host, _, _ := net.SplitHostPort(url.Host)
-	if host == "" {
-		return url.Host
-	}
-	return host
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -55,7 +56,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
@@ -75,7 +76,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node2.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "localhost")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -110,7 +111,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
@@ -138,7 +139,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 	c.Assert(nodes[0].FailureCount() > 0, check.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 	created, err := healer.healNode(&nodes[0])
@@ -149,7 +150,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
@@ -182,7 +183,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 	c.Assert(nodes[0].FailureCount() > 0, check.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 	created, err := healer.healNode(&nodes[0])
@@ -193,7 +194,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
@@ -234,7 +235,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
@@ -255,7 +256,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node2.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "localhost")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -306,7 +307,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
 	machines, err := iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -323,7 +324,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node2.URL()))
-	c.Assert(urlToHost(nodes[0].Address), check.Equals, "localhost")
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
