@@ -462,7 +462,7 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		if !hasAccess {
 			return permission.ErrUnauthorized
 		}
-		containerList, err := mainDockerProvisioner.listContainersByHost(address)
+		containerList, err := mainDockerProvisioner.listContainersByHost(urlToHost(address))
 		if err != nil {
 			return err
 		}

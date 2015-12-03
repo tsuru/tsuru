@@ -564,16 +564,16 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	mainDockerProvisioner.cluster.Register(cluster.Node{Address: "http://node1.company"})
+	mainDockerProvisioner.cluster.Register(cluster.Node{Address: "http://node1.company:4243"})
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
-	err = coll.Insert(container.Container{ID: "blabla", Type: "python", HostAddr: "http://node1.company"})
+	err = coll.Insert(container.Container{ID: "blabla", Type: "python", HostAddr: "node1.company"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
-	err = coll.Insert(container.Container{ID: "bleble", Type: "java", HostAddr: "http://node1.company"})
+	err = coll.Insert(container.Container{ID: "bleble", Type: "java", HostAddr: "node1.company"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "bleble"})
-	req, err := http.NewRequest("GET", "/node/containers?:address=http://node1.company", nil)
+	req, err := http.NewRequest("GET", "/node/containers?:address=http://node1.company:4243", nil)
 	rec := httptest.NewRecorder()
 	err = listContainersHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
@@ -583,10 +583,10 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result[0].ID, check.DeepEquals, "blabla")
 	c.Assert(result[0].Type, check.DeepEquals, "python")
-	c.Assert(result[0].HostAddr, check.DeepEquals, "http://node1.company")
+	c.Assert(result[0].HostAddr, check.DeepEquals, "node1.company")
 	c.Assert(result[1].ID, check.DeepEquals, "bleble")
 	c.Assert(result[1].Type, check.DeepEquals, "java")
-	c.Assert(result[1].HostAddr, check.DeepEquals, "http://node1.company")
+	c.Assert(result[1].HostAddr, check.DeepEquals, "node1.company")
 }
 
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
