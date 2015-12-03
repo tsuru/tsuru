@@ -60,10 +60,19 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
-func deployableApps(u *auth.User) ([]string, error) {
-	perms, err := u.Permissions()
-	if err != nil {
-		return nil, err
+func deployableApps(u *auth.User, rolesCache map[string]*permission.Role) ([]string, error) {
+	var perms []permission.Permission
+	for _, roleData := range u.Roles {
+		role := rolesCache[roleData.Name]
+		if role == nil {
+			foundRole, err := permission.FindRole(roleData.Name)
+			if err != nil {
+				return nil, err
+			}
+			role = &foundRole
+			rolesCache[roleData.Name] = role
+		}
+		perms = append(perms, role.PermissionsFor(roleData.ContextValue)...)
 	}
 	contexts := permission.ContextsFromListForPermission(perms, permission.PermAppDeploy)
 	if len(contexts) == 0 {
@@ -81,8 +90,8 @@ func deployableApps(u *auth.User) ([]string, error) {
 	return appNames, nil
 }
 
-func syncRepositoryApps(user *auth.User, beforeApps []string) error {
-	afterApps, err := deployableApps(user)
+func syncRepositoryApps(user *auth.User, beforeApps []string, roleCache map[string]*permission.Role) error {
+	afterApps, err := deployableApps(user, roleCache)
 	if err != nil {
 		return err
 	}
@@ -111,9 +120,10 @@ func syncRepositoryApps(user *auth.User, beforeApps []string) error {
 
 func runWithPermSync(users []auth.User, callback func() error) error {
 	usersMap := make(map[*auth.User][]string)
+	roleCache := make(map[string]*permission.Role)
 	for i := range users {
 		u := &users[i]
-		apps, err := deployableApps(u)
+		apps, err := deployableApps(u, roleCache)
 		if err != nil {
 			return err
 		}
@@ -123,8 +133,9 @@ func runWithPermSync(users []auth.User, callback func() error) error {
 	if err != nil {
 		return err
 	}
+	roleCache = make(map[string]*permission.Role)
 	for u, apps := range usersMap {
-		err = syncRepositoryApps(u, apps)
+		err = syncRepositoryApps(u, apps, roleCache)
 		if err != nil {
 			log.Errorf("unable to sync gandalf repositories updating permissions: %s", err)
 		}

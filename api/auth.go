@@ -353,7 +353,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	}
-	appNames, err := deployableApps(u)
+	appNames, err := deployableApps(u, make(map[string]*permission.Role))
 	if err != nil {
 		return err
 	}
