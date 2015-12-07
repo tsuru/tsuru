@@ -136,7 +136,7 @@ service via command line tool:
 
 ::
 
-    $ tsuru service-bind mysql_instance --app my_app
+    $ tsuru service-bind mysql mysql_instance --app my_app
 
 Now, tsuru services has two bind endpoints: ``/resources/<service-instance-name>/bind`` and ``/resources/<service-instance-name>/bind-app``.
 The first endpoint will be called every time an app adds an unit.
@@ -211,7 +211,7 @@ the service via command line:
 
 ::
 
-    $ tsuru service-unbind mysql_instance --app my_app
+    $ tsuru service-unbind mysql mysql_instance --app my_app
 
 Now, tsuru services has two unbind endpoints: ``/resources/<service-instance-name>/bind`` and ``/resources/<service-instance-name>/bind-app``.
 The first endpoint will be called every time an app removes an unit.
@@ -264,7 +264,7 @@ via command line:
 
 ::
 
-    $ tsuru service-remove mysql_instance -y
+    $ tsuru service-remove mysql mysql_instance -y
 
 tsuru calls the service API to remove the instancevia DELETE on
 ``/resources/<service-name>`` (please notice that tsuru does not include a
@@ -299,7 +299,7 @@ instance via command line:
 
 ::
 
-    $ tsuru service-status mysql_instance
+    $ tsuru service-status mysql mysql_instance
 
 tsuru calls the service API to check the status of the instance via GET on
 ``/resources/mysql_instance/status`` (please notice that tsuru does not include

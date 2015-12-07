@@ -466,7 +466,7 @@ To bind the service instance to the application, we use the command `service-bin
 
 ::
 
-    $ tsuru service-bind blogsql
+    $ tsuru service-bind mysql blogsql
     Instance blogsql is now bound to the app blog.
 
     The following environment variables are now available for use in your app:
