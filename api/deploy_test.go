@@ -115,6 +115,68 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	c.Assert(s.provisioner.Version(&a), check.Equals, "a345f3e")
 }
 
+func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag-and-drop", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	var result app.DeployData
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result.Origin, check.Equals, "drag-and-drop")
+}
+
+func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	user, _ := s.token.User()
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid deployment origin\n")
+}
+
+func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	url := fmt.Sprintf("/apps/%s/deploy?origin=app-deploy", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/otherapp"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Image deploy called\nOK\n")
+	var result app.DeployData
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result.Origin, check.Equals, "image")
+}
+
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
@@ -684,7 +746,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
-	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback?origin=rollback", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=my-image-123:v1"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -716,7 +778,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
-	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback?origin=rollback", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -748,7 +810,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
-	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback?origin=rollback", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=v1"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -797,6 +859,19 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+}
+
+func (s *DeploySuite) TestValidateOrigin(c *check.C) {
+	result := validateOrigin("app-deploy")
+	c.Assert(result, check.Equals, true)
+	result = validateOrigin("rollback")
+	c.Assert(result, check.Equals, true)
+	result = validateOrigin("git")
+	c.Assert(result, check.Equals, true)
+	result = validateOrigin("drag-and-drop")
+	c.Assert(result, check.Equals, true)
+	result = validateOrigin("invalid")
+	c.Assert(result, check.Equals, false)
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {

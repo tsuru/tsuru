@@ -52,6 +52,18 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	commit := r.PostFormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
+	origin := r.URL.Query().Get("origin")
+	if image != "" {
+		origin = "image"
+	}
+	if origin != "" {
+		if !validateOrigin(origin) {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid deployment origin",
+			}
+		}
+	}
 	var userName string
 	if t.IsAppToken() {
 		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
@@ -87,11 +99,22 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		OutputStream: writer,
 		User:         userName,
 		Image:        image,
+		Origin:       origin,
 	})
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
+
+func validateOrigin(origin string) bool {
+	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image"}
+	for _, ol := range originList {
+		if ol == origin {
+			return true
+		}
+	}
+	return false
 }
 
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -146,6 +169,15 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			Message: "you cannot rollback without an image name",
 		}
 	}
+	origin := r.URL.Query().Get("origin")
+	if origin != "" {
+		if !validateOrigin(origin) {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid deployment origin",
+			}
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -164,6 +196,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		OutputStream: writer,
 		Image:        image,
 		User:         t.GetUserName(),
+		Origin:       origin,
 	})
 	if err != nil {
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})

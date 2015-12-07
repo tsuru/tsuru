@@ -143,6 +143,7 @@ type DeployOptions struct {
 	OutputStream io.Writer
 	User         string
 	Image        string
+	Origin       string
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
@@ -213,12 +214,10 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 		Log:       log,
 		User:      opts.User,
 	}
-	if opts.Commit != "" {
+	if opts.Origin != "" {
+		deploy.Origin = opts.Origin
+	} else if opts.Commit != "" {
 		deploy.Origin = "git"
-	} else if opts.Image != "" {
-		deploy.Origin = "rollback"
-	} else {
-		deploy.Origin = "app-deploy"
 	}
 	if deployError != nil {
 		deploy.Error = deployError.Error()
