@@ -1048,6 +1048,46 @@ func (s *HandlersSuite) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	c.Assert(nodes[0].CreationStatus, check.DeepEquals, cluster.NodeCreationStatusDisabled)
 }
 
+func (s *HandlersSuite) TestUpdateNodeEnableNodeHandler(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:1999", CreationStatus: cluster.NodeCreationStatusDisabled},
+	)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	defer provision.RemovePool("pool1")
+	json := `{"address": "localhost:1999"}`
+	b := bytes.NewBufferString(json)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node?enabled=false", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].CreationStatus, check.DeepEquals, cluster.NodeStatusReady)
+}
+
+func (s *HandlersSuite) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:1999", CreationStatus: cluster.NodeCreationStatusDisabled},
+	)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	defer provision.RemovePool("pool1")
+	jsonBody := `{"address": "localhost:1999"}`
+	b := bytes.NewBufferString(jsonBody)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node?enabled=true&disabled=true", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
 		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
