@@ -16,15 +16,21 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+type RoleEvent string
+
 var (
 	ErrRoleNotFound      = errors.New("role not found")
 	ErrRoleAlreadyExists = errors.New("role already exists")
+
+	RoleEventUserCreate = RoleEvent("user-create")
+	RoleEventTeamCreate = RoleEvent("team-create")
 )
 
 type Role struct {
 	Name        string      `bson:"_id" json:"name"`
 	ContextType contextType `json:"context"`
 	SchemeNames []string    `json:"scheme_names,omitempty"`
+	Events      []RoleEvent
 }
 
 func NewRole(name string, ctx string) (Role, error) {
@@ -57,6 +63,40 @@ func ListRoles() ([]Role, error) {
 	}
 	defer coll.Close()
 	err = coll.Find(nil).All(&roles)
+	if err != nil {
+		return nil, err
+	}
+	for i := range roles {
+		roles[i].filterValidSchemes()
+	}
+	return roles, nil
+}
+
+func ListRolesWithEvents() ([]Role, error) {
+	var roles []Role
+	coll, err := rolesCollection()
+	if err != nil {
+		return roles, err
+	}
+	defer coll.Close()
+	err = coll.Find(bson.M{"events": bson.M{"$not": bson.M{"$size": 0}, "$exists": true}}).All(&roles)
+	if err != nil {
+		return nil, err
+	}
+	for i := range roles {
+		roles[i].filterValidSchemes()
+	}
+	return roles, nil
+}
+
+func ListRolesForEvent(evt RoleEvent) ([]Role, error) {
+	var roles []Role
+	coll, err := rolesCollection()
+	if err != nil {
+		return roles, err
+	}
+	defer coll.Close()
+	err = coll.Find(bson.M{"events": evt}).All(&roles)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +229,42 @@ func (r *Role) PermissionsFor(contextValue string) []Permission {
 		}
 	}
 	return permissions
+}
+
+func (r *Role) AddEvent(event RoleEvent) error {
+	coll, err := rolesCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.UpdateId(r.Name, bson.M{"$addToSet": bson.M{"events": event}})
+	if err != nil {
+		return err
+	}
+	dbRole, err := FindRole(r.Name)
+	if err != nil {
+		return err
+	}
+	r.Events = dbRole.Events
+	return nil
+}
+
+func (r *Role) RemoveEvent(event RoleEvent) error {
+	coll, err := rolesCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.UpdateId(r.Name, bson.M{"$pull": bson.M{"events": event}})
+	if err != nil {
+		return err
+	}
+	dbRole, err := FindRole(r.Name)
+	if err != nil {
+		return err
+	}
+	r.Events = dbRole.Events
+	return nil
 }
 
 func rolesCollection() (*storage.Collection, error) {

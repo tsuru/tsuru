@@ -28,7 +28,7 @@ func (s *S) TestListRoles(c *check.C) {
 	c.Assert(err, check.IsNil)
 	roles, err := ListRoles()
 	c.Assert(err, check.IsNil)
-	expected := []Role{{Name: "test", ContextType: "app", SchemeNames: []string{}}}
+	expected := []Role{{Name: "test", ContextType: "app", SchemeNames: []string{}, Events: []RoleEvent{}}}
 	c.Assert(roles, check.DeepEquals, expected)
 	err = r.AddPermissions("app.deploy", "app.update")
 	c.Assert(err, check.IsNil)
@@ -39,7 +39,7 @@ func (s *S) TestListRoles(c *check.C) {
 	err = coll.UpdateId(r.Name, r)
 	c.Assert(err, check.IsNil)
 	roles, err = ListRoles()
-	expected = []Role{{Name: "test", ContextType: "app", SchemeNames: []string{
+	expected = []Role{{Name: "test", ContextType: "app", Events: []RoleEvent{}, SchemeNames: []string{
 		"app.deploy", "app.update",
 	}}}
 	c.Assert(roles, check.DeepEquals, expected)
@@ -139,5 +139,79 @@ func (s *S) TestPermissionsFor(c *check.C) {
 	r.SchemeNames = append(r.SchemeNames, "invalidxxx")
 	perms = r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, expected)
+}
 
+func (s *S) TestRoleAddEvent(c *check.C) {
+	r, err := NewRole("myrole", "team")
+	c.Assert(err, check.IsNil)
+	err = r.AddEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	c.Assert(r.Events, check.DeepEquals, []RoleEvent{RoleEventTeamCreate})
+	err = r.AddEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	c.Assert(r.Events, check.DeepEquals, []RoleEvent{RoleEventTeamCreate})
+	dbR, err := FindRole("myrole")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbR.Events, check.DeepEquals, []RoleEvent{RoleEventTeamCreate})
+	err = r.AddEvent(RoleEvent("someother"))
+	c.Assert(err, check.IsNil)
+	var evts []string
+	for _, e := range r.Events {
+		evts = append(evts, string(e))
+	}
+	sort.Strings(evts)
+	c.Assert(evts, check.DeepEquals, []string{"someother", string(RoleEventTeamCreate)})
+}
+
+func (s *S) TestRoleRemoveEvent(c *check.C) {
+	r, err := NewRole("myrole", "team")
+	c.Assert(err, check.IsNil)
+	err = r.AddEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	dbR, err := FindRole("myrole")
+	c.Assert(err, check.IsNil)
+	err = dbR.RemoveEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbR.Events, check.DeepEquals, []RoleEvent{})
+	dbR, err = FindRole("myrole")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbR.Events, check.DeepEquals, []RoleEvent{})
+}
+
+func (s *S) TestListRolesWithEvents(c *check.C) {
+	_, err := NewRole("myrole1", "team")
+	c.Assert(err, check.IsNil)
+	r2, err := NewRole("myrole2", "team")
+	c.Assert(err, check.IsNil)
+	r3, err := NewRole("myrole3", "team")
+	c.Assert(err, check.IsNil)
+	err = r2.AddEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	err = r3.AddEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	roles, err := ListRolesWithEvents()
+	c.Assert(err, check.IsNil)
+	var names []string
+	for _, r := range roles {
+		names = append(names, r.Name)
+	}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{"myrole2", "myrole3"})
+}
+
+func (s *S) TestListRolesForEvent(c *check.C) {
+	_, err := NewRole("myrole1", "team")
+	c.Assert(err, check.IsNil)
+	r2, err := NewRole("myrole2", "team")
+	c.Assert(err, check.IsNil)
+	r3, err := NewRole("myrole3", "global")
+	c.Assert(err, check.IsNil)
+	err = r2.AddEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	err = r3.AddEvent(RoleEventUserCreate)
+	c.Assert(err, check.IsNil)
+	roles, err := ListRolesForEvent(RoleEventTeamCreate)
+	c.Assert(err, check.IsNil)
+	c.Assert(roles, check.HasLen, 1)
+	c.Assert(roles[0].Name, check.Equals, "myrole2")
 }
