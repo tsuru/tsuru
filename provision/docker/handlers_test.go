@@ -1058,7 +1058,7 @@ func (s *HandlersSuite) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	json := `{"address": "localhost:1999"}`
 	b := bytes.NewBufferString(json)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/docker/node?enabled=false", b)
+	request, err := http.NewRequest("PUT", "/docker/node?enabled=true", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)

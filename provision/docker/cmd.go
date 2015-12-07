@@ -94,6 +94,7 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 type updateNodeToSchedulerCmd struct {
 	fs       *gnuflag.FlagSet
 	disabled bool
+	enabled  bool
 }
 
 func (updateNodeToSchedulerCmd) Info() *cmd.Info {
@@ -110,6 +111,7 @@ func (a *updateNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if a.fs == nil {
 		a.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
 		a.fs.BoolVar(&a.disabled, "disable", false, "Disable node in scheduler.")
+		a.fs.BoolVar(&a.enabled, "enable", false, "Enable node in scheduler.")
 	}
 	return a.fs
 }
@@ -127,7 +129,7 @@ func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) err
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?disabled=%t", a.disabled))
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?disabled=%t&enabled=%t", a.disabled, a.enabled))
 	if err != nil {
 		return err
 	}

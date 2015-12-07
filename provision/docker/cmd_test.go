@@ -390,6 +390,44 @@ func (s *S) TestUpdateNodeToDisableCmdRun(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
 }
 
+func (s *S) TestUpdateNodeToEnabledCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"http://localhost:1111", "x=y", "y=z"}, Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Query().Get("enabled") == "true"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cm := updateNodeToSchedulerCmd{}
+	cm.Flags().Parse(true, []string{"--enable"})
+	err := cm.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
+}
+
+func (s *S) TestUpdateNodeToEnabledDisableCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"http://localhost:1111", "x=y", "y=z"}, Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: "You can't make a node enable and disable at the same time.",
+			Status:  http.StatusBadRequest,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Query().Get("enabled") == "true" && req.URL.Query().Get("disabled") == "true"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cm := updateNodeToSchedulerCmd{}
+	cm.Flags().Parse(true, []string{"--enable", "--disable"})
+	err := cm.Run(&context, client)
+	c.Assert(err, check.NotNil)
+}
+
 func (s *S) TestAutoScaleRunCmdRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	msg, _ := json.Marshal(tsuruIo.SimpleJsonMessage{Message: "progress msg"})
