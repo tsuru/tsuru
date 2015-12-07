@@ -588,27 +588,6 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
-func (s *S) TestImageDeployInvalidImage(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "python",
-	}
-	err := s.storage.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	s.p.Provision(&a)
-	defer s.p.Destroy(&a)
-	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		OutputStream: w,
-		Image:        "tsuru/app-otherapp:v1",
-	})
-	c.Assert(err, check.ErrorMatches, "invalid image for app otherapp: tsuru/app-otherapp:v1")
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
-}
-
 func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
