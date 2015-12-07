@@ -102,8 +102,9 @@ func (updateNodeToSchedulerCmd) Info() *cmd.Info {
 		Name:  "docker-node-update",
 		Usage: "docker-node-update <address> [param_name=param_value...] --disable",
 		Desc: `Modifies metadata associated to a docker node.
---disable: Disable node in scheduler.`,
-		MinArgs: 2,
+--disable: Disable node in scheduler.
+--enable: Enable node in scheduler.`,
+		MinArgs: 1,
 	}
 }
 
