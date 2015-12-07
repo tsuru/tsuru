@@ -30,7 +30,7 @@ type Role struct {
 	Name        string      `bson:"_id" json:"name"`
 	ContextType contextType `json:"context"`
 	SchemeNames []string    `json:"scheme_names,omitempty"`
-	Events      []RoleEvent
+	Events      []RoleEvent `json:"events,omitempty"`
 }
 
 func NewRole(name string, ctx string) (Role, error) {
