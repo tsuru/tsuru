@@ -363,6 +363,77 @@ func (s *S) TestListPermissions(c *check.C) {
 	})
 }
 
+func (s *S) TestAddDefaultRole(c *check.C) {
+	_, err := permission.NewRole("r1", "team")
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("r2", "team")
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("r3", "global")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("team-create=r1&team-create=r2&user-create=r3")
+	req, err := http.NewRequest("POST", "/role/default", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleDefaultCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	r1, err := permission.FindRole("r1")
+	c.Assert(err, check.IsNil)
+	c.Assert(r1.Events, check.DeepEquals, []string{permission.RoleEventTeamCreate.String()})
+	r2, err := permission.FindRole("r2")
+	c.Assert(err, check.IsNil)
+	c.Assert(r2.Events, check.DeepEquals, []string{permission.RoleEventTeamCreate.String()})
+	r3, err := permission.FindRole("r3")
+	c.Assert(err, check.IsNil)
+	c.Assert(r3.Events, check.DeepEquals, []string{permission.RoleEventUserCreate.String()})
+}
+
+func (s *S) TestAddDefaultRoleIncompatibleContext(c *check.C) {
+	_, err := permission.NewRole("r1", "team")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("user-create=r1")
+	req, err := http.NewRequest("POST", "/role/default", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleDefaultCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(rec.Body.String(), check.Equals, "wrong context type for role event, expected \"global\" role has \"team\"\n")
+}
+
+func (s *S) TestRemoveDefaultRole(c *check.C) {
+	r1, err := permission.NewRole("r1", "team")
+	c.Assert(err, check.IsNil)
+	err = r1.AddEvent(permission.RoleEventTeamCreate.String())
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("DELETE", "/role/default?team-create=r1", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleDefaultDelete,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	r1, err = permission.FindRole("r1")
+	c.Assert(err, check.IsNil)
+	c.Assert(r1.Events, check.DeepEquals, []string{})
+}
+
 func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
 	c.StopTimer()
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}

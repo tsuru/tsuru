@@ -125,8 +125,13 @@ func (u *User) Create() error {
 	err = u.createOnRepositoryManager()
 	if err != nil {
 		u.Delete()
+		return err
 	}
-	return err
+	err = u.AddRolesForEvent(permission.RoleEventUserCreate, "")
+	if err != nil {
+		log.Errorf("unable to add default roles during user creation for %q: %s", u.Email, err)
+	}
+	return nil
 }
 
 func (u *User) Delete() error {
@@ -291,4 +296,18 @@ func (u *User) RemoveRole(roleName string, contextValue string) error {
 		return err
 	}
 	return u.reload()
+}
+
+func (u *User) AddRolesForEvent(roleEvent *permission.RoleEvent, contextValue string) error {
+	roles, err := permission.ListRolesForEvent(roleEvent)
+	if err != nil {
+		return fmt.Errorf("unable to list roles: %s", err)
+	}
+	for _, r := range roles {
+		err = u.AddRole(r.Name, contextValue)
+		if err != nil {
+			return fmt.Errorf("unable to add role: %s", err)
+		}
+	}
+	return nil
 }

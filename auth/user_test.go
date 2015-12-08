@@ -394,3 +394,18 @@ func (s *S) TestListUsersWithPermissions(c *check.C) {
 	c.Assert(users, check.HasLen, 1)
 	c.Assert(users[0].Email, check.Equals, u2.Email)
 }
+
+func (s *S) TestAddRolesForEvent(c *check.C) {
+	r1, err := permission.NewRole("r1", "team")
+	c.Assert(err, check.IsNil)
+	err = r1.AddEvent(permission.RoleEventTeamCreate.String())
+	c.Assert(err, check.IsNil)
+	u1 := User{Email: "me1@tsuru.com", Password: "123"}
+	err = u1.Create()
+	c.Assert(err, check.IsNil)
+	err = u1.AddRolesForEvent(permission.RoleEventTeamCreate, "team1")
+	c.Assert(err, check.IsNil)
+	u, err := GetUserByEmail(u1.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(u.Roles, check.DeepEquals, []RoleInstance{{Name: "r1", ContextValue: "team1"}})
+}

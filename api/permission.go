@@ -287,3 +287,72 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(permList)
 }
+
+func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleDefaultCreate) {
+		return permission.ErrUnauthorized
+	}
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	for evtName := range permission.RoleEventMap {
+		roles := r.Form[evtName]
+		for _, roleName := range roles {
+			role, err := permission.FindRole(roleName)
+			if err != nil {
+				return err
+			}
+			err = role.AddEvent(evtName)
+			if err != nil {
+				if _, ok := err.(permission.ErrRoleEventWrongContext); ok {
+					return &errors.HTTP{
+						Code:    http.StatusBadRequest,
+						Message: err.Error(),
+					}
+				}
+				return err
+			}
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleDefaultDelete) {
+		return permission.ErrUnauthorized
+	}
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	for evtName := range permission.RoleEventMap {
+		roles := r.Form[evtName]
+		for _, roleName := range roles {
+			role, err := permission.FindRole(roleName)
+			if err != nil {
+				return err
+			}
+			err = role.RemoveEvent(evtName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleDefaultCreate) &&
+		!permission.Check(t, permission.PermRoleDefaultDelete) {
+		return permission.ErrUnauthorized
+	}
+	roles, err := permission.ListRolesWithEvents()
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(roles)
+}

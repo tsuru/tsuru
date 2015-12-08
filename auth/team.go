@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -62,17 +64,16 @@ func (t *Team) AllowedApps() ([]string, error) {
 
 // CreateTeam creates a team and add users to this team.
 func CreateTeam(name string, user *User) error {
+	if user == nil {
+		return errors.New("user cannot be null")
+	}
 	name = strings.TrimSpace(name)
 	if !isTeamNameValid(name) {
 		return ErrInvalidTeamName
 	}
-	var email string
-	if user != nil {
-		email = user.Email
-	}
 	team := Team{
 		Name:         name,
-		CreatingUser: email,
+		CreatingUser: user.Email,
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -83,7 +84,14 @@ func CreateTeam(name string, user *User) error {
 	if mgo.IsDup(err) {
 		return ErrTeamAlreadyExists
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	err = user.AddRolesForEvent(permission.RoleEventTeamCreate, name)
+	if err != nil {
+		log.Errorf("unable to add default roles during team %q creation for %q: %s", name, user.Email, err)
+	}
+	return nil
 }
 
 func isTeamNameValid(name string) bool {
