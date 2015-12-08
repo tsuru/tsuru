@@ -301,6 +301,12 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		for _, roleName := range roles {
 			role, err := permission.FindRole(roleName)
 			if err != nil {
+				if err == permission.ErrRoleNotFound {
+					return &errors.HTTP{
+						Code:    http.StatusBadRequest,
+						Message: err.Error(),
+					}
+				}
 				return err
 			}
 			err = role.AddEvent(evtName)
@@ -332,6 +338,12 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		for _, roleName := range roles {
 			role, err := permission.FindRole(roleName)
 			if err != nil {
+				if err == permission.ErrRoleNotFound {
+					return &errors.HTTP{
+						Code:    http.StatusBadRequest,
+						Message: err.Error(),
+					}
+				}
 				return err
 			}
 			err = role.RemoveEvent(evtName)
