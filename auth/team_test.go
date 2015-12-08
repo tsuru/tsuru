@@ -48,15 +48,17 @@ func (s *S) TestCreateTeam(c *check.C) {
 }
 
 func (s *S) TestCreateTeamDuplicate(c *check.C) {
-	err := CreateTeam("pos", nil)
+	u := User{Email: "king@pos.com"}
+	err := CreateTeam("pos", &u)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
-	err = CreateTeam("pos", nil)
+	err = CreateTeam("pos", &u)
 	c.Assert(err, check.Equals, ErrTeamAlreadyExists)
 }
 
 func (s *S) TestCreateTeamTrimsName(c *check.C) {
-	err := CreateTeam("pos    ", nil)
+	u := User{Email: "king@pos.com"}
+	err := CreateTeam("pos    ", &u)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": "pos"})
 	_, err = GetTeam("pos")
@@ -64,6 +66,7 @@ func (s *S) TestCreateTeamTrimsName(c *check.C) {
 }
 
 func (s *S) TestCreateTeamValidation(c *check.C) {
+	u := User{Email: "king@pos.com"}
 	var tests = []struct {
 		input string
 		err   error
@@ -81,7 +84,7 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		{"tsuru@corp.globo.com", nil},
 	}
 	for _, t := range tests {
-		err := CreateTeam(t.input, nil)
+		err := CreateTeam(t.input, &u)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}

@@ -16,21 +16,43 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type RoleEvent string
-
 var (
 	ErrRoleNotFound      = errors.New("role not found")
 	ErrRoleAlreadyExists = errors.New("role already exists")
+	ErrRoleEventNotFound = errors.New("role event not found")
 
-	RoleEventUserCreate = RoleEvent("user-create")
-	RoleEventTeamCreate = RoleEvent("team-create")
+	RoleEventUserCreate = &RoleEvent{name: "user-create", context: CtxGlobal}
+	RoleEventTeamCreate = &RoleEvent{name: "team-create", context: CtxTeam}
+
+	RoleEventMap = map[string]*RoleEvent{
+		RoleEventUserCreate.name: RoleEventUserCreate,
+		RoleEventTeamCreate.name: RoleEventTeamCreate,
+	}
 )
+
+type ErrRoleEventWrongContext struct {
+	expected string
+	role     string
+}
+
+func (e ErrRoleEventWrongContext) Error() string {
+	return fmt.Sprintf("wrong context type for role event, expected %q role has %q", e.expected, e.role)
+}
+
+type RoleEvent struct {
+	name    string
+	context contextType
+}
+
+func (e *RoleEvent) String() string {
+	return e.name
+}
 
 type Role struct {
 	Name        string      `bson:"_id" json:"name"`
 	ContextType contextType `json:"context"`
 	SchemeNames []string    `json:"scheme_names,omitempty"`
-	Events      []RoleEvent `json:"events,omitempty"`
+	Events      []string    `json:"events,omitempty"`
 }
 
 func NewRole(name string, ctx string) (Role, error) {
@@ -89,14 +111,17 @@ func ListRolesWithEvents() ([]Role, error) {
 	return roles, nil
 }
 
-func ListRolesForEvent(evt RoleEvent) ([]Role, error) {
+func ListRolesForEvent(evt *RoleEvent) ([]Role, error) {
+	if evt == nil {
+		return nil, errors.New("invalid role event")
+	}
 	var roles []Role
 	coll, err := rolesCollection()
 	if err != nil {
 		return roles, err
 	}
 	defer coll.Close()
-	err = coll.Find(bson.M{"events": evt}).All(&roles)
+	err = coll.Find(bson.M{"events": evt.name}).All(&roles)
 	if err != nil {
 		return nil, err
 	}
@@ -231,13 +256,20 @@ func (r *Role) PermissionsFor(contextValue string) []Permission {
 	return permissions
 }
 
-func (r *Role) AddEvent(event RoleEvent) error {
+func (r *Role) AddEvent(eventName string) error {
+	roleEvent := RoleEventMap[eventName]
+	if roleEvent == nil {
+		return ErrRoleEventNotFound
+	}
+	if r.ContextType != roleEvent.context {
+		return ErrRoleEventWrongContext{expected: string(roleEvent.context), role: string(r.ContextType)}
+	}
 	coll, err := rolesCollection()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	err = coll.UpdateId(r.Name, bson.M{"$addToSet": bson.M{"events": event}})
+	err = coll.UpdateId(r.Name, bson.M{"$addToSet": bson.M{"events": eventName}})
 	if err != nil {
 		return err
 	}
@@ -249,13 +281,13 @@ func (r *Role) AddEvent(event RoleEvent) error {
 	return nil
 }
 
-func (r *Role) RemoveEvent(event RoleEvent) error {
+func (r *Role) RemoveEvent(eventName string) error {
 	coll, err := rolesCollection()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	err = coll.UpdateId(r.Name, bson.M{"$pull": bson.M{"events": event}})
+	err = coll.UpdateId(r.Name, bson.M{"$pull": bson.M{"events": eventName}})
 	if err != nil {
 		return err
 	}
