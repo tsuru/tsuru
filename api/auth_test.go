@@ -1092,6 +1092,31 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	c.Assert(users, check.DeepEquals, []string{s.user.Email})
 }
 
+func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("DELETE", "/users?user="+u.Email, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeUser(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
+	action := rectest.Action{Action: "remove-user", User: u.Email}
+	c.Assert(action, rectest.IsRecorded)
+	users := repositorytest.Users()
+	sort.Strings(users)
+	c.Assert(users, check.DeepEquals, []string{s.user.Email})
+}
+
 func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()

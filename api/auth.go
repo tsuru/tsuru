@@ -344,7 +344,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	email := r.URL.Query().Get("user")
-	if email != "" {
+	if email != "" && u.Email != email {
 		if !permission.Check(t, permission.PermUserDelete) {
 			return permission.ErrUnauthorized
 		}
