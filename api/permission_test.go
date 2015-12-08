@@ -413,6 +413,23 @@ func (s *S) TestAddDefaultRoleIncompatibleContext(c *check.C) {
 	c.Assert(rec.Body.String(), check.Equals, "wrong context type for role event, expected \"global\" role has \"team\"\n")
 }
 
+func (s *S) TestAddDefaultRoleInvalidRole(c *check.C) {
+	rec := httptest.NewRecorder()
+	body := bytes.NewBufferString("user-create=invalid")
+	req, err := http.NewRequest("POST", "/role/default", body)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleDefaultCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(rec.Body.String(), check.Equals, "role not found\n")
+}
+
 func (s *S) TestRemoveDefaultRole(c *check.C) {
 	r1, err := permission.NewRole("r1", "team")
 	c.Assert(err, check.IsNil)
