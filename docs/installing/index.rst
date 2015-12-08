@@ -32,5 +32,5 @@ ride.
 
     gandalf
     api
-    hipache-router
+    planb-router
     adding-nodes
