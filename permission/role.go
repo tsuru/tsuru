@@ -21,8 +21,16 @@ var (
 	ErrRoleAlreadyExists = errors.New("role already exists")
 	ErrRoleEventNotFound = errors.New("role event not found")
 
-	RoleEventUserCreate = &RoleEvent{name: "user-create", context: CtxGlobal}
-	RoleEventTeamCreate = &RoleEvent{name: "team-create", context: CtxTeam}
+	RoleEventUserCreate = &RoleEvent{
+		name:        "user-create",
+		context:     CtxGlobal,
+		Description: "role added to user when they're created",
+	}
+	RoleEventTeamCreate = &RoleEvent{
+		name:        "team-create",
+		context:     CtxTeam,
+		Description: "role added to user when they create a new team",
+	}
 
 	RoleEventMap = map[string]*RoleEvent{
 		RoleEventUserCreate.name: RoleEventUserCreate,
@@ -40,8 +48,9 @@ func (e ErrRoleEventWrongContext) Error() string {
 }
 
 type RoleEvent struct {
-	name    string
-	context contextType
+	name        string
+	context     contextType
+	Description string
 }
 
 func (e *RoleEvent) String() string {
