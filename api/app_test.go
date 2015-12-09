@@ -3623,6 +3623,57 @@ func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *chec
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
+func (s *S) TestWakeupHandler(c *check.C) {
+	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/wakeup?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = wakeup(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	action := rectest.Action{
+		Action: "wakeup",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestWakeupHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("POST", "/apps/unknown/wakeup?:app=unknown", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = wakeup(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestWakeupHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
+	a := app.App{Name: "nightmist"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.logConn.Logs(a.Name).DropCollection()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateSleep,
+		Context: permission.Context(permission.CtxApp, "-invalid-"),
+	})
+	url := fmt.Sprintf("/apps/%s/wakeup?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = wakeup(recorder, request, token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+}
+
 type LogList []app.Applog
 
 func (l LogList) Len() int           { return len(l) }
