@@ -391,6 +391,13 @@ func (p *FakeProvisioner) Sleeps(app provision.App, process string) int {
 	return p.apps[app.GetName()].sleeps[process]
 }
 
+// Wakeups returns the number of wakeups for a given app.
+func (p *FakeProvisioner) Wakeups(app provision.App, process string) int {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].wakeups[process]
+}
+
 func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
@@ -574,6 +581,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
 		sleeps:   make(map[string]int),
+		wakeups:  make(map[string]int),
 	}
 	return nil
 }
@@ -933,6 +941,17 @@ func (p *FakeProvisioner) Sleep(app provision.App, process string) error {
 	return nil
 }
 
+func (p *FakeProvisioner) Wakeup(app provision.App, process string) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	pApp.wakeups[process]++
+	return nil
+}
+
 func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
@@ -1086,6 +1105,7 @@ type provisionedApp struct {
 	starts      map[string]int
 	stops       map[string]int
 	sleeps      map[string]int
+	wakeups     map[string]int
 	version     string
 	lastArchive string
 	lastFile    io.ReadCloser
