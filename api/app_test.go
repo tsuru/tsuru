@@ -3660,7 +3660,7 @@ func (s *S) TestWakeupHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateSleep,
+		Scheme:  permission.PermAppUpdateWakeup,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
 	url := fmt.Sprintf("/apps/%s/wakeup?:app=%s", a.Name, a.Name)
