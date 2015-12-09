@@ -158,6 +158,14 @@ func (s *Storage) Quota() *storage.Collection {
 	return c
 }
 
+// SAMLRequests returns the samlrequest from MongoDB.
+func (s *Storage) SAMLRequests() *storage.Collection {
+	id := mgo.Index{Key: []string{"id"}}
+	coll := s.Collection("saml_requests")
+	coll.EnsureIndex(id)
+	return coll
+}
+
 var logCappedInfo = mgo.CollectionInfo{
 	Capped:       true,
 	MaxBytes:     200 * 5000,

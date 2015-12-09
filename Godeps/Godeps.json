@@ -320,6 +320,11 @@
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
+		},
+		{
+			"ImportPath": "github.com/diego-araujo/go-saml",
+			"Comment": "v0.1",
+			"Rev": "074144d4698d43a0ae098653d07578c04c6d46fd"
 		}
 	]
 }
