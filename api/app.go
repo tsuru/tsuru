@@ -1143,7 +1143,7 @@ func wakeup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "wakeup", "app="+appName)
-	return a.Sleep(w, process)
+	return a.Wakeup(w, process)
 }
 
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
