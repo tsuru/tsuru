@@ -79,6 +79,7 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 		"Id":          si.Id,
 		"Name":        si.Name,
 		"Teams":       si.Teams,
+		"PlanName":    si.PlanName,
 		"Apps":        si.Apps,
 		"ServiceName": si.ServiceName,
 		"Info":        info,
