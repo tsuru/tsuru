@@ -837,6 +837,10 @@ func (app *App) Stop(w io.Writer, process string) error {
 	return nil
 }
 
+func (app *App) Sleep(w io.Writer, process string) error {
+	return nil
+}
+
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() ([]bind.Unit, error) {
 	var units []bind.Unit
