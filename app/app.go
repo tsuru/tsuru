@@ -838,6 +838,16 @@ func (app *App) Stop(w io.Writer, process string) error {
 }
 
 func (app *App) Sleep(w io.Writer, process string) error {
+	msg := fmt.Sprintf("\n ---> Putting the process %q to sleep\n", process)
+	if process == "" {
+		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep\n", app.Name)
+	}
+	log.Write(w, []byte(msg))
+	err := Provisioner.Sleep(app, process)
+	if err != nil {
+		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+		return err
+	}
 	return nil
 }
 
