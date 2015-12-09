@@ -361,6 +361,20 @@ func (s *S) TestSleeps(c *check.C) {
 	c.Assert(p.Sleeps(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
 }
 
+func (s *S) TestWakeups(c *check.C) {
+	app1 := NewFakeApp("fairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	p := NewFakeProvisioner()
+	p.apps = map[string]provisionedApp{
+		app1.GetName(): {app: app1, wakeups: map[string]int{"web": 10, "worker": 1}},
+		app2.GetName(): {app: app1, wakeups: map[string]int{"": 0}},
+	}
+	c.Assert(p.Wakeups(app1, "web"), check.Equals, 10)
+	c.Assert(p.Wakeups(app1, "worker"), check.Equals, 1)
+	c.Assert(p.Wakeups(app2, ""), check.Equals, 0)
+	c.Assert(p.Wakeups(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
+}
+
 func (s *S) TestGetCmds(c *check.C) {
 	app := NewFakeApp("enemy-within", "rush", 1)
 	p := NewFakeProvisioner()
@@ -579,6 +593,15 @@ func (s *S) TestSleep(c *check.C) {
 	err := p.Sleep(app, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Sleeps(app, ""), check.Equals, 1)
+}
+
+func (s *S) TestWakeup(c *check.C) {
+	app := NewFakeApp("kid-gloves", "rush", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	err := p.Wakeup(app, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Wakeups(app, ""), check.Equals, 1)
 }
 
 func (s *S) TestRestartNotProvisioned(c *check.C) {
