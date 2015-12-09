@@ -326,6 +326,21 @@ func (p *dockerProvisioner) Stop(app provision.App, process string) error {
 	}, nil, true)
 }
 
+func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
+	containers, err := p.listContainersByProcess(app.GetName(), process)
+	if err != nil {
+		log.Errorf("Got error while getting app containers: %s", err)
+		return nil
+	}
+	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
+		err := c.Stop(p)
+		if err != nil {
+			log.Errorf("Failed to sleep %q: %s", app.GetName(), err)
+		}
+		return err
+	}, nil, true)
+}
+
 func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := getRouterForApp(app1)
 	if err != nil {
