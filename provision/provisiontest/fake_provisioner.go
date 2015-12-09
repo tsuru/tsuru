@@ -925,6 +925,11 @@ func (p *FakeProvisioner) Sleep(app provision.App, process string) error {
 		return errNotProvisioned
 	}
 	pApp.sleeps[process]++
+	for i, u := range pApp.units {
+		u.Status = provision.StatusSlept
+		pApp.units[i] = u
+	}
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
