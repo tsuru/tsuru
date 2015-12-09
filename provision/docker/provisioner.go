@@ -342,7 +342,7 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 }
 
 func (p *dockerProvisioner) Wakeup(app provision.App, process string) error {
-	return nil
+	return p.Start(app, process)
 }
 
 func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
