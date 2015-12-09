@@ -1133,7 +1133,7 @@ func wakeup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateSleep,
+	allowed := permission.Check(t, permission.PermAppUpdateWakeup,
 		append(permission.Contexts(permission.CtxTeam, a.Teams),
 			permission.Context(permission.CtxApp, a.Name),
 			permission.Context(permission.CtxPool, a.Pool),

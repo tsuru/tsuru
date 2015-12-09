@@ -32,6 +32,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.plan",
 	"app.update.bind",
 	"app.update.unbind",
+	"app.update.wakeup",
 	"app.deploy",
 	"app.deploy.rollback",
 	"app.read",
