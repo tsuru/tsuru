@@ -949,6 +949,11 @@ func (p *FakeProvisioner) Wakeup(app provision.App, process string) error {
 		return errNotProvisioned
 	}
 	pApp.wakeups[process]++
+	for i, u := range pApp.units {
+		u.Status = provision.StatusStarted
+		pApp.units[i] = u
+	}
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
