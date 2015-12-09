@@ -235,7 +235,7 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	err = ValidateResponse(response,sp)
 	if err != nil {	
 		log.Errorf("Got error while validing IDP data %s: %s",  err)
-		 if strings.Contains(err.Error(), "assertion has expired") {
+		if strings.Contains(err.Error(), "assertion has expired") {
 		 	return  ErrRequestNotFound
 	 	}
 		

@@ -323,8 +323,8 @@
 		},
 		{
 			"ImportPath": "github.com/diego-araujo/go-saml",
-			"Comment": "v0.1",
-			"Rev": "074144d4698d43a0ae098653d07578c04c6d46fd"
+			"Comment": "v0.2",
+			"Rev": "83716ce8996d95d70cc5d496b9bd6dfc4b8b64f9"
 		}
 	]
 }

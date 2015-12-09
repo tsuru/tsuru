@@ -62,5 +62,19 @@ func  ValidateResponse(r *saml.Response, sp *saml.ServiceProviderSettings) error
     	return err
   	}
 
+	if sp.IDPSignResponse {
+	  	err := r.ValidateResponseSignature(sp)
+	  	if err != nil {
+	    	return err
+	  	}
+	}
+
+  	err = r.ValidateExpiredConfirmation(sp)
+  	if err != nil {
+    	return err
+  	}
+
+  	
+
   	return nil
 }
