@@ -6,17 +6,13 @@ package saml
 
 import (
 	"time"
-
 	"encoding/base64"
+	"bytes"
+	"io"
+	"os"
+
 	"gopkg.in/check.v1"
-
-"bytes"
-"io"
-
-	    "os"
-
-
-	    	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth"
 )
 
 
