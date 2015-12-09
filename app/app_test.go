@@ -2090,6 +2090,28 @@ func (s *S) TestStop(c *check.C) {
 	}
 }
 
+func (s *S) TestSleep(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("not yaml")) // loadConf
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	var b bytes.Buffer
+	err = a.Start(&b, "")
+	c.Assert(err, check.IsNil)
+
+	err = a.Sleep(&b, "")
+	c.Assert(err, check.IsNil)
+	sleeps := s.provisioner.Sleeps(&a, "")
+	c.Assert(sleeps, check.Equals, 1)
+}
+
 func (s *S) TestLog(c *check.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
