@@ -3609,14 +3609,14 @@ func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *chec
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateRestart,
+		Scheme:  permission.PermAppUpdateSleep,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
 	url := fmt.Sprintf("/apps/%s/sleep?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	err = restart(recorder, request, token)
+	err = sleep(recorder, request, token)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
