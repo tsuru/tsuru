@@ -38,6 +38,7 @@ var (
 	PermAppUpdatePool               = PermissionRegistry.get("app.update.pool")
 	PermAppUpdateRestart            = PermissionRegistry.get("app.update.restart")
 	PermAppUpdateRevoke             = PermissionRegistry.get("app.update.revoke")
+	PermAppUpdateSleep              = PermissionRegistry.get("app.update.sleep")
 	PermAppUpdateStart              = PermissionRegistry.get("app.update.start")
 	PermAppUpdateStop               = PermissionRegistry.get("app.update.stop")
 	PermAppUpdateSwap               = PermissionRegistry.get("app.update.swap")

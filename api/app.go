@@ -1108,7 +1108,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateRestart,
+	allowed := permission.Check(t, permission.PermAppUpdateSleep,
 		append(permission.Contexts(permission.CtxTeam, a.Teams),
 			permission.Context(permission.CtxApp, a.Name),
 			permission.Context(permission.CtxPool, a.Pool),
