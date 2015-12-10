@@ -485,8 +485,12 @@ func (c *Container) startWithPortSearch(p DockerProvisioner, hostConfig *docker.
 		if err != nil {
 			return err
 		}
-		portStr := strconv.Itoa(port)
-		for _, used := usedPorts[portStr]; used; port++ {
+		var portStr string
+		for ; port <= portRangeEnd; port++ {
+			portStr = strconv.Itoa(port)
+			if _, used := usedPorts[portStr]; !used {
+				break
+			}
 		}
 		if port > portRangeEnd {
 			break
