@@ -119,8 +119,6 @@ func (d *logDispatcher) Send(msg *Applog) error {
 		close(appD.msgCh)
 		delete(d.dispatchers, appName)
 		return err
-	default:
-		fmt.Println("dropping message, buffer full")
 	}
 	return nil
 }
@@ -165,8 +163,7 @@ func newAppLogDispatcher(appName string) *appLogDispatcher {
 
 func (d *appLogDispatcher) runFlusher() {
 	defer close(d.errCh)
-	t := time.NewTicker(bulkMaxWaitTime)
-	defer t.Stop()
+	t := time.NewTimer(bulkMaxWaitTime)
 	bulkBuffer := make([]interface{}, 0, 100)
 	conn, err := db.LogConn()
 	if err != nil {
@@ -183,6 +180,9 @@ func (d *appLogDispatcher) runFlusher() {
 		case msg := <-d.toFlush:
 			bulkBuffer = append(bulkBuffer, msg)
 			flush = len(bulkBuffer) == cap(bulkBuffer)
+			if !flush {
+				t.Reset(bulkMaxWaitTime)
+			}
 		case <-t.C:
 			flush = len(bulkBuffer) > 0
 		}
