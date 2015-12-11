@@ -40,7 +40,7 @@ func addLogs(ws *websocket.Conn) {
 		err = fmt.Errorf("wslogs: invalid token app name: %q", t.GetAppName())
 		return
 	}
-	logCh, errCh := app.LogReceiver()
+	dispatcher := app.NewlogDispatcher()
 	scanner := bufio.NewScanner(ws)
 	for scanner.Scan() {
 		var entry app.Applog
@@ -50,26 +50,26 @@ func addLogs(ws *websocket.Conn) {
 		}
 		err = json.Unmarshal(data, &entry)
 		if err != nil {
-			close(logCh)
+			dispatcher.Stop()
 			err = fmt.Errorf("wslogs: parsing log line %q: %s", string(data), err)
 			return
 		}
-		select {
-		case logCh <- &entry:
-		case err = <-errCh:
-			close(logCh)
-			err = fmt.Errorf("wslogs: storing log: %s", err)
-			return
+		err = dispatcher.Send(&entry)
+		if err != nil {
+			// Do not disconnect by returning here, dispatcher will already
+			// retry db connection and we gain nothing by ending the WS
+			// connection.
+			log.Errorf("wslogs: error storing log: %s", err)
 		}
 	}
-	close(logCh)
+	err = dispatcher.Stop()
+	if err != nil {
+		err = fmt.Errorf("wslogs: error storing log: %s", err)
+		return
+	}
 	err = scanner.Err()
 	if err != nil {
 		err = fmt.Errorf("wslogs: waiting for log data: %s", err)
 		return
-	}
-	err = <-errCh
-	if err != nil {
-		err = fmt.Errorf("wslogs: storing log: %s", err)
 	}
 }
