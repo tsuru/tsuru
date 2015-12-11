@@ -5,7 +5,6 @@
 package cmd
 
 import (
-
 	"net/http"
 	"net/http/httptest"
 	"os"

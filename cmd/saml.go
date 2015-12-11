@@ -8,13 +8,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"html/template"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/tsuru/tsuru/auth/saml"
 )
@@ -49,13 +49,12 @@ const errorSamlCallBackMarkup = `
 `
 
 func SamlCallbackSuccessMessage() string {
-	return successSamlCallBackMarkup;
+	return successSamlCallBackMarkup
 }
 
 func SamlCallbackFailureMessage() string {
-	return errorSamlCallBackMarkup;
+	return errorSamlCallBackMarkup
 }
-
 
 func samlRequestId(schemeData map[string]string) string {
 	p := schemeData["request_id"]
@@ -65,12 +64,12 @@ func samlRequestId(schemeData map[string]string) string {
 //Return timeout in seconds
 func samlRequestTimeout(schemeData map[string]string) int {
 	p := schemeData["request_timeout"]
- 	i, _ := strconv.Atoi(p)
-	return i*60
+	i, _ := strconv.Atoi(p)
+	return i * 60
 }
 
 func samlPreLogin(schemeData map[string]string, finish chan bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {	
+	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			finish <- true
 		}()
@@ -80,7 +79,7 @@ func samlPreLogin(schemeData map[string]string, finish chan bool) http.HandlerFu
 			page := fmt.Sprintf(errorSamlCallBackMarkup, err.Error())
 			w.Header().Add("Content-Type", "text/html")
 			w.Write([]byte(page))
-		}else {
+		} else {
 			t.Execute(w, schemeData)
 		}
 
@@ -88,17 +87,16 @@ func samlPreLogin(schemeData map[string]string, finish chan bool) http.HandlerFu
 	}
 }
 
-func requestToken(schemeData map[string]string)  (string, error) {
-	
-	maxRetries := samlRequestTimeout(schemeData)-7		
+func requestToken(schemeData map[string]string) (string, error) {
+
+	maxRetries := samlRequestTimeout(schemeData) - 7
 	time.Sleep(5 * time.Second)
 
 	id := samlRequestId(schemeData)
 	params := map[string]string{"request_id": id}
 
+	for count := 0; count <= maxRetries; count += 2 {
 
-	for count := 0; count <= maxRetries; count+=2 {
-			
 		u, err := GetURL("/auth/login")
 		if err != nil {
 			return "", fmt.Errorf("Error in GetURL: %s", err.Error())
@@ -128,7 +126,7 @@ func requestToken(schemeData map[string]string)  (string, error) {
 		}
 
 		data := make(map[string]interface{})
-		err = json.Unmarshal(result, &data)	
+		err = json.Unmarshal(result, &data)
 		if err != nil {
 			return "", fmt.Errorf("API response: %s", result)
 		}
@@ -143,7 +141,7 @@ func requestToken(schemeData map[string]string)  (string, error) {
 func (c *login) samlLogin(context *Context, client *Client) error {
 	//loadExpireTime()
 	schemeData := c.getScheme().Data
-	
+
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return err
@@ -166,20 +164,20 @@ func (c *login) samlLogin(context *Context, client *Client) error {
 
 	<-finish
 
-	token , err := requestToken(schemeData)
-	
+	token, err := requestToken(schemeData)
+
 	switch err {
-		case nil: 
-			writeToken(token)
-			fmt.Fprintln(context.Stdout, "\nSuccessfully logged in! \n")
-			break
+	case nil:
+		writeToken(token)
+		fmt.Fprintln(context.Stdout, "\nSuccessfully logged in!")
+		break
 
-		case saml.ErrRequestWaitingForCredentials:
-			fmt.Fprintln(context.Stdout, "\nLogin failed! Timeout waiting for credentials from IDP, please try again.\n")
-			break
+	case saml.ErrRequestWaitingForCredentials:
+		fmt.Fprintln(context.Stdout, "\nLogin failed! Timeout waiting for credentials from IDP, please try again.")
+		break
 
-		default :
-			fmt.Fprintln(context.Stdout, "\nLogin failed for some reason, please try again: "+err.Error())
+	default:
+		fmt.Fprintln(context.Stdout, "\nLogin failed for some reason, please try again: "+err.Error())
 
 	}
 

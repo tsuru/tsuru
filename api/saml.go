@@ -5,19 +5,19 @@
 package api
 
 import (
-	"net/http"
 	"fmt"
-		
-	"github.com/tsuru/tsuru/errors"
-	saml "github.com/tsuru/tsuru/auth/saml"
-	"github.com/tsuru/tsuru/auth"
+	"net/http"
+
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	saml "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/cmd"
-	)
+	"github.com/tsuru/tsuru/errors"
+)
 
 func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 	if app.AuthScheme.Name() != "saml" {
-	return &errors.HTTP{
+		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "This URL is only supported with saml enabled",
 		}
@@ -29,9 +29,9 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	w.Header().Set("Content-Type", "application/xml")
-    w.Write([]byte(page))
+	w.Write([]byte(page))
 
-    return nil
+	return nil
 }
 
 func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
@@ -58,9 +58,9 @@ func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		msg := fmt.Sprintf(cmd.SamlCallbackFailureMessage(), err.Error())
 		fmt.Fprintf(w, msg)
-	}else{
+	} else {
 		fmt.Fprintf(w, cmd.SamlCallbackSuccessMessage())
 	}
-	
+
 	return nil
 }

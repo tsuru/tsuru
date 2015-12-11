@@ -10,6 +10,9 @@ addons:
   apt:
     packages:
       - rsyslog
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install xmlsec1 -y
 install:
   - make get
 before_script:

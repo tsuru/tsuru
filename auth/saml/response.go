@@ -5,26 +5,26 @@
 package saml
 
 import (
-	"time"
 	"fmt"
-	
-	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/config"
+	"time"
+
 	saml "github.com/diego-araujo/go-saml"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/errors"
 )
 
 var (
-	ErrRequestIdNotFound =  &errors.ValidationError{Message: "Field InResponseTo not found in saml response data"} 
-	ErrCheckSignature =  &errors.ValidationError{Message: "SAMLResponse signature validation"} 
+	ErrRequestIdNotFound = &errors.ValidationError{Message: "Field InResponseTo not found in saml response data"}
+	ErrCheckSignature    = &errors.ValidationError{Message: "SAMLResponse signature validation"}
 )
 
 type Response struct {
-	ID     string    `json:"id"`
-	Creation  time.Time     `json:"creation"`
+	ID       string    `json:"id"`
+	Creation time.Time `json:"creation"`
 }
 
-func GetRequestIdFromResponse(r *saml.Response) (string, error){
-	
+func GetRequestIdFromResponse(r *saml.Response) (string, error) {
+
 	var idRequest string
 
 	if r.IsEncrypted() {
@@ -33,14 +33,14 @@ func GetRequestIdFromResponse(r *saml.Response) (string, error){
 		idRequest = r.Assertion.Subject.SubjectConfirmation.SubjectConfirmationData.InResponseTo
 	}
 
-	if (idRequest == ""){
-		return "",ErrRequestIdNotFound
+	if idRequest == "" {
+		return "", ErrRequestIdNotFound
 	}
 
 	return idRequest, nil
 }
 
-func  GetUserIdentity(r *saml.Response) (string, error){
+func GetUserIdentity(r *saml.Response) (string, error) {
 
 	attrFriendlyNameIdentifier, err := config.GetString("auth:saml:idp-attribute-user-identity")
 	if err != nil {
@@ -48,33 +48,31 @@ func  GetUserIdentity(r *saml.Response) (string, error){
 	}
 
 	userIdentifier := r.GetAttribute(attrFriendlyNameIdentifier)
-	if userIdentifier == ""{
-	        return "", fmt.Errorf("unable to parse identity provider data - not found  <Attribute FriendlyName="+attrFriendlyNameIdentifier+">  - %s ", err) 
+	if userIdentifier == "" {
+		return "", fmt.Errorf("unable to parse identity provider data - not found  <Attribute FriendlyName="+attrFriendlyNameIdentifier+">  - %s ", err)
 	}
 
 	return userIdentifier, nil
 }
 
-func  ValidateResponse(r *saml.Response, sp *saml.ServiceProviderSettings) error {
+func ValidateResponse(r *saml.Response, sp *saml.ServiceProviderSettings) error {
 
 	err := r.Validate(sp)
-  	if err != nil {
-    	return err
-  	}
-
-	if sp.IDPSignResponse {
-	  	err := r.ValidateResponseSignature(sp)
-	  	if err != nil {
-	    	return err
-	  	}
+	if err != nil {
+		return err
 	}
 
-  	err = r.ValidateExpiredConfirmation(sp)
-  	if err != nil {
-    	return err
-  	}
+	if sp.IDPSignResponse {
+		err := r.ValidateResponseSignature(sp)
+		if err != nil {
+			return err
+		}
+	}
 
-  	
+	err = r.ValidateExpiredConfirmation(sp)
+	if err != nil {
+		return err
+	}
 
-  	return nil
+	return nil
 }

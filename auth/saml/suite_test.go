@@ -38,7 +38,7 @@ func (s *S) SetUpSuite(c *check.C) {
 		w.Write([]byte(s.rsps[r.URL.Path]))
 	}))
 
-	config.Set("host","http://192.168.50.4.nip.io:8080")
+	config.Set("host", "http://192.168.50.4.nip.io:8080")
 	config.Set("auth:saml:sp-publiccert", "testdata/pub.crt")
 	config.Set("auth:saml:sp-privatekey", "testdata/priv.key")
 	config.Set("auth:saml:idp-ssourl", "http://idp-service-url.com")
@@ -48,8 +48,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:saml:sp-sign-request", true)
 	config.Set("auth:saml:idp-sign-response", true)
 	config.Set("auth:saml:request-expire-seconds", 60)
-	config.Set("auth:user-registration",true)
-	config.Set("auth:saml:idp-attribute-user-identity","eduPersonPrincipalName")
+	config.Set("auth:user-registration", true)
+	config.Set("auth:saml:idp-attribute-user-identity", "eduPersonPrincipalName")
 
 }
 

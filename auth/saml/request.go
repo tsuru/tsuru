@@ -5,30 +5,29 @@
 package saml
 
 import (
-
-	"time"
-	"strconv"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2/bson"
-	"github.com/tsuru/tsuru/errors"
 )
 
 var (
-	requestExpire time.Duration
-	defaultRequestExpiration =  3 * 60 * time.Second
-	ErrRequestNotFound = &errors.ValidationError{Message: "request not found or expired"}
+	requestExpire            time.Duration
+	defaultRequestExpiration = 3 * 60 * time.Second
+	ErrRequestNotFound       = &errors.ValidationError{Message: "request not found or expired"}
 )
 
 type Request struct {
-	ID     string    `json:"id"`
-	Creation  time.Time     `json:"creation"`
-	Expires   time.Time `json:"expires"`
-	Email   string `json:"email"`
-	Authed   bool `json:"authed"`
+	ID       string    `json:"id"`
+	Creation time.Time `json:"creation"`
+	Expires  time.Time `json:"expires"`
+	Email    string    `json:"email"`
+	Authed   bool      `json:"authed"`
 }
 
 func loadExpireTime() error {
@@ -40,16 +39,16 @@ func loadExpireTime() error {
 		} else {
 			requestExpire = defaultRequestExpiration
 		}
-		
+
 	}
 	return nil
 }
 
-func  (r *Request) GetExpireTimeOut() int {
+func (r *Request) GetExpireTimeOut() int {
 	sec, err := config.GetInt("auth:saml:request-expire-seconds")
 
 	if err != nil {
-		sec, _ = strconv.Atoi(fmt.Sprintf("%d",defaultRequestExpiration/time.Second))
+		sec, _ = strconv.Atoi(fmt.Sprintf("%d", defaultRequestExpiration/time.Second))
 		log.Debugf("auth:saml:request-expire-seconds not found using default: %s", sec)
 	}
 	return sec
@@ -64,10 +63,10 @@ func (r *Request) Create(ar *AuthnRequestData) (*Request, error) {
 	if ar.ID == "" {
 		return nil, &errors.ValidationError{Message: "Impossible get ID from AuthnRequest"}
 	}
-	
+
 	r.ID = ar.ID
 	r.Creation = time.Now()
-	r.Expires =  time.Now().Add(requestExpire)
+	r.Expires = time.Now().Add(requestExpire)
 	r.Authed = false
 
 	conn, err := db.Conn()
@@ -75,7 +74,7 @@ func (r *Request) Create(ar *AuthnRequestData) (*Request, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	
+
 	err = conn.SAMLRequests().Insert(r)
 	if err != nil {
 		return nil, err
@@ -102,15 +101,15 @@ func GetRequestById(id string) (Request, error) {
 }
 
 func (req *Request) GetEmail() string {
-	return req.Email;
+	return req.Email
 }
 
 func (req *Request) SetAuth(auth bool) {
-	req.Authed = true;
+	req.Authed = true
 }
 
 func (req *Request) SetEmail(email string) {
-	req.Email = email;
+	req.Email = email
 }
 
 func (req *Request) Update() error {
@@ -124,12 +123,12 @@ func (req *Request) Update() error {
 }
 
 func (req *Request) Remove() error {
-conn, err := db.Conn()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = conn.SAMLRequests().RemoveAll(bson.M{"id": req.ID} )
+	_, err = conn.SAMLRequests().RemoveAll(bson.M{"id": req.ID})
 	return err
 
 }
@@ -140,6 +139,6 @@ func removeOldTRequests() error {
 		return err
 	}
 	defer conn.Close()
-	_, err = conn.SAMLRequests().RemoveAll(bson.M{"expires": bson.M{"$lt": time.Now()}, "authed" : false} )
+	_, err = conn.SAMLRequests().RemoveAll(bson.M{"expires": bson.M{"$lt": time.Now()}, "authed": false})
 	return err
 }

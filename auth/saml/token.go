@@ -70,7 +70,7 @@ func loadConfig() error {
 		} else {
 			tokenExpire = defaultExpiration
 		}
-		
+
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func createToken(u *auth.User) (*Token, error) {
 	if u.Email == "" {
 		return nil, errors.New("User does not have an email")
 	}
-	
+
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -198,23 +198,4 @@ func deleteAllTokens(email string) error {
 	defer conn.Close()
 	_, err = conn.Tokens().RemoveAll(bson.M{"useremail": email})
 	return err
-}
-
-func createApplicationToken(appName string) (*Token, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	t := Token{
-		Token:    token(appName, crypto.SHA1),
-		Creation: time.Now(),
-		Expires:  0,
-		AppName:  appName,
-	}
-	err = conn.Tokens().Insert(t)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
 }

@@ -5,16 +5,15 @@
 package saml
 
 import (
-	"time"
-	"encoding/base64"
 	"bytes"
+	"encoding/base64"
 	"io"
 	"os"
+	"time"
 
-	"gopkg.in/check.v1"
 	"github.com/tsuru/tsuru/auth"
+	"gopkg.in/check.v1"
 )
-
 
 func (s *S) TestSamlMetadata(c *check.C) {
 
@@ -22,7 +21,7 @@ func (s *S) TestSamlMetadata(c *check.C) {
 
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.NotNil)
-	
+
 }
 
 func (s *S) TestSamlAuthLoginWithEmptyRequestId(c *check.C) {
@@ -43,14 +42,12 @@ func (s *S) TestSamlAuthLoginWithInvalidRequestId(c *check.C) {
 	c.Assert(err, check.Equals, ErrRequestNotFound)
 }
 
-
-
 func (s *S) TestSamlAuthLoginWithExpiredRequest(c *check.C) {
 
 	r := Request{}
 	r.ID = "_b533e78c-9c8f-49c6-4dc0-377dd47ed423"
 	r.Creation = time.Now()
-	r.Expires =  time.Now().Add(1* time.Second)
+	r.Expires = time.Now().Add(1 * time.Second)
 	r.Authed = false
 	err := s.conn.SAMLRequests().Insert(r)
 	c.Assert(err, check.IsNil)
@@ -63,18 +60,17 @@ func (s *S) TestSamlAuthLoginWithExpiredRequest(c *check.C) {
 	params["callback"] = "true"
 	params["xml"] = xml
 	scheme := SAMLAuthScheme{}
-	_,err = scheme.Login(params)
-	c.Assert(err,check.Equals, ErrRequestNotFound)
+	_, err = scheme.Login(params)
+	c.Assert(err, check.Equals, ErrRequestNotFound)
 }
 
-func readRespFromFile()(string){
+func readRespFromFile() string {
 	buf := bytes.NewBuffer(nil)
 	f, _ := os.Open("testdata/resp.xml") // Error handling elided for brevity.
-	io.Copy(buf, f)           // Error handling elided for brevity.
+	io.Copy(buf, f)                      // Error handling elided for brevity.
 	f.Close()
 	return string(buf.Bytes())
 }
-
 
 func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 
@@ -82,7 +78,7 @@ func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 	r := Request{}
 	r.ID = "_a83cd40f-db9c-4366-6bc0-1171655daf5f"
 	r.Creation = time.Now()
-	r.Expires =  time.Now().Add(3 * 60 * time.Second)
+	r.Expires = time.Now().Add(3 * 60 * time.Second)
 	r.Authed = false
 	err := s.conn.SAMLRequests().Insert(r)
 	c.Assert(err, check.IsNil)
@@ -94,22 +90,22 @@ func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 	//Parse xml
 	response, err := scheme.Parse(b64Xml)
 	c.Assert(err, check.IsNil)
-	c.Assert(response,  check.NotNil)
+	c.Assert(response, check.NotNil)
 
 	requestId, err := GetRequestIdFromResponse(response)
 	c.Assert(requestId, check.Equals, r.ID)
 
-	request ,err := GetRequestById(requestId)
+	request, err := GetRequestById(requestId)
 	c.Assert(err, check.IsNil)
-	c.Assert(request,  check.NotNil)
+	c.Assert(request, check.NotNil)
 
 	email, err := GetUserIdentity(response)
 	c.Assert(err, check.IsNil)
-	c.Assert(email, check.Equals,"nuvem-teste@usp.br")
+	c.Assert(email, check.Equals, "nuvem-teste@usp.br")
 }
 
 func (s *S) TestSamlAuthLoginValidRequestIdUserNotAuthed(c *check.C) {
-	
+
 	scheme := SAMLAuthScheme{}
 	info, err := scheme.Info()
 	params := make(map[string]string)
@@ -118,7 +114,6 @@ func (s *S) TestSamlAuthLoginValidRequestIdUserNotAuthed(c *check.C) {
 	_, err = scheme.Login(params)
 	c.Assert(err, check.Equals, ErrRequestWaitingForCredentials)
 }
-
 
 func (s *S) TestSamlCallbackWithEmptyResponse(c *check.C) {
 	params := make(map[string]string)
@@ -138,7 +133,6 @@ func (s *S) TestSamlCallbackWithInvalidResponse(c *check.C) {
 	_, err := scheme.Login(params)
 	c.Assert(err, check.Equals, ErrParseResponseError)
 }
-
 
 func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *check.C) {
 	t, err := newUserToken(nil)
@@ -164,14 +158,12 @@ func (s *S) TestSamlAuthInfo(c *check.C) {
 	c.Assert(info["request_timeout"], check.Equals, "60")
 }
 
-
-
 func (s *S) TestSamlAuth(c *check.C) {
-	
+
 	user := auth.User{Email: "x@x.com"}
-	token, _  := createToken(&user)
+	token, _ := createToken(&user)
 	scheme := SAMLAuthScheme{}
-	strtoken, err := scheme.Auth("bearer "+token.GetValue())
+	strtoken, err := scheme.Auth("bearer " + token.GetValue())
 	c.Assert(err, check.IsNil)
 	//c.Assert(len(s.reqs), check.Equals, 1)
 	//c.Assert(s.reqs[0].URL.Path, check.Equals, "/user")
@@ -184,7 +176,7 @@ func (s *S) TestSamlParseXml(c *check.C) {
 
 	response, err := scheme.Parse(xml)
 	c.Assert(err, check.IsNil)
-	c.Assert(response,  check.NotNil)
+	c.Assert(response, check.NotNil)
 }
 
 func (s *S) TestSamlAppLogin(c *check.C) {

@@ -5,12 +5,10 @@
 package saml
 
 import (
-
 	"github.com/tsuru/tsuru/auth"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-
 )
 
 func (s *S) TestGetToken(c *check.C) {
@@ -20,14 +18,12 @@ func (s *S) TestGetToken(c *check.C) {
 
 	c.Assert(err, check.IsNil)
 
-
 	count, err := s.conn.Tokens().Find(bson.M{"useremail": "x@x.com"}).Count()
 
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
-	
 
-	t, err := getToken("bearer "+token.Token)
+	t, err := getToken("bearer " + token.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Token, check.Equals, token.Token)
 	c.Assert(t.UserEmail, check.Equals, "x@x.com")
@@ -50,5 +46,3 @@ func (s *S) TestGetTokenInvalid(c *check.C) {
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
-
-
