@@ -5,26 +5,26 @@
 package saml
 
 import (
-	"strconv"
-	"net/url"
-	"strings"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
 
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/validation"
 	saml "github.com/diego-araujo/go-saml"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/validation"
 )
 
 var (
-	ErrMissingRequestIdError       = &errors.ValidationError{Message: "You must provide RequestID to login"}
-	ErrMissingFormValueError       = &errors.ValidationError{Message: "SAMLResponse form value missing"}
-	ErrParseResponseError       = &errors.ValidationError{Message: "SAMLResponse parse error"}
-	ErrEmptyIDPResponseError       = &errors.ValidationError{Message: "SSAMLResponse form value missing"}
-	ErrRequestWaitingForCredentials			  = &errors.ValidationError{Message: "Waiting credentials from IDP"}
+	ErrMissingRequestIdError        = &errors.ValidationError{Message: "You must provide RequestID to login"}
+	ErrMissingFormValueError        = &errors.ValidationError{Message: "SAMLResponse form value missing"}
+	ErrParseResponseError           = &errors.ValidationError{Message: "SAMLResponse parse error"}
+	ErrEmptyIDPResponseError        = &errors.ValidationError{Message: "SSAMLResponse form value missing"}
+	ErrRequestWaitingForCredentials = &errors.ValidationError{Message: "Waiting credentials from IDP"}
 )
 
 type SAMLAuthParser interface {
@@ -32,20 +32,20 @@ type SAMLAuthParser interface {
 }
 
 type SAMLAuthScheme struct {
-	BaseConfig  BaseConfig	
-	Parser      SAMLAuthParser
+	BaseConfig BaseConfig
+	Parser     SAMLAuthParser
 }
 
 type BaseConfig struct {
-	EntityID string
-	DisplayName string
-	Description string
-	PublicCert string
-	PrivateKey string
-	IdpUrl string
-	IdpPublicCert string
-	SignRequest bool
-	SignedResponse bool
+	EntityID              string
+	DisplayName           string
+	Description           string
+	PublicCert            string
+	PrivateKey            string
+	IdpUrl                string
+	IdpPublicCert         string
+	SignRequest           bool
+	SignedResponse        bool
 	DeflatEncodedResponse bool
 }
 
@@ -84,7 +84,7 @@ func (s *SAMLAuthScheme) loadConfig() (BaseConfig, error) {
 	if err != nil {
 		displayName = "Tsuru"
 		log.Debugf("auth:saml:sp-display-name not found using default: %s", err)
-		
+
 	}
 	description, err := config.GetString("auth:saml:sp-description")
 	if err != nil {
@@ -117,19 +117,18 @@ func (s *SAMLAuthScheme) loadConfig() (BaseConfig, error) {
 		deflatEncodedResponse = false
 		log.Debugf("auth:saml:idp-deflate-encoding not found using default [false]: %s", err)
 	}
-	
-	s.BaseConfig = BaseConfig{
-		EntityID:     			entityId,
-		DisplayName:   			displayName,
-		Description:   			description,
-		PublicCert:   			publicCert,
-		PrivateKey:   			privateKey,
-		IdpUrl:		  			idpUrl,
-		IdpPublicCert: 			idpPublicCert,
-		SignRequest: 			signRequest,
-		SignedResponse: 		signedResponse,
-		DeflatEncodedResponse: 	deflatEncodedResponse,
 
+	s.BaseConfig = BaseConfig{
+		EntityID:              entityId,
+		DisplayName:           displayName,
+		Description:           description,
+		PublicCert:            publicCert,
+		PrivateKey:            privateKey,
+		IdpUrl:                idpUrl,
+		IdpPublicCert:         idpPublicCert,
+		SignRequest:           signRequest,
+		SignedResponse:        signedResponse,
+		DeflatEncodedResponse: deflatEncodedResponse,
 	}
 	return s.BaseConfig, nil
 }
@@ -139,14 +138,14 @@ func Metadata() (string, error) {
 	scheme := SAMLAuthScheme{}
 	sp, err := scheme.createSP()
 	if err != nil {
-			return "", err
+		return "", err
 	}
-    md, err := sp.GetEntityDescriptor()
-    if err != nil {
-    	return "", err
-    }
+	md, err := sp.GetEntityDescriptor()
+	if err != nil {
+		return "", err
+	}
 
-    return md, nil
+	return md, nil
 }
 
 func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
@@ -167,7 +166,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, ErrMissingRequestIdError
 	}
 
-	request ,err := GetRequestById(requestId)
+	request, err := GetRequestById(requestId)
 	if err != nil {
 		return nil, err
 	}
@@ -206,11 +205,11 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 func (s *SAMLAuthScheme) idpHost() string {
 
 	url, err := url.Parse(s.BaseConfig.IdpUrl)
-    if err != nil {
-           return ""
-    }
-    hostport := strings.Split(url.Host, ":")
-    return hostport[0]
+	if err != nil {
+		return ""
+	}
+	hostport := strings.Split(url.Host, ":")
+	return hostport[0]
 }
 
 func (s *SAMLAuthScheme) callback(params map[string]string) error {
@@ -224,21 +223,21 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 
 	response, err := s.Parser.Parse(xml)
 	if err != nil {
-		log.Errorf("Got error while parsing IDP data %s: %s",  err)
+		log.Errorf("Got error while parsing IDP data: %s", err)
 		return ErrParseResponseError
 	}
 
 	sp, err := s.createSP()
 	if err != nil {
-			return err
+		return err
 	}
-	err = ValidateResponse(response,sp)
-	if err != nil {	
-		log.Errorf("Got error while validing IDP data %s: %s",  err)
+	err = ValidateResponse(response, sp)
+	if err != nil {
+		log.Errorf("Got error while validing IDP data: %s", err)
 		if strings.Contains(err.Error(), "assertion has expired") {
-		 	return  ErrRequestNotFound
-	 	}
-		
+			return ErrRequestNotFound
+		}
+
 		return ErrParseResponseError
 	}
 
@@ -248,7 +247,7 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 		return err
 	}
 
-	request ,err := GetRequestById(requestId)
+	request, err := GetRequestById(requestId)
 	if err != nil {
 		return err
 	}
@@ -257,14 +256,14 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if !validation.ValidateEmail(email) {
 
-		 if strings.Contains(email, "@") {
-		 	return &errors.ValidationError{Message: "attribute user identity contains invalid character"}
-		 }
+		if strings.Contains(email, "@") {
+			return &errors.ValidationError{Message: "attribute user identity contains invalid character"}
+		}
 		// we need create a unique email for the user
-		email = strings.Join([]string{email, "@", s.idpHost()},"")
+		email = strings.Join([]string{email, "@", s.idpHost()}, "")
 
 		if !validation.ValidateEmail(email) {
 			return &errors.ValidationError{Message: "could not create valid email with auth:saml:idp-attribute-user-identity"}
@@ -291,7 +290,6 @@ func (s *SAMLAuthScheme) Auth(token string) (auth.Token, error) {
 	return getToken(token)
 }
 
-
 func (s *SAMLAuthScheme) Name() string {
 	return "saml"
 }
@@ -300,7 +298,7 @@ func (s *SAMLAuthScheme) generateAuthnRequest() (*AuthnRequestData, error) {
 
 	sp, err := s.createSP()
 	if err != nil {
-			return nil, err
+		return nil, err
 	}
 	// generate the AuthnRequest and then get a base64 encoded string of the XML
 	authnRequest := sp.GetAuthnRequest()
@@ -317,11 +315,10 @@ func (s *SAMLAuthScheme) generateAuthnRequest() (*AuthnRequestData, error) {
 		return nil, err
 	}
 
-	data := AuthnRequestData {
+	data := AuthnRequestData{
 		Base64AuthRequest: b64XML,
 		URL:               url,
-		ID:				   authnRequest.ID,
-
+		ID:                authnRequest.ID,
 	}
 
 	return &data, nil
@@ -330,10 +327,10 @@ func (s *SAMLAuthScheme) generateAuthnRequest() (*AuthnRequestData, error) {
 type AuthnRequestData struct {
 	Base64AuthRequest string
 	URL               string
-	ID 				  string
+	ID                string
 }
 
-func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error){
+func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error) {
 	conf, err := s.loadConfig()
 	if err != nil {
 		return nil, err
@@ -342,16 +339,16 @@ func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error){
 	authCallbackUrl, _ := config.GetString("host")
 
 	sp := saml.ServiceProviderSettings{
-		PublicCertPath: 			 conf.PublicCert,
-		PrivateKeyPath: 			 conf.PrivateKey,
-		IDPSSOURL:					 conf.IdpUrl,
-		DisplayName:   				 conf.DisplayName,
-		Description:   				 conf.Description,
-		IDPPublicCertPath:   		 conf.IdpPublicCert,
-		Id:							 conf.EntityID,
+		PublicCertPath:              conf.PublicCert,
+		PrivateKeyPath:              conf.PrivateKey,
+		IDPSSOURL:                   conf.IdpUrl,
+		DisplayName:                 conf.DisplayName,
+		Description:                 conf.Description,
+		IDPPublicCertPath:           conf.IdpPublicCert,
+		Id:                          conf.EntityID,
 		SPSignRequest:               conf.SignRequest,
 		IDPSignResponse:             conf.SignedResponse,
-		AssertionConsumerServiceURL: authCallbackUrl+"/auth/saml",
+		AssertionConsumerServiceURL: authCallbackUrl + "/auth/saml",
 	}
 	sp.Init()
 
@@ -359,7 +356,7 @@ func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error){
 }
 
 func (s *SAMLAuthScheme) Info() (auth.SchemeInfo, error) {
-	
+
 	authnRequestData, err := s.generateAuthnRequest()
 	if err != nil {
 		return nil, err
@@ -373,17 +370,15 @@ func (s *SAMLAuthScheme) Info() (auth.SchemeInfo, error) {
 	}
 
 	return auth.SchemeInfo{
-						"request_id":authnRequestData.ID,
-						"saml_request": authnRequestData.Base64AuthRequest, 
-						"url": authnRequestData.URL,
-						"request_timeout": strconv.Itoa(r.GetExpireTimeOut()),
-						
-			}, nil
+		"request_id":      authnRequestData.ID,
+		"saml_request":    authnRequestData.Base64AuthRequest,
+		"url":             authnRequestData.URL,
+		"request_timeout": strconv.Itoa(r.GetExpireTimeOut()),
+	}, nil
 }
 
-
 func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
-			
+
 	if xml == "" {
 		return nil, ErrMissingFormValueError
 	}
@@ -393,15 +388,15 @@ func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 	if !s.BaseConfig.DeflatEncodedResponse {
 		response, err = saml.ParseEncodedResponse(xml)
 	} else {
-		response, err = saml.ParseCompressedEncodedResponse(xml)	
+		response, err = saml.ParseCompressedEncodedResponse(xml)
 	}
 
-	if err != nil || response == nil {	
+	if err != nil || response == nil {
 		return nil, fmt.Errorf("unable to parse identity provider data: %s - %s", xml, err)
 	}
 
 	sp, err := s.createSP()
-	if err != nil {	
+	if err != nil {
 		return nil, fmt.Errorf("unable to create service provider object: %s", err)
 	}
 
