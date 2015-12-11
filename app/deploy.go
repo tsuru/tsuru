@@ -62,7 +62,20 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 		apps[i] = a.Name
 	}
 	var list []DeployData
-	query := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}).Sort("-timestamp")
+	f := bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}
+	s := bson.M{
+		"app":         1,
+		"timestamp":   1,
+		"duration":    1,
+		"commit":      1,
+		"error":       1,
+		"image":       1,
+		"user":        1,
+		"origin":      1,
+		"canrollback": 1,
+		"removedate":  1,
+	}
+	query := conn.Deploys().Find(f).Select(s).Sort("-timestamp")
 	if skip != 0 {
 		query = query.Skip(skip)
 	}
