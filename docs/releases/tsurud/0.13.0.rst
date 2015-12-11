@@ -79,6 +79,9 @@ Bug fixes
 * Deploy now increments unit usage
   (issue `#1279 <https://github.com/tsuru/tsuru/issues/1279>`_).
 
+* Service info now displays the plan associated to each service instance if it
+  exists (issue `#1142 <https://github.com/tsuru/tsuru/issues/1142>`_).
+
 Other improvements
 ==================
 
