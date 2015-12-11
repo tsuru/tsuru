@@ -53,7 +53,7 @@ var (
 	CtxServiceInstance = contextType("service-instance")
 
 	ContextTypes = []contextType{
-		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxServiceInstance,
+		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxService, CtxServiceInstance,
 	}
 )
 
