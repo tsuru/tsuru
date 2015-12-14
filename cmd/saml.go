@@ -57,15 +57,14 @@ func SamlCallbackFailureMessage() string {
 }
 
 func samlRequestId(schemeData map[string]string) string {
-	p := schemeData["request_id"]
-	return fmt.Sprintf("%s", p)
+	return schemeData["request_id"]
 }
 
 //Return timeout in seconds
 func samlRequestTimeout(schemeData map[string]string) int {
 	p := schemeData["request_timeout"]
-	i, _ := strconv.Atoi(p)
-	return i * 60
+	timeout, _ := strconv.Atoi(p)
+	return timeout
 }
 
 func samlPreLogin(schemeData map[string]string, finish chan bool) http.HandlerFunc {
@@ -82,21 +81,15 @@ func samlPreLogin(schemeData map[string]string, finish chan bool) http.HandlerFu
 		} else {
 			t.Execute(w, schemeData)
 		}
-
-		return
 	}
 }
 
 func requestToken(schemeData map[string]string) (string, error) {
-
 	maxRetries := samlRequestTimeout(schemeData) - 7
 	time.Sleep(5 * time.Second)
-
 	id := samlRequestId(schemeData)
 	params := map[string]string{"request_id": id}
-
 	for count := 0; count <= maxRetries; count += 2 {
-
 		u, err := GetURL("/auth/login")
 		if err != nil {
 			return "", fmt.Errorf("Error in GetURL: %s", err.Error())
@@ -115,33 +108,25 @@ func requestToken(schemeData map[string]string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("Error reading body: %s", err.Error())
 		}
-
 		if strings.TrimSpace(string(result)) == saml.ErrRequestWaitingForCredentials.Message {
-
 			if count < maxRetries {
 				time.Sleep(2 * time.Second)
 			}
-
 			continue
 		}
-
 		data := make(map[string]interface{})
 		err = json.Unmarshal(result, &data)
 		if err != nil {
 			return "", fmt.Errorf("API response: %s", result)
 		}
-
 		return data["token"].(string), nil
 	}
-
 	// finish when timeout
 	return "", saml.ErrRequestWaitingForCredentials
 }
 
 func (c *login) samlLogin(context *Context, client *Client) error {
-	//loadExpireTime()
 	schemeData := c.getScheme().Data
-
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return err
@@ -155,31 +140,23 @@ func (c *login) samlLogin(context *Context, client *Client) error {
 	http.HandleFunc("/", samlPreLogin(schemeData, finish))
 	server := &http.Server{}
 	go server.Serve(l)
-
 	err = open(preLoginUrl)
 	if err != nil {
 		fmt.Fprintln(context.Stdout, "Failed to start your browser.")
 		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", preLoginUrl)
 	}
-
 	<-finish
-
 	token, err := requestToken(schemeData)
-
 	switch err {
 	case nil:
 		writeToken(token)
 		fmt.Fprintln(context.Stdout, "\nSuccessfully logged in!")
 		break
-
 	case saml.ErrRequestWaitingForCredentials:
 		fmt.Fprintln(context.Stdout, "\nLogin failed! Timeout waiting for credentials from IDP, please try again.")
 		break
-
 	default:
 		fmt.Fprintln(context.Stdout, "\nLogin failed for some reason, please try again: "+err.Error())
-
 	}
-
 	return nil
 }

@@ -70,7 +70,6 @@ func loadConfig() error {
 		} else {
 			tokenExpire = defaultExpiration
 		}
-
 	}
 	return nil
 }
@@ -142,7 +141,6 @@ func createToken(u *auth.User) (*Token, error) {
 	if u.Email == "" {
 		return nil, errors.New("User does not have an email")
 	}
-
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

@@ -158,7 +158,7 @@ func (s *Storage) Quota() *storage.Collection {
 	return c
 }
 
-// SAMLRequests returns the samlrequest from MongoDB.
+// SAMLRequests returns the saml_requests from MongoDB.
 func (s *Storage) SAMLRequests() *storage.Collection {
 	id := mgo.Index{Key: []string{"id"}}
 	coll := s.Collection("saml_requests")

@@ -12,17 +12,12 @@ import (
 )
 
 func (s *S) TestGetToken(c *check.C) {
-
 	user := &auth.User{Email: "x@x.com"}
 	token, err := createToken(user)
-
 	c.Assert(err, check.IsNil)
-
 	count, err := s.conn.Tokens().Find(bson.M{"useremail": "x@x.com"}).Count()
-
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
-
 	t, err := getToken("bearer " + token.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Token, check.Equals, token.Token)
