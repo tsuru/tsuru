@@ -84,10 +84,10 @@ func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 	c.Assert(response, check.NotNil)
 	requestId, err := getRequestIdFromResponse(response)
 	c.Assert(requestId, check.Equals, r.ID)
-	request := request{}
-	err = request.getById(requestId)
+	req := request{}
+	err = req.getById(requestId)
 	c.Assert(err, check.IsNil)
-	c.Assert(request, check.NotNil)
+	c.Assert(req, check.NotNil)
 	email, err := getUserIdentity(response)
 	c.Assert(err, check.IsNil)
 	c.Assert(email, check.Equals, "nuvem-teste@usp.br")

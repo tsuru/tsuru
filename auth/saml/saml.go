@@ -151,15 +151,15 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if !ok {
 		return nil, ErrMissingRequestIdError
 	}
-	request := request{}
-	err = request.getById(requestId)
+	req := request{}
+	err = req.getById(requestId)
 	if err != nil {
 		return nil, err
 	}
-	if request.Authed == false {
+	if req.Authed == false {
 		return nil, ErrRequestWaitingForCredentials
 	}
-	user, err := auth.GetUserByEmail(request.Email)
+	user, err := auth.GetUserByEmail(req.Email)
 	if err != nil {
 		if err != auth.ErrUserNotFound {
 			return nil, err
@@ -168,7 +168,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		if !registrationEnabled {
 			return nil, err
 		}
-		user = &auth.User{Email: request.Email}
+		user = &auth.User{Email: req.Email}
 		err := user.Create()
 		if err != nil {
 			return nil, err
@@ -178,7 +178,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	request.Remove()
+	req.Remove()
 	return token, nil
 }
 
@@ -219,8 +219,8 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 		log.Debugf("Request ID %s not found: %s", requestId, err.Error())
 		return err
 	}
-	request := request{}
-	err = request.getById(requestId)
+	req := request{}
+	err = req.getById(requestId)
 	if err != nil {
 		return err
 	}
@@ -238,9 +238,9 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 			return &errors.ValidationError{Message: "could not create valid email with auth:saml:idp-attribute-user-identity"}
 		}
 	}
-	request.Authed = true
-	request.Email = email
-	request.Update()
+	req.Authed = true
+	req.Email = email
+	req.Update()
 	return nil
 }
 
