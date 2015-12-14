@@ -43,7 +43,7 @@ func getUserIdentity(r *saml.Response) (string, error) {
 	}
 	userIdentifier := r.GetAttribute(attrFriendlyNameIdentifier)
 	if userIdentifier == "" {
-		return "", fmt.Errorf("unable to parse identity provider data - not found  <Attribute FriendlyName="+attrFriendlyNameIdentifier+"> ")
+		return "", fmt.Errorf("unable to parse identity provider data - not found  <Attribute FriendlyName=" + attrFriendlyNameIdentifier + "> ")
 	}
 	return userIdentifier, nil
 }
