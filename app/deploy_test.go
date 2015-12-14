@@ -723,7 +723,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		Image:        "v2",
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Equals, "Image deploy called")
+	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
 }
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {

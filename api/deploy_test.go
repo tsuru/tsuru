@@ -821,7 +821,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
@@ -858,7 +858,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
 func (s *DeploySuite) TestValidateOrigin(c *check.C) {

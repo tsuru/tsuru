@@ -157,6 +157,7 @@ type DeployOptions struct {
 	User         string
 	Image        string
 	Origin       string
+	Rollback     bool
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
@@ -194,6 +195,9 @@ func Deploy(opts DeployOptions) error {
 }
 
 func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) {
+	if opts.Rollback {
+		return Provisioner.Rollback(opts.App, opts.Image, writer)
+	}
 	if opts.Image != "" {
 		if deployer, ok := Provisioner.(provision.ImageDeployer); ok {
 			return deployer.ImageDeploy(opts.App, opts.Image, writer)
@@ -297,6 +301,7 @@ func Rollback(opts DeployOptions) error {
 		if err == nil {
 			opts.Image = img
 		}
+		opts.Rollback = true
 	}
 	return Deploy(opts)
 }
