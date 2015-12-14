@@ -7,13 +7,13 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
-			"Comment": "v1.0.2",
-			"Rev": "9d7bc2d6ca2ada0468f705f0e9725ca97f8550c8"
+			"Comment": "v1.0.4",
+			"Rev": "999b1591218c36d5050d1ba7266eba956e65965f"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
-			"Comment": "v1.0.2",
-			"Rev": "9d7bc2d6ca2ada0468f705f0e9725ca97f8550c8"
+			"Comment": "v1.0.4",
+			"Rev": "999b1591218c36d5050d1ba7266eba956e65965f"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/go-smtpd/smtpd",
