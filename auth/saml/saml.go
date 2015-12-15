@@ -22,7 +22,7 @@ var (
 	ErrMissingRequestIdError        = &errors.ValidationError{Message: "You must provide RequestID to login"}
 	ErrMissingFormValueError        = &errors.ValidationError{Message: "SAMLResponse form value missing"}
 	ErrParseResponseError           = &errors.ValidationError{Message: "SAMLResponse parse error"}
-	ErrEmptyIDPResponseError        = &errors.ValidationError{Message: "SSAMLResponse form value missing"}
+	ErrEmptyIDPResponseError        = &errors.ValidationError{Message: "SAMLResponse form value missing"}
 	ErrRequestWaitingForCredentials = &errors.ValidationError{Message: "Waiting credentials from IDP"}
 )
 
