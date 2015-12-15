@@ -10,7 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	saml "github.com/tsuru/tsuru/auth/saml"
+	"github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/errors"
 )
