@@ -6,16 +6,52 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	a := App{Name: "g1"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	insert := []DeployData{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff"},
+		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff"},
+	}
+	err = s.conn.Deploys().Insert(&insert[0])
+	c.Assert(err, check.IsNil)
+	err = s.conn.Deploys().Insert(&insert[0])
+	c.Assert(err, check.IsNil)
+	s.conn.Deploys().Insert(&insert)
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	deploys, err := ListDeploys(nil, 0, 0)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(&deploys)
+	c.Assert(err, check.IsNil)
+	err = json.Unmarshal(data, &deploys)
+	c.Assert(err, check.IsNil)
+	expected := []DeployData{insert[1], insert[0]}
+	for i := 0; i < 2; i++ {
+		c.Assert(deploys[i].App, check.Equals, expected[i].App)
+		c.Assert(deploys[i].Commit, check.Equals, expected[i].Commit)
+		c.Assert(deploys[i].Error, check.Equals, expected[i].Error)
+		c.Assert(deploys[i].Image, check.Equals, expected[i].Image)
+		c.Assert(deploys[i].User, check.Equals, expected[i].User)
+		c.Assert(deploys[i].CanRollback, check.Equals, expected[i].CanRollback)
+		c.Assert(deploys[i].Origin, check.Equals, expected[i].Origin)
+		c.Assert(deploys[i].Log, check.Equals, "")
+		c.Assert(deploys[i].Diff, check.Equals, "")
+	}
+}
 
 func (s *S) TestListAppDeploys(c *check.C) {
 	s.conn.Deploys().RemoveAll(nil)
@@ -207,59 +243,6 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "id parameter is not ObjectId: abc123")
 	c.Assert(lastDeploy, check.IsNil)
-}
-
-func (s *S) TestGetDiffInDeploys(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
-	myDeploy := DeployData{
-		App:       "g1",
-		Timestamp: time.Now().Add(-3600 * time.Second),
-		Commit:    "545b1904af34458704e2aa06ff1aaffad5289f8g",
-		Origin:    "git",
-		Diff:      "fake-diff",
-	}
-	deploys := []DeployData{
-		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x", Origin: "git"},
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f", Origin: "git"},
-		myDeploy,
-		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10", Origin: "git", Diff: "fake-diff-2"},
-	}
-	for _, d := range deploys {
-		s.conn.Deploys().Insert(d)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
-	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
-	c.Assert(err, check.IsNil)
-	diffOutput, err := GetDiffInDeploys(&myDeploy)
-	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.Equals, "fake-diff")
-}
-
-func (s *S) TestGetDiffInDeploysNoGit(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
-	myDeploy := DeployData{
-		App:       "g1",
-		Timestamp: time.Now().Add(-3600 * time.Second),
-		Commit:    "545b1904af34458704e2aa06ff1aaffad5289f8g",
-		Origin:    "app-deploy",
-		Diff:      "deploy-diff",
-	}
-	deploys := []DeployData{
-		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x", Origin: "git"},
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f", Origin: "git"},
-		myDeploy,
-		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10", Origin: "git"},
-	}
-	for _, d := range deploys {
-		s.conn.Deploys().Insert(d)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
-	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
-	c.Assert(err, check.IsNil)
-	repository.Manager().CreateRepository("g1", nil)
-	diffOutput, err := GetDiffInDeploys(&myDeploy)
-	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.Equals, myDeploy.Diff)
 }
 
 func (s *S) TestDeploySaveDataAndDiff(c *check.C) {
