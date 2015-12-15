@@ -6,7 +6,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -33,17 +32,6 @@ type DeployData struct {
 	CanRollback bool
 	RemoveDate  time.Time `bson:",omitempty"`
 	Diff        string
-}
-
-func (d *DeployData) MarshalJSON() ([]byte, error) {
-	var err error
-	if d.Diff == "" {
-		d.Diff, err = GetDiffInDeploys(d)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return json.Marshal(*d)
 }
 
 // ListDeploys returns the list of deploy that match a given filter.
@@ -132,19 +120,6 @@ func GetDeploy(id string) (*DeployData, error) {
 		return nil, err
 	}
 	return &dep, nil
-}
-
-func GetDiffInDeploys(d *DeployData) (string, error) {
-	var dep DeployData
-	conn, err := db.Conn()
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	if err := conn.Deploys().Find(bson.M{"app": d.App, "_id": bson.M{"$lte": d.ID}}).Sort("-timestamp").One(&dep); err != nil {
-		return "", err
-	}
-	return dep.Diff, nil
 }
 
 type DeployOptions struct {
