@@ -510,7 +510,7 @@ func (s *S) TestStatus(c *check.C) {
 		Input    int
 		Expected string
 	}{
-		{http.StatusOK, "up"},
+		{http.StatusOK, "working"},
 		{http.StatusNoContent, "up"},
 		{http.StatusAccepted, "pending"},
 		{http.StatusNotFound, "not implemented for this service"},
@@ -519,6 +519,7 @@ func (s *S) TestStatus(c *check.C) {
 	var request int
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(tests[request].Input)
+		w.Write([]byte("working"))
 		request++
 	})
 	ts := httptest.NewServer(h)

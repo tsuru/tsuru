@@ -222,10 +222,14 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	)
 	url := "/resources/" + instance.GetIdentifier() + "/status"
 	if resp, err = c.issueRequest(url, "GET", nil); err == nil {
+		defer resp.Body.Close()
 		switch resp.StatusCode {
+		case http.StatusOK:
+			data, err := ioutil.ReadAll(resp.Body)
+			return string(data), err
 		case http.StatusAccepted:
 			return "pending", nil
-		case http.StatusNoContent, http.StatusOK:
+		case http.StatusNoContent:
 			return "up", nil
 		case http.StatusNotFound:
 			return "not implemented for this service", nil
