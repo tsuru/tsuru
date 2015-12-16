@@ -851,20 +851,6 @@ func (app *App) Sleep(w io.Writer, process string) error {
 	return nil
 }
 
-func (app *App) Wakeup(w io.Writer, process string) error {
-	msg := fmt.Sprintf("\n ---> Waking up the process %q\n", process)
-	if process == "" {
-		msg = fmt.Sprintf("\n ---> Waking up the app %q\n", app.Name)
-	}
-	log.Write(w, []byte(msg))
-	err := Provisioner.Wakeup(app, process)
-	if err != nil {
-		log.Errorf("[wakeup] error on wakeup the app %s - %s", app.Name, err)
-		return err
-	}
-	return nil
-}
-
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() ([]bind.Unit, error) {
 	var units []bind.Unit
