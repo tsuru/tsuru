@@ -297,7 +297,8 @@ func (s *S) TestFakeAppHasLog(c *check.C) {
 func (s *S) TestProvisioned(c *check.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
-	p.Provision(app)
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
 	c.Assert(p.Provisioned(app), check.Equals, true)
 	otherapp := *app
 	otherapp.name = "blue-sector"
@@ -679,8 +680,9 @@ func (s *S) TestRemoveUnits(c *check.C) {
 func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 5, "p1", nil)
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 5, "p1", nil)
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnits(app, 2, "p2", nil)
 	c.Assert(err, check.IsNil)
@@ -701,8 +703,9 @@ func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
 func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 1, "web", nil)
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = p.RemoveUnits(app, 3, "web", nil)
 	c.Assert(err, check.NotNil)
@@ -712,8 +715,9 @@ func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 1, "web", nil)
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnits(app, 4, "worker", nil)
 	c.Assert(err, check.IsNil)
@@ -803,8 +807,9 @@ func (s *S) TestAddrFailure(c *check.C) {
 func (s *S) TestSetCName(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	err := p.SetCName(app, "cname.com")
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.SetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
 	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
@@ -829,8 +834,9 @@ func (s *S) TestSetCNameFailure(c *check.C) {
 func (s *S) TestUnsetCName(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	err := p.SetCName(app, "cname.com")
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.SetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
 	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
@@ -859,8 +865,9 @@ func (s *S) TestUnsetCNameFailure(c *check.C) {
 func (s *S) TestHasCName(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	err := p.SetCName(app, "cname.com")
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.SetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasCName(app, "cname.com"), check.Equals, true)
 	err = p.UnsetCName(app, "cname.com")
