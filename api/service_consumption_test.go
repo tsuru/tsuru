@@ -673,8 +673,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *check.C) {
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"mongodb-other"}},
-		{Service: "redis", Instances: []string{"redis-globo"}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
+		{Service: "redis", Instances: []string{"redis-globo"}, Plans: []string{""}},
 	}
 	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
@@ -716,8 +716,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *check.C) {
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"mongodb-other"}},
-		{Service: "redis", Instances: []string{}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
+		{Service: "redis", Instances: []string{}, Plans: []string(nil)},
 	}
 	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
@@ -795,11 +795,11 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 	c.Assert(err, check.IsNil)
 	sort.Sort(ServiceModelList(instances))
 	expected := []service.ServiceModel{
-		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
-		{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
-		{Service: "oracle", Instances: []string{}},
-		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
-		{Service: "redis", Instances: []string{"redis1", "redis2"}},
+		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}, Plans: []string{"", ""}},
+		{Service: "mysql", Instances: []string{"mysql1", "mysql2"}, Plans: []string{"", ""}},
+		{Service: "oracle", Instances: []string{}, Plans: []string(nil)},
+		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}, Plans: []string{"", ""}},
+		{Service: "redis", Instances: []string{"redis1", "redis2"}, Plans: []string{"", ""}},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }

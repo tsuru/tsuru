@@ -261,6 +261,7 @@ func (s *InstanceSuite) TestMarshalJSON(c *check.C) {
 	expected := map[string]interface{}{
 		"Id":          float64(0),
 		"Name":        "ql",
+		"PlanName":    "",
 		"Teams":       nil,
 		"Apps":        nil,
 		"ServiceName": "mysql",
@@ -283,6 +284,7 @@ func (s *InstanceSuite) TestMarshalJSONWithoutInfo(c *check.C) {
 	expected := map[string]interface{}{
 		"Id":          float64(0),
 		"Name":        "ql",
+		"PlanName":    "",
 		"Teams":       nil,
 		"Apps":        nil,
 		"ServiceName": "mysql",
@@ -305,6 +307,7 @@ func (s *InstanceSuite) TestMarshalJSONWithoutEndpoint(c *check.C) {
 	expected := map[string]interface{}{
 		"Id":          float64(0),
 		"Name":        "ql",
+		"PlanName":    "",
 		"Teams":       nil,
 		"Apps":        nil,
 		"ServiceName": "mysql",

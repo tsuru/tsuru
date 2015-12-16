@@ -24,12 +24,12 @@ var (
 	RoleEventUserCreate = &RoleEvent{
 		name:        "user-create",
 		context:     CtxGlobal,
-		Description: "role added to user when they're created",
+		Description: "role added to user when user is created",
 	}
 	RoleEventTeamCreate = &RoleEvent{
 		name:        "team-create",
 		context:     CtxTeam,
-		Description: "role added to user when they create a new team",
+		Description: "role added to user when a new team is created",
 	}
 
 	RoleEventMap = map[string]*RoleEvent{

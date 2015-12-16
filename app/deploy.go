@@ -6,7 +6,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -35,17 +34,6 @@ type DeployData struct {
 	Diff        string
 }
 
-func (d *DeployData) MarshalJSON() ([]byte, error) {
-	var err error
-	if d.Diff == "" {
-		d.Diff, err = GetDiffInDeploys(d)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return json.Marshal(*d)
-}
-
 // ListDeploys returns the list of deploy that match a given filter.
 func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	conn, err := db.Conn()
@@ -62,7 +50,20 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 		apps[i] = a.Name
 	}
 	var list []DeployData
-	query := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}).Sort("-timestamp")
+	f := bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}
+	s := bson.M{
+		"app":         1,
+		"timestamp":   1,
+		"duration":    1,
+		"commit":      1,
+		"error":       1,
+		"image":       1,
+		"user":        1,
+		"origin":      1,
+		"canrollback": 1,
+		"removedate":  1,
+	}
+	query := conn.Deploys().Find(f).Select(s).Sort("-timestamp")
 	if skip != 0 {
 		query = query.Skip(skip)
 	}
@@ -121,19 +122,6 @@ func GetDeploy(id string) (*DeployData, error) {
 	return &dep, nil
 }
 
-func GetDiffInDeploys(d *DeployData) (string, error) {
-	var dep DeployData
-	conn, err := db.Conn()
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	if err := conn.Deploys().Find(bson.M{"app": d.App, "_id": bson.M{"$lte": d.ID}}).Sort("-timestamp").One(&dep); err != nil {
-		return "", err
-	}
-	return dep.Diff, nil
-}
-
 type DeployOptions struct {
 	App          *App
 	Version      string
@@ -144,6 +132,7 @@ type DeployOptions struct {
 	User         string
 	Image        string
 	Origin       string
+	Rollback     bool
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
@@ -181,6 +170,9 @@ func Deploy(opts DeployOptions) error {
 }
 
 func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) {
+	if opts.Rollback {
+		return Provisioner.Rollback(opts.App, opts.Image, writer)
+	}
 	if opts.Image != "" {
 		if deployer, ok := Provisioner.(provision.ImageDeployer); ok {
 			return deployer.ImageDeploy(opts.App, opts.Image, writer)
@@ -284,6 +276,7 @@ func Rollback(opts DeployOptions) error {
 		if err == nil {
 			opts.Image = img
 		}
+		opts.Rollback = true
 	}
 	return Deploy(opts)
 }

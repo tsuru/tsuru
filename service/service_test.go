@@ -249,10 +249,12 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 	expected[0] = map[string]interface{}{
 		"service":   "mysql",
 		"instances": nil,
+		"plans":     nil,
 	}
 	expected[1] = map[string]interface{}{
 		"service":   "mongo",
 		"instances": nil,
+		"plans":     nil,
 	}
 	result := make([]map[string]interface{}, 2)
 	err = json.Unmarshal(data, &result)
