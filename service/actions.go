@@ -337,7 +337,7 @@ var unbindAppEndpoint = action.Action{
 		}
 		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
 			err := endpoint.UnbindApp(args.serviceInstance, args.app)
-			if err != nil {
+			if err != nil && err != ErrInstanceNotFoundInAPI {
 				return nil, err
 			}
 		}

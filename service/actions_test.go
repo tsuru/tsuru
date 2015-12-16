@@ -555,6 +555,34 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 }
 
+func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
+	var reqs []*http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+	buf := bytes.NewBuffer(nil)
+	args := bindPipelineArgs{
+		app:             a,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindAppEndpoint.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
+}
+
 func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 	var reqs []*http.Request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
