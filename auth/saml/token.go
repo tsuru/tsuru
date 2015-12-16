@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/permission"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -25,9 +24,7 @@ const (
 	defaultExpiration = 7 * 24 * time.Hour
 )
 
-var (
-	tokenExpire time.Duration
-)
+var tokenExpire time.Duration
 
 type Token struct {
 	Token     string        `json:"token"`

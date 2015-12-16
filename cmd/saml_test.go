@@ -17,7 +17,7 @@ func (s *S) TestSamlScheme(c *check.C) {
 		w.Write([]byte(`{"name": "saml", "data" : {
 												"request_id": "0123456789",
 												"request_timeout": "3",
-												"saml_request": ""
+												"saml_request": "SamlData"
 										  }
 						}`))
 	}))
@@ -27,5 +27,6 @@ func (s *S) TestSamlScheme(c *check.C) {
 	scheme := loginCmd.getScheme()
 	c.Assert(scheme.Name, check.Equals, "saml")
 	c.Assert(scheme.Data["request_id"], check.Equals, "0123456789")
-
+	c.Assert(scheme.Data["request_timeout"], check.Equals, "3")
+	c.Assert(scheme.Data["saml_request"], check.Equals, "SamlData")
 }

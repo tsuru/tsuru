@@ -37,7 +37,6 @@ func (s *S) SetUpSuite(c *check.C) {
 		s.reqs = append(s.reqs, r)
 		w.Write([]byte(s.rsps[r.URL.Path]))
 	}))
-
 	config.Set("host", "http://192.168.50.4.nip.io:8080")
 	config.Set("auth:saml:sp-publiccert", "testdata/pub.crt")
 	config.Set("auth:saml:sp-privatekey", "testdata/priv.key")

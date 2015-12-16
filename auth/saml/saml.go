@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	saml "github.com/diego-araujo/go-saml"
+	"github.com/diego-araujo/go-saml"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -142,9 +142,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	//verify for callback requests, param 'callback' indicate callback
-	_, ok := params["callback"]
-	if ok {
+	if _, ok := params["callback"]; ok {
 		return nil, s.callback(params)
 	}
 	requestId, ok := params["request_id"]
@@ -266,11 +264,8 @@ func (s *SAMLAuthScheme) generateAuthnRequest() (*AuthnRequestData, error) {
 	if err != nil {
 		return nil, err
 	}
-	// generate the AuthnRequest and then get a base64 encoded string of the XML
 	authnRequest := sp.GetAuthnRequest()
-	//b64XML, err := authnRequest.String(authnRequest)
 	b64XML, err := authnRequest.CompressedEncodedSignedString(sp.PrivateKeyPath)
-	//b64XML, err := authnRequest.EncodedSignedString(sp.PrivateKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -320,9 +315,7 @@ func (s *SAMLAuthScheme) Info() (auth.SchemeInfo, error) {
 		return nil, err
 	}
 	r := request{}
-	//persist request in database
-	_, err = r.Create(authnRequestData)
-	if err != nil {
+	if _, err := r.Create(authnRequestData); err != nil {
 		return nil, err
 	}
 	return auth.SchemeInfo{
@@ -351,10 +344,8 @@ func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create service provider object: %s", err)
 	}
-	//If is a encrypted response need decode
 	if response.IsEncrypted() {
-		err = response.Decrypt(sp.PrivateKeyPath)
-		if err != nil {
+		if err = response.Decrypt(sp.PrivateKeyPath); err != nil {
 			return nil, fmt.Errorf("unable to decrypt identity provider data: %s - %s", response.String, err)
 		}
 	}
@@ -365,16 +356,14 @@ func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 
 func (s *SAMLAuthScheme) Create(user *auth.User) (*auth.User, error) {
 	user.Password = ""
-	err := user.Create()
-	if err != nil {
+	if err := user.Create(); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
 func (s *SAMLAuthScheme) Remove(u *auth.User) error {
-	err := deleteAllTokens(u.Email)
-	if err != nil {
+	if err := deleteAllTokens(u.Email); err != nil {
 		return err
 	}
 	return u.Delete()

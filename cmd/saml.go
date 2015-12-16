@@ -115,8 +115,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 			continue
 		}
 		data := make(map[string]interface{})
-		err = json.Unmarshal(result, &data)
-		if err != nil {
+		if err = json.Unmarshal(result, &data); err != nil {
 			return "", fmt.Errorf("API response: %s", result)
 		}
 		return data["token"].(string), nil
@@ -140,8 +139,7 @@ func (c *login) samlLogin(context *Context, client *Client) error {
 	http.HandleFunc("/", samlPreLogin(schemeData, finish))
 	server := &http.Server{}
 	go server.Serve(l)
-	err = open(preLoginUrl)
-	if err != nil {
+	if err := open(preLoginUrl); err != nil {
 		fmt.Fprintln(context.Stdout, "Failed to start your browser.")
 		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", preLoginUrl)
 	}

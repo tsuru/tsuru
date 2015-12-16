@@ -49,18 +49,15 @@ func getUserIdentity(r *saml.Response) (string, error) {
 }
 
 func validateResponse(r *saml.Response, sp *saml.ServiceProviderSettings) error {
-	err := r.Validate(sp)
-	if err != nil {
+	if err := r.Validate(sp); err != nil {
 		return err
 	}
 	if sp.IDPSignResponse {
-		err = r.ValidateResponseSignature(sp)
-		if err != nil {
+		if err := r.ValidateResponseSignature(sp); err != nil {
 			return err
 		}
 	}
-	err = r.ValidateExpiredConfirmation(sp)
-	if err != nil {
+	if err := r.ValidateExpiredConfirmation(sp); err != nil {
 		return err
 	}
 	return nil
