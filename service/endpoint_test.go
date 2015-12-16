@@ -289,9 +289,9 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "her-redis" to the app "her-app": Server failed to do its job.$`)
 }
 
-func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *check.C) {
+func (s *S) TestBindAppInstanceNotReady(c *check.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(412)
+		w.WriteHeader(http.StatusPreconditionFailed)
 	})
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
@@ -300,6 +300,19 @@ func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPrecondit
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, check.Equals, ErrInstanceNotReady)
+}
+
+func (s *S) TestBindAppInstanceNotFound(c *check.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	_, err := client.BindApp(&instance, a)
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
 func (s *S) TestBindUnit(c *check.C) {

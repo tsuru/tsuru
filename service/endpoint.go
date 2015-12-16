@@ -124,10 +124,8 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	}
 	if err != nil {
-		if m, _ := regexp.MatchString("", err.Error()); m {
-			return nil, fmt.Errorf("%s api is down.", instance.Name)
-		}
-		return nil, err
+		log.Errorf("Failed to bind app %q to service instance %q: %s", app.GetName(), instance.Name)
+		return nil, fmt.Errorf("%s api is down.", instance.Name)
 	}
 	if err == nil && resp.StatusCode < 300 {
 		var result map[string]string
@@ -137,8 +135,11 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		}
 		return result, nil
 	}
-	if resp.StatusCode == http.StatusPreconditionFailed {
+	switch resp.StatusCode {
+	case http.StatusPreconditionFailed:
 		return nil, ErrInstanceNotReady
+	case http.StatusNotFound:
+		return nil, ErrInstanceNotFoundInAPI
 	}
 	msg := fmt.Sprintf("Failed to bind the instance %q to the app %q: %s", instance.Name, app.GetName(), c.buildErrorMessage(err, resp))
 	log.Error(msg)
