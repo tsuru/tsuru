@@ -2060,11 +2060,15 @@ func (s *S) TestRestart(c *check.C) {
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
+		Plan:     Plan{Router: "fake"},
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
-	err := a.Restart("", &b)
+	err = a.Restart("", &b)
 	c.Assert(err, check.IsNil)
 	c.Assert(b.String(), check.Matches, `(?s).*---- Restarting the app "someApp" ----.*`)
 	restarts := s.provisioner.Restarts(&a, "")
@@ -2998,6 +3002,7 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
@@ -3017,6 +3022,38 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	}
 
 	err = a.Start(&b, "web")
+	c.Assert(err, check.IsNil)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 1)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
+}
+
+func (s *S) TestRestartAsleepApp(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.RemoveRoute(a.Name, units[0].Address)
+	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "proxy:1234"})
+	var b bytes.Buffer
+
+	err = a.Sleep(&b, "web")
+	c.Assert(err, check.IsNil)
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
+		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
+	}
+
+	err = a.Restart("web", &b)
 	c.Assert(err, check.IsNil)
 	routes, err := routertest.FakeRouter.Routes(a.Name)
 	c.Assert(err, check.IsNil)
@@ -3732,6 +3769,7 @@ func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
 	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
