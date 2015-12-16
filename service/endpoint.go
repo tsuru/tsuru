@@ -225,7 +225,8 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case http.StatusOK:
-			data, err := ioutil.ReadAll(resp.Body)
+			var data []byte
+			data, err = ioutil.ReadAll(resp.Body)
 			return string(data), err
 		case http.StatusAccepted:
 			return "pending", nil
