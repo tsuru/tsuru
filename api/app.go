@@ -1121,31 +1121,6 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return a.Sleep(w, process)
 }
 
-func wakeup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	process := r.URL.Query().Get("process")
-	w.Header().Set("Content-Type", "text")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	appName := r.URL.Query().Get(":app")
-	a, err := getAppFromContext(appName, r)
-	if err != nil {
-		return err
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateWakeup,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
-		)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	rec.Log(u.Email, "wakeup", "app="+appName)
-	return a.Wakeup(w, process)
-}
-
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	queryValues := r.URL.Query()
 	a, err := app.GetByName(queryValues.Get(":app"))
