@@ -209,8 +209,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	_, err = bindAppDBAction.Forward(ctx)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^This app is already bound to this service instance.$")
+	c.Assert(err, check.Equals, ErrAppAlreadyBound)
 }
 
 func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C) {

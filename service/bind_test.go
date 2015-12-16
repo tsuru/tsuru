@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/tsurutest"
@@ -159,11 +158,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 1)
 	err = instance.BindApp(app, true, nil)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusConflict)
-	c.Assert(e, check.ErrorMatches, "^This app is already bound to this service instance.$")
+	c.Assert(err, check.Equals, ErrAppAlreadyBound)
 }
 
 func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
@@ -348,8 +343,5 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	app := provisiontest.NewFakeApp("painkiller", "python", 0)
 	err = instance.UnbindApp(app, true, nil)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e, check.ErrorMatches, "^This app is not bound to this service instance.$")
+	c.Assert(err, check.Equals, ErrAppNotBound)
 }
