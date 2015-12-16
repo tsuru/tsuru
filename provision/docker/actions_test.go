@@ -289,7 +289,6 @@ func (s *S) TestAddNewRouteFowardDoesNotAddWhenHostPortIsZero(c *check.C) {
 	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2"}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
-
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
