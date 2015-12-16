@@ -204,6 +204,9 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil && resp.StatusCode > 299 {
+		if resp.StatusCode == http.StatusNotFound {
+			return ErrInstanceNotFoundInAPI
+		}
 		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
 		log.Error(msg)
 		return errors.New(msg)

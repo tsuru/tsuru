@@ -465,6 +465,20 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
+func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.UnbindUnit(&instance, a, units[0])
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
 func (s *S) TestBuildErrorMessageWithNilResponse(c *check.C) {
 	cli := Client{}
 	err := errors.New("epic fail")
