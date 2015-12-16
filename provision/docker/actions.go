@@ -396,9 +396,11 @@ var addNewRoutes = action.Action{
 			if c.ProcessName != webProcessName {
 				return nil
 			}
-			err = r.AddRoute(c.AppName, c.Address())
-			if err != nil {
-				return err
+			if c.HostPort != "0" {
+				err = r.AddRoute(c.AppName, c.Address())
+				if err != nil {
+					return err
+				}
 			}
 			c.Routable = true
 			toRollback <- c

@@ -281,6 +281,29 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	c.Assert(prevContainers[1].ID, check.Equals, "ble-2")
 }
 
+func (s *S) TestAddNewRouteFowardDoesNotAddWhenHostPortIsZero(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: "0"}
+	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2"}
+	defer cont.Remove(s.p)
+	defer cont2.Remove(s.p)
+
+	args := changeUnitsPipelineArgs{
+		app:         app,
+		provisioner: s.p,
+	}
+	prevContainers := []container.Container{cont, cont2}
+	context := action.FWContext{Previous: prevContainers, Params: []interface{}{args}}
+	_, err := addNewRoutes.Forward(context)
+	c.Assert(err, check.Equals, routertest.ErrForcedFailure)
+	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont.Address().String())
+	c.Assert(hasRoute, check.Equals, false)
+	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont2.Address().String())
+	c.Assert(hasRoute, check.Equals, true)
+}
+
 func (s *S) TestAddNewRouteBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
