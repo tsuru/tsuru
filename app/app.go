@@ -820,6 +820,10 @@ func (app *App) Restart(process string, w io.Writer) error {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
 	}
+	_, err = app.RebuildRoutes()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1451,6 +1455,10 @@ func (app *App) Start(w io.Writer, process string) error {
 	err := Provisioner.Start(app, process)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
+		return err
+	}
+	_, err = app.RebuildRoutes()
+	if err != nil {
 		return err
 	}
 	return nil
