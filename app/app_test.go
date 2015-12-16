@@ -3011,15 +3011,11 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.RemoveRoute(a.Name, units[0].Address)
-	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "proxy:1234"})
-	var b bytes.Buffer
 
+	var b bytes.Buffer
 	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
-	units, err = a.Units()
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
@@ -3043,15 +3039,11 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.RemoveRoute(a.Name, units[0].Address)
-	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "proxy:1234"})
-	var b bytes.Buffer
 
+	var b bytes.Buffer
 	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
-	units, err = a.Units()
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
