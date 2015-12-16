@@ -3639,7 +3639,7 @@ func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *chec
 		Scheme:  permission.PermAppUpdateSleep,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	url := fmt.Sprintf("/apps/%s/sleep?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/sleep?:app=%s&proxy=http://example.com", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
