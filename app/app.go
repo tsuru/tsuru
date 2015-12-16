@@ -1425,6 +1425,10 @@ func (app *App) Start(w io.Writer, process string) error {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return err
 	}
+	_, err = app.RebuildRoutes()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
