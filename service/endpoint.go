@@ -90,6 +90,9 @@ func (c *Client) Create(instance *ServiceInstance, user string) error {
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
 	}
+	if resp.StatusCode == http.StatusConflict {
+		return ErrInstanceAlreadyExistsInAPI
+	}
 	msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 	log.Error(msg)
 	return errors.New(msg)

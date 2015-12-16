@@ -159,6 +159,17 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *check.C) {
 	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
 }
 
+func (s *S) TestCreateDuplicate(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Create(&instance, "my@user")
+	c.Assert(err, check.Equals, ErrInstanceAlreadyExistsInAPI)
+}
+
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
