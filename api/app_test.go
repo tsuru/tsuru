@@ -3573,10 +3573,16 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *ch
 }
 
 func (s *S) TestSleepHandler(c *check.C) {
-	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/sleep?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/sleep?:app=%s&proxy=%s", a.Name, a.Name, "http://example.com")
 	request, err := http.NewRequest("POST", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -3589,6 +3595,27 @@ func (s *S) TestSleepHandler(c *check.C) {
 		Extra:  []interface{}{"app=" + a.Name},
 	}
 	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestSleepHandlerReturns400IfTheProxyIsNotSet(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/apps/stress/sleep?:app=stress", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = sleep(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "Empty proxy URL")
 }
 
 func (s *S) TestSleepHandlerReturns404IfTheAppDoesNotExist(c *check.C) {

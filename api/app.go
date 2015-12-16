@@ -1108,6 +1108,15 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	proxy := r.URL.Query().Get("proxy")
+	if proxy == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty proxy URL"}
+	}
+	proxyURL, err := url.Parse(proxy)
+	if err != nil {
+		log.Errorf("Invalid url for proxy param: %v", proxy)
+		return err
+	}
 	allowed := permission.Check(t, permission.PermAppUpdateSleep,
 		append(permission.Contexts(permission.CtxTeam, a.Teams),
 			permission.Context(permission.CtxApp, a.Name),
@@ -1118,7 +1127,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "sleep", "app="+appName)
-	return a.Sleep(w, process)
+	return a.Sleep(w, process, proxyURL)
 }
 
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
