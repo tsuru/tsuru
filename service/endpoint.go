@@ -161,8 +161,11 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		}
 		return err
 	}
-	if resp.StatusCode == http.StatusPreconditionFailed {
+	switch resp.StatusCode {
+	case http.StatusPreconditionFailed:
 		return ErrInstanceNotReady
+	case http.StatusNotFound:
+		return ErrInstanceNotFoundInAPI
 	}
 	if resp.StatusCode > 299 {
 		msg := fmt.Sprintf("Failed to bind the instance %q to the unit %q: %s", instance.Name, unit.GetIp(), c.buildErrorMessage(err, resp))

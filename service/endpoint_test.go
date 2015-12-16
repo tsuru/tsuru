@@ -353,7 +353,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 
-func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
+func (s *S) TestBindUnitInstanceNotReady(c *check.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusPreconditionFailed)
 	})
@@ -366,6 +366,21 @@ func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.Equals, ErrInstanceNotReady)
+}
+
+func (s *S) TestBindUnitInstanceNotFound(c *check.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.BindUnit(&instance, a, units[0])
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
 func (s *S) TestUnbindApp(c *check.C) {
