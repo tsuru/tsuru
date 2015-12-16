@@ -286,11 +286,6 @@ type Provisioner interface {
 	// process is empty, Sleep will put all units of the application to sleep.
 	Sleep(App, string) error
 
-	// Wakeup wakes up the units of the application, with an optional string
-	// parameter representing the name of the process to wake up. When the
-	// process is empty, Wakeup will wake up all units of the application.
-	Wakeup(App, string) error
-
 	// Addr returns the address for an app.
 	//
 	// tsuru will use this method to get the IP (although it might not be
