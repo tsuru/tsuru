@@ -396,7 +396,7 @@ var addNewRoutes = action.Action{
 			if c.ProcessName != webProcessName {
 				return nil
 			}
-			if c.HostPort != "0" {
+			if c.HostPort != "0" && c.HostPort != "" {
 				err = r.AddRoute(c.AppName, c.Address())
 				if err != nil {
 					return err
