@@ -3017,7 +3017,7 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "proxy:1234"})
 	var b bytes.Buffer
 
-	err = a.Sleep(&b, "web")
+	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
@@ -3049,7 +3049,7 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "proxy:1234"})
 	var b bytes.Buffer
 
-	err = a.Sleep(&b, "web")
+	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
