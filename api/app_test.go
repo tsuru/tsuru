@@ -3522,7 +3522,13 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 }
 
 func (s *S) TestRestartHandler(c *check.C) {
-	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/restart?:app=%s", a.Name, a.Name)
@@ -3930,7 +3936,13 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 }
 
 func (s *S) TestStartHandler(c *check.C) {
-	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/start?:app=%s&process=web", a.Name, a.Name)
