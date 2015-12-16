@@ -841,15 +841,43 @@ func (app *App) Stop(w io.Writer, process string) error {
 	return nil
 }
 
-func (app *App) Sleep(w io.Writer, process string) error {
+func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 	msg := fmt.Sprintf("\n ---> Putting the process %q to sleep\n", process)
 	if process == "" {
 		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep\n", app.Name)
 	}
 	log.Write(w, []byte(msg))
-	err := Provisioner.Sleep(app, process)
+	routerName, err := app.GetRouter()
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+		return err
+	}
+	r, err := router.Get(routerName)
+	if err != nil {
+		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+		return err
+	}
+	oldRoutes, err := r.Routes(app.GetName())
+	if err != nil {
+		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+		return err
+	}
+	for _, route := range oldRoutes {
+		r.RemoveRoute(app.GetName(), route)
+	}
+	err = r.AddRoute(app.GetName(), proxyURL)
+	if err != nil {
+		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+		return err
+	}
+	err = Provisioner.Sleep(app, process)
+	if err != nil {
+		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
+		for _, route := range oldRoutes {
+			r.AddRoute(app.GetName(), route)
+		}
+		r.RemoveRoute(app.GetName(), proxyURL)
+		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
 		return err
 	}
 	return nil
