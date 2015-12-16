@@ -26,7 +26,7 @@ func (s *S) TestLogStreamTrackerShutdown(c *check.C) {
 	logTracker.add(l)
 	logTracker.Shutdown()
 	select {
-	case <-l.C:
+	case <-l.ListenChan():
 	case <-time.After(5 * time.Second):
 		c.Fatal("timed out waiting for channel to close")
 	}

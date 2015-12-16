@@ -2157,7 +2157,7 @@ func (s *S) TestLogWithListeners(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
-		for log := range l.C {
+		for log := range l.c {
 			logs.Lock()
 			logs.l = append(logs.l, log)
 			logs.Unlock()

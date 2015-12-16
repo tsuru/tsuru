@@ -46,7 +46,7 @@ func (r *redisPubSub) UnSub() error {
 	return nil
 }
 
-func (r *redisPubSub) Sub() (chan []byte, error) {
+func (r *redisPubSub) Sub() (<-chan []byte, error) {
 	conn, err := r.factory.getConn(true)
 	if err != nil {
 		return nil, err

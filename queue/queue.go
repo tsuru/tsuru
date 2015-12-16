@@ -26,7 +26,7 @@ type PubSubQ interface {
 
 	// Returns a channel that will yield every message published to this
 	// queue.
-	Sub() (chan []byte, error)
+	Sub() (<-chan []byte, error)
 
 	// Unsubscribe the queue, this should make sure the channel returned
 	// by Sub() is closed.

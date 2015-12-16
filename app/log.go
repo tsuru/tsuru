@@ -18,7 +18,7 @@ var LogPubSubQueuePrefix = "pubsub:"
 var bulkMaxWaitTime = 500 * time.Millisecond
 
 type LogListener struct {
-	C <-chan Applog
+	c <-chan Applog
 	q queue.PubSubQ
 }
 
@@ -51,21 +51,22 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 			}
 			if (filterLog.Source == "" || filterLog.Source == applog.Source) &&
 				(filterLog.Unit == "" || filterLog.Unit == applog.Unit) {
-				defer func() {
-					recover()
-				}()
 				c <- applog
 			}
 		}
 	}()
-	l := LogListener{C: c, q: pubSubQ}
+	l := LogListener{c: c, q: pubSubQ}
 	return &l, nil
+}
+
+func (l *LogListener) ListenChan() <-chan Applog {
+	return l.c
 }
 
 func (l *LogListener) Close() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("Recovered panic closing listener (possible double close): %#v", r)
+			err = fmt.Errorf("Recovered panic closing listener (possible double close): %v", r)
 		}
 	}()
 	err = l.q.UnSub()
