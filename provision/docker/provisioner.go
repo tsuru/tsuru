@@ -341,10 +341,6 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Wakeup(app provision.App, process string) error {
-	return p.Start(app, process)
-}
-
 func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := getRouterForApp(app1)
 	if err != nil {
