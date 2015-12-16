@@ -415,6 +415,18 @@ func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
+func (s *S) TestUnbindAppInstanceNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.UnbindApp(&instance, a)
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
 func (s *S) TestUnbindUnit(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
