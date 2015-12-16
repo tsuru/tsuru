@@ -36,11 +36,27 @@ then
 	exit 3
 fi
 
+git_archive_all() {
+    REV=$1; FILE=$2
+    TMP_WORK_DIR=$(mktemp -d)
+    chmod 755 $TMP_WORK_DIR
+    unset GIT_DIR GIT_WORK_TREE
+    git clone -q $PWD $TMP_WORK_DIR &> /dev/null
+    pushd $TMP_WORK_DIR > /dev/null
+    git config advice.detachedHead false
+    git checkout $REV > /dev/null
+    git submodule update --init --recursive > /dev/null
+    find -name .git -prune -exec rm -rf {} \; > /dev/null
+    tar zcf /tmp/$FILE .
+    popd > /dev/null
+    rm -rf $TMP_WORK_DIR > /dev/null
+}
+
 APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
 UUID=`python -c 'import uuid; print uuid.uuid4().hex'`
 ARCHIVE_FILE_NAME=${APP_NAME}_${COMMIT}_${UUID}.tar.gz
-git archive --format=tar.gz -o /tmp/$ARCHIVE_FILE_NAME $COMMIT
+git_archive_all $COMMIT $ARCHIVE_FILE_NAME
 swift -q $AUTH_PARAMS upload $CONTAINER_NAME /tmp/$ARCHIVE_FILE_NAME --object-name $ARCHIVE_FILE_NAME
 swift -q $AUTH_PARAMS post -r ".r:*" $CONTAINER_NAME
 rm /tmp/$ARCHIVE_FILE_NAME
