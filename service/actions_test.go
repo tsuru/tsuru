@@ -14,7 +14,6 @@ import (
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -418,7 +417,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	}
 	ctx := action.FWContext{Params: []interface{}{&args}}
 	_, err = unbindUnits.Forward(ctx)
-	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: 500, Message: "Failed to unbind (\"/resources/my-mysql/bind\"): my error"})
+	c.Assert(err.Error(), check.Equals, `Failed to unbind ("/resources/my-mysql/bind"): my error`)
 	c.Assert(reqs, check.HasLen, 24)
 	for i, req := range reqs {
 		if i < 10 {

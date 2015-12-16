@@ -6,7 +6,7 @@ package service
 
 import (
 	"bytes"
-	stderrors "errors"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -279,10 +278,7 @@ func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPrecondit
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Message, check.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+	c.Assert(err, check.Equals, ErrInstanceNotReady)
 }
 
 func (s *S) TestBindUnit(c *check.C) {
@@ -335,10 +331,7 @@ func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Message, check.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+	c.Assert(err, check.Equals, ErrInstanceNotReady)
 }
 
 func (s *S) TestUnbindApp(c *check.C) {
@@ -413,7 +406,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 
 func (s *S) TestBuildErrorMessageWithNilResponse(c *check.C) {
 	cli := Client{}
-	err := stderrors.New("epic fail")
+	err := errors.New("epic fail")
 	c.Assert(cli.buildErrorMessage(err, nil), check.Equals, "epic fail")
 }
 
@@ -431,7 +424,7 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
 	cli := Client{}
-	err := stderrors.New("epic fail")
+	err := errors.New("epic fail")
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(err, resp), check.Equals, "epic fail")
