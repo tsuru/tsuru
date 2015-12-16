@@ -102,6 +102,9 @@ func (c *Client) Destroy(instance *ServiceInstance) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", nil)
 	if err == nil && resp.StatusCode > 299 {
+		if resp.StatusCode == http.StatusNotFound {
+			return ErrInstanceNotFoundInAPI
+		}
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Error(msg)
 		return errors.New(msg)

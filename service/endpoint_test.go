@@ -205,6 +205,16 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
 
+func (s *S) TestDestroyNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Destroy(&instance)
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
 func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
