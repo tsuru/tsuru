@@ -173,6 +173,7 @@ func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Se
 type ServiceModel struct {
 	Service   string   `json:"service"`
 	Instances []string `json:"instances"`
+	Plans     []string `json:"plans"`
 }
 
 // Proxy is a proxy between tsuru and the service.
