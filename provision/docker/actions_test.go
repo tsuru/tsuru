@@ -297,7 +297,7 @@ func (s *S) TestAddNewRouteFowardDoesNotAddWhenHostPortIsZero(c *check.C) {
 	prevContainers := []container.Container{cont, cont2}
 	context := action.FWContext{Previous: prevContainers, Params: []interface{}{args}}
 	_, err := addNewRoutes.Forward(context)
-	c.Assert(err, check.Equals, routertest.ErrForcedFailure)
+	c.Assert(err, check.Equals, nil)
 	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont.Address().String())
 	c.Assert(hasRoute, check.Equals, false)
 	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont2.Address().String())
