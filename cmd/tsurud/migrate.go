@@ -88,7 +88,9 @@ func (*migrateCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "migrate",
 		Usage: "migrate [-n/--dry] [-f/--force] [--name name]",
-		Desc:  "Runs migrations from previous versions of tsurud",
+		Desc: `Runs migrations from previous versions of tsurud. Only mandatory migrations
+will be executed by default. To execute an optional migration the --name flag
+must be informed.`,
 	}
 }
 
