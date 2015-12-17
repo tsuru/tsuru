@@ -63,7 +63,9 @@ Running "migration3"... OK
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(&buf, false)
+	err = RegisterOptional("migration4", mFunc("migration4"))
+	c.Assert(err, check.IsNil)
+	err = Run(RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"migration1", "migration2", "migration3"})
 	c.Assert(buf.String(), check.Equals, expected)
@@ -84,7 +86,7 @@ func (s *Suite) TestMultipleRuns(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(&buf, false)
+	err = Run(RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	migrations = nil
 	err = Register("migration1", mFunc("migration1"))
@@ -95,7 +97,7 @@ func (s *Suite) TestMultipleRuns(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(&buf, false)
+	err = Run(RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"migration1", "migration2", "migration3", "migration4"})
 }
@@ -118,11 +120,11 @@ func (s *Suite) TestFailingMigration(c *check.C) {
 		return nil
 	})
 	c.Assert(err, check.IsNil)
-	err = Run(&buf, false)
+	err = Run(RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "something went wrong")
 	c.Assert(runs, check.HasLen, 0)
-	err = Run(&buf, false)
+	err = Run(RunArgs{Writer: &buf, Dry: false})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.DeepEquals, []string{"mig1", "mig2"})
 }
@@ -146,7 +148,7 @@ Running "migration3"... OK
 	c.Assert(err, check.IsNil)
 	err = Register("migration3", mFunc("migration3"))
 	c.Assert(err, check.IsNil)
-	err = Run(&buf, true)
+	err = Run(RunArgs{Writer: &buf, Dry: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(runs, check.HasLen, 0)
 	c.Assert(buf.String(), check.Equals, expected)
@@ -157,4 +159,84 @@ func (s *Suite) TestRegisterDuplicate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Register("migration1", nil)
 	c.Assert(err, check.Equals, ErrDuplicateMigration)
+}
+
+func (s *Suite) TestRunOptional(c *check.C) {
+	expected := `Running "migration2"... OK
+`
+	var buf bytes.Buffer
+	var runs []string
+	var mFunc = func(name string) MigrateFunc {
+		return func() error {
+			runs = append(runs, name)
+			return nil
+		}
+	}
+	err := Register("migration1", mFunc("migration1"))
+	c.Assert(err, check.IsNil)
+	err = RegisterOptional("migration2", mFunc("migration2"))
+	c.Assert(err, check.IsNil)
+	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	c.Assert(err, check.IsNil)
+	c.Assert(runs, check.DeepEquals, []string{"migration2"})
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
+func (s *Suite) TestRunOptionalAlreadyExecuted(c *check.C) {
+	expected := `Running "migration2"... OK
+Running "migration2"... OK
+`
+	var buf bytes.Buffer
+	var runs []string
+	var mFunc = func(name string) MigrateFunc {
+		return func() error {
+			runs = append(runs, name)
+			return nil
+		}
+	}
+	err := Register("migration1", mFunc("migration1"))
+	c.Assert(err, check.IsNil)
+	err = RegisterOptional("migration2", mFunc("migration2"))
+	c.Assert(err, check.IsNil)
+	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	c.Assert(err, check.IsNil)
+	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	c.Assert(err, check.Equals, ErrMigrationAlreadyExecuted)
+	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(runs, check.DeepEquals, []string{"migration2", "migration2"})
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
+func (s *Suite) TestRunOptionalNotFound(c *check.C) {
+	var buf bytes.Buffer
+	err := Register("migration1", func() error { return nil })
+	c.Assert(err, check.IsNil)
+	err = Run(RunArgs{Name: "migration1", Writer: &buf, Dry: false, Force: false})
+	c.Assert(err, check.Equals, ErrMigrationMandatory)
+	err = Run(RunArgs{Name: "migration2", Writer: &buf, Dry: false, Force: false})
+	c.Assert(err, check.Equals, ErrMigrationNotFound)
+}
+
+func (s *Suite) TestList(c *check.C) {
+	var buf bytes.Buffer
+	nilFn := func() error { return nil }
+	err := Register("migration1", nilFn)
+	c.Assert(err, check.IsNil)
+	err = RegisterOptional("migration2", nilFn)
+	c.Assert(err, check.IsNil)
+	err = RegisterOptional("migration3", nilFn)
+	c.Assert(err, check.IsNil)
+	err = Run(RunArgs{Name: "migration3", Writer: &buf})
+	c.Assert(err, check.IsNil)
+	migrations, err := List()
+	c.Assert(err, check.IsNil)
+	for i := range migrations {
+		migrations[i].fn = nil
+	}
+	c.Assert(migrations, check.DeepEquals, []migration{
+		{Name: "migration1"},
+		{Name: "migration2", Optional: true},
+		{Name: "migration3", Optional: true, Ran: true},
+	})
 }
