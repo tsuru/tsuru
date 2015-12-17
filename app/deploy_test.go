@@ -290,6 +290,7 @@ func (s *S) TestDeploySaveDataAndDiff(c *check.C) {
 func (s *S) TestDeployApp(c *check.C) {
 	a := App{
 		Name:     "someApp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "django",
 		Teams:    []string{s.team.Name},
 	}
@@ -313,6 +314,7 @@ func (s *S) TestDeployApp(c *check.C) {
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	a := App{
 		Name:           "someApp",
+		Plan:           Plan{Router: "fake"},
 		Platform:       "django",
 		Teams:          []string{s.team.Name},
 		UpdatePlatform: true,
@@ -340,6 +342,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -363,6 +366,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -400,6 +404,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -433,6 +438,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -466,6 +472,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -530,9 +537,9 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 func (s *S) TestDeployAsleepApp(c *check.C) {
 	a := App{
 		Name:     "someApp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "django",
 		Teams:    []string{s.team.Name},
-		Plan:     Plan{Router: "fake"},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -540,15 +547,11 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.RemoveRoute(a.Name, units[0].Address)
-	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "proxy:1234"})
 
 	writer := &bytes.Buffer{}
 	err = a.Sleep(writer, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
-	units, err = a.Units()
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
@@ -693,6 +696,7 @@ func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
 func (s *S) TestRollbackWithNameImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -725,6 +729,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -757,6 +762,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
