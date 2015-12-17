@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -40,19 +41,25 @@ func addLogs(ws *websocket.Conn) {
 		err = fmt.Errorf("wslogs: invalid token app name: %q", t.GetAppName())
 		return
 	}
+	err = scanLogs(ws)
+	if err != nil {
+		return
+	}
+}
+
+func scanLogs(stream io.Reader) error {
 	dispatcher := app.NewlogDispatcher()
-	scanner := bufio.NewScanner(ws)
+	scanner := bufio.NewScanner(stream)
+	var entry app.Applog
 	for scanner.Scan() {
-		var entry app.Applog
 		data := bytes.TrimSpace(scanner.Bytes())
 		if len(data) == 0 {
 			continue
 		}
-		err = json.Unmarshal(data, &entry)
+		err := json.Unmarshal(data, &entry)
 		if err != nil {
 			dispatcher.Stop()
-			err = fmt.Errorf("wslogs: parsing log line %q: %s", string(data), err)
-			return
+			return fmt.Errorf("wslogs: parsing log line %q: %s", string(data), err)
 		}
 		err = dispatcher.Send(&entry)
 		if err != nil {
@@ -62,14 +69,13 @@ func addLogs(ws *websocket.Conn) {
 			log.Errorf("wslogs: error storing log: %s", err)
 		}
 	}
-	err = dispatcher.Stop()
+	err := dispatcher.Stop()
 	if err != nil {
-		err = fmt.Errorf("wslogs: error storing log: %s", err)
-		return
+		return fmt.Errorf("wslogs: error storing log: %s", err)
 	}
 	err = scanner.Err()
 	if err != nil {
-		err = fmt.Errorf("wslogs: waiting for log data: %s", err)
-		return
+		return fmt.Errorf("wslogs: waiting for log data: %s", err)
 	}
+	return nil
 }
