@@ -139,6 +139,34 @@ user is the following:
 From this moment the user named ``myuser@corp.com`` can read and restart all
 applications belonging to the team named ``myteamname``.
 
+Default roles
+=============
+
+It's possible to have default roles that are applied to a user when some event
+happens on tsuru. Example of such events are ``user-create`` and
+``team-create``. A list of all possible events can be found running the command
+``tsuru role-default-list``. Commands ``tsuru role-default-add`` and ``tsuru
+role-default-remove`` should be used to include or remove new roles in an event.
+
+A common use for default roles would be replicating the behavior of tsuru on
+versions prior to 0.13.0. A new user would always be allowed to create a new
+team and would also be allowed to create new applications on the newly created
+team.
+
+To achieve this with default roles first two roles need to be created, let's
+call them ``team-creator`` and ``team-member``. ``team-creator`` would use the
+``global`` context and include the ``team.create`` permission. ``team-member``
+would use the ``team`` context and include the ``app`` permission.
+
+With these roles created we only need to add them as default on the appropriate
+event:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru role-default-add --user-create team-creator --team-create team-member
+
 
 Migrating
 ---------
