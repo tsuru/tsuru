@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"launchpad.net/gnuflag"
+	"github.com/tsuru/gnuflag"
 )
 
 func getHome() string {

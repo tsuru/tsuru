@@ -15,7 +15,7 @@ import (
 	"strings"
 	"syscall"
 
-	"launchpad.net/gnuflag"
+	"github.com/tsuru/gnuflag"
 )
 
 var errUndefinedTarget = errors.New(`No target defined. Please use target-add/target-set to define a target.

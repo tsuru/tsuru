@@ -7,9 +7,9 @@ package main
 import (
 	"bytes"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
 	"gopkg.in/check.v1"
-	"launchpad.net/gnuflag"
 )
 
 func (s *S) TestConfigFileValueString(c *check.C) {

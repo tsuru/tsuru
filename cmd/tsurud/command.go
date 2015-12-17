@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gnuflag"
 )
 
 type configFile struct {
