@@ -6,6 +6,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/RobotsAndPencils/go-saml/util",
+			"Rev": "aa127de49a0111329d9dbd2e19ddf21da90eb931"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
 			"Comment": "v1.0.4",
 			"Rev": "999b1591218c36d5050d1ba7266eba956e65965f"
@@ -69,6 +73,11 @@
 			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 		},
 		{
+			"ImportPath": "github.com/diego-araujo/go-saml",
+			"Comment": "v0.2-1-g81203d2",
+			"Rev": "81203d2425377605c5688e55dca1340b614b618d"
+		},
+		{
 			"ImportPath": "github.com/digitalocean/godo",
 			"Comment": "v0.9.0",
 			"Rev": "2a0d64a42bb60a95677748a4d5729af6184330b4"
@@ -111,6 +120,10 @@
 			"ImportPath": "github.com/jmespath/go-jmespath",
 			"Comment": "0.2.2-2-gc01cf91",
 			"Rev": "c01cf91b011868172fdcd9f41838e80c9d716264"
+		},
+		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "10da29423eb9a6269092eebdc2be32209612d9d2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/go-etcd/etcd",
@@ -232,6 +245,10 @@
 			"ImportPath": "github.com/mailgun/vulcand/supervisor",
 			"Comment": "v0.8.0-beta.3-15-g22a71f6",
 			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
+		},
+		{
+			"ImportPath": "github.com/nu7hatch/gouuid",
+			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
 		{
 			"ImportPath": "github.com/sajari/fuzzy",
@@ -360,11 +377,6 @@
 		{
 			"ImportPath": "gopkg.in/yaml.v1",
 			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
-		},
-		{
-			"ImportPath": "github.com/diego-araujo/go-saml",
-			"Comment": "v0.2",
-			"Rev": "83716ce8996d95d70cc5d496b9bd6dfc4b8b64f9"
 		}
 	]
 }
