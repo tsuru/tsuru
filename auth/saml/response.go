@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	saml "github.com/diego-araujo/go-saml"
+	"github.com/diego-araujo/go-saml"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/errors"
 )
