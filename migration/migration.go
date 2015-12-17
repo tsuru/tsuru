@@ -127,14 +127,14 @@ func run(args RunArgs) error {
 }
 
 func runOptional(args RunArgs) error {
-	migrations, err := getMigrations(false)
+	migrationsToRun, err := getMigrations(false)
 	if err != nil {
 		return err
 	}
 	var toRun *migration
-	for i, m := range migrations {
+	for i, m := range migrationsToRun {
 		if m.Name == args.Name {
-			toRun = &migrations[i]
+			toRun = &migrationsToRun[i]
 			break
 		}
 	}
