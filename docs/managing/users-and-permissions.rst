@@ -175,8 +175,8 @@ When you already have an existing tsuru installation it will be necessary to
 create roles and assign them to all existing users, otherwise they will no
 longer be able to execute any action in tsuru.
 
-To make this process easier we created a script to help with the transition. The
-goal of this script is to roughly give all existing users the same set of
+To make this process easier we created a migration to help with the transition.
+The goal of this migration is to roughly give all existing users the same set of
 permissions they already had on tsuru. To accomplish this it'll create 3
 different roles: ``admin``, ``team-member`` and ``team-creator``.
 
@@ -196,10 +196,18 @@ And will be assigned to all users for each team name the user is a member of.
 The ``team-creator`` role will only include the ``team.create`` permission with
 a ``global`` context and will also be assigned to all users.
 
-The script is available as a gist and should be executed before migrating to
-tsuru 0.13.0:
+Also the role ``team-creator`` will be assigned as a default role when a new
+user is created. And the ``team-member`` role will be the default role assigned
+to a user when they create a new team.
 
-`https://gist.github.com/tarsisazevedo/d55e40bbcb7f09f1a4b1 <https://gist.github.com/tarsisazevedo/d55e40bbcb7f09f1a4b1>`_
+Running this migration is optional. If you choose execute it simply run:
+
+.. highlight:: bash
+
+::
+
+    $ tsurud [--config <path to tsuru.conf>] migrate --name migrate-roles
+
 
 Bootstrapping
 -------------
@@ -215,5 +223,4 @@ installation:
 
     $ tsurud [--config <path to tsuru.conf>] root-user-create myemail@somewhere.com
     # type a password and confirmation (only if using native auth scheme)
-
 
