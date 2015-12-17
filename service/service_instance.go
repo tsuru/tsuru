@@ -6,9 +6,8 @@ package service
 
 import (
 	"encoding/json"
-	stderrors "errors"
+	"errors"
 	"io"
-	"net/http"
 	"regexp"
 	"strconv"
 
@@ -16,21 +15,22 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var (
-	ErrServiceInstanceNotFound   = stderrors.New("service instance not found")
-	ErrInvalidInstanceName       = stderrors.New("invalid service instance name")
-	ErrInstanceNameAlreadyExists = stderrors.New("instance name already exists.")
-	ErrAccessNotAllowed          = stderrors.New("user does not have access to this service instance")
-	ErrTeamMandatory             = stderrors.New("please specify the team that owns the service instance")
-	ErrUnitAlreadyBound          = stderrors.New("unit is already bound to this service instance")
-	ErrUnitNotBound              = stderrors.New("unit is not bound to this service instance")
-	ErrServiceInstanceBound      = stderrors.New("This service instance is bound to at least one app. Unbind them before removing it")
+	ErrServiceInstanceNotFound   = errors.New("service instance not found")
+	ErrInvalidInstanceName       = errors.New("invalid service instance name")
+	ErrInstanceNameAlreadyExists = errors.New("instance name already exists.")
+	ErrAccessNotAllowed          = errors.New("user does not have access to this service instance")
+	ErrTeamMandatory             = errors.New("please specify the team that owns the service instance")
+	ErrAppAlreadyBound           = errors.New("app is already bound to this service instance")
+	ErrAppNotBound               = errors.New("app is not bound to this service instance")
+	ErrUnitAlreadyBound          = errors.New("unit is already bound to this service instance")
+	ErrUnitNotBound              = errors.New("unit is not bound to this service instance")
+	ErrServiceInstanceBound      = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
 	instanceNameRegexp           = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
@@ -90,7 +90,7 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 func (si *ServiceInstance) Info() (map[string]string, error) {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
-		return nil, stderrors.New("endpoint does not exists")
+		return nil, errors.New("endpoint does not exists")
 	}
 	result, err := endpoint.Info(si)
 	if err != nil {
@@ -195,7 +195,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 // UnbindApp makes the unbind between the service instance and an app.
 func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer) error {
 	if si.FindApp(app.GetName()) == -1 {
-		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
+		return ErrAppNotBound
 	}
 	args := bindPipelineArgs{
 		serviceInstance: si,

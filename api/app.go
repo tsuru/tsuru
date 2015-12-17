@@ -934,21 +934,38 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if follow == "1" {
-		l, err := app.NewLogListener(&a, filterLog)
-		if err != nil {
-			return err
+	if follow != "1" {
+		return nil
+	}
+	var closeChan <-chan bool
+	if notifier, ok := w.(http.CloseNotifier); ok {
+		closeChan = notifier.CloseNotify()
+	} else {
+		closeChan = make(chan bool)
+	}
+	l, err := app.NewLogListener(&a, filterLog)
+	if err != nil {
+		return err
+	}
+	logTracker.add(l)
+	defer func() {
+		logTracker.remove(l)
+		l.Close()
+	}()
+	logChan := l.ListenChan()
+	for {
+		var logMsg app.Applog
+		select {
+		case <-closeChan:
+			return nil
+		case logMsg = <-logChan:
 		}
-		logTracker.add(l)
-		defer func() {
-			logTracker.remove(l)
-			l.Close()
-		}()
-		for log := range l.C {
-			err := encoder.Encode([]app.Applog{log})
-			if err != nil {
-				break
-			}
+		if logMsg == (app.Applog{}) {
+			break
+		}
+		err := encoder.Encode([]app.Applog{logMsg})
+		if err != nil {
+			break
 		}
 	}
 	return nil

@@ -673,8 +673,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *check.C) {
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"mongodb-other"}},
-		{Service: "redis", Instances: []string{"redis-globo"}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
+		{Service: "redis", Instances: []string{"redis-globo"}, Plans: []string{""}},
 	}
 	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
@@ -716,8 +716,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *check.C) {
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"mongodb-other"}},
-		{Service: "redis", Instances: []string{}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
+		{Service: "redis", Instances: []string{}, Plans: []string(nil)},
 	}
 	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
@@ -795,11 +795,11 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 	c.Assert(err, check.IsNil)
 	sort.Sort(ServiceModelList(instances))
 	expected := []service.ServiceModel{
-		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
-		{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
-		{Service: "oracle", Instances: []string{}},
-		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
-		{Service: "redis", Instances: []string{"redis1", "redis2"}},
+		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}, Plans: []string{"", ""}},
+		{Service: "mysql", Instances: []string{"mysql1", "mysql2"}, Plans: []string{"", ""}},
+		{Service: "oracle", Instances: []string{}, Plans: []string(nil)},
+		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}, Plans: []string{"", ""}},
+		{Service: "redis", Instances: []string{"redis1", "redis2"}, Plans: []string{"", ""}},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1139,6 +1139,14 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+type closeNotifierResponseRecorder struct {
+	*httptest.ResponseRecorder
+}
+
+func (r *closeNotifierResponseRecorder) CloseNotify() <-chan bool {
+	return make(chan bool)
+}
+
 func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	var proxyedRequest *http.Request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1162,7 +1170,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	m := RunServer(true)
-	recorder := httptest.NewRecorder()
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -1192,7 +1200,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	m := RunServer(true)
-	recorder := httptest.NewRecorder()
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
@@ -1217,7 +1225,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyError(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	m := RunServer(true)
-	recorder := httptest.NewRecorder()
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.Bytes(), check.DeepEquals, []byte("some error"))

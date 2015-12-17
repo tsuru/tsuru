@@ -304,6 +304,9 @@ type Provisioner interface {
 
 	// Returns the metric backend environs for the app.
 	MetricEnvs(App) map[string]string
+
+	//Rollback a deploy
+	Rollback(App, string, io.Writer) (string, error)
 }
 
 type MessageProvisioner interface {

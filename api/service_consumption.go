@@ -199,6 +199,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 			continue
 		}
 		entry.Instances = append(entry.Instances, instance.Name)
+		entry.Plans = append(entry.Plans, instance.PlanName)
 	}
 	result := []service.ServiceModel{}
 	for _, entry := range servicesMap {

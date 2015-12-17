@@ -9,9 +9,9 @@ import (
 	"os"
 	"path"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/fs/fstest"
 	"gopkg.in/check.v1"
-	"launchpad.net/gnuflag"
 )
 
 func (s *S) TestJoinWithUserDir(c *check.C) {

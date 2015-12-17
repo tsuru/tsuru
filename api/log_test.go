@@ -6,8 +6,10 @@ package api
 
 import (
 	"fmt"
+	"io"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/tsuru/config"
@@ -161,4 +163,35 @@ func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
 	n, err := wsConn.Read(buffer)
 	c.Assert(err, check.IsNil)
 	c.Assert(string(buffer[:n]), check.Equals, `{"error":"wslogs: invalid token app name: \"\""}`)
+}
+
+func (s *S) BenchmarkScanLogs(c *check.C) {
+	c.StopTimer()
+	var apps []app.App
+	for i := 0; i < 200; i++ {
+		a := app.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
+		apps = append(apps, a)
+		err := app.CreateApp(&a, s.user)
+		c.Assert(err, check.IsNil)
+		defer app.Delete(&a, nil)
+	}
+	baseMsg := `{"date": "2015-06-16T15:00:00.000Z", "message": "msg-%d", "source": "web", "appname": "%s", "unit": "unit1"}` + "\n"
+	for i := range apps {
+		// Remove overhead for first message from app from benchmark.
+		err := scanLogs(strings.NewReader(fmt.Sprintf(baseMsg, 0, apps[i].Name)))
+		c.Assert(err, check.IsNil)
+	}
+	r, w := io.Pipe()
+	go func() {
+		for i := 0; i < c.N; i++ {
+			msg := fmt.Sprintf(baseMsg, i, apps[i%len(apps)].Name)
+			_, err := w.Write([]byte(msg))
+			c.Assert(err, check.IsNil)
+		}
+		w.Close()
+	}()
+	c.StartTimer()
+	err := scanLogs(r)
+	c.Assert(err, check.IsNil)
+	c.StopTimer()
 }

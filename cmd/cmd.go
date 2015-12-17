@@ -16,10 +16,10 @@ import (
 	"strings"
 
 	"github.com/sajari/fuzzy"
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/net"
-	"launchpad.net/gnuflag"
 )
 
 var ErrAbortCommand = gerrors.New("")

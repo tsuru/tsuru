@@ -10,6 +10,7 @@ addons:
   apt:
     packages:
       - rsyslog
+      - xmlsec1
 install:
   - make get
 before_script:

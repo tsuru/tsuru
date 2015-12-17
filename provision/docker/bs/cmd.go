@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gnuflag"
 )
 
 type EnvSetCmd struct {

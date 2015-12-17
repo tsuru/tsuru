@@ -14,7 +14,6 @@ import (
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -210,8 +209,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	_, err = bindAppDBAction.Forward(ctx)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^This app is already bound to this service instance.$")
+	c.Assert(err, check.Equals, ErrAppAlreadyBound)
 }
 
 func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C) {
@@ -418,7 +416,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	}
 	ctx := action.FWContext{Params: []interface{}{&args}}
 	_, err = unbindUnits.Forward(ctx)
-	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: 500, Message: "Failed to unbind (\"/resources/my-mysql/bind\"): my error"})
+	c.Assert(err.Error(), check.Equals, `Failed to unbind ("/resources/my-mysql/bind"): my error`)
 	c.Assert(reqs, check.HasLen, 24)
 	for i, req := range reqs {
 		if i < 10 {
@@ -534,6 +532,34 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqs = append(reqs, r)
 		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	a := provisiontest.NewFakeApp("myapp", "static", 4)
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+	buf := bytes.NewBuffer(nil)
+	args := bindPipelineArgs{
+		app:             a,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindAppEndpoint.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
+}
+
+func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
+	var reqs []*http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
