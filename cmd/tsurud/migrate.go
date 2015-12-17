@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -15,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gnuflag"
 )
 
 func getProvisioner() (string, error) {

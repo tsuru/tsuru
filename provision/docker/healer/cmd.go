@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gnuflag"
 )
 
 type ListHealingHistoryCmd struct {

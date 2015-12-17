@@ -13,14 +13,7 @@ FATAL: You need Git to download tsuru dependencies.
        http://docs.tsuru.io/en/latest/contributing/vagrant.html
 endef
 
-define BZR_ERROR
-
-FATAL: You need Bazaar (bzr) to download tsuru dependencies.
-       For more details, please check
-       http://docs.tsuru.io/en/latest/contributing/vagrant.html
-endef
-
-.PHONY: all check-path get git bzr get-code test race docs
+.PHONY: all check-path get git get-code test race docs
 
 all: check-path get test
 
@@ -40,13 +33,10 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
 endif
 	@exit 0
 
-get: git bzr godep
+get: git godep
 
 git:
 	$(if $(shell git), , $(error $(GIT_ERROR)))
-
-bzr:
-	$(if $(shell bzr), , $(error $(BZR_ERROR)))
 
 godep:
 	go get $(GO_EXTRAFLAGS) github.com/tools/godep

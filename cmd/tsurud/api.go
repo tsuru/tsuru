@@ -6,9 +6,9 @@ package main
 
 import (
 	"github.com/tsuru/config"
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gnuflag"
 )
 
 type apiCmd struct {

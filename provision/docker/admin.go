@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gnuflag"
 )
 
 type moveContainersCmd struct{}

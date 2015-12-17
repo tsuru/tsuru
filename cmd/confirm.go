@@ -7,7 +7,7 @@ package cmd
 import (
 	"fmt"
 
-	"launchpad.net/gnuflag"
+	"github.com/tsuru/gnuflag"
 )
 
 type ConfirmationCommand struct {

@@ -11,8 +11,8 @@ import (
 	"path"
 	"regexp"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/git"
-	"launchpad.net/gnuflag"
 )
 
 // AppGuesser is used to guess the name of an app based in a file path.

@@ -292,6 +292,11 @@
 			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
 		},
 		{
+			"ImportPath": "github.com/tsuru/gnuflag",
+			"Comment": "go.weekly.2012-02-22-8-g86b8c1b",
+			"Rev": "86b8c1b864aadcf9c94d67bc607ce3f19cbb9aa2"
+		},
+		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
 			"Rev": "6f5a04eb8172e1380ca09d426e67a07687828b7a"
 		},
@@ -355,11 +360,6 @@
 		{
 			"ImportPath": "gopkg.in/yaml.v1",
 			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
-		},
-		{
-			"ImportPath": "launchpad.net/gnuflag",
-			"Comment": "12",
-			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
 		}
 	]
 }

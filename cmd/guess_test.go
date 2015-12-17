@@ -11,9 +11,9 @@ import (
 	"path"
 	"syscall"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"gopkg.in/check.v1"
-	"launchpad.net/gnuflag"
 )
 
 var appflag = &gnuflag.Flag{
