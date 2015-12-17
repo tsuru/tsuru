@@ -50,8 +50,8 @@ func addLogs(ws *websocket.Conn) {
 func scanLogs(stream io.Reader) error {
 	dispatcher := app.NewlogDispatcher()
 	scanner := bufio.NewScanner(stream)
-	var entry app.Applog
 	for scanner.Scan() {
+		var entry app.Applog
 		data := bytes.TrimSpace(scanner.Bytes())
 		if len(data) == 0 {
 			continue
