@@ -90,6 +90,7 @@ type App struct {
 	Lock           AppLock
 	Plan           Plan
 	Pool           string
+	Description    string
 
 	quota.Quota
 }
@@ -116,6 +117,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["cname"] = app.CName
 	result["owner"] = app.Owner
 	result["pool"] = app.Pool
+	result["description"] = app.Description
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
 	result["plan"] = app.Plan

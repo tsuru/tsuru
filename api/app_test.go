@@ -563,7 +563,7 @@ func (s *S) TestCreateAppHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -609,7 +609,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -659,7 +659,47 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=myplan"},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=myplan", "description="},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestCreateAppWithDescription(c *check.C) {
+	a := app.App{Name: "someapp"}
+	data := `{"name":"someapp","platform":"zend","description":"my app description"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	err = createApp(recorder, request, token)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(body, &obtained)
+	c.Assert(obtained, check.DeepEquals, expected)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	u, _ := token.User()
+	action := rectest.Action{
+		Action: "create-app",
+		User:   u.Email,
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=my app description"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -804,7 +844,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=platDis", "plan="},
+		Extra:  []interface{}{"app=someapp", "platform=platDis", "plan=", "description="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(a.Name)
