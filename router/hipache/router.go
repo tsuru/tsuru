@@ -169,7 +169,7 @@ func (r *hipacheRouter) AddRoute(name string, address *url.URL) error {
 		}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	if err := r.addRoute(frontend, address.String()); err != nil {
+	if err = r.addRoute(frontend, address.String()); err != nil {
 		log.Errorf("error on add route for %s - %s", backendName, address)
 		return &router.RouterError{Op: "add", Err: err}
 	}
