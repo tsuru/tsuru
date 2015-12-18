@@ -93,8 +93,13 @@ func NewPipeline(actions ...*Action) *Pipeline {
 	// guarantees each copy has an isolated Result.
 	newActions := make([]*Action, len(actions))
 	for i, action := range actions {
-		newAction := new(Action)
-		*newAction = *action
+		newAction := &Action{
+			Name:      action.Name,
+			Forward:   action.Forward,
+			Backward:  action.Backward,
+			MinParams: action.MinParams,
+			OnError:   action.OnError,
+		}
 		newActions[i] = newAction
 	}
 	return &Pipeline{actions: newActions}

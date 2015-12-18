@@ -168,6 +168,8 @@ event:
     $ tsuru role-default-add --user-create team-creator --team-create team-member
 
 
+.. _migrating_perms:
+
 Migrating
 ---------
 
