@@ -3,6 +3,7 @@ sudo: false
 go:
   - 1.4.2
   - 1.5.2
+  - 1.6beta1
   - tip
 env:
   - GOARCH=amd64
@@ -32,4 +33,5 @@ services:
   - redis
 matrix:
   allow_failures:
+    - go: 1.6beta1
     - go: tip
