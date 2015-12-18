@@ -214,7 +214,6 @@ func (s *S) TestAddRouteNoDomainConfigured(c *check.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	r = hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = r.AddRoute("tip", addr)
 	c.Assert(err, check.NotNil)
