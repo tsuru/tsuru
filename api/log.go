@@ -48,7 +48,7 @@ func addLogs(ws *websocket.Conn) {
 }
 
 func scanLogs(stream io.Reader) error {
-	dispatcher := app.NewlogDispatcher()
+	dispatcher := app.NewlogDispatcher(2000000, 100)
 	scanner := bufio.NewScanner(stream)
 	for scanner.Scan() {
 		var entry app.Applog

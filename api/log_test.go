@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -132,6 +133,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	}
 	logs, err := a1.LastLogs(3, app.Applog{})
 	c.Assert(err, check.IsNil)
+	sort.Sort(LogList(logs))
 	c.Assert(logs, check.DeepEquals, []app.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
 		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
@@ -139,6 +141,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	})
 	logs, err = a2.LastLogs(2, app.Applog{})
 	c.Assert(err, check.IsNil)
+	sort.Sort(LogList(logs))
 	c.Assert(logs, check.DeepEquals, []app.Applog{
 		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
 		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", AppName: "myapp2", Unit: "unit4"},
