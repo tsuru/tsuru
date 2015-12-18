@@ -34,5 +34,4 @@ services:
   - redis
 matrix:
   allow_failures:
-    - go: 1.6beta1
     - go: tip
