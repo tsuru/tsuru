@@ -349,8 +349,8 @@ func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imageId, err := appCurrentImageName(app.GetName())
 	wg := sync.WaitGroup{}
-	conts := make([]*container.Container, 40)
-	for i := 0; i < 40; i++ {
+	conts := make([]*container.Container, 100)
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
