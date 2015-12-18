@@ -143,9 +143,7 @@ Backward incompatible changes (action needed)
   to a post-receive hook that invokes git-archive and uploads it to tsuru, but
   we recommend using a pre-receive hook.
 
-* tsuru introduces a new authorization system, so after update your
-  servers, users will lost access to everything. You can use `this script
-  to migrate <https://gist.github.com/tarsisazevedo/d55e40bbcb7f09f1a4b1>`_.
-  It will create three generic roles: admin, team-member and team-creator.
-  Admin role will be assign to every users in the old admin team, and all users
-  will receive team-member and team-creator.
+* tsuru introduced a new authorization system, so after update your servers,
+  users will lost access to everything. You can check the :ref:`Migrating
+  section <migrating_perms>` in the new permission documentation page to get
+  details on how to proceed.
