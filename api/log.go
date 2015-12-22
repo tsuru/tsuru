@@ -5,11 +5,10 @@
 package api
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -48,18 +47,14 @@ func addLogs(ws *websocket.Conn) {
 }
 
 func scanLogs(stream io.Reader) error {
-	dispatcher := app.NewlogDispatcher(2000000, 100)
-	scanner := bufio.NewScanner(stream)
-	for scanner.Scan() {
+	dispatcher := app.NewlogDispatcher(2000000, runtime.NumCPU())
+	decoder := json.NewDecoder(stream)
+	for decoder.More() {
 		var entry app.Applog
-		data := bytes.TrimSpace(scanner.Bytes())
-		if len(data) == 0 {
-			continue
-		}
-		err := json.Unmarshal(data, &entry)
+		err := decoder.Decode(&entry)
 		if err != nil {
 			dispatcher.Stop()
-			return fmt.Errorf("wslogs: parsing log line %q: %s", string(data), err)
+			return fmt.Errorf("wslogs: parsing log line: %s", err)
 		}
 		err = dispatcher.Send(&entry)
 		if err != nil {
@@ -72,10 +67,6 @@ func scanLogs(stream io.Reader) error {
 	err := dispatcher.Stop()
 	if err != nil {
 		return fmt.Errorf("wslogs: error storing log: %s", err)
-	}
-	err = scanner.Err()
-	if err != nil {
-		return fmt.Errorf("wslogs: waiting for log data: %s", err)
 	}
 	return nil
 }
