@@ -21,5 +21,4 @@ Links:
 - Full Documentation: http://docs.tsuru.io
 - How to Contribute: http://docs.tsuru.io/en/stable/contributing
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
-- IRC: Freenode, channel #tsuru
-- Gitter: https://gitter.im/tsuru/tsuru
+- Talk to us on Gitter: https://gitter.im/tsuru/tsuru
