@@ -49,10 +49,13 @@ func addLogs(ws *websocket.Conn) {
 func scanLogs(stream io.Reader) error {
 	dispatcher := app.NewlogDispatcher(2000000, runtime.NumCPU())
 	decoder := json.NewDecoder(stream)
-	for decoder.More() {
+	for {
 		var entry app.Applog
 		err := decoder.Decode(&entry)
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			dispatcher.Stop()
 			return fmt.Errorf("wslogs: parsing log line: %s", err)
 		}

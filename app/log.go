@@ -215,7 +215,7 @@ func (d *appLogDispatcher) runFlusher() {
 			}
 			coll := conn.Logs(d.appName)
 			err = coll.Insert(bulkBuffer[:pos]...)
-			conn.Close()
+			coll.Close()
 			if err != nil {
 				d.errCh <- err
 				return
