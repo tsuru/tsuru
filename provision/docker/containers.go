@@ -74,7 +74,7 @@ func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Wr
 	return nil
 }
 
-func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageId string, toHosts ...string) ([]container.Container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageId string, imageDeploy bool, toHosts ...string) ([]container.Container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -107,6 +107,17 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 			&provisionRemoveOldUnits,
 			&provisionUnbindOldUnits,
 		)
+		if imageDeploy {
+			pipeline = action.NewPipeline(
+				&provisionAddUnitsFromImageToHost,
+				&bindContainer,
+				&addNewRoutesToDeployImage,
+				&removeOldRoutes,
+				&updateAppImage,
+				&provisionRemoveOldUnits,
+				&provisionUnbindOldUnits,
+			)
+		}
 	}
 	err := pipeline.Execute(args)
 	if err != nil {
@@ -115,7 +126,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container.Container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string, imageDeploy bool) ([]container.Container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -132,30 +143,14 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		&addNewRoutes,
 		&updateAppImage,
 	)
-	err := pipeline.Execute(args)
-	if err != nil {
-		return nil, err
+	if imageDeploy {
+		pipeline = action.NewPipeline(
+			&provisionAddUnitsFromImageToHost,
+			&bindContainer,
+			&addNewRoutesToDeployImage,
+			&updateAppImage,
+		)
 	}
-	return pipeline.Result().([]container.Container), nil
-}
-
-func (p *dockerProvisioner) runCreateUnitsToImagePipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container.Container, error) {
-	if w == nil {
-		w = ioutil.Discard
-	}
-	args := changeUnitsPipelineArgs{
-		app:         a,
-		toAdd:       toAdd,
-		writer:      w,
-		imageId:     imageId,
-		provisioner: p,
-	}
-	pipeline := action.NewPipeline(
-		&provisionAddUnitsFromImageToHost,
-		&bindContainer,
-		&addNewRoutesToDeployImage,
-		&updateAppImage,
-	)
 	err := pipeline.Execute(args)
 	if err != nil {
 		return nil, err
@@ -199,7 +194,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: provision.Status(c.Status)}}
-	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageId, destHosts...)
+	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageId, false, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,

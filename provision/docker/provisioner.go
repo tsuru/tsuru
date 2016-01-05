@@ -287,7 +287,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Quantity++
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
-	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
+	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId, false)
 	return err
 }
 
@@ -336,11 +336,11 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Writer) (string, error) {
-	return imageId, p.deploy(app, imageId, w)
+	return imageId, p.deploy(app, imageId, w, false)
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
-	return imageId, p.deployImage(app, imageId, w)
+	return imageId, p.deploy(app, imageId, w, true)
 }
 
 func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
@@ -419,14 +419,14 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
-	err := p.deploy(a, imageId, w)
+	err := p.deploy(a, imageId, w, false)
 	if err != nil {
 		p.cleanImage(a.GetName(), imageId)
 	}
 	return err
 }
 
-func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
+func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer, imageDeploy bool) error {
 	containers, err := p.listContainersByApp(a.GetName())
 	if err != nil {
 		return err
@@ -434,6 +434,14 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 	imageData, err := getImageCustomData(imageId)
 	if err != nil {
 		return err
+	}
+	if len(imageData.Processes) == 0 && imageDeploy {
+		newProc := map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "",
+			},
+		}
+		saveImageCustomData(imageId, newProc)
 	}
 	if len(containers) == 0 {
 		toAdd := make(map[string]*containersToAdd, len(imageData.Processes))
@@ -448,41 +456,13 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		if err := setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
+		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId, imageDeploy)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
 		if err := setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
-	}
-	return err
-}
-
-func (p *dockerProvisioner) deployImage(a provision.App, imageId string, w io.Writer) error {
-	containers, err := p.listContainersByApp(a.GetName())
-	if err != nil {
-		return err
-	}
-	imageData, err := getImageCustomData(imageId)
-	if err != nil {
-		return err
-	}
-	if len(containers) == 0 {
-		toAdd := make(map[string]*containersToAdd, 1)
-		ct := containersToAdd{Quantity: 1}
-		toAdd["web"] = &ct
-		if err := setQuota(a, toAdd); err != nil {
-			return err
-		}
-		_, err = p.runCreateUnitsToImagePipeline(w, a, toAdd, imageId)
-	} else {
-		println("mais de um")
-		toAdd := getContainersToAdd(imageData, containers)
-		if err := setQuota(a, toAdd); err != nil {
-			return err
-		}
-		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
+		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId, imageDeploy)
 	}
 	return err
 }
@@ -755,7 +735,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return nil, err
 	}
-	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId)
+	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, false)
 	if err != nil {
 		return nil, err
 	}
