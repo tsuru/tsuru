@@ -101,6 +101,9 @@ func runLeanContainerCmds(processName, imageId string, app provision.App) ([]str
 	if before != "" {
 		before += " && "
 	}
+	if processName == "" {
+		processName = "web"
+	}
 	return []string{
 		"/bin/bash",
 		"-lc",

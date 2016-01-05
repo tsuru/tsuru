@@ -139,6 +139,30 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	return pipeline.Result().([]container.Container), nil
 }
 
+func (p *dockerProvisioner) runCreateUnitsToImagePipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container.Container, error) {
+	if w == nil {
+		w = ioutil.Discard
+	}
+	args := changeUnitsPipelineArgs{
+		app:         a,
+		toAdd:       toAdd,
+		writer:      w,
+		imageId:     imageId,
+		provisioner: p,
+	}
+	pipeline := action.NewPipeline(
+		&provisionAddUnitsFromImageToHost,
+		&bindContainer,
+		&addNewRoutesToDeployImage,
+		&updateAppImage,
+	)
+	err := pipeline.Execute(args)
+	if err != nil {
+		return nil, err
+	}
+	return pipeline.Result().([]container.Container), nil
+}
+
 func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost string, errors chan error, wg *sync.WaitGroup, writer io.Writer, locker container.AppLocker) container.Container {
 	if wg != nil {
 		defer wg.Done()

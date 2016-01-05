@@ -185,6 +185,37 @@ var createContainer = action.Action{
 	},
 }
 
+var createContainerFromImage = action.Action{
+	Name: "create-container-from-image",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		cont := ctx.Previous.(container.Container)
+		args := ctx.Params[0].(runContainerActionsArgs)
+		log.Debugf("create container from image for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
+		err := cont.Create(&container.CreateArgs{
+			ImageID:          args.imageID,
+			Commands:         args.commands,
+			App:              args.app,
+			Deploy:           args.isDeploy,
+			Provisioner:      args.provisioner,
+			DestinationHosts: args.destinationHosts,
+			ProcessName:      args.processName,
+		})
+		if err != nil {
+			log.Errorf("error on create container for app %s - %s", args.app.GetName(), err)
+			return nil, err
+		}
+		return cont, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		c := ctx.FWResult.(container.Container)
+		args := ctx.Params[0].(runContainerActionsArgs)
+		err := args.provisioner.Cluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+		if err != nil {
+			log.Errorf("Failed to remove the container %q: %s", c.ID, err)
+		}
+	},
+}
+
 var setContainerID = action.Action{
 	Name: "set-container-id",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -297,6 +328,38 @@ var provisionAddUnitsToHost = action.Action{
 	MinParams: 1,
 }
 
+var provisionAddUnitsFromImageToHost = action.Action{
+	Name: "provision-add-units-to-host",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		containers, err := addContainersFromImageWithHost(&args)
+		if err != nil {
+			return nil, err
+		}
+		return containers, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		containers := ctx.FWResult.([]container.Container)
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		units := len(containers)
+		fmt.Fprintf(w, "\n---- Destroying %d created %s ----\n", units, pluralize("unit", units))
+		for _, cont := range containers {
+			err := cont.Remove(args.provisioner)
+			if err != nil {
+				log.Errorf("Error removing added container %s: %s", cont.ID, err.Error())
+				continue
+			}
+			fmt.Fprintf(w, " ---> Destroyed unit %s [%s]\n", cont.ShortID(), cont.ProcessName)
+		}
+	},
+	OnError:   rollbackNotice,
+	MinParams: 1,
+}
+
 var bindAndHealthcheck = action.Action{
 	Name: "bind-and-healthcheck",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -367,6 +430,59 @@ var bindAndHealthcheck = action.Action{
 	OnError: rollbackNotice,
 }
 
+var bindContainer = action.Action{
+	Name: "bind-and-healthcheck",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.Previous.([]container.Container)
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		fmt.Fprintf(writer, "\n---- Binding and checking %d new %s ----\n", len(newContainers), pluralize("unit", len(newContainers)))
+		return newContainers, runInContainers(newContainers, func(c *container.Container, toRollback chan *container.Container) error {
+			unit := c.AsUnit(args.app)
+			err := args.app.BindUnit(&unit)
+			if err != nil {
+				return err
+			}
+			toRollback <- c
+			err = args.provisioner.runRestartAfterHooks(c, writer)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(writer, " ---> Bound and checked unit %s [%s]\n", c.ShortID(), c.ProcessName)
+			return nil
+		}, func(c *container.Container) {
+			unit := c.AsUnit(args.app)
+			err := args.app.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
+		}, true)
+	},
+	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.FWResult.([]container.Container)
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		units := len(newContainers)
+		fmt.Fprintf(w, "\n---- Unbinding %d created %s ----\n", units, pluralize("unit", units))
+		for _, c := range newContainers {
+			unit := c.AsUnit(args.app)
+			err := args.app.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Removed binding for unit %q: %s", c.ID, err)
+				continue
+			}
+			fmt.Fprintf(w, " ---> Removed bind for unit %s [%s]\n", c.ShortID(), c.ProcessName)
+		}
+	},
+	OnError: rollbackNotice,
+}
+
 var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -396,6 +512,69 @@ var addNewRoutes = action.Action{
 			if c.ProcessName != webProcessName {
 				return nil
 			}
+			if c.HostPort != "0" && c.HostPort != "" {
+				err = r.AddRoute(c.AppName, c.Address())
+				if err != nil {
+					return err
+				}
+			}
+			c.Routable = true
+			toRollback <- c
+			fmt.Fprintf(writer, " ---> Added route to unit %s [%s]\n", c.ShortID(), c.ProcessName)
+			return nil
+		}, func(c *container.Container) {
+			r.RemoveRoute(c.AppName, c.Address())
+		}, false)
+	},
+	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.FWResult.([]container.Container)
+		r, err := getRouterForApp(args.app)
+		if err != nil {
+			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
+		}
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		fmt.Fprintf(w, "\n---- Removing routes from created units ----\n")
+		for _, cont := range newContainers {
+			if !cont.Routable {
+				continue
+			}
+			err = r.RemoveRoute(cont.AppName, cont.Address())
+			if err != nil {
+				log.Errorf("[add-new-routes:Backward] Error removing route for %s: %s", cont.ID, err.Error())
+				continue
+			}
+			fmt.Fprintf(w, " ---> Removed route from unit %s [%s]\n", cont.ShortID(), cont.ProcessName)
+		}
+	},
+	OnError: rollbackNotice,
+}
+
+var addNewRoutesToDeployImage = action.Action{
+	Name: "add-new-routes",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.Previous.([]container.Container)
+		r, err := getRouterForApp(args.app)
+		if err != nil {
+			return nil, err
+		}
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		if len(newContainers) > 0 {
+			fmt.Fprintf(writer, "\n---- Adding routes to new units ----\n")
+		}
+		// Beware that our routers are NOT thread safe. Hipache router
+		// implementaion in particular does not care with thread safeness.
+		// That's why we do not add routes concurrently here. If we wish to
+		// change this in the future a comprehensive concurrent test suite
+		// must be added to routers first.
+		return newContainers, runInContainers(newContainers, func(c *container.Container, toRollback chan *container.Container) error {
 			if c.HostPort != "0" && c.HostPort != "" {
 				err = r.AddRoute(c.AppName, c.Address())
 				if err != nil {

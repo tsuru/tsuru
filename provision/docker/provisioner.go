@@ -340,7 +340,7 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
-	return imageId, p.deploy(app, imageId, w)
+	return imageId, p.deployImage(app, imageId, w)
 }
 
 func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
@@ -450,6 +450,34 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		}
 		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
 	} else {
+		toAdd := getContainersToAdd(imageData, containers)
+		if err := setQuota(a, toAdd); err != nil {
+			return err
+		}
+		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
+	}
+	return err
+}
+
+func (p *dockerProvisioner) deployImage(a provision.App, imageId string, w io.Writer) error {
+	containers, err := p.listContainersByApp(a.GetName())
+	if err != nil {
+		return err
+	}
+	imageData, err := getImageCustomData(imageId)
+	if err != nil {
+		return err
+	}
+	if len(containers) == 0 {
+		toAdd := make(map[string]*containersToAdd, 1)
+		ct := containersToAdd{Quantity: 1}
+		toAdd["web"] = &ct
+		if err := setQuota(a, toAdd); err != nil {
+			return err
+		}
+		_, err = p.runCreateUnitsToImagePipeline(w, a, toAdd, imageId)
+	} else {
+		println("mais de um")
 		toAdd := getContainersToAdd(imageData, containers)
 		if err := setQuota(a, toAdd); err != nil {
 			return err
@@ -625,6 +653,71 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	)
 	err := runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
 		c, startErr := args.provisioner.start(c, a, imageId, w, destinationHost...)
+		if startErr != nil {
+			return startErr
+		}
+		toRollback <- c
+		m.Lock()
+		createdContainers = append(createdContainers, c)
+		m.Unlock()
+		fmt.Fprintf(w, " ---> Started unit %s [%s]\n", c.ShortID(), c.ProcessName)
+		return nil
+	}, rollbackCallback, true)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]container.Container, len(createdContainers))
+	i := 0
+	for _, c := range createdContainers {
+		result[i] = *c
+		i++
+	}
+	return result, nil
+}
+
+func addContainersFromImageWithHost(args *changeUnitsPipelineArgs) ([]container.Container, error) {
+	a := args.app
+	w := args.writer
+	var units int
+	processMsg := make([]string, 0, len(args.toAdd))
+	imageId := args.imageId
+	for processName, v := range args.toAdd {
+		units += v.Quantity
+		if processName == "" {
+			_, processName, _ = processCmdForImage(processName, imageId)
+		}
+		processMsg = append(processMsg, fmt.Sprintf("[%s: %d]", processName, v.Quantity))
+	}
+	var destinationHost []string
+	if args.toHost != "" {
+		destinationHost = []string{args.toHost}
+	}
+	if w == nil {
+		w = ioutil.Discard
+	}
+	fmt.Fprintf(w, "\n---- Starting %d new %s %s ----\n", units, pluralize("unit", units), strings.Join(processMsg, " "))
+	oldContainers := make([]container.Container, 0, units)
+	for processName, cont := range args.toAdd {
+		for i := 0; i < cont.Quantity; i++ {
+			oldContainers = append(oldContainers, container.Container{
+				ProcessName: processName,
+				Status:      cont.Status.String(),
+			})
+		}
+	}
+	rollbackCallback := func(c *container.Container) {
+		log.Errorf("Removing container %q due failed add units.", c.ID)
+		errRem := c.Remove(args.provisioner)
+		if errRem != nil {
+			log.Errorf("Unable to destroy container %q: %s", c.ID, errRem)
+		}
+	}
+	var (
+		createdContainers []*container.Container
+		m                 sync.Mutex
+	)
+	err := runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
+		c, startErr := args.provisioner.startImage(c, a, imageId, w, destinationHost...)
 		if startErr != nil {
 			return startErr
 		}
