@@ -59,7 +59,7 @@ func ParseStatus(status string) (Status, error) {
 	case "stopped":
 		return StatusStopped, nil
 	case "slept":
-		return StatusSlept, nil
+		return StatusAsleep, nil
 	}
 	return Status(""), ErrInvalidStatus
 }
@@ -108,8 +108,8 @@ const (
 	// StatusStopped is for cases where the unit has been stopped.
 	StatusStopped = Status("stopped")
 
-	// StatusSlept is for cases where the unit has been put to sleep.
-	StatusSlept = Status("slept")
+	// StatusAsleep is for cases where the unit has been asleep.
+	StatusAsleep = Status("asleep")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
