@@ -1,4 +1,4 @@
-# Copyright 2015 tsuru authors. All rights reserved.
+# Copyright 2016 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -6,14 +6,7 @@ BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = cmd/tsurud/*.go
 
-define GIT_ERROR
-
-FATAL: You need Git to download tsuru dependencies.
-       For more details, please check
-       http://docs.tsuru.io/en/latest/contributing/vagrant.html
-endef
-
-.PHONY: all check-path get git get-code test race docs
+.PHONY: all check-path test race docs
 
 all: check-path get test
 
@@ -32,15 +25,6 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
 	@exit 1
 endif
 	@exit 0
-
-get: git godep
-
-git:
-	$(if $(shell git), , $(error $(GIT_ERROR)))
-
-godep:
-	go get $(GO_EXTRAFLAGS) github.com/tools/godep
-	godep restore ./...
 
 _go_test:
 	go clean $(GO_EXTRAFLAGS) ./...
@@ -118,7 +102,7 @@ binaries: tsurud
 tsurud: $(TSR_BIN)
 
 $(TSR_BIN):
-	godep go build -o $(TSR_BIN) $(TSR_SRC)
+	go build -o $(TSR_BIN) $(TSR_SRC)
 
 run-tsurud-api: $(TSR_BIN)
 	$(TSR_BIN) api
