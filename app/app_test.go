@@ -2260,6 +2260,29 @@ func (s *S) TestLastLogsEmpty(c *check.C) {
 	c.Assert(logs, check.DeepEquals, []Applog{})
 }
 
+type logDisabledFakeProvisioner struct {
+	provisiontest.FakeProvisioner
+}
+
+func (p *logDisabledFakeProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
+	return false, "my doc msg", nil
+}
+
+func (s *S) TestLastLogsDisabled(c *check.C) {
+	oldProvisioner := Provisioner
+	defer func() { Provisioner = oldProvisioner }()
+	Provisioner = &logDisabledFakeProvisioner{}
+	app := App{
+		Name:     "app3",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	_, err = app.LastLogs(10, Applog{})
+	c.Assert(err, check.ErrorMatches, "my doc msg")
+}
+
 func (s *S) TestGetTeams(c *check.C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
 	teams := app.GetTeams()
