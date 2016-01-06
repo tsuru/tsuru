@@ -21,7 +21,13 @@ script:
   - ./check-fmt.sh
   - make deadcode
   - go get golang.org/x/net/http2/...
-  - ./check-handlers.sh
+
+# TODO(fss): re-enable handler checking when golang/go#12459 is fixed.
+#
+# https://github.com/golang/go/issues/12459
+#
+#  - ./check-handlers.sh
+#
 notifications:
   email:
     on_success: change
