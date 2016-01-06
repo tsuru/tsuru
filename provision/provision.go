@@ -58,7 +58,7 @@ func ParseStatus(status string) (Status, error) {
 		return StatusStarting, nil
 	case "stopped":
 		return StatusStopped, nil
-	case "slept":
+	case "asleep":
 		return StatusAsleep, nil
 	}
 	return Status(""), ErrInvalidStatus
