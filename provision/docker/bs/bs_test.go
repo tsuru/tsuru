@@ -308,3 +308,18 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	c.Assert(container.State.Running, check.Equals, true)
 }
+
+func (s *S) TestConfigEnvValueForPool(c *check.C) {
+	config := Config{
+		ID:    bsUniqueID,
+		Image: "tsuru/bss",
+		Envs:  []Env{{Name: "USER", Value: "root"}},
+		Pools: []PoolEnvs{
+			{Name: "pool1", Envs: []Env{{Name: "USER", Value: "nonroot"}}},
+		},
+	}
+	value := config.EnvValueForPool("USER", "----invalid----")
+	c.Assert(value, check.Equals, "root")
+	value = config.EnvValueForPool("USER", "pool1")
+	c.Assert(value, check.Equals, "nonroot")
+}
