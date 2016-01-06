@@ -142,3 +142,8 @@ Backward incompatible changes (action needed)
   <https://github.com/tsuru/tsuru/tree/master/misc/git-hooks>`_. You may stick
   to a post-receive hook that invokes git-archive and uploads it to tsuru, but
   we recommend using a pre-receive hook.
+
+* tsuru introduced a new authorization system, so after update your servers,
+  users will lost access to everything. You can check the :ref:`Migrating
+  section <migrating_perms>` in the new permission documentation page to get
+  details on how to proceed.

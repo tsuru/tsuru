@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
@@ -24,6 +25,11 @@ func Test(t *testing.T) {
 type S struct{}
 
 var _ = check.Suite(&S{})
+
+func (s *S) SetUpSuite(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "fake_provision_tests_s")
+}
 
 func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()

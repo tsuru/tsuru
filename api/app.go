@@ -160,6 +160,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamOwner := r.URL.Query().Get("teamowner")
 	owner := r.URL.Query().Get("owner")
 	pool := r.URL.Query().Get("pool")
+	description := r.URL.Query().Get("description")
 	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
@@ -182,6 +183,9 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if pool != "" {
 		extra = append(extra, fmt.Sprintf("pool=%s", pool))
 		filter.Pool = pool
+	}
+	if description != "" {
+		extra = append(extra, fmt.Sprintf("description=%s", description))
 	}
 	if locked {
 		extra = append(extra, fmt.Sprintf("locked=%v", locked))
@@ -273,7 +277,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return app.InvalidPlatformError{}
 		}
 	}
-	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name)
+	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name, "description="+a.Description)
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
@@ -934,21 +938,38 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if follow == "1" {
-		l, err := app.NewLogListener(&a, filterLog)
-		if err != nil {
-			return err
+	if follow != "1" {
+		return nil
+	}
+	var closeChan <-chan bool
+	if notifier, ok := w.(http.CloseNotifier); ok {
+		closeChan = notifier.CloseNotify()
+	} else {
+		closeChan = make(chan bool)
+	}
+	l, err := app.NewLogListener(&a, filterLog)
+	if err != nil {
+		return err
+	}
+	logTracker.add(l)
+	defer func() {
+		logTracker.remove(l)
+		l.Close()
+	}()
+	logChan := l.ListenChan()
+	for {
+		var logMsg app.Applog
+		select {
+		case <-closeChan:
+			return nil
+		case logMsg = <-logChan:
 		}
-		logTracker.add(l)
-		defer func() {
-			logTracker.remove(l)
-			l.Close()
-		}()
-		for log := range l.C {
-			err := encoder.Encode([]app.Applog{log})
-			if err != nil {
-				break
-			}
+		if logMsg == (app.Applog{}) {
+			break
+		}
+		err := encoder.Encode([]app.Applog{logMsg})
+		if err != nil {
+			break
 		}
 	}
 	return nil

@@ -266,10 +266,10 @@ func (u *User) AddRole(roleName string, contextValue string) error {
 		"$addToSet": bson.M{
 			// Order matters in $addToSet, that's why bson.D is used instead
 			// of bson.M.
-			"roles": bson.D{
-				{"name", roleName},
-				{"contextvalue", contextValue},
-			},
+			"roles": bson.D([]bson.DocElem{
+				{Name: "name", Value: roleName},
+				{Name: "contextvalue", Value: contextValue},
+			}),
 		},
 	})
 	if err != nil {
@@ -286,10 +286,10 @@ func (u *User) RemoveRole(roleName string, contextValue string) error {
 	defer conn.Close()
 	err = conn.Users().Update(bson.M{"email": u.Email}, bson.M{
 		"$pull": bson.M{
-			"roles": bson.D{
-				{"name", roleName},
-				{"contextvalue", contextValue},
-			},
+			"roles": bson.D([]bson.DocElem{
+				{Name: "name", Value: roleName},
+				{Name: "contextvalue", Value: contextValue},
+			}),
 		},
 	})
 	if err != nil {

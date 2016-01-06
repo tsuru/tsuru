@@ -15,10 +15,10 @@ import (
 )
 
 var LogPubSubQueuePrefix = "pubsub:"
-var bulkMaxWaitTime = 500 * time.Millisecond
+var bulkMaxWaitTime = time.Second
 
 type LogListener struct {
-	C <-chan Applog
+	c <-chan Applog
 	q queue.PubSubQ
 }
 
@@ -51,21 +51,22 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 			}
 			if (filterLog.Source == "" || filterLog.Source == applog.Source) &&
 				(filterLog.Unit == "" || filterLog.Unit == applog.Unit) {
-				defer func() {
-					recover()
-				}()
 				c <- applog
 			}
 		}
 	}()
-	l := LogListener{C: c, q: pubSubQ}
+	l := LogListener{c: c, q: pubSubQ}
 	return &l, nil
+}
+
+func (l *LogListener) ListenChan() <-chan Applog {
+	return l.c
 }
 
 func (l *LogListener) Close() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("Recovered panic closing listener (possible double close): %#v", r)
+			err = fmt.Errorf("Recovered panic closing listener (possible double close): %v", r)
 		}
 	}()
 	err = l.q.UnSub()
@@ -98,25 +99,49 @@ func notify(appName string, messages []interface{}) {
 
 type logDispatcher struct {
 	dispatchers map[string]*appLogDispatcher
+	msgCh       chan *msgLog
 }
 
-func NewlogDispatcher() *logDispatcher {
-	return &logDispatcher{
+type msgLog struct {
+	dispatcher *appLogDispatcher
+	msg        *Applog
+}
+
+func NewlogDispatcher(chanSize, numberGoroutines int) *logDispatcher {
+	d := &logDispatcher{
 		dispatchers: make(map[string]*appLogDispatcher),
+		msgCh:       make(chan *msgLog, chanSize),
+	}
+	for i := 0; i < numberGoroutines; i++ {
+		go d.runWriter()
+	}
+	return d
+}
+
+func (d *logDispatcher) runWriter() {
+	notifyMessages := make([]interface{}, 1)
+	for msgWithDispatcher := range d.msgCh {
+		notifyMessages[0] = msgWithDispatcher.msg
+		notify(msgWithDispatcher.msg.AppName, notifyMessages)
+		select {
+		case msgWithDispatcher.dispatcher.toFlush <- msgWithDispatcher.msg:
+		case <-msgWithDispatcher.dispatcher.done:
+			return
+		}
 	}
 }
 
 func (d *logDispatcher) Send(msg *Applog) error {
 	appName := msg.AppName
-	appD := d.dispatchers[appName]
-	if appD == nil {
+	appD, ok := d.dispatchers[appName]
+	if !ok {
 		appD = newAppLogDispatcher(appName)
 		d.dispatchers[appName] = appD
 	}
+	msgWithDispatcher := &msgLog{dispatcher: appD, msg: msg}
 	select {
-	case appD.msgCh <- msg:
+	case d.msgCh <- msgWithDispatcher:
 	case err := <-appD.errCh:
-		close(appD.msgCh)
 		delete(d.dispatchers, appName)
 		return err
 	}
@@ -127,7 +152,7 @@ func (d *logDispatcher) Stop() error {
 	var finalErr error
 	for appName, appD := range d.dispatchers {
 		delete(d.dispatchers, appName)
-		close(appD.msgCh)
+		close(appD.done)
 		err := <-appD.errCh
 		if err != nil {
 			if finalErr == nil {
@@ -137,12 +162,12 @@ func (d *logDispatcher) Stop() error {
 			}
 		}
 	}
+	close(d.msgCh)
 	return finalErr
 }
 
 type appLogDispatcher struct {
 	appName string
-	msgCh   chan *Applog
 	errCh   chan error
 	done    chan bool
 	toFlush chan *Applog
@@ -151,12 +176,10 @@ type appLogDispatcher struct {
 func newAppLogDispatcher(appName string) *appLogDispatcher {
 	d := &appLogDispatcher{
 		appName: appName,
-		msgCh:   make(chan *Applog, 10000),
 		errCh:   make(chan error),
 		done:    make(chan bool),
 		toFlush: make(chan *Applog),
 	}
-	go d.runDBWriter()
 	go d.runFlusher()
 	return d
 }
@@ -164,45 +187,40 @@ func newAppLogDispatcher(appName string) *appLogDispatcher {
 func (d *appLogDispatcher) runFlusher() {
 	defer close(d.errCh)
 	t := time.NewTimer(bulkMaxWaitTime)
-	bulkBuffer := make([]interface{}, 0, 100)
-	conn, err := db.LogConn()
-	if err != nil {
-		d.errCh <- err
-		return
-	}
-	defer conn.Close()
-	coll := conn.Logs(d.appName)
+	pos := 0
+	sz := 200
+	bulkBuffer := make([]interface{}, sz)
 	for {
 		var flush bool
 		select {
 		case <-d.done:
 			return
 		case msg := <-d.toFlush:
-			bulkBuffer = append(bulkBuffer, msg)
-			flush = len(bulkBuffer) == cap(bulkBuffer)
-			if !flush {
+			bulkBuffer[pos] = msg
+			pos++
+			flush = sz == pos
+			if flush {
+				t.Stop()
+			} else {
 				t.Reset(bulkMaxWaitTime)
 			}
 		case <-t.C:
-			flush = len(bulkBuffer) > 0
+			flush = pos > 0
 		}
 		if flush {
-			err := coll.Insert(bulkBuffer...)
+			conn, err := db.LogConn()
 			if err != nil {
 				d.errCh <- err
 				return
 			}
-			bulkBuffer = bulkBuffer[:0]
+			coll := conn.Logs(d.appName)
+			err = coll.Insert(bulkBuffer[:pos]...)
+			coll.Close()
+			if err != nil {
+				d.errCh <- err
+				return
+			}
+			pos = 0
 		}
-	}
-}
-
-func (d *appLogDispatcher) runDBWriter() {
-	defer close(d.done)
-	notifyMessages := make([]interface{}, 1)
-	for msg := range d.msgCh {
-		notifyMessages[0] = msg
-		notify(msg.AppName, notifyMessages)
-		d.toFlush <- msg
 	}
 }

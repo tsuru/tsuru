@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,8 +11,8 @@ import (
 	"path"
 	"regexp"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/git"
-	"launchpad.net/gnuflag"
 )
 
 // AppGuesser is used to guess the name of an app based in a file path.

@@ -1139,6 +1139,14 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+type closeNotifierResponseRecorder struct {
+	*httptest.ResponseRecorder
+}
+
+func (r *closeNotifierResponseRecorder) CloseNotify() <-chan bool {
+	return make(chan bool)
+}
+
 func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	var proxyedRequest *http.Request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1162,7 +1170,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	m := RunServer(true)
-	recorder := httptest.NewRecorder()
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
@@ -1192,7 +1200,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	m := RunServer(true)
-	recorder := httptest.NewRecorder()
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
@@ -1217,7 +1225,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyError(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	m := RunServer(true)
-	recorder := httptest.NewRecorder()
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.Bytes(), check.DeepEquals, []byte("some error"))

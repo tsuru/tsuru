@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
+	_ "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
@@ -27,7 +28,7 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 )
 
-const Version = "0.13.0-rc12"
+const Version = "0.13.0"
 
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
@@ -182,6 +183,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/users/info", AuthorizationRequiredHandler(userInfo))
 	m.Add("Get", "/auth/scheme", Handler(authScheme))
 	m.Add("Post", "/auth/login", Handler(login))
+
+	m.Add("Post", "/auth/saml", Handler(samlCallbackLogin))
+	m.Add("Get", "/auth/saml", Handler(samlMetadata))
+
 	m.Add("Post", "/users/{email}/password", Handler(resetPassword))
 	m.Add("Post", "/users/{email}/tokens", Handler(login))
 	m.Add("Get", "/users/{email}/quota", AuthorizationRequiredHandler(getUserQuota))

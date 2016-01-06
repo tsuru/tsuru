@@ -3,6 +3,7 @@ sudo: false
 go:
   - 1.4.2
   - 1.5.2
+  - 1.6beta1
   - tip
 env:
   - GOARCH=amd64
@@ -10,6 +11,7 @@ addons:
   apt:
     packages:
       - rsyslog
+      - xmlsec1
 install:
   - make get
 before_script:
@@ -19,6 +21,7 @@ script:
   - make test
   - ./check-fmt.sh
   - make deadcode
+  - go get golang.org/x/net/http2/...
   - ./check-handlers.sh
 notifications:
   email:

@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
-	"launchpad.net/gnuflag"
 )
 
 type addNodeToSchedulerCmd struct {

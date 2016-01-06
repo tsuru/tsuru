@@ -6,6 +6,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/RobotsAndPencils/go-saml/util",
+			"Rev": "aa127de49a0111329d9dbd2e19ddf21da90eb931"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
 			"Comment": "v1.0.4",
 			"Rev": "999b1591218c36d5050d1ba7266eba956e65965f"
@@ -69,13 +73,18 @@
 			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 		},
 		{
+			"ImportPath": "github.com/diego-araujo/go-saml",
+			"Comment": "v0.2-1-g81203d2",
+			"Rev": "81203d2425377605c5688e55dca1340b614b618d"
+		},
+		{
 			"ImportPath": "github.com/digitalocean/godo",
 			"Comment": "v0.9.0",
 			"Rev": "2a0d64a42bb60a95677748a4d5729af6184330b4"
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "7177a9e3543b0891a5d91dbf7051e0f71455c8ef"
+			"Rev": "299d728486342c894e7fafd68e3a4b89623bef1d"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -111,6 +120,10 @@
 			"ImportPath": "github.com/jmespath/go-jmespath",
 			"Comment": "0.2.2-2-gc01cf91",
 			"Rev": "c01cf91b011868172fdcd9f41838e80c9d716264"
+		},
+		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "10da29423eb9a6269092eebdc2be32209612d9d2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/go-etcd/etcd",
@@ -234,6 +247,10 @@
 			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
+			"ImportPath": "github.com/nu7hatch/gouuid",
+			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+		},
+		{
 			"ImportPath": "github.com/sajari/fuzzy",
 			"Rev": "bbbcac964e38148a7b43491a83d83b6b584600dc"
 		},
@@ -292,6 +309,11 @@
 			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
 		},
 		{
+			"ImportPath": "github.com/tsuru/gnuflag",
+			"Comment": "go.weekly.2012-02-22-8-g86b8c1b",
+			"Rev": "86b8c1b864aadcf9c94d67bc607ce3f19cbb9aa2"
+		},
+		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
 			"Rev": "6f5a04eb8172e1380ca09d426e67a07687828b7a"
 		},
@@ -345,8 +367,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
-			"Comment": "r2015.06.03-4-gf4923a5",
-			"Rev": "f4923a569136442e900b8cf5c1a706c0a8b0883c"
+			"Rev": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49"
 		},
 		{
 			"ImportPath": "gopkg.in/tylerb/graceful.v1",
@@ -356,11 +377,6 @@
 		{
 			"ImportPath": "gopkg.in/yaml.v1",
 			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
-		},
-		{
-			"ImportPath": "launchpad.net/gnuflag",
-			"Comment": "12",
-			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
 		}
 	]
 }

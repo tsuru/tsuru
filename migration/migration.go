@@ -21,15 +21,41 @@ import (
 // is already in use.
 var ErrDuplicateMigration = errors.New("there's already a migration with this name")
 
+// ErrMigrationNotFound is the error returned by RunOptional when the given
+// name is not a registered migration.
+var ErrMigrationNotFound = errors.New("migration not found")
+
+// ErrMigrationMandatory is the error returned by Run when the given name is
+// not an optional migration. It should be executed calling Run.
+var ErrMigrationMandatory = errors.New("migration is mandatory")
+
+// ErrMigrationAlreadyExecuted is the error returned by Run when the given
+// name was previously executed and the force parameter was not supplied.
+var ErrMigrationAlreadyExecuted = errors.New("migration already executed")
+
+// ErrCannotForceMandatory is the error returned by Run when the force
+// paramter is supplied without the name of a migration to run.
+var ErrCannotForceMandatory = errors.New("mandatory migrations can only run once")
+
 // MigrateFunc represents a migration function, that can be registered with the
 // Register function. Migrations are later ran in the registration order, and
 // this package keeps track of which migrate have ran already.
 type MigrateFunc func() error
 
+// RunArgs is used by Run and RunOptional functions to modify how migrations
+// are executed.
+type RunArgs struct {
+	Name   string
+	Writer io.Writer
+	Dry    bool
+	Force  bool
+}
+
 type migration struct {
-	Name string
-	Ran  bool
-	fn   MigrateFunc
+	Name     string
+	Ran      bool
+	Optional bool
+	fn       MigrateFunc
 }
 
 var migrations []migration
@@ -37,19 +63,40 @@ var migrations []migration
 // Register register a new migration for later execution with the Run
 // functions.
 func Register(name string, fn MigrateFunc) error {
+	return register(name, false, fn)
+}
+
+// RegisterOptional register a new migration that will not run automatically
+// when calling the Run funcition.
+func RegisterOptional(name string, fn MigrateFunc) error {
+	return register(name, true, fn)
+}
+
+func register(name string, optional bool, fn MigrateFunc) error {
 	for _, m := range migrations {
 		if m.Name == name {
 			return ErrDuplicateMigration
 		}
 	}
-	migrations = append(migrations, migration{Name: name, fn: fn})
+	migrations = append(migrations, migration{Name: name, Optional: optional, fn: fn})
 	return nil
 }
 
-// Run runs all registered migrations. Migrations are executed in the order
-// that they were registered.
-func Run(w io.Writer, dry bool) error {
-	migrationsToRun, err := getMigrations()
+// Run runs all registered non optional migrations if no ".Name" is informed.
+// Migrations are executed in the order that they were registered. If ".Name"
+// is informed, an optional migration with the given name is executed.
+func Run(args RunArgs) error {
+	if args.Name != "" {
+		return runOptional(args)
+	}
+	if args.Force {
+		return ErrCannotForceMandatory
+	}
+	return run(args)
+}
+
+func run(args RunArgs) error {
+	migrationsToRun, err := getMigrations(true)
 	if err != nil {
 		return err
 	}
@@ -59,8 +106,11 @@ func Run(w io.Writer, dry bool) error {
 	}
 	defer coll.Close()
 	for _, m := range migrationsToRun {
-		fmt.Fprintf(w, "Running %q... ", m.Name)
-		if !dry {
+		if m.Optional {
+			continue
+		}
+		fmt.Fprintf(args.Writer, "Running %q... ", m.Name)
+		if !args.Dry {
 			err := m.fn()
 			if err != nil {
 				return err
@@ -71,12 +121,58 @@ func Run(w io.Writer, dry bool) error {
 				return err
 			}
 		}
-		fmt.Fprintln(w, "OK")
+		fmt.Fprintln(args.Writer, "OK")
 	}
 	return nil
 }
 
-func getMigrations() ([]migration, error) {
+func runOptional(args RunArgs) error {
+	migrationsToRun, err := getMigrations(false)
+	if err != nil {
+		return err
+	}
+	var toRun *migration
+	for i, m := range migrationsToRun {
+		if m.Name == args.Name {
+			toRun = &migrationsToRun[i]
+			break
+		}
+	}
+	if toRun == nil {
+		return ErrMigrationNotFound
+	}
+	if !toRun.Optional {
+		return ErrMigrationMandatory
+	}
+	if toRun.Ran && !args.Force {
+		return ErrMigrationAlreadyExecuted
+	}
+	fmt.Fprintf(args.Writer, "Running %q... ", toRun.Name)
+	if !args.Dry {
+		coll, err := collection()
+		if err != nil {
+			return err
+		}
+		defer coll.Close()
+		err = toRun.fn()
+		if err != nil {
+			return err
+		}
+		toRun.Ran = true
+		_, err = coll.Upsert(bson.M{"name": toRun.Name}, toRun)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Fprintln(args.Writer, "OK")
+	return nil
+}
+
+func List() ([]migration, error) {
+	return getMigrations(false)
+}
+
+func getMigrations(ignoreRan bool) ([]migration, error) {
 	coll, err := collection()
 	if err != nil {
 		return nil, err
@@ -94,14 +190,14 @@ func getMigrations() ([]migration, error) {
 		return nil, err
 	}
 	for _, m := range migrations {
-		var found bool
+		m.Ran = false
 		for _, r := range ran {
 			if r.Name == m.Name {
-				found = true
+				m.Ran = true
 				break
 			}
 		}
-		if !found {
+		if !ignoreRan || !m.Ran {
 			result = append(result, m)
 		}
 	}

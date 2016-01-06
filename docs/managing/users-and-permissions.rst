@@ -139,6 +139,36 @@ user is the following:
 From this moment the user named ``myuser@corp.com`` can read and restart all
 applications belonging to the team named ``myteamname``.
 
+Default roles
+=============
+
+It's possible to have default roles that are applied to a user when some event
+happens on tsuru. Example of such events are ``user-create`` and
+``team-create``. A list of all possible events can be found running the command
+``tsuru role-default-list``. Commands ``tsuru role-default-add`` and ``tsuru
+role-default-remove`` should be used to include or remove new roles in an event.
+
+A common use for default roles would be replicating the behavior of tsuru on
+versions prior to 0.13.0. A new user would always be allowed to create a new
+team and would also be allowed to create new applications on the newly created
+team.
+
+To achieve this with default roles first two roles need to be created, let's
+call them ``team-creator`` and ``team-member``. ``team-creator`` would use the
+``global`` context and include the ``team.create`` permission. ``team-member``
+would use the ``team`` context and include the ``app`` permission.
+
+With these roles created we only need to add them as default on the appropriate
+event:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru role-default-add --user-create team-creator --team-create team-member
+
+
+.. _migrating_perms:
 
 Migrating
 ---------
@@ -147,8 +177,8 @@ When you already have an existing tsuru installation it will be necessary to
 create roles and assign them to all existing users, otherwise they will no
 longer be able to execute any action in tsuru.
 
-To make this process easier we created a script to help with the transition. The
-goal of this script is to roughly give all existing users the same set of
+To make this process easier we created a migration to help with the transition.
+The goal of this migration is to roughly give all existing users the same set of
 permissions they already had on tsuru. To accomplish this it'll create 3
 different roles: ``admin``, ``team-member`` and ``team-creator``.
 
@@ -168,10 +198,18 @@ And will be assigned to all users for each team name the user is a member of.
 The ``team-creator`` role will only include the ``team.create`` permission with
 a ``global`` context and will also be assigned to all users.
 
-The script is available as a gist and should be executed before migrating to
-tsuru 0.13.0:
+Also the role ``team-creator`` will be assigned as a default role when a new
+user is created. And the ``team-member`` role will be the default role assigned
+to a user when they create a new team.
 
-`https://gist.github.com/tarsisazevedo/d55e40bbcb7f09f1a4b1 <https://gist.github.com/tarsisazevedo/d55e40bbcb7f09f1a4b1>`_
+Running this migration is optional. If you choose execute it simply run:
+
+.. highlight:: bash
+
+::
+
+    $ tsurud [--config <path to tsuru.conf>] migrate --name migrate-roles
+
 
 Bootstrapping
 -------------
@@ -187,5 +225,4 @@ installation:
 
     $ tsurud [--config <path to tsuru.conf>] root-user-create myemail@somewhere.com
     # type a password and confirmation (only if using native auth scheme)
-
 

@@ -214,7 +214,6 @@ func (s *S) TestAddRouteNoDomainConfigured(c *check.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	r = hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = r.AddRoute("tip", addr)
 	c.Assert(err, check.NotNil)
@@ -229,9 +228,9 @@ func (s *S) TestAddRouteConnectFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
-	r = hipacheRouter{prefix: "hipache"}
+	r2 := hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://www.tsuru.io")
-	err = r.AddRoute("tip", addr)
+	err = r2.AddRoute("tip", addr)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
@@ -244,8 +243,8 @@ func (s *S) TestAddRouteCommandFailure(c *check.C) {
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
 	conn = &FailingFakeRedisConn{}
-	r = hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
-	err = r.AddRoute("tip", addr)
+	r2 := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
+	err = r2.AddRoute("tip", addr)
 	c.Assert(err, check.FitsTypeOf, &router.RouterError{})
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
@@ -296,7 +295,6 @@ func (s *S) TestRemoveRouteNoDomainConfigured(c *check.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	r = hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://tip.golang.org")
 	err = r.RemoveRoute("tip", addr)
 	c.Assert(err, check.NotNil)
@@ -311,9 +309,9 @@ func (s *S) TestRemoveRouteConnectFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
-	r = hipacheRouter{prefix: "hipache"}
+	r2 := hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://tip.golang.org")
-	err = r.RemoveRoute("tip", addr)
+	err = r2.RemoveRoute("tip", addr)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
@@ -325,9 +323,9 @@ func (s *S) TestRemoveRouteCommandFailure(c *check.C) {
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
 	conn = &FailingFakeRedisConn{}
-	r = hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
+	r2 := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
 	addr, _ := url.Parse("http://tip.golang.org")
-	err = r.RemoveRoute("tip", addr)
+	err = r2.RemoveRoute("tip", addr)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
@@ -479,8 +477,8 @@ func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
 	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	r = hipacheRouter{prefix: "hipache"}
-	err = r.SetCName("mycname.golang.org", "myapp")
+	r2 := hipacheRouter{prefix: "hipache"}
+	err = r2.SetCName("mycname.golang.org", "myapp")
 	c.Assert(err, check.Equals, router.ErrCNameNotAllowed)
 }
 
@@ -490,8 +488,8 @@ func (s *S) TestSetCNameDoesNotBlockSuffixDomain(c *check.C) {
 	c.Assert(err, check.IsNil)
 	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
 	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	router = hipacheRouter{prefix: "hipache"}
-	err = router.SetCName("mycname.golang.org.br", "myapp")
+	router2 := hipacheRouter{prefix: "hipache"}
+	err = router2.SetCName("mycname.golang.org.br", "myapp")
 	c.Assert(err, check.IsNil)
 }
 
@@ -556,7 +554,6 @@ func (s *S) TestAddrNoDomainConfigured(c *check.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	r = hipacheRouter{prefix: "hipache"}
 	addr, err := r.Addr("tip")
 	c.Assert(addr, check.Equals, "")
 	e, ok := err.(*router.RouterError)
@@ -570,8 +567,8 @@ func (s *S) TestAddrConnectFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
-	r = hipacheRouter{prefix: "hipache"}
-	addr, err := r.Addr("tip")
+	r2 := hipacheRouter{prefix: "hipache"}
+	addr, err := r2.Addr("tip")
 	c.Assert(addr, check.Equals, "")
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
@@ -583,8 +580,8 @@ func (s *S) TestAddrCommandFailure(c *check.C) {
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
 	conn = &FailingFakeRedisConn{}
-	r = hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
-	addr, err := r.Addr("tip")
+	r2 := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
+	addr, err := r2.Addr("tip")
 	c.Assert(addr, check.Equals, "")
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)

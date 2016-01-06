@@ -6,7 +6,7 @@ package service
 
 import (
 	"bytes"
-	stderrors "errors"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -160,6 +159,17 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *check.C) {
 	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
 }
 
+func (s *S) TestCreateDuplicate(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Create(&instance, "my@user")
+	c.Assert(err, check.Equals, ErrInstanceAlreadyExistsInAPI)
+}
+
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
@@ -193,6 +203,16 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	err := client.Destroy(&instance)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
+}
+
+func (s *S) TestDestroyNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.Destroy(&instance)
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
 func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
@@ -269,9 +289,9 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "her-redis" to the app "her-app": Server failed to do its job.$`)
 }
 
-func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *check.C) {
+func (s *S) TestBindAppInstanceNotReady(c *check.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(412)
+		w.WriteHeader(http.StatusPreconditionFailed)
 	})
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
@@ -279,10 +299,20 @@ func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPrecondit
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Message, check.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+	c.Assert(err, check.Equals, ErrInstanceNotReady)
+}
+
+func (s *S) TestBindAppInstanceNotFound(c *check.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	_, err := client.BindApp(&instance, a)
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
 func (s *S) TestBindUnit(c *check.C) {
@@ -323,7 +353,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 
-func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
+func (s *S) TestBindUnitInstanceNotReady(c *check.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusPreconditionFailed)
 	})
@@ -335,10 +365,22 @@ func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Message, check.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+	c.Assert(err, check.Equals, ErrInstanceNotReady)
+}
+
+func (s *S) TestBindUnitInstanceNotFound(c *check.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.BindUnit(&instance, a, units[0])
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
 func (s *S) TestUnbindApp(c *check.C) {
@@ -371,6 +413,18 @@ func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	c.Assert(err, check.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): Server failed to do its job.`
 	c.Assert(err.Error(), check.Equals, expected)
+}
+
+func (s *S) TestUnbindAppInstanceNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.UnbindApp(&instance, a)
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
 func (s *S) TestUnbindUnit(c *check.C) {
@@ -411,9 +465,23 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
+func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.UnbindUnit(&instance, a, units[0])
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
 func (s *S) TestBuildErrorMessageWithNilResponse(c *check.C) {
 	cli := Client{}
-	err := stderrors.New("epic fail")
+	err := errors.New("epic fail")
 	c.Assert(cli.buildErrorMessage(err, nil), check.Equals, "epic fail")
 }
 
@@ -431,7 +499,7 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
 	cli := Client{}
-	err := stderrors.New("epic fail")
+	err := errors.New("epic fail")
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(err, resp), check.Equals, "epic fail")
@@ -442,7 +510,7 @@ func (s *S) TestStatus(c *check.C) {
 		Input    int
 		Expected string
 	}{
-		{http.StatusOK, "up"},
+		{http.StatusOK, "working"},
 		{http.StatusNoContent, "up"},
 		{http.StatusAccepted, "pending"},
 		{http.StatusNotFound, "not implemented for this service"},
@@ -451,6 +519,7 @@ func (s *S) TestStatus(c *check.C) {
 	var request int
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(tests[request].Input)
+		w.Write([]byte("working"))
 		request++
 	})
 	ts := httptest.NewServer(h)

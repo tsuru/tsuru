@@ -17,9 +17,9 @@ func (s *S) TestNewLogListener(c *check.C) {
 	defer l.Close()
 	c.Assert(err, check.IsNil)
 	c.Assert(l.q, check.NotNil)
-	c.Assert(l.C, check.NotNil)
+	c.Assert(l.c, check.NotNil)
 	notify("myapp", []interface{}{Applog{Message: "123"}})
-	logMsg := <-l.C
+	logMsg := <-l.c
 	c.Assert(logMsg.Message, check.Equals, "123")
 }
 
@@ -28,9 +28,9 @@ func (s *S) TestNewLogListenerClosingChannel(c *check.C) {
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(l.q, check.NotNil)
-	c.Assert(l.C, check.NotNil)
+	c.Assert(l.c, check.NotNil)
 	l.Close()
-	_, ok := <-l.C
+	_, ok := <-l.c
 	c.Assert(ok, check.Equals, false)
 }
 
@@ -40,7 +40,7 @@ func (s *S) TestLogListenerClose(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = l.Close()
 	c.Assert(err, check.IsNil)
-	_, ok := <-l.C
+	_, ok := <-l.c
 	c.Assert(ok, check.Equals, false)
 }
 
@@ -64,7 +64,7 @@ func (s *S) TestNotify(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
-		for log := range l.C {
+		for log := range l.c {
 			logs.Lock()
 			logs.l = append(logs.l, log)
 			logs.Unlock()
@@ -115,7 +115,7 @@ func (s *S) TestNotifyFiltered(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
-		for log := range l.C {
+		for log := range l.c {
 			logs.Lock()
 			logs.l = append(logs.l, log)
 			logs.Unlock()
