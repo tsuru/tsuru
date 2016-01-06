@@ -6,7 +6,7 @@
 
 status=0
 
-for f in `git ls-files | xargs grep "Copyright 201[2345]" -l | grep -v check-license.sh`
+for f in `git ls-files | xargs grep "Copyright 201[2345]" -l | grep -v check-license.sh | grep -v vendor/`
 do
 	date=`git log -1 --format="%ad" --date=short -- $f`
 	if [ `echo "$date" | grep ^2016` ]
