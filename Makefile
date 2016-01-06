@@ -41,7 +41,7 @@ _install_deadcode: git
 	go get $(GO_EXTRAFLAGS) github.com/reillywatson/go-misc/deadcode
 
 deadcode: _install_deadcode
-	@go list ./... | sed -e 's;github.com/tsuru/tsuru/;;' | xargs deadcode
+	@go list ./... | sed -e 's;github.com/tsuru/tsuru/;;' | grep -v vendor/ | xargs deadcode
 
 deadc0de: deadcode
 
