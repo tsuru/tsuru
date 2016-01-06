@@ -156,10 +156,6 @@
 			"Rev": "b9c925d6897fbd77f37297856349caa254ca3cc7"
 		},
 		{
-			"ImportPath": "github.com/mailgun/scroll",
-			"Rev": "bbfcfdfe60d60fcc4b8fcbf6974226672cc8638f"
-		},
-		{
 			"ImportPath": "github.com/mailgun/timetools",
 			"Rev": "fd192d755b00c968d312d23f521eb0cdc6f66bd0"
 		},
