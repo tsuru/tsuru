@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -250,11 +250,10 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	if a.TeamOwner == "" {
-		teamOwner, err := permission.TeamForPermission(t, permission.PermAppCreate)
+		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
 		if err != nil {
 			return err
 		}
-		a.TeamOwner = teamOwner
 	}
 	canCreate := permission.Check(t, permission.PermAppCreate,
 		permission.Context(permission.CtxTeam, a.TeamOwner),
