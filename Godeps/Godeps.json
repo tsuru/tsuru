@@ -73,6 +73,11 @@
 			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 		},
 		{
+			"ImportPath": "github.com/coreos/go-etcd/etcd",
+			"Comment": "v2.0.0-28-g126041e",
+			"Rev": "126041ef7b24a28359a12f8bf7f6a7db6756113d"
+		},
+		{
 			"ImportPath": "github.com/diego-araujo/go-saml",
 			"Comment": "v0.2-1-g81203d2",
 			"Rev": "81203d2425377605c5688e55dca1340b614b618d"
@@ -126,11 +131,6 @@
 			"Rev": "10da29423eb9a6269092eebdc2be32209612d9d2"
 		},
 		{
-			"ImportPath": "github.com/mailgun/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-124-g248e96a",
-			"Rev": "248e96a4ad7adfa23b531eb2d8e80d9050c33d24"
-		},
-		{
 			"ImportPath": "github.com/mailgun/iptools",
 			"Rev": "5349e5b95891ef5cb63ed867c31c5204cae280b2"
 		},
@@ -156,50 +156,6 @@
 			"Rev": "b9c925d6897fbd77f37297856349caa254ca3cc7"
 		},
 		{
-			"ImportPath": "github.com/mailgun/oxy/cbreaker",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/connlimit",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/forward",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/memmetrics",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/ratelimit",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/roundrobin",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/stream",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/trace",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/oxy/utils",
-			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
-		},
-		{
-			"ImportPath": "github.com/mailgun/predicate",
-			"Rev": "cb0bff91a7ab7cf7571e661ff883fc997bc554a3"
-		},
-		{
-			"ImportPath": "github.com/mailgun/route",
-			"Rev": "87a5c4a010f9f56d91579c86fc74351c8af92b2d"
-		},
-		{
 			"ImportPath": "github.com/mailgun/scroll",
 			"Rev": "bbfcfdfe60d60fcc4b8fcbf6974226672cc8638f"
 		},
@@ -210,41 +166,6 @@
 		{
 			"ImportPath": "github.com/mailgun/ttlmap",
 			"Rev": "51994f8e1aad271eb214e725379dde8bd4c90acf"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/anomaly",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/api",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/engine",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/plugin",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/proxy",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/stapler",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/supervisor",
-			"Comment": "v0.8.0-beta.3-15-g22a71f6",
-			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -320,6 +241,94 @@
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",
 			"Rev": "c2240c7d35e400a0ba96b1c634089e39f5705db5"
+		},
+		{
+			"ImportPath": "github.com/ugorji/go/codec",
+			"Rev": "357a44b2b13e2711a45e30016508134101477610"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/cbreaker",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/connlimit",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/forward",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/memmetrics",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/ratelimit",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/roundrobin",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/stream",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/trace",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/oxy/utils",
+			"Rev": "5725fecc9a4f3aa6fdc3ffd29cef771241809add"
+		},
+		{
+			"ImportPath": "github.com/vulcand/predicate",
+			"Rev": "cb0bff91a7ab7cf7571e661ff883fc997bc554a3"
+		},
+		{
+			"ImportPath": "github.com/vulcand/route",
+			"Rev": "cb89d787ddbb1c5849a7ac9f79004c1fd12a4a32"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/anomaly",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/api",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/engine",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/plugin",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/proxy",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/router",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/stapler",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
+		},
+		{
+			"ImportPath": "github.com/vulcand/vulcand/supervisor",
+			"Comment": "v0.8.0-beta.3-67-g85c983b",
+			"Rev": "85c983be26ebd707fe3938f2c9d87f565f792440"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",

@@ -9,12 +9,13 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/mailgun/vulcand/api"
-	"github.com/mailgun/vulcand/engine"
-	"github.com/mailgun/vulcand/plugin/registry"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
+	"github.com/vulcand/route"
+	"github.com/vulcand/vulcand/api"
+	"github.com/vulcand/vulcand/engine"
+	"github.com/vulcand/vulcand/plugin/registry"
 )
 
 const routerName = "vulcand"
@@ -87,6 +88,7 @@ func (r *vulcandRouter) AddBackend(name string) error {
 		return err
 	}
 	frontend, err := engine.NewHTTPFrontend(
+		route.NewMux(),
 		frontendName,
 		backend.Id,
 		fmt.Sprintf(`Host(%q)`, r.frontendHostname(name)),
@@ -206,6 +208,7 @@ func (r *vulcandRouter) SetCName(cname, name string) error {
 		return router.ErrCNameExists
 	}
 	frontend, err := engine.NewHTTPFrontend(
+		route.NewMux(),
 		frontendName,
 		r.backendName(usedName),
 		fmt.Sprintf(`Host(%q)`, cname),
