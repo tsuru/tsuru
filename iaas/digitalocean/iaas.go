@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -62,7 +62,7 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 	var sshKeys []godo.DropletCreateSSHKey
 	if rawSSHKeys, ok := params["ssh_keys"]; ok {
 		for _, key := range strings.Split(rawSSHKeys, ",") {
-			if keyID, err := strconv.Atoi(key); err == nil {
+			if keyID, atoiErr := strconv.Atoi(key); atoiErr == nil {
 				sshKeys = append(sshKeys, godo.DropletCreateSSHKey{ID: keyID})
 			} else {
 				sshKeys = append(sshKeys, godo.DropletCreateSSHKey{Fingerprint: key})
@@ -108,13 +108,13 @@ func (i *digitalOceanIaas) waitNetworkCreated(droplet *godo.Droplet) (*godo.Drop
 			case <-quit:
 				return
 			default:
-				droplet, _, err := i.client.Droplets.Get(droplet.ID)
+				d, _, err := i.client.Droplets.Get(droplet.ID)
 				if err != nil {
 					errs <- err
 					return
 				}
-				if len(droplet.Networks.V4) > 0 {
-					droplets <- droplet
+				if len(d.Networks.V4) > 0 {
+					droplets <- d
 					return
 				}
 			}
