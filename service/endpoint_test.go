@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -286,7 +286,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "her-redis" to the app "her-app": Server failed to do its job.$`)
+	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/her-redis" to the app "her-app": Server failed to do its job.$`)
 }
 
 func (s *S) TestBindAppInstanceNotReady(c *check.C) {
@@ -349,7 +349,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
-	expectedMsg := `^Failed to bind the instance "her-redis" to the unit "10.10.10.\d+": Server failed to do its job.$`
+	expectedMsg := `^Failed to bind the instance "redis/her-redis" to the unit "10.10.10.\d+": Server failed to do its job.$`
 	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 
