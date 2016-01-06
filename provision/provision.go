@@ -305,7 +305,7 @@ type Provisioner interface {
 	// Returns the metric backend environs for the app.
 	MetricEnvs(App) map[string]string
 
-	//Rollback a deploy
+	// Rollback a deploy
 	Rollback(App, string, io.Writer) (string, error)
 }
 
@@ -317,6 +317,13 @@ type MessageProvisioner interface {
 // method that should be called when the app is started
 type InitializableProvisioner interface {
 	Initialize() error
+}
+
+// Provisioners can implement this interface to optionaly disable logs for a
+// given app.
+type OptionalLogsProvisioner interface {
+	// Checks if logs are enabled for given app.
+	LogsEnabled(App) (bool, string, error)
 }
 
 // PlatformOptions is the set of options provided to PlatformAdd and

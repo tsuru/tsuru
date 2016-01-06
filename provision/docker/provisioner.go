@@ -37,6 +37,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1039,6 +1040,47 @@ func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 		}
 	}
 	return envMap
+}
+
+func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
+	const (
+		logBackendsEnv      = "LOG_BACKENDS"
+		logDocKeyFormat     = "LOG_%s_DOC"
+		tsuruLogBackendName = "tsuru"
+	)
+	config, err := bs.LoadConfig([]string{app.GetPool()})
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return true, "", nil
+		}
+		return false, "", err
+	}
+	enabledBackends := config.EnvValueForPool(logBackendsEnv, app.GetPool())
+	if enabledBackends == "" {
+		return true, "", nil
+	}
+	backendsList := strings.Split(enabledBackends, ",")
+	for i := range backendsList {
+		backendsList[i] = strings.TrimSpace(backendsList[i])
+		if backendsList[i] == tsuruLogBackendName {
+			return true, "", nil
+		}
+	}
+	var docs []string
+	for _, backendName := range backendsList {
+		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
+		backendDoc := config.EnvValueForPool(keyName, app.GetPool())
+		var docLine string
+		if backendDoc == "" {
+			docLine = fmt.Sprintf("* %s", backendName)
+		} else {
+			docLine = fmt.Sprintf("* %s: %s", backendName, backendDoc)
+		}
+		docs = append(docs, docLine)
+	}
+	fullDoc := fmt.Sprintf("Logs not available through tsuru. Enabled log backends are:\n%s",
+		strings.Join(docs, "\n"))
+	return false, fullDoc, nil
 }
 
 func pluralize(str string, sz int) string {

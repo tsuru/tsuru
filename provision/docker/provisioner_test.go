@@ -2229,3 +2229,36 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 	c.Assert(p.cluster, check.NotNil)
 	c.Assert(p.cluster.Hook, check.DeepEquals, &bs.ClusterHook{Provisioner: &p})
 }
+
+func (s *S) TestProvisionerLogsEnabled(c *check.C) {
+	appName := "my-fake-app"
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	fakeApp.Pool = "mypool"
+	tests := []struct {
+		envMap     bs.EnvMap
+		poolEnvMap bs.PoolEnvMap
+		enabled    bool
+		msg        string
+		err        error
+	}{
+		{nil, nil, true, "", nil},
+		{bs.EnvMap{}, nil, true, "", nil},
+		{bs.EnvMap{"LOG_BACKENDS": "xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
+		{bs.EnvMap{"LOG_BACKENDS": "xxx", "LOG_XXX_DOC": "my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
+		{bs.EnvMap{"LOG_BACKENDS": "a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc", "LOG_ABC_DOC": "doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"otherpool": {"LOG_BACKENDS": "abc"}}, true, "", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc, tsuru "}}, true, "", nil},
+	}
+	for _, t := range tests {
+		if t.envMap != nil || t.poolEnvMap != nil {
+			err := bs.SaveEnvs(t.envMap, t.poolEnvMap)
+			c.Assert(err, check.IsNil)
+		}
+		enabled, msg, err := s.p.LogsEnabled(fakeApp)
+		c.Assert(err, check.Equals, t.err)
+		c.Assert(enabled, check.Equals, t.enabled)
+		c.Assert(msg, check.Equals, t.msg)
+	}
+}
