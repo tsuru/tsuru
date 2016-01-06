@@ -358,8 +358,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
 		}
-		node, err := segSched.Schedule(clusterInstance, opts, []string{cont.AppName, "web"})
-		c.Assert(err, check.IsNil)
+		node, schedErr := segSched.Schedule(clusterInstance, opts, []string{cont.AppName, "web"})
+		c.Assert(schedErr, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
 	n, err := contColl.Find(bson.M{"hostaddr": "127.0.0.1"}).Count()
@@ -441,8 +441,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 		opts := docker.CreateContainerOptions{
 			Name: cont.Name,
 		}
-		node, err := segSched.Schedule(clusterInstance, opts, []string{cont.AppName, "web"})
-		c.Assert(err, check.IsNil)
+		node, schedErr := segSched.Schedule(clusterInstance, opts, []string{cont.AppName, "web"})
+		c.Assert(schedErr, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
 	n, err := contColl.Find(bson.M{"hostaddr": "127.0.0.1"}).Count()
