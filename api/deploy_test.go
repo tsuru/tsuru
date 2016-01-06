@@ -58,11 +58,12 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
+	err := config.ReadConfigFile("testdata/config.yaml")
+	c.Assert(err, check.IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
-	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
@@ -70,6 +71,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
+	config.Unset("docker:router")
 	provision.RemovePool("pool1")
 	s.conn.Apps().Database.DropDatabase()
 	s.logConn.Logs("myapp").Database.DropDatabase()
@@ -92,6 +94,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	user, err := s.token.User()
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
+	config.Set("docker:router", "fake")
 }
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
@@ -179,7 +182,12 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{
+		Name:      "otherapp",
+		Plan:      app.Plan{Router: "fake"},
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -198,7 +206,13 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		Plan:      app.Plan{Router: "fake"},
+		TeamOwner: s.team.Name,
+	}
+
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -224,7 +238,12 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Plan:      app.Plan{Router: "fake"},
+	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
@@ -354,7 +373,12 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Plan:      app.Plan{Router: "fake"},
+	}
 	user, _ := s.token.User()
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
