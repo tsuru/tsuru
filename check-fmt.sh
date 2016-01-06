@@ -20,7 +20,7 @@ then
 fi
 
 go get golang.org/x/tools/cmd/goimports
-out=`goimports -l . | grep -v vendor/`
+out=`goimports -d -l . | grep -v vendor/`
 if [ "${out}" != "" ]
 then
     echo "ERROR: there are files that need to be formatted with goimports"
