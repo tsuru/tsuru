@@ -463,6 +463,10 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer,
 		if err != nil {
 			return err
 		}
+		imageData, err = getImageCustomData(imageId)
+		if err != nil {
+			return err
+		}
 	}
 	if len(containers) == 0 {
 		toAdd := make(map[string]*containersToAdd, len(imageData.Processes))
@@ -473,6 +477,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer,
 				toAdd[processName] = &ct
 			}
 			toAdd[processName].Quantity++
+			println(toAdd[processName].Quantity, processName)
 		}
 		if err := setQuota(a, toAdd); err != nil {
 			return err

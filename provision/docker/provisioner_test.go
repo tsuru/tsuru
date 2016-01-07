@@ -634,7 +634,17 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	err := s.newFakeImage(s.p, "customimage", nil)
+	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	customData := map[string]interface{}{}
+	err := s.newFakeImage(s.p, "customimage", customData)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -645,6 +655,9 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, check.IsNil)
+	dataColl.RemoveId("customimage")
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -657,12 +670,22 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	imd, err := getImageCustomData("customimage")
 	c.Assert(err, check.IsNil)
-	expectedProcesses := map[string]string{"web": "python myapp.py"}
+	expectedProcesses := map[string]string{"web": "/bin/sh -c python test.py"}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
-func (s *S) TestImageDeployInExistentApp(c *check.C) {
-	err := s.newFakeImage(s.p, "customimage", nil)
+func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
+	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	customData := map[string]interface{}{}
+	err := s.newFakeImage(s.p, "customimage", customData)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -672,25 +695,18 @@ func (s *S) TestImageDeployInExistentApp(c *check.C) {
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	s.p.Provision(&a)
-	s.newContainer(&newContainerOpts{
-		AppName:     "otherapp",
-		Image:       "customimage",
-		Status:      "started",
-		ProcessName: "web",
-		Provisioner: s.p,
-	}, nil)
 	defer s.p.Destroy(&a)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, check.IsNil)
+	dataColl.RemoveId("customimage")
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        "customimage",
 	})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	// this test should be broken, but a hidden mock is fucking me.
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "You should provide a entrypoint in your image.")
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
