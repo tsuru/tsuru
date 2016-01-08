@@ -213,12 +213,6 @@ type ArchiveDeployer interface {
 	ArchiveDeploy(app App, archiveURL string, w io.Writer) (string, error)
 }
 
-// GitDeployer is a provisioner that can deploy the application from a Git
-// repository.
-type GitDeployer interface {
-	GitDeploy(app App, version string, w io.Writer) (string, error)
-}
-
 // UploadDeployer is a provisioner that can deploy the application from an
 // uploaded file.
 type UploadDeployer interface {

@@ -271,7 +271,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -319,7 +319,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -363,7 +363,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -379,7 +379,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -415,7 +415,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		var result docker.Config
 		jsonErr := json.Unmarshal(data, &result)
 		if jsonErr == nil {
-			if result.Image == "tsuru/app-appdeployimagetest:v1" {
+			if result.Image == "tsuru/python:latest" {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -425,9 +425,9 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
 		Commit:       "123",
 		OutputStream: w,
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 	})
 	c.Assert(err, check.NotNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -469,7 +469,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -485,7 +485,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -502,7 +502,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -762,7 +762,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})

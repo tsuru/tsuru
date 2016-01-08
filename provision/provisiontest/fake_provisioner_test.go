@@ -383,19 +383,6 @@ func (s *S) TestGetUnits(c *check.C) {
 	c.Assert(units, check.DeepEquals, list)
 }
 
-func (s *S) TestVersion(c *check.C) {
-	var buf bytes.Buffer
-	app := NewFakeApp("free", "matos", 1)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.GitDeploy(app, "master", &buf)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Version(app), check.Equals, "master")
-	_, err = p.GitDeploy(app, "1.0", &buf)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Version(app), check.Equals, "1.0")
-}
-
 func (s *S) TestPrepareOutput(c *check.C) {
 	output := []byte("the body eletric")
 	p := NewFakeProvisioner()
@@ -411,36 +398,6 @@ func (s *S) TestPrepareFailure(c *check.C) {
 	got := <-p.failures
 	c.Assert(got.method, check.Equals, "Rush")
 	c.Assert(got.err.Error(), check.Equals, "the body eletric")
-}
-
-func (s *S) TestGitDeploy(c *check.C) {
-	var buf bytes.Buffer
-	app := NewFakeApp("soul", "arch", 1)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.GitDeploy(app, "1.0", &buf)
-	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "Git deploy called")
-	c.Assert(p.apps[app.GetName()].version, check.Equals, "1.0")
-}
-
-func (s *S) TestGitDeployUnknownApp(c *check.C) {
-	var buf bytes.Buffer
-	app := NewFakeApp("soul", "arch", 1)
-	p := NewFakeProvisioner()
-	_, err := p.GitDeploy(app, "1.0", &buf)
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestGitDeployWithPreparedFailure(c *check.C) {
-	var buf bytes.Buffer
-	err := errors.New("not really")
-	app := NewFakeApp("soul", "arch", 1)
-	p := NewFakeProvisioner()
-	p.PrepareFailure("GitDeploy", err)
-	_, e := p.GitDeploy(app, "1.0", &buf)
-	c.Assert(e, check.NotNil)
-	c.Assert(e, check.Equals, err)
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
