@@ -376,6 +376,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 			return "", err
 		}
 	}
+	app.SetUpdatePlatform(true)
 	return imageId, p.deploy(app, imageId, w)
 }
 

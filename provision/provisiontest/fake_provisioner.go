@@ -296,8 +296,15 @@ func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 	return nil
 }
 
-func (app *FakeApp) GetUpdatePlatform() bool {
-	return app.UpdatePlatform
+func (a *FakeApp) GetUpdatePlatform() bool {
+	return a.UpdatePlatform
+}
+
+func (a *FakeApp) SetUpdatePlatform(check bool) error {
+	a.commMut.Lock()
+	a.UpdatePlatform = check
+	a.commMut.Unlock()
+	return nil
 }
 
 func (app *FakeApp) GetRouter() (string, error) {
