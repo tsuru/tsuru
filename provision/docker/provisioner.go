@@ -336,11 +336,47 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Writer) (string, error) {
-	return imageId, p.deploy(app, imageId, w, false)
+	return imageId, p.deploy(app, imageId, w)
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
-	return imageId, p.deploy(app, imageId, w, true)
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
+	if err != nil {
+		return imageId, err
+	}
+	if len(nodes) < 1 {
+		return imageId, stderr.New("no nodes available")
+	}
+	client, err := nodes[0].Client()
+	if err != nil {
+		return imageId, err
+	}
+	imageInspect, err := client.InspectImage(imageId)
+	if err != nil {
+		return imageId, err
+	}
+	if len(imageInspect.Config.Entrypoint) == 0 {
+		return imageId, stderr.New("You should provide a entrypoint in your image.")
+	}
+	imageData := ImageMetadata{
+		Name: imageId,
+		Processes: map[string]string{
+			"web": strings.Join(imageInspect.Config.Entrypoint, " "),
+		},
+		CustomData: map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": strings.Join(imageInspect.Config.Entrypoint, " "),
+			},
+		},
+	}
+	err = updateImageCustomData(imageId, imageData)
+	if err != nil {
+		err = saveImageCustomData(imageId, imageData.CustomData)
+		if err != nil {
+			return "", err
+		}
+	}
+	return imageId, p.deploy(app, imageId, w)
 }
 
 func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
@@ -419,14 +455,14 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
-	err := p.deploy(a, imageId, w, false)
+	err := p.deploy(a, imageId, w)
 	if err != nil {
 		p.cleanImage(a.GetName(), imageId)
 	}
 	return err
 }
 
-func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer, imageDeploy bool) error {
+func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := p.listContainersByApp(a.GetName())
 	if err != nil {
 		return err
@@ -434,39 +470,6 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer,
 	imageData, err := getImageCustomData(imageId)
 	if err != nil {
 		return err
-	}
-	if len(imageData.Processes) == 0 && imageDeploy {
-		nodes, err := mainDockerProvisioner.Cluster().Nodes()
-		if err != nil {
-			return err
-		}
-		if len(nodes) < 1 {
-			return stderr.New("no nodes available")
-		}
-		client, err := nodes[0].Client()
-		if err != nil {
-			return err
-		}
-		imageInspect, err := client.InspectImage(imageId)
-		if err != nil {
-			return err
-		}
-		if len(imageInspect.Config.Entrypoint) == 0 {
-			return stderr.New("You should provide a entrypoint in your image.")
-		}
-		newProc := map[string]interface{}{
-			"processes": map[string]interface{}{
-				"web": strings.Join(imageInspect.Config.Entrypoint, " "),
-			},
-		}
-		err = saveImageCustomData(imageId, newProc)
-		if err != nil {
-			return err
-		}
-		imageData, err = getImageCustomData(imageId)
-		if err != nil {
-			return err
-		}
 	}
 	if len(containers) == 0 {
 		toAdd := make(map[string]*containersToAdd, len(imageData.Processes))
@@ -477,7 +480,6 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer,
 				toAdd[processName] = &ct
 			}
 			toAdd[processName].Quantity++
-			println(toAdd[processName].Quantity, processName)
 		}
 		if err := setQuota(a, toAdd); err != nil {
 			return err
