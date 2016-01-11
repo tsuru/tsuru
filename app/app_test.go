@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -2258,6 +2258,29 @@ func (s *S) TestLastLogsEmpty(c *check.C) {
 	logs, err := app.LastLogs(10, Applog{Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.DeepEquals, []Applog{})
+}
+
+type logDisabledFakeProvisioner struct {
+	provisiontest.FakeProvisioner
+}
+
+func (p *logDisabledFakeProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
+	return false, "my doc msg", nil
+}
+
+func (s *S) TestLastLogsDisabled(c *check.C) {
+	oldProvisioner := Provisioner
+	defer func() { Provisioner = oldProvisioner }()
+	Provisioner = &logDisabledFakeProvisioner{}
+	app := App{
+		Name:     "app3",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	_, err = app.LastLogs(10, Applog{})
+	c.Assert(err, check.ErrorMatches, "my doc msg")
 }
 
 func (s *S) TestGetTeams(c *check.C) {

@@ -2,6 +2,4 @@
 dist-*
 cmd/tsurud/tsurud
 docs/_build
-Godeps/_workspace
-Godeps/Readme
 build

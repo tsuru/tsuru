@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -124,7 +124,6 @@ func GetDeploy(id string) (*DeployData, error) {
 
 type DeployOptions struct {
 	App          *App
-	Version      string
 	Commit       string
 	ArchiveURL   string
 	File         io.ReadCloser
@@ -183,12 +182,7 @@ func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) 
 			return deployer.UploadDeploy(opts.App, opts.File, writer)
 		}
 	}
-	if opts.ArchiveURL != "" {
-		if deployer, ok := Provisioner.(provision.ArchiveDeployer); ok {
-			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, writer)
-		}
-	}
-	return Provisioner.(provision.GitDeployer).GitDeploy(opts.App, opts.Version, writer)
+	return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, writer)
 }
 
 func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Duration, deployError error) error {

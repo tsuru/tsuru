@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -37,6 +37,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -339,6 +340,43 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
+	if err != nil {
+		return imageId, err
+	}
+	if len(nodes) < 1 {
+		return imageId, stderr.New("no nodes available")
+	}
+	client, err := nodes[0].Client()
+	if err != nil {
+		return imageId, err
+	}
+	imageInspect, err := client.InspectImage(imageId)
+	if err != nil {
+		return imageId, err
+	}
+	if len(imageInspect.Config.Entrypoint) == 0 {
+		return imageId, stderr.New("You should provide a entrypoint in your image.")
+	}
+	imageData := ImageMetadata{
+		Name: imageId,
+		Processes: map[string]string{
+			"web": strings.Join(imageInspect.Config.Entrypoint, " "),
+		},
+		CustomData: map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": strings.Join(imageInspect.Config.Entrypoint, " "),
+			},
+		},
+	}
+	err = updateImageCustomData(imageId, imageData)
+	if err != nil {
+		err = saveImageCustomData(imageId, imageData.CustomData)
+		if err != nil {
+			return "", err
+		}
+	}
+	app.SetUpdatePlatform(true)
 	return imageId, p.deploy(app, imageId, w)
 }
 
@@ -1039,6 +1077,47 @@ func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 		}
 	}
 	return envMap
+}
+
+func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
+	const (
+		logBackendsEnv      = "LOG_BACKENDS"
+		logDocKeyFormat     = "LOG_%s_DOC"
+		tsuruLogBackendName = "tsuru"
+	)
+	config, err := bs.LoadConfig([]string{app.GetPool()})
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return true, "", nil
+		}
+		return false, "", err
+	}
+	enabledBackends := config.EnvValueForPool(logBackendsEnv, app.GetPool())
+	if enabledBackends == "" {
+		return true, "", nil
+	}
+	backendsList := strings.Split(enabledBackends, ",")
+	for i := range backendsList {
+		backendsList[i] = strings.TrimSpace(backendsList[i])
+		if backendsList[i] == tsuruLogBackendName {
+			return true, "", nil
+		}
+	}
+	var docs []string
+	for _, backendName := range backendsList {
+		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
+		backendDoc := config.EnvValueForPool(keyName, app.GetPool())
+		var docLine string
+		if backendDoc == "" {
+			docLine = fmt.Sprintf("* %s", backendName)
+		} else {
+			docLine = fmt.Sprintf("* %s: %s", backendName, backendDoc)
+		}
+		docs = append(docs, docLine)
+	}
+	fullDoc := fmt.Sprintf("Logs not available through tsuru. Enabled log backends are:\n%s",
+		strings.Join(docs, "\n"))
+	return false, fullDoc, nil
 }
 
 func pluralize(str string, sz int) string {

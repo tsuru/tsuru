@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -147,6 +147,47 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		provisioner:      p,
 	}
 	err = pipeline.Execute(args)
+	if err != nil {
+		return nil, err
+	}
+	c := pipeline.Result().(container.Container)
+	err = c.SetImage(p, imageId)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (p *dockerProvisioner) startImage(oldContainer *container.Container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container.Container, error) {
+	var actions []*action.Action
+	if oldContainer != nil && oldContainer.Status == provision.StatusStopped.String() {
+		actions = []*action.Action{
+			&insertEmptyContainerInDB,
+			&createContainerFromImage,
+			&setContainerID,
+			&stopContainer,
+			&updateContainerInDB,
+			&setNetworkInfo,
+		}
+	} else {
+		actions = []*action.Action{
+			&insertEmptyContainerInDB,
+			&createContainerFromImage,
+			&setContainerID,
+			&startContainer,
+			&updateContainerInDB,
+			&setNetworkInfo,
+		}
+	}
+	pipeline := action.NewPipeline(actions...)
+	args := runContainerActionsArgs{
+		app:              app,
+		processName:      "web",
+		imageID:          imageId,
+		destinationHosts: destinationHosts,
+		provisioner:      p,
+	}
+	err := pipeline.Execute(args)
 	if err != nil {
 		return nil, err
 	}

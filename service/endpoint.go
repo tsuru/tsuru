@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -124,7 +124,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	}
 	if err != nil {
-		log.Errorf("Failed to bind app %q to service instance %q: %s", app.GetName(), instance.Name, err)
+		log.Errorf(`Failed to bind app %q to service instance "%s/%s": %s`, app.GetName(), instance.ServiceName, instance.Name, err)
 		return nil, fmt.Errorf("%s api is down.", instance.Name)
 	}
 	if err == nil && resp.StatusCode < 300 {
@@ -141,7 +141,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 	case http.StatusNotFound:
 		return nil, ErrInstanceNotFoundInAPI
 	}
-	msg := fmt.Sprintf("Failed to bind the instance %q to the app %q: %s", instance.Name, app.GetName(), c.buildErrorMessage(err, resp))
+	msg := fmt.Sprintf(`Failed to bind the instance "%s/%s" to the app %q: %s`, instance.ServiceName, instance.Name, app.GetName(), c.buildErrorMessage(err, resp))
 	log.Error(msg)
 	return nil, errors.New(msg)
 }
@@ -168,7 +168,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		return ErrInstanceNotFoundInAPI
 	}
 	if resp.StatusCode > 299 {
-		msg := fmt.Sprintf("Failed to bind the instance %q to the unit %q: %s", instance.Name, unit.GetIp(), c.buildErrorMessage(err, resp))
+		msg := fmt.Sprintf(`Failed to bind the instance "%s/%s" to the unit %q: %s`, instance.ServiceName, instance.Name, unit.GetIp(), c.buildErrorMessage(err, resp))
 		log.Error(msg)
 		return errors.New(msg)
 	}

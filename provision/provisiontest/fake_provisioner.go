@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -296,8 +296,15 @@ func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 	return nil
 }
 
-func (app *FakeApp) GetUpdatePlatform() bool {
-	return app.UpdatePlatform
+func (a *FakeApp) GetUpdatePlatform() bool {
+	return a.UpdatePlatform
+}
+
+func (a *FakeApp) SetUpdatePlatform(check bool) error {
+	a.commMut.Lock()
+	a.UpdatePlatform = check
+	a.commMut.Unlock()
+	return nil
 }
 
 func (app *FakeApp) GetRouter() (string, error) {
@@ -428,13 +435,6 @@ func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
 	return pApp.units
 }
 
-// Version returns the last deployed for a given app.
-func (p *FakeProvisioner) Version(app provision.App) string {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].version
-}
-
 // PrepareOutput sends the given slice of bytes to a queue of outputs.
 //
 // Each prepared output will be used in the ExecuteCommand. It might be sent to
@@ -483,22 +483,6 @@ func (p *FakeProvisioner) Reset() {
 
 func (p *FakeProvisioner) Swap(app1, app2 provision.App) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName())
-}
-
-func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
-	if err := p.getError("GitDeploy"); err != nil {
-		return "", err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	w.Write([]byte("Git deploy called"))
-	pApp.version = version
-	p.apps[app.GetName()] = pApp
-	return "app-image", nil
 }
 
 func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
@@ -1076,7 +1060,6 @@ type provisionedApp struct {
 	restarts    map[string]int
 	starts      map[string]int
 	stops       map[string]int
-	version     string
 	lastArchive string
 	lastFile    io.ReadCloser
 	cnames      []string

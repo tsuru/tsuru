@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -251,9 +251,9 @@ func (s *S) TestDeploySaveDataAndDiff(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	opts := DeployOptions{
-		App:     &a,
-		Version: "",
-		Commit:  "",
+		App:    &a,
+		Image:  "myimage",
+		Commit: "",
 	}
 	err = saveDeployData(&opts, "diff", "", time.Second, nil)
 	c.Assert(err, check.IsNil)
@@ -298,13 +298,13 @@ func (s *S) TestDeployApp(c *check.C) {
 	writer := &bytes.Buffer{}
 	err = Deploy(DeployOptions{
 		App:          &a,
-		Version:      "version",
+		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Git deploy called")
+	c.Assert(logs, check.Equals, "Image deploy called")
 }
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
@@ -322,13 +322,13 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	writer := &bytes.Buffer{}
 	err = Deploy(DeployOptions{
 		App:          &a,
-		Version:      "version",
+		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Git deploy called")
+	c.Assert(logs, check.Equals, "Image deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "someApp"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -348,7 +348,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	writer := &bytes.Buffer{}
 	err = Deploy(DeployOptions{
 		App:          &a,
-		Version:      "version",
+		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
 	})
@@ -372,7 +372,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
 	err = Deploy(DeployOptions{
 		App:          &a,
-		Version:      "version",
+		Image:        "myimage",
 		Commit:       commit,
 		OutputStream: writer,
 		User:         "someone@themoon",
@@ -388,8 +388,8 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	c.Assert(diff < 60*time.Second, check.Equals, true)
 	c.Assert(result["duration"], check.Not(check.Equals), 0)
 	c.Assert(result["commit"], check.Equals, commit)
-	c.Assert(result["image"], check.Equals, "app-image")
-	c.Assert(result["log"], check.Equals, "Git deploy called")
+	c.Assert(result["image"], check.Equals, "myimage")
+	c.Assert(result["log"], check.Equals, "Image deploy called")
 	c.Assert(result["user"], check.Equals, "someone@themoon")
 	c.Assert(result["origin"], check.Equals, "git")
 }
@@ -495,7 +495,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	provisioner := provisiontest.NewFakeProvisioner()
-	provisioner.PrepareFailure("GitDeploy", errors.New("deploy error"))
+	provisioner.PrepareFailure("ImageDeploy", errors.New("deploy error"))
 	Provisioner = provisioner
 	defer func() {
 		Provisioner = s.provisioner
@@ -513,7 +513,7 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	writer := &bytes.Buffer{}
 	err = Deploy(DeployOptions{
 		App:          &a,
-		Version:      "version",
+		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
 	})
@@ -550,11 +550,11 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	opts := DeployOptions{App: &a, Version: "version"}
+	opts := DeployOptions{App: &a, Image: "myimage"}
 	_, err = deployToProvisioner(&opts, writer)
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Git deploy called")
+	c.Assert(logs, check.Equals, "Image deploy called")
 }
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
@@ -620,9 +620,9 @@ func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	opts := DeployOptions{
-		App:     &a,
-		Version: "version",
-		Commit:  "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		App:    &a,
+		Image:  "myimage",
+		Commit: "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 	}
 	err = saveDeployData(&opts, "myid", "mylog", time.Second, nil)
 	c.Assert(err, check.IsNil)

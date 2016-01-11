@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -271,7 +271,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -319,7 +319,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -363,7 +363,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -379,7 +379,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -415,7 +415,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		var result docker.Config
 		jsonErr := json.Unmarshal(data, &result)
 		if jsonErr == nil {
-			if result.Image == "tsuru/app-appdeployimagetest:v1" {
+			if result.Image == "tsuru/python:latest" {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -425,9 +425,9 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
 		Commit:       "123",
 		OutputStream: w,
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 	})
 	c.Assert(err, check.NotNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -469,7 +469,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -485,7 +485,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -502,7 +502,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -562,7 +562,7 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
 }
 
-func (s *S) TestImageDeploy(c *check.C) {
+func (s *S) TestRollbackDeploy(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
@@ -581,6 +581,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 		App:          &a,
 		OutputStream: w,
 		Image:        "tsuru/app-otherapp:v1",
+		Rollback:     true,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -588,7 +589,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
-func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
+func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
@@ -619,6 +620,7 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 		App:          &a,
 		OutputStream: w,
 		Image:        "tsuru/app-otherapp:v1",
+		Rollback:     true,
 	})
 	c.Assert(err, check.NotNil)
 	units, err := a.Units()
@@ -629,6 +631,85 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 	c.Assert(imgs, check.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert("tsuru/app-otherapp:v1", check.Equals, imgs[0].RepoTags[0])
+}
+
+func (s *S) TestImageDeploy(c *check.C) {
+	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	customData := map[string]interface{}{}
+	err := s.newFakeImage(s.p, "customimage", customData)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+		Quota:    quota.Unlimited,
+	}
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, check.IsNil)
+	dataColl.RemoveId("customimage")
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        "customimage",
+	})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	imd, err := getImageCustomData("customimage")
+	c.Assert(err, check.IsNil)
+	expectedProcesses := map[string]string{"web": "/bin/sh -c python test.py"}
+	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+	updatedApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
+}
+
+func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
+	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	customData := map[string]interface{}{}
+	err := s.newFakeImage(s.p, "customimage", customData)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+		Quota:    quota.Unlimited,
+	}
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, check.IsNil)
+	dataColl.RemoveId("customimage")
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        "customimage",
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "You should provide a entrypoint in your image.")
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
@@ -681,7 +762,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
-		Version:      "master",
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
 	})
@@ -2228,4 +2309,37 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(p.cluster, check.NotNil)
 	c.Assert(p.cluster.Hook, check.DeepEquals, &bs.ClusterHook{Provisioner: &p})
+}
+
+func (s *S) TestProvisionerLogsEnabled(c *check.C) {
+	appName := "my-fake-app"
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	fakeApp.Pool = "mypool"
+	tests := []struct {
+		envMap     bs.EnvMap
+		poolEnvMap bs.PoolEnvMap
+		enabled    bool
+		msg        string
+		err        error
+	}{
+		{nil, nil, true, "", nil},
+		{bs.EnvMap{}, nil, true, "", nil},
+		{bs.EnvMap{"LOG_BACKENDS": "xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
+		{bs.EnvMap{"LOG_BACKENDS": "xxx", "LOG_XXX_DOC": "my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
+		{bs.EnvMap{"LOG_BACKENDS": "a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc", "LOG_ABC_DOC": "doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"otherpool": {"LOG_BACKENDS": "abc"}}, true, "", nil},
+		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc, tsuru "}}, true, "", nil},
+	}
+	for _, t := range tests {
+		if t.envMap != nil || t.poolEnvMap != nil {
+			err := bs.SaveEnvs(t.envMap, t.poolEnvMap)
+			c.Assert(err, check.IsNil)
+		}
+		enabled, msg, err := s.p.LogsEnabled(fakeApp)
+		c.Assert(err, check.Equals, t.err)
+		c.Assert(enabled, check.Equals, t.enabled)
+		c.Assert(msg, check.Equals, t.msg)
+	}
 }

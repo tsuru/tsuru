@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -34,19 +34,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
-	version := r.PostFormValue("version")
 	archiveURL := r.PostFormValue("archive-url")
 	image := r.PostFormValue("image")
-	if image == "" && version == "" && archiveURL == "" && file == nil {
+	if image == "" && archiveURL == "" && file == nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "you must specify either the version, the archive-url, a image url or upload a file.",
-		}
-	}
-	if version != "" && archiveURL != "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "you must specify either the version or the archive-url, but not both",
+			Message: "you must specify either the archive-url, a image url or upload a file.",
 		}
 	}
 	commit := r.PostFormValue("commit")
@@ -92,7 +85,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer writer.Stop()
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
-		Version:      version,
 		Commit:       commit,
 		File:         file,
 		ArchiveURL:   archiveURL,

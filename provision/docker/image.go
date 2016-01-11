@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -154,6 +154,14 @@ func saveImageCustomData(imageName string, customData map[string]interface{}) er
 		Processes:  processes,
 	}
 	return coll.Insert(data)
+}
+
+func updateImageCustomData(imageName string, customData ImageMetadata) error {
+	coll, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	return coll.UpdateId(imageName, customData)
 }
 
 func getImageCustomData(imageName string) (ImageMetadata, error) {
