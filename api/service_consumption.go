@@ -265,6 +265,48 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
+type ServiceInstanceInfo struct {
+	Apps       []string
+	Teams      []string
+	TeamOwner  string
+	CustomInfo map[string]string
+}
+
+func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	instanceName := r.URL.Query().Get(":instance")
+	serviceName := r.URL.Query().Get(":service")
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	if err != nil {
+		return err
+	}
+	permissionValue := serviceName + "/" + instanceName
+	allowed := permission.Check(t, permission.PermServiceInstanceRead,
+		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
+			permission.Context(permission.CtxServiceInstance, permissionValue),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	rec.Log(t.GetUserName(), "service-instance-info", serviceName, instanceName)
+	info, err := serviceInstance.Info()
+	if err != nil {
+		return err
+	}
+	sInfo := ServiceInstanceInfo{
+		Apps:       serviceInstance.Apps,
+		Teams:      serviceInstance.Teams,
+		TeamOwner:  serviceInstance.TeamOwner,
+		CustomInfo: info,
+	}
+	b, err := json.Marshal(sInfo)
+	if err != nil {
+		return nil
+	}
+	w.Write(b)
+	return nil
+}
+
 func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":name")
 	_, err := getService(serviceName)
