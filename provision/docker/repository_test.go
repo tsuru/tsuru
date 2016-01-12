@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package docker
 
 import (
 	"sort"
-	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
@@ -85,6 +84,13 @@ func (l containerByIdList) Len() int           { return len(l) }
 func (l containerByIdList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l containerByIdList) Less(i, j int) bool { return l[i].ID < l[j].ID }
 
+func stripMongoID(conts []container.Container) []container.Container {
+	for i := range conts {
+		conts[i].MongoID = bson.ObjectId("")
+	}
+	return conts
+}
+
 func (s *S) TestListContainersByAppAndHost(c *check.C) {
 	var result []container.Container
 	coll := s.p.Collection()
@@ -97,14 +103,14 @@ func (s *S) TestListContainersByAppAndHost(c *check.C) {
 	result, err := s.p.listContainersByAppAndHost([]string{"myapp1", "myapp2"}, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
-	c.Assert(result, check.DeepEquals, []container.Container{
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
 		{ID: "1", AppName: "myapp1", HostAddr: "host1"},
 		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
 	})
 	result, err = s.p.listContainersByAppAndHost(nil, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
-	c.Assert(result, check.DeepEquals, []container.Container{
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
 		{ID: "1", AppName: "myapp1", HostAddr: "host1"},
 		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
 		{ID: "3", AppName: "other", HostAddr: "host3"},
@@ -112,18 +118,18 @@ func (s *S) TestListContainersByAppAndHost(c *check.C) {
 	result, err = s.p.listContainersByAppAndHost(nil, []string{"host2", "host3"})
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
-	c.Assert(result, check.DeepEquals, []container.Container{
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
 		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
 		{ID: "3", AppName: "other", HostAddr: "host3"},
 	})
 	result, err = s.p.listContainersByAppAndHost([]string{"myapp1"}, []string{"host2"})
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
-	c.Assert(result, check.IsNil)
+	c.Assert(stripMongoID(result), check.IsNil)
 	result, err = s.p.listContainersByAppAndHost([]string{"myapp1", "myapp2"}, []string{"host2", "host3"})
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
-	c.Assert(result, check.DeepEquals, []container.Container{
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
 		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
 	})
 }
@@ -235,55 +241,6 @@ func (s *S) TestGetContainerPartialId(c *check.C) {
 	cont, err := s.p.GetContainer("container-a")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Equals, "container-a1")
-}
-
-func (s *S) TestListUnresponsiveContainers(c *check.C) {
-	var result []container.Container
-	coll := s.p.Collection()
-	defer coll.Close()
-	now := time.Now().UTC()
-	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test", LastSuccessStatusUpdate: now, HostPort: "80"},
-		container.Container{ID: "c2", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-1 * time.Minute), HostPort: "80"},
-		container.Container{ID: "c3", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80"},
-	)
-	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
-	result, err := s.p.listUnresponsiveContainers(3 * time.Minute)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
-	c.Assert(result[0].ID, check.Equals, "c3")
-}
-
-func (s *S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
-	var result []container.Container
-	coll := s.p.Collection()
-	defer coll.Close()
-	now := time.Now().UTC()
-	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-10 * time.Minute)},
-	)
-	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
-	result, err := s.p.listUnresponsiveContainers(3 * time.Minute)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 0)
-}
-
-func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
-	var result []container.Container
-	coll := s.p.Collection()
-	defer coll.Close()
-	now := time.Now().UTC()
-	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test",
-			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStopped.String()},
-		container.Container{ID: "c2", AppName: "app_time_test",
-			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()},
-	)
-	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
-	result, err := s.p.listUnresponsiveContainers(3 * time.Minute)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
-	c.Assert(result[0].ID, check.Equals, "c2")
 }
 
 func (s *S) TestListRunnableContainersByApp(c *check.C) {

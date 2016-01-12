@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -371,9 +371,11 @@ func (s *S) TestListContainersPreparedResult(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	p.PrepareListResult([]container.Container{{ID: "cont1"}}, nil)
-	query := bson.M{"id": "abc123", "hostaddr": "127.0.0.1"}
+	query := bson.M{"id": "cont1"}
 	containers, err := p.ListContainers(query)
 	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	containers[0].MongoID = bson.ObjectId("")
 	c.Assert(containers, check.DeepEquals, []container.Container{{ID: "cont1"}})
 	c.Assert(p.Queries(), check.DeepEquals, []bson.M{query})
 }

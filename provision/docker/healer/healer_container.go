@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -80,7 +80,9 @@ func (h *ContainerHealer) isRunning(cont container.Container) (bool, error) {
 
 func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error {
 	if cont.LastSuccessStatusUpdate.IsZero() {
-		return nil
+		if !cont.MongoID.Time().Before(time.Now().Add(-h.maxUnresponsiveTime)) {
+			return nil
+		}
 	}
 	isRunning, err := h.isRunning(cont)
 	if err != nil {
@@ -144,7 +146,13 @@ func listUnresponsiveContainers(p DockerProvisioner, maxUnresponsiveTime time.Du
 	now := time.Now().UTC()
 	return p.ListContainers(bson.M{
 		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
-		"hostport":                bson.M{"$ne": ""},
-		"status":                  bson.M{"$ne": provision.StatusStopped.String()},
+		"$or": []bson.M{
+			{"hostport": bson.M{"$ne": ""}},
+			{"processname": bson.M{"$ne": ""}},
+		},
+		"status": bson.M{"$nin": []string{
+			provision.StatusStopped.String(),
+			provision.StatusBuilding.String(),
+		}},
 	})
 }
