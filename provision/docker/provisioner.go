@@ -256,6 +256,10 @@ func (p *dockerProvisioner) Initialize() error {
 	if err != nil {
 		return err
 	}
+	err = registerRoutesRebuildTask()
+	if err != nil {
+		return err
+	}
 	return p.initDockerCluster()
 }
 
@@ -291,6 +295,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
 	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
+	routesRebuildOrEnqueue(a.GetName())
 	return err
 }
 
@@ -548,6 +553,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		}
 		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
 	}
+	routesRebuildOrEnqueue(a.GetName())
 	return err
 }
 
@@ -755,6 +761,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 		return nil, err
 	}
 	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId)
+	routesRebuildOrEnqueue(a.GetName())
 	if err != nil {
 		return nil, err
 	}

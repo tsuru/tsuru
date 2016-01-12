@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -209,6 +210,37 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
 	c.Assert(dbConts[0].IP, check.Equals, expectedIP)
 	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
+}
+
+func (s *S) TestProvisionerRestartRebuildRoutesInQueue(c *check.C) {
+	err := s.p.Initialize()
+	c.Assert(err, check.IsNil)
+	coll := s.storage.Apps()
+	a := &app.App{
+		Name:     "almah",
+		Platform: "static",
+	}
+	err = coll.Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	imageId := "tsuru/app-" + a.Name + ":v1"
+	err = s.newFakeImage(s.p, imageId, nil)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.runCreateUnitsPipeline(nil, a, map[string]*containersToAdd{"web": {Quantity: 1}}, imageId)
+	c.Assert(err, check.IsNil)
+	invalidAddr, err := url.Parse("http://invalid.addr")
+	c.Assert(err, check.IsNil)
+	err = routertest.FakeRouter.AddRoute(a.GetName(), invalidAddr)
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.FailForIp(invalidAddr.String())
+	err = s.p.Restart(a, "", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, true)
+	routertest.FakeRouter.RemoveFailForIp(invalidAddr.String())
+	err = queue.TestingWaitQueueTasks(1, 10*time.Second)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, false)
 }
 
 func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
