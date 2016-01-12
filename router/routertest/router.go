@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -47,6 +47,12 @@ func (r *fakeRouter) FailForIp(ip string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.failuresByIp[ip] = true
+}
+
+func (r *fakeRouter) RemoveFailForIp(ip string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	delete(r.failuresByIp, ip)
 }
 
 func (r *fakeRouter) HasBackend(name string) bool {
