@@ -29,6 +29,8 @@ type appImages struct {
 	Count   int
 }
 
+var errNoImagesAvailable = errors.New("no images available for app")
+
 func MigrateImages() error {
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
@@ -248,7 +250,7 @@ func appCurrentImageName(appName string) (string, error) {
 		return appBasicImageName(appName), nil
 	}
 	if len(imgs.Images) == 0 {
-		return "", fmt.Errorf("no images available for app %q", appName)
+		return "", errNoImagesAvailable
 	}
 	return imgs.Images[len(imgs.Images)-1], nil
 }

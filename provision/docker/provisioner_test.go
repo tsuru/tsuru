@@ -2349,3 +2349,35 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 		c.Assert(msg, check.Equals, t.msg)
 	}
 }
+
+func (s *S) TestProvisionerRoutableUnits(c *check.C) {
+	appName := "my-fake-app"
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	routes, err := s.p.RoutableUnits(fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []provision.Unit{})
+	err = appendAppImageName(appName, "myimg")
+	c.Assert(err, check.IsNil)
+	err = pullAppImageNames(appName, []string{"myimg"})
+	c.Assert(err, check.IsNil)
+	routes, err = s.p.RoutableUnits(fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []provision.Unit{})
+	err = appendAppImageName(appName, "myimg")
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(s.p, "myimg", nil)
+	c.Assert(err, check.IsNil)
+	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         fakeApp,
+		imageId:     "myimg",
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 1)
+	routes, err = s.p.RoutableUnits(fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []provision.Unit{
+		conts[0].AsUnit(fakeApp),
+	})
+}

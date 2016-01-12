@@ -1016,7 +1016,7 @@ func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 
 func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
 	imageId, err := appCurrentImageName(app.GetName())
-	if err != nil {
+	if err != nil && err != errNoImagesAvailable {
 		return nil, err
 	}
 	webProcessName, err := getImageWebProcessName(imageId)
