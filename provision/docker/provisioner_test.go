@@ -634,6 +634,7 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
+	s.stopContainers(s.server.URL(), 1)
 	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
@@ -642,6 +643,10 @@ func (s *S) TestImageDeploy(c *check.C) {
 		}
 		j, _ := json.Marshal(response)
 		w.Write(j)
+	}))
+	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(""))
+		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	customData := map[string]interface{}{}
 	err := s.newFakeImage(s.p, "customimage", customData)
@@ -678,6 +683,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
+	s.stopContainers(s.server.URL(), 1)
 	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
@@ -709,7 +715,7 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 		Image:        "customimage",
 	})
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "You should provide a entrypoint in your image.")
+	c.Assert(err, check.Equals, ErrEntrypointOrProcfileNotFound)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
