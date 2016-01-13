@@ -547,7 +547,6 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-
 	writer := &bytes.Buffer{}
 	err = a.Sleep(writer, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
@@ -556,15 +555,12 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
 	}
-
 	err = Deploy(DeployOptions{
 		App:          &a,
-		Version:      "version",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
 	})
 	c.Assert(err, check.IsNil)
-
 	routes, err := routertest.FakeRouter.Routes(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
