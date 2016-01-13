@@ -42,7 +42,7 @@ func (s *AutoScaleSuite) SetUpSuite(c *check.C) {
 
 func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	s.S.SetUpTest(c)
-	plan := app.Plan{Memory: 21000, Name: "default", CpuShare: 10}
+	plan := app.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
 	err := plan.Save()
 	c.Assert(err, check.IsNil)
 	s.testRepoRollback = startTestRepositoryServer()
@@ -90,7 +90,7 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	appStruct := &app.App{
 		Name: s.appInstance.GetName(),
 		Pool: "pool1",
-		Plan: app.Plan{Memory: 21000},
+		Plan: app.Plan{Memory: 4194304},
 	}
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
@@ -811,7 +811,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 	defer config.Unset("docker:scheduler:total-memory-metadata")
 	err := app.PlanRemove("default")
 	c.Assert(err, check.IsNil)
-	plan := app.Plan{Memory: 126000, Name: "default", CpuShare: 10}
+	plan := app.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
 	err = plan.Save()
 	c.Assert(err, check.IsNil)
 	originalNodes, err := s.p.cluster.Nodes()
@@ -1225,7 +1225,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	appStruct := &app.App{
 		Name: appInstance2.GetName(),
 		Pool: "pool2",
-		Plan: app.Plan{Memory: 21000},
+		Plan: app.Plan{Memory: 4194304},
 	}
 	err = s.S.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
