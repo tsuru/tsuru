@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/stdcopy"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -666,7 +668,8 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	s.stopContainers(s.server.URL(), 1)
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
@@ -675,10 +678,6 @@ func (s *S) TestImageDeploy(c *check.C) {
 		}
 		j, _ := json.Marshal(response)
 		w.Write(j)
-	}))
-	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(""))
-		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	customData := map[string]interface{}{}
 	err := s.newFakeImage(s.p, "customimage", customData)
@@ -714,8 +713,55 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
+func (s *S) TestImageDeployWithProcfile(c *check.C) {
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, err := hijacker.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "web: test.sh\n")
+		conn.Close()
+	}))
+	customData := map[string]interface{}{}
+	err := s.newFakeImage(s.p, "customimage", customData)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+		Quota:    quota.Unlimited,
+	}
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, check.IsNil)
+	dataColl.RemoveId("customimage")
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        "customimage",
+	})
+	c.Assert(err, check.IsNil)
+	imd, err := getImageCustomData("customimage")
+	c.Assert(err, check.IsNil)
+	expectedProcesses := map[string]string{"web": "test.sh"}
+	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+}
+
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
-	s.stopContainers(s.server.URL(), 1)
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
 	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{

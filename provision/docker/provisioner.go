@@ -373,8 +373,8 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 			AttachStderr: true,
 			User:         user,
 			Image:        imageId,
-			Entrypoint:   []string{"/bin/bash"},
-			Cmd:          []string{"-c", "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"},
+			Entrypoint:   []string{"/bin/bash", "-c"},
+			Cmd:          []string{"cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"},
 		},
 	}
 	cluster := p.Cluster()
@@ -399,7 +399,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 		return "", err
 	}
 	waiter.Wait()
-	var processes map[string]string
+	processes := map[string]string{}
 	if output.Len() > 0 {
 		procfile := strings.Split(output.String(), "\n")
 		for _, process := range procfile {
