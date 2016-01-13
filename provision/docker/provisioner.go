@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -43,7 +42,6 @@ import (
 )
 
 var mainDockerProvisioner *dockerProvisioner
-var procfileRegex = regexp.MustCompile("^([A-Za-z0-9_-]+):\\s*(.+)$")
 var ErrEntrypointOrProcfileNotFound = stderr.New("You should provide a entrypoint in image or a Procfile in the following locations: /home/application/current or /app/user or /.")
 
 func init() {
@@ -350,85 +348,32 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	if err != nil {
-		return imageId, err
+		return "", err
 	}
 	if len(nodes) < 1 {
-		return imageId, stderr.New("no nodes available")
+		return "", stderr.New("no nodes available")
 	}
 	client, err := nodes[0].Client()
 	if err != nil {
-		return imageId, err
+		return "", err
 	}
-	imageInspect, err := client.InspectImage(imageId)
-	if err != nil {
-		return imageId, err
-	}
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
-	createOptions := docker.CreateContainerOptions{
-		Config: &docker.Config{
-			AttachStdout: true,
-			AttachStderr: true,
-			User:         user,
-			Image:        imageId,
-			Entrypoint:   []string{"/bin/bash", "-c"},
-			Cmd:          []string{"cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"},
-		},
-	}
-	cluster := p.Cluster()
-	_, cont, err := cluster.CreateContainerSchedulerOpts(createOptions, []string{app.GetName(), ""})
+	cmd := "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"
+	output, err := p.runCommandInContainer(imageId, cmd, app)
 	if err != nil {
 		return "", err
 	}
-	var output bytes.Buffer
-	attachOptions := docker.AttachToContainerOptions{
-		Container:    cont.ID,
-		OutputStream: &output,
-		Stream:       true,
-		Stdout:       true,
-	}
-	waiter, err := cluster.AttachToContainerNonBlocking(attachOptions)
-	if err != nil {
-		return "", err
-	}
-	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
-	err = cluster.StartContainer(cont.ID, nil)
-	if err != nil {
-		return "", err
-	}
-	waiter.Wait()
-	processes := map[string]string{}
-	if output.Len() > 0 {
-		procfile := strings.Split(output.String(), "\n")
-		for _, process := range procfile {
-			if p := procfileRegex.FindStringSubmatch(process); p != nil {
-				processes[p[1]] = strings.Trim(p[2], " ")
-			}
+	procfile := getProcessesFromProcfile(output.String())
+	if len(procfile) == 0 {
+		imageInspect, err := client.InspectImage(imageId)
+		if err != nil {
+			return "", err
 		}
-	}
-	if len(processes) == 0 {
-		if len(imageInspect.Config.Entrypoint) != 0 {
-			processes = map[string]string{
-				"web": strings.Join(imageInspect.Config.Entrypoint, " "),
-			}
-		} else {
+		if len(imageInspect.Config.Entrypoint) == 0 {
 			return "", ErrEntrypointOrProcfileNotFound
 		}
+		procfile["web"] = strings.Join(imageInspect.Config.Entrypoint, " ")
 	}
-	customProcesses := make(map[string]interface{}, len(processes))
-	for k, v := range processes {
-		customProcesses[k] = v
-	}
-	customData := map[string]interface{}{
-		"processes": customProcesses,
-	}
-	imageData := ImageMetadata{
-		Name:       imageId,
-		Processes:  processes,
-		CustomData: customData,
-	}
+	imageData := createImageMetadata(imageId, procfile)
 	err = updateImageCustomData(imageId, imageData)
 	if err != nil {
 		err = saveImageCustomData(imageId, imageData.CustomData)

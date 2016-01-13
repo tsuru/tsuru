@@ -668,8 +668,23 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, err := hijacker.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
 	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
@@ -760,8 +775,23 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 }
 
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, err := hijacker.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
 	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{

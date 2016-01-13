@@ -7,6 +7,7 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
@@ -29,6 +30,7 @@ type appImages struct {
 	Count   int
 }
 
+var procfileRegex = regexp.MustCompile("^([A-Za-z0-9_-]+):\\s*(.+)$")
 var errNoImagesAvailable = errors.New("no images available for app")
 
 func MigrateImages() error {
@@ -363,6 +365,28 @@ func basicImageName() string {
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	parts = append(parts, repoNamespace)
 	return strings.Join(parts, "/")
+}
+
+func getProcessesFromProcfile(strProcfile string) map[string]string {
+	processes := map[string]string{}
+	procfile := strings.Split(strProcfile, "\n")
+	for _, process := range procfile {
+		if p := procfileRegex.FindStringSubmatch(process); p != nil {
+			processes[p[1]] = strings.Trim(p[2], " ")
+		}
+	}
+	return processes
+}
+
+func createImageMetadata(imageName string, processes map[string]string) ImageMetadata {
+	customProcesses := map[string]interface{}{}
+	for k, v := range processes {
+		customProcesses[k] = v
+	}
+	customData := map[string]interface{}{
+		"processes": customProcesses,
+	}
+	return ImageMetadata{Name: imageName, CustomData: customData, Processes: processes}
 }
 
 func (p *dockerProvisioner) usePlatformImage(app provision.App) bool {
