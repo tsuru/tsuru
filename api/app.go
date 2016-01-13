@@ -319,6 +319,42 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var updateData app.App
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if err = json.Unmarshal(body, &updateData); err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":appname")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	if updateData.Description != "" {
+		allowed := permission.Check(t, permission.PermAppUpdate,
+			append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
+		a.Description = updateData.Description
+	}
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "update-app", "app="+a.Name, "description="+a.Description)
+	fmt.Println("tt2:", a.Name, a.Description)
+	return a.Update()
+}
+
 func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if r.Body == nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team name."}

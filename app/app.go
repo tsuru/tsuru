@@ -252,6 +252,17 @@ func CreateApp(app *App, user *auth.User) error {
 	return nil
 }
 
+// UpdateApp changes the current description to a new one or adds a description
+// if the app doesn't have one.
+func (app *App) Update() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+}
+
 // ChangePlan changes the plan of the application.
 //
 // It may change the state of the application if the new plan includes a new

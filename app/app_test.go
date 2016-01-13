@@ -3725,3 +3725,16 @@ func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, true)
 }
+
+func (s *S) TestUpdateDescription(c *check.C) {
+	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
+	err := CreateApp(&app, s.user)
+	defer Delete(&app, nil)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "example", Description: "bleble"}
+	err = a.Update()
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Description, check.Equals, "bleble")
+}

@@ -869,6 +869,59 @@ func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
 	c.Assert(err, check.ErrorMatches, app.InvalidPlatformError{}.Error())
 }
 
+func (s *S) TestUpdateApp(c *check.C) {
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	data := `{"description":"my app description"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/myapp", b)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	fmt.Println("recorder code = ", recorder.Code)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	fmt.Println("recorder code", recorder.Code)
+
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Description, check.DeepEquals, "my app description")
+
+	u, err := token.User()
+	action := rectest.Action{
+		Action: "update-app",
+		User:   u.Email,
+		Extra:  []interface{}{"app=myapp", "description=my app description"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestUpdateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	token := userWithPermission(c)
+	data := `{"description":"description of my app"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/myapp", b)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, 403)
+}
+
 func (s *S) TestAddUnits(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Unlimited}
 	err := app.CreateApp(&a, s.user)
