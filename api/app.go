@@ -351,7 +351,6 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "update-app", "app="+a.Name, "description="+a.Description)
-	fmt.Println("tt2:", a.Name, a.Description)
 	return a.Update()
 }
 

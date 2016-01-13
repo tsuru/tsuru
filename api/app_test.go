@@ -889,12 +889,10 @@ func (s *S) TestUpdateApp(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	fmt.Println("recorder code", recorder.Code)
-
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Description, check.DeepEquals, "my app description")
-
 	u, err := token.User()
 	action := rectest.Action{
 		Action: "update-app",

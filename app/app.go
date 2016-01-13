@@ -252,8 +252,7 @@ func CreateApp(app *App, user *auth.User) error {
 	return nil
 }
 
-// UpdateApp changes the current description to a new one or adds a description
-// if the app doesn't have one.
+// Update changes informations of the application.
 func (app *App) Update() error {
 	conn, err := db.Conn()
 	if err != nil {
