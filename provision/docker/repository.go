@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,7 +7,6 @@ package docker
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/net"
@@ -154,13 +153,4 @@ func (p *dockerProvisioner) getContainerCountForAppName(appName string) (int, er
 	coll := p.Collection()
 	defer coll.Close()
 	return coll.Find(bson.M{"appname": appName}).Count()
-}
-
-func (p *dockerProvisioner) listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container.Container, error) {
-	now := time.Now().UTC()
-	return p.ListContainers(bson.M{
-		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
-		"hostport":                bson.M{"$ne": ""},
-		"status":                  bson.M{"$ne": provision.StatusStopped.String()},
-	})
 }

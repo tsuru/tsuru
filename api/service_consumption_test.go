@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -897,6 +897,82 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbidden
 	defer service.DeleteInstance(&si)
 	recorder, request := makeRequestToStatusHandler("mongodb", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+}
+
+func makeRequestToInfoHandler(service string, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+	url := fmt.Sprintf("/services/%s/instances/%s/info/?:instance=%s&:service=%s", service, instance, instance, service)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
+	}))
+	defer ts.Close()
+	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	defer srv.Delete()
+	si := service.ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"app1", "app2"},
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+	}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si)
+	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
+	err = serviceInstanceInfo(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var instances ServiceInstanceInfo
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, check.IsNil)
+	expected := ServiceInstanceInfo{
+		Apps:      si.Apps,
+		Teams:     si.Teams,
+		TeamOwner: si.TeamOwner,
+		CustomInfo: map[string]string{
+			"key":  "value",
+			"key2": "value2",
+		},
+	}
+	c.Assert(instances, check.DeepEquals, expected)
+	action := rectest.Action{
+		Action: "service-instance-info",
+		User:   s.user.Email,
+		Extra:  []interface{}{"mongodb", "my_nosql"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *check.C) {
+	recorder, request := makeRequestToInfoHandler("mongodb", "inexistent-instance", c)
+	err := serviceInstanceInfo(recorder, request, s.token)
+	c.Assert(err, check.ErrorMatches, "^service instance not found$")
+}
+
+func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnForbiddenWhenUserDontHaveAccess(c *check.C) {
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	defer srv.Delete()
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si)
+	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
+	err = serviceInstanceInfo(recorder, request, s.token)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)

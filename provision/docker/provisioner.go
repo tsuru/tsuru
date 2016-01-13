@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -37,10 +38,13 @@ import (
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var mainDockerProvisioner *dockerProvisioner
+var procfileRegex = regexp.MustCompile("^([A-Za-z0-9_-]+):\\s*(.+)$")
+var ErrEntrypointOrProcfileNotFound = stderr.New("You should provide a entrypoint in image or a Procfile in the following locations: /home/application/current or /app/user or /.")
 
 func init() {
 	mainDockerProvisioner = &dockerProvisioner{}
@@ -252,6 +256,10 @@ func (p *dockerProvisioner) Initialize() error {
 	if err != nil {
 		return err
 	}
+	err = registerRoutesRebuildTask()
+	if err != nil {
+		return err
+	}
 	return p.initDockerCluster()
 }
 
@@ -287,6 +295,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
 	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
+	routesRebuildOrEnqueue(a.GetName())
 	return err
 }
 
@@ -354,6 +363,95 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
+	if err != nil {
+		return imageId, err
+	}
+	if len(nodes) < 1 {
+		return imageId, stderr.New("no nodes available")
+	}
+	client, err := nodes[0].Client()
+	if err != nil {
+		return imageId, err
+	}
+	imageInspect, err := client.InspectImage(imageId)
+	if err != nil {
+		return imageId, err
+	}
+	user, err := config.GetString("docker:user")
+	if err != nil {
+		user, _ = config.GetString("docker:ssh:user")
+	}
+	createOptions := docker.CreateContainerOptions{
+		Config: &docker.Config{
+			AttachStdout: true,
+			AttachStderr: true,
+			User:         user,
+			Image:        imageId,
+			Entrypoint:   []string{"/bin/bash"},
+			Cmd:          []string{"-c", "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"},
+		},
+	}
+	cluster := p.Cluster()
+	_, cont, err := cluster.CreateContainerSchedulerOpts(createOptions, []string{app.GetName(), ""})
+	if err != nil {
+		return "", err
+	}
+	var output bytes.Buffer
+	attachOptions := docker.AttachToContainerOptions{
+		Container:    cont.ID,
+		OutputStream: &output,
+		Stream:       true,
+		Stdout:       true,
+	}
+	waiter, err := cluster.AttachToContainerNonBlocking(attachOptions)
+	if err != nil {
+		return "", err
+	}
+	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
+	err = cluster.StartContainer(cont.ID, nil)
+	if err != nil {
+		return "", err
+	}
+	waiter.Wait()
+	var processes map[string]string
+	if output.Len() > 0 {
+		procfile := strings.Split(output.String(), "\n")
+		for _, process := range procfile {
+			if p := procfileRegex.FindStringSubmatch(process); p != nil {
+				processes[p[1]] = strings.Trim(p[2], " ")
+			}
+		}
+	}
+	if len(processes) == 0 {
+		if len(imageInspect.Config.Entrypoint) != 0 {
+			processes = map[string]string{
+				"web": strings.Join(imageInspect.Config.Entrypoint, " "),
+			}
+		} else {
+			return "", ErrEntrypointOrProcfileNotFound
+		}
+	}
+	customProcesses := make(map[string]interface{}, len(processes))
+	for k, v := range processes {
+		customProcesses[k] = v
+	}
+	customData := map[string]interface{}{
+		"processes": customProcesses,
+	}
+	imageData := ImageMetadata{
+		Name:       imageId,
+		Processes:  processes,
+		CustomData: customData,
+	}
+	err = updateImageCustomData(imageId, imageData)
+	if err != nil {
+		err = saveImageCustomData(imageId, imageData.CustomData)
+		if err != nil {
+			return "", err
+		}
+	}
+	app.SetUpdatePlatform(true)
 	return imageId, p.deploy(app, imageId, w)
 }
 
@@ -470,6 +568,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		}
 		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
 	}
+	routesRebuildOrEnqueue(a.GetName())
 	return err
 }
 
@@ -677,6 +776,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 		return nil, err
 	}
 	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId)
+	routesRebuildOrEnqueue(a.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -938,7 +1038,7 @@ func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 
 func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
 	imageId, err := appCurrentImageName(app.GetName())
-	if err != nil {
+	if err != nil && err != errNoImagesAvailable {
 		return nil, err
 	}
 	webProcessName, err := getImageWebProcessName(imageId)
@@ -1054,6 +1154,47 @@ func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 		}
 	}
 	return envMap
+}
+
+func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
+	const (
+		logBackendsEnv      = "LOG_BACKENDS"
+		logDocKeyFormat     = "LOG_%s_DOC"
+		tsuruLogBackendName = "tsuru"
+	)
+	config, err := bs.LoadConfig([]string{app.GetPool()})
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return true, "", nil
+		}
+		return false, "", err
+	}
+	enabledBackends := config.EnvValueForPool(logBackendsEnv, app.GetPool())
+	if enabledBackends == "" {
+		return true, "", nil
+	}
+	backendsList := strings.Split(enabledBackends, ",")
+	for i := range backendsList {
+		backendsList[i] = strings.TrimSpace(backendsList[i])
+		if backendsList[i] == tsuruLogBackendName {
+			return true, "", nil
+		}
+	}
+	var docs []string
+	for _, backendName := range backendsList {
+		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
+		backendDoc := config.EnvValueForPool(keyName, app.GetPool())
+		var docLine string
+		if backendDoc == "" {
+			docLine = fmt.Sprintf("* %s", backendName)
+		} else {
+			docLine = fmt.Sprintf("* %s: %s", backendName, backendDoc)
+		}
+		docs = append(docs, docLine)
+	}
+	fullDoc := fmt.Sprintf("Logs not available through tsuru. Enabled log backends are:\n%s",
+		strings.Join(docs, "\n"))
+	return false, fullDoc, nil
 }
 
 func pluralize(str string, sz int) string {

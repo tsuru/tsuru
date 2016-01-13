@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -269,20 +269,29 @@ func (p *FakeDockerProvisioner) PrepareListResult(containers []container.Contain
 	if err != nil {
 		p.preparedErrors <- err
 	} else if len(containers) > 0 {
-		p.preparedResults <- containers
+		coll := p.Collection()
+		defer coll.Close()
+		for _, c := range containers {
+			coll.Insert(c)
+		}
 	}
 }
 
 func (p *FakeDockerProvisioner) ListContainers(query bson.M) ([]container.Container, error) {
 	p.queries = append(p.queries, query)
 	select {
-	case containers := <-p.preparedResults:
-		return containers, nil
 	case err := <-p.preparedErrors:
 		return nil, err
 	default:
 	}
-	return nil, nil
+	coll := p.Collection()
+	defer coll.Close()
+	var containers []container.Container
+	err := coll.Find(query).All(&containers)
+	if err != nil {
+		return nil, err
+	}
+	return containers, nil
 }
 
 func (p *FakeDockerProvisioner) Queries() []bson.M {

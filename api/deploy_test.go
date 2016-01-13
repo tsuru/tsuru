@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -104,7 +104,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -114,8 +114,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Git deploy called\nOK\n")
-	c.Assert(s.provisioner.Version(&a), check.Equals, "a345f3e")
+	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
 }
 
 func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
@@ -147,7 +146,7 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -248,7 +247,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano&commit=123"))
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -258,11 +257,10 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Git deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
 	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(deploys, check.Equals, 1)
-	c.Assert(s.provisioner.Version(&a), check.Equals, "a345f3e")
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
@@ -291,7 +289,7 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e"))
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -310,7 +308,7 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", strings.NewReader("version=abcdef"))
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -384,7 +382,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -394,11 +392,10 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Git deploy called\nOK\n")
-	c.Assert(s.provisioner.Version(&a), check.Equals, "a345f3e")
+	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
 }
 
-func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
+func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
@@ -414,27 +411,7 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	message := recorder.Body.String()
-	c.Assert(message, check.Equals, "you must specify either the version, the archive-url, a image url or upload a file.\n")
-}
-
-func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
-	user, _ := s.token.User()
-	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, user)
-	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	body := strings.NewReader("version=abcdef&archive-url=http://google.com")
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	message := recorder.Body.String()
-	c.Assert(message, check.Equals, "you must specify either the version or the archive-url, but not both\n")
+	c.Assert(message, check.Equals, "you must specify either the archive-url, a image url or upload a file.\n")
 }
 
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {

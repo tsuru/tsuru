@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -78,6 +78,35 @@ func ResetQueue() {
 		queueData.instance.ResetStorage()
 		queueData.instance = nil
 	}
+}
+
+func TestingWaitQueueTasks(n int, timeout time.Duration) error {
+	queueData.Lock()
+	defer queueData.Unlock()
+	if queueData.instance != nil {
+		timeoutCh := time.After(timeout)
+		for {
+			jobs, _ := queueData.instance.ListJobs()
+			runningCount := 0
+			for _, j := range jobs {
+				if j.Status().State != monsterqueue.JobStateEnqueued {
+					runningCount++
+				}
+			}
+			if n <= runningCount {
+				break
+			}
+			select {
+			case <-timeoutCh:
+				return fmt.Errorf("timeout waiting for task after %v", timeout)
+			case <-time.After(10 * time.Millisecond):
+			}
+		}
+		queueData.instance.Stop()
+		queueData.instance.ResetStorage()
+		queueData.instance = nil
+	}
+	return nil
 }
 
 func Queue() (monsterqueue.Queue, error) {

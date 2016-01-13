@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -174,6 +174,24 @@ func (conf *Config) getToken() (string, error) {
 		return "", err
 	}
 	return conf.Token, nil
+}
+
+func (conf *Config) EnvValueForPool(envName, poolName string) string {
+	for _, poolEnvs := range conf.Pools {
+		if poolEnvs.Name == poolName {
+			for _, env := range poolEnvs.Envs {
+				if env.Name == envName {
+					return env.Value
+				}
+			}
+		}
+	}
+	for _, env := range conf.Envs {
+		if env.Name == envName {
+			return env.Value
+		}
+	}
+	return ""
 }
 
 func bsConfigFromEnvMaps(envMap EnvMap, poolEnvMap PoolEnvMap) *Config {

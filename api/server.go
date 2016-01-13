@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -103,6 +103,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/services/{service}/instances/{instance}/status", AuthorizationRequiredHandler(serviceInstanceStatus))
 	m.Add("Put", "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceGrantTeam))
 	m.Add("Delete", "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceRevokeTeam))
+	m.Add("Get", "/services/{service}/instances/{instance}/info", AuthorizationRequiredHandler(serviceInstanceInfo))
 
 	m.AddAll("/services/{service}/proxy/{instance}", AuthorizationRequiredHandler(serviceInstanceProxy))
 	m.AddAll("/services/proxy/service/{service}", AuthorizationRequiredHandler(serviceProxy))

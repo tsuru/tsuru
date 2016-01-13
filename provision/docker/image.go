@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -28,6 +28,8 @@ type appImages struct {
 	Images  []string
 	Count   int
 }
+
+var errNoImagesAvailable = errors.New("no images available for app")
 
 func MigrateImages() error {
 	registry, _ := config.GetString("docker:registry")
@@ -156,6 +158,14 @@ func saveImageCustomData(imageName string, customData map[string]interface{}) er
 	return coll.Insert(data)
 }
 
+func updateImageCustomData(imageName string, customData ImageMetadata) error {
+	coll, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	return coll.UpdateId(imageName, customData)
+}
+
 func getImageCustomData(imageName string) (ImageMetadata, error) {
 	coll, err := imageCustomDataColl()
 	if err != nil {
@@ -240,7 +250,7 @@ func appCurrentImageName(appName string) (string, error) {
 		return appBasicImageName(appName), nil
 	}
 	if len(imgs.Images) == 0 {
-		return "", fmt.Errorf("no images available for app %q", appName)
+		return "", errNoImagesAvailable
 	}
 	return imgs.Images[len(imgs.Images)-1], nil
 }

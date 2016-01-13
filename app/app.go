@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1325,6 +1325,16 @@ func (app *App) Log(message, source, unit string) error {
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
 func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
+	logsProvisioner, ok := Provisioner.(provision.OptionalLogsProvisioner)
+	if ok {
+		enabled, doc, err := logsProvisioner.LogsEnabled(app)
+		if err != nil {
+			return nil, err
+		}
+		if !enabled {
+			return nil, stderr.New(doc)
+		}
+	}
 	conn, err := db.LogConn()
 	if err != nil {
 		return nil, err

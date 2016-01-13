@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -100,6 +100,9 @@ func runLeanContainerCmds(processName, imageId string, app provision.App) ([]str
 	before := strings.Join(yamlData.Hooks.Restart.Before, " && ")
 	if before != "" {
 		before += " && "
+	}
+	if processName == "" {
+		processName = "web"
 	}
 	return []string{
 		"/bin/bash",
