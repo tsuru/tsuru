@@ -57,7 +57,6 @@ func (s *S) TestPlanAddInvalidJson(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-
 	recorder = httptest.NewRecorder()
 	body = strings.NewReader(`{"name": "xxx", "memory": 1234, "swap": 9999, "cpushare": 0}`)
 	request, err = http.NewRequest("POST", "/plans", body)
@@ -66,7 +65,6 @@ func (s *S) TestPlanAddInvalidJson(c *check.C) {
 	m = RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-
 	recorder = httptest.NewRecorder()
 	body = strings.NewReader(`{"name": "xxx", ".........`)
 	request, err = http.NewRequest("POST", "/plans", body)
@@ -75,7 +73,6 @@ func (s *S) TestPlanAddInvalidJson(c *check.C) {
 	m = RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-
 	recorder = httptest.NewRecorder()
 	body = strings.NewReader(`{"name": "plan1", "memory": 9223372036854775807, "swap": 1024, "cpushare": 1}`)
 	request, err = http.NewRequest("POST", "/plans", body)
@@ -84,7 +81,6 @@ func (s *S) TestPlanAddInvalidJson(c *check.C) {
 	m = RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-
 	recorder = httptest.NewRecorder()
 	body = strings.NewReader(`{"name": "plan1", "memory": 4, "swap": 1024, "cpushare": 100}`)
 	request, err = http.NewRequest("POST", "/plans", body)

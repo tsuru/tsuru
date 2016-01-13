@@ -65,7 +65,7 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 		cluster.Node{Address: url, Metadata: map[string]string{
 			"pool":     "pool1",
 			"iaas":     "my-scale-iaas",
-			"totalMem": "125000",
+			"totalMem": "25165824",
 		}},
 	)
 	c.Assert(err, check.IsNil)
@@ -284,7 +284,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
@@ -639,7 +639,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "can't add 21000 bytes to an existing node, adding 1 nodes")
+	c.Assert(evts[0].Reason, check.Equals, "can't add 4194304 bytes to an existing node, adding 1 nodes")
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -700,7 +700,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[0].Nodes, check.HasLen, 2)
-	c.Assert(evts[0].Reason, check.Equals, "can't add 21000 bytes to an existing node, adding 2 nodes")
+	c.Assert(evts[0].Reason, check.Equals, "can't add 4194304 bytes to an existing node, adding 2 nodes")
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -743,7 +743,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
@@ -811,7 +811,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 	defer config.Unset("docker:scheduler:total-memory-metadata")
 	err := app.PlanRemove("default")
 	c.Assert(err, check.IsNil)
-	plan := app.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
+	plan := app.Plan{Memory: 25165824, Name: "default", CpuShare: 10}
 	err = plan.Save()
 	c.Assert(err, check.IsNil)
 	originalNodes, err := s.p.cluster.Nodes()
@@ -829,7 +829,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 		GroupByMetadata: "pool",
 	}
 	a.runOnce()
-	c.Assert(s.S.logBuf, check.Matches, `(?s).*\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 126000 bytes, node max available memory is 100000.*`)
+	c.Assert(s.S.logBuf, check.Matches, `(?s).*\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659.*`)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -845,7 +845,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
@@ -894,13 +894,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C
 	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node1)
 	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", dockertest.URLPort(s.node3.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err = s.p.cluster.Register(node2)
 	c.Assert(err, check.IsNil)
@@ -963,7 +963,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
@@ -1016,13 +1016,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node1)
 	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", dockertest.URLPort(s.node3.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err = s.p.cluster.Register(node2)
 	c.Assert(err, check.IsNil)
@@ -1194,7 +1194,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool2",
 		"iaas":     "my-scale-iaas",
-		"totalMem": "125000",
+		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
@@ -1279,7 +1279,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	reasons := []string{evts[0].Reason, evts[1].Reason}
 	sort.Strings(reasons)
 	c.Assert(reasons, check.DeepEquals, []string{
-		"can't add 21000 bytes to an existing node, adding 1 nodes",
+		"can't add 4194304 bytes to an existing node, adding 1 nodes",
 		"number of free slots is -2, adding 1 nodes",
 	})
 }
