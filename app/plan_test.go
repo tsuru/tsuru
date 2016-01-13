@@ -56,21 +56,30 @@ func (s *S) TestPlanAddInvalid(c *check.C) {
 			CpuShare: 100,
 		},
 		{
-			Name:   "plan1",
-			Memory: 9223372036854775807,
-			Swap:   1024,
+			Name:     "plan1",
+			Memory:   9223372036854775807,
+			Swap:     1024,
+			CpuShare: 1,
 		},
 		{
 			Name:     "plan1",
-			Memory:   1024,
+			Memory:   9223372036854775807,
 			Swap:     1024,
 			CpuShare: 100,
 			Router:   "invalid",
 		},
+		{
+			Name:     "plan1",
+			Memory:   4,
+			Swap:     1024,
+			CpuShare: 100,
+		},
 	}
-	for _, p := range invalidPlans {
+	expectedError := []string{PlanValidationError{"name"}.Error(), ErrLimitOfCpuShare.Error(),
+		PlanValidationError{"router"}.Error(), ErrLimitOfMemory.Error()}
+	for i, p := range invalidPlans {
 		err := p.Save()
-		c.Assert(err, check.FitsTypeOf, PlanValidationError{})
+		c.Assert(err.Error(), check.Equals, expectedError[i])
 	}
 }
 

@@ -43,6 +43,12 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Message: err.Error(),
 		}
 	}
+	if err == app.ErrLimitOfMemory || err == app.ErrLimitOfCpuShare {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 	}

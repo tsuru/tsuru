@@ -618,7 +618,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	a := app.App{Name: "someapp"}
 	expectedPlan := app.Plan{
 		Name:     "myplan",
-		Memory:   10,
+		Memory:   4194304,
 		Swap:     5,
 		CpuShare: 10,
 	}

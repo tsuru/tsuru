@@ -250,7 +250,7 @@ func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	myPlan := Plan{
 		Name:     "myplan",
-		Memory:   1,
+		Memory:   4194304,
 		Swap:     2,
 		CpuShare: 3,
 	}

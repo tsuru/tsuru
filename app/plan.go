@@ -35,14 +35,19 @@ var (
 	ErrPlanNotFound         = errors.New("plan not found")
 	ErrPlanAlreadyExists    = errors.New("plan already exists")
 	ErrPlanDefaultAmbiguous = errors.New("more than one default plan found")
+	ErrLimitOfCpuShare      = errors.New("The minimum allowed cpu-shares is 2")
+	ErrLimitOfMemory        = errors.New("The minimum allowed memory is 4MB")
 )
 
 func (plan *Plan) Save() error {
 	if plan.Name == "" {
 		return PlanValidationError{"name"}
 	}
-	if plan.CpuShare == 0 {
-		return PlanValidationError{"cpushare"}
+	if plan.CpuShare < 2 {
+		return ErrLimitOfCpuShare
+	}
+	if plan.Memory > 0 && plan.Memory < 4194304 {
+		return ErrLimitOfMemory
 	}
 	if plan.Router != "" {
 		_, err := router.Get(plan.Router)
