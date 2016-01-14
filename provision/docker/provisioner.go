@@ -364,9 +364,9 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	}
 	procfile := getProcessesFromProcfile(output.String())
 	if len(procfile) == 0 {
-		imageInspect, err := client.InspectImage(imageId)
-		if err != nil {
-			return "", err
+		imageInspect, inspectErr := client.InspectImage(imageId)
+		if inspectErr != nil {
+			return "", inspectErr
 		}
 		if len(imageInspect.Config.Entrypoint) == 0 {
 			return "", ErrEntrypointOrProcfileNotFound
