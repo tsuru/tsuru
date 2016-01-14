@@ -390,7 +390,7 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 
 func (c *Container) Sleep(p DockerProvisioner) error {
 	if c.Status != provision.StatusStarted.String() && c.Status != provision.StatusStarting.String() {
-		return fmt.Errorf("container %d is not starting or started", c.ID)
+		return fmt.Errorf("container %s is not starting or started", c.ID)
 	}
 	err := p.Cluster().StopContainer(c.ID, 10)
 	if err != nil {
