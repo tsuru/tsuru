@@ -223,3 +223,21 @@ func (s *S) TestLogs(c *check.C) {
 	logsc := strg.Collection("logs_myapp")
 	c.Assert(logs, check.DeepEquals, logsc)
 }
+
+func (s *S) TestRoles(c *check.C) {
+	strg, err := Conn()
+	c.Assert(err, check.IsNil)
+	defer strg.Close()
+	roles := strg.Roles()
+	rolesc := strg.Collection("roles")
+	c.Assert(roles, check.DeepEquals, rolesc)
+}
+
+func (s *S) TestScopedConfig(c *check.C) {
+	strg, err := Conn()
+	c.Assert(err, check.IsNil)
+	defer strg.Close()
+	scopedconfig := strg.ScopedConfig()
+	scopedconfigc := strg.Collection("bsconfig")
+	c.Assert(scopedconfig, check.DeepEquals, scopedconfigc)
+}
