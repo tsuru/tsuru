@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -22,91 +23,81 @@ import (
 )
 
 func (s *S) TestLoadConfigPoolFiltering(c *check.C) {
-	coll, err := collection()
-	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	err = coll.Insert(Config{
-		ID:    bsUniqueID,
-		Image: "tsuru/bss",
-		Envs:  []Env{{Name: "USER", Value: "root"}},
-		Pools: []PoolEnvs{
-			{Name: "pool1", Envs: []Env{{Name: "USER", Value: "nonroot"}}},
-			{Name: "pool2", Envs: []Env{{Name: "USER", Value: "superroot"}}},
-			{Name: "pool3", Envs: []Env{{Name: "USER", Value: "watroot"}}},
-			{Name: "pool4", Envs: []Env{{Name: "USER", Value: "kindaroot"}}},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(bsUniqueID)
-	conf, err := LoadConfig([]string{"pool1", "pool4"})
-	c.Assert(err, check.IsNil)
-	expectedConfig := Config{
-		ID:    bsUniqueID,
-		Image: "tsuru/bss",
-		Envs:  []Env{{Name: "USER", Value: "root"}},
-		Pools: []PoolEnvs{
-			{Name: "pool1", Envs: []Env{{Name: "USER", Value: "nonroot"}}},
-			{Name: "pool4", Envs: []Env{{Name: "USER", Value: "kindaroot"}}},
+	base := provision.ScopedConfig{
+		Envs: []provision.Entry{{Name: "USER", Value: "root"}},
+		Pools: []provision.PoolEntry{
+			{Name: "pool1", Envs: []provision.Entry{{Name: "USER", Value: "nonroot"}}},
+			{Name: "pool2", Envs: []provision.Entry{{Name: "USER", Value: "superroot"}}},
+			{Name: "pool3", Envs: []provision.Entry{{Name: "USER", Value: "watroot"}}},
+			{Name: "pool4", Envs: []provision.Entry{{Name: "USER", Value: "kindaroot"}}},
 		},
 	}
-	c.Assert(*conf, check.DeepEquals, expectedConfig)
+	conf, err := provision.FindScopedConfig(bsUniqueID)
+	c.Assert(err, check.IsNil)
+	err = conf.UpdateWith(&base)
+	c.Assert(err, check.IsNil)
+	conf, err = LoadConfig([]string{"pool1", "pool4"})
+	c.Assert(err, check.IsNil)
+	expectedConfig := provision.ScopedConfig{
+		Envs: []provision.Entry{{Name: "USER", Value: "root"}},
+		Pools: []provision.PoolEntry{
+			{Name: "pool1", Envs: []provision.Entry{{Name: "USER", Value: "nonroot"}}},
+			{Name: "pool4", Envs: []provision.Entry{{Name: "USER", Value: "kindaroot"}}},
+		},
+	}
+	c.Assert(conf.Envs, check.DeepEquals, expectedConfig.Envs)
+	c.Assert(conf.Pools, check.DeepEquals, expectedConfig.Pools)
 }
 
 func (s *S) TestGetImageFromDatabase(c *check.C) {
 	imageName := "tsuru/bsss"
-	coll, err := collection()
+	err := SaveImage(imageName)
 	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	err = coll.Insert(Config{ID: bsUniqueID, Image: imageName})
-	c.Assert(err, check.IsNil)
-	defer coll.Remove(bson.M{"image": imageName})
 	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	image := conf.getImage()
+	image := getImage(conf)
 	c.Assert(image, check.Equals, imageName)
 }
 
 func (s *S) TestGetImageFromConfig(c *check.C) {
 	imageName := "tsuru/bs:v10"
 	config.Set("docker:bs:image", imageName)
-	conf := Config{}
-	image := conf.getImage()
+	conf, err := LoadConfig(nil)
+	c.Assert(err, check.IsNil)
+	image := getImage(conf)
 	c.Assert(image, check.Equals, imageName)
 }
 
 func (s *S) TestGetImageDefaultValue(c *check.C) {
 	config.Unset("docker:bs:image")
-	conf := Config{}
-	image := conf.getImage()
+	conf, err := LoadConfig(nil)
+	c.Assert(err, check.IsNil)
+	image := getImage(conf)
 	c.Assert(image, check.Equals, "tsuru/bs:v1")
 }
 
 func (s *S) TestSaveImage(c *check.C) {
-	coll, err := collection()
+	err := SaveImage("tsuru/bs@sha1:afd533420cf")
 	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	err = SaveImage("tsuru/bs@sha1:afd533420cf")
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	var configs []Config
-	err = coll.Find(nil).All(&configs)
-	c.Assert(err, check.IsNil)
-	c.Assert(configs, check.HasLen, 1)
-	c.Assert(configs[0].Image, check.Equals, "tsuru/bs@sha1:afd533420cf")
+	image := getImage(conf)
+	c.Assert(image, check.Equals, "tsuru/bs@sha1:afd533420cf")
 	err = SaveImage("tsuru/bs@sha1:afd533420d0")
 	c.Assert(err, check.IsNil)
-	err = coll.Find(nil).All(&configs)
+	conf, err = LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(configs, check.HasLen, 1)
-	c.Assert(configs[0].Image, check.Equals, "tsuru/bs@sha1:afd533420d0")
+	image = getImage(conf)
+	c.Assert(image, check.Equals, "tsuru/bs@sha1:afd533420d0")
 }
 
 func (s *S) TestBsGetToken(c *check.C) {
-	conf := Config{}
-	token, err := conf.getToken()
+	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(token, check.Equals, conf.Token)
+	token, err := getToken(conf)
+	c.Assert(err, check.IsNil)
 	c.Assert(token, check.Not(check.Equals), "")
-	token2, err := conf.getToken()
+	token2, err := getToken(conf)
 	c.Assert(token2, check.Equals, token)
 }
 
@@ -115,10 +106,11 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	var tokens []string
 	var mutex sync.Mutex
 	var wg sync.WaitGroup
-	getToken := func(wg *sync.WaitGroup) {
+	getTokenRoutine := func(wg *sync.WaitGroup) {
 		defer wg.Done()
-		conf := Config{}
-		t, err := conf.getToken()
+		conf, err := LoadConfig(nil)
+		c.Assert(err, check.IsNil)
+		t, err := getToken(conf)
 		c.Assert(err, check.IsNil)
 		mutex.Lock()
 		tokens = append(tokens, t)
@@ -126,7 +118,7 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	}
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
-		go getToken(&wg)
+		go getTokenRoutine(&wg)
 	}
 	wg.Wait()
 	for i := 1; i < len(tokens); i++ {
@@ -136,12 +128,6 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	n, err := conn.Tokens().Find(bson.M{"appname": app.InternalAppName}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 1)
-	coll, err := collection()
-	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	n, err = coll.Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
 }
@@ -307,19 +293,4 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	c.Assert(container.State.Running, check.Equals, true)
-}
-
-func (s *S) TestConfigEnvValueForPool(c *check.C) {
-	config := Config{
-		ID:    bsUniqueID,
-		Image: "tsuru/bss",
-		Envs:  []Env{{Name: "USER", Value: "root"}},
-		Pools: []PoolEnvs{
-			{Name: "pool1", Envs: []Env{{Name: "USER", Value: "nonroot"}}},
-		},
-	}
-	value := config.EnvValueForPool("USER", "----invalid----")
-	c.Assert(value, check.Equals, "root")
-	value = config.EnvValueForPool("USER", "pool1")
-	c.Assert(value, check.Equals, "nonroot")
 }

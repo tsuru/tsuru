@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
 
@@ -31,10 +32,10 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := Config{
-				Envs: []Env{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
+			expected := provision.ScopedConfig{
+				Envs: []provision.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
 			}
-			var conf Config
+			var conf provision.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
@@ -63,10 +64,10 @@ func (s *S) TestBsEnvSetRunAllowEmpty(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := Config{
-				Envs: []Env{{Name: "A", Value: "1"}, {Name: "B", Value: ""}},
+			expected := provision.ScopedConfig{
+				Envs: []provision.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: ""}},
 			}
-			var conf Config
+			var conf provision.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
@@ -114,13 +115,13 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := Config{
-				Pools: []PoolEnvs{{
+			expected := provision.ScopedConfig{
+				Pools: []provision.PoolEntry{{
 					Name: "pool1",
-					Envs: []Env{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
+					Envs: []provision.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
 				}},
 			}
-			var conf Config
+			var conf provision.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
@@ -142,18 +143,18 @@ func (s *S) TestBsInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := Config{
-		Image: "tsuru/bs",
-		Envs: []Env{
+	conf := provision.ScopedConfig{
+		Extra: map[string]interface{}{"image": "tsuru/bs"},
+		Envs: []provision.Entry{
 			{Name: "A", Value: "1"},
 			{Name: "B", Value: "2"},
 		},
-		Pools: []PoolEnvs{
-			{Name: "pool1", Envs: []Env{
+		Pools: []provision.PoolEntry{
+			{Name: "pool1", Envs: []provision.Entry{
 				{Name: "A", Value: "9"},
 				{Name: "Z", Value: "8"},
 			}},
-			{Name: "pool2", Envs: []Env{
+			{Name: "pool2", Envs: []provision.Entry{
 				{Name: "Y", Value: "7"},
 			}},
 		},

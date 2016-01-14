@@ -2385,12 +2385,11 @@ func (s *S) TestDryMode(c *check.C) {
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {
-	err := bs.SaveEnvs(bs.EnvMap{}, bs.PoolEnvMap{
-		"mypool": bs.EnvMap{
-			"METRICS_BACKEND":      "LOGSTASH",
-			"METRICS_LOGSTASH_URI": "localhost:2222",
-		},
-	})
+	conf, err := bs.LoadConfig(nil)
+	c.Assert(err, check.IsNil)
+	conf.AddPool("mypool", "METRICS_BACKEND", "LOGSTASH")
+	conf.AddPool("mypool", "METRICS_LOGSTASH_URI", "localhost:2222")
+	err = conf.SaveEnvs()
 	c.Assert(err, check.IsNil)
 	appInstance := &app.App{
 		Name: "impius",
@@ -2449,25 +2448,36 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	fakeApp.Pool = "mypool"
 	tests := []struct {
-		envMap     bs.EnvMap
-		poolEnvMap bs.PoolEnvMap
+		envMap     map[string]string
+		poolEnvMap map[string]map[string]string
 		enabled    bool
 		msg        string
 		err        error
 	}{
 		{nil, nil, true, "", nil},
-		{bs.EnvMap{}, nil, true, "", nil},
-		{bs.EnvMap{"LOG_BACKENDS": "xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
-		{bs.EnvMap{"LOG_BACKENDS": "xxx", "LOG_XXX_DOC": "my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
-		{bs.EnvMap{"LOG_BACKENDS": "a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
-		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
-		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc", "LOG_ABC_DOC": "doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
-		{bs.EnvMap{}, bs.PoolEnvMap{"otherpool": {"LOG_BACKENDS": "abc"}}, true, "", nil},
-		{bs.EnvMap{}, bs.PoolEnvMap{"mypool": {"LOG_BACKENDS": "abc, tsuru "}}, true, "", nil},
+		{map[string]string{}, nil, true, "", nil},
+		{map[string]string{"LOG_BACKENDS": "xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
+		{map[string]string{"LOG_BACKENDS": "xxx", "LOG_XXX_DOC": "my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
+		{map[string]string{"LOG_BACKENDS": "a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
+		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
+		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc", "LOG_ABC_DOC": "doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
+		{map[string]string{}, map[string]map[string]string{"otherpool": {"LOG_BACKENDS": "abc"}}, true, "", nil},
+		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc, tsuru "}}, true, "", nil},
 	}
 	for _, t := range tests {
 		if t.envMap != nil || t.poolEnvMap != nil {
-			err := bs.SaveEnvs(t.envMap, t.poolEnvMap)
+			conf, err := bs.LoadConfig(nil)
+			c.Assert(err, check.IsNil)
+			conf.ResetEnvs()
+			for k, v := range t.envMap {
+				conf.Add(k, v)
+			}
+			for pool, envs := range t.poolEnvMap {
+				for k, v := range envs {
+					conf.AddPool(pool, k, v)
+				}
+			}
+			err = conf.SaveEnvs()
 			c.Assert(err, check.IsNil)
 		}
 		enabled, msg, err := s.p.LogsEnabled(fakeApp)

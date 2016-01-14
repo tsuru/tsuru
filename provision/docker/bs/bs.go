@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -18,13 +17,10 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
@@ -39,75 +35,11 @@ const (
 	bsDefaultImageName = "tsuru/bs:v1"
 )
 
-type Env struct {
-	Name  string
-	Value string
-}
-
-type PoolEnvs struct {
-	Name string
-	Envs []Env
-}
-
-type Config struct {
-	ID    string `bson:"_id"`
-	Image string
-	Token string
-	Envs  []Env
-	Pools []PoolEnvs
-}
-
-type EnvMap map[string]string
-
-type PoolEnvMap map[string]EnvMap
-
-func (conf *Config) UpdateEnvMaps(envMap EnvMap, poolEnvMap PoolEnvMap) error {
-	forbiddenList := map[string]bool{
-		"DOCKER_ENDPOINT":       true,
-		"TSURU_ENDPOINT":        true,
-		"SYSLOG_LISTEN_ADDRESS": true,
-		"TSURU_TOKEN":           true,
+func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
+	bsConf, err := provision.FindScopedConfig(bsUniqueID)
+	if err != nil {
+		return nil, err
 	}
-	for _, env := range conf.Envs {
-		if forbiddenList[env.Name] {
-			return fmt.Errorf("cannot set %s variable", env.Name)
-		}
-		if env.Value == "" {
-			delete(envMap, env.Name)
-		} else {
-			envMap[env.Name] = env.Value
-		}
-	}
-	for _, p := range conf.Pools {
-		if poolEnvMap[p.Name] == nil {
-			poolEnvMap[p.Name] = make(EnvMap)
-		}
-		for _, env := range p.Envs {
-			if forbiddenList[env.Name] {
-				return fmt.Errorf("cannot set %s variable", env.Name)
-			}
-			if env.Value == "" {
-				delete(poolEnvMap[p.Name], env.Name)
-			} else {
-				poolEnvMap[p.Name][env.Name] = env.Value
-			}
-		}
-	}
-	return nil
-}
-
-func (conf *Config) getImage() string {
-	if conf != nil && conf.Image != "" {
-		return conf.Image
-	}
-	bsImage, _ := config.GetString("docker:bs:image")
-	if bsImage == "" {
-		bsImage = bsDefaultImageName
-	}
-	return bsImage
-}
-
-func (conf *Config) EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
 	tsuruEndpoint, _ := config.GetString("host")
 	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
 		tsuruEndpoint = "http://" + tsuruEndpoint
@@ -118,150 +50,80 @@ func (conf *Config) EnvListForEndpoint(dockerEndpoint, poolName string) ([]strin
 	if socket != "" {
 		endpoint = "unix:///var/run/docker.sock"
 	}
-	token, err := conf.getToken()
+	token, err := getToken(bsConf)
 	if err != nil {
 		return nil, err
 	}
-	envList := []string{
-		"DOCKER_ENDPOINT=" + endpoint,
-		"TSURU_ENDPOINT=" + tsuruEndpoint,
-		"TSURU_TOKEN=" + token,
-		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:" + strconv.Itoa(container.BsSysLogPort()),
+	baseEnvMap := map[string]string{
+		"DOCKER_ENDPOINT":       endpoint,
+		"TSURU_ENDPOINT":        tsuruEndpoint,
+		"TSURU_TOKEN":           token,
+		"SYSLOG_LISTEN_ADDRESS": fmt.Sprintf("udp://0.0.0.0:%d", container.BsSysLogPort()),
 	}
-	envMap := EnvMap{}
-	poolEnvMap := PoolEnvMap{}
-	err = conf.UpdateEnvMaps(envMap, poolEnvMap)
-	if err != nil {
-		return nil, err
+	var envList []string
+	for envName, envValue := range bsConf.PoolEntries(poolName) {
+		if _, isBase := baseEnvMap[envName]; isBase {
+			continue
+		}
+		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue.Value))
 	}
-	for envName, envValue := range envMap {
-		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
-	}
-	for envName, envValue := range poolEnvMap[poolName] {
-		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
+	for name, value := range baseEnvMap {
+		envList = append(envList, fmt.Sprintf("%s=%s", name, value))
 	}
 	return envList, nil
 }
 
-func (conf *Config) getToken() (string, error) {
-	if conf.Token != "" {
-		return conf.Token, nil
+func getToken(bsConf *provision.ScopedConfig) (string, error) {
+	token := bsConf.GetExtraString("token")
+	if token != "" {
+		return token, nil
 	}
-	coll, err := collection()
-	if err != nil {
-		return "", err
-	}
-	defer coll.Close()
 	tokenData, err := app.AuthScheme.AppLogin(app.InternalAppName)
 	if err != nil {
 		return "", err
 	}
-	token := tokenData.GetValue()
-	_, err = coll.Upsert(bson.M{
-		"_id": bsUniqueID,
-		"$or": []bson.M{{"token": ""}, {"token": bson.M{"$exists": false}}},
-	}, bson.M{"$set": bson.M{"token": token}})
-	if err == nil {
-		conf.Token = token
+	token = tokenData.GetValue()
+	isSet, err := bsConf.SetExtraAtomic("token", token)
+	if isSet {
 		return token, nil
 	}
 	app.AuthScheme.Logout(token)
-	if !mgo.IsDup(err) {
-		return "", err
-	}
-	err = coll.FindId(bsUniqueID).One(conf)
 	if err != nil {
 		return "", err
 	}
-	return conf.Token, nil
-}
-
-func (conf *Config) EnvValueForPool(envName, poolName string) string {
-	for _, poolEnvs := range conf.Pools {
-		if poolEnvs.Name == poolName {
-			for _, env := range poolEnvs.Envs {
-				if env.Name == envName {
-					return env.Value
-				}
-			}
-		}
+	token = bsConf.GetExtraString("token")
+	if token == "" {
+		return "", fmt.Errorf("invalid empty bs api token")
 	}
-	for _, env := range conf.Envs {
-		if env.Name == envName {
-			return env.Value
-		}
-	}
-	return ""
-}
-
-func bsConfigFromEnvMaps(envMap EnvMap, poolEnvMap PoolEnvMap) *Config {
-	var finalConf Config
-	for name, value := range envMap {
-		finalConf.Envs = append(finalConf.Envs, Env{Name: name, Value: value})
-	}
-	for poolName, envMap := range poolEnvMap {
-		poolEnv := PoolEnvs{Name: poolName}
-		for name, value := range envMap {
-			poolEnv.Envs = append(poolEnv.Envs, Env{Name: name, Value: value})
-		}
-		finalConf.Pools = append(finalConf.Pools, poolEnv)
-	}
-	return &finalConf
+	return token, nil
 }
 
 func SaveImage(digest string) error {
-	coll, err := collection()
+	bsConf, err := provision.FindScopedConfig(bsUniqueID)
 	if err != nil {
 		return err
 	}
-	defer coll.Close()
-	_, err = coll.UpsertId(bsUniqueID, bson.M{"$set": bson.M{"image": digest}})
-	return err
+	return bsConf.SetExtra("image", digest)
 }
 
-func SaveEnvs(envMap EnvMap, poolEnvMap PoolEnvMap) error {
-	finalConf := bsConfigFromEnvMaps(envMap, poolEnvMap)
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	_, err = coll.UpsertId(bsUniqueID, bson.M{"$set": bson.M{"envs": finalConf.Envs, "pools": finalConf.Pools}})
-	return err
-}
-
-func LoadConfig(pools []string) (*Config, error) {
-	var config Config
-	coll, err := collection()
-	if err != nil {
-		return nil, err
-	}
-	defer coll.Close()
-	err = coll.FindId(bsUniqueID).One(&config)
+func LoadConfig(pools []string) (*provision.ScopedConfig, error) {
+	bsConf, err := provision.FindScopedConfig(bsUniqueID)
 	if err != nil {
 		return nil, err
 	}
 	if pools != nil {
-		poolEnvs := make([]PoolEnvs, 0, len(pools))
+		poolEntries := make([]provision.PoolEntry, 0, len(pools))
 		for _, pool := range pools {
-			for _, poolEnv := range config.Pools {
-				if poolEnv.Name == pool {
-					poolEnvs = append(poolEnvs, poolEnv)
+			for _, poolEntry := range bsConf.Pools {
+				if poolEntry.Name == pool {
+					poolEntries = append(poolEntries, poolEntry)
 					break
 				}
 			}
 		}
-		config.Pools = poolEnvs
+		bsConf.Pools = poolEntries
 	}
-	return &config, nil
-}
-
-func collection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return conn.Collection("bsconfig"), nil
+	return bsConf, nil
 }
 
 func dockerClient(endpoint string) (*docker.Client, error) {
@@ -274,19 +136,28 @@ func dockerClient(endpoint string) (*docker.Client, error) {
 	return client, nil
 }
 
+func getImage(bsConf *provision.ScopedConfig) string {
+	image := bsConf.GetExtraString("image")
+	if image != "" {
+		return image
+	}
+	image, _ = config.GetString("docker:bs:image")
+	if image == "" {
+		image = bsDefaultImageName
+	}
+	return image
+}
+
 func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
 	client, err := dockerClient(dockerEndpoint)
 	if err != nil {
 		return err
 	}
-	bsConf, err := LoadConfig(nil)
+	bsConf, err := provision.FindScopedConfig(bsUniqueID)
 	if err != nil {
-		if err != mgo.ErrNotFound {
-			return err
-		}
-		bsConf = &Config{}
+		return err
 	}
-	bsImage := bsConf.getImage()
+	bsImage := getImage(bsConf)
 	err = pullBsImage(bsImage, dockerEndpoint, p)
 	if err != nil {
 		return err
@@ -300,7 +171,7 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 	if socket != "" {
 		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
 	}
-	env, err := bsConf.EnvListForEndpoint(dockerEndpoint, poolName)
+	env, err := EnvListForEndpoint(dockerEndpoint, poolName)
 	if err != nil {
 		return err
 	}

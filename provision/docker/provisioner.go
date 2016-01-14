@@ -1085,15 +1085,12 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 
 func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 	envMap := map[string]string{}
-	bsConf, err := bs.LoadConfig(nil)
-	if err != nil {
-		return envMap
-	}
-	envs, err := bsConf.EnvListForEndpoint("", app.GetPool())
+	envs, err := bs.EnvListForEndpoint("", app.GetPool())
 	if err != nil {
 		return envMap
 	}
 	for _, env := range envs {
+		// TODO(cezarsa): ugly as hell
 		if strings.HasPrefix(env, "METRICS_") {
 			slice := strings.SplitN(env, "=", 2)
 			envMap[slice[0]] = slice[1]
@@ -1115,7 +1112,7 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		}
 		return false, "", err
 	}
-	enabledBackends := config.EnvValueForPool(logBackendsEnv, app.GetPool())
+	enabledBackends := config.PoolEntry(app.GetPool(), logBackendsEnv)
 	if enabledBackends == "" {
 		return true, "", nil
 	}
@@ -1129,7 +1126,7 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 	var docs []string
 	for _, backendName := range backendsList {
 		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
-		backendDoc := config.EnvValueForPool(keyName, app.GetPool())
+		backendDoc := config.PoolEntry(app.GetPool(), keyName)
 		var docLine string
 		if backendDoc == "" {
 			docLine = fmt.Sprintf("* %s", backendName)

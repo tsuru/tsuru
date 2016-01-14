@@ -28,6 +28,7 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/queue"
@@ -559,7 +560,7 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var requestConfig bs.Config
+	var requestConfig provision.ScopedConfig
 	err := json.NewDecoder(r.Body).Decode(&requestConfig)
 	if err != nil {
 		return &errors.HTTP{
@@ -579,28 +580,9 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	currentConfig, err := bs.LoadConfig(nil)
 	if err != nil {
-		if err != mgo.ErrNotFound {
-			return err
-		}
-		currentConfig = &bs.Config{}
+		return err
 	}
-	envMap := bs.EnvMap{}
-	poolEnvMap := bs.PoolEnvMap{}
-	err = currentConfig.UpdateEnvMaps(envMap, poolEnvMap)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	err = requestConfig.UpdateEnvMaps(envMap, poolEnvMap)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	err = bs.SaveEnvs(envMap, poolEnvMap)
+	err = currentConfig.UpdateWith(&requestConfig)
 	if err != nil {
 		return err
 	}
@@ -621,10 +603,7 @@ func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	}
 	currentConfig, err := bs.LoadConfig(pools)
 	if err != nil {
-		if err != mgo.ErrNotFound {
-			return err
-		}
-		currentConfig = &bs.Config{}
+		return err
 	}
 	return json.NewEncoder(w).Encode(currentConfig)
 }

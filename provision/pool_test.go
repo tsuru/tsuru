@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package provision
 import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,6 +29,11 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	s.storage.Apps().Database.DropDatabase()
 	s.storage.Close()
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAddPool(c *check.C) {

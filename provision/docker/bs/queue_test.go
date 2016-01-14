@@ -6,7 +6,7 @@ package bs
 
 import (
 	"net/http"
-	"strings"
+	"sort"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -77,20 +77,19 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
-	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":       server.URL(),
-		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1514",
-	}
-	gotEnv := parseEnvs(container.Config.Env)
-	_, ok := gotEnv["TSURU_TOKEN"]
-	c.Assert(ok, check.Equals, true)
-	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
-	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
 	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
+	token, _ := getToken(conf)
+	expectedEnv := []string{
+		"DOCKER_ENDPOINT=" + server.URL(),
+		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
+		"TSURU_TOKEN=" + token,
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+	}
+	sort.Strings(expectedEnv)
+	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
+	c.Assert(conf.GetExtraString("image"), check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
@@ -132,20 +131,19 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(container.HostConfig.Privileged, check.Equals, true)
 	c.Assert(container.HostConfig.NetworkMode, check.Equals, "host")
 	c.Assert(container.State.Running, check.Equals, true)
-	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":       server.URL(),
-		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1514",
-	}
-	gotEnv := parseEnvs(container.Config.Env)
-	_, ok := gotEnv["TSURU_TOKEN"]
-	c.Assert(ok, check.Equals, true)
-	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
-	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
 	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
+	token, _ := getToken(conf)
+	expectedEnv := []string{
+		"DOCKER_ENDPOINT=" + server.URL(),
+		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
+		"TSURU_TOKEN=" + token,
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+	}
+	sort.Strings(expectedEnv)
+	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
+	c.Assert(conf.GetExtraString("image"), check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 }
 
 func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
@@ -187,20 +185,19 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	c.Assert(container.HostConfig.Privileged, check.Equals, true)
 	c.Assert(container.HostConfig.NetworkMode, check.Equals, "host")
 	c.Assert(container.State.Running, check.Equals, true)
-	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":       server.URL(),
-		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1514",
-	}
-	gotEnv := parseEnvs(container.Config.Env)
-	_, ok := gotEnv["TSURU_TOKEN"]
-	c.Assert(ok, check.Equals, true)
-	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
-	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
 	conf, err := LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
+	token, _ := getToken(conf)
+	expectedEnv := []string{
+		"DOCKER_ENDPOINT=" + server.URL(),
+		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
+		"TSURU_TOKEN=" + token,
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+	}
+	sort.Strings(expectedEnv)
+	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
+	c.Assert(conf.GetExtraString("image"), check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
@@ -219,17 +216,15 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	defer config.Unset("docker:bs:socket")
 	config.Set("docker:bs:syslog-port", 1519)
 	defer config.Unset("docker:bs:syslog-port")
-	err = SaveEnvs(EnvMap{
-		"VAR1": "VALUE1",
-		"VAR2": "VALUE2",
-	}, PoolEnvMap{
-		"pool1": EnvMap{
-			"VAR2": "VALUE_FOR_POOL1",
-		},
-		"pool2": EnvMap{
-			"VAR2": "VALUE_FOR_POOL2",
-		},
-	})
+	conf, err := LoadConfig(nil)
+	c.Assert(err, check.IsNil)
+	conf.Add("VAR1", "VALUE1")
+	conf.Add("VAR2", "VALUE2")
+	conf.Add("TSURU_ENDPOINT", "ignored")
+	conf.AddPool("pool1", "VAR2", "VALUE_FOR_POOL1")
+	conf.AddPool("pool2", "VAR2", "VALUE_FOR_POOL2")
+	conf.AddPool("pool1", "SYSLOG_LISTEN_ADDRESS", "alsoignored")
+	err = conf.SaveEnvs()
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
@@ -247,29 +242,19 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
-	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":       "unix:///var/run/docker.sock",
-		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1519",
-		"VAR1":                  "VALUE1",
-		"VAR2":                  "VALUE_FOR_POOL1",
-	}
-	gotEnv := parseEnvs(container.Config.Env)
-	_, ok := gotEnv["TSURU_TOKEN"]
-	c.Assert(ok, check.Equals, true)
-	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
-	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := LoadConfig(nil)
+	conf, err = LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs")
-}
-
-func parseEnvs(envs []string) map[string]string {
-	result := make(map[string]string, len(envs))
-	for _, env := range envs {
-		parts := strings.SplitN(env, "=", 2)
-		result[parts[0]] = parts[1]
+	token, _ := getToken(conf)
+	expectedEnv := []string{
+		"DOCKER_ENDPOINT=unix:///var/run/docker.sock",
+		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
+		"TSURU_TOKEN=" + token,
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1519",
+		"VAR1=VALUE1",
+		"VAR2=VALUE_FOR_POOL1",
 	}
-	return result
+	sort.Strings(expectedEnv)
+	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
+	c.Assert(conf.GetExtraString("image"), check.Equals, "myregistry/tsuru/bs")
 }
