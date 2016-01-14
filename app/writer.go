@@ -6,7 +6,7 @@ package app
 
 import (
 	"errors"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/log"
@@ -21,7 +21,8 @@ type LogWriter struct {
 	Source string
 	msgCh  chan []byte
 	doneCh chan bool
-	closed int32
+	closed bool
+	finLk  sync.RWMutex
 }
 
 func (w *LogWriter) Async() {
@@ -39,7 +40,9 @@ func (w *LogWriter) Async() {
 }
 
 func (w *LogWriter) Close() {
-	atomic.StoreInt32(&w.closed, 1)
+	w.finLk.Lock()
+	defer w.finLk.Unlock()
+	w.closed = true
 	if w.msgCh != nil {
 		close(w.msgCh)
 	}
@@ -59,7 +62,9 @@ func (w *LogWriter) Wait(timeout time.Duration) error {
 
 // Write writes and logs the data.
 func (w *LogWriter) Write(data []byte) (int, error) {
-	if atomic.LoadInt32(&w.closed) == 1 {
+	w.finLk.RLock()
+	defer w.finLk.RUnlock()
+	if w.closed {
 		return len(data), nil
 	}
 	if w.msgCh == nil {

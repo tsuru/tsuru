@@ -147,6 +147,28 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 	}
 }
 
+func (s *WriterSuite) TestLogWriterAsyncCloseWritingStress(c *check.C) {
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	writeFn := func(writer *LogWriter) {
+		for i := 0; i < 100; i++ {
+			data := []byte("ble")
+			_, err := writer.Write(data)
+			c.Assert(err, check.IsNil)
+		}
+	}
+	for i := 0; i < 100; i++ {
+		writer := LogWriter{App: &a}
+		writer.Async()
+		go writeFn(&writer)
+		go writeFn(&writer)
+		go writer.Close()
+		err := writer.Wait(time.Second)
+		c.Assert(err, check.IsNil)
+	}
+}
+
 func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
