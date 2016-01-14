@@ -272,6 +272,34 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	c.Assert(container.Config.User, check.Equals, "")
 }
 
+func (s *S) TestContainerCreateOverwriteEntrypoint(c *check.C) {
+	config.Set("host", "my.cool.tsuru.addr:8080")
+	defer config.Unset("host")
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
+	img := "tsuru/brainfuck:latest"
+	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
+	cont := Container{
+		Name:    "myName",
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+		Status:  "created",
+	}
+	err := cont.Create(&CreateArgs{
+		Deploy:      true,
+		App:         app,
+		ImageID:     img,
+		Commands:    []string{"docker", "run"},
+		Provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(&cont)
+	dcli, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Config.Entrypoint, check.DeepEquals, []string{"/bin/bash", "-c"})
+}
+
 func (s *S) TestContainerNetworkInfo(c *check.C) {
 	inspectOut := `{
 	"NetworkSettings": {

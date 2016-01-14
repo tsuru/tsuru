@@ -104,6 +104,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	config := docker.Config{
 		Image:        args.ImageID,
 		Cmd:          args.Commands,
+		Entrypoint:   []string{"/bin/bash", "-c"},
 		User:         user,
 		ExposedPorts: exposedPorts,
 		AttachStdin:  false,
