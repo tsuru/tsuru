@@ -342,7 +342,7 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 		return nil
 	}
 	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
-		err := c.Stop(p)
+		err := c.Sleep(p)
 		if err != nil {
 			log.Errorf("Failed to sleep %q: %s", app.GetName(), err)
 		}

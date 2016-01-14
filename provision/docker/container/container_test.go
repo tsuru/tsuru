@@ -599,7 +599,7 @@ func (s *S) TestContainerSleep(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	err = cont.Start(&StartArgs{
 		Provisioner: s.p,
-        App: app,
+		App:         app,
 	})
 	c.Assert(err, check.IsNil)
 	err = cont.Sleep(s.p)
