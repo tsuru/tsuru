@@ -346,14 +346,11 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
-	nodes, err := mainDockerProvisioner.Cluster().Nodes()
-	if err != nil {
-		return "", err
+	cluster := p.Cluster()
+	pullOpts := docker.PullImageOptions{
+		Repository: imageId,
 	}
-	if len(nodes) < 1 {
-		return "", stderr.New("no nodes available")
-	}
-	client, err := nodes[0].Client()
+	err := cluster.PullImage(pullOpts, docker.AuthConfiguration{})
 	if err != nil {
 		return "", err
 	}
@@ -364,7 +361,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	}
 	procfile := getProcessesFromProcfile(output.String())
 	if len(procfile) == 0 {
-		imageInspect, inspectErr := client.InspectImage(imageId)
+		imageInspect, inspectErr := cluster.InspectImage(imageId)
 		if inspectErr != nil {
 			return "", inspectErr
 		}
@@ -373,16 +370,35 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 		}
 		procfile["web"] = strings.Join(imageInspect.Config.Entrypoint, " ")
 	}
-	imageData := createImageMetadata(imageId, procfile)
-	err = updateImageCustomData(imageId, imageData)
+	newImage, err := appNewImageName(app.GetName())
 	if err != nil {
-		err = saveImageCustomData(imageId, imageData.CustomData)
-		if err != nil {
-			return "", err
-		}
+		return "", err
+	}
+	imageInfo := strings.Split(newImage, ":")
+	err = cluster.TagImage(imageId, docker.TagImageOptions{Repo: strings.Join(imageInfo[:len(imageInfo)-1], ":"), Tag: imageInfo[len(imageInfo)-1], Force: true})
+	if err != nil {
+		return "", err
+	}
+	registry, err := config.GetString("docker:registry")
+	if err != nil {
+		return "", err
+	}
+	pushOpts := docker.PushImageOptions{
+		Name:     strings.Join(imageInfo[:len(imageInfo)-1], ":"),
+		Tag:      imageInfo[len(imageInfo)-1],
+		Registry: registry,
+	}
+	err = cluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
+	if err != nil {
+		return "", err
+	}
+	imageData := createImageMetadata(newImage, procfile)
+	err = saveImageCustomData(newImage, imageData.CustomData)
+	if err != nil {
+		return "", err
 	}
 	app.SetUpdatePlatform(true)
-	return imageId, p.deploy(app, imageId, w)
+	return newImage, p.deploy(app, newImage, w)
 }
 
 func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {

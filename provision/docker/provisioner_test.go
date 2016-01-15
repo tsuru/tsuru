@@ -668,6 +668,10 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -685,7 +689,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 		fmt.Fprintf(outStream, "")
 		conn.Close()
 	}))
-	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
 				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},
@@ -695,7 +699,13 @@ func (s *S) TestImageDeploy(c *check.C) {
 		w.Write(j)
 	}))
 	customData := map[string]interface{}{}
-	err := s.newFakeImage(s.p, "customimage", customData)
+	err := s.newFakeImage(s.p, imageName, customData)
+	c.Assert(err, check.IsNil)
+	pushOpts := docker.PushImageOptions{
+		Name:     imageName,
+		Registry: s.server.URL(),
+	}
+	err = s.p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -708,18 +718,19 @@ func (s *S) TestImageDeploy(c *check.C) {
 	defer s.p.Destroy(&a)
 	dataColl, err := imageCustomDataColl()
 	c.Assert(err, check.IsNil)
-	dataColl.RemoveId("customimage")
+	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
-		Image:        "customimage",
+		Image:        imageName,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	imd, err := getImageCustomData("customimage")
+	appCurrentImage, err := appCurrentImageName(a.GetName())
+	imd, err := getImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string]string{"web": "/bin/sh -c python test.py"}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -729,6 +740,10 @@ func (s *S) TestImageDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeployWithProcfile(c *check.C) {
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -747,7 +762,7 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 		conn.Close()
 	}))
 	customData := map[string]interface{}{}
-	err := s.newFakeImage(s.p, "customimage", customData)
+	err := s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -760,15 +775,16 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	defer s.p.Destroy(&a)
 	dataColl, err := imageCustomDataColl()
 	c.Assert(err, check.IsNil)
-	dataColl.RemoveId("customimage")
+	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
-		Image:        "customimage",
+		Image:        imageName,
 	})
 	c.Assert(err, check.IsNil)
-	imd, err := getImageCustomData("customimage")
+	appCurrentImage, err := appCurrentImageName(a.GetName())
+	imd, err := getImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string]string{"web": "test.sh"}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
