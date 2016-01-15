@@ -12693,7 +12693,7 @@ type DescribeReservedInstancesInput struct {
 	//   duration - The duration of the Reserved instance (one year or three years),
 	// in seconds (31536000 | 94608000).
 	//
-	//   end - The time when the Reserved instance expires (for example, 2015-08-07T11:54:42.000Z).
+	//   end - The time when the Reserved instance expires (for example, 2016-08-07T11:54:42.000Z).
 	//
 	//   fixed-price - The purchase price of the Reserved instance (for example,
 	// 9800.0).

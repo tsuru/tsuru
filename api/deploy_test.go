@@ -839,8 +839,8 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
-	diff := `--- hello.go	2015-11-25 16:04:22.409241045 +0000
-+++ hello.go	2015-11-18 18:40:21.385697080 +0000
+	diff := `--- hello.go	2016-11-25 16:04:22.409241045 +0000
++++ hello.go	2016-11-18 18:40:21.385697080 +0000
 @@ -1,10 +1,7 @@
  package main
 
@@ -881,8 +881,8 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 }
 
 func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
-	diff := `--- hello.go	2015-11-25 16:04:22.409241045 +0000
-+++ hello.go	2015-11-18 18:40:21.385697080 +0000
+	diff := `--- hello.go	2016-11-25 16:04:22.409241045 +0000
++++ hello.go	2016-11-18 18:40:21.385697080 +0000
 @@ -1,10 +1,7 @@
  package main
 

@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -174,7 +174,7 @@ func (s *S) TestCreateMachineTimeoutError(c *check.C) {
 		calledActions = append(calledActions, action)
 		if action == "DescribeInstances" {
 			w.Write([]byte(`
-<DescribeInstancesResponse xmlns="http://ec2.amazonaws.com/doc/2015-10-01/">
+<DescribeInstancesResponse xmlns="http://ec2.amazonaws.com/doc/2016-10-01/">
 <requestId>xxx</requestId>
 <reservationSet>
       <item>
