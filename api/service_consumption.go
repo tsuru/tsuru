@@ -40,9 +40,10 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	instance := service.ServiceInstance{
-		Name:      body["name"],
-		PlanName:  body["plan"],
-		TeamOwner: body["owner"],
+		Name:        body["name"],
+		PlanName:    body["plan"],
+		TeamOwner:   body["owner"],
+		Description: body["description"],
 	}
 	if instance.TeamOwner == "" {
 		teamOwner, err := permission.TeamForPermission(t, permission.PermServiceInstanceCreate)
@@ -266,10 +267,11 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 type ServiceInstanceInfo struct {
-	Apps       []string
-	Teams      []string
-	TeamOwner  string
-	CustomInfo map[string]string
+	Apps        []string
+	Teams       []string
+	TeamOwner   string
+	Description string
+	CustomInfo  map[string]string
 }
 
 func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -294,10 +296,11 @@ func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return err
 	}
 	sInfo := ServiceInstanceInfo{
-		Apps:       serviceInstance.Apps,
-		Teams:      serviceInstance.Teams,
-		TeamOwner:  serviceInstance.TeamOwner,
-		CustomInfo: info,
+		Apps:        serviceInstance.Apps,
+		Teams:       serviceInstance.Teams,
+		TeamOwner:   serviceInstance.TeamOwner,
+		Description: serviceInstance.Description,
+		CustomInfo:  info,
 	}
 	b, err := json.Marshal(sInfo)
 	if err != nil {

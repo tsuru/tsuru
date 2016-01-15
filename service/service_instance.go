@@ -43,6 +43,7 @@ type ServiceInstance struct {
 	Units       []string
 	Teams       []string
 	TeamOwner   string
+	Description string
 }
 
 // DeleteInstance deletes the service instance from the database.

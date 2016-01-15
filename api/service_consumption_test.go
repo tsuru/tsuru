@@ -296,6 +296,42 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICa
 	c.Assert(err, check.NotNil)
 }
 
+func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan":         "small",
+		"owner":        s.team.Name,
+		"description":  "desc",
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	err := createServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	var si service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan_name":    "small",
+	}).One(&si)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.Name, check.Equals, "brainSQL")
+	c.Assert(si.ServiceName, check.Equals, "mysql")
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(si.Description, check.Equals, "desc")
+}
+
 func makeRequestToRemoveInstanceHandler(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/%s/instances/%s?:service=%s&:instance=%s", service, instance, service, instance)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -926,6 +962,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 		Apps:        []string{"app1", "app2"},
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
+		Description: "desc",
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
@@ -946,6 +983,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 			"key":  "value",
 			"key2": "value2",
 		},
+		Description: si.Description,
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 	action := rectest.Action{
