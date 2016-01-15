@@ -524,6 +524,15 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	c.Assert(result["error"], check.NotNil)
 }
 
+func (s *S) TestValidateOrigin(c *check.C) {
+	c.Assert(ValidateOrigin("app-deploy"), check.Equals, true)
+	c.Assert(ValidateOrigin("git"), check.Equals, true)
+	c.Assert(ValidateOrigin("rollback"), check.Equals, true)
+	c.Assert(ValidateOrigin("drag-and-drop"), check.Equals, true)
+	c.Assert(ValidateOrigin("image"), check.Equals, true)
+	c.Assert(ValidateOrigin("invalid"), check.Equals, false)
+}
+
 func (s *S) TestIncrementDeploy(c *check.C) {
 	a := App{
 		Name:     "otherapp",

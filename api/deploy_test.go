@@ -838,19 +838,6 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
-func (s *DeploySuite) TestValidateOrigin(c *check.C) {
-	result := validateOrigin("app-deploy")
-	c.Assert(result, check.Equals, true)
-	result = validateOrigin("rollback")
-	c.Assert(result, check.Equals, true)
-	result = validateOrigin("git")
-	c.Assert(result, check.Equals, true)
-	result = validateOrigin("drag-and-drop")
-	c.Assert(result, check.Equals, true)
-	result = validateOrigin("invalid")
-	c.Assert(result, check.Equals, false)
-}
-
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	diff := `--- hello.go	2015-11-25 16:04:22.409241045 +0000
 +++ hello.go	2015-11-18 18:40:21.385697080 +0000

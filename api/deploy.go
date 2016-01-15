@@ -50,7 +50,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		origin = "image"
 	}
 	if origin != "" {
-		if !validateOrigin(origin) {
+		if !app.ValidateOrigin(origin) {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid deployment origin",
@@ -97,16 +97,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
-}
-
-func validateOrigin(origin string) bool {
-	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image"}
-	for _, ol := range originList {
-		if ol == origin {
-			return true
-		}
-	}
-	return false
 }
 
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -163,7 +153,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	origin := r.URL.Query().Get("origin")
 	if origin != "" {
-		if !validateOrigin(origin) {
+		if !app.ValidateOrigin(origin) {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid deployment origin",

@@ -221,6 +221,16 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 	return err
 }
 
+func ValidateOrigin(origin string) bool {
+	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image"}
+	for _, ol := range originList {
+		if ol == origin {
+			return true
+		}
+	}
+	return false
+}
+
 func SaveDiffData(diff string, appName string) error {
 	conn, err := db.Conn()
 	if err != nil {
