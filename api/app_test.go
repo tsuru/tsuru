@@ -299,7 +299,7 @@ func (s *S) TestAppList(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"cname.app1"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
-	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
+	acquireDate := time.Date(2016, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := app.App{
 		Name:      "app2",
 		Platform:  "zend",

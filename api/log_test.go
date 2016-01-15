@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -85,15 +85,15 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	a2 := app.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a2, s.user)
 	c.Assert(err, check.IsNil)
-	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	baseTime, err := time.Parse(time.RFC3339, "2016-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
 	bodyStr := `
-	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "appname": "myapp1", "unit": "unit1"}
-	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "appname": "myapp2", "unit": "unit2"}
-	{"date": "2015-06-16T15:00:02.000Z", "message": "msg3", "source": "web", "appname": "myapp1", "unit": "unit3"}
-	{"date": "2015-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "appname": "myapp2", "unit": "unit4"}
-	{"date": "2015-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "appname": "myapp1", "unit": "unit3"}
+	{"date": "2016-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "appname": "myapp1", "unit": "unit1"}
+	{"date": "2016-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "appname": "myapp2", "unit": "unit2"}
+	{"date": "2016-06-16T15:00:02.000Z", "message": "msg3", "source": "web", "appname": "myapp1", "unit": "unit3"}
+	{"date": "2016-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "appname": "myapp2", "unit": "unit4"}
+	{"date": "2016-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "appname": "myapp1", "unit": "unit3"}
 	`
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -178,7 +178,7 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 		c.Assert(err, check.IsNil)
 		defer app.Delete(&a, nil)
 	}
-	baseMsg := `{"date": "2015-06-16T15:00:00.000Z", "message": "msg-%d", "source": "web", "appname": "%s", "unit": "unit1"}` + "\n"
+	baseMsg := `{"date": "2016-06-16T15:00:00.000Z", "message": "msg-%d", "source": "web", "appname": "%s", "unit": "unit1"}` + "\n"
 	for i := range apps {
 		// Remove overhead for first message from app from benchmark.
 		err := scanLogs(strings.NewReader(fmt.Sprintf(baseMsg, 0, apps[i].Name)))
