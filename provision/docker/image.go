@@ -160,14 +160,6 @@ func saveImageCustomData(imageName string, customData map[string]interface{}) er
 	return coll.Insert(data)
 }
 
-func updateImageCustomData(imageName string, customData ImageMetadata) error {
-	coll, err := imageCustomDataColl()
-	if err != nil {
-		return err
-	}
-	return coll.UpdateId(imageName, customData)
-}
-
 func getImageCustomData(imageName string) (ImageMetadata, error) {
 	coll, err := imageCustomDataColl()
 	if err != nil {
