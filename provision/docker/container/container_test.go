@@ -354,7 +354,7 @@ func (s *S) TestContainerSetStatusStarted(c *check.C) {
 	err := coll.Insert(container)
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": container.ID})
-	err = container.SetStatus(s.p, provision.StatusStarted.String(), true)
+	err = container.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	var c2 Container
 	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
@@ -364,7 +364,7 @@ func (s *S) TestContainerSetStatusStarted(c *check.C) {
 	c2.LastSuccessStatusUpdate = time.Time{}
 	err = coll.Update(bson.M{"id": c2.ID}, c2)
 	c.Assert(err, check.IsNil)
-	err = c2.SetStatus(s.p, provision.StatusStarting.String(), true)
+	err = c2.SetStatus(s.p, provision.StatusStarting, true)
 	c.Assert(err, check.IsNil)
 	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
 	c.Assert(err, check.IsNil)
@@ -380,7 +380,7 @@ func (s *S) TestContainerSetStatusBuilding(c *check.C) {
 	defer coll.Close()
 	coll.Insert(c1)
 	defer coll.Remove(bson.M{"id": c1.ID})
-	err := c1.SetStatus(s.p, provision.StatusStarted.String(), true)
+	err := c1.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 	var c2 Container
 	err = coll.Find(bson.M{"id": c1.ID}).One(&c2)
@@ -399,7 +399,7 @@ func (s *S) TestContainerSetStatusNoUpdate(c *check.C) {
 	defer coll.Close()
 	coll.Insert(c1)
 	defer coll.Remove(bson.M{"id": c1.ID})
-	err := c1.SetStatus(s.p, provision.StatusStarted.String(), false)
+	err := c1.SetStatus(s.p, provision.StatusStarted, false)
 	c.Assert(err, check.IsNil)
 }
 
@@ -624,7 +624,7 @@ func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *ch
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
-	cont.SetStatus(s.p, provision.StatusStopped.String(), true)
+	cont.SetStatus(s.p, provision.StatusStopped, true)
 	err = cont.Stop(s.p)
 	c.Assert(err, check.IsNil)
 }

@@ -89,7 +89,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
 	}
 	if isRunning {
-		cont.SetStatus(h.provisioner, provision.StatusStarted.String(), true)
+		cont.SetStatus(h.provisioner, provision.StatusStarted, true)
 		return nil
 	}
 	healingCounter, err := healingCountFor("container", cont.ID, consecutiveHealingsTimeframe)

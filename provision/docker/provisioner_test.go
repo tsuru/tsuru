@@ -1517,9 +1517,9 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	container4, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	container2.SetStatus(s.p, provision.StatusCreated.String(), true)
-	container3.SetStatus(s.p, provision.StatusBuilding.String(), true)
-	container4.SetStatus(s.p, provision.StatusStopped.String(), true)
+	container2.SetStatus(s.p, provision.StatusCreated, true)
+	container3.SetStatus(s.p, provision.StatusBuilding, true)
+	container4.SetStatus(s.p, provision.StatusStopped, true)
 	containers := []*container.Container{
 		container1,
 		container2,

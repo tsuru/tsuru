@@ -310,7 +310,7 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		if err != nil {
 			return err
 		}
-		c.SetStatus(p, provision.StatusStarting.String(), true)
+		c.SetStatus(p, provision.StatusStarting, true)
 		if info, err := c.NetworkInfo(p); err == nil {
 			p.fixContainer(c, info)
 		}
@@ -814,7 +814,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if unit.AppName != "" && cont.AppName != unit.AppName {
 		return stderr.New("wrong app name")
 	}
-	err = cont.SetStatus(p, status.String(), true)
+	err = cont.SetStatus(p, status, true)
 	if err != nil {
 		return err
 	}
@@ -1015,7 +1015,7 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[str
 		}
 		return nil
 	}
-	err = cont.SetStatus(p, provision.StatusStarted.String(), true)
+	err = cont.SetStatus(p, provision.StatusStarted, true)
 	if err != nil {
 		return err
 	}

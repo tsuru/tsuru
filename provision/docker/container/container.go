@@ -210,8 +210,8 @@ func (c *Container) NetworkInfo(p DockerProvisioner) (NetworkInfo, error) {
 	return netInfo, err
 }
 
-func (c *Container) SetStatus(p DockerProvisioner, status string, updateDB bool) error {
-	c.Status = status
+func (c *Container) SetStatus(p DockerProvisioner, status provision.Status, updateDB bool) error {
+	c.Status = status.String()
 	c.LastStatusUpdate = time.Now().In(time.UTC)
 	updateData := bson.M{
 		"status":           c.Status,
@@ -397,7 +397,7 @@ func (c *Container) Stop(p DockerProvisioner) error {
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
-	c.SetStatus(p, provision.StatusStopped.String(), true)
+	c.SetStatus(p, provision.StatusStopped, true)
 	return nil
 }
 
@@ -464,9 +464,9 @@ func (c *Container) Start(args *StartArgs) error {
 	if err != nil {
 		return err
 	}
-	initialStatus := provision.StatusStarting.String()
+	initialStatus := provision.StatusStarting
 	if args.Deploy {
-		initialStatus = provision.StatusBuilding.String()
+		initialStatus = provision.StatusBuilding
 	}
 	return c.SetStatus(args.Provisioner, initialStatus, false)
 }
