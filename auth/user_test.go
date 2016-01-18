@@ -339,6 +339,32 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	c.Assert(uDB.Roles, check.DeepEquals, expected)
 }
 
+func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
+	u := User{
+		Email:    "me@tsuru.com",
+		Password: "123",
+		Roles: []RoleInstance{
+			{Name: "r1", ContextValue: "c1"},
+			{Name: "r1", ContextValue: "c2"},
+			{Name: "r2", ContextValue: "x"},
+		},
+	}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	err = RemoveRoleFromAllUsers("r1")
+	c.Assert(err, check.IsNil)
+	expected := []RoleInstance{
+		{Name: "r2", ContextValue: "x"},
+	}
+	sort.Sort(roleInstanceList(expected))
+	uDB, err := GetUserByEmail("me@tsuru.com")
+	c.Assert(err, check.IsNil)
+	sort.Sort(roleInstanceList(u.Roles))
+	c.Assert(uDB.Roles, check.DeepEquals, expected)
+	sort.Sort(roleInstanceList(uDB.Roles))
+	c.Assert(uDB.Roles, check.DeepEquals, expected)
+}
+
 func (s *S) TestUserPermissions(c *check.C) {
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create()

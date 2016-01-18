@@ -278,6 +278,20 @@ func (u *User) AddRole(roleName string, contextValue string) error {
 	return u.reload()
 }
 
+func RemoveRoleFromAllUsers(roleName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Users().UpdateAll(bson.M{"roles.name": roleName}, bson.M{
+		"$pull": bson.M{
+			"roles": bson.M{"name": roleName},
+		},
+	})
+	return err
+}
+
 func (u *User) RemoveRole(roleName string, contextValue string) error {
 	conn, err := db.Conn()
 	if err != nil {
