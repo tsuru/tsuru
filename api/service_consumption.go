@@ -71,6 +71,44 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return service.CreateServiceInstance(instance, &srv, user)
 }
 
+func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var body map[string]string
+	err = json.Unmarshal(b, &body)
+	if err != nil {
+		return err
+	}
+	serviceName := body["service_name"]
+	instanceName := body["name"]
+	description := body["description"]
+	if description == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid value for description",
+		}
+	}
+	si, err := getServiceInstanceOrError(serviceName, instanceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdate,
+		permission.Context(permission.CtxServiceInstance, si.Name),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	user, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(user.Email, "update-service-instance", string(b))
+	si.Description = description
+	return service.UpdateService(si)
+}
+
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
@@ -267,11 +305,13 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 type ServiceInstanceInfo struct {
-	Apps        []string
-	Teams       []string
-	TeamOwner   string
-	Description string
-	CustomInfo  map[string]string
+	Apps            []string
+	Teams           []string
+	TeamOwner       string
+	Description     string
+	PlanName        string
+	PlanDescription string
+	CustomInfo      map[string]string
 }
 
 func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -295,12 +335,18 @@ func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
+	plan, err := service.GetPlansByServiceNameAndPlanName(serviceName, serviceInstance.PlanName)
+	if err != nil {
+		return err
+	}
 	sInfo := ServiceInstanceInfo{
-		Apps:        serviceInstance.Apps,
-		Teams:       serviceInstance.Teams,
-		TeamOwner:   serviceInstance.TeamOwner,
-		Description: serviceInstance.Description,
-		CustomInfo:  info,
+		Apps:            serviceInstance.Apps,
+		Teams:           serviceInstance.Teams,
+		TeamOwner:       serviceInstance.TeamOwner,
+		Description:     serviceInstance.Description,
+		PlanName:        plan.Name,
+		PlanDescription: plan.Description,
+		CustomInfo:      info,
 	}
 	b, err := json.Marshal(sInfo)
 	if err != nil {

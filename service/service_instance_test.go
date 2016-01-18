@@ -513,6 +513,32 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	}
 }
 
+func (s *InstanceSuite) TestUpdateService(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name}
+	err = CreateServiceInstance(instance, &srv, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	instance.Description = "desc"
+	err = UpdateService(&instance)
+	c.Assert(err, check.IsNil)
+	var si ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.PlanName, check.Equals, "small")
+	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
+	c.Assert(si.Description, check.Equals, "desc")
+}
+
 func (s *InstanceSuite) TestStatus(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

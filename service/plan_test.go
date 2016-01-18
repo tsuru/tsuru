@@ -39,6 +39,25 @@ func (s *S) TestGetPlansByServiceName(c *check.C) {
 	c.Assert(plans, check.DeepEquals, expected)
 }
 
+func (s *S) TestGetPlansByServiceNameAndPlanName(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
+		w.Write([]byte(content))
+	}))
+	defer ts.Close()
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
+	plan, err := GetPlansByServiceNameAndPlanName("mysql", "small")
+	c.Assert(err, check.IsNil)
+	expected := Plan{
+		Name:        "small",
+		Description: "not space left for you",
+	}
+	c.Assert(plan, check.DeepEquals, expected)
+}
+
 func (s *S) TestGetPlansByServiceNameWithoutEndpoint(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)

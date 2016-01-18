@@ -332,6 +332,177 @@ func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
 	c.Assert(si.Description, check.Equals, "desc")
 }
 
+func makeRequestToUpdateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(params)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/services/instances/update", &buf)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescription(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{
+		Name:        "brainSQL",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+		Description: "desc",
+	}
+	si.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"description":  "changed",
+	}
+	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	user := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdate,
+		Context: permission.Context(permission.CtxServiceInstance, si.Name),
+	})
+	err := updateServiceInstance(recorder, request, user)
+	c.Assert(err, check.IsNil)
+	var instance service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+	}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Name, check.Equals, "brainSQL")
+	c.Assert(instance.ServiceName, check.Equals, "mysql")
+	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
+	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
+	c.Assert(instance.Description, check.DeepEquals, "changed")
+}
+
+func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{
+		Name:        "brainSQL",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+	}
+	si.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"description":  "changed",
+	}
+	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	user := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdate,
+		Context: permission.Context(permission.CtxServiceInstance, si.Name),
+	})
+	err := updateServiceInstance(recorder, request, user)
+	c.Assert(err, check.IsNil)
+	var instance service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+	}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Name, check.Equals, "brainSQL")
+	c.Assert(instance.ServiceName, check.Equals, "mysql")
+	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
+	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
+	c.Assert(instance.Description, check.DeepEquals, "changed")
+}
+
+func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNotExist(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"description":  "changed",
+	}
+	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	err := updateServiceInstance(recorder, request, s.token)
+	c.Assert(err.Error(), check.Equals, "service instance not found")
+}
+
+func (s *ConsumptionSuite) TestUpdateServiceHandlerWithoutPermissions(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{
+		Name:        "brainSQL",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+	}
+	si.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"description":  "changed",
+	}
+	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	user := customUserWithPermission(c, "myuser")
+	err := updateServiceInstance(recorder, request, user)
+	c.Assert(err.Error(), check.Equals, permission.ErrUnauthorized.Error())
+}
+
+func (s *ConsumptionSuite) TestUpdateServiceHandlerInvalidDescription(c *check.C) {
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"description":  "",
+	}
+	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	request.Header.Set("Content-Type", "application/json")
+	err := updateServiceInstance(recorder, request, s.token)
+	c.Assert(err.Error(), check.Equals, "Invalid value for description")
+}
+
 func makeRequestToRemoveInstanceHandler(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/%s/instances/%s?:service=%s&:instance=%s", service, instance, service, instance)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -947,9 +1118,15 @@ func makeRequestToInfoHandler(service string, instance string, c *check.C) (*htt
 	return recorder, request
 }
 
-func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
+func (s *ConsumptionSuite) TestServiceInstanceInfoHandler2(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
+		if r.URL.Path == "/resources/my_nosql" {
+			w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
+		}
+		if r.Method == "GET" && r.URL.Path == "/resources/plans" {
+			w.Write([]byte(`[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`))
+		}
+
 	}))
 	defer ts.Close()
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
@@ -962,6 +1139,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 		Apps:        []string{"app1", "app2"},
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
+		PlanName:    "small",
 		Description: "desc",
 	}
 	err = si.Create()
@@ -983,7 +1161,54 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 			"key":  "value",
 			"key2": "value2",
 		},
-		Description: si.Description,
+		PlanName:        "small",
+		PlanDescription: "not space left for you",
+		Description:     si.Description,
+	}
+	c.Assert(instances, check.DeepEquals, expected)
+	action := rectest.Action{
+		Action: "service-instance-info",
+		User:   s.user.Email,
+		Extra:  []interface{}{"mongodb", "my_nosql"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[]`))
+	}))
+	defer ts.Close()
+	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	defer srv.Delete()
+	si := service.ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"app1", "app2"},
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+	}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si)
+	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
+	err = serviceInstanceInfo(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var instances ServiceInstanceInfo
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, check.IsNil)
+	expected := ServiceInstanceInfo{
+		Apps:            si.Apps,
+		Teams:           si.Teams,
+		TeamOwner:       si.TeamOwner,
+		CustomInfo:      map[string]string{},
+		PlanName:        "",
+		PlanDescription: "",
+		Description:     si.Description,
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 	action := rectest.Action{

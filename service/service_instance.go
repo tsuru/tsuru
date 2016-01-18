@@ -316,6 +316,15 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 	return pipeline.Execute(*service, instance, user.Email)
 }
 
+func UpdateService(si *ServiceInstance) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, si)
+}
+
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
 	var instances []ServiceInstance
 	conn, err := db.Conn()
