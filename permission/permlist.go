@@ -98,6 +98,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service-instance.update.unbind",
 	"service-instance.update.grant",
 	"service-instance.update.revoke",
+	"service-instance.update.description",
 ).add(
 	"role.create",
 	"role.delete",

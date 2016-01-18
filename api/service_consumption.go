@@ -81,10 +81,10 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	serviceName := body["service_name"]
-	instanceName := body["name"]
-	description := body["description"]
-	if description == "" {
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	description, ok := body["description"]
+	if !ok || description == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid value for description",
@@ -94,7 +94,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdate,
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateDescription,
 		permission.Context(permission.CtxServiceInstance, si.Name),
 	)
 	if !allowed {

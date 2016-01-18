@@ -332,11 +332,12 @@ func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
 	c.Assert(si.Description, check.Equals, "desc")
 }
 
-func makeRequestToUpdateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+func makeRequestToUpdateInstanceHandler(params map[string]string, serviceName, instanceName string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(params)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/services/instances/update", &buf)
+	url := fmt.Sprintf("/services/%s/instances/%s/update?:service=%s&:instance=%s", serviceName, instanceName, serviceName, instanceName)
+	request, err := http.NewRequest("POST", url, &buf)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
@@ -365,11 +366,9 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescriptio
 	si.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": si.Name})
 	params := map[string]string{
-		"name":         "brainSQL",
-		"service_name": "mysql",
-		"description":  "changed",
+		"description": "changed",
 	}
-	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", c)
 	request.Header.Set("Content-Type", "application/json")
 	user := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
@@ -411,11 +410,9 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(
 	si.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": si.Name})
 	params := map[string]string{
-		"name":         "brainSQL",
-		"service_name": "mysql",
-		"description":  "changed",
+		"description": "changed",
 	}
-	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", c)
 	request.Header.Set("Content-Type", "application/json")
 	user := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
@@ -449,11 +446,9 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNotExist(c *ch
 	se.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
 	params := map[string]string{
-		"name":         "brainSQL",
-		"service_name": "mysql",
-		"description":  "changed",
+		"description": "changed",
 	}
-	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", c)
 	request.Header.Set("Content-Type", "application/json")
 	err := updateServiceInstance(recorder, request, s.token)
 	c.Assert(err.Error(), check.Equals, "service instance not found")
@@ -480,11 +475,9 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerWithoutPermissions(c *check.C
 	si.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": si.Name})
 	params := map[string]string{
-		"name":         "brainSQL",
-		"service_name": "mysql",
-		"description":  "changed",
+		"description": "changed",
 	}
-	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", c)
 	request.Header.Set("Content-Type", "application/json")
 	user := customUserWithPermission(c, "myuser")
 	err := updateServiceInstance(recorder, request, user)
@@ -493,13 +486,18 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerWithoutPermissions(c *check.C
 
 func (s *ConsumptionSuite) TestUpdateServiceHandlerInvalidDescription(c *check.C) {
 	params := map[string]string{
-		"name":         "brainSQL",
-		"service_name": "mysql",
-		"description":  "",
+		"description": "",
 	}
-	recorder, request := makeRequestToUpdateInstanceHandler(params, c)
+	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", c)
 	request.Header.Set("Content-Type", "application/json")
 	err := updateServiceInstance(recorder, request, s.token)
+	c.Assert(err.Error(), check.Equals, "Invalid value for description")
+	params = map[string]string{
+		"desc": "desc",
+	}
+	recorder, request = makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", c)
+	request.Header.Set("Content-Type", "application/json")
+	err = updateServiceInstance(recorder, request, s.token)
 	c.Assert(err.Error(), check.Equals, "Invalid value for description")
 }
 
