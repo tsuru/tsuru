@@ -116,6 +116,7 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 	poolsExpected := map[string]interface{}{
 		"pools_by_team": []interface{}{map[string]interface{}{"Team": "angra", "Pools": []interface{}{"pool1"}}},
 		"public_pools":  []interface{}{},
+		"default_pool":  []interface{}{},
 	}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
@@ -137,8 +138,44 @@ func (s *S) TestListPoolsToUserEmptyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	poolsExpected := map[string]interface{}{
+		"default_pool":  []interface{}{},
 		"pools_by_team": []interface{}{},
 		"public_pools":  []interface{}{},
+	}
+	req, err := http.NewRequest("GET", "/pool", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = listPoolsToUser(rec, req, token)
+	c.Assert(err, check.IsNil)
+	var pools map[string]interface{}
+	err = json.NewDecoder(rec.Body).Decode(&pools)
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.DeepEquals, poolsExpected)
+}
+
+func (s *S) TestListPoolsToUserHandlerWithPermissionToDefault(c *check.C) {
+	team := auth.Team{Name: "angra"}
+	err := s.conn.Teams().Insert(team)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermPoolUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	pool := provision.Pool{Name: "pool1", Teams: []string{"angra"}}
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(pool.Name)
+	opts = provision.AddPoolOptions{Name: "nopool"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("nopool")
+	poolsExpected := map[string]interface{}{
+		"pools_by_team": []interface{}{},
+		"public_pools":  []interface{}{},
+		"default_pool":  []interface{}{map[string]interface{}{"Name": "test1", "Teams": []interface{}{}, "Public": false, "Default": true}},
 	}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
