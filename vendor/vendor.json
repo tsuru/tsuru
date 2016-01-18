@@ -134,108 +134,108 @@
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/opts",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/fileutils",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/homedir",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/idtools",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/ioutils",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/longpath",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/pools",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/promise",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/stdcopy",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/system",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/go-units",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/gorilla/context",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/gorilla/mux",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/hashicorp/go-cleanhttp",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/opencontainers/runc/libcontainer/user",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/golang.org/x/net/context",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/golang.org/x/sys/unix",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "5be6810ca4a5ba031005bc1f818eaf616a734e6f",
-			"revisionTime": "2016-01-07T08:01:32-02:00"
+			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
+			"revisionTime": "2016-01-15T23:33:25-05:00"
 		},
 		{
 			"path": "github.com/garyburd/redigo/redis",
