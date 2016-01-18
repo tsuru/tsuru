@@ -297,7 +297,7 @@ func (s *S) TestContainerCreateOverwriteEntrypoint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Config.Entrypoint, check.DeepEquals, []string{"/bin/bash", "-c"})
+	c.Assert(container.Config.Entrypoint, check.DeepEquals, []string{})
 }
 
 func (s *S) TestContainerNetworkInfo(c *check.C) {
