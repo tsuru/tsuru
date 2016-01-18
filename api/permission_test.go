@@ -61,6 +61,10 @@ func (s *S) TestRemoveRole(c *check.C) {
 		Scheme:  permission.PermRoleDelete,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("test", "app")
+	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -70,6 +74,9 @@ func (s *S) TestRemoveRole(c *check.C) {
 	roles, err := permission.ListRoles()
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 1)
+	user, err = token.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(user.Roles, check.HasLen, 1)
 }
 
 func (s *S) TestRemoveRoleUnauthorized(c *check.C) {

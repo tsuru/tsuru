@@ -29,7 +29,12 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleDelete) {
 		return permission.ErrUnauthorized
 	}
-	err := permission.DestroyRole(r.URL.Query().Get(":name"))
+	roleName := r.URL.Query().Get(":name")
+	err := auth.RemoveRoleFromAllUsers(roleName)
+	if err != nil {
+		return err
+	}
+	err = permission.DestroyRole(roleName)
 	if err == permission.ErrRoleNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
