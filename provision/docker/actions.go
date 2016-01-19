@@ -185,37 +185,6 @@ var createContainer = action.Action{
 	},
 }
 
-var createContainerFromImage = action.Action{
-	Name: "create-container-from-image",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		cont := ctx.Previous.(container.Container)
-		args := ctx.Params[0].(runContainerActionsArgs)
-		log.Debugf("create container from image for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
-		err := cont.Create(&container.CreateArgs{
-			ImageID:          args.imageID,
-			Commands:         args.commands,
-			App:              args.app,
-			Deploy:           args.isDeploy,
-			Provisioner:      args.provisioner,
-			DestinationHosts: args.destinationHosts,
-			ProcessName:      args.processName,
-		})
-		if err != nil {
-			log.Errorf("error on create container for app %s - %s", args.app.GetName(), err)
-			return nil, err
-		}
-		return cont, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		c := ctx.FWResult.(container.Container)
-		args := ctx.Params[0].(runContainerActionsArgs)
-		err := args.provisioner.Cluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
-		if err != nil {
-			log.Errorf("Failed to remove the container %q: %s", c.ID, err)
-		}
-	},
-}
-
 var setContainerID = action.Action{
 	Name: "set-container-id",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
