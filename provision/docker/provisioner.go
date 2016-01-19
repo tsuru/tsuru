@@ -419,7 +419,8 @@ func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, 
 
 func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
 	defer archiveFile.Close()
-	filePath := "/home/application/archive.tar.gz"
+	dirPath := "/home/application/"
+	filePath := fmt.Sprintf("%sarchive.tar.gz", dirPath)
 	user, err := config.GetString("docker:user")
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
@@ -433,40 +434,60 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 			StdinOnce:    true,
 			User:         user,
 			Image:        p.getBuildImage(app),
-			Cmd:          []string{"/bin/bash", "-c", "cat > " + filePath},
+			Cmd:          []string{"/bin/bash", "-c", "tail -f /dev/null"},
 		},
 	}
 	cluster := p.Cluster()
 	_, cont, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""})
 	if err != nil {
+		println("create")
 		return "", err
 	}
 	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
 	err = cluster.StartContainer(cont.ID, nil)
 	if err != nil {
+		println("start")
 		return "", err
 	}
-	var output bytes.Buffer
-	opts := docker.AttachToContainerOptions{
-		Container:    cont.ID,
-		OutputStream: &output,
-		ErrorStream:  &output,
-		InputStream:  archiveFile,
-		Stream:       true,
-		Stdin:        true,
-		Stdout:       true,
-		Stderr:       true,
-	}
-	status, err := container.SafeAttachWaitContainer(p, opts)
+	var buf bytes.Buffer
+	var archiveFileBuf bytes.Buffer
+	tarball := tar.NewWriter(&buf)
 	if err != nil {
 		return "", err
 	}
-	if status != 0 {
-		log.Errorf("Failed to deploy container from upload: %s", &output)
-		return "", fmt.Errorf("container exited with status %d", status)
+	n, err := archiveFileBuf.ReadFrom(archiveFile)
+	if err != nil {
+		return "", err
+	}
+	header := tar.Header{
+		Name: "archive.tar.gz",
+		Mode: 0666,
+		Size: n,
+	}
+	tarball.WriteHeader(&header)
+	archiveReader := bytes.NewReader(archiveFileBuf.Bytes())
+	_, err = io.Copy(&buf, archiveReader)
+	if err != nil {
+		return "", err
+	}
+	defer tarball.Close()
+	uploadOpts := docker.UploadToContainerOptions{
+		InputStream: &buf,
+		Path:        dirPath,
+	}
+	err = cluster.UploadToContainer(cont.ID, uploadOpts)
+	if err != nil {
+		println("up")
+		return "", err
+	}
+	err = cluster.StopContainer(cont.ID, 10)
+	if err != nil {
+		println("stop")
+		return "", err
 	}
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
 	if err != nil {
+		println("commit")
 		return "", err
 	}
 	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)

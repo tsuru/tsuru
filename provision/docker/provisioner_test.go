@@ -554,7 +554,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 2)
+	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -778,6 +778,7 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	defer dataColl.Close()
 	c.Assert(err, check.IsNil)
 	dataColl.RemoveId(imageName)
+	defer dataColl.Close()
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
