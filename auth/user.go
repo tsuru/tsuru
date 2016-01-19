@@ -241,7 +241,7 @@ func (u *User) Permissions() ([]permission.Permission, error) {
 		role := roles[roleData.Name]
 		if role == nil {
 			foundRole, err := permission.FindRole(roleData.Name)
-			if err != nil {
+			if err != nil && err != permission.ErrRoleNotFound {
 				return nil, err
 			}
 			role = &foundRole

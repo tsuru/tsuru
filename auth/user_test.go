@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
@@ -368,6 +369,40 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 func (s *S) TestUserPermissions(c *check.C) {
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create()
+	c.Assert(err, check.IsNil)
+	perms, err := u.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.IsNil)
+	r1, err := permission.NewRole("r1", "app")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions("app.update.env", "app.deploy")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "myapp")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "myapp2")
+	c.Assert(err, check.IsNil)
+	perms, err = u.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp2")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp2")},
+	})
+}
+
+func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
+	role, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	u := User{Email: "me@tsuru.com", Password: "123"}
+	err = u.Create()
+	c.Assert(err, check.IsNil)
+	err = u.AddRole(role.Name, "team")
+	c.Assert(err, check.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = conn.Roles().RemoveId(role.Name)
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)

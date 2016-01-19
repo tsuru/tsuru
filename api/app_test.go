@@ -528,6 +528,61 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 	c.Assert(e, check.ErrorMatches, "^App SomeApp not found.$")
 }
 
+func (s *S) TestCreateAppRemoveRole(c *check.C) {
+	a := app.App{Name: "someapp"}
+	data := `{"name":"someapp","platform":"zend"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	role, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = user.AddRole(role.Name, "team")
+	c.Assert(err, check.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = conn.Roles().RemoveId(role.Name)
+	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(body, &obtained)
+	c.Assert(obtained, check.DeepEquals, expected)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	u, _ := token.User()
+	action := rectest.Action{
+		Action: "create-app",
+		User:   u.Email,
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description="},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestCreateAppHandler(c *check.C) {
 	a := app.App{Name: "someapp"}
 	data := `{"name":"someapp","platform":"zend"}`
