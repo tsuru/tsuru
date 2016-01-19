@@ -440,13 +440,11 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	cluster := p.Cluster()
 	_, cont, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""})
 	if err != nil {
-		println("create")
 		return "", err
 	}
 	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
 	err = cluster.StartContainer(cont.ID, nil)
 	if err != nil {
-		println("start")
 		return "", err
 	}
 	var buf bytes.Buffer
@@ -477,17 +475,14 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	}
 	err = cluster.UploadToContainer(cont.ID, uploadOpts)
 	if err != nil {
-		println("up")
 		return "", err
 	}
 	err = cluster.StopContainer(cont.ID, 10)
 	if err != nil {
-		println("stop")
 		return "", err
 	}
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
 	if err != nil {
-		println("commit")
 		return "", err
 	}
 	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)

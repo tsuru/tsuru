@@ -962,10 +962,8 @@ func (s *S) TestUpdateApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	fmt.Println("recorder code = ", recorder.Code)
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	fmt.Println("recorder code", recorder.Code)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
