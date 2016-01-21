@@ -20,6 +20,7 @@ Using
     java
     php
     buildpacks
+    services
     recovery
     logging
     procfile
