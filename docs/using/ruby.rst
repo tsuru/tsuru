@@ -346,142 +346,6 @@ in the list below:
     +-------------+-------------------------+---------------------+
 
 
-
-Using services
-==============
-
-Now that your app is not running with success because the rails can't connect
-to MySQL. That's because we add a relation between your rails app and a mysql
-instance.  To do it we must use a service. The service workflow can be resumed
-to two steps:
-
-#. Create a service instance
-#. Bind the service instance to the app
-
-But how can I see what services are available? Easy! Use the command
-`service-list`:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru service-list
-    +----------------+-----------+
-    | Services       | Instances |
-    +----------------+-----------+
-    | elastic-search |           |
-    | mysql          |           |
-    +----------------+-----------+
-
-The output from ``service-list`` above says that there are two available
-services: "elastic-search" and "mysql", and no instances. To create our MySQL
-instance, we should run the command `service-add`:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru service-add mysql blogsql
-    Service successfully added.
-
-Now, if we run ``service-list`` again, we will see our new service instance in
-the list:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru service-list
-    +----------------+-----------+
-    | Services       | Instances |
-    +----------------+-----------+
-    | elastic-search |           |
-    | mysql          | blogsql   |
-    +----------------+-----------+
-
-To bind the service instance to the application, we use the command
-`service-bind`:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru service-bind mysql blogsql
-    Instance blogsql is now bound to the app blog.
-
-    The following environment variables are now available for use in your app:
-
-    - MYSQL_PORT
-    - MYSQL_PASSWORD
-    - MYSQL_USER
-    - MYSQL_HOST
-    - MYSQL_DATABASE_NAME
-
-    For more details, please check the documentation for the service, using service-doc command.
-
-As you can see from bind output, we use environment variables to connect to the
-MySQL server. Next step is update ``conf/database.yml`` to use these variables
-to connect in the database:
-
-.. highlight:: ruby
-
-::
-
-    production:
-      adapter: mysql
-      encoding: utf8
-      database: <%= ENV["MYSQL_DATABASE_NAME"] %>
-      pool: 5
-      username: <%= ENV["MYSQL_USER"] %>
-      password: <%= ENV["MYSQL_PASSWORD"] %>
-      host: <%= ENV["MYSQL_HOST"] %>
-
-Now let's commit it and run another deploy:
-
-.. highlight:: bash
-
-::
-
-    $ git add conf/database.yml
-    $ git commit -m "database.yml: using environment variables to connect to MySQL"
-    $ git push tsuru master
-    Counting objects: 7, done.
-    Delta compression using up to 4 threads.
-    Compressing objects: 100% (4/4), done.
-    Writing objects: 100% (4/4), 535 bytes, done.
-    Total 4 (delta 3), reused 0 (delta 0)
-    remote:
-    remote:  ---> tsuru receiving push
-    remote:
-    remote:  ---> Installing dependencies
-    #####################################
-    #               OMIT                #
-    #####################################
-    remote:
-    remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Deploy done!
-    remote:
-    To git@192.168.50.4.nip.io:blog.git
-       ab4e706..a780de9  master -> master
-
-Now if we try to access the admin again, we will get another error: `"Table
-'blogsql.django_session' doesn't exist"`. Well, that means that we have access
-to the database, so bind worked, but we did not set up the database yet. We
-need to run ``rake db:migrate`` in the remote server. We can use the command
-`app-run` to execute commands in the machine, so for running ``rake
-db:migrate`` we could write:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru app-run -- RAILS_ENV=production bundle exec rake db:migrate
-    ==  CreatePosts: migrating ====================================================
-    -- create_table(:posts)
-       -> 0.1126s
-    ==  CreatePosts: migrated (0.1128s) ===========================================
-
 Deployment hooks
 ================
 
@@ -499,7 +363,7 @@ should run before and after the restart. Here is our example of tsuru.yaml:
 
     hooks:
       restart:
-        before-each:
+        before:
           - RAILS_ENV=production bundle exec rake db:migrate
 
 For more details, check the :ref:`hooks documentation <yaml_deployment_hooks>`.
@@ -545,8 +409,7 @@ compile the assets in tsuru.yaml:
     To git@192.168.50.4.nip.io:blog.git
        a780de9..1b675b8  master -> master
 
-It's done! Now we have a Rails project deployed on tsuru, using a MySQL
-service.
+It's done! Now we have a Rails project deployed on tsuru.
 
 Now we can access your `blog app` in the URL returned in `app-info`.
 
