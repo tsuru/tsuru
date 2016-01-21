@@ -344,7 +344,6 @@ func (c *Container) Exec(p DockerProvisioner, stdout, stderr io.Writer, cmd stri
 		return &execErr{code: execData.ExitCode}
 	}
 	return nil
-
 }
 
 // Commits commits the container, creating an image in Docker. It then returns
