@@ -1496,9 +1496,14 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container2)
 	coll.Update(bson.M{"id": container2.ID}, container2)
+	var executed bool
+	s.server.PrepareExec("*", func() {
+		executed = true
+	})
 	var stdout, stderr bytes.Buffer
 	err = s.p.ExecuteCommand(&stdout, &stderr, app, "ls", "-l")
 	c.Assert(err, check.IsNil)
+	c.Assert(executed, check.Equals, true)
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *check.C) {
@@ -1532,9 +1537,14 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 	for _, c := range containers {
 		defer s.removeTestContainer(c)
 	}
+	var executed int
+	s.server.PrepareExec("*", func() {
+		executed++
+	})
 	var stdout, stderr bytes.Buffer
 	err = s.p.ExecuteCommand(&stdout, &stderr, app, "echo x")
 	c.Assert(err, check.IsNil)
+	c.Assert(executed, check.Equals, 1)
 }
 
 func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
@@ -1546,8 +1556,13 @@ func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 	defer coll.Close()
 	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
+	var executed bool
+	s.server.PrepareExec("*", func() {
+		executed = true
+	})
 	err = s.p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-l")
 	c.Assert(err, check.IsNil)
+	c.Assert(executed, check.Equals, true)
 }
 
 func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
