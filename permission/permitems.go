@@ -78,6 +78,7 @@ var (
 	PermPoolCreate                       = PermissionRegistry.get("pool.create")
 	PermPoolDelete                       = PermissionRegistry.get("pool.delete")
 	PermPoolUpdate                       = PermissionRegistry.get("pool.update")
+	PermPoolUpdateLogs                   = PermissionRegistry.get("pool.update.logs")
 	PermRole                             = PermissionRegistry.get("role")
 	PermRoleCreate                       = PermissionRegistry.get("role.create")
 	PermRoleDefault                      = PermissionRegistry.get("role.default")
