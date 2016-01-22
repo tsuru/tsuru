@@ -110,8 +110,7 @@ func (s *PlatformSuite) TestGetPlatform(c *check.C) {
 	c.Assert(*got, check.DeepEquals, p)
 	got, err = GetPlatform("WAT")
 	c.Assert(got, check.IsNil)
-	_, ok := err.(InvalidPlatformError)
-	c.Assert(ok, check.Equals, true)
+	c.Assert(err, check.Equals, InvalidPlatformError)
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
@@ -156,8 +155,7 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	provisioner.PlatformRemove(name)
 	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
-	_, ok := err.(DuplicatePlatformError)
-	c.Assert(ok, check.Equals, true)
+	c.Assert(err, check.Equals, DuplicatePlatformError)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
@@ -185,8 +183,7 @@ func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
 
 func (s *PlatformSuite) TestPlatformAddNotExtensibleProvisioner(c *check.C) {
 	err := PlatformAdd(provision.PlatformOptions{Name: "python"})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Provisioner is not extensible")
+	c.Assert(err, check.Equals, ErrProvisionerIsNotExtensible)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
@@ -198,8 +195,7 @@ func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
 		Provisioner = s.provisioner
 	}()
 	err := PlatformAdd(provision.PlatformOptions{Name: ""})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Platform name is required.")
+	c.Assert(err, check.Equals, ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
@@ -218,8 +214,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = ""
 	err = PlatformUpdate(provision.PlatformOptions{Name: name, Args: args})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Platform doesn't exist.")
+	c.Assert(err, check.Equals, ErrPlatformNotFound)
 	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
@@ -412,8 +407,7 @@ func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
 		Provisioner = s.provisioner
 	}()
 	err := PlatformUpdate(provision.PlatformOptions{Name: ""})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Platform name is required.")
+	c.Assert(err, check.Equals, ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *check.C) {
@@ -473,8 +467,7 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 	err = PlatformRemove("")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Platform name is required!")
+	c.Assert(err, check.Equals, ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {

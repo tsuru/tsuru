@@ -273,7 +273,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 			permission.Check(t, permission.PermPlatformCreate)
 		if !canUsePlat {
-			return app.InvalidPlatformError{}
+			return app.InvalidPlatformError
 		}
 	}
 	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name, "description="+a.Description)
@@ -300,8 +300,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				}
 			}
 		}
-		if e, ok := err.(app.InvalidPlatformError); ok {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: e.Error()}
+		if err == app.InvalidPlatformError {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
 	}
