@@ -108,11 +108,11 @@ func (s *S) TestDockerLogUpdate(c *check.C) {
 		c.Assert(conf.Envs, check.DeepEquals, testData.entries)
 		c.Assert(conf.Pools, check.DeepEquals, testData.pools)
 	}
-	driver, opts, err := logConf.logOpts("p1")
+	driver, opts, err := logConf.LogOpts("p1")
 	c.Assert(err, check.IsNil)
 	c.Assert(driver, check.Equals, "journald")
 	c.Assert(opts, check.DeepEquals, map[string]string{"tag": "y"})
-	driver, opts, err = logConf.logOpts("other")
+	driver, opts, err = logConf.LogOpts("other")
 	c.Assert(err, check.IsNil)
 	c.Assert(driver, check.Equals, "fluentd")
 	c.Assert(opts, check.DeepEquals, map[string]string{"tag": "x"})

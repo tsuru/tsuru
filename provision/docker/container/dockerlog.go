@@ -18,8 +18,8 @@ var (
 
 const (
 	DockerLogDriverConfig = "log-driver"
-	dockerLogConfigEntry  = "logs"
 	dockerLogBsDriver     = "bs"
+	dockerLogConfigEntry  = "logs"
 )
 
 type DockerLog struct {
@@ -38,7 +38,7 @@ func (d *DockerLog) loadConfig() error {
 	return nil
 }
 
-func (d *DockerLog) logOpts(pool string) (string, map[string]string, error) {
+func (d *DockerLog) LogOpts(pool string) (string, map[string]string, error) {
 	err := d.loadConfig()
 	if err != nil {
 		return "", nil, err
@@ -76,6 +76,15 @@ func (d *DockerLog) validateEnvLogDriver(envs []provision.Entry) error {
 		}
 	}
 	return nil
+}
+
+func (d *DockerLog) IsBS(pool string) (bool, error) {
+	err := d.loadConfig()
+	if err != nil {
+		return false, err
+	}
+	driver := d.conf.PoolEntry(pool, DockerLogDriverConfig)
+	return driver == dockerLogBsDriver || driver == "", nil
 }
 
 func (d *DockerLog) Update(toMerge *provision.ScopedConfig) error {

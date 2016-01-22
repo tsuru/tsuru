@@ -427,7 +427,7 @@ func (c *Container) Start(args *StartArgs) error {
 		}
 		logConf := DockerLog{}
 		pool := args.App.GetPool()
-		driver, opts, err := logConf.logOpts(pool)
+		driver, opts, err := logConf.LogOpts(pool)
 		if err != nil {
 			return err
 		}

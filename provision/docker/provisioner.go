@@ -37,7 +37,6 @@ import (
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1123,11 +1122,18 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		logDocKeyFormat     = "LOG_%s_DOC"
 		tsuruLogBackendName = "tsuru"
 	)
+	logConf := container.DockerLog{}
+	isBS, err := logConf.IsBS(app.GetPool())
+	if err != nil {
+		return false, "", err
+	}
+	if !isBS {
+		driver, _, _ := logConf.LogOpts(app.GetPool())
+		msg := fmt.Sprintf("Logs not available through tsuru. Enabled log driver is %q.", driver)
+		return false, msg, nil
+	}
 	config, err := bs.LoadConfig([]string{app.GetPool()})
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			return true, "", nil
-		}
 		return false, "", err
 	}
 	enabledBackends := config.PoolEntry(app.GetPool(), logBackendsEnv)

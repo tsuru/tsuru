@@ -2505,6 +2505,29 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 	}
 }
 
+func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {
+	appName := "my-fake-app"
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	fakeApp.Pool = "mypool"
+	logConf := container.DockerLog{}
+	err := logConf.Update(&provision.ScopedConfig{
+		Envs: []provision.Entry{{Name: "log-driver", Value: "x"}},
+	})
+	c.Assert(err, check.IsNil)
+	enabled, msg, err := s.p.LogsEnabled(fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(enabled, check.Equals, false)
+	c.Assert(msg, check.Equals, "Logs not available through tsuru. Enabled log driver is \"x\".")
+	err = logConf.Update(&provision.ScopedConfig{
+		Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}},
+	})
+	c.Assert(err, check.IsNil)
+	enabled, msg, err = s.p.LogsEnabled(fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(enabled, check.Equals, true)
+	c.Assert(msg, check.Equals, "")
+}
+
 func (s *S) TestProvisionerRoutableUnits(c *check.C) {
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
