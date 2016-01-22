@@ -215,3 +215,16 @@ func (s *S) TestScopedConfigResetEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dbConf.Envs, check.DeepEquals, []Entry{{Name: "b", Value: "b0"}})
 }
+
+func (s *S) TestScopedConfigFilterPools(c *check.C) {
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	conf.Add("a", "a0")
+	conf.Add("b", "b0")
+	conf.AddPool("p1", "a", "a1")
+	conf.AddPool("p2", "b", "b1")
+	conf.FilterPools([]string{"p1"})
+	sort.Sort(ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []Entry{{Name: "a", Value: "a0"}, {Name: "b", Value: "b0"}})
+	c.Assert(conf.Pools, check.DeepEquals, []PoolEntry{{Name: "p1", Envs: []Entry{{Name: "a", Value: "a1"}}}})
+}

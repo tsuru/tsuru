@@ -111,18 +111,7 @@ func LoadConfig(pools []string) (*provision.ScopedConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pools != nil {
-		poolEntries := make([]provision.PoolEntry, 0, len(pools))
-		for _, pool := range pools {
-			for _, poolEntry := range bsConf.Pools {
-				if poolEntry.Name == pool {
-					poolEntries = append(poolEntries, poolEntry)
-					break
-				}
-			}
-		}
-		bsConf.Pools = poolEntries
-	}
+	bsConf.FilterPools(pools)
 	return bsConf, nil
 }
 

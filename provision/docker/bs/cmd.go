@@ -143,6 +143,7 @@ func (c *UpgradeCmd) Info() *cmd.Info {
 }
 
 func (c *UpgradeCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	context.RawOutput()
 	url, err := cmd.GetURL("/docker/bs/upgrade")
 	if err != nil {
 		return err

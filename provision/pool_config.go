@@ -150,6 +150,18 @@ func (c *ScopedConfig) ResetEnvs() {
 	c.Pools = nil
 }
 
+func (c *ScopedConfig) ResetBaseEnvs() {
+	c.entryMap = make(EntryMap)
+	c.Envs = nil
+}
+
+func (c *ScopedConfig) ResetPoolEnvs(pool string) {
+	if c.poolEntryMap != nil {
+		delete(c.poolEntryMap, pool)
+	}
+	c.updateFromMap()
+}
+
 func (c *ScopedConfig) SaveEnvs() error {
 	c.updateFromMap()
 	conn, err := db.Conn()
@@ -164,6 +176,22 @@ func (c *ScopedConfig) SaveEnvs() error {
 		},
 	})
 	return err
+}
+
+func (c *ScopedConfig) FilterPools(pools []string) {
+	if pools == nil {
+		return
+	}
+	poolEntries := make([]PoolEntry, 0, len(pools))
+	for _, pool := range pools {
+		for _, poolEntry := range c.Pools {
+			if poolEntry.Name == pool {
+				poolEntries = append(poolEntries, poolEntry)
+				break
+			}
+		}
+	}
+	c.Pools = poolEntries
 }
 
 func (c *ScopedConfig) loadMap() {
