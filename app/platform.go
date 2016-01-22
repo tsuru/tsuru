@@ -21,6 +21,15 @@ type Platform struct {
 	Disabled bool   `bson:",omitempty"`
 }
 
+var (
+	ErrProvisionerIsNotExtensible = errors.New("Provisioner is not extensible")
+	ErrPlatformNameMissing        = errors.New("Platform name is required.")
+	ErrPlatformNotFound           = errors.New("Platform doesn't exist.")
+	DuplicatePlatformError        = errors.New("Duplicate platform")
+	InvalidPlatformError          = errors.New("Invalid platform")
+	ErrDeletePlatformWithApps     = errors.New("Platform has apps. You should remove them before remove the platform.")
+)
+
 // Platforms returns the list of available platforms.
 func Platforms(enabledOnly bool) ([]Platform, error) {
 	var platforms []Platform
@@ -44,10 +53,10 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 		ok          bool
 	)
 	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
-		return errors.New("Provisioner is not extensible")
+		return ErrProvisionerIsNotExtensible
 	}
 	if opts.Name == "" {
-		return errors.New("Platform name is required.")
+		return ErrPlatformNameMissing
 	}
 	p := Platform{Name: opts.Name}
 	conn, err := db.Conn()
@@ -58,7 +67,7 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 	err = conn.Platforms().Insert(p)
 	if err != nil {
 		if mgo.IsDup(err) {
-			return DuplicatePlatformError{}
+			return DuplicatePlatformError
 		}
 		return err
 	}
@@ -73,12 +82,6 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 	return nil
 }
 
-type DuplicatePlatformError struct{}
-
-func (DuplicatePlatformError) Error() string {
-	return "Duplicate platform"
-}
-
 func PlatformUpdate(opts provision.PlatformOptions) error {
 	var (
 		provisioner provision.ExtensibleProvisioner
@@ -86,10 +89,10 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 		ok          bool
 	)
 	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
-		return errors.New("Provisioner is not extensible")
+		return ErrProvisionerIsNotExtensible
 	}
 	if opts.Name == "" {
-		return errors.New("Platform name is required.")
+		return ErrPlatformNameMissing
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -99,7 +102,7 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 	err = conn.Platforms().Find(bson.M{"_id": opts.Name}).One(&platform)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errors.New("Platform doesn't exist.")
+			return ErrPlatformNotFound
 		}
 		return err
 	}
@@ -136,10 +139,10 @@ func PlatformRemove(name string) error {
 		ok          bool
 	)
 	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
-		return errors.New("Provisioner is not extensible")
+		return ErrProvisionerIsNotExtensible
 	}
 	if name == "" {
-		return errors.New("Platform name is required!")
+		return ErrPlatformNameMissing
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -148,7 +151,7 @@ func PlatformRemove(name string) error {
 	defer conn.Close()
 	apps, _ := conn.Apps().Find(bson.M{"framework": name}).Count()
 	if apps > 0 {
-		return errors.New("Platform has apps. You should remove them before remove the platform.")
+		return ErrDeletePlatformWithApps
 	}
 	err = provisioner.PlatformRemove(name)
 	if err != nil {
@@ -166,13 +169,7 @@ func GetPlatform(name string) (*Platform, error) {
 	defer conn.Close()
 	err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
 	if err != nil {
-		return nil, InvalidPlatformError{}
+		return nil, InvalidPlatformError
 	}
 	return &p, nil
-}
-
-type InvalidPlatformError struct{}
-
-func (InvalidPlatformError) Error() string {
-	return "Invalid platform"
 }

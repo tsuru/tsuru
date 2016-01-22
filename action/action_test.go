@@ -67,8 +67,7 @@ func (s *S) TestRollbackUnrollbackableAction(c *check.C) {
 func (s *S) TestExecuteNoActions(c *check.C) {
 	pipeline := NewPipeline()
 	err := pipeline.Execute()
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "No actions to execute.")
+	c.Assert(err, check.Equals, ErrPipelineNoActions)
 }
 
 func (s *S) TestExecuteActionWithNilForward(c *check.C) {
@@ -89,8 +88,7 @@ func (s *S) TestExecuteActionWithNilForward(c *check.C) {
 	}
 	pipeline := NewPipeline(actions...)
 	err := pipeline.Execute()
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "All actions must define the forward function.")
+	c.Assert(err, check.Equals, ErrPipelineForwardMissing)
 	c.Assert(executed, check.Equals, true)
 }
 
@@ -115,8 +113,7 @@ func (s *S) TestExecuteMinParams(c *check.C) {
 	}
 	pipeline := NewPipeline(actions...)
 	err := pipeline.Execute()
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Not enough parameters to call Action.Forward.")
+	c.Assert(err, check.Equals, ErrPipelineFewParameters)
 	c.Assert(executed, check.Equals, true)
 }
 

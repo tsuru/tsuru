@@ -87,6 +87,12 @@ type Pipeline struct {
 	actions []*Action
 }
 
+var (
+	ErrPipelineNoActions      = errors.New("No actions to execute.")
+	ErrPipelineForwardMissing = errors.New("All actions must define the forward function.")
+	ErrPipelineFewParameters  = errors.New("Not enough parameters to call Action.Forward.")
+)
+
 // NewPipeline creates a new pipeline instance with the given list of actions.
 func NewPipeline(actions ...*Action) *Pipeline {
 	// Actions are usually global functions, copying them
@@ -132,15 +138,15 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 		err error
 	)
 	if len(p.actions) == 0 {
-		return errors.New("No actions to execute.")
+		return ErrPipelineNoActions
 	}
 	fwCtx := FWContext{Params: params}
 	for i, a := range p.actions {
 		log.Debugf("[pipeline] running the Forward for the %s action", a.Name)
 		if a.Forward == nil {
-			err = errors.New("All actions must define the forward function.")
+			err = ErrPipelineForwardMissing
 		} else if len(fwCtx.Params) < a.MinParams {
-			err = errors.New("Not enough parameters to call Action.Forward.")
+			err = ErrPipelineFewParameters
 		} else {
 			r, err = a.Forward(fwCtx)
 			a.rMutex.Lock()
