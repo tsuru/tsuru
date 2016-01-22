@@ -16,13 +16,17 @@ import (
 	"strings"
 )
 
+var (
+	ErrRepositoryNotFound = errors.New("Repository not found.")
+)
+
 // DiscoverRepositoryPath finds the path of the repository from a given
 // directory. It returns the path to the repository, or an an empty string and
 // a non-nil error if it can't find the repository.
 func DiscoverRepositoryPath(dir string) (string, error) {
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
-		return "", errors.New("Repository not found.")
+		return "", ErrRepositoryNotFound
 	}
 	dir = filepath.Join(dir, ".git")
 	for dir != "/.git" {
@@ -32,7 +36,7 @@ func DiscoverRepositoryPath(dir string) (string, error) {
 		}
 		dir = filepath.Join(dir, "..", "..", ".git")
 	}
-	return "", errors.New("Repository not found.")
+	return "", ErrRepositoryNotFound
 }
 
 // Repository represents a git repository.
@@ -55,7 +59,7 @@ func OpenRepository(p string) (*Repository, error) {
 	if err == nil && !fi.IsDir() {
 		return &Repository{path: p}, nil
 	}
-	return nil, errors.New("Repository not found.")
+	return nil, ErrRepositoryNotFound
 }
 
 // RemoteURL returns the URL of a remote by its name. Or an error, if the
@@ -75,5 +79,13 @@ func (r *Repository) RemoteURL(name string) (string, error) {
 			return strings.Split(scanner.Text(), " = ")[1], nil
 		}
 	}
-	return "", fmt.Errorf("Remote %q not found.", name)
+	return "", errRemoteNotFound{name}
+}
+
+type errRemoteNotFound struct {
+	name string
+}
+
+func (e errRemoteNotFound) Error() string {
+	return fmt.Sprintf("Remote %q not found.", e.name)
 }
