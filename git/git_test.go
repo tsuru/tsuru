@@ -5,7 +5,6 @@
 package git
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"path"
@@ -81,12 +80,12 @@ func (s *S) TestDiscoverRepositoryPath(c *check.C) {
 		{
 			path:     path.Join(s.repoPath, "a", "b", "c", "d"),
 			expected: "",
-			err:      errors.New("Repository not found."),
+			err:      ErrRepositoryNotFound,
 		},
 		{
 			path:     path.Join(os.TempDir(), "aoshae8yahhh8ua", "doctor-jimmy"),
 			expected: "",
-			err:      errors.New("Repository not found."),
+			err:      ErrRepositoryNotFound,
 		},
 	}
 	for _, d := range data {
@@ -126,7 +125,7 @@ func (s *S) TestOpenRepository(c *check.C) {
 		{
 			path:     "/",
 			expected: nil,
-			err:      errors.New("Repository not found."),
+			err:      ErrRepositoryNotFound,
 		},
 	}
 	for _, d := range data {
@@ -150,7 +149,7 @@ func (s *S) TestGetRemoteURL(c *check.C) {
 	}{
 		{"origin", "git@github.com:tsuru/tsuru-django-sample.git", nil},
 		{"tsuru", "git@tsuruhost.com:gopher.git", nil},
-		{"wut", "", errors.New(`Remote "wut" not found.`)},
+		{"wut", "", errRemoteNotFound{"wut"}},
 	}
 	repo, err := OpenRepository(s.repoPath)
 	c.Assert(err, check.IsNil)
@@ -159,6 +158,7 @@ func (s *S) TestGetRemoteURL(c *check.C) {
 		if got != d.expected {
 			c.Errorf("RemoteURL(%q): Want %q. Got %q.", d.name, d.expected, got)
 		}
+
 		if !reflect.DeepEqual(d.err, err) {
 			c.Errorf("RemoteURL(%q): Want error %q. Got %q.", d.name, d.err, err)
 		}
