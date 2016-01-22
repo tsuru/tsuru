@@ -900,6 +900,8 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&bs.EnvSetCmd{},
 		&bs.InfoCmd{},
 		&bs.UpgradeCmd{},
+		&dockerLogInfo{},
+		&dockerLogUpdate{},
 	}
 }
 

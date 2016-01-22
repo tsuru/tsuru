@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -19,6 +19,8 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
 type addNodeToSchedulerCmd struct {
@@ -613,5 +615,166 @@ func (c *autoScaleDeleteRuleCmd) Run(context *cmd.Context, client *cmd.Client) e
 		return err
 	}
 	fmt.Fprintln(context.Stdout, "Rule successfully removed.")
+	return nil
+}
+
+type dockerLogUpdate struct {
+	cmd.ConfirmationCommand
+	fs        *gnuflag.FlagSet
+	pool      string
+	restart   bool
+	logDriver string
+	logOpts   cmd.MapFlag
+}
+
+func (c *dockerLogUpdate) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		desc := "Pool name where log options will be used."
+		c.fs.StringVar(&c.pool, "pool", "", desc)
+		c.fs.StringVar(&c.pool, "p", "", desc)
+		desc = "Whether tsuru should restart all apps on the specified pool."
+		c.fs.BoolVar(&c.restart, "restart", false, desc)
+		c.fs.BoolVar(&c.restart, "r", false, desc)
+		desc = "Log options send to the specified log-driver"
+		c.fs.Var(&c.logOpts, "log-opt", desc)
+		desc = "Chosen log driver. Supported log drivers depend on the docker version running on nodes."
+		c.fs.StringVar(&c.logDriver, "log-driver", "", desc)
+	}
+	return c.fs
+}
+
+func (c *dockerLogUpdate) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-log-update",
+		Usage: "docker-log-update [-r/--restart] [-p/--pool poolname] --log-driver <driver> [--log-opt name=value]...",
+		Desc: `Set custom configuration for container logs. By default tsuru configures
+application containers to send all logs to the tsuru/bs container through
+syslog.
+
+Setting a custom log-driver allow users to change this behavior and make
+containers send their logs directly using the driver bypassing tsuru/bs
+completely. In this situation the 'tsuru app-log' command will not work
+anymore.
+
+The --log-driver option accepts either the value 'bs' restoring tsuru default
+behavior or any log-driver supported by docker along with their --log-opt. See
+https://docs.docker.com/engine/reference/logging/overview/ for more details.
+
+If --pool is specified the log-driver will only be used on containers started
+on the chosen pool.`,
+		MinArgs: 0,
+	}
+}
+
+func (c *dockerLogUpdate) Run(context *cmd.Context, client *cmd.Client) error {
+	context.RawOutput()
+	if c.restart {
+		extra := ""
+		if c.pool != "" {
+			extra = fmt.Sprintf(" running on pool %s", c.pool)
+		}
+		msg := fmt.Sprintf("Are you sure you want to restart all apps%s?", extra)
+		if !c.Confirm(context, msg) {
+			return nil
+		}
+	}
+	url, err := cmd.GetURL("/docker/logs")
+	if err != nil {
+		return err
+	}
+	envList := []provision.Entry{
+		{Name: "log-driver", Value: c.logDriver},
+	}
+	for name, value := range c.logOpts {
+		envList = append(envList, provision.Entry{Name: name, Value: value})
+	}
+	conf := provision.ScopedConfig{}
+	if c.pool == "" {
+		conf.Envs = envList
+	} else {
+		conf.Pools = []provision.PoolEntry{{
+			Name: c.pool,
+			Envs: envList,
+		}}
+	}
+	b, err := json.Marshal(logsSetData{
+		Restart: c.restart,
+		Config:  conf,
+	})
+	if err != nil {
+		return err
+	}
+	buffer := bytes.NewBuffer(b)
+	request, err := http.NewRequest("POST", url, buffer)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	return cmd.StreamJSONResponse(context.Stdout, response)
+}
+
+type dockerLogInfo struct{}
+
+func (c *dockerLogInfo) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "docker-log-info",
+		Usage:   "docker-log-info",
+		Desc:    "Prints information about docker log configuration for each pool.",
+		MinArgs: 0,
+	}
+}
+
+func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
+	url, err := cmd.GetURL("/docker/logs")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	var conf provision.ScopedConfig
+	err = json.NewDecoder(response.Body).Decode(&conf)
+	if err != nil {
+		return err
+	}
+	t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
+	for _, envVar := range conf.Envs {
+		if envVar.Name == container.DockerLogDriverConfig {
+			fmt.Fprintf(context.Stdout, "Log driver [default]: %s\n", envVar.Value)
+			continue
+		}
+		t.AddRow(cmd.Row([]string{envVar.Name, fmt.Sprintf("%v", envVar.Value)}))
+	}
+	if t.Rows() > 0 {
+		t.Sort()
+		context.Stdout.Write(t.Bytes())
+	}
+	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
+	for _, pool := range conf.Pools {
+		t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
+		for _, envVar := range pool.Envs {
+			if envVar.Name == container.DockerLogDriverConfig {
+				fmt.Fprintf(context.Stdout, "\nLog driver [pool %s]: %s\n", pool.Name, envVar.Value)
+				continue
+			}
+			t.AddRow(cmd.Row([]string{envVar.Name, fmt.Sprintf("%v", envVar.Value)}))
+		}
+		if t.Rows() > 0 {
+			t.Sort()
+			context.Stdout.Write(t.Bytes())
+		}
+	}
 	return nil
 }

@@ -1628,6 +1628,8 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&bs.EnvSetCmd{},
 		&bs.InfoCmd{},
 		&bs.UpgradeCmd{},
+		&dockerLogInfo{},
+		&dockerLogUpdate{},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/mgo.v2"
@@ -56,6 +57,8 @@ func init() {
 	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AuthorizationRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AuthorizationRequiredHandler(bsEnvSetHandler))
 	api.RegisterHandler("/docker/bs", "GET", api.AuthorizationRequiredHandler(bsConfigGetHandler))
+	api.RegisterHandler("/docker/logs", "GET", api.AuthorizationRequiredHandler(logsConfigGetHandler))
+	api.RegisterHandler("/docker/logs", "POST", api.AuthorizationRequiredHandler(logsConfigSetHandler))
 }
 
 func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -639,4 +642,54 @@ func listContextValues(t permission.Token, scheme *permission.PermissionScheme, 
 		values = append(values, ctx.Value)
 	}
 	return values, nil
+}
+
+func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	pools, err := listContextValues(t, permission.PermPoolUpdateLogs, true)
+	if err != nil {
+		return err
+	}
+	conf, err := provision.FindScopedConfig("logs")
+	if err != nil {
+		return err
+	}
+	conf.FilterPools(pools)
+	return json.NewEncoder(w).Encode(conf)
+}
+
+type logsSetData struct {
+	Config  provision.ScopedConfig
+	Restart bool
+}
+
+func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var requestData logsSetData
+	err := json.NewDecoder(r.Body).Decode(&requestData)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("unable to parse body as json: %s", err),
+		}
+	}
+	requestConfig := requestData.Config
+	if len(requestConfig.Envs) > 0 && !permission.Check(t, permission.PermPoolUpdateLogs) {
+		return permission.ErrUnauthorized
+	}
+	for _, poolEnv := range requestConfig.Pools {
+		hasPermission := permission.Check(t, permission.PermPoolUpdateLogs,
+			permission.Context(permission.CtxPool, poolEnv.Name))
+		if !hasPermission {
+			return permission.ErrUnauthorized
+		}
+	}
+	dockerLog := container.DockerLog{}
+	err = dockerLog.Update(&requestConfig)
+	if err != nil {
+		return err
+	}
+	if requestData.Restart {
+		//TODO(cezarsa): restart containers
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
 }

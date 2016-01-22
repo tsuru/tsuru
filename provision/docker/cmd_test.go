@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
 
@@ -659,4 +661,129 @@ func (s *S) TestAutoScaleDeleteCmdRunDefaultAskForConfirmation(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(called, check.Equals, true)
 	c.Assert(buf.String(), check.Equals, "Are you sure you want to remove the default rule? (y/n) Rule successfully removed.\n")
+}
+
+func (s *S) TestDockerLogUpdateRun(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	msg := tsuruIo.SimpleJsonMessage{Message: "success!!!"}
+	result, _ := json.Marshal(msg)
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, check.IsNil)
+			expected := provision.ScopedConfig{
+				Envs: []provision.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
+			}
+			var data logsSetData
+			err = json.Unmarshal(body, &data)
+			c.Assert(err, check.IsNil)
+			sort.Sort(provision.ConfigEntryList(data.Config.Envs))
+			c.Assert(data.Config, check.DeepEquals, expected)
+			return req.URL.Path == "/docker/logs" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := dockerLogUpdate{}
+	err := cmd.Flags().Parse(true, []string{"--log-driver", "x", "--log-opt", "a=1", "--log-opt", "b=2"})
+	c.Assert(err, check.IsNil)
+	err = cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "success!!!")
+}
+
+func (s *S) TestDockerLogUpdateForPoolRun(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	msg := tsuruIo.SimpleJsonMessage{Message: "success!!!"}
+	result, _ := json.Marshal(msg)
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, check.IsNil)
+			expected := provision.ScopedConfig{
+				Pools: []provision.PoolEntry{
+					{
+						Name: "p1",
+						Envs: []provision.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
+					},
+				},
+			}
+			var data logsSetData
+			err = json.Unmarshal(body, &data)
+			c.Assert(err, check.IsNil)
+			sort.Sort(provision.ConfigEntryList(data.Config.Pools[0].Envs))
+			c.Assert(data.Config, check.DeepEquals, expected)
+			return req.URL.Path == "/docker/logs" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := dockerLogUpdate{}
+	err := cmd.Flags().Parse(true, []string{"--pool", "p1", "--log-driver", "x", "--log-opt", "a=1", "--log-opt", "b=2"})
+	c.Assert(err, check.IsNil)
+	err = cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "success!!!")
+}
+
+func (s *S) TestDockerLogInfoRun(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	conf := provision.ScopedConfig{
+		Envs: []provision.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
+		Pools: []provision.PoolEntry{
+			{
+				Name: "p1",
+				Envs: []provision.Entry{{Name: "a", Value: "9"}, {Name: "log-driver", Value: "x"}},
+			},
+			{
+				Name: "p2",
+				Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}},
+			},
+		},
+	}
+	result, _ := json.Marshal(conf)
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/logs" && req.Method == "GET"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := dockerLogInfo{}
+	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, `Log driver [default]: x
++------+-------+
+| Name | Value |
++------+-------+
+| a    | 1     |
+| b    | 2     |
++------+-------+
+
+Log driver [pool p1]: x
++------+-------+
+| Name | Value |
++------+-------+
+| a    | 9     |
++------+-------+
+
+Log driver [pool p2]: bs
+`)
 }

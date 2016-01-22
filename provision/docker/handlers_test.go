@@ -1484,3 +1484,83 @@ func (s *HandlersSuite) TestAutoScaleDeleteRuleNotFound(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "rule not found\n")
 }
+
+func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
+	recorder := httptest.NewRecorder()
+	json := `{
+		"restart": false,
+		"config": {
+			"envs": [
+				{"name": "log-driver", "value": "awslogs"},
+				{"name": "awslogs-region", "value": "sa-east-1"}
+			],
+			"pools": [
+				{
+					"name": "POOL1",
+					"envs": [
+						{"name": "log-driver", "value": "bs"}
+					]
+				},
+				{
+					"name": "POOL2",
+					"envs": [
+						{"name": "log-driver", "value": "fluentd"},
+						{"name": "fluentd-address", "value": "localhost:2222"}
+					]
+				}
+			]
+		}
+	}`
+	body := bytes.NewBufferString(json)
+	request, err := http.NewRequest("POST", "/docker/logs", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	conf, err := provision.FindScopedConfig("logs")
+	c.Assert(err, check.IsNil)
+	sort.Sort(provision.ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
+	c.Assert(conf.Pools, check.HasLen, 2)
+	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
+		{Name: "POOL1", Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}}},
+		{Name: "POOL2", Envs: []provision.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	})
+}
+
+func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/logs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	expected := &provision.ScopedConfig{}
+	var conf provision.ScopedConfig
+	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	c.Assert(err, check.IsNil)
+	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
+	c.Assert(conf.Pools, check.DeepEquals, expected.Pools)
+	logConf := container.DockerLog{}
+	logConf.Update(&provision.ScopedConfig{
+		Pools: []provision.PoolEntry{
+			{Name: "p1", Envs: []provision.Entry{
+				{Name: "log-driver", Value: "syslog"},
+			}},
+		},
+	})
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	c.Assert(err, check.IsNil)
+	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{})
+	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
+		{Name: "p1", Envs: []provision.Entry{{Name: "log-driver", Value: "syslog"}}},
+	})
+}
