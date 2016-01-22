@@ -668,6 +668,63 @@ func (s *S) TestContainerStart(c *check.C) {
 	c.Assert(cont.Status, check.Equals, "starting")
 }
 
+func (s *S) TestContainerStartCustomLog(c *check.C) {
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app.Pool = "mypool"
+	testCases := []struct {
+		name string
+		opts map[string]string
+		conf provision.ScopedConfig
+	}{
+		{"fluentd", map[string]string{
+			"fluentd-address": "localhost:24224",
+		}, provision.ScopedConfig{
+			Envs: []provision.Entry{
+				{Name: "log-driver", Value: "fluentd"},
+				{Name: "fluentd-address", Value: "localhost:24224"},
+			},
+		}},
+		{"syslog", map[string]string{
+			"syslog-address": "udp://localhost:1514",
+		}, provision.ScopedConfig{
+			Envs: []provision.Entry{
+				{Name: "log-driver", Value: "bs"},
+			},
+		}},
+		{"fluentd", map[string]string{
+			"fluentd-address": "somewhere:24224",
+			"tag":             "x",
+		}, provision.ScopedConfig{
+			Envs: []provision.Entry{
+				{Name: "log-driver", Value: "syslog"},
+				{Name: "tag", Value: "y"},
+			},
+			Pools: []provision.PoolEntry{
+				{Name: "mypool", Envs: []provision.Entry{
+					{Name: "log-driver", Value: "fluentd"},
+					{Name: "fluentd-address", Value: "somewhere:24224"},
+					{Name: "tag", Value: "x"},
+				}},
+			},
+		}},
+	}
+	logConf := DockerLog{}
+	for _, testData := range testCases {
+		cont, err := s.newContainer(newContainerOpts{}, nil)
+		c.Assert(err, check.IsNil)
+		err = logConf.Update(&testData.conf)
+		c.Assert(err, check.IsNil)
+		err = cont.Start(&StartArgs{Provisioner: s.p, App: app})
+		c.Assert(err, check.IsNil)
+		dockerContainer, err := client.InspectContainer(cont.ID)
+		c.Assert(err, check.IsNil)
+		c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, testData.name)
+		c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, testData.opts)
+	}
+}
+
 func (s *S) TestContainerStartDeployContainer(c *check.C) {
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)

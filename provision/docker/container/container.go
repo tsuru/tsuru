@@ -425,11 +425,15 @@ func (c *Container) Start(args *StartArgs) error {
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
 		}
+		logConf := DockerLog{}
+		pool := args.App.GetPool()
+		driver, opts, err := logConf.logOpts(pool)
+		if err != nil {
+			return err
+		}
 		hostConfig.LogConfig = docker.LogConfig{
-			Type: "syslog",
-			Config: map[string]string{
-				"syslog-address": "udp://localhost:" + strconv.Itoa(BsSysLogPort()),
-			},
+			Type:   driver,
+			Config: opts,
 		}
 	}
 	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")
