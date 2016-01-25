@@ -56,8 +56,8 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 		fd := int(desc.Fd())
 		if terminal.IsTerminal(fd) {
 			width, height, _ = terminal.GetSize(fd)
-			oldState, err := terminal.MakeRaw(fd)
-			if err != nil {
+			oldState, terminalErr := terminal.MakeRaw(fd)
+			if terminalErr != nil {
 				return err
 			}
 			defer terminal.Restore(fd, oldState)
