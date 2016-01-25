@@ -461,6 +461,46 @@ func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
 	c.Assert(e, check.Equals, err)
 }
 
+func (s *S) TestImageDeploy(c *check.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("otherapp", "test", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	_, err := p.ImageDeploy(app, "image/deploy", &buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Image deploy called")
+	c.Assert(p.apps[app.GetName()].image, check.Equals, "image/deploy")
+}
+
+func (s *S) TestImageDeployWithPrepareFailure(c *check.C) {
+	var buf bytes.Buffer
+	err := errors.New("error")
+	app := NewFakeApp("otherapp", "test", 1)
+	p := NewFakeProvisioner()
+	p.PrepareFailure("ImageDeploy", err)
+	_, e := p.ImageDeploy(app, "", &buf)
+	c.Assert(e, check.NotNil)
+	c.Assert(e, check.Equals, err)
+}
+
+func (s *S) TestBuildImage(c *check.C) {
+	var buf bytes.Buffer
+	p := NewFakeProvisioner()
+	imageName, err := p.BuildImage("http://localhost/Dockerfile", &buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(imageName, check.Equals, "new-image")
+}
+
+func (s *S) TestBuildImageWithPrepareFailure(c *check.C) {
+	var buf bytes.Buffer
+	err := errors.New("error")
+	p := NewFakeProvisioner()
+	p.PrepareFailure("BuildImage", err)
+	_, e := p.BuildImage("", &buf)
+	c.Assert(e, check.NotNil)
+	c.Assert(e, check.Equals, err)
+}
+
 func (s *S) TestProvision(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()

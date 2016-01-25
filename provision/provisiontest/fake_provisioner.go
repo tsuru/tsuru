@@ -517,6 +517,14 @@ func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, w 
 	return "app-image", nil
 }
 
+func (p *FakeProvisioner) BuildImage(url string, w io.Writer) (string, error) {
+	if err := p.getError("BuildImage"); err != nil {
+		return "", err
+	}
+	w.Write([]byte("Building dockerfile image\n"))
+	return "new-image", nil
+}
+
 func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, w io.Writer) (string, error) {
 	if err := p.getError("ImageDeploy"); err != nil {
 		return "", err
@@ -527,6 +535,7 @@ func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, w io.Writer
 	if !ok {
 		return "", errNotProvisioned
 	}
+	pApp.image = img
 	w.Write([]byte("Image deploy called"))
 	p.apps[app.GetName()] = pApp
 	return img, nil
@@ -1065,6 +1074,7 @@ type provisionedApp struct {
 	cnames      []string
 	unitLen     int
 	lastData    map[string]interface{}
+	image       string
 }
 
 type provisionedPlatform struct {
