@@ -253,33 +253,44 @@ func CreateApp(app *App, user *auth.User) error {
 }
 
 // Update changes informations of the application.
-func (app *App) Update() error {
+func (app *App) Update(updateData App, w io.Writer) error {
+	description := updateData.Description
+	planName := updateData.Plan.Name
+	poolName := updateData.Pool
+	if description != "" {
+		app.Description = description
+	}
+	if poolName != "" {
+		app.Pool = poolName
+		_, err := app.GetPoolForApp(app.Pool)
+		if err != nil {
+			return err
+		}
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+	if planName != "" {
+		plan, err := findPlanByName(planName)
+		if err != nil {
+			return err
+		}
+		var oldPlan Plan
+		oldPlan, app.Plan = app.Plan, *plan
+		actions := []*action.Action{
+			&moveRouterUnits,
+			&saveApp,
+			&restartApp,
+			&removeOldBackend,
+		}
+		err = action.NewPipeline(actions...).Execute(app, &oldPlan, w)
+		if err != nil {
+			return err
+		}
+	}
 	return conn.Apps().Update(bson.M{"name": app.Name}, app)
-}
-
-// ChangePlan changes the plan of the application.
-//
-// It may change the state of the application if the new plan includes a new
-// router or a change in the amount of available memory.
-func (app *App) ChangePlan(planName string, w io.Writer) error {
-	plan, err := findPlanByName(planName)
-	if err != nil {
-		return err
-	}
-	var oldPlan Plan
-	oldPlan, app.Plan = app.Plan, *plan
-	actions := []*action.Action{
-		&moveRouterUnits,
-		&saveApp,
-		&restartApp,
-		&removeOldBackend,
-	}
-	return action.NewPipeline(actions...).Execute(app, &oldPlan, w)
 }
 
 // unbind takes all service instances that are bound to the app, and unbind
@@ -716,29 +727,6 @@ func (app *App) GetDefaultPool() (string, error) {
 		return "", stderr.New("No default pool.")
 	}
 	return pools[0].Name, nil
-}
-
-func (app *App) ChangePool(newPoolName string) error {
-	poolName, err := app.GetPoolForApp(newPoolName)
-	if err != nil {
-		return err
-	}
-	if poolName == "" {
-		return stderr.New("This pool doesn't exists.")
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"pool": poolName}},
-	)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // setEnv sets the given environment variable in the app.

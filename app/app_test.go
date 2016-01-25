@@ -3316,54 +3316,6 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	c.Assert("nonpublic", check.Equals, app.Pool)
 }
 
-func (s *S) TestAppChangePool(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("test")
-	err = provision.AddTeamsToPool("test", []string{"nopool"})
-	c.Assert(err, check.IsNil)
-	opts = provision.AddPoolOptions{Name: "test2"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("test2")
-	err = provision.AddTeamsToPool("test2", []string{"nopool"})
-	c.Assert(err, check.IsNil)
-	a := App{
-		Name:      "test",
-		TeamOwner: "nopool",
-		Pool:      "test",
-	}
-	err = s.conn.Apps().Insert(a)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	c.Assert(err, check.IsNil)
-	err = a.ChangePool("test2")
-	c.Assert(err, check.IsNil)
-	app, _ := GetByName(a.Name)
-	c.Assert(app.Pool, check.Equals, "test2")
-}
-
-func (s *S) TestAppChangePoolNotExists(c *check.C) {
-	opts := provision.AddPoolOptions{Name: "test"}
-	err := provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("test")
-	err = provision.AddTeamsToPool("test", []string{"nopool"})
-	c.Assert(err, check.IsNil)
-	app := App{
-		Name:      "test",
-		TeamOwner: "nopool",
-		Pool:      "test",
-	}
-	err = s.conn.Apps().Insert(app)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	c.Assert(err, check.IsNil)
-	err = app.ChangePool("test2")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "pool not found")
-	c.Assert(app.Pool, check.Equals, "test")
-}
-
 func (s *S) TestShellToAnApp(c *check.C) {
 	a := App{Name: "my-test-app"}
 	err := s.conn.Apps().Insert(a)
@@ -3396,193 +3348,6 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 	envs := a.MetricEnvs()
 	expected := Provisioner.MetricEnvs(&a)
 	c.Assert(envs, check.DeepEquals, expected)
-}
-
-func (s *S) TestChangePlan(c *check.C) {
-	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
-	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
-	err = a.ChangePlan(plan.Name, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Plan, check.DeepEquals, plan)
-	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 1)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
-	c.Assert(routertest.HCRouter.HasBackend(app.Name), check.Equals, true)
-	routes, err := routertest.HCRouter.Routes(app.Name)
-	c.Assert(err, check.IsNil)
-	routesStr := make([]string, len(routes))
-	for i, route := range routes {
-		routesStr[i] = route.String()
-	}
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	expected := make([]string, len(units))
-	for i, unit := range units {
-		expected[i] = unit.Address.String()
-	}
-	sort.Strings(routesStr)
-	sort.Strings(expected)
-	c.Assert(routesStr, check.DeepEquals, expected)
-}
-
-func (s *S) TestChangePlanNoRouteChange(c *check.C) {
-	plan := Plan{Name: "something", Router: "fake", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
-	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	err = a.ChangePlan(plan.Name, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Plan, check.DeepEquals, plan)
-	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 1)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(app.Name)
-	c.Assert(err, check.IsNil)
-	routesStr := make([]string, len(routes))
-	for i, route := range routes {
-		routesStr[i] = route.String()
-	}
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	expected := make([]string, len(units))
-	for i, unit := range units {
-		expected[i] = unit.Address.String()
-	}
-	sort.Strings(routesStr)
-	sort.Strings(expected)
-	c.Assert(routesStr, check.DeepEquals, expected)
-}
-
-func (s *S) TestChangePlanNotFound(c *check.C) {
-	var app App
-	err := app.ChangePlan("some-unknown-plan", new(bytes.Buffer))
-	c.Assert(err, check.Equals, ErrPlanNotFound)
-}
-
-func (s *S) TestChangePlanBackendRemovalFailure(c *check.C) {
-	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
-	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Plan: Plan{Name: "wrong", Router: "fakee", Memory: 536870912, CpuShare: 50}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
-	err = a.ChangePlan(plan.Name, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Plan.Name, check.Equals, "something")
-	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 1)
-	// Yeah, a test-ensured inconsistency.
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(app.Name), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(app.Name)
-	c.Assert(err, check.IsNil)
-	routesStr := make([]string, len(routes))
-	for i, route := range routes {
-		routesStr[i] = route.String()
-	}
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	expected := make([]string, len(units))
-	for i, unit := range units {
-		expected[i] = unit.Address.String()
-	}
-	sort.Strings(routesStr)
-	sort.Strings(expected)
-	c.Assert(routesStr, check.DeepEquals, expected)
-}
-
-func (s *S) TestChangePlanRestartFailure(c *check.C) {
-	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
-	err := s.conn.Plans().Insert(plan)
-	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Ip: "old-address", Plan: Plan{Name: "old", Router: "fake", Memory: 536870912, CpuShare: 50}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
-	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
-	err = a.ChangePlan(plan.Name, new(bytes.Buffer))
-	c.Assert(err, check.NotNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Plan.Name, check.Equals, "old")
-	c.Assert(app.Ip, check.Equals, "old-address")
-	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 0)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(app.Name), check.Equals, false)
-	routes, err := routertest.FakeRouter.Routes(app.Name)
-	c.Assert(err, check.IsNil)
-	routesStr := make([]string, len(routes))
-	for i, route := range routes {
-		routesStr[i] = route.String()
-	}
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	expected := make([]string, len(units))
-	for i, unit := range units {
-		expected[i] = unit.Address.String()
-	}
-	sort.Strings(routesStr)
-	sort.Strings(expected)
-	c.Assert(routesStr, check.DeepEquals, expected)
-}
-
-func (s *S) TestChangePlanNoRestartNeeded(c *check.C) {
-	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 50, Memory: 536870912}
-	err := s.conn.Plans().Insert(plan)
-	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
-	err = a.ChangePlan(plan.Name, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Plan, check.DeepEquals, plan)
-	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 0)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
-	c.Assert(routertest.HCRouter.HasBackend(app.Name), check.Equals, true)
 }
 
 func (s *S) TestRebuildRoutes(c *check.C) {
@@ -3731,10 +3496,299 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	err := CreateApp(&app, s.user)
 	defer Delete(&app, nil)
 	c.Assert(err, check.IsNil)
-	a := App{Name: "example", Description: "bleble"}
-	err = a.Update()
+	updateData := App{Name: "example", Description: "bleble"}
+	err = app.Update(updateData, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Description, check.Equals, "bleble")
+}
+
+func (s *S) TestUpdatePool(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	opts = provision.AddPoolOptions{Name: "test2"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test2")
+	err = provision.AddTeamsToPool("test2", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
+	err = CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "test", Pool: "test2"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Pool, check.Equals, "test2")
+}
+
+func (s *S) TestUpdatePoolNotExists(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
+	err = CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "test", Pool: "test2"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "pool not found")
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Pool, check.Equals, "test")
+}
+
+func (s *S) TestUpdatePlan(c *check.C) {
+	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
+	err := s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, false)
+	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.HCRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
+	plan := Plan{Name: "something", Router: "fake", CpuShare: 100, Memory: 268435456}
+	err := s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdatePlanNotFound(c *check.C) {
+	var app App
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "some-unknown-plan"}}
+	err := app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.Equals, ErrPlanNotFound)
+}
+
+func (s *S) TestUpdatePlanBackendRemovalFailure(c *check.C) {
+	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
+	err := s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Plan: Plan{Name: "wrong", Router: "fakee", Memory: 536870912, CpuShare: 50}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan.Name, check.Equals, "something")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	// Yeah, a test-ensured inconsistency.
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
+	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
+	err := s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Ip: "old-address", Plan: Plan{Name: "old", Router: "fake", Memory: 536870912, CpuShare: 50}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.NotNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan.Name, check.Equals, "old")
+	c.Assert(dbApp.Ip, check.Equals, "old-address")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, false)
+	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdatePlanNoRestartNeeded(c *check.C) {
+	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 50, Memory: 536870912}
+	err := s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, false)
+	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, true)
+}
+
+func (s *S) TestUpdateDescriptionPoolAndPlan(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	opts = provision.AddPoolOptions{Name: "test2"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test2")
+	err = provision.AddTeamsToPool("test2", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
+	err = s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}, Description: "blablabla", Pool: "test"}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
+	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}, Description: "bleble", Pool: "test2"}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(dbApp.Description, check.Equals, "bleble")
+	c.Assert(dbApp.Pool, check.Equals, "test2")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, false)
+	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.HCRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
 }

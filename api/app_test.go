@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
@@ -946,7 +947,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid platform\n")
 }
 
-func (s *S) TestUpdateApp(c *check.C) {
+func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -964,6 +965,7 @@ func (s *S) TestUpdateApp(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -972,9 +974,145 @@ func (s *S) TestUpdateApp(c *check.C) {
 	action := rectest.Action{
 		Action: "update-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=myapp", "description=my app description"},
+		Extra:  []interface{}{"app=myapp", "description=my app description", "pool="},
 	}
 	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	data := `{"pool":"test"}`
+	body := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend"}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	opts := provision.AddPoolOptions{Name: "test"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdatePool,
+		Context: permission.Context(permission.CtxApp, "-other-"),
+	})
+	data := `{"pool":"test"}`
+	body := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
+	data := `{"pool":"test"}`
+	body := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Matches, "^App not found.\n$")
+}
+
+func (s *S) TestUpdateAppPlanOnly(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	plans := []app.Plan{
+		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
+		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
+	}
+	for _, plan := range plans {
+		err := plan.Save()
+		c.Assert(err, check.IsNil)
+		defer app.PlanRemove(plan.Name)
+	}
+	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	data := `{"plan":{"name":"hiperplan"}}`
+	body := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/someapp", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Plan, check.DeepEquals, plans[0])
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
+}
+
+func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
+	plan := app.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
+	err := plan.Save()
+	c.Assert(err, check.IsNil)
+	defer app.PlanRemove(plan.Name)
+	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	data := `{"plan":{"name":"hiperplan"}}`
+	body := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/someapp", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusOK)
+	var message tsuruIo.SimpleJsonMessage
+	err = json.NewDecoder(recorder.Body).Decode(&message)
+	c.Assert(err, check.IsNil)
+	c.Assert(message.Error, check.DeepEquals, app.ErrPlanNotFound.Error())
+}
+
+func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	data := `{}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps/myapp", b)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	errorMessage := "You must set a flag. Use the 'app-update info' command for more information.\n"
+	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }
 
 func (s *S) TestUpdateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
@@ -4306,61 +4444,6 @@ func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) 
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
 	c.Assert(a.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
-}
-
-func (s *S) TestChangePool(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{s.team.Name})
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("test")
-	body := strings.NewReader("test")
-	request, err := http.NewRequest("POST", "/apps/myappx/pool", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
-func (s *S) TestChangePoolForbiddenIfTheUserDoesNotHaveAcces(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend"}
-	err := s.conn.Apps().Insert(&a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	opts := provision.AddPoolOptions{Name: "test"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("test")
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdatePool,
-		Context: permission.Context(permission.CtxApp, "-other-"),
-	})
-	body := strings.NewReader("test")
-	request, err := http.NewRequest("POST", "/apps/myappx/pool", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestChangePoolWhenAppDoesNotExist(c *check.C) {
-	body := strings.NewReader("test")
-	request, err := http.NewRequest("POST", "/apps/myappx/pool", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {

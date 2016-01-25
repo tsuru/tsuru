@@ -12,7 +12,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -228,55 +227,4 @@ func (s *S) TestRoutersListNoPlanCreatePermission(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestChangePlan(c *check.C) {
-	config.Set("docker:router", "fake")
-	defer config.Unset("docker:router")
-	plans := []app.Plan{
-		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
-		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
-	}
-	for _, plan := range plans {
-		err := plan.Save()
-		c.Assert(err, check.IsNil)
-		defer app.PlanRemove(plan.Name)
-	}
-	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plans[1]}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	request, err := http.NewRequest("POST", "/apps/someapp/plan", strings.NewReader(`{"name":"hiperplan"}`))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Plan, check.DeepEquals, plans[0])
-	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
-}
-
-func (s *S) TestChangePlanNotFound(c *check.C) {
-	plan := app.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
-	err := plan.Save()
-	c.Assert(err, check.IsNil)
-	defer app.PlanRemove(plan.Name)
-	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	request, err := http.NewRequest("POST", "/apps/someapp/plan", strings.NewReader(`{"name":"hiperplan"}`))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Check(recorder.Code, check.Equals, http.StatusOK)
-	var message io.SimpleJsonMessage
-	err = json.NewDecoder(recorder.Body).Decode(&message)
-	c.Assert(err, check.IsNil)
-	c.Assert(message.Error, check.DeepEquals, app.ErrPlanNotFound.Error())
 }

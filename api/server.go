@@ -124,7 +124,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/apps/{app}", AuthorizationRequiredHandler(appInfo))
 	m.Add("Post", "/apps/{app}/cname", AuthorizationRequiredHandler(setCName))
 	m.Add("Delete", "/apps/{app}/cname", AuthorizationRequiredHandler(unsetCName))
-	m.Add("Post", "/apps/{app}/plan", AuthorizationRequiredHandler(changePlan))
 	runHandler := AuthorizationRequiredHandler(runCommand)
 	m.Add("Post", "/apps/{app}/run", runHandler)
 	m.Add("Post", "/apps/{app}/restart", AuthorizationRequiredHandler(restart))
@@ -153,7 +152,6 @@ func RunServer(dry bool) http.Handler {
 	logPostHandler := AuthorizationRequiredHandler(addLog)
 	m.Add("Post", "/apps/{app}/log", logPostHandler)
 	m.Add("Post", "/apps/{appname}/deploy/rollback", AuthorizationRequiredHandler(deployRollback))
-	m.Add("Post", "/apps/{app}/pool", AuthorizationRequiredHandler(appChangePool))
 	m.Add("Get", "/apps/{app}/metric/envs", AuthorizationRequiredHandler(appMetricEnvs))
 	m.Add("Post", "/apps/{app}/routes", AuthorizationRequiredHandler(appRebuildRoutes))
 
