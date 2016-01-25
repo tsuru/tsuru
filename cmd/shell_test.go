@@ -29,6 +29,15 @@ func (s *S) TestShellToContainerCmdInfo(c *check.C) {
 }
 
 func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: "",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.Method == "GET" && req.URL.Path == "/apps/myapp"
+		},
+	}
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
@@ -48,13 +57,22 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
-	client := NewClient(http.DefaultClient, &context, mngr)
+	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
 }
 
 func (s *S) TestShellToContainerWithUnit(c *check.C) {
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: "",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.Method == "GET" && req.URL.Path == "/apps/myapp"
+		},
+	}
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
@@ -75,13 +93,23 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
-	client := NewClient(http.DefaultClient, &context, mngr)
+	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
 }
 
 func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
+	var buf bytes.Buffer
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: "",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.Method == "GET" && req.URL.Path == "/apps/cmd"
+		},
+	}
 	server := httptest.NewServer(nil)
 	addr := server.Listener.Addr().String()
 	server.Close()
@@ -89,14 +117,46 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 	defer os.Unsetenv("TSURU_TARGET")
 	os.Setenv("TSURU_TOKEN", "abc123")
 	defer os.Unsetenv("TSURU_TOKEN")
-	var buf bytes.Buffer
 	context := Context{
 		Args:   []string{"af3332d"},
 		Stdout: &buf,
 		Stderr: &buf,
 		Stdin:  &buf,
 	}
+	mngr := NewManager("admin", "0.1", "admin-ver", &buf, &buf, nil, nil)
+	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	var command ShellToContainerCmd
-	err := command.Run(&context, nil)
+	err := command.Run(&context, client)
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestShellToContainerSessionExpired(c *check.C) {
+	var called bool
+	var stdout, stderr, stdin bytes.Buffer
+	guesser := cmdtest.FakeGuesser{Name: "myapp"}
+	context := Context{
+		Args:   []string{"containerid"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: "",
+			Status:  http.StatusUnauthorized,
+		},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "GET" && req.URL.Path == "/apps/myapp"
+		},
+	}
+	var command ShellToContainerCmd
+	command.GuessingCommand = GuessingCommand{G: &guesser}
+	err := command.Flags().Parse(true, []string{"-a", "myapp"})
+	c.Assert(err, check.IsNil)
+	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
+	err = command.Run(&context, client)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.DeepEquals, errUnauthorized)
 }

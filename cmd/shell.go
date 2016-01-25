@@ -7,6 +7,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -36,6 +37,19 @@ You can get the ID of the unit using the app-info command.`,
 }
 
 func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	appInfoUrl, err := GetURL(fmt.Sprintf("/apps/%s", appName))
+	request, err := http.NewRequest("GET", appInfoUrl, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
 	context.RawOutput()
 	var width, height int
 	if desc, ok := context.Stdin.(descriptable); ok {
@@ -66,10 +80,6 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	}
 	if term := os.Getenv("TERM"); term != "" {
 		queryString.Set("term", term)
-	}
-	appName, err := c.Guess()
-	if err != nil {
-		return err
 	}
 	serverURL, err := GetURL(fmt.Sprintf("/apps/%s/shell?%s", appName, queryString.Encode()))
 	if err != nil {
