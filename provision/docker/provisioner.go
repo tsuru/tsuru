@@ -400,14 +400,6 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	return newImage, p.deploy(app, newImage, w)
 }
 
-func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
-	imageId, err := p.gitDeploy(app, version, w)
-	if err != nil {
-		return "", err
-	}
-	return imageId, p.deployAndClean(app, imageId, w)
-}
-
 func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
 	imageId, err := p.archiveDeploy(app, p.getBuildImage(app), archiveURL, w)
 	if err != nil {

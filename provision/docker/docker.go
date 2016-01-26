@@ -65,14 +65,6 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
-	commands, err := gitDeployCmds(app, version)
-	if err != nil {
-		return "", err
-	}
-	return p.deployPipeline(app, p.getBuildImage(app), commands, w)
-}
-
 func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
 	commands, err := archiveDeployCmds(app, archiveURL)
 	if err != nil {

@@ -11,30 +11,8 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
-
-func (s *S) TestGitDeployCmds(c *check.C) {
-	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	config.Set("host", "tsuru_host")
-	defer config.Unset("host")
-	tokenEnv := bind.EnvVar{
-		Name:   "TSURU_APP_TOKEN",
-		Value:  "app_token",
-		Public: true,
-	}
-	app.SetEnv(tokenEnv)
-	repository.Manager().CreateRepository("app-name", nil)
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	c.Assert(err, check.IsNil)
-	expectedPart1 := fmt.Sprintf("%s git git://"+repositorytest.ServerHost+"/app-name.git version", deployCmd)
-	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
-	cmds, err := gitDeployCmds(app, "version")
-	c.Assert(err, check.IsNil)
-	c.Assert(cmds, check.DeepEquals, []string{"/bin/bash", "-lc", expectedAgent})
-}
 
 func (s *S) TestArchiveDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)

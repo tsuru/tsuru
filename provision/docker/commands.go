@@ -10,18 +10,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/repository"
 )
-
-// gitDeployCmds returns the list of commands that are used when the
-// provisioner deploys a unit using the Git repository method.
-func gitDeployCmds(app provision.App, version string) ([]string, error) {
-	repo, err := repository.Manager().GetRepository(app.GetName())
-	if err != nil {
-		return nil, err
-	}
-	return deployCmds(app, "git", repo.ReadOnlyURL, version)
-}
 
 // archiveDeployCmds returns the list of commands that are used when the
 // provisioner deploys a unit using the archive method.

@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -216,55 +215,6 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	expected := fmt.Sprintf("localhost:3030/%s/python:latest", repoNamespace)
 	c.Assert(img, check.Equals, expected)
-}
-
-func (s *S) TestGitDeploy(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	repository.Manager().CreateRepository("myapp", nil)
-	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	var buf bytes.Buffer
-	imageId, err := s.p.gitDeploy(app, "ff13e", &buf)
-	c.Assert(err, check.IsNil)
-	c.Assert(imageId, check.Equals, "tsuru/app-myapp:v1")
-	var conts []container.Container
-	coll := s.p.Collection()
-	defer coll.Close()
-	err = coll.Find(nil).All(&conts)
-	c.Assert(err, check.IsNil)
-	c.Assert(conts, check.HasLen, 0)
-	err = s.p.Cluster().RemoveImage("tsuru/app-myapp:v1")
-	c.Assert(err, check.IsNil)
-}
-
-type errBuffer struct{}
-
-func (errBuffer) Write(data []byte) (int, error) {
-	return 0, fmt.Errorf("My write error")
-}
-
-func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	repository.Manager().CreateRepository("myapp", nil)
-	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	var buf errBuffer
-	_, err = s.p.gitDeploy(app, "ff13e", &buf)
-	c.Assert(err, check.ErrorMatches, `.*My write error`)
-	var conts []container.Container
-	coll := s.p.Collection()
-	defer coll.Close()
-	err = coll.Find(nil).All(&conts)
-	c.Assert(err, check.IsNil)
-	c.Assert(conts, check.HasLen, 0)
-	err = s.p.Cluster().RemoveImage("tsuru/myapp")
-	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
