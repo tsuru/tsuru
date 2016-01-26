@@ -8,7 +8,7 @@ TSR_SRC = cmd/tsurud/*.go
 
 .PHONY: all check-path test race docs
 
-all: check-path get test
+all: check-path test
 
 # It does not support GOPATH with multiple paths.
 check-path:
