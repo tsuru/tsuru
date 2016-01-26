@@ -344,6 +344,10 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 	return imageId, p.deploy(app, imageId, w)
 }
 
+func (p *dockerProvisioner) BuildImage(url string, w io.Writer) (string, error) {
+	return "", nil
+}
+
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
 	cluster := p.Cluster()
 	pullOpts := docker.PullImageOptions{
