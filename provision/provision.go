@@ -223,7 +223,6 @@ type UploadDeployer interface {
 // previously generated image.
 type ImageDeployer interface {
 	ImageDeploy(app App, image string, w io.Writer) (string, error)
-	BuildImage(url string, w io.Writer) (string, error)
 }
 
 // Provisioner is the basic interface of this package.

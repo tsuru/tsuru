@@ -517,14 +517,6 @@ func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, w 
 	return "app-image", nil
 }
 
-func (p *FakeProvisioner) BuildImage(url string, w io.Writer) (string, error) {
-	if err := p.getError("BuildImage"); err != nil {
-		return "", err
-	}
-	w.Write([]byte("Building dockerfile image\n"))
-	return "new-image", nil
-}
-
 func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, w io.Writer) (string, error) {
 	if err := p.getError("ImageDeploy"); err != nil {
 		return "", err
