@@ -1133,6 +1133,86 @@ func (s *S) TestUpdateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, 403)
 }
 
+func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateTeamowner,
+		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
+	})
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	team := &auth.Team{Name: "newowner"}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, check.IsNil)
+	data := `{"teamOwner":"newowner"}`
+	body := strings.NewReader(data)
+	req, err := http.NewRequest("POST", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+	c.Assert(a.TeamOwner, check.Equals, team.Name)
+}
+
+func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	team := &auth.Team{Name: "newowner"}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	data := `{"teamOwner":"newowner"}`
+	body := strings.NewReader(data)
+	req, err := http.NewRequest("POST", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
+	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+	c.Assert(a.TeamOwner, check.Equals, s.team.Name)
+}
+
+func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateTeamowner,
+		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
+	})
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	team := &auth.Team{Name: "newowner"}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, check.IsNil)
+	data := `{"teamOwner":"newowner"}`
+	body := strings.NewReader(data)
+	req, err := http.NewRequest("POST", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+	c.Assert(a.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
+}
+
 func (s *S) TestAddUnits(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Unlimited}
 	err := app.CreateApp(&a, s.user)
@@ -4353,97 +4433,6 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
 		"mydata": "something",
 	})
-}
-
-func (s *S) TestSetTeamOwnerWithoutTeam(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/apps/myappx/team-owner", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "You must provide a team name.\n")
-}
-
-func (s *S) TestSetTeamOwner(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateTeamowner,
-		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
-	})
-	user, err := token.User()
-	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&a, user)
-	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newowner"}
-	err = s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(team.Name)
-	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
-	c.Assert(err, check.IsNil)
-	req.Header.Set("Authorization", "bearer "+token.GetValue())
-	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
-	c.Assert(a.TeamOwner, check.Equals, team.Name)
-}
-
-func (s *S) TestSetTeamOwnerToUserWhoCantBeOwner(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
-	_, err = nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newowner"}
-	err = s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
-	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(team.Name)
-	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
-	c.Assert(err, check.IsNil)
-	req.Header.Set("Authorization", "bearer "+token.GetValue())
-	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
-	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
-	c.Assert(a.TeamOwner, check.Equals, s.team.Name)
-}
-
-func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateTeamowner,
-		Context: permission.Context(permission.CtxTeam, a.TeamOwner),
-	})
-	user, err := token.User()
-	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&a, user)
-	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "newowner"}
-	err = s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(team.Name)
-	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
-	c.Assert(err, check.IsNil)
-	req.Header.Set("Authorization", "bearer "+token.GetValue())
-	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
-	c.Assert(a.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {

@@ -334,7 +334,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if updateData.Description == "" && updateData.Plan.Name == "" && updateData.Pool == "" {
+	if updateData.Description == "" && updateData.Plan.Name == "" && updateData.Pool == "" && updateData.TeamOwner == "" {
 		msg := "You must set a flag. Use the 'app-update info' command for more information."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
@@ -372,6 +372,20 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
+	if updateData.TeamOwner != "" {
+		allowed := permission.Check(t, permission.PermAppUpdateTeamowner,
+			append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...,
+		)
+		if !allowed {
+			return &errors.HTTP{
+				Code:    http.StatusForbidden,
+				Message: permission.ErrUnauthorized.Error(),
+			}
+		}
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -386,47 +400,6 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	rec.Log(u.Email, "update-app", "app="+appName, "description="+updateData.Description, "pool="+updateData.Pool)
 	return err
-}
-
-func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if r.Body == nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team name."}
-	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	teamName := string(b)
-	team, err := auth.GetTeam(teamName)
-	if err != nil {
-		return err
-	}
-	a, err := app.GetByName(r.URL.Query().Get(":app"))
-	if err != nil {
-		return err
-	}
-	canSetTeamOwner := permission.Check(t, permission.PermAppUpdateTeamowner,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
-		)...,
-	)
-	if !canSetTeamOwner {
-		return &errors.HTTP{
-			Code:    http.StatusForbidden,
-			Message: permission.ErrUnauthorized.Error(),
-		}
-	}
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	err = a.SetTeamOwner(team, u)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func numberOfUnits(r *http.Request) (uint, error) {

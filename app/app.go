@@ -257,6 +257,7 @@ func (app *App) Update(updateData App, w io.Writer) error {
 	description := updateData.Description
 	planName := updateData.Plan.Name
 	poolName := updateData.Pool
+	teamOwner := updateData.TeamOwner
 	if description != "" {
 		app.Description = description
 	}
@@ -289,6 +290,18 @@ func (app *App) Update(updateData App, w io.Writer) error {
 		if err != nil {
 			return err
 		}
+	}
+	if teamOwner != "" {
+		team, err := auth.GetTeam(teamOwner)
+		if err != nil {
+			return err
+		}
+		app.TeamOwner = team.Name
+		err = app.validateTeamOwner()
+		if err != nil {
+			return err
+		}
+		app.Grant(team)
 	}
 	return conn.Apps().Update(bson.M{"name": app.Name}, app)
 }
@@ -643,26 +656,6 @@ func (app *App) GetTeams() []auth.Team {
 	defer conn.Close()
 	conn.Teams().Find(bson.M{"_id": bson.M{"$in": app.Teams}}).All(&teams)
 	return teams
-}
-
-// SetTeamOwner sets the TeamOwner value.
-func (app *App) SetTeamOwner(team *auth.Team, u *auth.User) error {
-	app.TeamOwner = team.Name
-	err := app.validateTeamOwner()
-	if err != nil {
-		return err
-	}
-	app.Grant(team)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (app *App) validateTeamOwner() error {
