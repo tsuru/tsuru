@@ -335,7 +335,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	if updateData.Description == "" && updateData.Plan.Name == "" && updateData.Pool == "" && updateData.TeamOwner == "" {
-		msg := "You must set a flag. Use the 'app-update info' command for more information."
+		msg := "Neither the description, plan, pool or team owner were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	if updateData.Description != "" {

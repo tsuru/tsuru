@@ -1110,7 +1110,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	errorMessage := "You must set a flag. Use the 'app-update info' command for more information.\n"
+	errorMessage := "Neither the description, plan, pool or team owner were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }
