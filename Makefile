@@ -28,7 +28,7 @@ endif
 
 _go_test:
 	go clean $(GO_EXTRAFLAGS) ./...
-	go test $(GO_EXTRAFLAGS) ./...
+	go test $(GO_EXTRAFLAGS) ./... -check.vv
 
 _tsurud_dry:
 	go build $(GO_EXTRAFLAGS) -o tsurud ./cmd/tsurud
