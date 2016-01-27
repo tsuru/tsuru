@@ -74,9 +74,9 @@ func ParseStatus(status string) (Status, error) {
 //      deploy unit                   |                         Stop
 //           |                        |                           |
 //           +                        v       RegisterUnit        +
-//      +---------+  app unit   +----------+  SetUnitStatus  +---------+
-//      | Created | +---------> | Starting | +-------------> | Started |
-//      +---------+             +----------+                 +---------+
+//      +---------+  app unit   +----------+  SetUnitStatus  +---------+  Sleep  +--------+
+//      | Created | +---------> | Starting | +-------------> | Started |+------->| Asleep |
+//      +---------+             +----------+                 +---------+         +--------+
 //                                    +                         ^ +
 //                                    |                         | |
 //                              SetUnitStatus                   | |
