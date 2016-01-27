@@ -85,7 +85,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer writer.Stop()
 	var build bool
 	buildString := r.URL.Query().Get("build")
-	println(buildString, "build string")
 	if buildString != "" {
 		build, err = strconv.ParseBool(buildString)
 		if err != nil {
