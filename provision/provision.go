@@ -223,7 +223,7 @@ type ArchiveDeployer interface {
 // UploadDeployer is a provisioner that can deploy the application from an
 // uploaded file.
 type UploadDeployer interface {
-	UploadDeploy(app App, file io.ReadCloser, w io.Writer) (string, error)
+	UploadDeploy(app App, file io.ReadCloser, build bool, w io.Writer) (string, error)
 }
 
 // ImageDeployer is a provisioner that can deploy the application from a

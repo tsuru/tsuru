@@ -5,9 +5,12 @@
 package docker
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -594,6 +597,69 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
+}
+
+func (s *S) TestProvisionerUploadDeployBuildDockerfile(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+		Quota:    quota.Unlimited,
+	}
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	buf := bytes.NewBufferString("something wrong is not right")
+	var tarBuf bytes.Buffer
+	tarball := tar.NewWriter(&tarBuf)
+	var tempBuf bytes.Buffer
+	n, err := tempBuf.ReadFrom(buf)
+	c.Assert(err, check.IsNil)
+	header := tar.Header{
+		Name: "Dockerfile",
+		Mode: 0666,
+		Size: n,
+	}
+	tarball.WriteHeader(&header)
+	bufReader := bytes.NewReader(buf.Bytes())
+	_, err = io.Copy(&tarBuf, bufReader)
+	c.Assert(err, check.IsNil)
+	defer tarball.Close()
+	var gzipBuf bytes.Buffer
+	gziped := gzip.NewWriter(&gzipBuf)
+	gziped.Name = "archive.tar.gz"
+	_, err = io.Copy(gziped, &tarBuf)
+	c.Assert(err, check.IsNil)
+	gziped.Close()
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		File:         ioutil.NopCloser(&gzipBuf),
+		OutputStream: w,
+		Build:        true,
+	})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
 }
 
 func (s *S) TestRollbackDeploy(c *check.C) {

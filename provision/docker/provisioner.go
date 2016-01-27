@@ -7,6 +7,7 @@ package docker
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	stderr "errors"
 	"fmt"
 	"io"
@@ -423,14 +424,52 @@ func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, 
 	return imageId, p.deployAndClean(app, imageId, w)
 }
 
-func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
-	defer archiveFile.Close()
+func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, build bool, w io.Writer) (string, error) {
 	dirPath := "/home/application/"
 	filePath := fmt.Sprintf("%sarchive.tar.gz", dirPath)
 	user, err := config.GetString("docker:user")
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
 	}
+	var imageName string
+	var buildErr error
+	if build {
+		imageName, buildErr = p.BuildImageWithDockerfile(app, archiveFile, w)
+	} else {
+		imageName, buildErr = p.BuildImageWithoutDockerfile(user, app, archiveFile, dirPath)
+	}
+	if buildErr != nil {
+		return "", buildErr
+	}
+	imageId, err := p.archiveDeploy(app, imageName, "file://"+filePath, w)
+	if err != nil {
+		return "", err
+	}
+	return imageId, p.deployAndClean(app, imageId, w)
+}
+
+func (p *dockerProvisioner) BuildImageWithDockerfile(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
+	defer archiveFile.Close()
+	cluster := p.Cluster()
+	archive, err := gzip.NewReader(archiveFile)
+	if err != nil {
+		return "", err
+	}
+	defer archive.Close()
+	imageName := app.GetName() + randomString()
+	buildOpts := docker.BuildImageOptions{
+		Name:           imageName,
+		NoCache:        true,
+		RmTmpContainer: true,
+		InputStream:    archive,
+		OutputStream:   w,
+	}
+	err = cluster.BuildImage(buildOpts)
+	return imageName, err
+}
+
+func (p *dockerProvisioner) BuildImageWithoutDockerfile(user string, app provision.App, archiveFile io.ReadCloser, dirPath string) (string, error) {
+	defer archiveFile.Close()
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -488,14 +527,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		return "", err
 	}
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
-	if err != nil {
-		return "", err
-	}
-	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)
-	if err != nil {
-		return "", err
-	}
-	return imageId, p.deployAndClean(app, imageId, w)
+	return image.ID, err
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
