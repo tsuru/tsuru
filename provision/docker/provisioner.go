@@ -830,7 +830,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if err != nil {
 		return err
 	}
-	if cont.Status == provision.StatusBuilding.String() {
+	if cont.Status == provision.StatusBuilding.String() || cont.Status == provision.StatusAsleep.String() {
 		return nil
 	}
 	if unit.AppName != "" && cont.AppName != unit.AppName {

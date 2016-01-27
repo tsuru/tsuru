@@ -396,7 +396,7 @@ func (c *Container) Sleep(p DockerProvisioner) error {
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
-	return c.SetStatus(p, provision.StatusAsleep.String(), true)
+	return c.SetStatus(p, provision.StatusAsleep, true)
 }
 
 func (c *Container) Stop(p DockerProvisioner) error {

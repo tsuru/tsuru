@@ -1397,6 +1397,22 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 	c.Assert(container.Status, check.Equals, provision.StatusError.String())
 }
 
+func (s *S) TestProvisionerSetUnitStatusAsleep(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	err = container.Sleep(s.p)
+	c.Assert(err, check.IsNil)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID, AppName: container.AppName}, provision.StatusStopped)
+	c.Assert(err, check.IsNil)
+	container, err = s.p.GetContainer(container.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Status, check.Equals, provision.StatusAsleep.String())
+}
+
 func (s *S) TestProvisionerSetUnitStatusUpdatesIp(c *check.C) {
 	err := s.storage.Apps().Insert(&app.App{Name: "myawesomeapp"})
 	c.Assert(err, check.IsNil)
@@ -1905,7 +1921,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 	defer s.removeTestContainer(cont1)
 	err = dcli.StartContainer(cont1.ID, nil)
 	c.Assert(err, check.IsNil)
-	err = cont1.SetStatus(s.p, provision.StatusStarted.String(), true)
+	err = cont1.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	cont2, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -1916,7 +1932,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = dcli.StartContainer(cont2.ID, nil)
 	c.Assert(err, check.IsNil)
-	err = cont2.SetStatus(s.p, provision.StatusStarted.String(), true)
+	err = cont2.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
 	dockerContainer, err := dcli.InspectContainer(cont1.ID)
@@ -1960,7 +1976,7 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
-	err = cont1.SetStatus(s.p, provision.StatusStarted.String(), true)
+	err = cont1.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	cont2, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -1970,7 +1986,7 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
-	err = cont2.SetStatus(s.p, provision.StatusStarted.String(), true)
+	err = cont2.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	err = dcli.StartContainer(cont1.ID, nil)
 	c.Assert(err, check.IsNil)
