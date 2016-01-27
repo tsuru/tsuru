@@ -620,6 +620,32 @@ func (s *S) TestContainerStop(c *check.C) {
 	c.Assert(cont.Status, check.Equals, provision.StatusStopped.String())
 }
 
+func (s *S) TestContainerSleep(c *check.C) {
+	cont, err := s.newContainer(newContainerOpts{}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	err = cont.Start(&StartArgs{
+		Provisioner: s.p,
+		App:         app,
+	})
+	c.Assert(err, check.IsNil)
+	err = cont.Sleep(s.p)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := s.p.Cluster().InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	c.Assert(cont.Status, check.Equals, provision.StatusAsleep.String())
+}
+
+func (s *S) TestContainerSleepNotStarted(c *check.C) {
+	cont, err := s.newContainer(newContainerOpts{}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	err = cont.Sleep(s.p)
+	c.Assert(err, check.NotNil)
+}
+
 func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *check.C) {
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)

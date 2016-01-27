@@ -332,6 +332,21 @@ func (p *dockerProvisioner) Stop(app provision.App, process string) error {
 	}, nil, true)
 }
 
+func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
+	containers, err := p.listContainersByProcess(app.GetName(), process)
+	if err != nil {
+		log.Errorf("Got error while getting app containers: %s", err)
+		return nil
+	}
+	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
+		err := c.Sleep(p)
+		if err != nil {
+			log.Errorf("Failed to sleep %q: %s", app.GetName(), err)
+		}
+		return err
+	}, nil, true)
+}
+
 func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := getRouterForApp(app1)
 	if err != nil {
@@ -815,7 +830,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if err != nil {
 		return err
 	}
-	if cont.Status == provision.StatusBuilding.String() {
+	if cont.Status == provision.StatusBuilding.String() || cont.Status == provision.StatusAsleep.String() {
 		return nil
 	}
 	if unit.AppName != "" && cont.AppName != unit.AppName {

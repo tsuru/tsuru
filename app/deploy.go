@@ -165,6 +165,10 @@ func Deploy(opts DeployOptions) error {
 	if opts.App.UpdatePlatform == true {
 		opts.App.SetUpdatePlatform(false)
 	}
+	_, err = opts.App.RebuildRoutes()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
