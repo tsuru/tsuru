@@ -131,6 +131,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
+	println(recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")

@@ -132,6 +132,7 @@ type DeployOptions struct {
 	Image        string
 	Origin       string
 	Rollback     bool
+	Build        bool
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
@@ -183,7 +184,7 @@ func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) 
 	}
 	if opts.File != nil {
 		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
-			return deployer.UploadDeploy(opts.App, opts.File, writer)
+			return deployer.UploadDeploy(opts.App, opts.File, opts.Build, writer)
 		}
 	}
 	return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, writer)

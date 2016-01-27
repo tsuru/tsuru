@@ -83,6 +83,18 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
+	var build bool
+	buildString := r.URL.Query().Get("build")
+	println(buildString, "build string")
+	if buildString != "" {
+		build, err = strconv.ParseBool(buildString)
+		if err != nil {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+			}
+		}
+	}
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		Commit:       commit,
@@ -92,6 +104,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		User:         userName,
 		Image:        image,
 		Origin:       origin,
+		Build:        build,
 	})
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
