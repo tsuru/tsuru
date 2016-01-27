@@ -9,10 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"net/url"
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -287,6 +290,7 @@ func (s *S) TestDeploySaveDataAndDiff(c *check.C) {
 func (s *S) TestDeployApp(c *check.C) {
 	a := App{
 		Name:     "someApp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "django",
 		Teams:    []string{s.team.Name},
 	}
@@ -310,6 +314,7 @@ func (s *S) TestDeployApp(c *check.C) {
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	a := App{
 		Name:           "someApp",
+		Plan:           Plan{Router: "fake"},
 		Platform:       "django",
 		Teams:          []string{s.team.Name},
 		UpdatePlatform: true,
@@ -337,6 +342,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -360,6 +366,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -397,6 +404,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -430,6 +438,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -463,6 +472,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -531,6 +541,40 @@ func (s *S) TestValidateOrigin(c *check.C) {
 	c.Assert(ValidateOrigin("drag-and-drop"), check.Equals, true)
 	c.Assert(ValidateOrigin("image"), check.Equals, true)
 	c.Assert(ValidateOrigin("invalid"), check.Equals, false)
+}
+
+func (s *S) TestDeployAsleepApp(c *check.C) {
+	a := App{
+		Name:     "someApp",
+		Plan:     Plan{Router: "fake"},
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	writer := &bytes.Buffer{}
+	err = a.Sleep(writer, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
+		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
+	}
+	err = Deploy(DeployOptions{
+		App:          &a,
+		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		OutputStream: writer,
+	})
+	c.Assert(err, check.IsNil)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 1)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestIncrementDeploy(c *check.C) {
@@ -657,6 +701,7 @@ func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
 func (s *S) TestRollbackWithNameImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -689,6 +734,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
@@ -721,6 +767,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
+		Plan:     Plan{Router: "fake"},
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}

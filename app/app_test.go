@@ -2060,11 +2060,15 @@ func (s *S) TestRestart(c *check.C) {
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
+		Plan:     Plan{Router: "fake"},
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
-	err := a.Restart("", &b)
+	err = a.Restart("", &b)
 	c.Assert(err, check.IsNil)
 	c.Assert(b.String(), check.Matches, `(?s).*---- Restarting the app "someApp" ----.*`)
 	restarts := s.provisioner.Restarts(&a, "")
@@ -2088,6 +2092,33 @@ func (s *S) TestStop(c *check.C) {
 	for _, u := range units {
 		c.Assert(u.Status, check.Equals, provision.StatusStopped)
 	}
+}
+
+func (s *S) TestSleep(c *check.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Plan:     Plan{Router: "fake"},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	routertest.FakeRouter.AddBackend(a.Name)
+	var b bytes.Buffer
+	err = a.Start(&b, "")
+	c.Assert(err, check.IsNil)
+	proxyURL, err := url.Parse("http://example.com")
+	c.Assert(err, check.IsNil)
+	err = a.Sleep(&b, "", proxyURL)
+	c.Assert(err, check.IsNil)
+	sleeps := s.provisioner.Sleeps(&a, "")
+	c.Assert(sleeps, check.Equals, 1)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, proxyURL.String()), check.Equals, true)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 1)
 }
 
 func (s *S) TestLog(c *check.C) {
@@ -2984,6 +3015,7 @@ func (s *S) TestStart(c *check.C) {
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
+		Plan:     Plan{Router: "fake"},
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
@@ -2995,6 +3027,62 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	starts := s.provisioner.Starts(&a, "")
 	c.Assert(starts, check.Equals, 1)
+}
+
+func (s *S) TestStartAsleepApp(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+
+	var b bytes.Buffer
+	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
+		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
+	}
+
+	err = a.Start(&b, "web")
+	c.Assert(err, check.IsNil)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 1)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
+}
+
+func (s *S) TestRestartAsleepApp(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+
+	var b bytes.Buffer
+	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
+		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
+	}
+
+	err = a.Restart("web", &b)
+	c.Assert(err, check.IsNil)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 1)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestAppSetUpdatePlatform(c *check.C) {
@@ -3767,6 +3855,37 @@ func (s *S) TestUpdateDescriptionPoolAndPlan(c *check.C) {
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}, Description: "bleble", Pool: "test2"}
 	err = a.Update(updateData, new(bytes.Buffer))
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.RemoveBackend(a.Name)
+	changes, err := a.RebuildRoutes()
+	c.Assert(err, check.IsNil)
+	sort.Strings(changes.Added)
+	c.Assert(changes.Added, check.DeepEquals, []string{
+		units[0].Address.String(),
+		units[1].Address.String(),
+		units[2].Address.String(),
+	})
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 3)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.String()), check.Equals, true)
+}
+
+func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	err = a.AddCName("my.cname.com")
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)

@@ -1885,6 +1885,113 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	c.Assert(dockerContainer2.State.Running, check.Equals, false)
 }
 
+func (s *S) TestProvisionerSleep(c *check.C) {
+	dcli, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("almah", "static", 2)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "web",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont1)
+	err = dcli.StartContainer(cont1.ID, nil)
+	c.Assert(err, check.IsNil)
+	err = cont1.SetStatus(s.p, provision.StatusStarted.String(), true)
+	c.Assert(err, check.IsNil)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "worker",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	err = dcli.StartContainer(cont2.ID, nil)
+	c.Assert(err, check.IsNil)
+	err = cont2.SetStatus(s.p, provision.StatusStarted.String(), true)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
+	dockerContainer, err := dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = s.p.Sleep(app, "")
+	c.Assert(err, check.IsNil)
+	coll := s.p.Collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"id": cont1.ID}).One(&cont1)
+	c.Assert(err, check.IsNil)
+	err = coll.Find(bson.M{"id": cont2.ID}).One(&cont2)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont1.Status, check.Equals, provision.StatusAsleep.String())
+	c.Assert(cont2.Status, check.Equals, provision.StatusAsleep.String())
+	dockerContainer, err = dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+}
+
+func (s *S) TestProvisionerSleepProcess(c *check.C) {
+	dcli, _ := docker.NewClient(s.server.URL())
+	app := provisiontest.NewFakeApp("almah", "static", 2)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "web",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont1)
+	err = cont1.SetStatus(s.p, provision.StatusStarted.String(), true)
+	c.Assert(err, check.IsNil)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "worker",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
+	err = cont2.SetStatus(s.p, provision.StatusStarted.String(), true)
+	c.Assert(err, check.IsNil)
+	err = dcli.StartContainer(cont1.ID, nil)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = dcli.StartContainer(cont2.ID, nil)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = s.p.Sleep(app, "web")
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+}
+
 func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	var requests []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {

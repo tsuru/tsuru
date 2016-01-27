@@ -3825,7 +3825,13 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *che
 }
 
 func (s *S) TestRestartHandler(c *check.C) {
-	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/restart?:app=%s", a.Name, a.Name)
@@ -3869,6 +3875,84 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *ch
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = restart(recorder, request, token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestSleepHandler(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/sleep?:app=%s&proxy=%s", a.Name, a.Name, "http://example.com")
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = sleep(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	action := rectest.Action{
+		Action: "sleep",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestSleepHandlerReturns400IfTheProxyIsNotSet(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/apps/stress/sleep?:app=stress", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = sleep(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "Empty proxy URL")
+}
+
+func (s *S) TestSleepHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("POST", "/apps/unknown/sleep?:app=unknown", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = sleep(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
+	a := app.App{Name: "nightmist"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.logConn.Logs(a.Name).DropCollection()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateSleep,
+		Context: permission.Context(permission.CtxApp, "-invalid-"),
+	})
+	url := fmt.Sprintf("/apps/%s/sleep?:app=%s&proxy=http://example.com", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = sleep(recorder, request, token)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
@@ -4155,7 +4239,13 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 }
 
 func (s *S) TestStartHandler(c *check.C) {
-	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/start?:app=%s&process=web", a.Name, a.Name)

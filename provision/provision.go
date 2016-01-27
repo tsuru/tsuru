@@ -58,6 +58,8 @@ func ParseStatus(status string) (Status, error) {
 		return StatusStarting, nil
 	case "stopped":
 		return StatusStopped, nil
+	case "asleep":
+		return StatusAsleep, nil
 	}
 	return Status(""), ErrInvalidStatus
 }
@@ -105,6 +107,9 @@ const (
 
 	// StatusStopped is for cases where the unit has been stopped.
 	StatusStopped = Status("stopped")
+
+	// StatusAsleep is for cases where the unit has been asleep.
+	StatusAsleep = Status("asleep")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
@@ -262,14 +267,19 @@ type Provisioner interface {
 	Restart(App, string, io.Writer) error
 
 	// Start starts the units of the application, with an optional string
-	// parameter represeting the name of the process to start. When the
+	// parameter representing the name of the process to start. When the
 	// process is empty, Start will start all units of the application.
 	Start(App, string) error
 
 	// Stop stops the units of the application, with an optional string
-	// parameter represeting the name of the process to start. When the
+	// parameter representing the name of the process to start. When the
 	// process is empty, Stop will stop all units of the application.
 	Stop(App, string) error
+
+	// Sleep puts the units of the application to sleep, with an optional string
+	// parameter representing the name of the process to sleep. When the
+	// process is empty, Sleep will put all units of the application to sleep.
+	Sleep(App, string) error
 
 	// Addr returns the address for an app.
 	//
