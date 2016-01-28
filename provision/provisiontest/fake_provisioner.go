@@ -986,6 +986,10 @@ func (p *FakeProvisioner) ValidAppImages(appName string) ([]string, error) {
 	return []string{"app-image-old", "app-image"}, nil
 }
 
+func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) []provision.App {
+	return apps
+}
+
 type PipelineFakeProvisioner struct {
 	*FakeProvisioner
 	executedPipeline bool
