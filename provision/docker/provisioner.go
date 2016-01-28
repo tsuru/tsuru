@@ -1213,6 +1213,10 @@ func pluralize(str string, sz int) string {
 }
 
 func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) []provision.App {
+	if apps == nil || status == nil {
+		return apps
+	}
+
 	appNames := make([]string, len(apps))
 	for i, app := range apps {
 		appNames[i] = app.GetName()

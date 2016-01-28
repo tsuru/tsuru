@@ -2775,4 +2775,7 @@ func (s *S) TestFilterAppsByUnitStatus(c *check.C) {
 
 	apps = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"building"})
 	c.Assert(apps, check.DeepEquals, []provision.App{})
+
+	apps = s.p.FilterAppsByUnitStatus(nil, []string{"building"})
+	c.Assert(apps, check.IsNil)
 }
