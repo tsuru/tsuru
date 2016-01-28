@@ -315,7 +315,7 @@ type Provisioner interface {
 	// Rollback a deploy
 	Rollback(App, string, io.Writer) (string, error)
 
-	FilterAppsByUnitStatus([]App, []string) []App
+	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }
 
 type MessageProvisioner interface {

@@ -2767,15 +2767,26 @@ func (s *S) TestFilterAppsByUnitStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
 
-	apps := s.p.FilterAppsByUnitStatus([]provision.App{app1}, nil)
-	c.Assert(apps, check.DeepEquals, []provision.App{app1})
-
-	apps = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"started"})
-	c.Assert(apps, check.DeepEquals, []provision.App{app2})
-
-	apps = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"building"})
+	// Should return empty collection when status is nil
+	apps, err := s.p.FilterAppsByUnitStatus([]provision.App{app1}, nil)
 	c.Assert(apps, check.DeepEquals, []provision.App{})
+	c.Assert(err, check.IsNil)
 
-	apps = s.p.FilterAppsByUnitStatus(nil, []string{"building"})
+	// Should return error when apps are not specified
+	apps, err = s.p.FilterAppsByUnitStatus(nil, []string{"building"})
 	c.Assert(apps, check.IsNil)
+	c.Assert(err, check.Not(check.IsNil))
+
+	apps, err = s.p.FilterAppsByUnitStatus(nil, nil)
+	c.Assert(apps, check.IsNil)
+	c.Assert(err, check.Not(check.IsNil))
+
+	// Should return apps with units containing status
+	apps, err = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"started"})
+	c.Assert(apps, check.DeepEquals, []provision.App{app2})
+	c.Assert(err, check.IsNil)
+
+	apps, err = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"building"})
+	c.Assert(apps, check.DeepEquals, []provision.App{})
+	c.Assert(err, check.IsNil)
 }

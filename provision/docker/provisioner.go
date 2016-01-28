@@ -1212,9 +1212,12 @@ func pluralize(str string, sz int) string {
 	return str
 }
 
-func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) []provision.App {
-	if apps == nil || status == nil {
-		return apps
+func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {
+	if apps == nil {
+		return nil, fmt.Errorf("apps must be provided to FilterAppsByUnitStatus")
+	}
+	if status == nil {
+		return make([]provision.App, 0), nil
 	}
 
 	appNames := make([]string, len(apps))
@@ -1222,7 +1225,11 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 		appNames[i] = app.GetName()
 	}
 
-	containers, _ := p.listContainersByAppAndStatus(appNames, status)
+	containers, err := p.listContainersByAppAndStatus(appNames, status)
+	if err != nil {
+		return nil, err
+	}
+
 	result := make([]provision.App, 0)
 	for _, app := range apps {
 		for _, c := range containers {
@@ -1233,5 +1240,5 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 		}
 	}
 
-	return result
+	return result, nil
 }
