@@ -107,6 +107,17 @@ func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]conta
 	})
 }
 
+func (p *dockerProvisioner) listContainersByAppAndStatus(appNames []string, status []string) ([]container.Container, error) {
+	query := bson.M{}
+	if len(appNames) > 0 {
+		query["appname"] = bson.M{"$in": appNames}
+	}
+	if len(status) > 0 {
+		query["status"] = bson.M{"$in": status}
+	}
+	return p.ListContainers(query)
+}
+
 func (p *dockerProvisioner) listAllContainers() ([]container.Container, error) {
 	return p.ListContainers(nil)
 }

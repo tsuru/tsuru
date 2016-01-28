@@ -267,6 +267,47 @@ func (s *S) TestListRunnableContainersByApp(c *check.C) {
 	c.Assert(names, check.DeepEquals, []string{"c", "d", "e"})
 }
 
+func (s *S) TestListContainersByAppAndStatus(c *check.C) {
+	var result []container.Container
+	coll := s.p.Collection()
+	defer coll.Close()
+	coll.Insert(
+		container.Container{ID: "1", AppName: "myapp1", Status: "started"},
+		container.Container{ID: "2", AppName: "myapp2", Status: "building"},
+		container.Container{ID: "3", AppName: "myapp3", Status: "stopped"},
+		container.Container{ID: "4", AppName: "myapp2", Status: "started"},
+	)
+	defer coll.RemoveAll(bson.M{
+		"appname": bson.M{
+			"$in": []string{"myapp1", "myapp2", "myapp3"},
+		},
+	})
+	result, err := s.p.listContainersByAppAndStatus([]string{"myapp1", "myapp2"}, []string{"started"})
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
+		{ID: "1", AppName: "myapp1", Status: "started"},
+		{ID: "4", AppName: "myapp2", Status: "started"},
+	})
+	result, err = s.p.listContainersByAppAndStatus(nil, nil)
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
+		{ID: "1", AppName: "myapp1", Status: "started"},
+		{ID: "2", AppName: "myapp2", Status: "building"},
+		{ID: "3", AppName: "myapp3", Status: "stopped"},
+		{ID: "4", AppName: "myapp2", Status: "started"},
+	})
+	result, err = s.p.listContainersByAppAndStatus(nil, []string{"started", "stopped"})
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
+		{ID: "1", AppName: "myapp1", Status: "started"},
+		{ID: "3", AppName: "myapp3", Status: "stopped"},
+		{ID: "4", AppName: "myapp2", Status: "started"},
+	})
+}
+
 func (s *S) TestListAppsForNodes(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
