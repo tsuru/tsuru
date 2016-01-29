@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -129,10 +129,11 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 		maxWaitTime = 300
 	}
 	waitDuration := time.Duration(maxWaitTime) * time.Second
-	job, err := q.EnqueueWait(i.taskName(machineDeleteTaskName), monsterqueue.JobParams{
-		"vmId":      machine.Id,
-		"projectId": machine.CreationParams["projectid"],
-	}, waitDuration)
+	jobParams := monsterqueue.JobParams{"vmId": machine.Id}
+	if projectId, ok := machine.CreationParams["projectid"]; ok {
+		jobParams["projectId"] = projectId
+	}
+	job, err := q.EnqueueWait(i.taskName(machineDeleteTaskName), jobParams, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
 			return fmt.Errorf("cloudstack: time out after %v waiting for instance %s to be destroyed", waitDuration, machine.Id)
@@ -174,12 +175,17 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		maxWaitTime = 300
 	}
 	waitDuration := time.Duration(maxWaitTime) * time.Second
-	job, err := q.EnqueueWait(i.taskName(machineCreateTaskName), monsterqueue.JobParams{
-		"jobId":     vmStatus.DeployVirtualMachineResponse.JobID,
-		"vmId":      vmStatus.DeployVirtualMachineResponse.ID,
-		"tags":      params["tags"],
-		"projectId": params["projectid"],
-	}, waitDuration)
+	jobParams := monsterqueue.JobParams{
+		"jobId": vmStatus.DeployVirtualMachineResponse.JobID,
+		"vmId":  vmStatus.DeployVirtualMachineResponse.ID,
+	}
+	if tags, ok := params["tags"]; ok {
+		jobParams["tags"] = tags
+	}
+	if projectId, ok := params["projectid"]; ok {
+		jobParams["projectId"] = projectId
+	}
+	job, err := q.EnqueueWait(i.taskName(machineCreateTaskName), jobParams, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
 			return nil, fmt.Errorf("cloudstack: time out after %v waiting for instance %s to start", waitDuration, vmStatus.DeployVirtualMachineResponse.ID)
@@ -255,10 +261,11 @@ func (i *CloudstackIaaS) waitVMIsCreated(jobId, machineId, projectId string) (st
 		return "", err
 	}
 	var machineInfo ListVirtualMachinesResponse
-	err = i.do("listVirtualMachines", ApiParams{
-		"id":        machineId,
-		"projectid": projectId,
-	}, &machineInfo)
+	apiParams := ApiParams{"id": machineId}
+	if projectId != "" {
+		apiParams["projectid"] = projectId
+	}
+	err = i.do("listVirtualMachines", apiParams, &machineInfo)
 	if err != nil {
 		return "", err
 	}
