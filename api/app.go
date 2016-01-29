@@ -643,6 +643,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if r.Body == nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
+	defer r.Body.Close()
 	c, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -1409,6 +1410,7 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	defer r.Body.Close()
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
