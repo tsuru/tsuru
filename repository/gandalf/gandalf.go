@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -186,7 +186,6 @@ func (m gandalfManager) GetRepository(name string) (repository.Repository, error
 	}
 	return repository.Repository{
 		Name:         repo.Name,
-		ReadOnlyURL:  repo.GitURL,
 		ReadWriteURL: repo.SshURL,
 	}, nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -118,21 +118,18 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 		{
 			Name:         "yourapp",
 			Users:        []string{user1.Email, user2.Email},
-			ReadOnlyURL:  "git://localhost/yourapp.git",
 			ReadWriteURL: "git@localhost:yourapp.git",
 			IsPublic:     true,
 		},
 		{
 			Name:         "myapp",
 			Users:        []string{user1.Email, user2.Email},
-			ReadOnlyURL:  "git://localhost/myapp.git",
 			ReadWriteURL: "git@localhost:myapp.git",
 			IsPublic:     true,
 		},
 		{
 			Name:         "hisapp",
 			Users:        []string{user1.Email, user2.Email},
-			ReadOnlyURL:  "git://localhost/hisapp.git",
 			ReadWriteURL: "git@localhost:hisapp.git",
 			IsPublic:     true,
 		},
@@ -140,6 +137,7 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	repositories := s.server.Repositories()
 	for i, repo := range repositories {
 		repo.Diffs = nil
+		repo.ReadOnlyURL = ""
 		repositories[i] = repo
 	}
 	c.Assert(repositories, check.DeepEquals, expectedRepos)
@@ -240,7 +238,6 @@ func (s *GandalfSuite) TestGetRepository(c *check.C) {
 	repo, err := manager.GetRepository("myrepo")
 	c.Assert(err, check.IsNil)
 	c.Assert(repo.Name, check.Equals, "myrepo")
-	c.Assert(repo.ReadOnlyURL, check.Equals, "git://localhost/myrepo.git")
 	c.Assert(repo.ReadWriteURL, check.Equals, "git@localhost:myrepo.git")
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -55,7 +55,6 @@ func (Suite) TestManagerRepository(c *check.C) {
 	repo, err := manager.GetRepository("myrepo")
 	c.Check(err, check.IsNil)
 	c.Check(repo.Name, check.Equals, "myrepo")
-	c.Check(repo.ReadOnlyURL, check.Equals, "git://"+ServerHost+"/myrepo.git")
 	c.Check(repo.ReadWriteURL, check.Equals, "git@"+ServerHost+":myrepo.git")
 	err = manager.RemoveRepository("myrepo")
 	c.Check(err, check.IsNil)
