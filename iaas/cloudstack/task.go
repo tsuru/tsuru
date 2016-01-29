@@ -39,10 +39,10 @@ func (t *machineCreate) Run(job monsterqueue.Job) {
 	params := job.Parameters()
 	jobId := params["jobId"].(string)
 	vmId := params["vmId"].(string)
-	projectId := params["projectId"].(string)
 	jobParams := monsterqueue.JobParams{"vmId": vmId}
-	if projectId != "" {
-		jobParams["projectId"] = projectId
+	var projectId string
+	if pId, ok := params["projectId"]; ok {
+		projectId = pId.(string)
 	}
 	ip, err := t.iaas.waitVMIsCreated(jobId, vmId, projectId)
 	if err != nil {
