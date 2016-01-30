@@ -335,7 +335,7 @@ func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
-	plan, err := service.GetPlansByServiceNameAndPlanName(serviceName, serviceInstance.PlanName)
+	plan, err := service.GetPlanByServiceNameAndPlanName(serviceName, serviceInstance.PlanName)
 	if err != nil {
 		return err
 	}

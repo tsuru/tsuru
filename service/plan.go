@@ -27,17 +27,8 @@ func GetPlansByServiceName(serviceName string) ([]Plan, error) {
 	return plans, nil
 }
 
-func GetPlansByServiceNameAndPlanName(serviceName, planName string) (Plan, error) {
-	s := Service{Name: serviceName}
-	err := s.Get()
-	if err != nil {
-		return Plan{}, err
-	}
-	endpoint, err := s.getClient("production")
-	if err != nil {
-		return Plan{}, nil
-	}
-	plans, err := endpoint.Plans()
+func GetPlanByServiceNameAndPlanName(serviceName, planName string) (Plan, error) {
+	plans, err := GetPlansByServiceName(serviceName)
 	if err != nil {
 		return Plan{}, err
 	}
