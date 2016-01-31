@@ -1,0 +1,20 @@
+.. Copyright 2016 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+==========================
+tsurud 1.0.0 release notes
+==========================
+
+Welcome to tsurud 1.0.0!
+
+These release notes cover the `new features`, `bug fixes`, `general
+improvements` and `backward incompatible changes` you'll want to be aware of
+when upgrading from tsurud 0.13.x or older versions.
+
+Main new features
+=================
+
+* API versioning
+
+* Deploy apps using Dockerfile or Docker image (#1314)
