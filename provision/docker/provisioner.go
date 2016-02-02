@@ -433,43 +433,22 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	}
 	var imageName string
 	var buildErr error
+	defer archiveFile.Close()
+	var fileBuf bytes.Buffer
+	_, err = fileBuf.ReadFrom(archiveFile)
+	fileBytes := bytes.NewReader(fileBuf.Bytes())
+	if err != nil {
+		return "", err
+	}
 	if build {
-		imageName, buildErr = p.BuildImageWithDockerfile(app, archiveFile, w)
-	} else {
-		imageName, buildErr = p.BuildImageWithoutDockerfile(user, app, archiveFile, dirPath)
+		imageName, buildErr = p.BuildImageWithDockerfile(app, &fileBuf, w)
+		if buildErr != nil {
+			return "", buildErr
+		}
 	}
-	if buildErr != nil {
-		return "", buildErr
+	if imageName == "" {
+		imageName = p.getBuildImage(app)
 	}
-	imageId, err := p.archiveDeploy(app, imageName, "file://"+filePath, w)
-	if err != nil {
-		return "", err
-	}
-	return imageId, p.deployAndClean(app, imageId, w)
-}
-
-func (p *dockerProvisioner) BuildImageWithDockerfile(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
-	defer archiveFile.Close()
-	cluster := p.Cluster()
-	archive, err := gzip.NewReader(archiveFile)
-	if err != nil {
-		return "", err
-	}
-	defer archive.Close()
-	imageName := app.GetName() + randomString()
-	buildOpts := docker.BuildImageOptions{
-		Name:           imageName,
-		NoCache:        true,
-		RmTmpContainer: true,
-		InputStream:    archive,
-		OutputStream:   w,
-	}
-	err = cluster.BuildImage(buildOpts)
-	return imageName, err
-}
-
-func (p *dockerProvisioner) BuildImageWithoutDockerfile(user string, app provision.App, archiveFile io.ReadCloser, dirPath string) (string, error) {
-	defer archiveFile.Close()
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -478,7 +457,7 @@ func (p *dockerProvisioner) BuildImageWithoutDockerfile(user string, app provisi
 			OpenStdin:    true,
 			StdinOnce:    true,
 			User:         user,
-			Image:        p.getBuildImage(app),
+			Image:        imageName,
 			Cmd:          []string{"/bin/bash", "-c", "tail -f /dev/null"},
 		},
 	}
@@ -498,7 +477,7 @@ func (p *dockerProvisioner) BuildImageWithoutDockerfile(user string, app provisi
 	if err != nil {
 		return "", err
 	}
-	n, err := archiveFileBuf.ReadFrom(archiveFile)
+	n, err := archiveFileBuf.ReadFrom(fileBytes)
 	if err != nil {
 		return "", err
 	}
@@ -527,7 +506,30 @@ func (p *dockerProvisioner) BuildImageWithoutDockerfile(user string, app provisi
 		return "", err
 	}
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
-	return image.ID, err
+	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)
+	if err != nil {
+		return "", err
+	}
+	return imageId, p.deployAndClean(app, imageId, w)
+}
+
+func (p *dockerProvisioner) BuildImageWithDockerfile(app provision.App, archiveFile io.Reader, w io.Writer) (string, error) {
+	cluster := p.Cluster()
+	archive, err := gzip.NewReader(archiveFile)
+	if err != nil {
+		return "", err
+	}
+	defer archive.Close()
+	imageName := app.GetName() + randomString()
+	buildOpts := docker.BuildImageOptions{
+		Name:           imageName,
+		NoCache:        true,
+		RmTmpContainer: true,
+		InputStream:    archive,
+		OutputStream:   w,
+	}
+	err = cluster.BuildImage(buildOpts)
+	return imageName, err
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
