@@ -32,6 +32,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var Provisioner provision.Provisioner
+
 func getAppFromContext(name string, r *http.Request) (app.App, error) {
 	var err error
 	a := context.GetApp(r)
@@ -161,6 +163,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	owner := r.URL.Query().Get("owner")
 	pool := r.URL.Query().Get("pool")
 	description := r.URL.Query().Get("description")
+	status := r.URL.Query().Get("status")
 	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
@@ -205,6 +208,26 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+
+	if status != "" {
+		abc := make([]provision.App, len(apps))
+
+		for i, a := range apps {
+			abc[i] = &a
+		}
+
+		abc, err = app.Provisioner.FilterAppsByUnitStatus(abc, []string{status})
+
+
+		for i, a := range abc {
+			apps[i] = app.App(a)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {

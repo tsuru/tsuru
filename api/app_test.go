@@ -299,6 +299,54 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *S) TestAppListFilteringByStatus(c *check.C) {
+	//c.Skip("pending")
+
+	// stopped app
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b " + s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	// started app2
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+
+	// list apps with stopped units
+	request, err = http.NewRequest("GET", fmt.Sprintf("/apps?status=%s", "stopped"), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b " + s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m = RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app2}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
+	}
+
+}
+
 func (s *S) TestAppList(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
