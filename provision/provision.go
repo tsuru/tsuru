@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"time"
 
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/quota"
@@ -202,7 +203,19 @@ type App interface {
 
 	GetIp() string
 
-	GetLock() json.Marshaler
+	GetLock() AppLock
+}
+
+type AppLock interface {
+	json.Marshaler
+
+	GetLocked() bool
+
+	GetReason() string
+
+	GetOwner() string
+
+	GetAcquireDate() time.Time
 }
 
 // CNameManager represents a provisioner that supports cname on applications.

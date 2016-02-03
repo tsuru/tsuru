@@ -5,7 +5,6 @@
 package provisiontest
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -271,7 +270,7 @@ func (a *FakeApp) GetIp() string {
 	return ""
 }
 
-func (a *FakeApp) GetLock() json.Marshaler {
+func (a *FakeApp) GetLock() provision.AppLock {
 	return nil
 }
 
