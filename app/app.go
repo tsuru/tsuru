@@ -73,6 +73,20 @@ func (l *AppLock) String() string {
 	)
 }
 
+func (l *AppLock) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Locked      bool   `json:"Locked"`
+		Reason      string `json:"Reason"`
+		Owner       string `json:"Owner"`
+		AcquireDate string `json:"AcquireDate"`
+	}{
+		Locked:      l.Locked,
+		Reason:      l.Reason,
+		Owner:       l.Owner,
+		AcquireDate: l.AcquireDate.Format(time.RFC3339),
+	})
+}
+
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -958,6 +972,11 @@ func (app *App) SetQuotaInUse(inUse int) error {
 // GetCname returns the cnames of the app.
 func (app *App) GetCname() []string {
 	return app.CName
+}
+
+// GetLock returns the app lock information serialized in json.
+func (app *App) GetLock() json.Marshaler {
+	return &app.Lock
 }
 
 // GetPlatform returns the platform of the app.

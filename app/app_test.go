@@ -2942,6 +2942,20 @@ func (s *S) TestGetCname(c *check.C) {
 	c.Assert(a.GetCname(), check.DeepEquals, a.CName)
 }
 
+func (s *S) TestGetLock(c *check.C) {
+	a := App{
+		Lock: AppLock{
+			Locked: true,
+			Owner:  "someone",
+		},
+	}
+	data1, err := json.Marshal(a.Lock)
+	c.Assert(err, check.IsNil)
+	data2, err := json.Marshal(a.GetLock())
+	c.Assert(err, check.IsNil)
+	c.Assert(data1, check.DeepEquals, data2)
+}
+
 func (s *S) TestGetPlatform(c *check.C) {
 	a := App{Platform: "django"}
 	c.Assert(a.GetPlatform(), check.Equals, a.Platform)
@@ -3212,6 +3226,21 @@ func (s *S) TestAppLockStringLocked(c *check.C) {
 		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
 	}
 	c.Assert(lock.String(), check.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T.*")
+}
+
+func (s *S) TestAppLockMarshalJSON(c *check.C) {
+	lock := AppLock{
+		Locked:      true,
+		Reason:      "/app/my-app/deploy",
+		Owner:       "someone",
+		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+	}
+	data, err := lock.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	var a AppLock
+	err = json.Unmarshal(data, &a)
+	c.Assert(err, check.IsNil)
+	c.Assert(a, check.DeepEquals, lock)
 }
 
 func (s *S) TestAppRegisterUnit(c *check.C) {
