@@ -110,11 +110,11 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // miniApp is a minimal representation of the app, created to make appList
 // faster and transmit less data.
 type miniApp struct {
-	Name  string           `json:"name"`
-	Units []provision.Unit `json:"units"`
-	CName []string         `json:"cname"`
-	Ip    string           `json:"ip"`
-	Lock  json.Marshaler   `json:"lock"`
+	Name  string            `json:"name"`
+	Units []provision.Unit  `json:"units"`
+	CName []string          `json:"cname"`
+	Ip    string            `json:"ip"`
+	Lock  provision.AppLock `json:"lock"`
 }
 
 func minifyApp(app app.App) (miniApp, error) {
