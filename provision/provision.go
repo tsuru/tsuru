@@ -196,6 +196,10 @@ type App interface {
 
 	GetQuota() quota.Quota
 	SetQuotaInUse(int) error
+
+	GetCname() []string
+
+	GetIp() string
 }
 
 // CNameManager represents a provisioner that supports cname on applications.
