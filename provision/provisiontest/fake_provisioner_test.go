@@ -190,6 +190,12 @@ func (s *S) TestFakeAppSetQuotaInUse(c *check.C) {
 	c.Assert(e.Requested, check.Equals, uint(q.Limit+1))
 }
 
+func (s *S) TestFakeAppGetCname(c *check.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	app.cname = []string{"cname1", "cname2"}
+	c.Assert(app.GetCname(), check.DeepEquals, []string{"cname1", "cname2"})
+}
+
 func (s *S) TestFakeAppGetInstances(c *check.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}

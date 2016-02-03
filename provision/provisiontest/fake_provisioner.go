@@ -31,6 +31,7 @@ func init() {
 // Fake implementation for provision.App.
 type FakeApp struct {
 	name           string
+	cname          []string
 	platform       string
 	units          []provision.Unit
 	logs           []string
@@ -139,6 +140,10 @@ func (a *FakeApp) SetQuotaInUse(inUse int) error {
 	}
 	a.Quota.InUse = inUse
 	return nil
+}
+
+func (a *FakeApp) GetCname() []string {
+	return a.cname
 }
 
 func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
