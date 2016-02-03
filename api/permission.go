@@ -65,6 +65,28 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !(permission.Check(t, permission.PermRoleUpdate) ||
+		permission.Check(t, permission.PermRoleUpdateAssign) ||
+		permission.Check(t, permission.PermRoleUpdateDissociate) ||
+		permission.Check(t, permission.PermRoleCreate) ||
+		permission.Check(t, permission.PermRoleDelete)) {
+		return permission.ErrUnauthorized
+	}
+	roleName := r.URL.Query().Get(":name")
+	role, err := permission.FindRole(roleName)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(role)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	return err
+}
+
 func deployableApps(u *auth.User, rolesCache map[string]*permission.Role) ([]string, error) {
 	var perms []permission.Permission
 	for _, roleData := range u.Roles {
