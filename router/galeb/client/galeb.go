@@ -392,11 +392,11 @@ func (c *GalebClient) waitStatusOK(resourceURI string) error {
 	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
 	maxWaitTime := 30 * time.Second
 	timeout := time.After(maxWaitTime)
-	status := STATUS_PENDING
+	var status string
 	var err error
 	for {
 		status, err = c.fetchPathStatus(path)
-		if err != nil || status != STATUS_PENDING {
+		if err != nil || (status != STATUS_PENDING && status != STATUS_SYNCHRONIZING) {
 			break
 		}
 		select {

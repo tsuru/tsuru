@@ -5,8 +5,9 @@
 package client
 
 const (
-	STATUS_PENDING = "PENDING"
-	STATUS_OK      = "OK"
+	STATUS_SYNCHRONIZING = "SYNCHRONIZING"
+	STATUS_PENDING       = "PENDING"
+	STATUS_OK            = "OK"
 )
 
 type hrefData struct {
