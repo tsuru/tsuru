@@ -2937,6 +2937,11 @@ func (s *S) TestSetQuotaInUseInvalid(c *check.C) {
 	c.Check(err.Error(), check.Equals, "invalid value, cannot be lesser than 0")
 }
 
+func (s *S) TestGetCname(c *check.C) {
+	a := App{CName: []string{"cname1", "cname2"}}
+	c.Assert(a.GetCname(), check.DeepEquals, a.CName)
+}
+
 func (s *S) TestGetPlatform(c *check.C) {
 	a := App{Platform: "django"}
 	c.Assert(a.GetPlatform(), check.Equals, a.Platform)

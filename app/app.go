@@ -955,6 +955,11 @@ func (app *App) SetQuotaInUse(inUse int) error {
 	return err
 }
 
+// GetCname returns the cnames of the app.
+func (app *App) GetCname() []string {
+	return app.CName
+}
+
 // GetPlatform returns the platform of the app.
 func (app *App) GetPlatform() string {
 	return app.Platform
