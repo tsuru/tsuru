@@ -2945,15 +2945,16 @@ func (s *S) TestGetCname(c *check.C) {
 func (s *S) TestGetLock(c *check.C) {
 	a := App{
 		Lock: AppLock{
-			Locked: true,
-			Owner:  "someone",
+			Locked:      true,
+			Owner:       "someone",
+			Reason:      "/app/my-app/deploy",
+			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
 		},
 	}
-	data1, err := json.Marshal(a.Lock)
-	c.Assert(err, check.IsNil)
-	data2, err := json.Marshal(a.GetLock())
-	c.Assert(err, check.IsNil)
-	c.Assert(data1, check.DeepEquals, data2)
+	c.Assert(a.GetLock().GetLocked(), check.Equals, a.Lock.Locked)
+	c.Assert(a.GetLock().GetOwner(), check.Equals, a.Lock.Owner)
+	c.Assert(a.GetLock().GetReason(), check.Equals, a.Lock.Reason)
+	c.Assert(a.GetLock().GetAcquireDate(), check.Equals, a.Lock.AcquireDate)
 }
 
 func (s *S) TestGetPlatform(c *check.C) {
@@ -3241,6 +3242,26 @@ func (s *S) TestAppLockMarshalJSON(c *check.C) {
 	err = json.Unmarshal(data, &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(a, check.DeepEquals, lock)
+}
+
+func (s *S) TestAppLockGetLocked(c *check.C) {
+	lock := AppLock{Locked: true}
+	c.Assert(lock.GetLocked(), check.Equals, lock.Locked)
+}
+
+func (s *S) TestAppLockGetReason(c *check.C) {
+	lock := AppLock{Reason: "/app/my-app/deploy"}
+	c.Assert(lock.GetReason(), check.Equals, lock.Reason)
+}
+
+func (s *S) TestAppLockGetOwner(c *check.C) {
+	lock := AppLock{Owner: "someone"}
+	c.Assert(lock.GetOwner(), check.Equals, lock.Owner)
+}
+
+func (s *S) TestAppLockGetAcquireDate(c *check.C) {
+	lock := AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
+	c.Assert(lock.GetAcquireDate(), check.Equals, lock.AcquireDate)
 }
 
 func (s *S) TestAppRegisterUnit(c *check.C) {
