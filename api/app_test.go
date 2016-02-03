@@ -305,7 +305,12 @@ func (s *S) TestAppList(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	u, _ := token.User()
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"cname.app1"}}
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app1"},
+	}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
 	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
@@ -334,18 +339,16 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var apps []miniApp
+	var apps []app.App
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
-	miniApp1, err := minifyApp(app1)
-	c.Assert(err, check.IsNil)
-	miniApp1.Lock.AcquireDate = apps[0].Lock.AcquireDate
-	miniApp2, err := minifyApp(app2)
-	c.Assert(err, check.IsNil)
-	miniApp2.Lock.AcquireDate = apps[1].Lock.AcquireDate
-	expected := []miniApp{miniApp1, miniApp2}
-	c.Assert(apps, check.DeepEquals, expected)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
+	c.Assert(apps[0].Ip, check.Equals, app1.Ip)
+	c.Assert(apps[1].Name, check.Equals, app2.Name)
+	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
+	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
 	action := rectest.Action{Action: "app-list", User: u.Email}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -375,7 +378,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var apps []miniApp
+	var apps []app.App
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
