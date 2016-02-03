@@ -5,6 +5,7 @@
 package provisiontest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -268,6 +269,10 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 
 func (a *FakeApp) GetIp() string {
 	return ""
+}
+
+func (a *FakeApp) GetLock() json.Marshaler {
+	return nil
 }
 
 func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
