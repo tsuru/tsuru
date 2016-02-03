@@ -7,6 +7,7 @@
 package provision
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -200,6 +201,8 @@ type App interface {
 	GetCname() []string
 
 	GetIp() string
+
+	GetLock() json.Marshaler
 }
 
 // CNameManager represents a provisioner that supports cname on applications.
