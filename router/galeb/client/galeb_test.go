@@ -55,6 +55,27 @@ func (s *S) TestNewGalebClient(c *check.C) {
 	c.Assert(s.client.Password, check.Equals, "mypassword")
 }
 
+func (s *S) TestGalebAuth(c *check.C) {
+	_, err := s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/"})
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	s.client.Token = "xxx"
+	_, err = s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Header, check.HasLen, 2)
+	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[1].Get("x-auth-token"), check.Equals, "xxx")
+	s.client.TokenHeader = "x-app-token"
+	_, err = s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Header, check.HasLen, 3)
+	c.Assert(s.handler.Header[2].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[2].Get("x-auth-token"), check.Equals, "")
+	c.Assert(s.handler.Header[2].Get("x-app-token"), check.Equals, "xxx")
+}
+
 func (s *S) TestGalebAddBackendPool(c *check.C) {
 	s.handler.ConditionalContent["/api/target/3"] = []string{
 		"200", `{"_status": "OK"}`,

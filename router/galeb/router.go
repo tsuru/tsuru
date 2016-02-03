@@ -33,13 +33,12 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		return nil, err
 	}
-	username, err := config.GetString(configPrefix + ":username")
-	if err != nil {
-		return nil, err
-	}
-	password, err := config.GetString(configPrefix + ":password")
-	if err != nil {
-		return nil, err
+	username, _ := config.GetString(configPrefix + ":username")
+	password, _ := config.GetString(configPrefix + ":password")
+	token, _ := config.GetString(configPrefix + ":token")
+	tokenHeader, _ := config.GetString(configPrefix + ":token-header")
+	if token == "" && (username == "" || password == "") {
+		return nil, fmt.Errorf("either token or username and password must be set for galeb router")
 	}
 	domain, err := config.GetString(configPrefix + ":domain")
 	if err != nil {
@@ -54,6 +53,8 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 		ApiUrl:        apiUrl,
 		Username:      username,
 		Password:      password,
+		Token:         token,
+		TokenHeader:   tokenHeader,
 		Environment:   environment,
 		Project:       project,
 		BalancePolicy: balancePolicy,

@@ -29,6 +29,8 @@ type GalebClient struct {
 	ApiUrl        string
 	Username      string
 	Password      string
+	Token         string
+	TokenHeader   string
 	Environment   string
 	Project       string
 	BalancePolicy string
@@ -60,7 +62,15 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(c.Username, c.Password)
+	if c.Token != "" {
+		header := c.TokenHeader
+		if header == "" {
+			header = "x-auth-token"
+		}
+		req.Header.Set(header, c.Token)
+	} else {
+		req.SetBasicAuth(c.Username, c.Password)
+	}
 	req.Header.Set("Content-Type", contentType)
 	rsp, err := net.Dial5Full60Client.Do(req)
 	if c.Debug {
