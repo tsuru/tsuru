@@ -1626,6 +1626,36 @@ func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 	c.Assert(users[0].Email, check.Equals, token.GetUserName())
 }
 
+func (s *AuthSuite) TestListUsersLimitedUserWithMoreRoles(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	token2 := customUserWithPermission(c, "jerry", permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "another-team"),
+	})
+	request, err := http.NewRequest("GET", "/users", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var users []apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(users), check.Equals, 2)
+	emails := []string{users[0].Email, users[1].Email}
+	expected := []string{token.GetUserName(), token2.GetUserName()}
+	sort.Strings(emails)
+	sort.Strings(expected)
+	c.Assert(emails, check.DeepEquals, expected)
+}
+
 func (s *AuthSuite) TestUserInfo(c *check.C) {
 	request, err := http.NewRequest("GET", "/users/info", nil)
 	c.Assert(err, check.IsNil)

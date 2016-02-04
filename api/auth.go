@@ -438,13 +438,14 @@ type apiUser struct {
 	Permissions []rolePermissionData
 }
 
-func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role) (*apiUser, error) {
-	permData := make([]rolePermissionData, 0, len(user.Roles))
-	roleData := make([]rolePermissionData, len(user.Roles))
+func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
+	var permData []rolePermissionData
+	roleData := make([]rolePermissionData, 0, len(user.Roles))
 	if roleMap == nil {
 		roleMap = make(map[string]*permission.Role)
 	}
-	for i, userRole := range user.Roles {
+	allGlobal := true
+	for _, userRole := range user.Roles {
 		role := roleMap[userRole.Name]
 		if role == nil {
 			r, err := permission.FindRole(userRole.Name)
@@ -454,22 +455,38 @@ func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[s
 			role = &r
 			roleMap[userRole.Name] = role
 		}
-		roleData[i] = rolePermissionData{
-			Name:         userRole.Name,
-			ContextType:  string(role.ContextType),
-			ContextValue: userRole.ContextValue,
-		}
+		allPermsMatch := true
 		permissions := role.PermissionsFor(userRole.ContextValue)
-		for _, p := range permissions {
-			if !permission.CheckFromPermList(perms, p.Scheme, p.Context) {
-				return nil, nil
+		if len(permissions) == 0 && !includeAll {
+			continue
+		}
+		rolePerms := make([]rolePermissionData, len(permissions))
+		for i, p := range permissions {
+			if perms != nil && allPermsMatch && !permission.CheckFromPermList(perms, p.Scheme, p.Context) {
+				allPermsMatch = false
+				break
 			}
-			permData = append(permData, rolePermissionData{
+			rolePerms[i] = rolePermissionData{
 				Name:         p.Scheme.FullName(),
 				ContextType:  string(p.Context.CtxType),
 				ContextValue: p.Context.Value,
-			})
+			}
 		}
+		if !allPermsMatch {
+			continue
+		}
+		roleData = append(roleData, rolePermissionData{
+			Name:         userRole.Name,
+			ContextType:  string(role.ContextType),
+			ContextValue: userRole.ContextValue,
+		})
+		permData = append(permData, rolePerms...)
+		if role.ContextType != permission.CtxGlobal {
+			allGlobal = false
+		}
+	}
+	if len(roleData) == 0 || (!includeAll && allGlobal) {
+		return nil, nil
 	}
 	return &apiUser{
 		Email:       user.Email,
@@ -487,12 +504,13 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	apiUsers := make([]apiUser, 0, len(users))
 	roleMap := make(map[string]*permission.Role)
+	includeAll := permission.Check(t, permission.PermUserUpdate)
 	perms, err := t.Permissions()
 	if err != nil {
 		return err
 	}
 	for _, user := range users {
-		usrData, err := createApiUser(perms, &user, roleMap)
+		usrData, err := createApiUser(perms, &user, roleMap, includeAll)
 		if err != nil {
 			return err
 		}
@@ -526,7 +544,7 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	userData, err := createApiUser(perms, user, nil)
+	userData, err := createApiUser(perms, user, nil, true)
 	if err != nil {
 		return err
 	}
