@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -479,6 +479,8 @@ func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[s
 }
 
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	userEmail := r.URL.Query().Get("userEmail")
+	roleName := r.URL.Query().Get("role")
 	users, err := auth.ListUsers()
 	if err != nil {
 		return err
@@ -494,8 +496,22 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if err != nil {
 			return err
 		}
-		if usrData != nil {
+		if usrData == nil {
+			continue
+		}
+		if userEmail == "" && roleName == "" {
 			apiUsers = append(apiUsers, *usrData)
+		}
+		if userEmail != "" && usrData.Email == userEmail {
+			apiUsers = append(apiUsers, *usrData)
+		}
+		if roleName != "" {
+			for _, role := range usrData.Roles {
+				if role.Name == roleName {
+					apiUsers = append(apiUsers, *usrData)
+					break
+				}
+			}
 		}
 	}
 	return json.NewEncoder(w).Encode(apiUsers)

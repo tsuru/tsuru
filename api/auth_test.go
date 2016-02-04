@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1558,6 +1558,53 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 	sort.Strings(emails)
 	sort.Strings(expected)
 	c.Assert(emails, check.DeepEquals, expected)
+}
+
+func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	expected := token.GetUserName()
+	url := fmt.Sprintf("/users?userEmail=%s", expected)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var users []apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(users), check.Equals, 1)
+	email := users[0].Email
+	c.Check(email, check.DeepEquals, expected)
+}
+
+func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	expectedUser, err := token.User()
+	c.Assert(err, check.IsNil)
+	userRoles := expectedUser.Roles
+	expectedRole := userRoles[0].Name
+	url := fmt.Sprintf("/users?role=%s", expectedRole)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var users []apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(users), check.Equals, 1)
+	receivedUser := users[0]
+	c.Assert(expectedUser.Email, check.Equals, receivedUser.Email)
 }
 
 func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
