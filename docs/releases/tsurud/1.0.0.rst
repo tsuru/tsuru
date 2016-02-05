@@ -17,4 +17,12 @@ Main new features
 
 * API versioning
 
-* Deploy apps using Dockerfile or Docker image (#1314)
+* Deploy apps using Dockerfile or Docker image (`#1314
+  <https://github.com/tsuru/tsuru/issues/1314>`_).
+  Now it's possible to deploy a docker image as tsuru app using `tsuru
+  app-deploy -i` command.  This image should be in a registry and be accessable
+  by tsuru api. Image should also have a Entrypoint or a Procfile at given paths,
+  `/` or `/app/user/` or `/home/application/current`.  See more in `tsuru-client
+  app-deploy reference
+  <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
+
