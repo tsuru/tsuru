@@ -32,7 +32,7 @@ func (s *S) TestDelayedRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	router := &DelayedRouter{}
 	called := false
-	router.Add("GET", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Add("1.0", "GET", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
 	router.ServeHTTP(recorder, request)
@@ -45,7 +45,7 @@ func (s *S) TestDelayedRouter(c *check.C) {
 func (s *S) TestDelayedRouterAddAll(c *check.C) {
 	router := &DelayedRouter{}
 	called := false
-	router.AddAll("/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.AddAll("1.0", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
 	for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
