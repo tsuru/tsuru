@@ -13,6 +13,7 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
+	apiRouter "github.com/tsuru/tsuru/api/router"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -83,7 +84,7 @@ func RunServer(dry bool) http.Handler {
 	}
 	fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
 
-	m := &delayedRouter{}
+	m := &apiRouter.DelayedRouter{}
 
 	for _, handler := range tsuruHandlerList {
 		m.Add(handler.method, handler.path, handler.h)
