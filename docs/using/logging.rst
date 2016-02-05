@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -6,14 +6,25 @@
 Logging
 +++++++
 
-tsuru aggregates stdout and stderr from every application process making it easier
-to troubleshoot problems. To use the log make sure that your application is
-sending the log to stdout and stderr.
+tsuru aggregates stdout and stderr from every application process making it
+easier to troubleshoot problems. To use the log make sure that your application
+is sending the log to stdout and stderr.
 
 Watch your logs
 ===============
 
-To see the logs for your application. You can use the `tsuru app-log` command:
+On its default installation tsuru will have all logs available using the ``tsuru
+app-log`` command.
+
+It's possible that viewing logs using tsuru was disabled by an administrator. In
+this case running ``tsuru app-log`` will show instructions on how logs can be
+read.
+
+For more informations about configuring the destination of logs and
+enabling/disabling ``tsuru app-log`` see :doc:`../managing/logs`.
+
+Basic usage
+-----------
 
 .. highlight:: bash
 
@@ -29,7 +40,7 @@ To see the logs for your application. You can use the `tsuru app-log` command:
     2014-12-11 16:36:28 -0200 [tsuru][api]:  ---> Removed old unit 1/1
 
 By default is showed the last ten log lines. If you want see more lines,
-you can use the `-l/--lines` parameter:
+you can use the ``-l/--lines`` parameter:
 
 .. highlight:: bash
 
@@ -55,10 +66,10 @@ To filter by unit you should use `-u/--unit` parameter:
 
 .. seealso::
 
-    To get the unit id you can use the `tsuru app-info -a <appname>` command.
+    To get the unit id you can use the ``tsuru app-info -a <appname>`` command.
 
 The log can be sent by your process or by tsuru api. To filter by source
-you should use `-s/--source` parameter:
+you should use ``-s/--source`` parameter:
 
 .. highlight:: bash
 
@@ -76,9 +87,9 @@ you should use `-s/--source` parameter:
 Realtime logging
 ----------------
 
-`tsuru app-log` has a `-f/--follow` option that causes the log to not stop and wait for the
-new log data. With this option you can see in real time the behaviour of your application that
-is useful to debug problems:
+``tsuru app-log`` has a ``-f/--follow`` option that causes the log to not stop and
+wait for the new log data. With this option you can see in real time the
+behaviour of your application that is useful to debug problems:
 
 .. highlight:: bash
 
@@ -87,38 +98,3 @@ is useful to debug problems:
     $ tsuru app-log -a <appname> --follow
 
 You can close the session pressing Ctrl-C.
-
-Limitations
------------
-
-The tsuru native log system is designed to be fast and show the recent
-log of your application. The tsuru log doesn't store all log entries for your application.
-
-If you want to store and see all log entries you should use an external log aggregator.
-
-Using an external log aggregator
-================================
-
-You can also send the log to an external log aggregator. To do this, tsuru uses
-the `Syslog <https://tools.ietf.org/html/rfc5424>`_ protocol.
-
-To use Syslog you should set the following environment variables in your
-application:
-
-.. highlight:: bash
-
-::
-
-    TSURU_SYSLOG_SERVER
-    TSURU_SYSLOG_PORT (probably 514)
-    TSURU_SYSLOG_FACILITY (something like local0)
-    TSURU_SYSLOG_SOCKET (tcp or udp)
-
-You can use the command `tsuru env-set` to set these enviroment variables in
-your application:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru env-set -a myapp TSURU_SYSLOG_SERVER=myserver.com TSURU_SYSLOG_PORT=514 TSURU_SYSLOG_FACILITY=local0 TSURU_SYSLOG_SOCKET=tcp

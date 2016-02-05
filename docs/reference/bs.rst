@@ -5,8 +5,8 @@
 bs
 ==
 
-bs (or big sibling) is a component tsuru component, responsible for reporting
-information on application containers, this information include application
-logs, metrics and unit status.
+bs (or big sibling) is a tsuru component, responsible for reporting information
+on application containers, this information include application logs, metrics
+and unit status.
 
 See the bs documentation for a full reference: https://github.com/tsuru/bs#bs.
