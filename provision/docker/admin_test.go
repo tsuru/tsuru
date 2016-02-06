@@ -16,16 +16,6 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestMoveContainersInfo(c *check.C) {
-	expected := &cmd.Info{
-		Name:    "containers-move",
-		Usage:   "containers-move <from host> <to host>",
-		Desc:    "Move all containers from one host to another.\nThis command is especially useful for host maintenance.",
-		MinArgs: 2,
-	}
-	c.Assert((&moveContainersCmd{}).Info(), check.DeepEquals, expected)
-}
-
 func (s *S) TestMoveContainersRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -60,16 +50,6 @@ func (s *S) TestMoveContainersRun(c *check.C) {
 	c.Assert(stdout.String(), check.Equals, expected)
 }
 
-func (s *S) TestMoveContainerInfo(c *check.C) {
-	expected := &cmd.Info{
-		Name:    "container-move",
-		Usage:   "container-move <container id> <to host>",
-		Desc:    "Move specified container to another host.",
-		MinArgs: 2,
-	}
-	c.Assert((&moveContainerCmd{}).Info(), check.DeepEquals, expected)
-}
-
 func (s *S) TestMoveContainerRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -101,16 +81,6 @@ func (s *S) TestMoveContainerRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := "progress msg"
 	c.Assert(stdout.String(), check.Equals, expected)
-}
-
-func (s *S) TestRebalanceContainersInfo(c *check.C) {
-	expected := &cmd.Info{
-		Name:    "containers-rebalance",
-		Usage:   "containers-rebalance [--dry] [-y/--assume-yes] [-m/--metadata <metadata>=<value>]... [-a/--app <appname>]...",
-		Desc:    "Move containers creating a more even distribution between docker nodes.",
-		MinArgs: 0,
-	}
-	c.Assert((&rebalanceContainersCmd{}).Info(), check.DeepEquals, expected)
 }
 
 func (s *S) TestRebalanceContainersRun(c *check.C) {
