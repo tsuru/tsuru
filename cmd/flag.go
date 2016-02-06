@@ -5,14 +5,19 @@
 package cmd
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 )
 
 type MapFlag map[string]string
 
 func (f *MapFlag) String() string {
-	return fmt.Sprintf("%#v", f)
+	repr := *f
+	if repr == nil {
+		repr = MapFlag{}
+	}
+	data, _ := json.Marshal(repr)
+	return string(data)
 }
 
 func (f *MapFlag) Set(val string) error {
@@ -27,7 +32,12 @@ func (f *MapFlag) Set(val string) error {
 type StringSliceFlag []string
 
 func (f *StringSliceFlag) String() string {
-	return fmt.Sprintf("%#v", f)
+	repr := *f
+	if repr == nil {
+		repr = StringSliceFlag{}
+	}
+	data, _ := json.Marshal(repr)
+	return string(data)
 }
 
 func (f *StringSliceFlag) Set(val string) error {

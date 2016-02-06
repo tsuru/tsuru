@@ -18,9 +18,18 @@ type moveContainersCmd struct{}
 
 func (c *moveContainersCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "containers-move",
-		Usage:   "containers-move <from host> <to host>",
-		Desc:    "Move all containers from one host to another.\nThis command is especially useful for host maintenance.",
+		Name:  "containers-move",
+		Usage: "containers-move <from host> <to host>",
+		Desc: `Move all containers from one host to another.
+This command allows you to move all containers from one host to another. This
+is useful when doing maintenance on hosts. <from host> and <to host> must be
+host names of existing docker nodes.
+
+This command will go through the following steps:
+
+* Enumerate all units at the origin host;
+* For each unit, create a new unit at the destination host;
+* Erase each unit from the origin host.`,
 		MinArgs: 2,
 	}
 }
@@ -56,9 +65,12 @@ type moveContainerCmd struct{}
 
 func (c *moveContainerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "container-move",
-		Usage:   "container-move <container id> <to host>",
-		Desc:    "Move specified container to another host.",
+		Name:  "container-move",
+		Usage: "container-move <container id> <to host>",
+		Desc: `Move specified container to another host.
+This command allow you to specify a container id and a destination host, this
+will create a new container on the destination host and remove the container
+from its previous host.`,
 		MinArgs: 2,
 	}
 }
@@ -99,9 +111,16 @@ type rebalanceContainersCmd struct {
 
 func (c *rebalanceContainersCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "containers-rebalance",
-		Usage:   "containers-rebalance [--dry] [-y/--assume-yes] [-m/--metadata <metadata>=<value>]... [-a/--app <appname>]...",
-		Desc:    "Move containers creating a more even distribution between docker nodes.",
+		Name:  "containers-rebalance",
+		Usage: "containers-rebalance [--dry] [-y/--assume-yes] [-m/--metadata <metadata>=<value>]... [-a/--app <appname>]...",
+		Desc: `Move containers creating a more even distribution between docker nodes.
+Instead of specifying hosts as in the containers-move command, this command
+will automatically choose to which host each unit should be moved, trying to
+distribute the units as evenly as possible.
+
+The --dry flag runs the balancing algorithm without doing any real
+modification. It will only print which units would be moved and where they
+would be created.`,
 		MinArgs: 0,
 	}
 }
