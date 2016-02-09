@@ -79,7 +79,7 @@ Example:
 Restart an app
 **************
 
-    * Method: GET
+    * Method: POST
     * Endpoint: /apps/<appname>/restart
 
 Returns 200 in case of success.
@@ -88,7 +88,7 @@ Example:
 
 ::
 
-    GET /apps/myapp/restart HTTP/1.1
+    POST /apps/myapp/restart HTTP/1.1
 
 Get app environment variables
 *****************************
