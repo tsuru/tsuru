@@ -36,16 +36,24 @@ func (addNodeToSchedulerCmd) Info() *cmd.Info {
 By default, this command will call the configured IaaS to create a new
 machine. Every param will be sent to the IaaS implementation.
 
-Parameters with special meaning:
-  iaas=<iaas name>          Which iaas provider should be used, if not set
-                            tsuru will use the default iaas specified in
-                            tsuru.conf file.
-  template=<template name>  A machine template with predefined parameters,
-                            additional parameters will override template
-                            ones. See 'machine-template-add' command.
+IaaS providers should have been previously configured in the [[tsuru.conf]]
+file. See tsuru.conf reference docs for more information.
 
---register: Registers an existing docker endpoint. The IaaS won't be called.
-            Having a address=<docker_api_url> param is mandatory.
+If using an IaaS to create a node is not wanted it's possible to simply
+register an existing docker node with the [[--register]] flag.
+
+Parameters with special meaning:
+  iaas=<iaas name>
+    Which iaas provider should be used, if not set tsuru will use the default
+    iaas specified in tsuru.conf file.
+
+  template=<template name>
+    A machine template with predefined parameters, additional parameters will
+    override template ones. See 'machine-template-add' command.
+
+  address=<docker api url>
+    Only used if [[--register]] flag is used. Should point to the endpoint of
+    a working docker server.
 `,
 		MinArgs: 0,
 	}
@@ -88,7 +96,7 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if a.fs == nil {
 		a.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
-		a.fs.BoolVar(&a.register, "register", false, "Register an already created node")
+		a.fs.BoolVar(&a.register, "register", false, "Registers an existing docker endpoint, the IaaS won't be called.")
 	}
 	return a.fs
 }
@@ -102,10 +110,12 @@ type updateNodeToSchedulerCmd struct {
 func (updateNodeToSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-node-update",
-		Usage: "docker-node-update <address> [param_name=param_value...] --disable",
-		Desc: `Modifies metadata associated to a docker node.
---disable: Disable node in scheduler.
---enable: Enable node in scheduler.`,
+		Usage: "docker-node-update <address> [param_name=param_value...] [--disable] [--enable]",
+		Desc: `Modifies metadata associated to a docker node. If a parameter is set to an
+empty value, it will be removed from the node's metadata.
+
+If the [[--disable]] flag is used, the node will be marked as disabled and the
+scheduler won't consider it when selecting a node to receive containers.`,
 		MinArgs: 1,
 	}
 }
@@ -161,9 +171,12 @@ func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 		Usage: "docker-node-remove <address> [--no-rebalance] [--destroy] [-y]",
 		Desc: `Removes a node from the cluster.
 
---destroy: Destroy the machine in the IaaS used to create it, if it exists.
---no-rebalance: Do not rebalance containers of removed node.
-`,
+By default tsuru will redistribute all containers present on the removed node
+among other nodes. This behavior can be inhibited using the [[--no-rebalance]]
+flag.
+
+If the node being removed was created using a IaaS provider tsuru will NOT
+destroy the machine on the IaaS, unless the [[--destroy]] flag is used.`,
 		MinArgs: 1,
 	}
 }
@@ -204,7 +217,7 @@ func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = c.ConfirmationCommand.Flags()
 		c.fs.BoolVar(&c.destroy, "destroy", false, "Destroy node from IaaS")
-		c.fs.BoolVar(&c.noRebalance, "no-rebalance", false, "Do not rebalance containers of removed node.")
+		c.fs.BoolVar(&c.noRebalance, "no-rebalance", false, "Do not rebalance containers from removed node.")
 	}
 	return c.fs
 }
@@ -218,14 +231,19 @@ func (c *listNodesInTheSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-node-list",
 		Usage: "docker-node-list [--filter/-f <metadata>=<value>]...",
-		Desc:  "List available nodes in the cluster",
+		Desc: `Lists nodes in the cluster. It will also show you metadata associated to each
+node and the IaaS ID if the node was added using tsuru IaaS providers.
+
+Using the [[-f/--filter]] flag, the user is able to filter the nodes that
+appear in the list based on the key pairs displayed in the metadata column.
+Users can also combine filters using [[-f]] multiple times.`,
 	}
 }
 
 func (c *listNodesInTheSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
-		filter := "Filter by metadata value"
+		filter := "Filter by metadata name and value"
 		c.fs.Var(&c.filter, "filter", filter)
 		c.fs.Var(&c.filter, "f", filter)
 	}
