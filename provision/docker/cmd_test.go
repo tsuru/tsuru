@@ -21,31 +21,6 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:  "docker-node-add",
-		Usage: "docker-node-add [param_name=param_value]... [--register]",
-		Desc: `Creates or registers a new node in the cluster.
-By default, this command will call the configured IaaS to create a new
-machine. Every param will be sent to the IaaS implementation.
-
-Parameters with special meaning:
-  iaas=<iaas name>          Which iaas provider should be used, if not set
-                            tsuru will use the default iaas specified in
-                            tsuru.conf file.
-  template=<template name>  A machine template with predefined parameters,
-                            additional parameters will override template
-                            ones. See 'machine-template-add' command.
-
---register: Registers an existing docker endpoint. The IaaS won't be called.
-            Having a address=<docker_api_url> param is mandatory.
-`,
-		MinArgs: 0,
-	}
-	cmd := addNodeToSchedulerCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
-}
-
 func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"pool=poolTest", "address=http://localhost:8080"}, Stdout: &buf}
@@ -90,22 +65,6 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Error: some err\n\nmy iaas desc\n")
-}
-
-func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:  "docker-node-remove",
-		Usage: "docker-node-remove <address> [--no-rebalance] [--destroy] [-y]",
-		Desc: `Removes a node from the cluster.
-
---destroy: Destroy the machine in the IaaS used to create it, if it exists.
---no-rebalance: Do not rebalance containers of removed node.
-`,
-		MinArgs: 1,
-	}
-	cmd := removeNodeFromSchedulerCmd{}
-	cmd.Flags().Parse(true, []string{"-y"})
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
 }
 
 func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *check.C) {
@@ -184,16 +143,6 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithNoRebalanceCmdRun(c *check.C) {
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Node successfully removed.\n")
-}
-
-func (s *S) TestListNodesInTheSchedulerCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:  "docker-node-list",
-		Usage: "docker-node-list [--filter/-f <metadata>=<value>]...",
-		Desc:  "List available nodes in the cluster",
-	}
-	cmd := listNodesInTheSchedulerCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
 }
 
 func (s *S) TestListNodesInTheSchedulerCmdRun(c *check.C) {
