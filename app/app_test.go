@@ -2658,7 +2658,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 	apps, err := List(&Filter{Locked: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
-	c.Assert(apps[0].Name, check.Equals, "othertestapp")
+	c.Assert(apps[0].GetName(), check.Equals, "othertestapp")
 }
 
 func (s *S) TestListAll(c *check.C) {
@@ -2811,14 +2811,14 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 	apps, err := List(&Filter{Pool: s.Pool})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
-	c.Assert(apps[0].Name, check.Equals, a2.Name)
-	c.Assert(apps[0].Pool, check.Equals, a2.Pool)
+	c.Assert(apps[0].GetName(), check.Equals, a2.Name)
+	c.Assert(apps[0].GetPool(), check.Equals, a2.Pool)
 }
 
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(apps, check.DeepEquals, []App(nil))
+	c.Assert(apps, check.DeepEquals, []provision.App{})
 }
 
 func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
@@ -2828,8 +2828,8 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	apps, err := List(nil)
 	c.Assert(len(apps), Greater, 0)
-	c.Assert(apps[0].Name, check.Equals, "testApp")
-	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
+	c.Assert(apps[0].GetName(), check.Equals, "testApp")
+	c.Assert(apps[0].GetTeamsName(), check.DeepEquals, []string{"notAdmin", "noSuperUser"})
 }
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
@@ -2872,7 +2872,7 @@ func (s *S) TestListFilteringExtraWithOr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var appNames []string
 	for _, a := range apps {
-		appNames = append(appNames, a.Name)
+		appNames = append(appNames, a.GetName())
 	}
 	sort.Strings(appNames)
 	c.Assert(appNames, check.DeepEquals, []string{a2.Name, a3.Name})

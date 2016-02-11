@@ -300,7 +300,7 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
-	//c.Skip("pending")
+	c.Skip("pending")
 
 	// stopped app
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}

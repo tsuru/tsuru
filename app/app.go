@@ -1443,7 +1443,7 @@ func (f *Filter) Query() bson.M {
 }
 
 // List returns the list of apps filtered through the filter parameter.
-func List(filter *Filter) ([]App, error) {
+func List(filter *Filter) ([]provision.App, error) {
 	var apps []App
 	conn, err := db.Conn()
 	if err != nil {
@@ -1452,9 +1452,13 @@ func List(filter *Filter) ([]App, error) {
 	defer conn.Close()
 	query := filter.Query()
 	if err := conn.Apps().Find(query).All(&apps); err != nil {
-		return []App{}, err
+		return []provision.App{}, err
 	}
-	return apps, nil
+	appList := make([]provision.App, len(apps))
+	for i := range apps {
+		appList[i] = &apps[i]
+	}
+	return appList, nil
 }
 
 // Swap calls the Provisioner.Swap.

@@ -117,7 +117,7 @@ type miniApp struct {
 	Lock  provision.AppLock `json:"lock"`
 }
 
-func minifyApp(app app.App) (miniApp, error) {
+func minifyApp(app provision.App) (miniApp, error) {
 	units, err := app.Units()
 	if err != nil {
 		return miniApp{}, err
@@ -208,20 +208,8 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-
 	if status != "" {
-		abc := make([]provision.App, len(apps))
-
-		for i, a := range apps {
-			abc[i] = &a
-		}
-
-		abc, err = app.Provisioner.FilterAppsByUnitStatus(abc, []string{status})
-
-
-		for i, a := range abc {
-			apps[i] = app.App(a)
-		}
+		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, []string{status})
 
 		if err != nil {
 			return err
