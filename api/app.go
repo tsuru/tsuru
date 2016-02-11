@@ -163,7 +163,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	owner := r.URL.Query().Get("owner")
 	pool := r.URL.Query().Get("pool")
 	description := r.URL.Query().Get("description")
-	status := r.URL.Query().Get("status")
+	status := strings.Split(r.URL.Query().Get("status"), ",")
 	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
@@ -208,8 +208,8 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	if status != "" {
-		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, []string{status})
+	if status[0] != "" || len(status) > 1 {
+		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, status)
 
 		if err != nil {
 			return err
