@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -447,6 +448,8 @@ func (c *help) Run(context *Context, client *Client) error {
 	return nil
 }
 
+var flagFormatRegexp = regexp.MustCompile(`(?m)^([^-\s])`)
+
 func (c *help) parseFlags(command Command) string {
 	var output string
 	if cmd, ok := command.(FlaggedCommand); ok {
@@ -455,7 +458,8 @@ func (c *help) parseFlags(command Command) string {
 		flagset.SetOutput(&buf)
 		flagset.PrintDefaults()
 		if buf.String() != "" {
-			output = fmt.Sprintf("Flags:\n\n%s", buf.String())
+			output = flagFormatRegexp.ReplaceAllString(buf.String(), `    $1`)
+			output = fmt.Sprintf("Flags:\n\n%s", output)
 		}
 	}
 	return strings.Replace(output, "\n", "\n  ", -1)

@@ -418,6 +418,25 @@ Flags:
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
+func (s *S) TestHelpFlaggedMultilineCommand(c *check.C) {
+	expected := `glb version 1.0.
+
+Usage: glb with-flags
+
+with-flags doesn't do anything, really.
+
+Flags:
+  
+  -a, --age  (= 0)
+      velvet darkness
+      they fear
+  
+`
+	manager.Register(&CommandWithFlags{multi: true})
+	manager.Run([]string{"help", "with-flags"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
 func (s *S) TestHelpDeprecatedCmd(c *check.C) {
 	expectedStdout := `glb version 1.0.
 
@@ -865,6 +884,7 @@ type CommandWithFlags struct {
 	age     int
 	minArgs int
 	args    []string
+	multi   bool
 }
 
 func (c *CommandWithFlags) Info() *Info {
@@ -884,8 +904,12 @@ func (c *CommandWithFlags) Run(context *Context, client *Client) error {
 func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
-		c.fs.IntVar(&c.age, "age", 0, "your age")
-		c.fs.IntVar(&c.age, "a", 0, "your age")
+		desc := "your age"
+		if c.multi == true {
+			desc = "velvet darkness\nthey fear"
+		}
+		c.fs.IntVar(&c.age, "age", 0, desc)
+		c.fs.IntVar(&c.age, "a", 0, desc)
 	}
 	return c.fs
 }
