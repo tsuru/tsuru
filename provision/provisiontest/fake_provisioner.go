@@ -996,7 +996,27 @@ func (p *FakeProvisioner) ValidAppImages(appName string) ([]string, error) {
 }
 
 func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {
-	return apps, nil
+	filteredApps := []provision.App{}
+	for i := range apps {
+		units, _ := p.Units(apps[i])
+		for _, u := range units {
+			if stringInArray(u.Status.String(), status) {
+				filteredApps = append(filteredApps, apps[i])
+				break
+			}
+		}
+	}
+	return filteredApps, nil
+}
+
+func stringInArray(value string, array []string) bool {
+	for _, str := range array {
+		if str == value {
+			return true
+		}
+	}
+
+	return false
 }
 
 type PipelineFakeProvisioner struct {
