@@ -23,9 +23,16 @@ type EnvSetCmd struct {
 
 func (c *EnvSetCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "bs-env-set",
-		Usage:   "bs-env-set <NAME=value> [NAME=value]... [-p/--pool poolname]",
-		Desc:    "Set environment variables used when starting bs (big sibling) container.",
+		Name:  "bs-env-set",
+		Usage: "bs-env-set <NAME=value> [NAME=value]... [-p/--pool poolname]",
+		Desc: `Sets environment variables used when starting bs (big sibling) container.
+
+If the [standard bs image](https://github.com/tsuru/bs) is being used, it's
+possible to find which environment variables can be configured in [bs readme
+file](https://github.com/tsuru/bs#environment-variables).
+
+If pool name is omited the enviroment variable will apply to all pools, unless
+overriden on a specific pool.`,
 		MinArgs: 1,
 	}
 }
@@ -88,9 +95,10 @@ type InfoCmd struct{}
 
 func (c *InfoCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "bs-info",
-		Usage:   "bs-info",
-		Desc:    "Prints information about bs (big sibling) containers.",
+		Name:  "bs-info",
+		Usage: "bs-info",
+		Desc: `Shows information about the bs (big sibling) containers. Includes environment
+variables for each pool and docker image being used.`,
 		MinArgs: 0,
 	}
 }
@@ -135,9 +143,13 @@ type UpgradeCmd struct{}
 
 func (c *UpgradeCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "bs-upgrade",
-		Usage:   "bs-upgrade",
-		Desc:    "Upgrade the version of bs containers.",
+		Name:  "bs-upgrade",
+		Usage: "bs-upgrade",
+		Desc: `Upgrades the bs (big sibling) image. You can check the current image with the
+[[bs-info]] command.
+
+Running this command will restart the bs container on all nodes and the image
+specified at tsuru.conf file will be pulled from the registry.`,
 		MinArgs: 0,
 	}
 }
