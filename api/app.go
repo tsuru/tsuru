@@ -161,7 +161,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	owner := r.URL.Query().Get("owner")
 	pool := r.URL.Query().Get("pool")
 	description := r.URL.Query().Get("description")
-	status := strings.Split(r.URL.Query().Get("status"), ",")
 	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
@@ -206,8 +205,9 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	if status[0] != "" || len(status) > 1 {
-		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, status)
+	statusList := statusFilter(r.URL.Query().Get("status"))
+	if len(statusList) > 0 {
+		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, statusList)
 		if err != nil {
 			return err
 		}
@@ -221,6 +221,20 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	return json.NewEncoder(w).Encode(miniApps)
+}
+
+func statusFilter(status string) []string {
+	statusList := []string{}
+	if status == "" {
+		return statusList
+	}
+	for _, s := range strings.Split(status, ",") {
+		_, err := provision.ParseStatus(s)
+		if err == nil {
+			statusList = append(statusList, s)
+		}
+	}
+	return statusList
 }
 
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {

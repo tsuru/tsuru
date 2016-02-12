@@ -326,6 +326,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app3, s.user)
 	c.Assert(err, check.IsNil)
@@ -343,6 +344,59 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1, app2}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
+	}
+}
+
+func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	requestBody := strings.NewReader("units=2&process=web")
+	request, err := http.NewRequest("PUT", "/apps/app1/units?:app=app1", requestBody)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	requestBody = strings.NewReader("units=1&process=web")
+	request, err = http.NewRequest("PUT", "/apps/app2/units?:app=app2", requestBody)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	request, err = http.NewRequest("GET", "/apps?status=invalid,started", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m = RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app2}
 	c.Assert(len(apps), check.Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
