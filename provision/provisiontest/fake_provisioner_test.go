@@ -1167,9 +1167,9 @@ func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	err = p.Provision(app2)
 	c.Assert(err, check.IsNil)
 
-	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting }
+	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting}
 	p.AddUnit(app1, unit)
-	unit = provision.Unit{AppName: "unfairy-tale", ID: "unit/2", Status: provision.StatusStarting }
+	unit = provision.Unit{AppName: "unfairy-tale", ID: "unit/2", Status: provision.StatusStarting}
 	p.AddUnit(app2, unit)
 	err = p.SetUnitStatus(unit, provision.StatusError)
 	c.Assert(err, check.IsNil)
