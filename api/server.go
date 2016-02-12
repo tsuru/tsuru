@@ -84,7 +84,7 @@ func RunServer(dry bool) http.Handler {
 	}
 	fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
 
-	m := &apiRouter.DelayedRouter{}
+	m := apiRouter.NewRouter()
 
 	for _, handler := range tsuruHandlerList {
 		m.Add("1.0", handler.method, handler.path, handler.h)

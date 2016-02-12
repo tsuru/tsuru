@@ -27,19 +27,51 @@ func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *S) TestVersion(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/1.0/dream/tel'aran'rhiod", nil)
-	c.Assert(err, check.IsNil)
 	router := NewRouter()
-	called := false
+	var version string
 	router.Add("1.0", "GET", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
+		version = "1.0"
 	}))
+	router.Add("1.1", "GET", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		version = "1.1"
+	}))
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/1.1/dream/tel'aran'rhiod", nil)
+	c.Assert(err, check.IsNil)
 	router.ServeHTTP(recorder, request)
-	c.Assert(called, check.Equals, false)
-	c.Assert(request.URL.Query().Get(":world"), check.Equals, "tel'aran'rhiod")
 	runDelayedHandler(recorder, request)
-	c.Assert(called, check.Equals, true)
+	c.Assert(request.URL.Query().Get(":world"), check.Equals, "tel'aran'rhiod")
+	c.Assert(version, check.Equals, "1.1")
+	request, err = http.NewRequest("GET", "/1.0/dream/tel'aran'rhiod", nil)
+	c.Assert(err, check.IsNil)
+	router.ServeHTTP(recorder, request)
+	runDelayedHandler(recorder, request)
+	c.Assert(request.URL.Query().Get(":world"), check.Equals, "tel'aran'rhiod")
+	c.Assert(version, check.Equals, "1.0")
+}
+
+func (s *S) TestVersionAddAll(c *check.C) {
+	router := NewRouter()
+	var version string
+	router.AddAll("1.0", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		version = "1.0"
+	}))
+	router.AddAll("1.1", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		version = "1.1"
+	}))
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/1.1/dream/tel'aran'rhiod", nil)
+	c.Assert(err, check.IsNil)
+	router.ServeHTTP(recorder, request)
+	runDelayedHandler(recorder, request)
+	c.Assert(request.URL.Query().Get(":world"), check.Equals, "tel'aran'rhiod")
+	c.Assert(version, check.Equals, "1.1")
+	request, err = http.NewRequest("DELETE", "/1.0/dream/tel'aran'rhiod", nil)
+	c.Assert(err, check.IsNil)
+	router.ServeHTTP(recorder, request)
+	runDelayedHandler(recorder, request)
+	c.Assert(request.URL.Query().Get(":world"), check.Equals, "tel'aran'rhiod")
+	c.Assert(version, check.Equals, "1.0")
 }
 
 func (s *S) TestDelayedRouter(c *check.C) {

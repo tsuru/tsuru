@@ -7,6 +7,7 @@ package api
 import (
 	"net/http"
 	"net/url"
+	"regexp"
 
 	"github.com/gorilla/mux"
 	"github.com/tsuru/tsuru/api/context"
@@ -41,14 +42,27 @@ func (r *DelayedRouter) registerVars(req *http.Request, vars map[string]string) 
 	req.URL.RawQuery = url.Values(values).Encode() + "&" + req.URL.RawQuery
 }
 
+func (r *DelayedRouter) addRoute(version, path string, h http.Handler, methods ...string) *mux.Route {
+	muxRoute := r.mux.NewRoute().Handler(h).Methods(methods...)
+	route := &Route{route: muxRoute, version: version}
+	r.routes[muxRoute] = route
+	muxRoute.MatcherFunc(func(httpRequest *http.Request, rm *mux.RouteMatch) bool {
+		versionMatcher := "/(?P<version>[0-9.]+)/"
+		re := regexp.MustCompile(versionMatcher)
+		d := re.FindStringSubmatch(httpRequest.URL.Path)
+		return len(d) > 1 && r.routes[muxRoute].version == d[1]
+	}).PathPrefix(versionMatcher).Path(path)
+	r.mux.NewRoute().Path(path).Handler(h).Methods(methods...)
+	return muxRoute
+}
+
 func (r *DelayedRouter) Add(version, method, path string, h http.Handler) *mux.Route {
-	r.mux.NewRoute().PathPrefix(versionMatcher).Path(path).Handler(h).Methods(method)
-	return r.mux.Handle(path, h).Methods(method)
+	return r.addRoute(version, path, h, method)
 }
 
 // AddAll binds a path to GET, POST, PUT and DELETE methods.
 func (r *DelayedRouter) AddAll(version, path string, h http.Handler) *mux.Route {
-	return r.mux.Handle(path, h).Methods("GET", "POST", "PUT", "DELETE")
+	return r.addRoute(version, path, h, "GET", "POST", "PUT", "DELETE")
 }
 
 func (r *DelayedRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
