@@ -2815,6 +2815,45 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 	c.Assert(apps[0].GetPool(), check.Equals, a2.Pool)
 }
 
+func (s *S) TestListFilteringByPools(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test2", Default: false}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	opts = provision.AddPoolOptions{Name: "test3", Default: false}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	a := App{
+		Name:  "testapp",
+		Teams: []string{s.team.Name},
+		Owner: "foo",
+		Pool:  s.Pool,
+	}
+	a2 := App{
+		Name:  "testapp2",
+		Teams: []string{s.team.Name},
+		Owner: "bar",
+		Pool:  "test2",
+	}
+	a3 := App{
+		Name:  "testapp3",
+		Teams: []string{s.team.Name},
+		Owner: "bar",
+		Pool:  "test3",
+	}
+	err = s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a3)
+	c.Assert(err, check.IsNil)
+	apps, err := List(&Filter{Pools: []string{s.Pool, "test2"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 2)
+	appNames := []string{apps[0].Name, apps[1].Name}
+	sort.Strings(appNames)
+	c.Assert(appNames, check.DeepEquals, []string{"testapp", "testapp2"})
+}
+
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)

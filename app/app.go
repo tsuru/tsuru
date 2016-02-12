@@ -1396,6 +1396,7 @@ type Filter struct {
 	TeamOwner string
 	UserOwner string
 	Pool      string
+	Pools     []string
 	Locked    bool
 	Extra     map[string][]string
 }
@@ -1438,6 +1439,9 @@ func (f *Filter) Query() bson.M {
 	}
 	if f.Locked {
 		query["lock.locked"] = true
+	}
+	if len(f.Pools) > 0 {
+		query["pool"] = bson.M{"$in": f.Pools}
 	}
 	return query
 }
