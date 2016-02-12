@@ -46,10 +46,9 @@ func (r *DelayedRouter) addRoute(version, path string, h http.Handler, methods .
 	muxRoute := r.mux.NewRoute().Handler(h).Methods(methods...)
 	route := &Route{route: muxRoute, version: version}
 	r.routes[muxRoute] = route
+	versionRegexp := regexp.MustCompile("/(?P<version>[0-9.]+)/")
 	muxRoute.MatcherFunc(func(httpRequest *http.Request, rm *mux.RouteMatch) bool {
-		versionMatcher := "/(?P<version>[0-9.]+)/"
-		re := regexp.MustCompile(versionMatcher)
-		d := re.FindStringSubmatch(httpRequest.URL.Path)
+		d := versionRegexp.FindStringSubmatch(httpRequest.URL.Path)
 		return len(d) > 1 && r.routes[muxRoute].version == d[1]
 	}).PathPrefix(versionMatcher).Path(path)
 	r.mux.NewRoute().Path(path).Handler(h).Methods(methods...)
