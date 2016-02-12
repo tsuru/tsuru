@@ -88,7 +88,7 @@ Unmanaged nodes
 To add a previously provisioned node you call the `tsuru-admin docker-node-add
 <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-add>`_ with the
 ``--register`` flag and setting the address key with the URL of the Docker API
-in the remote node.
+in the remote node and specify the pool of the node with ``pool=mypoolname``.
 
 The docker API must be responding in the referenced address. To instructions
 about how to install docker on your node, please refer to `Docker documentation
@@ -99,6 +99,6 @@ about how to install docker on your node, please refer to `Docker documentation
 
 ::
 
-    $ tsuru-admin docker-node-add --register address=http://node.address.com:2375
+    $ tsuru-admin docker-node-add pool=mypoolname --register address=http://node.address.com:2375
 
 
