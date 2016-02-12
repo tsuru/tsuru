@@ -1517,12 +1517,119 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	conf, err := provision.FindScopedConfig("logs")
 	c.Assert(err, check.IsNil)
 	sort.Sort(provision.ConfigEntryList(conf.Envs))
 	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
+	c.Assert(conf.Pools, check.HasLen, 2)
+	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
+		{Name: "POOL1", Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}}},
+		{Name: "POOL2", Envs: []provision.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	})
+}
+
+func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C) {
+	recorder := httptest.NewRecorder()
+	json := `{
+		"restart": true,
+		"config": {
+			"envs": [
+				{"name": "log-driver", "value": "awslogs"},
+				{"name": "awslogs-region", "value": "sa-east-1"}
+			],
+			"pools": [
+				{
+					"name": "POOL1",
+					"envs": [
+						{"name": "log-driver", "value": "bs"}
+					]
+				},
+				{
+					"name": "POOL2",
+					"envs": [
+						{"name": "log-driver", "value": "fluentd"},
+						{"name": "fluentd-address", "value": "localhost:2222"}
+					]
+				}
+			]
+		}
+	}`
+	body := bytes.NewBufferString(json)
+	request, err := http.NewRequest("POST", "/docker/logs", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	conf, err := provision.FindScopedConfig("logs")
+	c.Assert(err, check.IsNil)
+	sort.Sort(provision.ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
+	c.Assert(conf.Pools, check.HasLen, 2)
+	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
+		{Name: "POOL1", Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}}},
+		{Name: "POOL2", Envs: []provision.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	})
+}
+
+func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
+	recorder := httptest.NewRecorder()
+	json := `{
+		"restart": true,
+		"config": {
+			"pools": [
+				{
+					"name": "POOL1",
+					"envs": [
+						{"name": "log-driver", "value": "bs"}
+					]
+				},
+				{
+					"name": "POOL2",
+					"envs": [
+						{"name": "log-driver", "value": "fluentd"},
+						{"name": "fluentd-address", "value": "localhost:2222"}
+					]
+				}
+			]
+		}
+	}`
+	appPools := [][]string{{"app1", "POOL1"}, {"app2", "POOL2"}, {"app3", "POOL3"}}
+	for _, appPool := range appPools {
+		opts := provision.AddPoolOptions{Name: appPool[1]}
+		err := provision.AddPool(opts)
+		c.Assert(err, check.IsNil)
+		err = s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
+		c.Assert(err, check.IsNil)
+		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
+		appStruct := &app.App{
+			Name:     appInstance.GetName(),
+			Platform: appInstance.GetPlatform(),
+			Pool:     opts.Name,
+		}
+		err = s.storage.Apps().Insert(appStruct)
+		c.Assert(err, check.IsNil)
+	}
+	body := bytes.NewBufferString(json)
+	request, err := http.NewRequest("POST", "/docker/logs", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	responseParts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(responseParts, check.HasLen, 15)
+	c.Assert(responseParts[0], check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}")
+	c.Assert(responseParts[1], check.Equals, "{\"Message\":\"Restarting 2 applications: [app1, app2]\\n\"}")
+	conf, err := provision.FindScopedConfig("logs")
+	c.Assert(err, check.IsNil)
 	c.Assert(conf.Pools, check.HasLen, 2)
 	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
 	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
