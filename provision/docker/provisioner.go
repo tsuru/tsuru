@@ -1219,17 +1219,14 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 	if status == nil {
 		return make([]provision.App, 0), nil
 	}
-
 	appNames := make([]string, len(apps))
 	for i, app := range apps {
 		appNames[i] = app.GetName()
 	}
-
 	containers, err := p.listContainersByAppAndStatus(appNames, status)
 	if err != nil {
 		return nil, err
 	}
-
 	result := make([]provision.App, 0)
 	for _, app := range apps {
 		for _, c := range containers {
@@ -1239,6 +1236,5 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 			}
 		}
 	}
-
 	return result, nil
 }

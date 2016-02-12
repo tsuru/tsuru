@@ -1015,7 +1015,6 @@ func stringInArray(value string, array []string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 

@@ -1160,21 +1160,17 @@ func (s *S) TestFakeProvisionerMetricEnvs(c *check.C) {
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
-
 	p := NewFakeProvisioner()
 	err := p.Provision(app1)
 	c.Assert(err, check.IsNil)
 	err = p.Provision(app2)
 	c.Assert(err, check.IsNil)
-
 	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting}
 	p.AddUnit(app1, unit)
 	unit = provision.Unit{AppName: "unfairy-tale", ID: "unit/2", Status: provision.StatusStarting}
 	p.AddUnit(app2, unit)
 	err = p.SetUnitStatus(unit, provision.StatusError)
 	c.Assert(err, check.IsNil)
-
-	// Should return apps with units containing status
 	apps, err := p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"starting"})
 	c.Assert(apps, check.DeepEquals, []provision.App{app1})
 	c.Assert(err, check.IsNil)

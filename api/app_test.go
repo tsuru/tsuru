@@ -302,7 +302,6 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
-
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -318,7 +317,6 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -328,11 +326,9 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m.ServeHTTP(recorder, request)
-
 	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app3, s.user)
 	c.Assert(err, check.IsNil)
-
 	request, err = http.NewRequest("GET", "/apps?status=stopped,started", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -356,7 +352,6 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-
 }
 
 func (s *S) TestAppList(c *check.C) {

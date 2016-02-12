@@ -32,8 +32,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var Provisioner provision.Provisioner
-
 func getAppFromContext(name string, r *http.Request) (app.App, error) {
 	var err error
 	a := context.GetApp(r)
@@ -210,12 +208,10 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if status[0] != "" || len(status) > 1 {
 		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, status)
-
 		if err != nil {
 			return err
 		}
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {

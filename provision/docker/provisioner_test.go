@@ -2752,40 +2752,30 @@ func (s *S) TestProvisionerRoutableUnits(c *check.C) {
 func (s *S) TestFilterAppsByUnitStatus(c *check.C) {
 	app1 := provisiontest.NewFakeApp("app1", "python", 0)
 	app2 := provisiontest.NewFakeApp("app2", "python", 0)
-
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName: app1.GetName(),
 		Status:  "stopped",
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
-
 	cont2, err := s.newContainer(&newContainerOpts{
 		AppName: app2.GetName(),
 		Status:  "started",
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
-
-	// Should return empty collection when status is nil
 	apps, err := s.p.FilterAppsByUnitStatus([]provision.App{app1}, nil)
 	c.Assert(apps, check.DeepEquals, []provision.App{})
 	c.Assert(err, check.IsNil)
-
-	// Should return error when apps are not specified
 	apps, err = s.p.FilterAppsByUnitStatus(nil, []string{"building"})
 	c.Assert(apps, check.IsNil)
 	c.Assert(err, check.Not(check.IsNil))
-
 	apps, err = s.p.FilterAppsByUnitStatus(nil, nil)
 	c.Assert(apps, check.IsNil)
 	c.Assert(err, check.Not(check.IsNil))
-
-	// Should return apps with units containing status
 	apps, err = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"started"})
 	c.Assert(apps, check.DeepEquals, []provision.App{app2})
 	c.Assert(err, check.IsNil)
-
 	apps, err = s.p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"building"})
 	c.Assert(apps, check.DeepEquals, []provision.App{})
 	c.Assert(err, check.IsNil)
