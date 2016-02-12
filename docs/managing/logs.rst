@@ -75,7 +75,13 @@ an external syslog server must be configured.
 Direct
 ======
 
-TODO
+tsuru can be configured to completely bypass bs when sending logs. This can be
+done using the ``tsuru-admin docker-log-update`` command. See the command
+`reference documentation <https://tsuru-admin.readthedocs.org/en/latest/reference.html#application-logging>`_ 
+for more details.
+
+When a ``log-driver`` different from ``bs`` is chosen, the logs will be similar
+to the diagram below:
 
 ::
 
@@ -83,13 +89,18 @@ TODO
    +-----------------------+
    |                       |
    |  +-----------------+  |
-   |  |  app container  |+ |
-   |  +-----------------+|chosen protocol    +---------------------+
-   |                     +------------------>|                     |
+   |  |  app container  |-+|
+   |  +-----------------+ |chosen driver     +---------------------+
+   |                      +----------------->|                     |
    |                       |                 | external log server |
-   |                     +------------------>|                     |
-   |  +-----------------+|chosen protocol    +---------------------+
-   |  |  app container  |+ |
+   |                      +----------------->|                     |
+   |  +-----------------+ |chosen driver     +---------------------+
+   |  |  app container  |-+|
    |  +-----------------+  |
    |                       |
    +-----------------------+
+
+The downside of using a direct logs is that the tsuru api server will NOT
+receive any log messages anymore. As a consequence the command ``tsuru app-log``
+will be disabled and users will have to refer to the chosen log driver to read
+log messages.
