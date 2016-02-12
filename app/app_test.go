@@ -2849,7 +2849,7 @@ func (s *S) TestListFilteringByPools(c *check.C) {
 	apps, err := List(&Filter{Pools: []string{s.Pool, "test2"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
-	appNames := []string{apps[0].Name, apps[1].Name}
+	appNames := []string{apps[0].GetName(), apps[1].GetName()}
 	sort.Strings(appNames)
 	c.Assert(appNames, check.DeepEquals, []string{"testapp", "testapp2"})
 }
