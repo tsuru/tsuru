@@ -94,7 +94,7 @@ func (s *S) TestListHealingHistoryCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: healingJsonData, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/healing"
+			return req.URL.Path == "/1.0/docker/healing"
 		},
 	}
 	manager := cmd.Manager{}
@@ -130,7 +130,7 @@ func (s *S) TestListHealingHistoryCmdRunEmpty(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: `[]`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/healing"
+			return req.URL.Path == "/1.0/docker/healing"
 		},
 	}
 	manager := cmd.Manager{}
@@ -156,7 +156,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: healingJsonData, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/healing" && req.URL.RawQuery == "filter=node"
+			return req.URL.Path == "/1.0/docker/healing" && req.URL.RawQuery == "filter=node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -183,7 +183,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: healingJsonData, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/healing" && req.URL.RawQuery == "filter=container"
+			return req.URL.Path == "/1.0/docker/healing" && req.URL.RawQuery == "filter=container"
 		},
 	}
 	manager := cmd.Manager{}

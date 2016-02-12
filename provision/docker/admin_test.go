@@ -38,7 +38,7 @@ func (s *S) TestMoveContainersRun(c *check.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/docker/containers/move" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/containers/move" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -71,7 +71,7 @@ func (s *S) TestMoveContainerRun(c *check.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/docker/container/contId/move" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/container/contId/move" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -104,7 +104,7 @@ func (s *S) TestRebalanceContainersRun(c *check.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/containers/rebalance" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -146,7 +146,7 @@ func (s *S) TestRebalanceContainersRunWithFilters(c *check.C) {
 			err = json.Unmarshal(body, &result)
 			c.Assert(err, check.IsNil)
 			c.Assert(result, check.DeepEquals, expected)
-			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/containers/rebalance" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -181,7 +181,7 @@ func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *check.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/containers/rebalance" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)

@@ -38,7 +38,7 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 			var conf provision.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
-			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -70,7 +70,7 @@ func (s *S) TestBsEnvSetRunAllowEmpty(c *check.C) {
 			var conf provision.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
-			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -124,7 +124,7 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 			var conf provision.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
-			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -164,7 +164,7 @@ func (s *S) TestBsInfoRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/bs" && req.Method == "GET"
+			return req.URL.Path == "/1.0/docker/bs" && req.Method == "GET"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -213,7 +213,7 @@ func (s *S) TestBsUpgradeRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/docker/bs/upgrade" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/bs/upgrade" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)

@@ -30,7 +30,7 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			body, _ := ioutil.ReadAll(req.Body)
 			c.Assert(string(body), check.DeepEquals, expectedBody)
-			return req.URL.Path == "/docker/node" && req.URL.RawQuery == "register=false"
+			return req.URL.Path == "/1.0/docker/node" && req.URL.RawQuery == "register=false"
 		},
 	}
 	manager := cmd.Manager{}
@@ -56,7 +56,7 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			body, _ := ioutil.ReadAll(req.Body)
 			c.Assert(string(body), check.DeepEquals, expectedBody)
-			return req.URL.Path == "/docker/node" && req.URL.RawQuery == "register=false"
+			return req.URL.Path == "/1.0/docker/node" && req.URL.RawQuery == "register=false"
 		},
 	}
 	manager := cmd.Manager{}
@@ -75,7 +75,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			var result map[string]string
 			json.NewDecoder(req.Body).Decode(&result)
-			return req.URL.Path == "/docker/node" &&
+			return req.URL.Path == "/1.0/docker/node" &&
 				result["address"] == "http://localhost:8080"
 		},
 	}
@@ -96,7 +96,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			var result map[string]string
 			json.NewDecoder(req.Body).Decode(&result)
-			return req.URL.Path == "/docker/node" &&
+			return req.URL.Path == "/1.0/docker/node" &&
 				result["remove_iaas"] == "true" &&
 				result["address"] == "http://localhost:8080"
 		},
@@ -131,7 +131,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithNoRebalanceCmdRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			var result map[string]string
 			json.NewDecoder(req.Body).Decode(&result)
-			return req.URL.Path == "/docker/node" &&
+			return req.URL.Path == "/1.0/docker/node" &&
 				req.URL.Query().Get("no-rebalance") == "true" &&
 				result["address"] == "http://localhost:8080"
 		},
@@ -157,7 +157,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *check.C) {
 	]
 }`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/node"
+			return req.URL.Path == "/1.0/docker/node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -188,7 +188,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *check.C) {
 	]
 }`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/node"
+			return req.URL.Path == "/1.0/docker/node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -213,7 +213,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/node"
+			return req.URL.Path == "/1.0/docker/node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -233,7 +233,7 @@ func (s *S) TestListAutoScaleHistoryCmdRunEmpty(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: `[]`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/autoscale" && req.URL.Query().Get("skip") == "0" && req.URL.Query().Get("limit") == "20"
+			return req.URL.Path == "/1.0/docker/autoscale" && req.URL.Query().Get("skip") == "0" && req.URL.Query().Get("limit") == "20"
 		},
 	}
 	manager := cmd.Manager{}
@@ -276,7 +276,7 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: msg, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/autoscale"
+			return req.URL.Path == "/1.0/docker/autoscale"
 		},
 	}
 	manager := cmd.Manager{}
@@ -312,7 +312,7 @@ func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 			err := json.Unmarshal(body, &parsed)
 			c.Assert(err, check.IsNil)
 			c.Assert(parsed, check.DeepEquals, expectedBody)
-			return req.URL.Path == "/docker/node" && req.Method == "PUT" && req.URL.Query().Get("disabled") == "false"
+			return req.URL.Path == "/1.0/docker/node" && req.Method == "PUT" && req.URL.Query().Get("disabled") == "false"
 		},
 	}
 	manager := cmd.Manager{}
@@ -390,7 +390,7 @@ func (s *S) TestAutoScaleRunCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/autoscale/run" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/autoscale/run" && req.Method == "POST"
 		},
 	}
 	manager := cmd.Manager{}
@@ -409,7 +409,7 @@ func (s *S) TestAutoScaleInfoCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: config, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			calls++
-			return req.URL.Path == "/docker/autoscale/config" && req.Method == "GET"
+			return req.URL.Path == "/1.0/docker/autoscale/config" && req.Method == "GET"
 		},
 	}
 	rules := `[
@@ -445,7 +445,7 @@ func (s *S) TestAutoScaleInfoCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: rules, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			calls++
-			return req.URL.Path == "/docker/autoscale/rules" && req.Method == "GET"
+			return req.URL.Path == "/1.0/docker/autoscale/rules" && req.Method == "GET"
 		},
 	}
 	var buf bytes.Buffer
@@ -480,7 +480,7 @@ func (s *S) TestAutoScaleInfoCmdRunDisabled(c *check.C) {
 		Transport: cmdtest.Transport{Message: config, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			calls++
-			return req.URL.Path == "/docker/autoscale/config" && req.Method == "GET"
+			return req.URL.Path == "/1.0/docker/autoscale/config" && req.Method == "GET"
 		},
 	}
 	var buf bytes.Buffer
@@ -511,7 +511,7 @@ func (s *S) TestAutoScaleSetRuleCmdRun(c *check.C) {
 				ScaleDownRatio:    1.33,
 				PreventRebalance:  false,
 			})
-			return req.Method == "POST" && req.URL.Path == "/docker/autoscale/rules"
+			return req.Method == "POST" && req.URL.Path == "/1.0/docker/autoscale/rules"
 		},
 	}
 	var buf bytes.Buffer
@@ -534,7 +534,7 @@ func (s *S) TestAutoScaleDeleteCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/myrule"
+			return req.Method == "DELETE" && req.URL.Path == "/1.0/docker/autoscale/rules/myrule"
 		},
 	}
 	var buf bytes.Buffer
@@ -556,7 +556,7 @@ func (s *S) TestAutoScaleDeleteCmdRunAskForConfirmation(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/myrule"
+			return req.Method == "DELETE" && req.URL.Path == "/1.0/docker/autoscale/rules/myrule"
 		},
 	}
 	var buf bytes.Buffer
@@ -576,7 +576,7 @@ func (s *S) TestAutoScaleDeleteCmdRunDefault(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/"
+			return req.Method == "DELETE" && req.URL.Path == "/1.0/docker/autoscale/rules/"
 		},
 	}
 	var buf bytes.Buffer
@@ -598,7 +598,7 @@ func (s *S) TestAutoScaleDeleteCmdRunDefaultAskForConfirmation(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/"
+			return req.Method == "DELETE" && req.URL.Path == "/1.0/docker/autoscale/rules/"
 		},
 	}
 	var buf bytes.Buffer
@@ -634,7 +634,7 @@ func (s *S) TestDockerLogUpdateRun(c *check.C) {
 			c.Assert(err, check.IsNil)
 			sort.Sort(provision.ConfigEntryList(data.Config.Envs))
 			c.Assert(data.Config, check.DeepEquals, expected)
-			return req.URL.Path == "/docker/logs" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/logs" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -674,7 +674,7 @@ func (s *S) TestDockerLogUpdateForPoolRun(c *check.C) {
 			c.Assert(err, check.IsNil)
 			sort.Sort(provision.ConfigEntryList(data.Config.Pools[0].Envs))
 			c.Assert(data.Config, check.DeepEquals, expected)
-			return req.URL.Path == "/docker/logs" && req.Method == "POST"
+			return req.URL.Path == "/1.0/docker/logs" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -710,7 +710,7 @@ func (s *S) TestDockerLogInfoRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/logs" && req.Method == "GET"
+			return req.URL.Path == "/1.0/docker/logs" && req.Method == "GET"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
