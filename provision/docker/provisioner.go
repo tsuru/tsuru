@@ -1211,3 +1211,30 @@ func pluralize(str string, sz int) string {
 	}
 	return str
 }
+
+func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {
+	if apps == nil {
+		return nil, fmt.Errorf("apps must be provided to FilterAppsByUnitStatus")
+	}
+	if status == nil {
+		return make([]provision.App, 0), nil
+	}
+	appNames := make([]string, len(apps))
+	for i, app := range apps {
+		appNames[i] = app.GetName()
+	}
+	containers, err := p.listContainersByAppAndStatus(appNames, status)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]provision.App, 0)
+	for _, app := range apps {
+		for _, c := range containers {
+			if app.GetName() == c.AppName {
+				result = append(result, app)
+				break
+			}
+		}
+	}
+	return result, nil
+}

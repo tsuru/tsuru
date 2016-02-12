@@ -2658,7 +2658,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 	apps, err := List(&Filter{Locked: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
-	c.Assert(apps[0].Name, check.Equals, "othertestapp")
+	c.Assert(apps[0].GetName(), check.Equals, "othertestapp")
 }
 
 func (s *S) TestListAll(c *check.C) {
@@ -2811,14 +2811,14 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 	apps, err := List(&Filter{Pool: s.Pool})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
-	c.Assert(apps[0].Name, check.Equals, a2.Name)
-	c.Assert(apps[0].Pool, check.Equals, a2.Pool)
+	c.Assert(apps[0].GetName(), check.Equals, a2.Name)
+	c.Assert(apps[0].GetPool(), check.Equals, a2.Pool)
 }
 
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(apps, check.DeepEquals, []App(nil))
+	c.Assert(apps, check.DeepEquals, []provision.App{})
 }
 
 func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
@@ -2828,8 +2828,8 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	apps, err := List(nil)
 	c.Assert(len(apps), Greater, 0)
-	c.Assert(apps[0].Name, check.Equals, "testApp")
-	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
+	c.Assert(apps[0].GetName(), check.Equals, "testApp")
+	c.Assert(apps[0].GetTeamsName(), check.DeepEquals, []string{"notAdmin", "noSuperUser"})
 }
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
@@ -2872,7 +2872,7 @@ func (s *S) TestListFilteringExtraWithOr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var appNames []string
 	for _, a := range apps {
-		appNames = append(appNames, a.Name)
+		appNames = append(appNames, a.GetName())
 	}
 	sort.Strings(appNames)
 	c.Assert(appNames, check.DeepEquals, []string{a2.Name, a3.Name})
@@ -2935,6 +2935,26 @@ func (s *S) TestSetQuotaInUseInvalid(c *check.C) {
 	err = app.SetQuotaInUse(-1)
 	c.Assert(err, check.NotNil)
 	c.Check(err.Error(), check.Equals, "invalid value, cannot be lesser than 0")
+}
+
+func (s *S) TestGetCname(c *check.C) {
+	a := App{CName: []string{"cname1", "cname2"}}
+	c.Assert(a.GetCname(), check.DeepEquals, a.CName)
+}
+
+func (s *S) TestGetLock(c *check.C) {
+	a := App{
+		Lock: AppLock{
+			Locked:      true,
+			Owner:       "someone",
+			Reason:      "/app/my-app/deploy",
+			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	c.Assert(a.GetLock().GetLocked(), check.Equals, a.Lock.Locked)
+	c.Assert(a.GetLock().GetOwner(), check.Equals, a.Lock.Owner)
+	c.Assert(a.GetLock().GetReason(), check.Equals, a.Lock.Reason)
+	c.Assert(a.GetLock().GetAcquireDate(), check.Equals, a.Lock.AcquireDate)
 }
 
 func (s *S) TestGetPlatform(c *check.C) {
@@ -3207,6 +3227,41 @@ func (s *S) TestAppLockStringLocked(c *check.C) {
 		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
 	}
 	c.Assert(lock.String(), check.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T.*")
+}
+
+func (s *S) TestAppLockMarshalJSON(c *check.C) {
+	lock := AppLock{
+		Locked:      true,
+		Reason:      "/app/my-app/deploy",
+		Owner:       "someone",
+		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+	}
+	data, err := lock.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	var a AppLock
+	err = json.Unmarshal(data, &a)
+	c.Assert(err, check.IsNil)
+	c.Assert(a, check.DeepEquals, lock)
+}
+
+func (s *S) TestAppLockGetLocked(c *check.C) {
+	lock := AppLock{Locked: true}
+	c.Assert(lock.GetLocked(), check.Equals, lock.Locked)
+}
+
+func (s *S) TestAppLockGetReason(c *check.C) {
+	lock := AppLock{Reason: "/app/my-app/deploy"}
+	c.Assert(lock.GetReason(), check.Equals, lock.Reason)
+}
+
+func (s *S) TestAppLockGetOwner(c *check.C) {
+	lock := AppLock{Owner: "someone"}
+	c.Assert(lock.GetOwner(), check.Equals, lock.Owner)
+}
+
+func (s *S) TestAppLockGetAcquireDate(c *check.C) {
+	lock := AppLock{AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC)}
+	c.Assert(lock.GetAcquireDate(), check.Equals, lock.AcquireDate)
 }
 
 func (s *S) TestAppRegisterUnit(c *check.C) {

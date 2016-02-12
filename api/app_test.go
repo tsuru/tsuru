@@ -299,13 +299,127 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *S) TestAppListFilteringByStatus(c *check.C) {
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	requestBody := strings.NewReader("units=2&process=web")
+	request, err := http.NewRequest("PUT", "/apps/app1/units?:app=app1", requestBody)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	requestBody = strings.NewReader("units=1&process=web")
+	request, err = http.NewRequest("PUT", "/apps/app2/units?:app=app2", requestBody)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app3, s.user)
+	c.Assert(err, check.IsNil)
+	request, err = http.NewRequest("GET", "/apps?status=stopped,started", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m = RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app1, app2}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
+	}
+}
+
+func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	requestBody := strings.NewReader("units=2&process=web")
+	request, err := http.NewRequest("PUT", "/apps/app1/units?:app=app1", requestBody)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	requestBody = strings.NewReader("units=1&process=web")
+	request, err = http.NewRequest("PUT", "/apps/app2/units?:app=app2", requestBody)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	request, err = http.NewRequest("GET", "/apps?status=invalid,started", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m = RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app2}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
+	}
+}
+
 func (s *S) TestAppList(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	u, _ := token.User()
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"cname.app1"}}
+	app1 := app.App{
+		Name:      "app1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		CName:     []string{"cname.app1"},
+	}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
 	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
@@ -334,18 +448,16 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var apps []miniApp
+	var apps []app.App
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
-	miniApp1, err := minifyApp(app1)
-	c.Assert(err, check.IsNil)
-	miniApp1.Lock.AcquireDate = apps[0].Lock.AcquireDate
-	miniApp2, err := minifyApp(app2)
-	c.Assert(err, check.IsNil)
-	miniApp2.Lock.AcquireDate = apps[1].Lock.AcquireDate
-	expected := []miniApp{miniApp1, miniApp2}
-	c.Assert(apps, check.DeepEquals, expected)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
+	c.Assert(apps[0].Ip, check.Equals, app1.Ip)
+	c.Assert(apps[1].Name, check.Equals, app2.Name)
+	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
+	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
 	action := rectest.Action{Action: "app-list", User: u.Email}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -375,7 +487,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var apps []miniApp
+	var apps []app.App
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)

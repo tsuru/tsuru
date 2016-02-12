@@ -48,9 +48,9 @@ func MigrateImages() error {
 	}
 	dcluster := mainDockerProvisioner.Cluster()
 	for _, app := range apps {
-		oldImage := registry + repoNamespace + "/" + app.Name
-		newImage := registry + repoNamespace + "/app-" + app.Name
-		containers, _ := mainDockerProvisioner.ListContainers(bson.M{"image": newImage, "appname": app.Name})
+		oldImage := registry + repoNamespace + "/" + app.GetName()
+		newImage := registry + repoNamespace + "/app-" + app.GetName()
+		containers, _ := mainDockerProvisioner.ListContainers(bson.M{"image": newImage, "appname": app.GetName()})
 		if len(containers) > 0 {
 			continue
 		}
@@ -73,7 +73,7 @@ func MigrateImages() error {
 				return err
 			}
 		}
-		err = mainDockerProvisioner.updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
+		err = mainDockerProvisioner.updateContainers(bson.M{"appname": app.GetName()}, bson.M{"$set": bson.M{"image": newImage}})
 		if err != nil {
 			return err
 		}

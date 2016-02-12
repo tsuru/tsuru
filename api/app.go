@@ -108,24 +108,24 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // miniApp is a minimal representation of the app, created to make appList
 // faster and transmit less data.
 type miniApp struct {
-	Name  string           `json:"name"`
-	Units []provision.Unit `json:"units"`
-	CName []string         `json:"cname"`
-	Ip    string           `json:"ip"`
-	Lock  app.AppLock      `json:"lock"`
+	Name  string            `json:"name"`
+	Units []provision.Unit  `json:"units"`
+	CName []string          `json:"cname"`
+	Ip    string            `json:"ip"`
+	Lock  provision.AppLock `json:"lock"`
 }
 
-func minifyApp(app app.App) (miniApp, error) {
+func minifyApp(app provision.App) (miniApp, error) {
 	units, err := app.Units()
 	if err != nil {
 		return miniApp{}, err
 	}
 	return miniApp{
-		Name:  app.Name,
+		Name:  app.GetName(),
 		Units: units,
-		CName: app.CName,
-		Ip:    app.Ip,
-		Lock:  app.Lock,
+		CName: app.GetCname(),
+		Ip:    app.GetIp(),
+		Lock:  app.GetLock(),
 	}, nil
 }
 
@@ -205,6 +205,13 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	statusList := statusFilter(r.URL.Query().Get("status"))
+	if len(statusList) > 0 {
+		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, statusList)
+		if err != nil {
+			return err
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
@@ -214,6 +221,20 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	return json.NewEncoder(w).Encode(miniApps)
+}
+
+func statusFilter(status string) []string {
+	statusList := []string{}
+	if status == "" {
+		return statusList
+	}
+	for _, s := range strings.Split(status, ",") {
+		_, err := provision.ParseStatus(s)
+		if err == nil {
+			statusList = append(statusList, s)
+		}
+	}
+	return statusList
 }
 
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {

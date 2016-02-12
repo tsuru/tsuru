@@ -31,6 +31,7 @@ func init() {
 // Fake implementation for provision.App.
 type FakeApp struct {
 	name           string
+	cname          []string
 	platform       string
 	units          []provision.Unit
 	logs           []string
@@ -139,6 +140,10 @@ func (a *FakeApp) SetQuotaInUse(inUse int) error {
 	}
 	a.Quota.InUse = inUse
 	return nil
+}
+
+func (a *FakeApp) GetCname() []string {
+	return a.cname
 }
 
 func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
@@ -263,6 +268,10 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 
 func (a *FakeApp) GetIp() string {
 	return ""
+}
+
+func (a *FakeApp) GetLock() provision.AppLock {
+	return nil
 }
 
 func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
@@ -984,6 +993,29 @@ func (p *FakeProvisioner) ValidAppImages(appName string) ([]string, error) {
 		return nil, err
 	}
 	return []string{"app-image-old", "app-image"}, nil
+}
+
+func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {
+	filteredApps := []provision.App{}
+	for i := range apps {
+		units, _ := p.Units(apps[i])
+		for _, u := range units {
+			if stringInArray(u.Status.String(), status) {
+				filteredApps = append(filteredApps, apps[i])
+				break
+			}
+		}
+	}
+	return filteredApps, nil
+}
+
+func stringInArray(value string, array []string) bool {
+	for _, str := range array {
+		if str == value {
+			return true
+		}
+	}
+	return false
 }
 
 type PipelineFakeProvisioner struct {

@@ -73,6 +73,36 @@ func (l *AppLock) String() string {
 	)
 }
 
+func (l *AppLock) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Locked      bool   `json:"Locked"`
+		Reason      string `json:"Reason"`
+		Owner       string `json:"Owner"`
+		AcquireDate string `json:"AcquireDate"`
+	}{
+		Locked:      l.Locked,
+		Reason:      l.Reason,
+		Owner:       l.Owner,
+		AcquireDate: l.AcquireDate.Format(time.RFC3339),
+	})
+}
+
+func (l *AppLock) GetLocked() bool {
+	return l.Locked
+}
+
+func (l *AppLock) GetReason() string {
+	return l.Reason
+}
+
+func (l *AppLock) GetOwner() string {
+	return l.Owner
+}
+
+func (l *AppLock) GetAcquireDate() time.Time {
+	return l.AcquireDate
+}
+
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -955,6 +985,16 @@ func (app *App) SetQuotaInUse(inUse int) error {
 	return err
 }
 
+// GetCname returns the cnames of the app.
+func (app *App) GetCname() []string {
+	return app.CName
+}
+
+// GetLock returns the app lock information.
+func (app *App) GetLock() provision.AppLock {
+	return &app.Lock
+}
+
 // GetPlatform returns the platform of the app.
 func (app *App) GetPlatform() string {
 	return app.Platform
@@ -1403,7 +1443,7 @@ func (f *Filter) Query() bson.M {
 }
 
 // List returns the list of apps filtered through the filter parameter.
-func List(filter *Filter) ([]App, error) {
+func List(filter *Filter) ([]provision.App, error) {
 	var apps []App
 	conn, err := db.Conn()
 	if err != nil {
@@ -1412,9 +1452,13 @@ func List(filter *Filter) ([]App, error) {
 	defer conn.Close()
 	query := filter.Query()
 	if err := conn.Apps().Find(query).All(&apps); err != nil {
-		return []App{}, err
+		return []provision.App{}, err
 	}
-	return apps, nil
+	appList := make([]provision.App, len(apps))
+	for i := range apps {
+		appList[i] = &apps[i]
+	}
+	return appList, nil
 }
 
 // Swap calls the Provisioner.Swap.

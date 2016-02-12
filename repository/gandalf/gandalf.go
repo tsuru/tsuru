@@ -90,13 +90,13 @@ func Sync(w io.Writer) error {
 			},
 			{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxPool, app.Pool),
+				Context: permission.Context(permission.CtxPool, app.GetPool()),
 			},
 		}
-		for _, t := range app.GetTeams() {
+		for _, name := range app.GetTeamsName() {
 			allowedPerms = append(allowedPerms, permission.Permission{
 				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permission.CtxTeam, t.Name),
+				Context: permission.Context(permission.CtxTeam, name),
 			})
 		}
 		users, err := auth.ListUsersWithPermissions(allowedPerms...)
@@ -107,8 +107,8 @@ func Sync(w io.Writer) error {
 		for i := range users {
 			userNames[i] = users[i].Email
 		}
-		fmt.Fprintf(w, "Syncing app %q... ", app.Name)
-		err = m.CreateRepository(app.Name, userNames)
+		fmt.Fprintf(w, "Syncing app %q... ", app.GetName())
+		err = m.CreateRepository(app.GetName(), userNames)
 		switch err {
 		case repository.ErrRepositoryAlreadExists:
 			fmt.Fprintln(w, "already present in Gandalf")
@@ -118,7 +118,7 @@ func Sync(w io.Writer) error {
 			return err
 		}
 		for _, user := range userNames {
-			m.GrantAccess(app.Name, user)
+			m.GrantAccess(app.GetName(), user)
 		}
 	}
 	return nil

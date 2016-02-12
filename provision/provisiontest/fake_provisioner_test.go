@@ -190,6 +190,12 @@ func (s *S) TestFakeAppSetQuotaInUse(c *check.C) {
 	c.Assert(e.Requested, check.Equals, uint(q.Limit+1))
 }
 
+func (s *S) TestFakeAppGetCname(c *check.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	app.cname = []string{"cname1", "cname2"}
+	c.Assert(app.GetCname(), check.DeepEquals, []string{"cname1", "cname2"})
+}
+
 func (s *S) TestFakeAppGetInstances(c *check.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
@@ -1149,4 +1155,23 @@ func (s *S) TestFakeProvisionerMetricEnvs(c *check.C) {
 	envs := p.MetricEnvs(app)
 	expected := map[string]string{"METRICS_BACKEND": "fake"}
 	c.Assert(envs, check.DeepEquals, expected)
+}
+
+func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
+	app1 := NewFakeApp("fairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app1)
+	c.Assert(err, check.IsNil)
+	err = p.Provision(app2)
+	c.Assert(err, check.IsNil)
+	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting}
+	p.AddUnit(app1, unit)
+	unit = provision.Unit{AppName: "unfairy-tale", ID: "unit/2", Status: provision.StatusStarting}
+	p.AddUnit(app2, unit)
+	err = p.SetUnitStatus(unit, provision.StatusError)
+	c.Assert(err, check.IsNil)
+	apps, err := p.FilterAppsByUnitStatus([]provision.App{app1, app2}, []string{"starting"})
+	c.Assert(apps, check.DeepEquals, []provision.App{app1})
+	c.Assert(err, check.IsNil)
 }
