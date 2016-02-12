@@ -54,6 +54,10 @@ Parameters with special meaning:
   address=<docker api url>
     Only used if [[--register]] flag is used. Should point to the endpoint of
     a working docker server.
+
+  pool=<pool name>
+    Mandatory parameter specifying to which pool the added node will belong.
+    Available pools can be lister with the [[pool-list]] command.
 `,
 		MinArgs: 0,
 	}
