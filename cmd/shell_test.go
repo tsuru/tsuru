@@ -35,7 +35,7 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
-			return req.Method == "GET" && req.URL.Path == "/apps/myapp"
+			return req.Method == "GET" && req.URL.Path == "/1.0/apps/myapp"
 		},
 	}
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
@@ -70,7 +70,7 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
-			return req.Method == "GET" && req.URL.Path == "/apps/myapp"
+			return req.Method == "GET" && req.URL.Path == "/1.0/apps/myapp"
 		},
 	}
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
@@ -147,7 +147,7 @@ func (s *S) TestShellToContainerSessionExpired(c *check.C) {
 		},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.Method == "GET" && req.URL.Path == "/apps/myapp"
+			return req.Method == "GET" && req.URL.Path == "/1.0/apps/myapp"
 		},
 	}
 	var command ShellToContainerCmd

@@ -125,40 +125,59 @@ func (s *S) TestDeleteTargetFile(c *check.C) {
 	c.Assert(rfs.HasAction("remove "+targetFile), check.Equals, true)
 }
 
+func (s *S) TestGetURLVersion(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
+	var tests = []struct {
+		version  string
+		path     string
+		expected string
+		target   string
+	}{
+		{"1.2", "/apps", "http://localhost/1.2/apps", "http://localhost"},
+		{"1.2", "/apps", "http://localhost/tsuru/1.2/apps", "http://localhost/tsuru/"},
+		{"1.2", "/apps", "https://localhost/1.2/apps", "https://localhost"},
+		{"1.2", "/apps", "http://remotehost/1.2/apps", "remotehost"},
+	}
+	for _, t := range tests {
+		fsystem = &fstest.RecordingFs{FileContent: t.target}
+		got, err := GetURLVersion(t.version, t.path)
+		c.Check(err, check.IsNil)
+		c.Check(got, check.Equals, t.expected)
+		fsystem = nil
+	}
+}
+
+func (s *S) TestGetURLVersionUndefinedTarget(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
+	rfs := &fstest.FileNotFoundFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	got, err := GetURLVersion("1.3", "/apps")
+	c.Assert(got, check.Equals, "")
+	c.Assert(err, check.Equals, errUndefinedTarget)
+}
+
 func (s *S) TestGetURL(c *check.C) {
-	fsystem = &fstest.RecordingFs{FileContent: "http://localhost"}
-	defer func() {
-		fsystem = nil
-	}()
-	expected := "http://localhost/apps"
-	got, err := GetURL("/apps")
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.Equals, expected)
-}
-
-func (s *S) TestGetURLPutsHTTPIfItIsNotPresent(c *check.C) {
 	os.Unsetenv("TSURU_TARGET")
-	rfs := &fstest.RecordingFs{FileContent: "remotehost"}
-	fsystem = rfs
-	defer func() {
+	var tests = []struct {
+		path     string
+		expected string
+		target   string
+	}{
+		{"/apps", "http://localhost/1.0/apps", "http://localhost"},
+		{"/apps", "http://localhost/tsuru/1.0/apps", "http://localhost/tsuru/"},
+		{"/apps", "https://localhost/1.0/apps", "https://localhost"},
+		{"/apps", "http://remotehost/1.0/apps", "remotehost"},
+	}
+	for _, t := range tests {
+		fsystem = &fstest.RecordingFs{FileContent: t.target}
+		got, err := GetURL(t.path)
+		c.Check(err, check.IsNil)
+		c.Check(got, check.Equals, t.expected)
 		fsystem = nil
-	}()
-	expected := "http://remotehost/apps"
-	got, err := GetURL("/apps")
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.Equals, expected)
-}
-
-func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *check.C) {
-	os.Unsetenv("TSURU_TARGET")
-	rfs := &fstest.RecordingFs{FileContent: "https://localhost"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	got, err := GetURL("/apps")
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.Equals, "https://localhost/apps")
+	}
 }
 
 func (s *S) TestGetURLUndefinedTarget(c *check.C) {
@@ -171,18 +190,6 @@ func (s *S) TestGetURLUndefinedTarget(c *check.C) {
 	got, err := GetURL("/apps")
 	c.Assert(got, check.Equals, "")
 	c.Assert(err, check.Equals, errUndefinedTarget)
-}
-
-func (s *S) TestGetURLLeadingSlashes(c *check.C) {
-	os.Unsetenv("TSURU_TARGET")
-	rfs := &fstest.RecordingFs{FileContent: "https://localhost/tsuru/"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	got, err := GetURL("/apps")
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.Equals, "https://localhost/tsuru/apps")
 }
 
 func (s *S) TestTargetAddInfo(c *check.C) {

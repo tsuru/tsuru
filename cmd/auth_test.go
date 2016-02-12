@@ -58,7 +58,7 @@ func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(r *http.Request) bool {
-			return r.URL.Path == "/users/chico@tsuru.io/tokens"
+			return r.URL.Path == "/1.0/users/chico@tsuru.io/tokens"
 		},
 	}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
@@ -267,7 +267,7 @@ func (s *S) TestGetUser(c *check.C) {
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
-			return req.Method == "GET" && req.URL.Path == "/users/info"
+			return req.Method == "GET" && req.URL.Path == "/1.0/users/info"
 		},
 	}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
@@ -303,7 +303,7 @@ Permissions:
 		},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.Method == "GET" && req.URL.Path == "/users/info"
+			return req.Method == "GET" && req.URL.Path == "/1.0/users/info"
 		},
 	}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
