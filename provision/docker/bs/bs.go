@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -21,9 +20,8 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/fix"
 )
-
-var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
 
 type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
@@ -219,10 +217,8 @@ func pullBsImage(image, dockerEndpoint string, p DockerProvisioner) error {
 		return err
 	}
 	if shouldPinBsImage(image) {
-		match := digestRegexp.FindAllStringSubmatch(output, 1)
-		if len(match) > 0 {
-			image += "@" + match[0][1]
-		}
+		digest, _ := fix.GetImageDigest(output)
+		image += digest
 	}
 	return SaveImage(image)
 }
