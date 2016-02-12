@@ -11,10 +11,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
@@ -677,10 +675,7 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if len(requestConfig.Envs) > 0 && !permission.Check(t, permission.PermPoolUpdateLogs) {
 		return permission.ErrUnauthorized
 	}
-	updateAll := len(requestConfig.Envs) > 0
-	var receivedPools []string
 	for _, poolEnv := range requestConfig.Pools {
-		receivedPools = append(receivedPools, poolEnv.Name)
 		hasPermission := permission.Check(t, permission.PermPoolUpdateLogs,
 			permission.Context(permission.CtxPool, poolEnv.Name))
 		if !hasPermission {
@@ -692,48 +687,9 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	fmt.Fprintln(writer, "Log config successfully updated.")
 	if requestData.Restart {
-		filter := &app.Filter{}
-		if !updateAll {
-			filter.Pools = receivedPools
-		}
-		tryRestartAppsByFilter(filter, writer)
+		//TODO(cezarsa): restart containers
 	}
+	w.WriteHeader(http.StatusOK)
 	return nil
-}
-
-func tryRestartAppsByFilter(filter *app.Filter, writer *tsuruIo.SimpleJsonMessageEncoderWriter) {
-	apps, err := app.List(filter)
-	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return
-	}
-	if len(apps) == 0 {
-		return
-	}
-	appNames := make([]string, len(apps))
-	for i, a := range apps {
-		appNames[i] = a.Name
-	}
-	sort.Strings(appNames)
-	fmt.Fprintf(writer, "Restarting %d applications: [%s]\n", len(apps), strings.Join(appNames, ", "))
-	wg := sync.WaitGroup{}
-	for i := range apps {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			a := apps[i]
-			err := a.Restart("", writer)
-			if err != nil {
-				fmt.Fprintf(writer, "Error: unable to restart %s: %s\n", a.Name, err.Error())
-			} else {
-				fmt.Fprintf(writer, "App %s successfully restarted\n", a.Name)
-			}
-		}(i)
-	}
-	wg.Wait()
 }
