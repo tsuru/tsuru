@@ -1456,7 +1456,7 @@ func List(filter *Filter) ([]App, error) {
 	}
 	defer conn.Close()
 	query := filter.Query()
-	if err := conn.Apps().Find(query).All(&apps); err != nil {
+	if err = conn.Apps().Find(query).All(&apps); err != nil {
 		return apps, err
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
