@@ -218,7 +218,9 @@ func pullBsImage(image, dockerEndpoint string, p DockerProvisioner) error {
 	}
 	if shouldPinBsImage(image) {
 		digest, _ := fix.GetImageDigest(output)
-		image += digest
+		if digest != "" {
+			image = fmt.Sprintf("%s@%s", image, digest)
+		}
 	}
 	return SaveImage(image)
 }
