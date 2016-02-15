@@ -1397,6 +1397,7 @@ type Filter struct {
 	UserOwner string
 	Pool      string
 	Pools     []string
+	Statuses  []string
 	Locked    bool
 	Extra     map[string][]string
 }
@@ -1447,8 +1448,8 @@ func (f *Filter) Query() bson.M {
 }
 
 // List returns the list of apps filtered through the filter parameter.
-func List(filter *Filter) ([]provision.App, error) {
-	var apps []App
+func List(filter *Filter) ([]App, error) {
+	apps := []App{}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -1456,13 +1457,23 @@ func List(filter *Filter) ([]provision.App, error) {
 	defer conn.Close()
 	query := filter.Query()
 	if err := conn.Apps().Find(query).All(&apps); err != nil {
-		return []provision.App{}, err
+		return apps, err
 	}
-	appList := make([]provision.App, len(apps))
-	for i := range apps {
-		appList[i] = &apps[i]
+	if filter != nil && len(filter.Statuses) > 0 {
+		provisionApps := make([]provision.App, len(apps))
+		for i := range apps {
+			provisionApps[i] = &apps[i]
+		}
+		provisionApps, err = Provisioner.FilterAppsByUnitStatus(provisionApps, filter.Statuses)
+		if err != nil {
+			return []App{}, err
+		}
+		for i := range provisionApps {
+			apps[i] = *(provisionApps[i].(*App))
+		}
+		apps = apps[:len(provisionApps)]
 	}
-	return appList, nil
+	return apps, nil
 }
 
 // Swap calls the Provisioner.Swap.

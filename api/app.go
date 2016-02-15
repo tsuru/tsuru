@@ -115,7 +115,7 @@ type miniApp struct {
 	Lock  provision.AppLock `json:"lock"`
 }
 
-func minifyApp(app provision.App) (miniApp, error) {
+func minifyApp(app app.App) (miniApp, error) {
 	units, err := app.Units()
 	if err != nil {
 		return miniApp{}, err
@@ -162,6 +162,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pool := r.URL.Query().Get("pool")
 	description := r.URL.Query().Get("description")
 	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
+	status := r.URL.Query().Get("status")
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
 	if name != "" {
@@ -191,6 +192,10 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		extra = append(extra, fmt.Sprintf("locked=%v", locked))
 		filter.Locked = true
 	}
+	if status != "" {
+		extra = append(extra, fmt.Sprintf("status=%s", status))
+		filter.Statuses = strings.Split(status, ",")
+	}
 	rec.Log(u.Email, "app-list", extra...)
 	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
 	if len(contexts) == 0 {
@@ -205,13 +210,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	statusList := statusFilter(r.URL.Query().Get("status"))
-	if len(statusList) > 0 {
-		apps, err = app.Provisioner.FilterAppsByUnitStatus(apps, statusList)
-		if err != nil {
-			return err
-		}
-	}
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
@@ -221,20 +219,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	return json.NewEncoder(w).Encode(miniApps)
-}
-
-func statusFilter(status string) []string {
-	statusList := []string{}
-	if status == "" {
-		return statusList
-	}
-	for _, s := range strings.Split(status, ",") {
-		_, err := provision.ParseStatus(s)
-		if err == nil {
-			statusList = append(statusList, s)
-		}
-	}
-	return statusList
 }
 
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {

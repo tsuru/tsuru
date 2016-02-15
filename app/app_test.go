@@ -2854,10 +2854,44 @@ func (s *S) TestListFilteringByPools(c *check.C) {
 	c.Assert(appNames, check.DeepEquals, []string{"testapp", "testapp2"})
 }
 
+func (s *S) TestListFilteringByStatuses(c *check.C) {
+	var apps []*App
+	appNames := []string{"ta1", "ta2", "ta3"}
+	for _, name := range appNames {
+		a := App{
+			Name:  name,
+			Teams: []string{s.team.Name},
+			Quota: quota.Quota{
+				Limit: 10,
+			},
+			Plan: Plan{Router: "fake"},
+		}
+		err := s.conn.Apps().Insert(&a)
+		c.Assert(err, check.IsNil)
+		err = Provisioner.Provision(&a)
+		c.Assert(err, check.IsNil)
+		err = a.AddUnits(1, "", nil)
+		c.Assert(err, check.IsNil)
+		apps = append(apps, &a)
+	}
+	var buf bytes.Buffer
+	err := apps[1].Stop(&buf, "")
+	c.Assert(err, check.IsNil)
+	proxyUrl, _ := url.Parse("http://somewhere.com")
+	err = apps[2].Sleep(&buf, "", proxyUrl)
+	c.Assert(err, check.IsNil)
+	resultApps, err := List(&Filter{Statuses: []string{"stopped", "asleep"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(resultApps), check.Equals, 2)
+	names := []string{resultApps[0].Name, resultApps[1].Name}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{"ta2", "ta3"})
+}
+
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(apps, check.DeepEquals, []provision.App{})
+	c.Assert(apps, check.DeepEquals, []App{})
 }
 
 func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
