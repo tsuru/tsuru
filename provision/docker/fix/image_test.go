@@ -19,12 +19,12 @@ var _ = check.Suite(&S{})
 func (s *S) TestGetImageDigest(c *check.C) {
 	output := `
 Pull output...
-Digest: dockershouldhaveaeasywaytogetitfromimage
+Digest: sha256:dockershouldhaveaeasywaytogetitfromimage
 More pull output..
 `
 	digest, err := GetImageDigest(output)
 	c.Assert(err, check.IsNil)
-	c.Assert(digest, check.Equals, "@dockershouldhaveaeasywaytogetitfromimage")
+	c.Assert(digest, check.Equals, "sha256:dockershouldhaveaeasywaytogetitfromimage")
 }
 
 func (s *S) TestGetImageDigestNoDigest(c *check.C) {

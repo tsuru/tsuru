@@ -16,5 +16,5 @@ func GetImageDigest(pullOutput string) (string, error) {
 	if len(match) <= 0 {
 		return "", errors.New("Can't get image digest")
 	}
-	return "@" + match[0][1], nil
+	return match[0][1], nil
 }
