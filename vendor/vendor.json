@@ -316,23 +316,23 @@
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/cluster",
-			"revision": "a16effc3beb941d56b8b0b3b5a179c7359ea4af5",
-			"revisionTime": "2016-01-15T18:21:41-02:00"
+			"revision": "9e3e35ac727fdc2703afe3a6e1b4421a591e1504",
+			"revisionTime": "2016-02-15T17:02:08-02:00"
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/log",
-			"revision": "a16effc3beb941d56b8b0b3b5a179c7359ea4af5",
-			"revisionTime": "2016-01-15T18:21:41-02:00"
+			"revision": "9e3e35ac727fdc2703afe3a6e1b4421a591e1504",
+			"revisionTime": "2016-02-15T17:02:08-02:00"
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/storage",
-			"revision": "a16effc3beb941d56b8b0b3b5a179c7359ea4af5",
-			"revisionTime": "2016-01-15T18:21:41-02:00"
+			"revision": "9e3e35ac727fdc2703afe3a6e1b4421a591e1504",
+			"revisionTime": "2016-02-15T17:02:08-02:00"
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/storage/mongodb",
-			"revision": "a16effc3beb941d56b8b0b3b5a179c7359ea4af5",
-			"revisionTime": "2016-01-15T18:21:41-02:00"
+			"revision": "9e3e35ac727fdc2703afe3a6e1b4421a591e1504",
+			"revisionTime": "2016-02-15T17:02:08-02:00"
 		},
 		{
 			"path": "github.com/tsuru/gandalf/db",

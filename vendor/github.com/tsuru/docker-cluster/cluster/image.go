@@ -1,10 +1,11 @@
-// Copyright 2015 docker-cluster authors. All rights reserved.
+// Copyright 2016 docker-cluster authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package cluster
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/tsuru/provision/docker/fix"
 )
 
 type ImageHistory struct {
@@ -98,10 +100,39 @@ func (c *Cluster) RemoveFromRegistry(imageId string) error {
 	}
 	request.Close = true
 	rsp, err := timeout10Client.Do(request)
-	if err == nil {
-		rsp.Body.Close()
+	if err != nil {
+		return err
 	}
-	return err
+	rsp.Body.Close()
+	if rsp.StatusCode == 404 {
+		var w bytes.Buffer
+		pullOpts := docker.PullImageOptions{
+			Registry:     registryServer,
+			Tag:          imageTag,
+			Repository:   imageId,
+			OutputStream: &w,
+		}
+		pullErr := c.PullImage(pullOpts, docker.AuthConfiguration{})
+		if pullErr != nil {
+			return pullErr
+		}
+		digest, pullErr := fix.GetImageDigest(w.String())
+		if pullErr != nil {
+			return pullErr
+		}
+		url := fmt.Sprintf("http://%s/v2/%s/manifests/%s", registryServer, imageTag, digest)
+		request, err = http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			return err
+		}
+		request.Close = true
+		rsp, err := timeout10Client.Do(request)
+		if err == nil {
+			rsp.Body.Close()
+		}
+		return err
+	}
+	return nil
 }
 
 // PullImage pulls an image from a remote registry server, returning an error

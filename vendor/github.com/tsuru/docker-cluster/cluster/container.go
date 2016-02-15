@@ -369,7 +369,6 @@ func (c *Cluster) InspectExec(execId, containerId string) (*docker.ExecInspect, 
 func (c *Cluster) UploadToContainer(containerId string, opts docker.UploadToContainerOptions) error {
 	node, err := c.getNodeForContainer(containerId)
 	if err != nil {
-		println("test")
 		return err
 	}
 	return node.UploadToContainer(containerId, opts)
