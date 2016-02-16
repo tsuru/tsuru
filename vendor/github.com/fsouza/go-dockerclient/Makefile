@@ -29,10 +29,12 @@ vet:
 	$(foreach pkg,$(PKGS),go vet $(pkg);)
 
 fmt:
-	gofmt -w $(SRCS)
+	gofmt -s -w $(SRCS)
 
 fmtcheck:
-	$(foreach file,$(SRCS),gofmt -d $(file);)
+	@ export output=$$(gofmt -s -d $(SRCS)); \
+		[ -n "$${output}" ] && echo "$${output}" && export status=1; \
+		exit $${status:-0}
 
 prepare_docker:
 	sudo stop docker

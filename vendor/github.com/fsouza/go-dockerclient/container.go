@@ -252,6 +252,11 @@ type LogConfig struct {
 	Config map[string]string `json:"Config,omitempty" yaml:"Config,omitempty"`
 }
 
+type BuildArg struct {
+	Name  string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	Value string `json:"Value,omitempty" yaml:"Value,omitempty"`
+}
+
 // ULimit defines system-wide resource limitations
 // This can help a lot in system administration, e.g. when a user starts too many processes and therefore makes the system unresponsive for other users.
 type ULimit struct {
