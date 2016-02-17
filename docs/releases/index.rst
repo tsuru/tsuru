@@ -30,6 +30,8 @@ tsurud (tsuru server daemon)
 
    tsurud/1.0.0
 
+   tsurud/0.13.1
+
    tsurud/0.13.0
 
    tsurud/0.12.4
