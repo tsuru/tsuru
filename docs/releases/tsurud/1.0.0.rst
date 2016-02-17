@@ -26,3 +26,8 @@ Main new features
   app-deploy reference
   <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
 
+General improvements
+====================
+
+* `projectid` parameter is not mandatory in `Apache CloudStack <https://cloudstack.apache.org/>`_ (`#1260 <https://github.com/tsuru/tsuru/issues/1260>`_).
+* A new app description field, that can be used to describe the app objective (`#1327 <https://github.com/tsuru/tsuru/issues/1327>`_).
