@@ -114,15 +114,13 @@ func (s *S) TestCustomLookup(c *check.C) {
 
 func (s *S) TestCustomLookupNotFound(c *check.C) {
 	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
+		return ErrLookup
 	}
 	var stdout, stderr bytes.Buffer
 	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
-	var exiter recordingExiter
-	mngr.e = &exiter
-	mngr.Run([]string{"custom"})
-	c.Assert(strings.Replace(stderr.String(), "\n", "\\n", -1), check.Matches, `.*: "custom" is not a tsuru command. See "tsuru help".*`)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
+	mngr.Register(&TestCommand{})
+	mngr.Run([]string{"foo"})
+	c.Assert(stdout.String(), check.Equals, "Running TestCommand")
 }
 
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *check.C) {
@@ -225,7 +223,7 @@ func (s *S) TestRun(c *check.C) {
 
 func (s *S) TestRunCommandThatDoesNotExist(c *check.C) {
 	manager.Run([]string{"bar"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, `Error: command "bar" does not exist`+"\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, `glb: "bar" is not a glb command. See "glb help".`+"\n")
 	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
@@ -643,10 +641,7 @@ func (s *S) TestUserInfoIsRegisteredByBaseManager(c *check.C) {
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch01(c *check.C) {
-	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
-	}
-	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
 	mngr.e = &exiter
@@ -668,10 +663,7 @@ Did you mean?
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch02(c *check.C) {
-	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
-	}
-	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
 	mngr.e = &exiter
@@ -690,10 +682,7 @@ Did you mean?
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch03(c *check.C) {
-	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
-	}
-	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
 	mngr.e = &exiter
@@ -712,10 +701,7 @@ Did you mean?
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch04(c *check.C) {
-	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
-	}
-	mngr := BuildBaseManager("tsuru", "1.0", "", lookup)
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
 	mngr.e = &exiter
