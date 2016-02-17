@@ -6,6 +6,7 @@ package ec2
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -136,15 +137,12 @@ func (err *invalidFieldError) Error() string {
 }
 
 func (i *EC2IaaS) buildRunInstancesOptions(params map[string]string) (ec2.RunInstancesInput, error) {
-
 	result := ec2.RunInstancesInput{
 		MaxCount: aws.Int64(1),
 		MinCount: aws.Int64(1),
 	}
 	forbiddenFields := []string{
-		"maxcount", "mincount", "dryrun", "blockdevicemappings",
-		"iaminstanceprofile", "monitoring", "networkinterfaces",
-		"placement",
+		"maxcount", "mincount", "dryrun", "monitoring",
 	}
 	aliases := map[string]string{
 		"image":         "imageid",
@@ -200,17 +198,79 @@ func (i *EC2IaaS) buildRunInstancesOptions(params map[string]string) (ec2.RunIns
 					}
 				}
 				fieldValue.Set(reflect.ValueOf(&boolValue))
+			case reflect.Struct:
+				err := i.loadStruct(fieldValue, fieldType, []byte(value))
+				if err != nil {
+					return result, &invalidFieldError{
+						fieldName:    key,
+						convertError: err,
+					}
+				}
 			}
 		case reflect.Slice:
-			parts := strings.Split(value, ",")
-			values := make([]*string, len(parts))
-			for i, part := range parts {
-				values[i] = aws.String(part)
+			switch fieldType.Elem().Elem().Kind() {
+			case reflect.String:
+				parts := strings.Split(value, ",")
+				values := make([]*string, len(parts))
+				for i, part := range parts {
+					values[i] = aws.String(part)
+				}
+				fieldValue.Set(reflect.ValueOf(values))
+			case reflect.Struct:
+				var raw []map[string]interface{}
+				err := json.Unmarshal([]byte(value), &raw)
+				if err != nil {
+					return result, &invalidFieldError{
+						fieldName:    key,
+						convertError: err,
+					}
+				}
+				val, err := i.translateSlice(raw, fieldType)
+				if err != nil {
+					return result, &invalidFieldError{
+						fieldName:    key,
+						convertError: err,
+					}
+				}
+				fieldValue.Set(val)
 			}
-			fieldValue.Set(reflect.ValueOf(values))
+		}
+	}
+
+	// Manual configuration
+	if monitoring, ok := params["monitoring-enabled"]; ok {
+		value, _ := strconv.ParseBool(monitoring)
+		result.Monitoring = &ec2.RunInstancesMonitoringEnabled{
+			Enabled: aws.Bool(value),
+		}
+	}
+
+	return result, nil
+}
+
+func (i *EC2IaaS) translateSlice(in []map[string]interface{}, t reflect.Type) (reflect.Value, error) {
+	result := reflect.MakeSlice(t, len(in), len(in))
+	for idx, value := range in {
+		data, _ := json.Marshal(value)
+		err := i.loadStruct(result.Index(idx), t.Elem(), data)
+		if err != nil {
+			return result, err
 		}
 	}
 	return result, nil
+}
+
+func (i *EC2IaaS) loadStruct(value reflect.Value, t reflect.Type, data []byte) error {
+	raw := value.Interface()
+	if value.IsNil() {
+		raw = reflect.New(t.Elem()).Interface()
+	}
+	err := json.Unmarshal(data, &raw)
+	if err != nil {
+		return err
+	}
+	value.Set(reflect.ValueOf(raw))
+	return nil
 }
 
 func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
