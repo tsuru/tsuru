@@ -84,11 +84,12 @@ func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 		"maxcount":            "15",
 		"dryrun":              "true",
 		"ebsoptimized":        "true",
-		"blockdevicemappings": "",
-		"iaminstanceprofile":  "",
 		"monitoring":          "",
-		"networkinterfaces":   "",
-		"placement":           "",
+		"blockdevicemappings": `[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100}}]`,
+		"networkinterfaces":   `[{"SubnetId":"subnet-123456","AssociatePublicIpAddress":true}]`,
+		"iaminstanceprofile":  `{"Name":"myprofile"}`,
+		"placement":           `{"AvailabilityZone":"az-1"}`,
+		"monitoring-enabled":  "true",
 	}
 	ec2iaas := newEC2IaaS("ec2").(*EC2IaaS)
 	opts, err := ec2iaas.buildRunInstancesOptions(params)
@@ -99,32 +100,41 @@ func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 		aws.String("group1"), aws.String("group2"), aws.String("group3"),
 	}
 	c.Check(opts.SecurityGroups, check.DeepEquals, expectedGroups)
+	c.Check(opts.DryRun, check.IsNil)
 	c.Check(*opts.MinCount, check.Equals, int64(1))
 	c.Check(*opts.MaxCount, check.Equals, int64(1))
 	c.Check(*opts.EbsOptimized, check.Equals, true)
-	c.Check(opts.DryRun, check.IsNil)
-	c.Check(opts.BlockDeviceMappings, check.IsNil)
-	c.Check(opts.Monitoring, check.IsNil)
-	c.Check(opts.NetworkInterfaces, check.IsNil)
-	c.Check(opts.Placement, check.IsNil)
+	c.Check(*opts.IamInstanceProfile, check.DeepEquals, ec2.IamInstanceProfileSpecification{
+		Name: aws.String("myprofile"),
+	})
+	c.Check(*opts.Placement, check.DeepEquals, ec2.Placement{
+		AvailabilityZone: aws.String("az-1"),
+	})
+	c.Check(*opts.Monitoring.Enabled, check.Equals, true)
+	c.Check(opts.BlockDeviceMappings, check.HasLen, 1)
+	c.Check(*opts.BlockDeviceMappings[0], check.DeepEquals, ec2.BlockDeviceMapping{
+		DeviceName: aws.String("/dev/sda1"),
+		Ebs:        &ec2.EbsBlockDevice{VolumeSize: aws.Int64(100)},
+	})
+	c.Check(opts.NetworkInterfaces, check.HasLen, 1)
+	c.Check(*opts.NetworkInterfaces[0], check.DeepEquals, ec2.InstanceNetworkInterfaceSpecification{
+		SubnetId:                 aws.String("subnet-123456"),
+		AssociatePublicIpAddress: aws.Bool(true),
+	})
 }
 
 func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
 	params := map[string]string{
-		"endpoint":            s.srv.URL(),
-		"tags":                "machine1,machine2",
-		"image":               "ami-xxxxxx",
-		"type":                "m1.micro",
-		"securitygroup":       "group1,group2,group3",
-		"mincount":            "10",
-		"maxcount":            "15",
-		"dryrun":              "true",
-		"ebs-optimized":       "true",
-		"blockdevicemappings": "",
-		"iaminstanceprofile":  "",
-		"monitoring":          "",
-		"networkinterfaces":   "",
-		"placement":           "",
+		"endpoint":      s.srv.URL(),
+		"tags":          "machine1,machine2",
+		"image":         "ami-xxxxxx",
+		"type":          "m1.micro",
+		"securitygroup": "group1,group2,group3",
+		"mincount":      "10",
+		"maxcount":      "15",
+		"dryrun":        "true",
+		"ebs-optimized": "true",
+		"monitoring":    "",
 	}
 	ec2iaas := newEC2IaaS("ec2").(*EC2IaaS)
 	opts, err := ec2iaas.buildRunInstancesOptions(params)
