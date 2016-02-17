@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,7 @@ package exectest
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/tsuru/tsuru/exec"
@@ -233,6 +234,19 @@ func (s *S) TestErrorExecute(c *check.C) {
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), check.Equals, true)
 	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), check.Equals, true)
 	c.Assert(e.ExecutedCmd("ps", []string{"-ef"}), check.Equals, true)
+}
+
+func (s *S) TestErrorExecutorPredefinedErr(c *check.C) {
+	myErr := errors.New("my error!")
+	e := ErrorExecutor{Err: myErr}
+	var b bytes.Buffer
+	err := e.Execute(exec.ExecuteOptions{
+		Cmd:    "ps",
+		Args:   []string{"-ef"},
+		Stdout: &b,
+		Stderr: &b,
+	})
+	c.Assert(err, check.Equals, myErr)
 }
 
 func (s *S) TestErrorExecutorOutput(c *check.C) {
