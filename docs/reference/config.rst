@@ -341,6 +341,8 @@ auth:oauth:callback-port
 The port used in the callback URL during the authorization step. Check docs for
 ``auth:oauth:auth-url`` for more details.
 
+.. _saml_configuration:
+
 auth:saml
 +++++++++
 
