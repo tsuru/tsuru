@@ -38,7 +38,12 @@ General improvements
 * `projectid` parameter is not mandatory in `Apache CloudStack
   <https://cloudstack.apache.org/>`_ (`#1260
   <https://github.com/tsuru/tsuru/issues/1260>`_).
+
 * A new app description field, that can be used to describe the app objective
   (`#1327 <https://github.com/tsuru/tsuru/issues/1327>`_).
+
 * New `SAML V2` authentication scheme. See :ref:`SAML authentication configuration <saml_configuration>`
   for instructions on how to configure it.
+
+* Add new filters in the user list API endpoint: now it's possible to filter
+  users by role and e-mail (issue `#1349 <https://github.com/tsuru/tsuru/issues/1349>`_).
