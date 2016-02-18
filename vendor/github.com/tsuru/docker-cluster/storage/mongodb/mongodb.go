@@ -68,6 +68,12 @@ func (s *mongodbStorage) StoreImage(repo, id, host string) error {
 	return err
 }
 
+func (s *mongodbStorage) SetImageDigest(repo, digest string) error {
+	coll := s.getColl("images_history")
+	defer coll.Database.Session.Close()
+	return coll.UpdateId(repo, bson.M{"$set": bson.M{"lastdigest": digest}})
+}
+
 func (s *mongodbStorage) RetrieveImage(repo string) (cluster.Image, error) {
 	coll := s.getColl("images_history")
 	defer coll.Database.Session.Close()

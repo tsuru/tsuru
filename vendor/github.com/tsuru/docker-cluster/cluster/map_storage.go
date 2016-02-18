@@ -84,6 +84,19 @@ func (s *MapStorage) StoreImage(repo, id, host string) error {
 	return nil
 }
 
+func (s *MapStorage) SetImageDigest(repo, digest string) error {
+	s.iMut.Lock()
+	defer s.iMut.Unlock()
+	img, _ := s.iMap[repo]
+	if img == nil {
+		img = &Image{Repository: repo, History: []ImageHistory{}}
+		s.iMap[repo] = img
+	}
+	img.LastDigest = digest
+	return nil
+
+}
+
 func (s *MapStorage) RetrieveImage(repo string) (Image, error) {
 	s.iMut.Lock()
 	defer s.iMut.Unlock()

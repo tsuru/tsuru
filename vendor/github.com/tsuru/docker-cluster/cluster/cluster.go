@@ -63,6 +63,7 @@ type ImageStorage interface {
 	RetrieveImage(repo string) (Image, error)
 	RemoveImage(repo, id, host string) error
 	RetrieveImages() ([]Image, error)
+	SetImageDigest(repo, digest string) error
 }
 
 type NodeStorage interface {
