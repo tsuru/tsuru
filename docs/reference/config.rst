@@ -226,7 +226,7 @@ entire address, including protocol and port. Examples of value:
 Authentication configuration
 ----------------------------
 
-tsuru has support for ``native`` and ``oauth`` authentication schemes.
+tsuru has support for ``native``, ``oauth`` and ``saml`` authentication schemes.
 
 The default scheme is ``native`` and it supports the creation of users in
 tsuru's internal database. It hashes passwords brcypt. Tokens are generated
@@ -340,6 +340,66 @@ auth:oauth:callback-port
 
 The port used in the callback URL during the authorization step. Check docs for
 ``auth:oauth:auth-url`` for more details.
+
+auth:saml
++++++++++
+
+Every config entry inside ``auth:saml`` are used when the ``auth:scheme`` is
+set to "saml". Please check `SAML V2.0 specification <http://saml.xml.org/saml-specifications>`_ for
+more details.
+
+auth:saml:sp-publiccert
++++++++++++++++++++++++
+
+Service provider public certificate path.
+
+auth:saml:sp-privatekey
++++++++++++++++++++++++
+
+Service provider private key path.
+
+auth:saml:idp-ssourl
+++++++++++++++++++++
+
+Identity provider url.
+
+auth:saml:sp-display-name
++++++++++++++++++++++++++
+
+Service provider display name. The default value is `Tsuru`.
+
+auth:saml:sp-description
+++++++++++++++++++++++++
+
+Service provider description. The default values is `Tsuru Platform as a Service software`.
+
+auth:saml:idp-publiccert
+++++++++++++++++++++++++
+
+Identity provider public certificate.
+
+auth:saml:sp-entityid
++++++++++++++++++++++
+
+Service provider entitiy id.
+
+auth:saml:sp-sign-request
++++++++++++++++++++++++++
+
+Boolean value that indicates to service provider signs the request.
+The default value is `false`.
+
+auth:saml:idp-sign-response
++++++++++++++++++++++++++++
+
+Boolean value that indicates to identity provider signs the response.
+The default value is `false`.
+
+auth:saml:idp-deflate-encoding
+++++++++++++++++++++++++++++++
+
+Boolean value that indicates to identity provider to enable deflate encoding.
+The default value is `false`.
 
 .. _config_queue:
 
