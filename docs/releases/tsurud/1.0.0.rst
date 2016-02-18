@@ -47,3 +47,15 @@ General improvements
 
 * Add new filters in the user list API endpoint: now it's possible to filter
   users by role and e-mail (issue `#1349 <https://github.com/tsuru/tsuru/issues/1349>`_).
+
+* Change user list filtering behavior. Consider users with permissions:
+
+  A: app.create(team team1), app.create(team team2)
+  B: app.create(team team1)
+
+  The previous behavior was such as if user A called user-list they would
+  see both users A and B. However user B calling user-list would only see
+  themselves.
+
+  Now user B will be able to see user A on user-list but only
+  app.create(team team1) permission will show up.
