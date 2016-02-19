@@ -21,7 +21,7 @@ Main new features
   Now it's possible to deploy a Docker image as tsuru app using `tsuru
   app-deploy -i` command.  This image should be in a registry and be accessible
   by tsuru api. Image should also have a Entrypoint or a Procfile at given paths,
-  `/` or `/app/user/` or `/home/application/current`.  See more in `tsuru-client
+  `/` or `/app/user/` or `/home/application/current`. See more in `tsuru-client
   app-deploy reference <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
 
 Bug fixes
@@ -55,3 +55,6 @@ General improvements
 
   Now user B will be able to see user A on user-list but only
   app.create(team team1) permission will show up.
+
+* Add a way to put units in `sleep mode`.
+  Making possible external services to put units that are not used to "sleep".
