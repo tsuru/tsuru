@@ -720,6 +720,11 @@
 			"revisionTime": "2015-01-28T14:32:41Z"
 		},
 		{
+			"path": "gopkg.in/bsm/ratelimit.v1",
+			"revision": "f14ad9c78b155f69b480cfa41cb655259baac260",
+			"revisionTime": "2015-12-10T17:49:14Z"
+		},
+		{
 			"path": "gopkg.in/check.v1",
 			"revision": "64131543e7896d5bcc6bd5a76287eb75ea96c673",
 			"revisionTime": "2014-10-24T11:38:53-02:00"
