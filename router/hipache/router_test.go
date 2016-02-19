@@ -9,10 +9,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/redis"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -23,7 +23,6 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	fake   *FakeRedisConn
 	conn   *db.Storage
 	prefix string
 }
@@ -38,6 +37,7 @@ func init() {
 	}
 	suite.SetUpTestFunc = func(c *check.C) {
 		config.Set("database:name", "router_generic_hipache_tests")
+		config.Set("routers:generic_hipache:redis-server", "127.0.0.1:6379")
 		config.Set("routers:generic_hipache:redis-db", 3)
 		config.Set("routers:generic_hipache:domain", "hipache.router")
 		base.prefix = "routers:generic_hipache"
@@ -47,6 +47,14 @@ func init() {
 	check.Suite(suite)
 }
 
+func clearRedisKeys(keysPattern string, conn redis.Client, c *check.C) {
+	keys, err := conn.Keys(keysPattern).Result()
+	c.Assert(err, check.IsNil)
+	for _, key := range keys {
+		conn.Del(key)
+	}
+}
+
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("hipache:domain", "golang.org")
 	config.Set("database:url", "127.0.0.1:27017")
@@ -54,6 +62,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("hipache:redis-server", "127.0.0.1:6379")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -62,10 +71,11 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	dbtest.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
 	rtest := hipacheRouter{prefix: s.prefix}
-	conn = rtest.connect()
-	ClearRedisKeys("frontend*", conn, c)
-	ClearRedisKeys("cname*", conn, c)
-	ClearRedisKeys("*.com", conn, c)
+	conn, err := rtest.connect()
+	c.Assert(err, check.IsNil)
+	clearRedisKeys("frontend*", conn, c)
+	clearRedisKeys("cname*", conn, c)
+	clearRedisKeys("*.com", conn, c)
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -79,8 +89,9 @@ func (s *S) TestStressRace(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			routerConn := rtest.connect()
-			_, err := routerConn.Do("PING")
+			routerConn, err := rtest.connect()
+			c.Check(err, check.IsNil)
+			err = routerConn.Ping().Err()
 			c.Check(err, check.IsNil)
 		}()
 	}
@@ -89,10 +100,10 @@ func (s *S) TestStressRace(c *check.C) {
 
 func (s *S) TestConnect(c *check.C) {
 	rtest := hipacheRouter{prefix: "hipache"}
-	got := rtest.connect()
-	defer got.Close()
+	got, err := rtest.connect()
+	c.Assert(err, check.IsNil)
 	c.Assert(got, check.NotNil)
-	_, err := got.Do("PING")
+	err = got.Ping().Err()
 	c.Assert(err, check.IsNil)
 }
 
@@ -100,31 +111,27 @@ func (s *S) TestConnectWithPassword(c *check.C) {
 	config.Set("hipache:redis-password", "123456")
 	defer config.Unset("hipache:redis-password")
 	rtest := hipacheRouter{prefix: "hipache"}
-	got := rtest.connect()
-	defer got.Close()
-	c.Assert(got, check.NotNil)
-	_, err := got.Do("PING")
+	got, err := rtest.connect()
 	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
+	c.Assert(got, check.IsNil)
 }
 
 func (s *S) TestConnectWhenPoolIsNil(c *check.C) {
 	rtest := hipacheRouter{prefix: "hipache"}
-	got := rtest.connect()
-	defer got.Close()
-	_, err := got.Do("PING")
+	got, err := rtest.connect()
 	c.Assert(err, check.IsNil)
-	got.Close()
-	c.Assert(rtest.pool, check.NotNil)
+	err = got.Ping().Err()
+	c.Assert(err, check.IsNil)
+	c.Assert(rtest.client, check.NotNil)
 }
 
 func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *check.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	rtest := hipacheRouter{prefix: "hipache"}
-	got := rtest.connect()
-	_, err := got.Do("PING")
+	got, err := rtest.connect()
 	c.Assert(err, check.NotNil)
-	got.Close()
+	c.Assert(got, check.IsNil)
 }
 
 func (s *S) TestShouldBeRegistered(c *check.C) {
@@ -155,9 +162,11 @@ func (s *S) TestAddBackend(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
-	backends, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(1, check.Equals, backends)
+	backends, err := conn.LLen("frontend:tip.golang.org").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(1), check.Equals, backends)
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
@@ -166,9 +175,11 @@ func (s *S) TestRemoveBackend(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.RemoveBackend("tip")
 	c.Assert(err, check.IsNil)
-	backends, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(0, check.Equals, backends)
+	backends, err := conn.LLen("frontend:tip.golang.org").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(0), check.Equals, backends)
 }
 
 func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *check.C) {
@@ -177,21 +188,25 @@ func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *c
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("mycname.com", "tip")
 	c.Assert(err, check.IsNil)
-	cnames, err := redis.Int(conn.Do("LLEN", "cname:tip"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(1, check.Equals, cnames)
+	cnames, err := conn.LLen("cname:tip").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(1), check.Equals, cnames)
 	err = router.RemoveBackend("tip")
 	c.Assert(err, check.IsNil)
-	cnames, err = redis.Int(conn.Do("LLEN", "cname:tip"))
+	cnames, err = conn.LLen("cname:tip").Result()
 	c.Assert(err, check.IsNil)
-	c.Assert(0, check.Equals, cnames)
+	c.Assert(int64(0), check.Equals, cnames)
 }
 
 func (s *S) TestAddRouteWithoutAssemblingFrontend(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.addRoute("test.com", "10.10.10.10")
 	c.Assert(err, check.IsNil)
-	routes, err := redis.Strings(conn.Do("LRANGE", "test.com", 0, -1))
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	routes, err := conn.LRange("test.com", 0, -1).Result()
 	c.Assert(routes, check.DeepEquals, []string{"10.10.10.10"})
 }
 
@@ -202,7 +217,9 @@ func (s *S) TestAddRoute(c *check.C) {
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
-	routes, err := redis.Strings(conn.Do("LRANGE", "frontend:tip.golang.org", 0, -1))
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	routes, err := conn.LRange("frontend:tip.golang.org", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []string{"tip", "http://10.10.10.10:8080"})
 }
@@ -237,21 +254,6 @@ func (s *S) TestAddRouteConnectFailure(c *check.C) {
 	c.Assert(e.Op, check.Equals, "routes")
 }
 
-func (s *S) TestAddRouteCommandFailure(c *check.C) {
-	r := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
-	addr, _ := url.Parse("http://www.tsuru.io")
-	err := r.AddBackend("tip")
-	c.Assert(err, check.IsNil)
-	conn = &FailingFakeRedisConn{}
-	r2 := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
-	err = r2.AddRoute("tip", addr)
-	c.Assert(err, check.FitsTypeOf, &router.RouterError{})
-	e, ok := err.(*router.RouterError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Err.Error(), check.Equals, "I can't do that.")
-	c.Assert(e.Op, check.Equals, "routes")
-}
-
 func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
@@ -261,15 +263,17 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("mycname.com", "tip")
 	c.Assert(err, check.IsNil)
-	cnameRoutes, err := redis.Int(conn.Do("LLEN", "frontend:mycname.com"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(2, check.Equals, cnameRoutes)
+	cnameRoutes, err := conn.LLen("frontend:mycname.com").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(2), check.Equals, cnameRoutes)
 	addr, _ = url.Parse("http://10.10.10.11:8080")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
-	cnameRoutes, err = redis.Int(conn.Do("LLEN", "frontend:mycname.com"))
+	cnameRoutes, err = conn.LLen("frontend:mycname.com").Result()
 	c.Assert(err, check.IsNil)
-	c.Assert(3, check.Equals, cnameRoutes)
+	c.Assert(int64(3), check.Equals, cnameRoutes)
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
@@ -283,9 +287,11 @@ func (s *S) TestRemoveRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.RemoveBackend("tip")
 	c.Assert(err, check.IsNil)
-	routes, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(0, check.Equals, routes)
+	routes, err := conn.LLen("frontend:tip.golang.org").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(0), check.Equals, routes)
 }
 
 func (s *S) TestRemoveRouteNoDomainConfigured(c *check.C) {
@@ -318,21 +324,6 @@ func (s *S) TestRemoveRouteConnectFailure(c *check.C) {
 	c.Assert(e.Op, check.Equals, "remove")
 }
 
-func (s *S) TestRemoveRouteCommandFailure(c *check.C) {
-	r := hipacheRouter{prefix: "hipache"}
-	err := r.AddBackend("tip")
-	c.Assert(err, check.IsNil)
-	conn = &FailingFakeRedisConn{}
-	r2 := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
-	addr, _ := url.Parse("http://tip.golang.org")
-	err = r2.RemoveRoute("tip", addr)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*router.RouterError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Err.Error(), check.Equals, "I can't do that.")
-	c.Assert(e.Op, check.Equals, "remove")
-}
-
 func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
@@ -344,9 +335,11 @@ func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.RemoveRoute("tip", addr)
 	c.Assert(err, check.IsNil)
-	cnames, err := redis.Int(conn.Do("LLEN", "cname:test.com"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(cnames, check.Equals, 0)
+	cnames, err := conn.LLen("cname:test.com").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(cnames, check.Equals, int64(0))
 }
 
 func (s *S) TestHealthCheck(c *check.C) {
@@ -400,7 +393,9 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnameRoutes, err := redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	cnameRoutes, err := conn.LRange("frontend:mycname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"myapp", addr1.String(), addr2.String()}, check.DeepEquals, cnameRoutes)
 }
@@ -418,26 +413,28 @@ func (s *S) TestSetCNameTwiceFixInconsistencies(c *check.C) {
 	expected := []string{"myapp", addr1.String(), addr2.String()}
 	err = r.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnameRoutes, err := redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	conn, err := r.connect()
+	c.Assert(err, check.IsNil)
+	cnameRoutes, err := conn.LRange("frontend:mycname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(cnameRoutes, check.DeepEquals, expected)
-	_, err = conn.Do("RPUSH", "frontend:mycname.com", "http://invalid.addr:1234")
+	err = conn.RPush("frontend:mycname.com", "http://invalid.addr:1234").Err()
 	c.Assert(err, check.IsNil)
 	err = r.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.Equals, router.ErrCNameExists)
-	cnameRoutes, err = redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	cnameRoutes, err = conn.LRange("frontend:mycname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(cnameRoutes, check.DeepEquals, expected)
-	_, err = conn.Do("LREM", "frontend:mycname.com", "1", "http://10.10.10.10")
+	err = conn.LRem("frontend:mycname.com", 1, "http://10.10.10.10").Err()
 	c.Assert(err, check.IsNil)
 	err = r.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.Equals, router.ErrCNameExists)
-	cnameRoutes, err = redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	cnameRoutes, err = conn.LRange("frontend:mycname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(cnameRoutes, check.DeepEquals, expected)
 	err = r.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.Equals, router.ErrCNameExists)
-	cnameRoutes, err = redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	cnameRoutes, err = conn.LRange("frontend:mycname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(cnameRoutes, check.DeepEquals, expected)
 }
@@ -448,7 +445,9 @@ func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cname, err := redis.Strings(conn.Do("LRANGE", "cname:myapp", 0, -1))
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	cname, err := conn.LRange("cname:myapp", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"mycname.com"}, check.DeepEquals, cname)
 }
@@ -463,34 +462,14 @@ func (s *S) TestSetCNameSetsMultipleCNames(c *check.C) {
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("myothercname.com", "myapp")
-	cname, err := redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	cname, err := conn.LRange("frontend:mycname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"myapp", addr.String()}, check.DeepEquals, cname)
-	cname, err = redis.Strings(conn.Do("LRANGE", "frontend:myothercname.com", 0, -1))
+	cname, err = conn.LRange("frontend:myothercname.com", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"myapp", addr.String()}, check.DeepEquals, cname)
-}
-
-func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *check.C) {
-	r := hipacheRouter{prefix: "hipache"}
-	err := r.AddBackend("myapp")
-	c.Assert(err, check.IsNil)
-	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
-	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	r2 := hipacheRouter{prefix: "hipache"}
-	err = r2.SetCName("mycname.golang.org", "myapp")
-	c.Assert(err, check.Equals, router.ErrCNameNotAllowed)
-}
-
-func (s *S) TestSetCNameDoesNotBlockSuffixDomain(c *check.C) {
-	router := hipacheRouter{prefix: "hipache"}
-	err := router.AddBackend("myapp")
-	c.Assert(err, check.IsNil)
-	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
-	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	router2 := hipacheRouter{prefix: "hipache"}
-	err = router2.SetCName("mycname.golang.org.br", "myapp")
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestUnsetCName(c *check.C) {
@@ -499,14 +478,16 @@ func (s *S) TestUnsetCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnames, err := redis.Int(conn.Do("LLEN", "cname:myapp"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(1, check.Equals, cnames)
+	cnames, err := conn.LLen("cname:myapp").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(1), check.Equals, cnames)
 	err = router.UnsetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	cnames, err = conn.LLen("cname:myapp").Result()
 	c.Assert(err, check.IsNil)
-	c.Assert(0, check.Equals, cnames)
+	c.Assert(int64(0), check.Equals, cnames)
 }
 
 func (s *S) TestUnsetTwoCNames(c *check.C) {
@@ -515,24 +496,26 @@ func (s *S) TestUnsetTwoCNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnames, err := redis.Int(conn.Do("LLEN", "cname:myapp"))
+	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
-	c.Assert(1, check.Equals, cnames)
+	cnames, err := conn.LLen("cname:myapp").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(1), check.Equals, cnames)
 	err = router.SetCName("myapptwo.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	cnames, err = conn.LLen("cname:myapp").Result()
 	c.Assert(err, check.IsNil)
-	c.Assert(2, check.Equals, cnames)
+	c.Assert(int64(2), check.Equals, cnames)
 	err = router.UnsetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	cnames, err = conn.LLen("cname:myapp").Result()
 	c.Assert(err, check.IsNil)
-	c.Assert(1, check.Equals, cnames)
+	c.Assert(int64(1), check.Equals, cnames)
 	err = router.UnsetCName("myapptwo.com", "myapp")
 	c.Assert(err, check.IsNil)
-	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	cnames, err = conn.LLen("cname:myapp").Result()
 	c.Assert(err, check.IsNil)
-	c.Assert(0, check.Equals, cnames)
+	c.Assert(int64(0), check.Equals, cnames)
 }
 
 func (s *S) TestAddr(c *check.C) {
@@ -575,31 +558,6 @@ func (s *S) TestAddrConnectFailure(c *check.C) {
 	c.Assert(e.Op, check.Equals, "get")
 }
 
-func (s *S) TestAddrCommandFailure(c *check.C) {
-	r := hipacheRouter{prefix: "hipache"}
-	err := r.AddBackend("tip")
-	c.Assert(err, check.IsNil)
-	conn = &FailingFakeRedisConn{}
-	r2 := hipacheRouter{prefix: "hipache", pool: redis.NewPool(fakeConnect, 5)}
-	addr, err := r2.Addr("tip")
-	c.Assert(addr, check.Equals, "")
-	e, ok := err.(*router.RouterError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Op, check.Equals, "get")
-	c.Assert(e.Err.Error(), check.Equals, "I can't do that.")
-}
-
-func (s *S) TestAddrRouteNotFound(c *check.C) {
-	conn = &ResultCommandRedisConn{
-		DefaultReply:  []interface{}{},
-		FakeRedisConn: s.fake,
-	}
-	r := hipacheRouter{prefix: "hipache"}
-	addr, err := r.Addr("tip")
-	c.Assert(addr, check.Equals, "")
-	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-}
-
 func (s *S) TestRemoveElement(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	count, err := router.removeElement("frontend:myapp.com", "10.10.10.10")
@@ -631,10 +589,12 @@ func (s *S) TestSwap(c *check.C) {
 	router.AddRoute(backend2, addr2)
 	err := router.Swap(backend1, backend2)
 	c.Assert(err, check.IsNil)
-	backend1Routes, err := redis.Strings(conn.Do("LRANGE", "frontend:b2.golang.org", 0, -1))
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	backend1Routes, err := conn.LRange("frontend:b2.golang.org", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"b2", addr1.String()}, check.DeepEquals, backend1Routes)
-	backend2Routes, err := redis.Strings(conn.Do("LRANGE", "frontend:b1.golang.org", 0, -1))
+	backend2Routes, err := conn.LRange("frontend:b1.golang.org", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"b1", addr2.String()}, check.DeepEquals, backend2Routes)
 }
