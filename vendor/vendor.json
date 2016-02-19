@@ -745,6 +745,21 @@
 			"revisionTime": "2015-12-07T00:15:13-02:00"
 		},
 		{
+			"path": "gopkg.in/redis.v3",
+			"revision": "298fdec44579d427ee4c50483e5ccda1ebdcc204",
+			"revisionTime": "2016-02-06T12:27:35+02:00"
+		},
+		{
+			"path": "gopkg.in/redis.v3/internal/consistenthash",
+			"revision": "298fdec44579d427ee4c50483e5ccda1ebdcc204",
+			"revisionTime": "2016-02-06T12:27:35+02:00"
+		},
+		{
+			"path": "gopkg.in/redis.v3/internal/hashtag",
+			"revision": "298fdec44579d427ee4c50483e5ccda1ebdcc204",
+			"revisionTime": "2016-02-06T12:27:35+02:00"
+		},
+		{
 			"path": "gopkg.in/tylerb/graceful.v1",
 			"revision": "d506b859c378b0e4a1b16d44021f3937f9ba4578",
 			"revisionTime": "2015-03-29T10:11:00-06:00"
