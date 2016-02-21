@@ -344,7 +344,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	if updateData.Description != "" {
-		allowed := permission.Check(t, permission.PermAppUpdate,
+		allowed := permission.Check(t, permission.PermAppUpdateDescription,
 			append(permission.Contexts(permission.CtxTeam, a.Teams),
 				permission.Context(permission.CtxApp, a.Name),
 				permission.Context(permission.CtxPool, a.Pool),
