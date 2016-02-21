@@ -42,6 +42,7 @@ github.com/tsuru/tsuru/api.removeKeyFromUser
 github.com/tsuru/tsuru/api.setUnitsStatus
 github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.listNodesHandler
+github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
 EOF
     )
     ignored=$(echo "$ignored" | sort)
