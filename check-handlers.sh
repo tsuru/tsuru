@@ -1,5 +1,15 @@
 #!/bin/bash -e
 
+function check_go {
+    set +e
+    version=$(go version | grep -o 'go1.5')
+    if [ "${GO15VENDOREXPERIMENT}" != "0" ] && [ -n "${version}" ]; then
+        echo "This script requires Go 1.6 or higher. Please upgrade Go or disable GO15VENDOREXPERIMENT."
+        exit 1
+    fi
+    set -e
+}
+
 function missing_handlers {
     go get golang.org/x/tools/cmd/oracle
 
@@ -71,5 +81,6 @@ function extra_perms {
     test -z "$fail"
 }
 
+check_go
 missing_handlers
 extra_perms
