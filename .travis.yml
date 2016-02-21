@@ -13,6 +13,7 @@ addons:
     packages:
       - rsyslog
       - xmlsec1
+install: true
 before_script:
   - rsyslogd &
   - sleep 1
