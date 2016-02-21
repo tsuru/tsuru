@@ -4,8 +4,8 @@ function check_go {
     set +e
     version=$(go version | grep -o 'go1.5')
     if [ "${GO15VENDOREXPERIMENT}" != "0" ] && [ -n "${version}" ]; then
-        echo "This script requires Go 1.6 or higher. Please upgrade Go or disable GO15VENDOREXPERIMENT."
-        exit 1
+        echo "Skipping handlers checking, it requires Go 1.6 or higher. Please upgrade Go or disable GO15VENDOREXPERIMENT."
+        exit 0
     fi
     set -e
 }
