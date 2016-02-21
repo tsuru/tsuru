@@ -382,7 +382,9 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if !permission.Check(t, permission.PermNode, permContexts...) {
 		return permission.ErrUnauthorized
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to move container: %s\n", err.Error())
@@ -409,7 +411,9 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !permission.Check(t, permission.PermNode, permContexts...) {
 		return permission.ErrUnauthorized
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = mainDockerProvisioner.MoveContainers(from, to, writer)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to move containers: %s\n", err.Error())
@@ -457,7 +461,9 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 	if !permission.Check(t, permission.PermNode, permContexts...) {
 		return permission.ErrUnauthorized
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	_, err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, dry)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to rebalance containers: %s\n", err)
@@ -552,8 +558,10 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(w),
+		Encoder: json.NewEncoder(keepAliveWriter),
 	}
 	autoScaleConfig := mainDockerProvisioner.initAutoScaleConfig()
 	autoScaleConfig.writer = writer
