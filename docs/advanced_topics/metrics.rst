@@ -10,7 +10,7 @@ Since 0.12.x **tsuru** get metrics from `Docker <https://www.docker.com/>`_ (usi
 Installing
 ----------
 
-You will need a `Elasticsearch <https://www.elastic.co/guide/en/elasticsearch/guide/current/_installing_elasticsearch.html>`_ and a `Logstash <https://www.elastic.co/guide/en/logstash/current/getting-started-with-logstash.html#installing-logstash>`_ installed.
+You will need a `Elasticsearch <https://www.elastic.co/guide/en/elasticsearch/reference/current/_installation.html>`_ and a `Logstash <https://www.elastic.co/guide/en/logstash/current/getting-started-with-logstash.html#installing-logstash>`_ installed.
 
 tsuru send data to Logstash using udp protocol and the message is formatted in json that requires a custom Logstash configuration:
 
@@ -41,11 +41,9 @@ tsuru send data to Logstash using udp protocol and the message is formatted in j
 
     output {
         elasticsearch {
-            protocol => "http"
-            host => "<ELASTICSEARCHHOST>"
-            port => "<ELASTICSEARCHPORT>"
+            hosts => ["http://ELASTICSEARCHHOST:ELASTICSEARCHPORT"]
             index => ".measure-%{client}-%{+YYYY.MM.dd}"
-            index_type => "%{metric}"
+            document_type => "%{metric}"
         }
     }
 
