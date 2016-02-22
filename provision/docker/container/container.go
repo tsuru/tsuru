@@ -85,6 +85,7 @@ type CreateArgs struct {
 	Provisioner      DockerProvisioner
 	DestinationHosts []string
 	ProcessName      string
+	Building         bool
 }
 
 func (c *Container) Create(args *CreateArgs) error {
@@ -93,7 +94,6 @@ func (c *Container) Create(args *CreateArgs) error {
 		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
 		return err
 	}
-	user := c.user()
 	securityOpts, _ := config.GetList("docker:security-opts")
 	var exposedPorts map[docker.Port]struct{}
 	if !args.Deploy {
@@ -101,11 +101,14 @@ func (c *Container) Create(args *CreateArgs) error {
 			docker.Port(port + "/tcp"): {},
 		}
 	}
+	var user string
+	if args.Building {
+		user = c.user()
+	}
 	config := docker.Config{
 		Image:        args.ImageID,
 		Cmd:          args.Commands,
 		Entrypoint:   []string{},
-		User:         user,
 		ExposedPorts: exposedPorts,
 		AttachStdin:  false,
 		AttachStdout: false,
@@ -114,6 +117,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		MemorySwap:   args.App.GetMemory() + args.App.GetSwap(),
 		CPUShares:    int64(args.App.GetCpuShare()),
 		SecurityOpts: securityOpts,
+		User:         user,
 	}
 	c.addEnvsToConfig(args, port, &config)
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
@@ -134,7 +138,6 @@ func (c *Container) Create(args *CreateArgs) error {
 	}
 	c.ID = cont.ID
 	c.HostAddr = net.URLToHost(addr)
-	c.User = user
 	return nil
 }
 
@@ -271,7 +274,6 @@ func (c *Container) Shell(p DockerProvisioner, stdin io.Reader, stdout, stderr i
 		Cmd:          cmds,
 		Container:    c.ID,
 		Tty:          true,
-		User:         c.user(),
 	}
 	exec, err := p.Cluster().CreateExec(execCreateOpts)
 	if err != nil {
@@ -322,7 +324,6 @@ func (c *Container) Exec(p DockerProvisioner, stdout, stderr io.Writer, cmd stri
 		Tty:          false,
 		Cmd:          cmds,
 		Container:    c.ID,
-		User:         c.user(),
 	}
 	exec, err := p.Cluster().CreateExec(execCreateOpts)
 	if err != nil {
