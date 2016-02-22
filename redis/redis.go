@@ -5,6 +5,7 @@
 package redis
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -12,6 +13,10 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/redis.v3"
+)
+
+var (
+	ErrNoRedisConfig = errors.New("no redis configuration found with config prefix")
 )
 
 type Client interface {
@@ -29,6 +34,12 @@ type Client interface {
 	LLen(key string) *redis.IntCmd
 }
 
+type PubSubClient interface {
+	Client
+	Subscribe(channels ...string) (*redis.PubSub, error)
+	Publish(channel, message string) *redis.IntCmd
+}
+
 type CommonConfig struct {
 	DB           int64
 	Password     string
@@ -39,9 +50,11 @@ type CommonConfig struct {
 	PoolSize     int
 	PoolTimeout  time.Duration
 	IdleTimeout  time.Duration
+	TryLegacy    bool
+	TryLocal     bool
 }
 
-func newRedisSentinel(addrs []string, master string, redisConfig CommonConfig) (Client, error) {
+func newRedisSentinel(addrs []string, master string, redisConfig *CommonConfig) (Client, error) {
 	client := redis.NewFailoverClient(&redis.FailoverOptions{
 		MasterName:    master,
 		SentinelAddrs: addrs,
@@ -59,7 +72,7 @@ func newRedisSentinel(addrs []string, master string, redisConfig CommonConfig) (
 	return client, err
 }
 
-func redisCluster(addrs []string, redisConfig CommonConfig) (Client, error) {
+func redisCluster(addrs []string, redisConfig *CommonConfig) (Client, error) {
 	client := redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:        addrs,
 		Password:     redisConfig.Password,
@@ -74,7 +87,7 @@ func redisCluster(addrs []string, redisConfig CommonConfig) (Client, error) {
 	return client, err
 }
 
-func redisServer(addr string, redisConfig CommonConfig) (Client, error) {
+func redisServer(addr string, redisConfig *CommonConfig) (Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:         addr,
 		DB:           redisConfig.DB,
@@ -92,19 +105,25 @@ func redisServer(addr string, redisConfig CommonConfig) (Client, error) {
 }
 
 func NewRedis(prefix string) (Client, error) {
-	return NewRedisDefaultConfig(prefix, CommonConfig{
+	return NewRedisDefaultConfig(prefix, &CommonConfig{
 		PoolSize:    1000,
 		PoolTimeout: time.Second,
 		IdleTimeout: 2 * time.Minute,
 	})
 }
 
-func NewRedisDefaultConfig(prefix string, defaultConfig CommonConfig) (Client, error) {
+func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, error) {
 	db, err := config.GetInt(prefix + ":redis-db")
+	if err != nil && defaultConfig.TryLegacy {
+		db, err = config.GetInt(prefix + ":db")
+	}
 	if err == nil {
 		defaultConfig.DB = int64(db)
 	}
 	password, err := config.GetString(prefix + ":redis-password")
+	if err != nil && defaultConfig.TryLegacy {
+		password, err = config.GetString(prefix + ":password")
+	}
 	if err == nil {
 		defaultConfig.Password = password
 	}
@@ -161,5 +180,27 @@ func NewRedisDefaultConfig(prefix string, defaultConfig CommonConfig) (Client, e
 		log.Debugf("Connecting to redis server from %q config prefix. Addr: %s. DB: %d.", prefix, server, db)
 		return redisServer(server, defaultConfig)
 	}
-	return nil, fmt.Errorf("no redis configuration found with config prefix %q.", prefix)
+	host, err := config.GetString(prefix + ":redis-host")
+	if err != nil && defaultConfig.TryLegacy {
+		host, err = config.GetString(prefix + ":host")
+	}
+	if err == nil {
+		portStr := "6379"
+		port, err := config.Get(prefix + ":redis-port")
+		if err != nil && defaultConfig.TryLegacy {
+			port, err = config.Get(prefix + ":port")
+		}
+		if err == nil {
+			portStr = fmt.Sprintf("%v", port)
+		}
+		addr := fmt.Sprintf("%s:%s", host, portStr)
+		log.Debugf("Connecting to redis host/port from %q config prefix. Addr: %s. DB: %d.", prefix, addr, db)
+		return redisServer(addr, defaultConfig)
+	}
+	if defaultConfig.TryLocal {
+		addr := "localhost:6379"
+		log.Debugf("Connecting to redis on localhost from %q config prefix. Addr: %s. DB: %d.", prefix, addr, db)
+		return redisServer(addr, defaultConfig)
+	}
+	return nil, ErrNoRedisConfig
 }

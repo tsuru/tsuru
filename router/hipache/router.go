@@ -45,7 +45,7 @@ func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 		r.Lock()
 		defer r.Unlock()
 		if r.client == nil {
-			client, err := tsuruRedis.NewRedisDefaultConfig(r.prefix, tsuruRedis.CommonConfig{
+			client, err := tsuruRedis.NewRedisDefaultConfig(r.prefix, &tsuruRedis.CommonConfig{
 				PoolSize:     1000,
 				PoolTimeout:  2 * time.Second,
 				IdleTimeout:  2 * time.Minute,

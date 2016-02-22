@@ -18,18 +18,13 @@ type RedismqSuite struct {
 var _ = check.Suite(&RedismqSuite{})
 
 func (s *RedismqSuite) SetUpSuite(c *check.C) {
+	config.Set("pubsub:redis-server", "127.0.0.1:6379")
+	config.Set("pubsub:redis-db", 4)
 	s.factory = &redisPubSubFactory{}
 	q := redisPubSub{name: "default", factory: s.factory, prefix: "test"}
 	conn, err := s.factory.getConn()
 	c.Assert(err, check.IsNil)
-	conn.Do("DEL", q.key())
-}
-
-func (s *RedismqSuite) TestFactoryGetPool(c *check.C) {
-	var factory redisPubSubFactory
-	pool := factory.getPool()
-	c.Assert(pool.IdleTimeout, check.Equals, 5*time.Minute)
-	c.Assert(pool.MaxIdle, check.Equals, 20)
+	conn.Del(q.key())
 }
 
 func (s *RedismqSuite) TestFactoryGet(c *check.C) {

@@ -9,16 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
+	tsuruRedis "github.com/tsuru/tsuru/redis"
+	"gopkg.in/redis.v3"
 )
 
 type redisPubSub struct {
 	name    string
 	prefix  string
 	factory *redisPubSubFactory
-	psc     *redis.PubSubConn
+	psc     *redis.PubSub
 }
 
 func (r *redisPubSub) Pub(msg []byte) error {
@@ -26,15 +26,10 @@ func (r *redisPubSub) Pub(msg []byte) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Do("PUBLISH", r.key(), msg)
-	return err
+	return conn.Publish(r.key(), string(msg)).Err()
 }
 
 func (r *redisPubSub) UnSub() error {
-	if r.psc == nil {
-		return nil
-	}
 	err := r.psc.Unsubscribe()
 	if err != nil {
 		return err
@@ -47,29 +42,30 @@ func (r *redisPubSub) UnSub() error {
 }
 
 func (r *redisPubSub) Sub() (<-chan []byte, error) {
-	conn, err := r.factory.getConn(true)
+	conn, err := r.factory.getConn()
 	if err != nil {
 		return nil, err
 	}
-	r.psc = &redis.PubSubConn{Conn: conn}
+	r.psc, err = conn.Subscribe(r.key())
+	if err != nil {
+		return nil, err
+	}
 	msgChan := make(chan []byte)
-	err = r.psc.Subscribe(r.key())
-	if err != nil {
-		return nil, err
-	}
 	go func() {
 		defer close(msgChan)
 		for {
-			switch v := r.psc.Receive().(type) {
-			case redis.Message:
-				msgChan <- v.Data
-			case redis.Subscription:
+			msg, err := r.psc.ReceiveTimeout(r.factory.config.ReadTimeout)
+			if err != nil {
+				log.Errorf("Error receiving messages from channel %s: %s", r.key(), err)
+				return
+			}
+			switch v := msg.(type) {
+			case *redis.Message:
+				msgChan <- []byte(v.Payload)
+			case *redis.Subscription:
 				if v.Count == 0 {
 					return
 				}
-			case error:
-				log.Errorf("Error receiving messages from channel %s: %s", r.key(), v.Error())
-				return
 			}
 		}
 	}()
@@ -82,7 +78,8 @@ func (r *redisPubSub) key() string {
 
 type redisPubSubFactory struct {
 	sync.Mutex
-	pool *redis.Pool
+	pool   tsuruRedis.PubSubClient
+	config *tsuruRedis.CommonConfig
 }
 
 func (factory *redisPubSubFactory) Reset() {
@@ -92,95 +89,34 @@ func (factory *redisPubSubFactory) PubSub(name string) (PubSubQ, error) {
 	return &redisPubSub{name: name, factory: factory}, nil
 }
 
-func (factory *redisPubSubFactory) getConn(standAlone ...bool) (redis.Conn, error) {
-	isStandAlone := len(standAlone) > 0 && standAlone[0]
-	if isStandAlone {
-		return factory.dial()
-	}
-	return factory.getPool().Get(), nil
-}
-
-func (factory *redisPubSubFactory) dial() (redis.Conn, error) {
-	host, err := config.GetString("pubsub:redis-host")
-	if err != nil {
-		host, err = config.GetString("redis-queue:host")
-		if err != nil {
-			host = "localhost"
-		}
-	}
-	port, err := config.Get("pubsub:redis-port")
-	if err != nil {
-		port, err = config.Get("redis-queue:port")
-		if err != nil {
-			port = "6379"
-		}
-	}
-	port = fmt.Sprintf("%v", port)
-	password, err := config.GetString("pubsub:redis-password")
-	if err != nil {
-		password, _ = config.GetString("redis-queue:password")
-	}
-	db, err := config.GetInt("pubsub:redis-db")
-	if err != nil {
-		db, err = config.GetInt("redis-queue:db")
-		if err != nil {
-			db = 3
-		}
-	}
-	secondFloat := float64(time.Second)
-	dialTimeout, err := config.GetFloat("pubsub:redis-dial-timeout")
-	if err != nil {
-		dialTimeout = 0.1
-	}
-	dialTimeout = dialTimeout * secondFloat
-	readTimeout, err := config.GetFloat("pubsub:redis-read-timeout")
-	if err != nil {
-		readTimeout = 30 * 60
-	}
-	readTimeout = readTimeout * secondFloat
-	writeTimeout, err := config.GetFloat("pubsub:redis-write-timeout")
-	if err != nil {
-		writeTimeout = 0.5
-	}
-	writeTimeout = writeTimeout * secondFloat
-	conn, err := redis.DialTimeout("tcp", fmt.Sprintf("%s:%v", host, port), time.Duration(dialTimeout), time.Duration(readTimeout), time.Duration(writeTimeout))
-	if err != nil {
-		return nil, err
-	}
-	if password != "" {
-		_, err = conn.Do("AUTH", password)
-		if err != nil {
-			return nil, err
-		}
-	}
-	_, err = conn.Do("SELECT", db)
-	return conn, err
-}
-
-func (factory *redisPubSubFactory) getPool() *redis.Pool {
+func (factory *redisPubSubFactory) getConn() (tsuruRedis.PubSubClient, error) {
 	factory.Lock()
 	defer factory.Unlock()
 	if factory.pool != nil {
-		return factory.pool
+		return factory.pool, nil
 	}
-	maxIdle, err := config.GetInt("pubsub:pool-max-idle-conn")
+	factory.config = &tsuruRedis.CommonConfig{
+		PoolSize:     1000,
+		PoolTimeout:  2 * time.Second,
+		IdleTimeout:  2 * time.Minute,
+		MaxRetries:   1,
+		DialTimeout:  100 * time.Millisecond,
+		ReadTimeout:  30 * time.Minute,
+		WriteTimeout: 500 * time.Millisecond,
+		TryLegacy:    true,
+	}
+	client, err := tsuruRedis.NewRedisDefaultConfig("pubsub", factory.config)
+	if err == tsuruRedis.ErrNoRedisConfig {
+		factory.config.TryLocal = true
+		client, err = tsuruRedis.NewRedisDefaultConfig("redis-queue", factory.config)
+	}
 	if err != nil {
-		maxIdle, err = config.GetInt("redis-queue:pool-max-idle-conn")
-		if err != nil {
-			maxIdle = 20
-		}
+		return nil, err
 	}
-	idleTimeout, err := config.GetInt("pubsub:pool-idle-timeout")
-	if err != nil {
-		idleTimeout, err = config.GetInt("redis-queue:pool-idle-timeout")
-		if err != nil {
-			idleTimeout = 300
-		}
+	var ok bool
+	factory.pool, ok = client.(tsuruRedis.PubSubClient)
+	if !ok {
+		return nil, fmt.Errorf("redis client is not a capable of pubsub: %#v", client)
 	}
-	factory.pool = &redis.Pool{
-		MaxIdle:     maxIdle,
-		IdleTimeout: time.Duration(idleTimeout) * time.Second,
-		Dial:        factory.dial,
-	}
-	return factory.pool
+	return factory.pool, nil
 }

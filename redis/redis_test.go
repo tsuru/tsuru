@@ -101,8 +101,30 @@ func (s *S) TestNewRedisClusterWithDB(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "could not initialize redis from \"test-redis\" config, using redis-cluster with db != 0 is not supported")
 }
 
+func (s *S) TestNewRedisHostPort(c *check.C) {
+	s.setConfig("redis-host", "localhost")
+	s.setConfig("redis-port", 6379)
+	r, err := NewRedis(s.prefix)
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.NotNil)
+}
+
+func (s *S) TestNewRedisHostPortLegacy(c *check.C) {
+	s.setConfig("host", "localhost")
+	s.setConfig("port", 6379)
+	r, err := NewRedisDefaultConfig(s.prefix, &CommonConfig{TryLegacy: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.NotNil)
+}
+
+func (s *S) TestNewRedisTryLocal(c *check.C) {
+	r, err := NewRedisDefaultConfig(s.prefix, &CommonConfig{TryLocal: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.NotNil)
+}
+
 func (s *S) TestNewRedisNotConfigured(c *check.C) {
 	r, err := NewRedis(s.prefix)
-	c.Assert(err, check.ErrorMatches, "no redis configuration found with config prefix \"test-redis\".")
+	c.Assert(err, check.Equals, ErrNoRedisConfig)
 	c.Assert(r, check.IsNil)
 }
