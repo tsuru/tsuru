@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
@@ -100,6 +101,8 @@ func (s *S) TestCreateContainerName(c *check.C) {
 }
 
 func (s *S) TestCreateContainerForward(c *check.C) {
+	config.Set("docker:user", "ubuntu")
+	defer config.Unset("docker:user")
 	err := s.newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(s.server.URL())
@@ -110,10 +113,11 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	args := runContainerActionsArgs{
-		app:         app,
-		imageID:     images[0].ID,
-		commands:    cmds,
-		provisioner: s.p,
+		app:           app,
+		imageID:       images[0].ID,
+		commands:      cmds,
+		provisioner:   s.p,
+		buildingImage: images[0].ID,
 	}
 	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err := createContainer.Forward(context)
@@ -128,6 +132,21 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	cc, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.State.Running, check.Equals, false)
+	c.Assert(cc.Config.User, check.Equals, "ubuntu")
+	args = runContainerActionsArgs{
+		app:         app,
+		imageID:     images[0].ID,
+		commands:    cmds,
+		provisioner: s.p,
+	}
+	cont = container.Container{Name: "myName2", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	context = action.FWContext{Previous: cont, Params: []interface{}{args}}
+	r, err = createContainer.Forward(context)
+	c.Assert(err, check.IsNil)
+	cont = r.(container.Container)
+	defer cont.Remove(s.p)
+	cc, err = dcli.InspectContainer(cont.ID)
+	c.Assert(cc.Config.User, check.Equals, "")
 }
 
 func (s *S) TestCreateContainerBackward(c *check.C) {

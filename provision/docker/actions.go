@@ -160,6 +160,10 @@ var createContainer = action.Action{
 		cont := ctx.Previous.(container.Container)
 		args := ctx.Params[0].(runContainerActionsArgs)
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
+		var building bool
+		if args.buildingImage != "" {
+			building = true
+		}
 		err := cont.Create(&container.CreateArgs{
 			ImageID:          args.imageID,
 			Commands:         args.commands,
@@ -168,6 +172,7 @@ var createContainer = action.Action{
 			Provisioner:      args.provisioner,
 			DestinationHosts: args.destinationHosts,
 			ProcessName:      args.processName,
+			Building:         building,
 		})
 		if err != nil {
 			log.Errorf("error on create container for app %s - %s", args.app.GetName(), err)
