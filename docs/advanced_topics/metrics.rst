@@ -41,11 +41,9 @@ tsuru send data to Logstash using udp protocol and the message is formatted in j
 
     output {
         elasticsearch {
-            protocol => "http"
-            host => "<ELASTICSEARCHHOST>"
-            port => "<ELASTICSEARCHPORT>"
+            hosts => ["http://ELASTICSEARCHHOST:ELASTICSEARCHPORT"]
             index => ".measure-%{client}-%{+YYYY.MM.dd}"
-            index_type => "%{metric}"
+            document_type => "%{metric}"
         }
     }
 
