@@ -383,7 +383,11 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 		if len(imageInspect.Config.Entrypoint) == 0 {
 			return "", ErrEntrypointOrProcfileNotFound
 		}
-		procfile["web"] = strings.Join(imageInspect.Config.Entrypoint, " ")
+		webProcess := imageInspect.Config.Entrypoint[0]
+		for _, c := range imageInspect.Config.Entrypoint[1:] {
+			webProcess += fmt.Sprintf(" %q", c)
+		}
+		procfile["web"] = webProcess
 	}
 	newImage, err := appNewImageName(app.GetName())
 	if err != nil {

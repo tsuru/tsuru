@@ -799,7 +799,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	appCurrentImage, err := appCurrentImageName(a.GetName())
 	imd, err := getImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
-	expectedProcesses := map[string]string{"web": "/bin/sh -c python test.py"}
+	expectedProcesses := map[string]string{"web": "/bin/sh \"-c\" \"python test.py\""}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 	updatedApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -2529,14 +2529,12 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 		"AttachStderr": true,
 		"Cmd":          []interface{}{"/bin/bash", "-lc", "cmd1"},
 		"Container":    container.ID,
-		"User":         "root",
 	})
 	c.Assert(req2, check.DeepEquals, map[string]interface{}{
 		"AttachStdout": true,
 		"AttachStderr": true,
 		"Cmd":          []interface{}{"/bin/bash", "-lc", "cmd2"},
 		"Container":    container.ID,
-		"User":         "root",
 	})
 }
 
