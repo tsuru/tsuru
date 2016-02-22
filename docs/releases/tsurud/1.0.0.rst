@@ -15,8 +15,6 @@ when upgrading from tsurud 0.13.x or older versions.
 Main new features
 =================
 
-* API versioning
-
 * Deploy apps using Docker image (`#1314 <https://github.com/tsuru/tsuru/issues/1314>`_).
   Now it's possible to deploy a Docker image as tsuru app using `tsuru
   app-deploy -i` command.  This image should be in a registry and be accessible
@@ -24,10 +22,14 @@ Main new features
   `/` or `/app/user/` or `/home/application/current`. See more in `tsuru-client
   app-deploy reference <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
 
+* API versioning
+
 Bug fixes
 =========
 
 * Fix image remove from docker registry v2 (`#1361 <https://github.com/tsuru/tsuru/issues/1361>`_).
+
+* Users are dissociated from roles on role remove. 
 
 General improvements
 ====================
@@ -73,3 +75,25 @@ General improvements
 * All long running API handlers for the Docker provisioner now use a keep-alive
   to keep the connection open, properly handling low network timeouts
   (specially with AWS Elastic Load Balancers).
+
+* A new service instance description field, that can be used to describe the service
+  instance objective (`#1335 <https://github.com/tsuru/tsuru/issues/1335>`_).
+
+* Add a new filter in the app listing API endpoint: now it's possible to filter
+  applications by unit status (issue `#1360 <https://github.com/tsuru/tsuru/issues/1360>`_).
+
+* Add a new handler that returns the service instance info
+  (issue `#1331 <https://github.com/tsuru/tsuru/issues/1331>`_).
+
+* New deploy origins: `image` for image deploys and `drag-and-drop` that is used
+  to identify deploys made from `tsuru-dashboard`.
+
+* A new handler that returns the role info
+  (issue `#1353 <https://github.com/tsuru/tsuru/issues/1353>`_).
+
+* New filters in the user list endpoint: now it's possible to filter users by username
+  and role.
+
+* A new handler to update service instance (issue `#1336 <https://github.com/tsuru/tsuru/issues/1336>`_).
+
+* Add token authentication support in Galeb router backend. 
