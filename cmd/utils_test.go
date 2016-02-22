@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -57,6 +57,21 @@ func (s *S) TestReadToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, true)
 	c.Assert(token, check.Equals, "123")
+}
+
+func (s *S) TestReadTokenFileNotFound(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
+	errFs := &fstest.FileNotFoundFs{}
+	fsystem = errFs
+	defer func() {
+		fsystem = nil
+	}()
+	token, err := ReadToken()
+	c.Assert(err, check.IsNil)
+	tokenPath := JoinWithUserDir(".tsuru", "token")
+	c.Assert(err, check.IsNil)
+	c.Assert(errFs.HasAction("open "+tokenPath), check.Equals, true)
+	c.Assert(token, check.Equals, "")
 }
 
 func (s *S) TestShowServicesInstancesList(c *check.C) {
