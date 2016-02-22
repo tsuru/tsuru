@@ -58,3 +58,14 @@ General improvements
 
 * Add a way to put units in `sleep mode`.
   Making possible external services to put units that are not used to "sleep".
+
+* EC2 IaaS is now feature complete, supporting parameter such as IAM roles,
+  extra volumes and multiple network interfaces. Since these parameters are
+  composed of multiple values, users must provide a JSON for using them. For
+  example, with IAM instance profiles and block devices:
+
+.. highlight:: bash
+
+::
+
+    % tsuru-admin docker-node-add iaas=ec2 iaminstanceprofile='{"name":"docker-instances"}' blockdevicemappings='[[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100}}]' ...
