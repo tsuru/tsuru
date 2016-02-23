@@ -196,16 +196,16 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
 			c.fillDefaultTargetValues(&params)
 			params.Name = backends[i].String()
 			params.BackendPool = poolID
-			resource, err := c.doCreateResource("/target", &params)
-			if err != nil {
-				if err == ErrItemAlreadyExists {
+			resource, cerr := c.doCreateResource("/target", &params)
+			if cerr != nil {
+				if cerr == ErrItemAlreadyExists {
 					return
 				}
-				errCh <- err
+				errCh <- cerr
 			}
-			err = c.waitStatusOK(resource)
-			if err != nil {
-				errCh <- err
+			cerr = c.waitStatusOK(resource)
+			if cerr != nil {
+				errCh <- cerr
 			}
 		}(i)
 	}
