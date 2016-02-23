@@ -370,10 +370,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 		return "", err
 	}
 	cmd := "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"
-	output, err := p.runCommandInContainer(imageId, cmd, app)
-	if err != nil {
-		return "", err
-	}
+	output, _ := p.runCommandInContainer(imageId, cmd, app)
 	procfile := getProcessesFromProcfile(output.String())
 	if len(procfile) == 0 {
 		imageInspect, inspectErr := cluster.InspectImage(imageId)
