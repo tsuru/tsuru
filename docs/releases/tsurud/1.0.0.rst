@@ -97,3 +97,9 @@ General improvements
 * A new handler to update service instance (issue `#1336 <https://github.com/tsuru/tsuru/issues/1336>`_).
 
 * Add token authentication support in Galeb router backend. 
+
+* Add AddRoutes and RemoveRoutes to router interface
+  These methods allow adding and removing multiple routes at the same
+  times. The idea is to start using these new methods when possible,
+  specially in the deploy pipeline. A significant performance improvement
+  is expected in the Galeb router after this change.
