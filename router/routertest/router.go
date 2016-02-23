@@ -119,6 +119,63 @@ func (r *fakeRouter) RemoveBackend(name string) error {
 	return router.Remove(backendName)
 }
 
+func (r *fakeRouter) AddRoutes(name string, addresses []*url.URL) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
+		return router.ErrBackendNotFound
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for _, addr := range addresses {
+		if r.failuresByIp[addr.String()] {
+			return ErrForcedFailure
+		}
+	}
+	routes := r.backends[backendName]
+addresses:
+	for _, addr := range addresses {
+		for i := range routes {
+			if routes[i] == addr.String() {
+				continue addresses
+			}
+		}
+		routes = append(routes, addr.String())
+	}
+	r.backends[backendName] = routes
+	return nil
+}
+
+func (r *fakeRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
+		return router.ErrBackendNotFound
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for _, addr := range addresses {
+		if r.failuresByIp[addr.String()] {
+			return ErrForcedFailure
+		}
+	}
+	routes := r.backends[backendName]
+	for _, addr := range addresses {
+		for i := range routes {
+			if routes[i] == addr.String() {
+				routes = append(routes[:i], routes[i+1:]...)
+				break
+			}
+		}
+	}
+	r.backends[backendName] = routes
+	return nil
+}
+
 func (r *fakeRouter) AddRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {

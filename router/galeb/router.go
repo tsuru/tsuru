@@ -117,6 +117,14 @@ func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 	return err
 }
 
+func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	return r.client.AddBackends(addresses, r.poolName(backendName))
+}
+
 func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
@@ -136,6 +144,31 @@ func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 		return router.ErrRouteNotFound
 	}
 	return r.client.RemoveBackendByID(id)
+}
+
+func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	addressMap := map[string]struct{}{}
+	for _, addr := range addresses {
+		addressMap[addr.String()] = struct{}{}
+	}
+	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
+	if err != nil {
+		return err
+	}
+	var ids []string
+	for _, target := range targets {
+		if _, ok := addressMap[target.Name]; ok {
+			ids = append(ids, target.FullId())
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return r.client.RemoveBackendsByIDs(ids)
 }
 
 func (r *galebRouter) SetCName(cname, name string) error {

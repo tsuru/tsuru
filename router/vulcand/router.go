@@ -176,6 +176,28 @@ func (r *vulcandRouter) AddRoute(name string, address *url.URL) error {
 	return nil
 }
 
+func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) error {
+	usedName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	for _, addr := range addresses {
+		serverKey := engine.ServerKey{
+			Id:         r.serverName(addr.String()),
+			BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
+		}
+		server, err := engine.NewServer(serverKey.Id, addr.String())
+		if err != nil {
+			return &router.RouterError{Err: err, Op: "add-route"}
+		}
+		err = r.client.UpsertServer(serverKey.BackendKey, *server, engine.NoTTL)
+		if err != nil {
+			return &router.RouterError{Err: err, Op: "add-route"}
+		}
+	}
+	return nil
+}
+
 func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) error {
 	usedName, err := router.Retrieve(name)
 	if err != nil {
@@ -191,6 +213,27 @@ func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) error {
 			return router.ErrRouteNotFound
 		}
 		return &router.RouterError{Err: err, Op: "remove-route"}
+	}
+	return nil
+}
+
+func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+	usedName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	for _, addr := range addresses {
+		serverKey := engine.ServerKey{
+			Id:         r.serverName(addr.String()),
+			BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
+		}
+		err = r.client.DeleteServer(serverKey)
+		if err != nil {
+			if _, ok := err.(*engine.NotFoundError); ok {
+				continue
+			}
+			return &router.RouterError{Err: err, Op: "remove-route"}
+		}
 	}
 	return nil
 }

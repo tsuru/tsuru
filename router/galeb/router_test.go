@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -28,6 +29,7 @@ func Test(t *testing.T) {
 }
 
 type fakeGalebServer struct {
+	sync.Mutex
 	targets      map[string]interface{}
 	pools        map[string]interface{}
 	virtualhosts map[string]interface{}
@@ -69,6 +71,8 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 }
 
 func (s *fakeGalebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.Lock()
+	defer s.Unlock()
 	s.router.ServeHTTP(w, r)
 }
 

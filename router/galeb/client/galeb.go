@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/log"
@@ -180,6 +181,47 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	return resource, c.waitStatusOK(resource)
 }
 
+func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
+	poolID, err := c.findItemByName("pool", poolName)
+	if err != nil {
+		return err
+	}
+	errCh := make(chan error, len(backends))
+	wg := sync.WaitGroup{}
+	for i := range backends {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			var params Target
+			c.fillDefaultTargetValues(&params)
+			params.Name = backends[i].String()
+			params.BackendPool = poolID
+			resource, err := c.doCreateResource("/target", &params)
+			if err != nil {
+				if err == ErrItemAlreadyExists {
+					return
+				}
+				errCh <- err
+			}
+			err = c.waitStatusOK(resource)
+			if err != nil {
+				errCh <- err
+			}
+		}(i)
+	}
+	done := make(chan bool)
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case err = <-errCh:
+		return err
+	}
+	return nil
+}
+
 func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 	var params Rule
 	c.fillDefaultRuleValues(&params)
@@ -215,6 +257,32 @@ func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error
 
 func (c *GalebClient) RemoveBackendByID(backendID string) error {
 	return c.removeResource(backendID)
+}
+
+func (c *GalebClient) RemoveBackendsByIDs(backendIDs []string) error {
+	errCh := make(chan error, len(backendIDs))
+	wg := sync.WaitGroup{}
+	for i := range backendIDs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			err := c.removeResource(backendIDs[i])
+			if err != nil {
+				errCh <- err
+			}
+		}(i)
+	}
+	done := make(chan bool)
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case err := <-errCh:
+		return err
+	}
+	return nil
 }
 
 func (c *GalebClient) RemoveBackendPool(poolName string) error {

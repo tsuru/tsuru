@@ -19,7 +19,7 @@ var (
 	ErrNoRedisConfig = errors.New("no redis configuration found with config prefix")
 )
 
-type Client interface {
+type baseClient interface {
 	Exists(key string) *redis.BoolCmd
 	RPush(key string, values ...string) *redis.IntCmd
 	Set(key string, value interface{}, expiration time.Duration) *redis.StatusCmd
@@ -34,10 +34,37 @@ type Client interface {
 	LLen(key string) *redis.IntCmd
 }
 
+type Client interface {
+	baseClient
+	Pipeline() Pipeline
+}
+
 type PubSubClient interface {
 	Client
 	Subscribe(channels ...string) (*redis.PubSub, error)
 	Publish(channel, message string) *redis.IntCmd
+}
+
+type Pipeline interface {
+	baseClient
+	Close() error
+	Exec() ([]redis.Cmder, error)
+}
+
+type ClientWrapper struct {
+	*redis.Client
+}
+
+type ClusterClientWrapper struct {
+	*redis.ClusterClient
+}
+
+func (c *ClientWrapper) Pipeline() Pipeline {
+	return c.Client.Pipeline()
+}
+
+func (c *ClusterClientWrapper) Pipeline() Pipeline {
+	return c.ClusterClient.Pipeline()
 }
 
 type CommonConfig struct {
@@ -69,7 +96,7 @@ func newRedisSentinel(addrs []string, master string, redisConfig *CommonConfig) 
 		IdleTimeout:   redisConfig.IdleTimeout,
 	})
 	err := client.Ping().Err()
-	return client, err
+	return &ClientWrapper{Client: client}, err
 }
 
 func redisCluster(addrs []string, redisConfig *CommonConfig) (Client, error) {
@@ -84,7 +111,7 @@ func redisCluster(addrs []string, redisConfig *CommonConfig) (Client, error) {
 		IdleTimeout:  redisConfig.IdleTimeout,
 	})
 	err := client.Ping().Err()
-	return client, err
+	return &ClusterClientWrapper{ClusterClient: client}, err
 }
 
 func redisServer(addr string, redisConfig *CommonConfig) (Client, error) {
@@ -101,7 +128,7 @@ func redisServer(addr string, redisConfig *CommonConfig) (Client, error) {
 		IdleTimeout:  redisConfig.IdleTimeout,
 	})
 	err := client.Ping().Err()
-	return client, err
+	return &ClientWrapper{Client: client}, err
 }
 
 func NewRedis(prefix string) (Client, error) {
