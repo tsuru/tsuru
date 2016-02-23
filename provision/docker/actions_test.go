@@ -296,7 +296,7 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	c.Assert(hasRoute, check.Equals, false)
 	c.Assert(prevContainers[0].Routable, check.Equals, true)
 	c.Assert(prevContainers[0].ID, check.Equals, "ble-1")
-	c.Assert(prevContainers[1].Routable, check.Equals, false)
+	c.Assert(prevContainers[1].Routable, check.Equals, true)
 	c.Assert(prevContainers[1].ID, check.Equals, "ble-2")
 }
 
@@ -380,6 +380,15 @@ func (s *S) TestRemoveOldRoutesName(c *check.C) {
 
 func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	imageName := "tsuru/app-" + app.GetName()
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapi.py",
+			"worker": "tail -f /dev/null",
+		},
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
@@ -388,7 +397,7 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	defer cont3.Remove(s.p)
-	err := routertest.FakeRouter.AddRoute(app.GetName(), cont1.Address())
+	err = routertest.FakeRouter.AddRoute(app.GetName(), cont1.Address())
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.AddRoute(app.GetName(), cont2.Address())
 	c.Assert(err, check.IsNil)
@@ -413,13 +422,22 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 
 func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	imageName := "tsuru/app-" + app.GetName()
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapi.py",
+			"worker": "tail -f /dev/null",
+		},
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2"}
+	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: "1234"}
+	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2", HostPort: "1234"}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
-	err := routertest.FakeRouter.AddRoute(app.GetName(), cont.Address())
+	err = routertest.FakeRouter.AddRoute(app.GetName(), cont.Address())
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.AddRoute(app.GetName(), cont2.Address())
 	c.Assert(err, check.IsNil)
@@ -437,7 +455,7 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont2.Address().String())
 	c.Assert(hasRoute, check.Equals, true)
 	c.Assert(args.toRemove[0].Routable, check.Equals, true)
-	c.Assert(args.toRemove[1].Routable, check.Equals, false)
+	c.Assert(args.toRemove[1].Routable, check.Equals, true)
 }
 
 func (s *S) TestRemoveOldRoutesBackward(c *check.C) {

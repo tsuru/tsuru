@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
@@ -17,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -392,28 +392,30 @@ var addNewRoutes = action.Action{
 		if len(newContainers) > 0 {
 			fmt.Fprintf(writer, "\n---- Adding routes to new units ----\n")
 		}
-		// Beware that our routers are NOT thread safe. Hipache router
-		// implementaion in particular does not care with thread safeness.
-		// That's why we do not add routes concurrently here. If we wish to
-		// change this in the future a comprehensive concurrent test suite
-		// must be added to routers first.
-		return newContainers, runInContainers(newContainers, func(c *container.Container, toRollback chan *container.Container) error {
+		var routesToAdd []*url.URL
+		for i, c := range newContainers {
 			if c.ProcessName != webProcessName {
-				return nil
+				continue
 			}
 			if c.HostPort != "0" && c.HostPort != "" {
-				err = r.AddRoute(c.AppName, c.Address())
-				if err != nil {
-					return err
-				}
+				routesToAdd = append(routesToAdd, c.Address())
+				newContainers[i].Routable = true
 			}
-			c.Routable = true
-			toRollback <- c
-			fmt.Fprintf(writer, " ---> Added route to unit %s [%s]\n", c.ShortID(), c.ProcessName)
-			return nil
-		}, func(c *container.Container) {
-			r.RemoveRoute(c.AppName, c.Address())
-		}, false)
+		}
+		if len(routesToAdd) == 0 {
+			return newContainers, nil
+		}
+		err = r.AddRoutes(args.app.GetName(), routesToAdd)
+		if err != nil {
+			r.RemoveRoutes(args.app.GetName(), routesToAdd)
+			return nil, err
+		}
+		for _, c := range newContainers {
+			if c.Routable {
+				fmt.Fprintf(writer, " ---> Added route to unit %s [%s]\n", c.ShortID(), c.ProcessName)
+			}
+		}
+		return newContainers, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
@@ -427,16 +429,24 @@ var addNewRoutes = action.Action{
 			w = ioutil.Discard
 		}
 		fmt.Fprintf(w, "\n---- Removing routes from created units ----\n")
-		for _, cont := range newContainers {
-			if !cont.Routable {
-				continue
+		var routesToRemove []*url.URL
+		for _, c := range newContainers {
+			if c.Routable {
+				routesToRemove = append(routesToRemove, c.Address())
 			}
-			err = r.RemoveRoute(cont.AppName, cont.Address())
-			if err != nil {
-				log.Errorf("[add-new-routes:Backward] Error removing route for %s: %s", cont.ID, err.Error())
-				continue
+		}
+		if len(routesToRemove) == 0 {
+			return
+		}
+		err = r.RemoveRoutes(args.app.GetName(), routesToRemove)
+		if err != nil {
+			log.Errorf("[add-new-routes:Backward] Error removing route for [%v]: %s", routesToRemove, err.Error())
+			return
+		}
+		for _, c := range newContainers {
+			if c.Routable {
+				fmt.Fprintf(w, " ---> Removed route from unit %s [%s]\n", c.ShortID(), c.ProcessName)
 			}
-			fmt.Fprintf(w, " ---> Removed route from unit %s [%s]\n", cont.ShortID(), cont.ProcessName)
 		}
 	},
 	OnError: rollbackNotice,
@@ -457,24 +467,38 @@ var removeOldRoutes = action.Action{
 		if len(args.toRemove) > 0 {
 			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
 		}
-		return ctx.Previous, runInContainers(args.toRemove, func(c *container.Container, toRollback chan *container.Container) error {
-			err = r.RemoveRoute(c.AppName, c.Address())
-			if err == router.ErrRouteNotFound {
-				return nil
+		currentImageName, err := appCurrentImageName(args.app.GetName())
+		if err != nil {
+			return nil, err
+		}
+		webProcessName, err := getImageWebProcessName(currentImageName)
+		if err != nil {
+			log.Errorf("[WARNING] cannot get the name of the web process for route removal: %s", err)
+		}
+		var routesToRemove []*url.URL
+		for i, c := range args.toRemove {
+			if c.ProcessName != webProcessName {
+				continue
 			}
-			if err != nil {
-				if !args.appDestroy {
-					return err
-				}
-				log.Errorf("ignored error removing route for %q during app %q destroy: %s", c.Address(), c.AppName, err)
+			if c.HostPort != "0" && c.HostPort != "" {
+				routesToRemove = append(routesToRemove, c.Address())
+				args.toRemove[i].Routable = true
 			}
-			c.Routable = true
-			toRollback <- c
-			fmt.Fprintf(writer, " ---> Removed route from unit %s [%s]\n", c.ShortID(), c.ProcessName)
-			return nil
-		}, func(c *container.Container) {
-			r.AddRoute(c.AppName, c.Address())
-		}, false)
+		}
+		if len(routesToRemove) == 0 {
+			return ctx.Previous, nil
+		}
+		err = r.RemoveRoutes(args.app.GetName(), routesToRemove)
+		if err != nil {
+			r.AddRoutes(args.app.GetName(), routesToRemove)
+			return nil, err
+		}
+		for _, c := range args.toRemove {
+			if c.Routable {
+				fmt.Fprintf(writer, " ---> Removed route from unit %s [%s]\n", c.ShortID(), c.ProcessName)
+			}
+		}
+		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
@@ -487,16 +511,24 @@ var removeOldRoutes = action.Action{
 			w = ioutil.Discard
 		}
 		fmt.Fprintf(w, "\n---- Adding back routes to old units ----\n")
-		for _, cont := range args.toRemove {
-			if !cont.Routable {
-				continue
+		var routesToAdd []*url.URL
+		for _, c := range args.toRemove {
+			if c.Routable {
+				routesToAdd = append(routesToAdd, c.Address())
 			}
-			err = r.AddRoute(cont.AppName, cont.Address())
-			if err != nil {
-				log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
-				continue
+		}
+		if len(routesToAdd) == 0 {
+			return
+		}
+		err = r.AddRoutes(args.app.GetName(), routesToAdd)
+		if err != nil {
+			log.Errorf("[remove-old-routes:Backward] Error adding back route for [%v]: %s", routesToAdd, err.Error())
+			return
+		}
+		for _, c := range args.toRemove {
+			if c.Routable {
+				fmt.Fprintf(w, " ---> Added route to unit %s [%s]\n", c.ShortID(), c.ProcessName)
 			}
-			fmt.Fprintf(w, " ---> Added route to unit %s [%s]\n", cont.ShortID(), cont.ProcessName)
 		}
 	},
 	OnError:   rollbackNotice,
