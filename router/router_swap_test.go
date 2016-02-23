@@ -76,6 +76,7 @@ func (s *ExternalSuite) TestSwap(c *check.C) {
 
 func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6379")
+	config.Set("hipache:redis-db", 5)
 	backend1 := "bb1"
 	backend2 := "bb2"
 	r1, err := router.Get("fake")

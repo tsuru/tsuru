@@ -206,25 +206,21 @@ func Swap(r Router, backend1, backend2 string) error {
 	if err != nil {
 		return err
 	}
-	for _, route := range routes1 {
-		err = r.AddRoute(backend2, route)
-		if err != nil {
-			return err
-		}
-		err = r.RemoveRoute(backend1, route)
-		if err != nil {
-			return err
-		}
+	err = r.AddRoutes(backend1, routes2)
+	if err != nil {
+		return err
 	}
-	for _, route := range routes2 {
-		err = r.AddRoute(backend1, route)
-		if err != nil {
-			return err
-		}
-		err = r.RemoveRoute(backend2, route)
-		if err != nil {
-			return err
-		}
+	err = r.AddRoutes(backend2, routes1)
+	if err != nil {
+		return err
+	}
+	err = r.RemoveRoutes(backend1, routes1)
+	if err != nil {
+		return err
+	}
+	err = r.RemoveRoutes(backend2, routes2)
+	if err != nil {
+		return err
 	}
 	return swapBackendName(backend1, backend2)
 }
