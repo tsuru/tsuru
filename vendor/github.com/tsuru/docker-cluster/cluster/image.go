@@ -5,7 +5,6 @@
 package cluster
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/provision/docker/fix"
+	"github.com/tsuru/tsuru/safe"
 )
 
 type ImageHistory struct {
@@ -134,16 +134,16 @@ func deleteImage(url string) (*http.Response, error) {
 // It will pull all images in parallel, so users need to make sure that the
 // given buffer is safe.
 func (c *Cluster) PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration, nodes ...string) error {
+	var w safe.Buffer
+	if opts.OutputStream != nil {
+		mw := io.MultiWriter(&w, opts.OutputStream)
+		opts.OutputStream = mw
+	} else {
+		opts.OutputStream = &w
+	}
+	key := imageKey(opts.Repository, opts.Tag)
 	_, err := c.runOnNodes(func(n node) (interface{}, error) {
-		key := imageKey(opts.Repository, opts.Tag)
 		n.setPersistentClient()
-		var w bytes.Buffer
-		if opts.OutputStream != nil {
-			mw := io.MultiWriter(&w, opts.OutputStream)
-			opts.OutputStream = mw
-		} else {
-			opts.OutputStream = &w
-		}
 		err := n.PullImage(opts, auth)
 		if err != nil {
 			return nil, err
@@ -152,14 +152,13 @@ func (c *Cluster) PullImage(opts docker.PullImageOptions, auth docker.AuthConfig
 		if err != nil {
 			return nil, err
 		}
-		err = c.storage().StoreImage(key, img.ID, n.addr)
-		if err != nil {
-			return nil, err
-		}
-		digest, _ := fix.GetImageDigest(w.String())
-		return nil, c.storage().SetImageDigest(key, digest)
+		return nil, c.storage().StoreImage(key, img.ID, n.addr)
 	}, docker.ErrNoSuchImage, true, nodes...)
-	return err
+	if err != nil {
+		return err
+	}
+	digest, _ := fix.GetImageDigest(w.String())
+	return c.storage().SetImageDigest(key, digest)
 }
 
 // TagImage adds a tag to the given image, returning an error in case of
