@@ -15,7 +15,6 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -328,15 +327,10 @@ func (p *dockerProvisioner) rebalanceContainers(writer io.Writer, dryRun bool) e
 
 func (p *dockerProvisioner) runCommandInContainer(image string, command string, app provision.App) (bytes.Buffer, error) {
 	var output bytes.Buffer
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
 			AttachStderr: true,
-			User:         user,
 			Image:        image,
 			Entrypoint:   []string{"/bin/bash", "-c"},
 			Cmd:          []string{command},
