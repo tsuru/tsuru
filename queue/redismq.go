@@ -30,11 +30,7 @@ func (r *redisPubSub) Pub(msg []byte) error {
 }
 
 func (r *redisPubSub) UnSub() error {
-	err := r.psc.Unsubscribe()
-	if err != nil {
-		return err
-	}
-	err = r.psc.Close()
+	err := r.psc.Close()
 	if err != nil {
 		return err
 	}
