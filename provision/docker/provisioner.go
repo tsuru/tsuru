@@ -353,7 +353,10 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 	if err != nil {
 		return err
 	}
-	return r.Swap(app1.GetName(), app2.GetName())
+	err = r.Swap(app1.GetName(), app2.GetName())
+	routesRebuildOrEnqueue(app1.GetName())
+	routesRebuildOrEnqueue(app2.GetName())
+	return err
 }
 
 func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Writer) (string, error) {
