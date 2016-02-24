@@ -15,7 +15,7 @@ when upgrading from tsurud 0.13.x or older versions.
 Main new features
 =================
 
-* Deploy apps using Docker image (`#1314
+* Deploy applications using Docker image (`#1314
   <https://github.com/tsuru/tsuru/issues/1314>`_). Now it's possible to deploy a
   Docker image as tsuru app using `tsuru app-deploy -i` command.  This image
   should be in a registry and be accessible by tsuru api. Image should also have
@@ -28,10 +28,26 @@ Main new features
 Bug fixes
 =========
 
-* Fix image remove from docker registry v2 (`#1361
-  <https://github.com/tsuru/tsuru/issues/1361>`_).
+* Correctly remove images from docker registry v2. tsuru was failing silently
+  when trying to remove old images from docker registry v2. (`#1361
+  <https://github.com/tsuru/tsuru/issues/1361>`_)
 
-* Users are dissociated from roles on role remove.
+* After a failure adding or removing routes from a router it was possible for
+  applications to have incorrect route entries in the router. This happened
+  because router failures generally also prevented rollback commands from
+  successfully executing in the router. To prevent this problem from happening
+  in the future tsuru will now check if the router is consistent after every
+  operation that interacts with external routers. (app-deploy, app-swap,
+  containers-move, healing process...)
+
+  If this check is not successful tsuru will schedule a message in it's internal
+  queue system (monsterqueue) that will keep trying to ensure routers are
+  consistent. This should completely remove the possibility of having incorrect
+  route entries after failures. 
+
+* Users are now dissociated from roles on role remove. Previously removing a
+  role still being used would cause errors when checking permissions.
+  
 
 General improvements
 ====================
@@ -110,3 +126,6 @@ General improvements
   these new methods when possible, specially in the deploy pipeline. A
   significant performance improvement is expected in the Galeb router after this
   change.
+
+* Several performance improvement changes receiving log messages from
+  applications.
