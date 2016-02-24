@@ -918,7 +918,9 @@ func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
 	if err != nil {
 		return err
 	}
-	return r.SetCName(cname, app.GetName())
+	err = r.SetCName(cname, app.GetName())
+	routesRebuildOrEnqueue(app.GetName())
+	return err
 }
 
 func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
@@ -926,7 +928,9 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 	if err != nil {
 		return err
 	}
-	return r.UnsetCName(cname, app.GetName())
+	err = r.UnsetCName(cname, app.GetName())
+	routesRebuildOrEnqueue(app.GetName())
+	return err
 }
 
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
