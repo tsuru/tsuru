@@ -139,6 +139,14 @@ func NewRedis(prefix string) (Client, error) {
 	})
 }
 
+func createServerList(addrs string) []string {
+	parts := strings.Split(addrs, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
+}
+
 func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, error) {
 	db, err := config.GetInt(prefix + ":redis-db")
 	if err != nil && defaultConfig.TryLegacy {
@@ -189,7 +197,7 @@ func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, 
 			return nil, fmt.Errorf("%s:redis-sentinel-master must be specified if using redis-sentinel", prefix)
 		}
 		log.Debugf("Connecting to redis sentinel from %q config prefix. Addrs: %s. Master: %s. DB: %d.", prefix, sentinels, masterName, db)
-		return newRedisSentinel(strings.Split(sentinels, ","), masterName, defaultConfig)
+		return newRedisSentinel(createServerList(sentinels), masterName, defaultConfig)
 	}
 	cluster, err := config.GetString(prefix + ":redis-cluster-addrs")
 	if err == nil {
@@ -200,7 +208,7 @@ func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, 
 			return nil, fmt.Errorf("could not initialize redis from %q config, using redis-cluster with max-retries > 0 is not supported", prefix)
 		}
 		log.Debugf("Connecting to redis cluster from %q config prefix. Addrs: %s. DB: %d.", prefix, cluster, db)
-		return redisCluster(strings.Split(cluster, ","), defaultConfig)
+		return redisCluster(createServerList(cluster), defaultConfig)
 	}
 	server, err := config.GetString(prefix + ":redis-server")
 	if err == nil {
