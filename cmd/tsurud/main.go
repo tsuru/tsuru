@@ -50,10 +50,12 @@ func listenSignals() {
 	ch := make(chan os.Signal, 2)
 	go func() {
 		for sig := range ch {
-			if sig == syscall.SIGUSR1 {
+			switch sig {
+			case syscall.SIGUSR1:
 				pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
+			case syscall.SIGHUP:
+				config.ReadConfigFile(configPath)
 			}
-			config.ReadConfigFile(configPath)
 		}
 	}()
 	signal.Notify(ch, syscall.SIGHUP, syscall.SIGUSR1)
