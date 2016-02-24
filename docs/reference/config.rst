@@ -443,80 +443,32 @@ Previously the configuration for this redis server was inside ``redis-queue:*``
 keys shown below. Using these keys is deprecated and tsuru will start ignoring
 them before 1.0 release.
 
-pubsub:redis-host
-+++++++++++++++++
+pubsub:redis-*
+++++++++++++++
 
-``pubsub:redis-host`` is the host of the Redis server to be used for pub/sub.
-This settings is optional and defaults to "localhost".
-
-pubsub:redis-port
-+++++++++++++++++
-
-``pubsub:redis-port`` is the port of the Redis server to be used for pub/sub.
-This settings is optional and defaults to 6379.
-
-pubsub:redis-password
-+++++++++++++++++++++
-
-``pubsub:redis-password`` is the password of the Redis server to be used for
-pub/sub. This settings is optional and defaults to "", indicating that the Redis
-server is not authenticated.
-
-pubsub:redis-db
-+++++++++++++++
-
-``pubsub:redis-db`` is the database number of the Redis server to be used for
-pub/sub. This settings is optional and defaults to 3.
-
-pubsub:pool-max-idle-conn
-+++++++++++++++++++++++++
-
-``pubsub:pool-max-idle-conn`` is the maximum number of idle connections to
-redis. Defaults to 20.
-
-pubsub:pool-idle-timeout
-++++++++++++++++++++++++
-
-``pubsub:pool-idle-timeout`` is the number of seconds idle connections will
-remain in connection pool to redis. Defaults to 300.
-
-pubsub:redis-dial-timeout
-+++++++++++++++++++++++++
-
-``pubsub:redis-dial-timeout`` is the number of seconds used as dial timeout.
-Defaults to 0.1.
-
-pubsub:redis-read-timeout
-+++++++++++++++++++++++++
-
-``pubsub:redis-read-timeout`` is the number of seconds used as read timeout.
-Defaults to 1800 (30 minutes).
-
-pubsub:redis-write-timeout
-++++++++++++++++++++++++++
-
-``pubsub:redis-write-timeout`` is the number of seconds used as write timeout.
-Defaults to 0.5.
+The Redis server to be used for pub/sub. For details on all available options
+for connecting to redis check :ref:`common redis configuration
+<config_common_redis>`
 
 redis-queue:host
 ++++++++++++++++
 
-Deprecated. See ``pubsub:redis-host``.
+Deprecated. See ``pubsub:redis-*``.
 
 redis-queue:port
 ++++++++++++++++
 
-Deprecated. See ``pubsub:redis-port``.
+Deprecated. See ``pubsub:redis-*``.
 
 redis-queue:password
 ++++++++++++++++++++
 
-Deprecated. See ``pubsub:redis-password``.
+Deprecated. See ``pubsub:redis-*``.
 
 redis-queue:db
 ++++++++++++++
 
-Deprecated. See ``pubsub:redis-db``.
+Deprecated. See ``pubsub:redis-*``.
 
 .. _config_admin_user:
 
@@ -615,11 +567,13 @@ routers:<router name>:domain (type: hipache, galeb, vulcand)
 The domain of the server running your router. Applications created with
 tsuru will have a address of ``http://<app-name>.<domain>``
 
-routers:<router name>:redis-server (type: hipache)
-++++++++++++++++++++++++++++++++++++++++++++++++++
+routers:<router name>:redis-* (type: hipache)
++++++++++++++++++++++++++++++++++++++++++++++
 
 Redis server used by Hipache router. This same server (or a redis slave of it),
-must be configured in your hipache.conf file.
+must be configured in your hipache.conf file. For details on all available
+options for connecting to redis check :ref:`common redis configuration
+<config_common_redis>`
 
 routers:<router name>:api-url (type: galeb, vulcand)
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1186,6 +1140,101 @@ IaaS. As an example, having the configuration below would allow you to call
         cloudstack:
             api-key: myapikey
 
+
+.. _config_common_redis:
+
+Common redis configuration options
+----------------------------------
+
+<prefix>:redis-server
++++++++++++++++++++++
+
+Connect to a single redis server. The redis server address should be in the
+format ``host:port``. This parameter is mutually exclusive with
+``<prefix>:redis-sentinel-addrs`` and ``<prefix>:redis-cluster-addrs``.
+
+<prefix>:redis-host
++++++++++++++++++++
+
+Alternative way to specify a single redis server to connect. Only the ``host``
+name should be informed.
+
+<prefix>:redis-port
++++++++++++++++++++
+
+The port used when ``<prefix>:redis-host`` is defined.
+
+<prefix>:redis-sentinel-addrs
++++++++++++++++++++++++++++++
+
+Connect to a farm of redis sentinel servers. It's a comma separated list of
+``host:port`` pairs. e.g.: ``10.0.0.1:26379,10.0.0.2:26379``. This parameter is
+mutually exclusive with ``<prefix>:redis-server`` and
+``<prefix>:redis-cluster-addrs``.
+
+<prefix>:redis-sentinel-master
+++++++++++++++++++++++++++++++
+
+The master name for a sentinel farm. This parameter is mandatory when
+``<prefix>:redis-sentinel-addrs`` is defined.
+
+<prefix>:redis-cluster-addrs
+++++++++++++++++++++++++++++
+
+Connect to a farm of redis cluster servers. It's a comma separated list of
+``host:port`` pairs. e.g.: ``10.0.0.1:6379,10.0.0.2:6379``. This parameter is
+mutually exclusive with ``<prefix>:redis-server`` and
+``<prefix>:redis-sentinel-addrs``.
+
+<prefix>:redis-db
++++++++++++++++++
+
+The db number selected when connecting to redis.
+
+<prefix>:redis-password
++++++++++++++++++++++++
+
+The password used when connecting to redis.
+
+<prefix>:redis-pool-size
+++++++++++++++++++++++++
+
+The maximum number of simultaneously open connections to a redis server.
+
+<prefix>:redis-max-retries
+++++++++++++++++++++++++++
+
+The number of times an unsuccessful command will be sent to redis again.
+
+<prefix>:redis-pool-timeout
++++++++++++++++++++++++++++
+
+Duration in seconds to wait for a free redis connection once the maximum pool
+size defined in ``<prefix>:redis-pool-size`` is reached.
+
+<prefix>:redis-pool-idle-timeout
+++++++++++++++++++++++++++++++++
+
+Duration in seconds after which an idle connection will be discarded from the
+pool.
+
+<prefix>:redis-dial-timeout
++++++++++++++++++++++++++++
+
+Duration in seconds after which an error will be returned if a connection to
+redis cannot be established.
+
+<prefix>:redis-read-timeout
++++++++++++++++++++++++++++
+
+Duration in seconds after which an error will be returned if tsuru is still
+waiting for the response for an issued command.
+
+<prefix>:redis-write-timeout
+++++++++++++++++++++++++++++
+
+Duration in seconds after which an error will be returned if tsuru is still
+sending a command to redis.
 
 Sample file
 ===========
