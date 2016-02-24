@@ -53,6 +53,7 @@ func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 				DialTimeout:  time.Second,
 				ReadTimeout:  2 * time.Second,
 				WriteTimeout: 2 * time.Second,
+				TryLocal:     true,
 			})
 			if err != nil {
 				return nil, err
