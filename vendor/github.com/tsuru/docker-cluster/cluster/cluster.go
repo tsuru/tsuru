@@ -26,9 +26,9 @@ var (
 	errStorageMandatory = errors.New("Storage parameter is mandatory")
 	errHealerInProgress = errors.New("Healer already running")
 
-	pingClient       = clientWithTimeout(5*time.Second, 1*time.Minute)
-	timeout10Client  = clientWithTimeout(10*time.Second, 5*time.Minute)
-	persistentClient = clientWithTimeout(10*time.Second, 0)
+	pingClient       = clientWithTimeout(5*time.Second, 1*time.Minute, 0)
+	timeout10Client  = clientWithTimeout(10*time.Second, 5*time.Minute, -1)
+	persistentClient = clientWithTimeout(10*time.Second, 0, -1)
 	timeout10Dialer  = &net.Dialer{
 		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -442,13 +442,14 @@ func (c *Cluster) getNode(retrieveFn func(Storage) (string, error)) (node, error
 	return c.getNodeByAddr(address)
 }
 
-func clientWithTimeout(dialTimeout time.Duration, fullTimeout time.Duration) *http.Client {
+func clientWithTimeout(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int) *http.Client {
 	transport := http.Transport{
 		Dial: (&net.Dialer{
 			Timeout:   dialTimeout,
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		TLSHandshakeTimeout: dialTimeout,
+		MaxIdleConnsPerHost: maxIdle,
 	}
 	return &http.Client{
 		Transport: &transport,
