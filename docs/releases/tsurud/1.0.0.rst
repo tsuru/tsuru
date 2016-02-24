@@ -23,7 +23,14 @@ Main new features
   `/home/application/current`. See more in `tsuru-client app-deploy reference
   <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
 
-* API versioning
+* Improved application log handling. Besides several performance improvements in
+  log handling, it's now possible to configure tsuru to forward containers logs
+  directly to an external log server. Please check :doc:`Managing Application
+  Logs </managing/logs>` for more details.
+
+* API versioning. Now all API calls to tsuru may include a version prefix in the
+  format ``/1.0/<request path>``. Further changes to the API will be versioned
+  accordingly.
 
 Bug fixes
 =========
