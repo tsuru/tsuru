@@ -63,7 +63,7 @@ func (s *S) TestRunLeanContainersCmd(c *check.C) {
 	cmds, process, err := runLeanContainerCmds("web", imageId, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
-	expected := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
+	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
 	c.Assert(cmds, check.DeepEquals, expected)
 }
 
@@ -84,7 +84,7 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 	cmds, process, err := runLeanContainerCmds("web", imageId, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
-	expected := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; cmd1 && cmd2 && exec python web.py"}
+	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; cmd1 && cmd2 && exec python web.py"}
 	c.Assert(cmds, check.DeepEquals, expected)
 }
 
@@ -123,7 +123,7 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 	cmds, process, err := runLeanContainerCmds("", imageId, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
-	expected := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
+	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
 	c.Assert(cmds, check.DeepEquals, expected)
 }
 

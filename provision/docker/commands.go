@@ -94,7 +94,7 @@ func runLeanContainerCmds(processName, imageId string, app provision.App) ([]str
 		processName = "web"
 	}
 	return []string{
-		"/bin/bash",
+		"/bin/sh",
 		"-lc",
 		"[ -d /home/application/current ] && cd /home/application/current; " + before + "exec " + processCmd,
 	}, processName, nil
