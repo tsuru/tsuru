@@ -15,51 +15,55 @@ when upgrading from tsurud 0.13.x or older versions.
 Main new features
 =================
 
-* Deploy apps using Docker image (`#1314 <https://github.com/tsuru/tsuru/issues/1314>`_).
-  Now it's possible to deploy a Docker image as tsuru app using `tsuru
-  app-deploy -i` command.  This image should be in a registry and be accessible
-  by tsuru api. Image should also have a Entrypoint or a Procfile at given paths,
-  `/` or `/app/user/` or `/home/application/current`. See more in `tsuru-client
-  app-deploy reference <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
+* Deploy apps using Docker image (`#1314
+  <https://github.com/tsuru/tsuru/issues/1314>`_). Now it's possible to deploy a
+  Docker image as tsuru app using `tsuru app-deploy -i` command.  This image
+  should be in a registry and be accessible by tsuru api. Image should also have
+  a Entrypoint or a Procfile at given paths, `/` or `/app/user/` or
+  `/home/application/current`. See more in `tsuru-client app-deploy reference
+  <https://tsuru-client.readthedocs.org/en/latest/reference.html#deploy>`_.
 
 * API versioning
 
 Bug fixes
 =========
 
-* Fix image remove from docker registry v2 (`#1361 <https://github.com/tsuru/tsuru/issues/1361>`_).
+* Fix image remove from docker registry v2 (`#1361
+  <https://github.com/tsuru/tsuru/issues/1361>`_).
 
-* Users are dissociated from roles on role remove. 
+* Users are dissociated from roles on role remove.
 
 General improvements
 ====================
 
 * `projectid` parameter is not mandatory in `Apache CloudStack
-  <https://cloudstack.apache.org/>`_ (`#1260 <https://github.com/tsuru/tsuru/issues/1260>`_).
+  <https://cloudstack.apache.org/>`_ (`#1260
+  <https://github.com/tsuru/tsuru/issues/1260>`_).
 
 * A new app description field, that can be used to describe the app objective
   (`#1327 <https://github.com/tsuru/tsuru/issues/1327>`_).
 
-* New `SAML V2` authentication scheme. See :ref:`SAML authentication configuration <saml_configuration>`
-  for instructions on how to configure it.
+* New `SAML V2` authentication scheme. See :ref:`SAML authentication
+  configuration <saml_configuration>` for instructions on how to configure it.
 
 * Add new filters in the user list API endpoint: now it's possible to filter
-  users by role and e-mail (issue `#1349 <https://github.com/tsuru/tsuru/issues/1349>`_).
+  users by role and e-mail (issue `#1349
+  <https://github.com/tsuru/tsuru/issues/1349>`_).
 
 * Change user list filtering behavior. Consider users with permissions:
 
   A: app.create(team team1), app.create(team team2)
   B: app.create(team team1)
 
-  The previous behavior was such as if user A called user-list they would
-  see both users A and B. However user B calling user-list would only see
+  The previous behavior was such as if user A called user-list they would see
+  both users A and B. However user B calling user-list would only see
   themselves.
 
-  Now user B will be able to see user A on user-list but only
-  app.create(team team1) permission will show up.
+  Now user B will be able to see user A on user-list but only app.create(team
+  team1) permission will show up.
 
-* Add a way to put units in `sleep mode`.
-  Making possible external services to put units that are not used to "sleep".
+* Add a way to put units in `sleep mode`. Making possible external services to
+  put units that are not used to "sleep".
 
 * EC2 IaaS is now feature complete, supporting parameter such as IAM roles,
   extra volumes and multiple network interfaces. Since these parameters are
@@ -73,33 +77,36 @@ General improvements
     % tsuru-admin docker-node-add iaas=ec2 iaminstanceprofile='{"name":"docker-instances"}' blockdevicemappings='[[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100}}]' ...
 
 * All long running API handlers for the Docker provisioner now use a keep-alive
-  to keep the connection open, properly handling low network timeouts
-  (specially with AWS Elastic Load Balancers).
+  to keep the connection open, properly handling low network timeouts (specially
+  with AWS Elastic Load Balancers).
 
-* A new service instance description field, that can be used to describe the service
-  instance objective (`#1335 <https://github.com/tsuru/tsuru/issues/1335>`_).
+* A new service instance description field, that can be used to describe the
+  service instance objective (`#1335
+  <https://github.com/tsuru/tsuru/issues/1335>`_).
 
 * Add a new filter in the app listing API endpoint: now it's possible to filter
-  applications by unit status (issue `#1360 <https://github.com/tsuru/tsuru/issues/1360>`_).
+  applications by unit status (issue `#1360
+  <https://github.com/tsuru/tsuru/issues/1360>`_).
 
-* Add a new handler that returns the service instance info
-  (issue `#1331 <https://github.com/tsuru/tsuru/issues/1331>`_).
+* Add a new handler that returns the service instance info (issue `#1331
+  <https://github.com/tsuru/tsuru/issues/1331>`_).
 
 * New deploy origins: `image` for image deploys and `drag-and-drop` that is used
   to identify deploys made from `tsuru-dashboard`.
 
-* A new handler that returns the role info
-  (issue `#1353 <https://github.com/tsuru/tsuru/issues/1353>`_).
+* A new handler that returns the role info (issue `#1353
+  <https://github.com/tsuru/tsuru/issues/1353>`_).
 
-* New filters in the user list endpoint: now it's possible to filter users by username
-  and role.
+* New filters in the user list endpoint: now it's possible to filter users by
+  username and role.
 
-* A new handler to update service instance (issue `#1336 <https://github.com/tsuru/tsuru/issues/1336>`_).
+* A new handler to update service instance (issue `#1336
+  <https://github.com/tsuru/tsuru/issues/1336>`_).
 
-* Add token authentication support in Galeb router backend. 
+* Add token authentication support in Galeb router backend.
 
-* Add AddRoutes and RemoveRoutes to router interface
-  These methods allow adding and removing multiple routes at the same
-  times. The idea is to start using these new methods when possible,
-  specially in the deploy pipeline. A significant performance improvement
-  is expected in the Galeb router after this change.
+* Add AddRoutes and RemoveRoutes to router interface These methods allow adding
+  and removing multiple routes at the same times. The idea is to start using
+  these new methods when possible, specially in the deploy pipeline. A
+  significant performance improvement is expected in the Galeb router after this
+  change.
