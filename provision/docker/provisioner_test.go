@@ -860,6 +860,10 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 }
 
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -877,7 +881,7 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 		fmt.Fprintf(outStream, "")
 		conn.Close()
 	}))
-	s.server.CustomHandler("/images/customimage/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
 				Entrypoint: []string{},
@@ -887,7 +891,13 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 		w.Write(j)
 	}))
 	customData := map[string]interface{}{}
-	err := s.newFakeImage(s.p, "customimage", customData)
+	err := s.newFakeImage(s.p, imageName, customData)
+	c.Assert(err, check.IsNil)
+	pushOpts := docker.PushImageOptions{
+		Name:     imageName,
+		Registry: s.server.URL(),
+	}
+	err = s.p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -901,12 +911,12 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	dataColl, err := imageCustomDataColl()
 	defer dataColl.Close()
 	c.Assert(err, check.IsNil)
-	dataColl.RemoveId("customimage")
+	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
-		Image:        "customimage",
+		Image:        imageName,
 	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrEntrypointOrProcfileNotFound)

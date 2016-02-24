@@ -365,6 +365,9 @@ func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Wri
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
 	cluster := p.Cluster()
+	if !strings.Contains(imageId, ":") {
+		imageId = fmt.Sprintf("%s:latest", imageId)
+	}
 	pullOpts := docker.PullImageOptions{
 		Repository: imageId,
 	}
