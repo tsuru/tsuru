@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration) (*http.Client, *net.Dialer) {
+func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int) (*http.Client, *net.Dialer) {
 	dialer := &net.Dialer{
 		Timeout:   dialTimeout,
 		KeepAlive: 30 * time.Second,
@@ -19,7 +19,7 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration)
 		Transport: &http.Transport{
 			Dial:                dialer.Dial,
 			TLSHandshakeTimeout: dialTimeout,
-			MaxIdleConnsPerHost: 5,
+			MaxIdleConnsPerHost: maxIdle,
 		},
 		Timeout: fullTimeout,
 	}
@@ -27,7 +27,9 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration)
 }
 
 var (
-	Dial5Full60Client, Dial5Dialer = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute)
-	Dial5Full300Client, _          = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute)
-	Dial5FullUnlimitedClient, _    = makeTimeoutHTTPClient(5*time.Second, 0)
+	Dial5Full60Client, Dial5Dialer   = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, 5)
+	Dial5Full300Client, _            = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5)
+	Dial5FullUnlimitedClient, _      = makeTimeoutHTTPClient(5*time.Second, 0, 5)
+	Dial5Full300ClientNoKeepAlive, _ = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1)
+	Dial5Full60ClientNoKeepAlive, _  = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1)
 )

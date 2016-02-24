@@ -61,7 +61,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		rsp, err := net.Dial5Full60Client.Do(req)
+		rsp, err := net.Dial5Full60ClientNoKeepAlive.Do(req)
 		if err != nil {
 			lastError = fmt.Errorf("healthcheck fail(%s): %s", cont.ShortID(), err.Error())
 		} else {
