@@ -263,7 +263,14 @@ func RecreateContainers(p DockerProvisioner, w io.Writer) error {
 	}
 	wg.Wait()
 	close(errChan)
-	return <-errChan
+	var allErrors []string
+	for err = range errChan {
+		allErrors = append(allErrors, err.Error())
+	}
+	if len(allErrors) == 0 {
+		return nil
+	}
+	return fmt.Errorf("multiple errors: %s", strings.Join(allErrors, ", "))
 }
 
 type ClusterHook struct {
