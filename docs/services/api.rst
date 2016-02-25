@@ -8,13 +8,13 @@ API workflow
 
 tsuru sends requests to the service API to the following actions:
 
-* create a new instance of the service (``tsuru service-add``)
-* bind an app with the service instance (``tsuru service-bind``)
-* unbind an app from the service instance (``tsuru service-unbind``)
-* destroy the service instance (``tsuru service-remove``)
-* check the status of the service instance (``tsuru service-status``)
+* create a new instance of the service (``tsuru service-instance-add``)
+* bind an app with the service instance (``tsuru service-instance-bind``)
+* unbind an app from the service instance (``tsuru service-instance-unbind``)
+* destroy the service instance (``tsuru service-instance-remove``)
+* check the status of the service instance (``tsuru service-instance-status``)
 * display additional info about a service, including instances and available
-  plans (``tsuru service-info``)
+  plans (``tsuru service-info`` and ``tsuru service-instance-info``)
 
 .. _service_api_flow_authentication:
 
@@ -99,7 +99,7 @@ via command line tool:
 
 ::
 
-    $ tsuru service-add mysql mysql_instance
+    $ tsuru service-instance-add mysql mysql_instance
 
 tsuru calls the service API to create a new instance via POST on ``/resources``
 (please notice that tsuru does not include a trailing slash) with the name,
@@ -136,9 +136,11 @@ service via command line tool:
 
 ::
 
-    $ tsuru service-bind mysql mysql_instance --app my_app
+    $ tsuru service-instance-bind mysql mysql_instance --app my_app
 
-Now, tsuru services has two bind endpoints: ``/resources/<service-instance-name>/bind`` and ``/resources/<service-instance-name>/bind-app``.
+Now, tsuru services has two bind endpoints:
+``/resources/<service-instance-name>/bind`` and
+``/resources/<service-instance-name>/bind-app``.
 The first endpoint will be called every time an app adds an unit.
 This endpoint is a POST with app-host and unit-host, where app-host
 represents the host to which the app is accessible, and unit-host is the
@@ -211,9 +213,11 @@ the service via command line:
 
 ::
 
-    $ tsuru service-unbind mysql mysql_instance --app my_app
+    $ tsuru service-instance-unbind mysql mysql_instance --app my_app
 
-Now, tsuru services has two unbind endpoints: ``/resources/<service-instance-name>/bind`` and ``/resources/<service-instance-name>/bind-app``.
+Now, tsuru services has two unbind endpoints:
+``/resources/<service-instance-name>/bind`` and
+``/resources/<service-instance-name>/bind-app``.
 The first endpoint will be called every time an app removes an unit.
 This endpoint is a DELETE with app-host and unit-host. Example of request:
 
@@ -264,7 +268,7 @@ via command line:
 
 ::
 
-    $ tsuru service-remove mysql mysql_instance -y
+    $ tsuru service-instance-remove mysql mysql_instance -y
 
 tsuru calls the service API to remove the instancevia DELETE on
 ``/resources/<service-name>`` (please notice that tsuru does not include a
@@ -299,7 +303,7 @@ instance via command line:
 
 ::
 
-    $ tsuru service-status mysql mysql_instance
+    $ tsuru service-instance-status mysql mysql_instance
 
 tsuru calls the service API to check the status of the instance via GET on
 ``/resources/mysql_instance/status`` (please notice that tsuru does not include
@@ -326,7 +330,8 @@ response body:
 Additional info about an instance
 =================================
 
-When the user run ``tsuru service-info <service>``, tsuru will get informations
+When the user run ``tsuru service-info <service>`` or 
+``tsuru service-instance-info``, tsuru will get informations
 from all instances. This is an optional endpoint in the service API. Some
 services does not provide any extra information for instances. Example of
 request:
