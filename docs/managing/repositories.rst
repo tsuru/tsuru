@@ -68,5 +68,5 @@ In the case of an old tsuru cluster running without Gandalf, users and
 applications registered in tsuru won't be available in the newly created
 Gandalf server, or both servers may be out-of-sync.
 
-When Gandalf is enabled, administrators of the cloud can run the ``tsr
+When Gandalf is enabled, administrators of the cloud can run the ``tsurud
 gandalf-sync`` command.
