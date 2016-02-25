@@ -354,8 +354,10 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 		return err
 	}
 	err = r.Swap(app1.GetName(), app2.GetName())
-	routesRebuildOrEnqueue(app1.GetName())
-	routesRebuildOrEnqueue(app2.GetName())
+	if err != nil {
+		routesRebuildOrEnqueue(app1.GetName())
+		routesRebuildOrEnqueue(app2.GetName())
+	}
 	return err
 }
 
@@ -919,7 +921,9 @@ func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
 		return err
 	}
 	err = r.SetCName(cname, app.GetName())
-	routesRebuildOrEnqueue(app.GetName())
+	if err != nil {
+		routesRebuildOrEnqueue(app.GetName())
+	}
 	return err
 }
 
@@ -929,7 +933,9 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 		return err
 	}
 	err = r.UnsetCName(cname, app.GetName())
-	routesRebuildOrEnqueue(app.GetName())
+	if err != nil {
+		routesRebuildOrEnqueue(app.GetName())
+	}
 	return err
 }
 
