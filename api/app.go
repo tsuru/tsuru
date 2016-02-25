@@ -320,7 +320,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(w, "%s", jsonMsg)
+	w.Write(jsonMsg)
 	return nil
 }
 
