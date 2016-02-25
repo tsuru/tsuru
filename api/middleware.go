@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	tsuruMin      = "0.18.0"
-	craneMin      = "0.7.0"
-	tsuruAdminMin = "0.12.0"
+	tsuruMin      = "1.0.0"
+	craneMin      = "1.0.0"
+	tsuruAdminMin = "1.0.0"
 )
 
 func validate(token string, r *http.Request) (auth.Token, error) {
