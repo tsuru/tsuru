@@ -85,7 +85,7 @@ To list pools you do:
 
 ::
 
-    $ tsuru-admin pool-list
+    $ tsuru pool-list
     +-------+-------------+
     | Pools | Teams       |
     +-------+-------------+
