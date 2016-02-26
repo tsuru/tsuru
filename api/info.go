@@ -10,7 +10,7 @@ import (
 )
 
 func info(w http.ResponseWriter, r *http.Request) error {
-	data := map[string]interface{}{}
+	data := map[string]string{}
 	data["version"] = Version
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(data)
