@@ -96,6 +96,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 		"status": bson.M{"$nin": []string{
 			provision.StatusStopped.String(),
 			provision.StatusBuilding.String(),
+			provision.StatusAsleep.String(),
 		}},
 	}})
 	healingColl, err := healingCollection()
@@ -549,7 +550,7 @@ func (s *S) TestListUnresponsiveContainers(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "c3")
 }
 
@@ -567,7 +568,7 @@ func (s *S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 0)
+	c.Assert(result, check.HasLen, 0)
 }
 
 func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
@@ -587,6 +588,27 @@ func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].ID, check.Equals, "c2")
+}
+
+func (s *S) TestListUnresponsiveContainersAsleep(c *check.C) {
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	var result []container.Container
+	coll := p.Collection()
+	defer coll.Close()
+	now := time.Now().UTC()
+	coll.Insert(
+		container.Container{ID: "c1", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusAsleep.String()},
+		container.Container{ID: "c2", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
+	result, err = listUnresponsiveContainers(p, 3*time.Minute)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "c2")
 }

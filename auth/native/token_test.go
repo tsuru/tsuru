@@ -448,8 +448,8 @@ func (s *S) TestDeleteAllTokens(c *check.C) {
 	var tokensDB []Token
 	err = s.conn.Tokens().Find(bson.M{"useremail": "x@x.com"}).All(&tokensDB)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(tokensDB), check.Equals, 0)
+	c.Assert(tokensDB, check.HasLen, 0)
 	err = s.conn.Tokens().Find(bson.M{"useremail": "y@y.com"}).All(&tokensDB)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(tokensDB), check.Equals, 1)
+	c.Assert(tokensDB, check.HasLen, 1)
 }

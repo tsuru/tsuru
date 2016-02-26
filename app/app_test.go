@@ -2526,7 +2526,7 @@ func (s *S) TestListReturnsAppsForAGivenUser(c *check.C) {
 	}()
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 2)
+	c.Assert(apps, check.HasLen, 2)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
@@ -2555,7 +2555,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
 	}()
 	apps, err := List(&Filter{Name: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 2)
+	c.Assert(apps, check.HasLen, 2)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
@@ -2579,7 +2579,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 	}()
 	apps, err := List(&Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
@@ -2603,7 +2603,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
 	}()
 	apps, err := List(&Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
@@ -2627,7 +2627,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
 	}()
 	apps, err := List(&Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
@@ -2657,7 +2657,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
 	}()
 	apps, err := List(&Filter{Locked: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].GetName(), check.Equals, "othertestapp")
 }
 
@@ -2680,7 +2680,7 @@ func (s *S) TestListAll(c *check.C) {
 	}()
 	apps, err := List(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 2)
+	c.Assert(apps, check.HasLen, 2)
 }
 
 func (s *S) TestListFilteringByName(c *check.C) {
@@ -2709,7 +2709,7 @@ func (s *S) TestListFilteringByName(c *check.C) {
 	}()
 	apps, err := List(&Filter{Name: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 2)
+	c.Assert(apps, check.HasLen, 2)
 }
 
 func (s *S) TestListFilteringByPlatform(c *check.C) {
@@ -2733,7 +2733,7 @@ func (s *S) TestListFilteringByPlatform(c *check.C) {
 	}()
 	apps, err := List(&Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListFilteringByOwner(c *check.C) {
@@ -2757,7 +2757,7 @@ func (s *S) TestListFilteringByOwner(c *check.C) {
 	}()
 	apps, err := List(&Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListFilteringByTeamOwner(c *check.C) {
@@ -2781,7 +2781,7 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 	}()
 	apps, err := List(&Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 }
 
 func (s *S) TestListFilteringByPool(c *check.C) {
@@ -2810,7 +2810,7 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 	}()
 	apps, err := List(&Filter{Pool: s.Pool})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].GetName(), check.Equals, a2.Name)
 	c.Assert(apps[0].GetPool(), check.Equals, a2.Pool)
 }
@@ -2848,7 +2848,7 @@ func (s *S) TestListFilteringByPools(c *check.C) {
 	c.Assert(err, check.IsNil)
 	apps, err := List(&Filter{Pools: []string{s.Pool, "test2"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(apps), check.Equals, 2)
+	c.Assert(apps, check.HasLen, 2)
 	appNames := []string{apps[0].GetName(), apps[1].GetName()}
 	sort.Strings(appNames)
 	c.Assert(appNames, check.DeepEquals, []string{"testapp", "testapp2"})
@@ -2882,7 +2882,7 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	resultApps, err := List(&Filter{Statuses: []string{"stopped", "asleep"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(resultApps), check.Equals, 2)
+	c.Assert(resultApps, check.HasLen, 2)
 	names := []string{resultApps[0].Name, resultApps[1].Name}
 	sort.Strings(names)
 	c.Assert(names, check.DeepEquals, []string{"ta2", "ta3"})

@@ -59,9 +59,9 @@ func (s *S) TestMoveContainers(c *check.C) {
 	err = p.MoveContainers("localhost", "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
-	c.Assert(len(containers), check.Equals, 0)
+	c.Assert(containers, check.HasLen, 0)
 	containers, err = p.listContainersByHost("127.0.0.1")
-	c.Assert(len(containers), check.Equals, 2)
+	c.Assert(containers, check.HasLen, 2)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
 	var matches int
@@ -162,9 +162,9 @@ func (s *S) TestMoveContainer(c *check.C) {
 	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
-	c.Assert(len(containers), check.Equals, 1)
+	c.Assert(containers, check.HasLen, 1)
 	containers, err = p.listContainersByHost("127.0.0.1")
-	c.Assert(len(containers), check.Equals, 1)
+	c.Assert(containers, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 2)
 	c.Assert(serviceMethods, check.HasLen, 2)
 	c.Assert(serviceMethods[0], check.Equals, "POST")
@@ -318,7 +318,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	c.Assert(p.scheduler.ignoredContainers, check.IsNil)
 	c2, err = p.listContainersByHost("127.0.0.1")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(c2), check.Equals, 5)
+	c.Assert(c2, check.HasLen, 5)
 }
 
 func (s *S) TestAppLocker(c *check.C) {
@@ -412,13 +412,13 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	c1, err := p.listContainersByHost("localhost")
-	c.Assert(len(c1), check.Equals, 2)
+	c.Assert(c1, check.HasLen, 2)
 	err = p.rebalanceContainers(buf, false)
 	c.Assert(err, check.IsNil)
 	c1, err = p.listContainersByHost("localhost")
-	c.Assert(len(c1), check.Equals, 1)
+	c.Assert(c1, check.HasLen, 1)
 	c2, err := p.listContainersByHost("127.0.0.1")
-	c.Assert(len(c2), check.Equals, 1)
+	c.Assert(c2, check.HasLen, 1)
 }
 
 func (s *S) TestRebalanceContainersDry(c *check.C) {
@@ -469,8 +469,8 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c2, err := p.listContainersByHost("127.0.0.1")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(c1), check.Equals, 5)
-	c.Assert(len(c2), check.Equals, 0)
+	c.Assert(c1, check.HasLen, 5)
+	c.Assert(c2, check.HasLen, 0)
 	routes, err := router.Routes(appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, beforeRoutes)

@@ -204,7 +204,7 @@ func (s *S) TestBytes(c *check.C) {
 func (s *S) TestRowListAdd(c *check.C) {
 	l := rowSlice([]Row{{"one", "1"}})
 	l.add(Row{"two", "2"})
-	c.Assert(len(l), check.Equals, 2)
+	c.Assert(l, check.HasLen, 2)
 }
 
 func (s *S) TestRowListLen(c *check.C) {

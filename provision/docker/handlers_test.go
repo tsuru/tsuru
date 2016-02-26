@@ -374,7 +374,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
-	c.Assert(len(nodes), check.Equals, 0)
+	c.Assert(nodes, check.HasLen, 0)
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
@@ -394,7 +394,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
-	c.Assert(len(nodes), check.Equals, 0)
+	c.Assert(nodes, check.HasLen, 0)
 	dbM, err := iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbM.Id, check.Equals, machine.Id)
@@ -417,7 +417,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
-	c.Assert(len(nodes), check.Equals, 0)
+	c.Assert(nodes, check.HasLen, 0)
 	_, err = iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
@@ -439,7 +439,7 @@ func (s *S) TestRemoveNodeHandlerRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(nodes), check.Equals, 2)
+	c.Assert(nodes, check.HasLen, 2)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
@@ -466,10 +466,10 @@ func (s *S) TestRemoveNodeHandlerRebalanceContainers(c *check.C) {
 	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
-	c.Assert(len(nodes), check.Equals, 1)
+	c.Assert(nodes, check.HasLen, 1)
 	containerList, err := mainDockerProvisioner.listContainersByHost(tsuruNet.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	c.Assert(len(containerList), check.Equals, 5)
+	c.Assert(containerList, check.HasLen, 5)
 }
 
 func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
@@ -495,7 +495,7 @@ func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err := mainDockerProvisioner.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(nodes), check.Equals, 2)
+	c.Assert(nodes, check.HasLen, 2)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
@@ -522,10 +522,10 @@ func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
 	err = removeNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
-	c.Assert(len(nodes), check.Equals, 1)
+	c.Assert(nodes, check.HasLen, 1)
 	containerList, err := mainDockerProvisioner.listContainersByHost(tsuruNet.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	c.Assert(len(containerList), check.Equals, 0)
+	c.Assert(containerList, check.HasLen, 0)
 }
 
 func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
@@ -735,7 +735,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 14)
+	c.Assert(result, check.HasLen, 14)
 	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
 	c.Assert(result[1].Message, check.Matches, "(?s)Moving unit .*")
 	c.Assert(result[13].Message, check.Equals, "Containers successfully rebalanced!\n")
@@ -788,7 +788,7 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 2)
+	c.Assert(result, check.HasLen, 2)
 	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance\n")
 	c.Assert(result[1].Message, check.Equals, "Containers successfully rebalanced!\n")
 }
@@ -841,7 +841,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 8)
+	c.Assert(result, check.HasLen, 8)
 	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
 	c.Assert(result[1].Message, check.Matches, "(?s)Would move unit .*")
 	c.Assert(result[7].Message, check.Equals, "Containers successfully rebalanced!\n")
