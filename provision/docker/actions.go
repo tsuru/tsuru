@@ -468,7 +468,7 @@ var removeOldRoutes = action.Action{
 			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
 		}
 		currentImageName, err := appCurrentImageName(args.app.GetName())
-		if err != nil {
+		if err != nil && err != errNoImagesAvailable {
 			return nil, err
 		}
 		webProcessName, err := getImageWebProcessName(currentImageName)

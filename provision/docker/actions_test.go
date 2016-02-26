@@ -420,6 +420,30 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 	c.Assert(args.toRemove[2].Routable, check.Equals, false)
 }
 
+func (s *S) TestRemoveOldRoutesForwardNoImageData(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	err := appendAppImageName(app.GetName(), "img1")
+	c.Assert(err, check.IsNil)
+	err = pullAppImageNames(app.GetName(), []string{"img1"})
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "127.0.0.1", HostPort: ""}
+	args := changeUnitsPipelineArgs{
+		app:         app,
+		toRemove:    []container.Container{cont1},
+		provisioner: s.p,
+	}
+	context := action.FWContext{Previous: []container.Container{}, Params: []interface{}{args}}
+	r, err := removeOldRoutes.Forward(context)
+	c.Assert(err, check.IsNil)
+	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont1.Address().String())
+	c.Assert(hasRoute, check.Equals, false)
+	containers := r.([]container.Container)
+	c.Assert(containers, check.DeepEquals, []container.Container{})
+	c.Assert(args.toRemove[0].Routable, check.Equals, false)
+}
+
 func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageName := "tsuru/app-" + app.GetName()
