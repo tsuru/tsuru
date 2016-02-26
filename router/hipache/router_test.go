@@ -162,6 +162,7 @@ func (s *S) TestAddBackend(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
 	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
 	backends, err := conn.LLen("frontend:tip.golang.org").Result()
@@ -214,9 +215,11 @@ func (s *S) TestAddRoute(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("tip", addr)
 	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
 	routes, err := conn.LRange("frontend:tip.golang.org", 0, -1).Result()
@@ -228,12 +231,14 @@ func (s *S) TestAddRouteNoDomainConfigured(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("tip")
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = r.AddRoute("tip", addr)
 	c.Assert(err, check.NotNil)
+	defer r.RemoveRoute("tip", addr)
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Op, check.Equals, "add")
@@ -243,12 +248,14 @@ func (s *S) TestAddRouteConnectFailure(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	r2 := hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://www.tsuru.io")
 	err = r2.AddRoute("tip", addr)
 	c.Assert(err, check.NotNil)
+	defer r2.RemoveRoute("tip", addr)
 	e, ok := err.(*router.RouterError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Op, check.Equals, "routes")
@@ -258,9 +265,11 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("tip", addr)
 	err = router.SetCName("mycname.com", "tip")
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
@@ -271,6 +280,7 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {
 	addr, _ = url.Parse("http://10.10.10.11:8080")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("tip", addr)
 	cnameRoutes, err = conn.LLen("frontend:mycname.com").Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(int64(3), check.Equals, cnameRoutes)
@@ -298,6 +308,7 @@ func (s *S) TestRemoveRouteNoDomainConfigured(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("tip")
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
@@ -313,6 +324,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	r2 := hipacheRouter{prefix: "hipache"}
@@ -328,6 +340,7 @@ func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
 	addr, _ := url.Parse("http://10.10.10.10")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
@@ -359,6 +372,7 @@ func (s *S) TestGetCNames(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	err = router.SetCName("coolcname.com", "myapp")
 	c.Assert(err, check.IsNil)
 	cnames, err := router.getCNames("myapp")
@@ -377,6 +391,7 @@ func (s *S) TestSetCName(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
 }
@@ -385,12 +400,15 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	addr1, _ := url.Parse("http://10.10.10.10")
 	err = router.AddRoute("myapp", addr1)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("myapp", addr1)
 	addr2, _ := url.Parse("http://10.10.10.11")
 	err = router.AddRoute("myapp", addr2)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("myapp", addr2)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
@@ -404,12 +422,15 @@ func (s *S) TestSetCNameTwiceFixInconsistencies(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("myapp")
 	addr1, _ := url.Parse("http://10.10.10.10")
 	err = r.AddRoute("myapp", addr1)
 	c.Assert(err, check.IsNil)
+	defer r.RemoveRoute("myapp", addr1)
 	addr2, _ := url.Parse("http://10.10.10.11")
 	err = r.AddRoute("myapp", addr2)
 	c.Assert(err, check.IsNil)
+	defer r.RemoveRoute("myapp", addr2)
 	expected := []string{"myapp", addr1.String(), addr2.String()}
 	err = r.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
@@ -443,6 +464,7 @@ func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
@@ -456,9 +478,11 @@ func (s *S) TestSetCNameSetsMultipleCNames(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	addr, _ := url.Parse("http://10.10.10.10")
 	err = router.AddRoute("myapp", addr)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("myapp", addr)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("myothercname.com", "myapp")
@@ -476,6 +500,7 @@ func (s *S) TestUnsetCName(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
@@ -494,6 +519,7 @@ func (s *S) TestUnsetTwoCNames(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("myapp")
 	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
@@ -522,9 +548,11 @@ func (s *S) TestAddr(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
 	url, _ := url.Parse("http://10.10.10.10")
 	err = router.AddRoute("tip", url)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("tip", url)
 	addr, err := router.Addr("tip")
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "tip.golang.org")
@@ -534,6 +562,7 @@ func (s *S) TestAddrNoDomainConfigured(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("tip")
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
@@ -548,6 +577,7 @@ func (s *S) TestAddrConnectFailure(c *check.C) {
 	r := hipacheRouter{prefix: "hipache"}
 	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	r2 := hipacheRouter{prefix: "hipache"}
@@ -569,9 +599,11 @@ func (s *S) TestRoutes(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
 	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
 	addr, _ := url.Parse("http://10.10.10.10:8080")
 	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
+	defer router.RemoveRoute("tip", addr)
 	routes, err := router.Routes("tip")
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{addr})
@@ -584,9 +616,13 @@ func (s *S) TestSwap(c *check.C) {
 	addr2, _ := url.Parse("http://10.10.10.10")
 	router := hipacheRouter{prefix: "hipache"}
 	router.AddBackend(backend1)
+	defer router.RemoveBackend(backend1)
 	router.AddRoute(backend1, addr1)
+	defer router.RemoveRoute(backend1, addr1)
 	router.AddBackend(backend2)
+	defer router.RemoveBackend(backend2)
 	router.AddRoute(backend2, addr2)
+	defer router.RemoveRoute(backend2, addr2)
 	err := router.Swap(backend1, backend2)
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
