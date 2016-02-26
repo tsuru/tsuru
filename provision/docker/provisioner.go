@@ -370,17 +370,21 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	if !strings.Contains(imageId, ":") {
 		imageId = fmt.Sprintf("%s:latest", imageId)
 	}
+	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
 	pullOpts := docker.PullImageOptions{
-		Repository: imageId,
+		Repository:   imageId,
+		OutputStream: w,
 	}
 	err := cluster.PullImage(pullOpts, docker.AuthConfiguration{})
 	if err != nil {
 		return "", err
 	}
+	fmt.Fprintln(w, "---- Getting process from image ----")
 	cmd := "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"
 	output, _ := p.runCommandInContainer(imageId, cmd, app)
 	procfile := getProcessesFromProcfile(output.String())
 	if len(procfile) == 0 {
+		fmt.Fprintln(w, "  ---> Procfile not found, trying to get entrypoint")
 		imageInspect, inspectErr := cluster.InspectImage(imageId)
 		if inspectErr != nil {
 			return "", inspectErr
@@ -393,6 +397,9 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 			webProcess += fmt.Sprintf(" %q", c)
 		}
 		procfile["web"] = webProcess
+	}
+	for k, v := range procfile {
+		fmt.Fprintf(w, "  ---> Process %s found with command: %v\n", k, v)
 	}
 	newImage, err := appNewImageName(app.GetName())
 	if err != nil {
@@ -407,10 +414,12 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	if err != nil {
 		return "", err
 	}
+	fmt.Fprintln(w, "---- Pushing image to tsuru ----")
 	pushOpts := docker.PushImageOptions{
-		Name:     strings.Join(imageInfo[:len(imageInfo)-1], ":"),
-		Tag:      imageInfo[len(imageInfo)-1],
-		Registry: registry,
+		Name:         strings.Join(imageInfo[:len(imageInfo)-1], ":"),
+		Tag:          imageInfo[len(imageInfo)-1],
+		Registry:     registry,
+		OutputStream: w,
 	}
 	err = cluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	if err != nil {
