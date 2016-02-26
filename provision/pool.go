@@ -138,12 +138,3 @@ func PoolUpdate(poolName string, query bson.M, forceDefault bool) error {
 	}
 	return conn.Collection(poolCollection).UpdateId(poolName, bson.M{"$set": query})
 }
-
-// GetPoolsNames find teams by a list of team names.
-func GetPoolsNames(pools []Pool) []string {
-	pn := make([]string, len(pools))
-	for i, p := range pools {
-		pn[i] = p.Name
-	}
-	return pn
-}
