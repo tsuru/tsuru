@@ -18,12 +18,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type PoolsByTeam struct {
-	Team  string
-	Pools []string
-}
-
-func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -49,36 +44,18 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	poolsByTeam := []PoolsByTeam{}
-	poolsByTeamMap := map[string]*PoolsByTeam{}
-	for _, p := range pools {
-		for _, t := range p.Teams {
-			if poolsByTeamMap[t] == nil {
-				poolsByTeam = append(poolsByTeam, PoolsByTeam{Team: t})
-				poolsByTeamMap[t] = &poolsByTeam[len(poolsByTeam)-1]
-			}
-			poolsByTeamMap[t].Pools = append(poolsByTeamMap[t].Pools, p.Name)
-		}
-	}
-	publicPools, err := provision.ListPools(bson.M{"public": true})
-	if err != nil {
-		return err
-	}
 	allowedDefault := permission.Check(t, permission.PermPoolUpdate)
-	defaultPool := []provision.Pool{}
 	if allowedDefault {
-		defaultPool, err = provision.ListPools(bson.M{"default": true})
+		defaultPools, err := provision.ListPools(bson.M{"default": true})
 		if err != nil {
 			return err
 		}
-	}
-	p := map[string]interface{}{
-		"pools_by_team": poolsByTeam,
-		"public_pools":  publicPools,
-		"default_pool":  defaultPool,
+		if len(defaultPools) > 0 {
+			pools = append(pools, defaultPools[0])
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(p)
+	return json.NewEncoder(w).Encode(pools)
 }
 
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

@@ -94,7 +94,7 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	c.Assert(p[0].Teams, check.DeepEquals, []string{})
 }
 
-func (s *S) TestListPoolsToUserHandler(c *check.C) {
+func (s *S) TestPoolListHandler(c *check.C) {
 	team := auth.Team{Name: "angra"}
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
@@ -113,23 +113,21 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("nopool")
-	poolsExpected := map[string]interface{}{
-		"pools_by_team": []interface{}{map[string]interface{}{"Team": "angra", "Pools": []interface{}{"pool1"}}},
-		"public_pools":  []interface{}{},
-		"default_pool":  []interface{}{},
+	expected := []provision.Pool{
+		{Name: "pool1", Teams: []string{"angra"}},
 	}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = listPoolsToUser(rec, req, token)
+	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools map[string]interface{}
+	var pools []provision.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, poolsExpected)
+	c.Assert(pools, check.DeepEquals, expected)
 }
 
-func (s *S) TestListPoolsToUserEmptyHandler(c *check.C) {
+func (s *S) TestPoolListEmptyHandler(c *check.C) {
 	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
@@ -137,55 +135,52 @@ func (s *S) TestListPoolsToUserEmptyHandler(c *check.C) {
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	poolsExpected := map[string]interface{}{
-		"default_pool":  []interface{}{},
-		"pools_by_team": []interface{}{},
-		"public_pools":  []interface{}{},
-	}
+	expected := []provision.Pool{}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = listPoolsToUser(rec, req, token)
+	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools map[string]interface{}
+	var pools []provision.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, poolsExpected)
+	c.Assert(pools, check.DeepEquals, expected)
 }
 
-func (s *S) TestListPoolsToUserHandlerWithPermissionToDefault(c *check.C) {
+func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	team := auth.Team{Name: "angra"}
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermPoolUpdate,
-		Context: permission.Context(permission.CtxGlobal, ""),
-	})
-	pool := provision.Pool{Name: "pool1", Teams: []string{"angra"}}
-	opts := provision.AddPoolOptions{Name: pool.Name}
+	perms := []permission.Permission{
+		{
+			Scheme:  permission.PermAppCreate,
+			Context: permission.Context(permission.CtxTeam, "angra"),
+		},
+		{
+			Scheme:  permission.PermPoolUpdate,
+			Context: permission.Context(permission.CtxGlobal, ""),
+		},
+	}
+	token := userWithPermission(c, perms...)
+	pool := provision.Pool{Name: "pool1", Teams: []string{team.Name}}
+	opts := provision.AddPoolOptions{Name: pool.Name, Default: pool.Default}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	opts = provision.AddPoolOptions{Name: "nopool"}
-	err = provision.AddPool(opts)
+	test1, err := provision.ListPools(bson.M{"default": true})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("nopool")
-	poolsExpected := map[string]interface{}{
-		"pools_by_team": []interface{}{},
-		"public_pools":  []interface{}{},
-		"default_pool":  []interface{}{map[string]interface{}{"Name": "test1", "Teams": []interface{}{}, "Public": false, "Default": true}},
-	}
+	expected := []provision.Pool{pool, test1[0]}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	err = listPoolsToUser(rec, req, token)
+	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools map[string]interface{}
+	var pools []provision.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, poolsExpected)
+	c.Assert(pools, check.DeepEquals, expected)
 }
 
 func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {

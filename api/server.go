@@ -223,7 +223,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Delete", "/plans/{planname}", AuthorizationRequiredHandler(removePlan))
 	m.Add("1.0", "Get", "/plans/routers", AuthorizationRequiredHandler(listRouters))
 
-	m.Add("1.0", "Get", "/pools", AuthorizationRequiredHandler(listPoolsToUser))
+	m.Add("1.0", "Get", "/pools", AuthorizationRequiredHandler(poolList))
 	m.Add("1.0", "Post", "/pool", AuthorizationRequiredHandler(addPoolHandler))
 	m.Add("1.0", "Delete", "/pool", AuthorizationRequiredHandler(removePoolHandler))
 	m.Add("1.0", "Post", "/pool/{name}", AuthorizationRequiredHandler(poolUpdateHandler))
