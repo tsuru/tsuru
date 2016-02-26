@@ -49,10 +49,7 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 	}
 	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
 	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{
-			Message: `{"error": "some err", "description": "my iaas desc"}`,
-			Status:  http.StatusBadRequest,
-		},
+		Transport: cmdtest.Transport{Message: `{"error": "some err"}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			body, _ := ioutil.ReadAll(req.Body)
 			c.Assert(string(body), check.DeepEquals, expectedBody)
@@ -63,8 +60,7 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := addNodeToSchedulerCmd{register: false}
 	err := cmd.Run(&context, client)
-	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "Error: some err\n\nmy iaas desc\n")
+	c.Assert(err.Error(), check.Equals, "some err")
 }
 
 func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *check.C) {

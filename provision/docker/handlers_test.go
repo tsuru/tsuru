@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -217,10 +218,13 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, s.token)
 	c.Assert(err, check.IsNil)
-	var result map[string]string
-	err = json.NewDecoder(rec.Body).Decode(&result)
+	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]string{"description": "my iaas description"})
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	var result []tsuruIo.SimpleJsonMessage
+	err = json.Unmarshal([]byte(validJson), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 0)
 	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -306,8 +310,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], check.Matches, "address=url parameter is required")
+	c.Assert(result["Error"], check.Equals, "address=url parameter is required\n\n")
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
@@ -322,8 +325,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], check.Matches, "Invalid address url: host cannot be empty")
+	c.Assert(result["Error"], check.Equals, "Invalid address url: host cannot be empty\n\n")
 	b = bytes.NewBufferString(`{"address": "xxx://abc/invalid", "pool": "pool1"}`)
 	req, err = http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
@@ -332,8 +334,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], check.Matches, `Invalid address url: scheme must be http\[s\]`)
+	c.Assert(result["Error"], check.Equals, "Invalid address url: scheme must be http[s]\n\n")
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerNoPool(c *check.C) {
@@ -344,12 +345,11 @@ func (s *HandlersSuite) TestAddNodeHandlerNoPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, s.token)
-	c.Assert(err, check.IsNil)
-	var result map[string]string
-	err = json.NewDecoder(rec.Body).Decode(&result)
-	c.Assert(err, check.IsNil)
-	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], check.Matches, `pool is required`)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*tsuruErrors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "pool is required")
 }
 
 func (s *HandlersSuite) TestValidateNodeAddress(c *check.C) {

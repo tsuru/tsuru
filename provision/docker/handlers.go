@@ -173,14 +173,12 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if templateName, ok := params["template"]; ok {
 		params, err = iaas.ExpandTemplate(templateName)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 	}
 	pool := params["pool"]
 	if pool == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return json.NewEncoder(w).Encode(map[string]string{"error": "pool is required"})
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
 	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, pool)) {
 		return permission.ErrUnauthorized
@@ -193,12 +191,16 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			return permission.ErrUnauthorized
 		}
 	}
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	response, err := mainDockerProvisioner.addNodeForParams(params, isRegister)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		response["error"] = err.Error()
+		writer.Encode(tsuruIo.SimpleJsonMessage{
+			Error: fmt.Sprintf("%s\n\n%s", err, response["description"]),
+		})
 	}
-	return json.NewEncoder(w).Encode(response)
+	return nil
 }
 
 // removeNodeHandler calls scheduler.Unregister to unregistering a node into it.
