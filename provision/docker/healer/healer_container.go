@@ -153,6 +153,7 @@ func listUnresponsiveContainers(p DockerProvisioner, maxUnresponsiveTime time.Du
 		"status": bson.M{"$nin": []string{
 			provision.StatusStopped.String(),
 			provision.StatusBuilding.String(),
+			provision.StatusAsleep.String(),
 		}},
 	})
 }
