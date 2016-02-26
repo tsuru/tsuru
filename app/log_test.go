@@ -192,8 +192,8 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	dispatcher.Send(&logMsg)
 	timeout := time.After(5 * time.Second)
 	for {
-		logs, err := app.LastLogs(1, Applog{})
-		c.Assert(err, check.IsNil)
+		logs, logsErr := app.LastLogs(1, Applog{})
+		c.Assert(logsErr, check.IsNil)
 		if len(logs) == 1 {
 			break
 		}
@@ -241,8 +241,8 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 	<-dbOk
 	timeout := time.After(10 * time.Second)
 	for {
-		logs, err := app.LastLogs(10, Applog{})
-		c.Assert(err, check.IsNil)
+		logs, logsErr := app.LastLogs(10, Applog{})
+		c.Assert(logsErr, check.IsNil)
 		if len(logs) == 10 {
 			break
 		}
