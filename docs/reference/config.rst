@@ -80,6 +80,13 @@ This is useful to avoid leaking connections, in case clients drop the
 connection before reading the response from tsuru. The default value is 0,
 meaning no timeout.
 
+server:app-log-buffer-size
+++++++++++++++++++++++++++
+
+The maximum number of received log messages from applications to hold in memory
+waiting to be sent to the log database. The default value is 500000.
+
+
 disable-index-page
 ++++++++++++++++++
 

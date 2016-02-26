@@ -10,6 +10,7 @@ import (
 	"io"
 	"runtime"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
@@ -47,7 +48,11 @@ func addLogs(ws *websocket.Conn) {
 }
 
 func scanLogs(stream io.Reader) error {
-	dispatcher := app.NewlogDispatcher(2000000, runtime.NumCPU())
+	queueSize, _ := config.GetInt("server:app-log-buffer-size")
+	if queueSize == 0 {
+		queueSize = 500000
+	}
+	dispatcher := app.NewlogDispatcher(queueSize, runtime.NumCPU())
 	decoder := json.NewDecoder(stream)
 	for {
 		var entry app.Applog
