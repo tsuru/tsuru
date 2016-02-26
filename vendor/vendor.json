@@ -311,8 +311,8 @@
 		},
 		{
 			"path": "github.com/tsuru/config",
-			"revision": "a4028d4efbb92032346e9ecc8859678d2148644a",
-			"revisionTime": "2015-12-07T18:09:50-02:00"
+			"revision": "8fe001de4470949b4854212bf4badb4251866774",
+			"revisionTime": "2016-02-26T00:34:52-03:00"
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/cluster",

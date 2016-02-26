@@ -177,6 +177,9 @@ func Get(key string) (interface{}, error) {
 			return nil, fmt.Errorf("key %q not found", key)
 		}
 	}
+	if v, ok := conf.(func() interface{}); ok {
+		conf = v()
+	}
 	if v, ok := conf.(string); ok {
 		return os.ExpandEnv(v), nil
 	}
@@ -192,10 +195,17 @@ func GetString(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if v, ok := value.(string); ok {
-		return v, nil
-	}
-	return "", &invalidValue{key, "string"}
+	switch v := value.(type) {
+                case int:
+                        return strconv.Itoa(v), nil
+                case int64:
+                        return strconv.FormatInt(v, 10), nil
+                default:
+                        if v, ok := value.(string); ok {
+                                return v, nil
+                        }
+        }
+	return "", &invalidValue{key, "string|int|int64"}
 }
 
 // GetInt works like Get, but does an int type assertion and attempts string
