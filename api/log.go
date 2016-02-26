@@ -59,17 +59,8 @@ func scanLogs(stream io.Reader) error {
 			dispatcher.Stop()
 			return fmt.Errorf("wslogs: parsing log line: %s", err)
 		}
-		err = dispatcher.Send(&entry)
-		if err != nil {
-			// Do not disconnect by returning here, dispatcher will already
-			// retry db connection and we gain nothing by ending the WS
-			// connection.
-			log.Errorf("wslogs: error storing log: %s", err)
-		}
+		dispatcher.Send(&entry)
 	}
-	err := dispatcher.Stop()
-	if err != nil {
-		return fmt.Errorf("wslogs: error storing log: %s", err)
-	}
+	dispatcher.Stop()
 	return nil
 }

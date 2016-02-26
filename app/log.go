@@ -131,7 +131,7 @@ func (d *logDispatcher) runWriter() {
 	}
 }
 
-func (d *logDispatcher) Send(msg *Applog) error {
+func (d *logDispatcher) Send(msg *Applog) {
 	appName := msg.AppName
 	appD, ok := d.dispatchers[appName]
 	if !ok {
@@ -139,36 +139,19 @@ func (d *logDispatcher) Send(msg *Applog) error {
 		d.dispatchers[appName] = appD
 	}
 	msgWithDispatcher := &msgLog{dispatcher: appD, msg: msg}
-	select {
-	case d.msgCh <- msgWithDispatcher:
-	case err := <-appD.errCh:
-		delete(d.dispatchers, appName)
-		return err
-	}
-	return nil
+	d.msgCh <- msgWithDispatcher
 }
 
-func (d *logDispatcher) Stop() error {
-	var finalErr error
+func (d *logDispatcher) Stop() {
 	for appName, appD := range d.dispatchers {
 		delete(d.dispatchers, appName)
 		close(appD.done)
-		err := <-appD.errCh
-		if err != nil {
-			if finalErr == nil {
-				finalErr = err
-			} else {
-				finalErr = fmt.Errorf("%s, %s", finalErr, err)
-			}
-		}
 	}
 	close(d.msgCh)
-	return finalErr
 }
 
 type appLogDispatcher struct {
 	appName string
-	errCh   chan error
 	done    chan bool
 	toFlush chan *Applog
 }
@@ -176,7 +159,6 @@ type appLogDispatcher struct {
 func newAppLogDispatcher(appName string) *appLogDispatcher {
 	d := &appLogDispatcher{
 		appName: appName,
-		errCh:   make(chan error),
 		done:    make(chan bool),
 		toFlush: make(chan *Applog),
 	}
@@ -185,7 +167,6 @@ func newAppLogDispatcher(appName string) *appLogDispatcher {
 }
 
 func (d *appLogDispatcher) runFlusher() {
-	defer close(d.errCh)
 	t := time.NewTimer(bulkMaxWaitTime)
 	pos := 0
 	sz := 200
@@ -196,29 +177,29 @@ func (d *appLogDispatcher) runFlusher() {
 		case <-d.done:
 			return
 		case msg := <-d.toFlush:
+			if pos == sz {
+				flush = true
+				break
+			}
 			bulkBuffer[pos] = msg
 			pos++
 			flush = sz == pos
-			if flush {
-				t.Stop()
-			} else {
-				t.Reset(bulkMaxWaitTime)
-			}
 		case <-t.C:
 			flush = pos > 0
+			t.Reset(bulkMaxWaitTime)
 		}
 		if flush {
 			conn, err := db.LogConn()
 			if err != nil {
-				d.errCh <- err
-				return
+				log.Errorf("[log flusher] unable to connect to mongodb: %s", err)
+				continue
 			}
 			coll := conn.Logs(d.appName)
 			err = coll.Insert(bulkBuffer[:pos]...)
 			coll.Close()
 			if err != nil {
-				d.errCh <- err
-				return
+				log.Errorf("[log flusher] unable to insert logs: %s", err)
+				continue
 			}
 			pos = 0
 		}

@@ -5,9 +5,12 @@
 package app
 
 import (
+	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
 
@@ -173,4 +176,83 @@ func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
 		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
 	}
 	notify(app.Name, ms)
+}
+
+func (s *S) TestLogDispatcherSend(c *check.C) {
+	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	dispatcher := NewlogDispatcher(2000000, runtime.NumCPU())
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := Applog{
+		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+	}
+	dispatcher.Send(&logMsg)
+	timeout := time.After(5 * time.Second)
+	for {
+		logs, err := app.LastLogs(1, Applog{})
+		c.Assert(err, check.IsNil)
+		if len(logs) == 1 {
+			break
+		}
+		select {
+		case <-timeout:
+			c.Fatal("timeout waiting for logs")
+			break
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	dispatcher.Stop()
+	logs, err := app.LastLogs(1, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.DeepEquals, []Applog{logMsg})
+}
+
+func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
+	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	dispatcher := NewlogDispatcher(2000000, runtime.NumCPU())
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := Applog{
+		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
+	}
+	oldDbUrl, err := config.Get("database:url")
+	c.Assert(err, check.IsNil)
+	var count int32
+	dbOk := make(chan bool)
+	config.Set("database:url", func() interface{} {
+		val := atomic.AddInt32(&count, 1)
+		if val == 1 {
+			close(dbOk)
+			return "localhost:44556"
+		}
+		return oldDbUrl
+	})
+	defer config.Set("database:url", oldDbUrl)
+	for i := 0; i < 10; i++ {
+		dispatcher.Send(&logMsg)
+	}
+	<-dbOk
+	timeout := time.After(10 * time.Second)
+	for {
+		logs, err := app.LastLogs(10, Applog{})
+		c.Assert(err, check.IsNil)
+		if len(logs) == 10 {
+			break
+		}
+		select {
+		case <-timeout:
+			c.Fatalf("timeout waiting for all logs, last count: %d", len(logs))
+			break
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	dispatcher.Stop()
 }
