@@ -550,7 +550,7 @@ func (s *S) TestListUnresponsiveContainers(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "c3")
 }
 
@@ -568,7 +568,7 @@ func (s *S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 0)
+	c.Assert(result, check.HasLen, 0)
 }
 
 func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
@@ -588,7 +588,7 @@ func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "c2")
 }
 
@@ -609,6 +609,6 @@ func (s *S) TestListUnresponsiveContainersAsleep(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "c2")
 }
