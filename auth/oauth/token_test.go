@@ -51,7 +51,7 @@ func (s *S) TestSave(c *check.C) {
 	var tokens []Token
 	err = coll.Find(nil).All(&tokens)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(tokens), check.Equals, 1)
+	c.Assert(tokens, check.HasLen, 1)
 	c.Assert(tokens[0].GetValue(), check.Equals, "myvalidtoken")
 }
 
@@ -66,5 +66,5 @@ func (s *S) TestDelete(c *check.C) {
 	var tokens []Token
 	err = coll.Find(nil).All(&tokens)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(tokens), check.Equals, 0)
+	c.Assert(tokens, check.HasLen, 0)
 }

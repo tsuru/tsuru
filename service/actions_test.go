@@ -180,7 +180,7 @@ func (s *S) TestBindAppDBActionForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(si.Apps), check.Equals, 1)
+	c.Assert(si.Apps, check.HasLen, 1)
 }
 
 func (s *S) TestBindAppDBActionForwardInvalidParam(c *check.C) {
@@ -224,7 +224,7 @@ func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(si.Apps), check.Equals, 0)
+	c.Assert(si.Apps, check.HasLen, 0)
 }
 
 func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {

@@ -387,7 +387,7 @@ func (s *S) TestResetTargetList(c *check.C) {
 	}
 	got, err := getTargets()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(got), check.Equals, len(expected))
+	c.Assert(got, check.HasLen, len(expected))
 	err = resetTargetList()
 	c.Assert(err, check.IsNil)
 	got, err = getTargets()
@@ -426,14 +426,14 @@ func (s *S) TestTargetRemove(c *check.C) {
 	}
 	got, err := getTargets()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(got), check.Equals, len(expectedBefore))
+	c.Assert(got, check.HasLen, len(expectedBefore))
 	targetRemove := &targetRemove{}
 	context := &Context{[]string{"first"}, manager.stdout, manager.stderr, manager.stdin}
 	err = targetRemove.Run(context, nil)
 	c.Assert(err, check.IsNil)
 	got, err = getTargets()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(got), check.Equals, len(expectedAfter))
+	c.Assert(got, check.HasLen, len(expectedAfter))
 	_, hasKey := got["default"]
 	c.Assert(hasKey, check.Equals, true)
 	_, hasKey = got["first"]

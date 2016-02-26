@@ -102,7 +102,7 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()
@@ -145,7 +145,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()
@@ -189,7 +189,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()
@@ -238,7 +238,7 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app2}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()
@@ -285,7 +285,7 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app2}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()
@@ -344,7 +344,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1, app2}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()
@@ -397,7 +397,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app2}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
 		units, err := app.Units()

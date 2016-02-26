@@ -40,7 +40,7 @@ func (s *S) TestListContainersByApp(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listContainersByApp("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 2)
+	c.Assert(result, check.HasLen, 2)
 	cond := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
 	c.Assert(cond, check.Equals, true)
 }
@@ -57,7 +57,7 @@ func (s *S) TestListContainersByProcess(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listContainersByProcess("myapp", "web")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].ID, check.Equals, "Hey")
 }
 
@@ -73,7 +73,7 @@ func (s *S) TestListContainersByEmptyProcess(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listContainersByProcess("myapp", "")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 2)
+	c.Assert(result, check.HasLen, 2)
 	cond := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
 	c.Assert(cond, check.Equals, true)
 }
@@ -146,7 +146,7 @@ func (s *S) TestListContainersByHost(c *check.C) {
 	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
 	result, err := s.p.listContainersByHost("http://cittavld1182.globoi.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 2)
+	c.Assert(result, check.HasLen, 2)
 	cond := (result[0].ID == "1" && result[1].ID == "2") || (result[0].ID == "2" && result[1].ID == "1")
 	c.Assert(cond, check.Equals, true)
 }
@@ -158,7 +158,7 @@ func (s *S) TestListAllContainers(c *check.C) {
 	defer cleanupFunc()
 	containers, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(containers), check.Equals, 2)
+	c.Assert(containers, check.HasLen, 2)
 	cond := (containers[0].ID == containerIds[0] && containers[1].ID == containerIds[1]) ||
 		(containers[0].ID == containerIds[1] && containers[1].ID == containerIds[0])
 	c.Assert(cond, check.Equals, true)
@@ -173,7 +173,7 @@ func (s *S) TestUpdateContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	containers, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(containers), check.Equals, 3)
+	c.Assert(containers, check.HasLen, 3)
 	ids := make([]string, len(containers))
 	names := make([]string, len(containers))
 	for i, container := range containers {
@@ -258,7 +258,7 @@ func (s *S) TestListRunnableContainersByApp(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listRunnableContainersByApp("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 3)
+	c.Assert(result, check.HasLen, 3)
 	var names []string
 	for _, c := range result {
 		names = append(names, c.Name)

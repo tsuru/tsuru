@@ -262,7 +262,7 @@ func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *check.C) {
 func (s *S) TestListAllUsers(c *check.C) {
 	users, err := ListUsers()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, 1)
+	c.Assert(users, check.HasLen, 1)
 }
 
 type roleInstanceList []RoleInstance

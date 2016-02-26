@@ -1552,7 +1552,7 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, 2)
+	c.Assert(users, check.HasLen, 2)
 	emails := []string{users[0].Email, users[1].Email}
 	expected := []string{token.GetUserName(), s.token.GetUserName()}
 	sort.Strings(emails)
@@ -1577,7 +1577,7 @@ func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, 1)
+	c.Assert(users, check.HasLen, 1)
 	email := users[0].Email
 	c.Check(email, check.DeepEquals, expected)
 }
@@ -1602,7 +1602,7 @@ func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, 1)
+	c.Assert(users, check.HasLen, 1)
 	receivedUser := users[0]
 	c.Assert(expectedUser.Email, check.Equals, receivedUser.Email)
 }
@@ -1622,7 +1622,7 @@ func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, 1)
+	c.Assert(users, check.HasLen, 1)
 	c.Assert(users[0].Email, check.Equals, token.GetUserName())
 }
 
@@ -1648,7 +1648,7 @@ func (s *AuthSuite) TestListUsersLimitedUserWithMoreRoles(c *check.C) {
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, 2)
+	c.Assert(users, check.HasLen, 2)
 	emails := []string{users[0].Email, users[1].Email}
 	expected := []string{token.GetUserName(), token2.GetUserName()}
 	sort.Strings(emails)
@@ -1770,7 +1770,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(users), check.Equals, nUsers+1)
+	c.Assert(users, check.HasLen, nUsers+1)
 	expectedNames = append(expectedNames, s.user.Email)
 	names := []string{}
 	for _, u := range users {

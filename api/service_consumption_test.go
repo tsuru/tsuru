@@ -602,7 +602,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	c.Assert(n, check.Equals, 0)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).All(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].Apps, check.DeepEquals, []string{"app-instance"})
 	recorder, request = makeRequestToRemoveInstanceHandlerWithUnbind("foo", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)

@@ -825,7 +825,7 @@ func (s *S) TestNodesToHosts(c *check.C) {
 	hosts, hostsMap := scheduler.nodesToHosts(nodes)
 	c.Assert(hosts, check.NotNil)
 	c.Assert(hostsMap, check.NotNil)
-	c.Assert(len(hosts), check.Equals, 2)
+	c.Assert(hosts, check.HasLen, 2)
 	c.Assert(hostsMap[hosts[0]], check.Equals, nodes[0].Address)
 }
 

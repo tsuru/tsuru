@@ -326,7 +326,7 @@ func (s *S) TestListPoolAll(c *check.C) {
 	defer coll.RemoveId(pool.Name)
 	pools, err := ListPools(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(pools), check.Equals, 1)
+	c.Assert(pools, check.HasLen, 1)
 }
 
 func (s *S) TestListPoolByQuery(c *check.C) {
@@ -341,12 +341,12 @@ func (s *S) TestListPoolByQuery(c *check.C) {
 	defer coll.RemoveId(pool2.Name)
 	pools, err := ListPools(bson.M{"public": true})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(pools), check.Equals, 1)
+	c.Assert(pools, check.HasLen, 1)
 	c.Assert(pools[0].Public, check.Equals, true)
 }
 
 func (s *S) TestListPoolEmpty(c *check.C) {
 	pools, err := ListPools(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(pools), check.Equals, 0)
+	c.Assert(pools, check.HasLen, 0)
 }

@@ -470,7 +470,7 @@ func (s *S) TestSamlAuthWithAppToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth("bearer " + appToken.GetValue())
 	c.Assert(err, check.IsNil)
-	c.Assert(len(s.reqs), check.Equals, 0)
+	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(token.IsAppToken(), check.Equals, true)
 	c.Assert(token.GetAppName(), check.Equals, "myApp")
 	c.Assert(token.GetValue(), check.Equals, appToken.GetValue())

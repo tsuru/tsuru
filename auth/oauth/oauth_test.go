@@ -49,7 +49,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	u, err := token.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "rand@althor.com")
-	c.Assert(len(s.reqs), check.Equals, 2)
+	c.Assert(s.reqs, check.HasLen, 2)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
 	c.Assert(s.bodies[0], check.Equals, "client_id=clientid&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=myscope")
 	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
@@ -81,7 +81,7 @@ func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
 	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
 	c.Assert(err, check.Equals, ErrEmptyAccessToken)
-	c.Assert(len(s.reqs), check.Equals, 1)
+	c.Assert(s.reqs, check.HasLen, 1)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
 }
 
@@ -94,7 +94,7 @@ func (s *S) TestOAuthLoginEmptyEmail(c *check.C) {
 	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
 	c.Assert(err, check.Equals, ErrEmptyUserEmail)
-	c.Assert(len(s.reqs), check.Equals, 2)
+	c.Assert(s.reqs, check.HasLen, 2)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
 	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
 }
@@ -156,7 +156,7 @@ func (s *S) TestOAuthAuth(c *check.C) {
 	scheme := OAuthScheme{}
 	token, err := scheme.Auth("bearer myvalidtoken")
 	c.Assert(err, check.IsNil)
-	c.Assert(len(s.reqs), check.Equals, 1)
+	c.Assert(s.reqs, check.HasLen, 1)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/user")
 	c.Assert(token.GetValue(), check.Equals, "myvalidtoken")
 }
@@ -175,7 +175,7 @@ func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth("bearer " + appToken.GetValue())
 	c.Assert(err, check.IsNil)
-	c.Assert(len(s.reqs), check.Equals, 0)
+	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(token.IsAppToken(), check.Equals, true)
 	c.Assert(token.GetAppName(), check.Equals, "myApp")
 	c.Assert(token.GetValue(), check.Equals, appToken.GetValue())
@@ -214,7 +214,7 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	defer coll.Close()
 	err = coll.Find(bson.M{"useremail": "rand@althor.com"}).All(&tokens)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(tokens), check.Equals, 0)
+	c.Assert(tokens, check.HasLen, 0)
 	_, err = auth.GetUserByEmail("rand@althor.com")
 	c.Assert(err, check.Equals, auth.ErrUserNotFound)
 }

@@ -251,7 +251,7 @@ func (s *S) TestNativeRemove(c *check.C) {
 	var tokens []Token
 	err = conn.Tokens().Find(bson.M{"useremail": "timeredbull@globo.com"}).All(&tokens)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(tokens), check.Equals, 0)
+	c.Assert(tokens, check.HasLen, 0)
 	_, err = auth.GetUserByEmail("timeredbull@globo.com")
 	c.Assert(err, check.Equals, auth.ErrUserNotFound)
 }

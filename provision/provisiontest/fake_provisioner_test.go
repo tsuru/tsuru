@@ -116,8 +116,8 @@ func (s *S) TestGetUnitsReturnUnits(c *check.C) {
 	a := NewFakeApp("foo", "static", 2)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
-	c.Assert(len(units), check.Equals, 2)
-	c.Assert(len(a.units), check.Equals, 2)
+	c.Assert(units, check.HasLen, 2)
+	c.Assert(a.units, check.HasLen, 2)
 	c.Assert(units[0].GetID(), check.Equals, a.units[0].ID)
 	c.Assert(units[1].GetID(), check.Equals, a.units[1].ID)
 }

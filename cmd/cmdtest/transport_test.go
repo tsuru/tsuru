@@ -82,14 +82,14 @@ func (S) TestMultiConditionalTransport(c *check.C) {
 	m := MultiConditionalTransport{
 		ConditionalTransports: []ConditionalTransport{t1, t2},
 	}
-	c.Assert(len(m.ConditionalTransports), check.Equals, 2)
+	c.Assert(m.ConditionalTransports, check.HasLen, 2)
 	req, _ := http.NewRequest("GET", "/something", nil)
 	r, err := m.RoundTrip(req)
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusUnauthorized)
-	c.Assert(len(m.ConditionalTransports), check.Equals, 1)
+	c.Assert(m.ConditionalTransports, check.HasLen, 1)
 	r, err = m.RoundTrip(req)
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
-	c.Assert(len(m.ConditionalTransports), check.Equals, 0)
+	c.Assert(m.ConditionalTransports, check.HasLen, 0)
 }
