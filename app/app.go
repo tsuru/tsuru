@@ -736,7 +736,7 @@ func (app *App) GetPoolForApp(poolName string) (string, error) {
 		}
 	}
 	if !pools[0].Public && !poolTeam {
-		return "", stderr.New(fmt.Sprintf("You don't have access to pool %s", poolName))
+		return "", fmt.Errorf("App team owner %q has no access to pool %q", app.TeamOwner, poolName)
 	}
 	return pools[0].Name, nil
 }

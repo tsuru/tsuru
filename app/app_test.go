@@ -3491,7 +3491,7 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	}
 	err = app.SetPool()
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "You don't have access to pool test")
+	c.Assert(err, check.ErrorMatches, `App team owner ".*" has no access to pool ".*"`)
 }
 
 func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
