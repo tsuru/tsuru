@@ -68,7 +68,14 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	rec.Log(user.Email, "create-service-instance", string(b))
-	return service.CreateServiceInstance(instance, &srv, user)
+	err = service.CreateServiceInstance(instance, &srv, user)
+	if err == service.ErrInstanceNameAlreadyExists {
+		return &errors.HTTP{
+			Code:    http.StatusConflict,
+			Message: err.Error(),
+		}
+	}
+	return err
 }
 
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {

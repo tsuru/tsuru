@@ -38,6 +38,8 @@ type ConsumptionSuite struct {
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
 	pool        string
+	service     *service.Service
+	ts          *httptest.Server
 }
 
 var _ = check.Suite(&ConsumptionSuite{})
@@ -67,10 +69,21 @@ func (s *ConsumptionSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+	s.ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	s.service = &service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": s.ts.URL},
+	}
+	s.service.Create()
 }
 
 func (s *ConsumptionSuite) TearDownTest(c *check.C) {
+	s.conn.Services().RemoveId(s.service.Name)
 	s.conn.Close()
+	s.ts.Close()
 }
 
 func (s *ConsumptionSuite) TearDownSuite(c *check.C) {
@@ -86,6 +99,7 @@ func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", "/services/instances", &buf)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", params["token"])
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	return recorder, request
@@ -160,7 +174,25 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 }
 
-func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *check.C) {
+func (s *ConsumptionSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+		"token":        "bearer " + s.token.GetValue(),
+	}
+	m := RunServer(true)
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "")
+	recorder, request = makeRequestToCreateInstanceHandler(params, c)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Equals, service.ErrInstanceNameAlreadyExists.Error()+"\n")
+}
+
+func (s *ConsumptionSuite) TestCreateInstance(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
