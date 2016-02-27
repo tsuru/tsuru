@@ -174,6 +174,20 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 }
 
+func (s *ConsumptionSuite) TestCreateInstanceInvalidName(c *check.C) {
+	params := map[string]string{
+		"name":         "1brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+		"token":        "bearer " + s.token.GetValue(),
+	}
+	m := RunServer(true)
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, service.ErrInvalidInstanceName.Error()+"\n")
+}
+
 func (s *ConsumptionSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
 	params := map[string]string{
 		"name":         "brainSQL",

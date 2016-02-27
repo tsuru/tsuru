@@ -75,6 +75,12 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			Message: err.Error(),
 		}
 	}
+	if err == service.ErrInvalidInstanceName {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
 	return err
 }
 
