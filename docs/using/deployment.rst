@@ -82,4 +82,4 @@ variables the service asked tsuru to export on your application's units
 (without the values, since you are not gonna need them), if you lost the
 environments on your terminal history, again, don't fear! You can always check
 which service made what variables available to your application using the
-<insert command here>.
+`tsuru env-get` command.
