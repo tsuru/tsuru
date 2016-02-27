@@ -174,6 +174,32 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 }
 
+func (s *ConsumptionSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
+	p := permission.Permission{
+		Scheme:  permission.PermServiceInstance,
+		Context: permission.Context(permission.CtxTeam, "anotherTeam"),
+	}
+	role, err := permission.NewRole("instance-user", string(p.Context.CtxType))
+	c.Assert(err, check.IsNil)
+	defer auth.RemoveRoleFromAllUsers("instance-user")
+	err = role.AddPermissions(p.Scheme.FullName())
+	c.Assert(err, check.IsNil)
+	user, err := s.token.User()
+	c.Assert(err, check.IsNil)
+	err = user.AddRole(role.Name, p.Context.Value)
+	c.Assert(err, check.IsNil)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"token":        "bearer " + s.token.GetValue(),
+	}
+	m := RunServer(true)
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, permission.ErrTooManyTeams.Error()+"\n")
+}
+
 func (s *ConsumptionSuite) TestCreateInstanceInvalidName(c *check.C) {
 	params := map[string]string{
 		"name":         "1brainSQL",
