@@ -108,7 +108,7 @@ func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *check.C) {
+func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) {
 	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
@@ -116,18 +116,27 @@ func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *
 	si.Create()
 	defer service.DeleteInstance(&si)
 	recorder, request := s.makeRequestToServicesHandler(c)
-	err := serviceList(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	services := make([]service.ServiceModel, 1)
-	err = json.Unmarshal(b, &services)
+	err := json.Unmarshal(recorder.Body.Bytes(), &services)
+	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
 		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, check.DeepEquals, expected)
 	action := rectest.Action{Action: "list-services", User: s.user.Email}
 	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *ProvisionSuite) TestServiceListEmptyList(c *check.C) {
+	recorder, request := s.makeRequestToServicesHandler(c)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
 func makeRequestToCreateHandler(c *check.C) (*httptest.ResponseRecorder, *http.Request) {

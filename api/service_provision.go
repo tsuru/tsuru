@@ -74,6 +74,10 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
+	if len(results) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
