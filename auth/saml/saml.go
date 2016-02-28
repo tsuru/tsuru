@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -167,7 +167,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 			return nil, err
 		}
 		user = &auth.User{Email: req.Email}
-		err := user.Create()
+		err = user.Create()
 		if err != nil {
 			return nil, err
 		}
@@ -346,7 +346,8 @@ func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 	}
 	if response.IsEncrypted() {
 		if err = response.Decrypt(sp.PrivateKeyPath); err != nil {
-			return nil, fmt.Errorf("unable to decrypt identity provider data: %s - %s", response.String, err)
+			respData, _ := response.String()
+			return nil, fmt.Errorf("unable to decrypt identity provider data: %s - %s", respData, err)
 		}
 	}
 	resp, _ := response.String()
