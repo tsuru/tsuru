@@ -394,7 +394,10 @@ Add a new service instance
     * Body: `{"name": "mymysql", "service_name": "mysql"}`
 
 Returns 200 in case of success.
+Returns 400 if the service instance name is invalid.
+Returns 400 if the team owner is missing.
 Returns 404 if the service does not exists.
+Returns 409 if the service instance name already exists.
 
 Example:
 
@@ -464,6 +467,7 @@ List all services and your instances
     * Format: JSON
 
 Returns 200 in case of success and a JSON with the service list.
+Returns 204 if the service instance list is empty.
 
 Where:
 
