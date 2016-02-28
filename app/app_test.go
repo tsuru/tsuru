@@ -2553,7 +2553,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	apps, err := List(&Filter{Name: "app\\d{1}"})
+	apps, err := List(&Filter{NameMatches: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
 }
@@ -2683,7 +2683,7 @@ func (s *S) TestListAll(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 }
 
-func (s *S) TestListFilteringByName(c *check.C) {
+func (s *S) TestListFilteringByNameMatch(c *check.C) {
 	a := App{
 		Name:  "app1",
 		Teams: []string{s.team.Name},
@@ -2707,9 +2707,39 @@ func (s *S) TestListFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	apps, err := List(&Filter{Name: "app\\d{1}"})
+	apps, err := List(&Filter{NameMatches: `app\d{1}`})
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
+}
+
+func (s *S) TestListFilteringByNameExact(c *check.C) {
+	a := App{
+		Name:  "app1",
+		Teams: []string{s.team.Name},
+	}
+	a2 := App{
+		Name:  "app1-dev",
+		Teams: []string{s.team.Name},
+	}
+	a3 := App{
+		Name:  "foo",
+		Teams: []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a3)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Apps().Remove(bson.M{"name": a3.Name})
+	}()
+	apps, err := List(&Filter{Name: "app1", NameMatches: `app\d{1}`})
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, "app1")
 }
 
 func (s *S) TestListFilteringByPlatform(c *check.C) {

@@ -1391,15 +1391,16 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 }
 
 type Filter struct {
-	Name      string
-	Platform  string
-	TeamOwner string
-	UserOwner string
-	Pool      string
-	Pools     []string
-	Statuses  []string
-	Locked    bool
-	Extra     map[string][]string
+	Name        string
+	NameMatches string
+	Platform    string
+	TeamOwner   string
+	UserOwner   string
+	Pool        string
+	Pools       []string
+	Statuses    []string
+	Locked      bool
+	Extra       map[string][]string
 }
 
 func (f *Filter) ExtraIn(name string, value string) {
@@ -1423,8 +1424,11 @@ func (f *Filter) Query() bson.M {
 		}
 		query["$or"] = orBlock
 	}
+	if f.NameMatches != "" {
+		query["name"] = bson.M{"$regex": f.NameMatches}
+	}
 	if f.Name != "" {
-		query["name"] = bson.M{"$regex": f.Name}
+		query["name"] = f.Name
 	}
 	if f.TeamOwner != "" {
 		query["teamowner"] = f.TeamOwner
