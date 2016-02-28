@@ -79,7 +79,7 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instanceID string, createPara
 		"timeout":   maxWaitTime,
 	}
 	if rawInterfaceIdx, ok := createParams["network-index"]; ok {
-		if interfaceIdx, err := strconv.Atoi(rawInterfaceIdx); err == nil {
+		if interfaceIdx, atoiErr := strconv.Atoi(rawInterfaceIdx); atoiErr == nil {
 			jobParams["networkIndex"] = interfaceIdx
 		}
 	}
