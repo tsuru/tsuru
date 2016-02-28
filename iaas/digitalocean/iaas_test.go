@@ -42,6 +42,39 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := newDigitalOceanIaas("digitalocean")
 	params := map[string]string{
+		"name":     "example.com",
+		"region":   "nyc3",
+		"size":     "512mb",
+		"image":    "ubuntu-14-04-x64",
+		"ssh-keys": "5050,2032,07:b9:a1:65:1b,13",
+	}
+	m, err := do.CreateMachine(params)
+	c.Assert(err, check.IsNil)
+	c.Assert(m, check.NotNil)
+	c.Assert(m.Address, check.Equals, "104.131.186.241")
+	c.Assert(m.Id, check.Equals, "1")
+	c.Assert(m.Status, check.Equals, "active")
+	expectedKeys := []interface{}{float64(5050), float64(2032), "07:b9:a1:65:1b", float64(13)}
+	c.Assert(createRequest["ssh_keys"], check.DeepEquals, expectedKeys)
+	c.Assert(createRequest["private_networking"], check.Equals, false)
+}
+
+func (s *digitaloceanSuite) TestCreateMachinePrivateNetworking(c *check.C) {
+	var createRequest map[string]interface{}
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/droplets" {
+			err := json.NewDecoder(r.Body).Decode(&createRequest)
+			c.Assert(err, check.IsNil)
+			fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "new", "networks": {"v4": [], "v6": []}}}`)
+		}
+		if r.URL.Path == "/v2/droplets/1" {
+			fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "active", "networks": {"v4": [{"ip_address": "104.131.186.241", "netmask": "255.255.240.0", "gateway": "104.131.176.1", "type": "public"}, {"ip_address": "10.128.19.90", "netmask": "255.255.240.0", "gateway": "10.128.19.1", "type": "private"}], "v6": [{"ip_address": "2604:A880:0800:0010:0000:0000:031D:2001", "netmask": 64, "gateway": "2604:A880:0800:0010:0000:0000:0000:0001", "type": "public"}]}}}`)
+		}
+	}))
+	defer fakeServer.Close()
+	config.Set("iaas:digitalocean:url", fakeServer.URL)
+	do := newDigitalOceanIaas("digitalocean")
+	params := map[string]string{
 		"name":               "example.com",
 		"region":             "nyc3",
 		"size":               "512mb",
@@ -52,7 +85,7 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	m, err := do.CreateMachine(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.NotNil)
-	c.Assert(m.Address, check.Equals, "104.131.186.241")
+	c.Assert(m.Address, check.Equals, "10.128.19.90")
 	c.Assert(m.Id, check.Equals, "1")
 	c.Assert(m.Status, check.Equals, "active")
 	expectedKeys := []interface{}{float64(5050), float64(2032), "07:b9:a1:65:1b", float64(13)}

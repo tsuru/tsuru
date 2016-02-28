@@ -102,6 +102,11 @@ General improvements
 
     % tsuru-admin docker-node-add iaas=ec2 'iaminstanceprofile={"name":"docker-instances"}' 'blockdevicemappings=[[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100}}]' subnetid=subnet-1234 network-index=0 ...
 
+* Digital Ocean IaaS now supports private networking. When the parameter
+  ``private-networking`` is defined to ``true``, Tsuru will attach a private
+  network interface to the Droplet and use this address to communicate with the
+  managed node. (`#1345 <https://github.com/tsuru/tsuru/issues/1345>`_).
+
 * All long running API handlers for the Docker provisioner now use a keep-alive
   to keep the connection open, properly handling low network timeouts (specially
   with AWS Elastic Load Balancers).

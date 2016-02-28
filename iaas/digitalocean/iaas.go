@@ -87,8 +87,17 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 	if err != nil {
 		return nil, err
 	}
+	ipAddress := droplet.Networks.V4[0].IPAddress
+	if privNetworking && droplet.Networks.V4[0].Type != "private" {
+		for _, network := range droplet.Networks.V4[1:] {
+			if network.Type == "private" {
+				ipAddress = network.IPAddress
+				break
+			}
+		}
+	}
 	m := &iaas.Machine{
-		Address: droplet.Networks.V4[0].IPAddress,
+		Address: ipAddress,
 		Id:      strconv.Itoa(droplet.ID),
 		Status:  droplet.Status,
 	}
