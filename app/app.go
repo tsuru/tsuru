@@ -1608,7 +1608,7 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 		}
 	}
 	for _, cname := range app.CName {
-		err := r.SetCName(cname, app.Name)
+		err = r.SetCName(cname, app.Name)
 		if err != nil && err != router.ErrCNameExists {
 			return nil, err
 		}

@@ -109,9 +109,9 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 	Delete(app, nil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
 		var deploys []DeployData
-		err := s.conn.Deploys().Find(bson.M{"app": app.Name}).All(&deploys)
-		if err != nil {
-			c.Log(err)
+		dbErr := s.conn.Deploys().Find(bson.M{"app": app.Name}).All(&deploys)
+		if dbErr != nil {
+			c.Log(dbErr)
 			return false
 		}
 		return len(deploys) == 1 && !deploys[0].RemoveDate.IsZero()
