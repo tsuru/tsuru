@@ -1008,15 +1008,11 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTh
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = serviceInstances(recorder, request, token)
-	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	var instances []service.ServiceModel
-	err = json.Unmarshal(body, &instances)
-	c.Assert(err, check.IsNil)
-	c.Assert(instances, check.DeepEquals, []service.ServiceModel{})
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *check.C) {

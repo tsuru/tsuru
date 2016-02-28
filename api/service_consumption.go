@@ -130,7 +130,6 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	permissionValue := serviceName + "/" + instanceName
-
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
@@ -259,6 +258,10 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	result := []service.ServiceModel{}
 	for _, entry := range servicesMap {
 		result = append(result, *entry)
+	}
+	if len(result) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	}
 	body, err := json.Marshal(result)
 	if err != nil {
