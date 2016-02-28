@@ -252,12 +252,11 @@ func RecreateContainers(p DockerProvisioner, w io.Writer) error {
 			pool := node.Metadata["pool"]
 			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
 			fmt.Fprintf(w, "relaunching bs container in the node %s [%s]\n", node.Address, pool)
-			err := createContainer(node.Address, pool, p, true)
-			if err != nil {
-				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
+			createErr := createContainer(node.Address, pool, p, true)
+			if createErr != nil {
+				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, createErr)
 				log.Error(msg)
-				err = errors.New(msg)
-				errChan <- err
+				errChan <- errors.New(msg)
 			}
 		}(i)
 	}

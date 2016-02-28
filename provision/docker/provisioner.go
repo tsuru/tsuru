@@ -577,13 +577,13 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 			}
 			toAdd[processName].Quantity++
 		}
-		if err := setQuota(a, toAdd); err != nil {
+		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
 		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
-		if err := setQuota(a, toAdd); err != nil {
+		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
 		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
