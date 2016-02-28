@@ -224,7 +224,7 @@ func (s *ConsumptionSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
 	m := RunServer(true)
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Body.String(), check.Equals, "")
 	recorder, request = makeRequestToCreateInstanceHandler(params, c)
 	m.ServeHTTP(recorder, request)
@@ -233,27 +233,19 @@ func (s *ConsumptionSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
 }
 
 func (s *ConsumptionSuite) TestCreateInstance(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
-	se := service.Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Endpoint: map[string]string{"production": ts.URL},
-	}
-	se.Create()
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
 	params := map[string]string{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
+		"token":        "bearer " + s.token.GetValue(),
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Body.String(), check.Equals, "")
 	var si service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL", "service_name": "mysql"}).One(&si)
+	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL", "service_name": "mysql"}).One(&si)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, check.Equals, "brainSQL")

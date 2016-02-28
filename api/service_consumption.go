@@ -81,6 +81,9 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			Message: err.Error(),
 		}
 	}
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
 	return err
 }
 
