@@ -922,7 +922,7 @@ func (srv *Server) createNICsOnRun(instId string, instSubnet *subnet, ifacesToCr
 			InstanceOwnerId:     ownerId,
 			DeviceIndex:         ifaceToCreate.DeviceIndex,
 			Status:              "in-use",
-			AttachTime:          time.Now().Format(time.RFC3339),
+			AttachTime:          time.Now().In(time.UTC).Format(time.RFC3339),
 			DeleteOnTermination: true,
 		}
 		srv.attachments[attach.Id] = &attachment{attach}

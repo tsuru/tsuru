@@ -61,7 +61,7 @@ func (i *EC2IaaS) createEC2Handler(regionOrEndpoint string) (*ec2.EC2, error) {
 	return ec2.New(session.New(&config)), nil
 }
 
-func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
+func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instanceID string, createParams map[string]string) (string, error) {
 	rawWait, _ := i.base.GetConfigString("wait-timeout")
 	maxWaitTime, _ := strconv.Atoi(rawWait)
 	if maxWaitTime == 0 {
@@ -69,28 +69,33 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	}
 	q, err := queue.Queue()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	taskName := fmt.Sprintf("ec2-wait-machine-%s", i.base.IaaSName)
-	waitDuration := time.Duration(maxWaitTime) * time.Second
-	job, err := q.EnqueueWait(taskName, monsterqueue.JobParams{
+	jobParams := monsterqueue.JobParams{
 		"region":    ec2Inst.Config.Region,
 		"endpoint":  ec2Inst.Config.Endpoint,
-		"machineId": *instance.InstanceId,
+		"machineId": instanceID,
 		"timeout":   maxWaitTime,
-	}, waitDuration)
+	}
+	if rawInterfaceIdx, ok := createParams["network-index"]; ok {
+		if interfaceIdx, err := strconv.Atoi(rawInterfaceIdx); err == nil {
+			jobParams["networkIndex"] = interfaceIdx
+		}
+	}
+	waitDuration := time.Duration(maxWaitTime) * time.Second
+	job, err := q.EnqueueWait(taskName, jobParams, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
-			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, *instance.InstanceId)
+			return "", fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, instanceID)
 		}
-		return nil, err
+		return "", err
 	}
 	result, err := job.Result()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	instance.PublicDnsName = aws.String(result.(string))
-	return instance, nil
+	return result.(string), nil
 }
 
 func (i *EC2IaaS) Initialize() error {
@@ -326,14 +331,14 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 			}
 		}
 	}
-	instance, err := i.waitForDnsName(ec2Inst, runInst)
+	dnsName, err := i.waitForDnsName(ec2Inst, aws.StringValue(runInst.InstanceId), params)
 	if err != nil {
 		return nil, err
 	}
 	machine := iaas.Machine{
-		Id:      *instance.InstanceId,
-		Status:  *instance.State.Name,
-		Address: *instance.PublicDnsName,
+		Id:      aws.StringValue(runInst.InstanceId),
+		Status:  aws.StringValue(runInst.State.Name),
+		Address: dnsName,
 	}
 	return &machine, nil
 }

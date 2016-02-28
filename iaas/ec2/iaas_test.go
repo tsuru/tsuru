@@ -34,6 +34,15 @@ func (s *S) SetUpTest(c *check.C) {
 	var err error
 	s.srv, err = ec2test.NewServer()
 	c.Assert(err, check.IsNil)
+	s.srv.SetAvailabilityZones([]ec2amz.AvailabilityZoneInfo{
+		{
+			AvailabilityZone: ec2amz.AvailabilityZone{
+				Name:   "us-east-1b",
+				Region: "us-east-1",
+			},
+		},
+	})
+	s.srv.SetInitialAttributes(map[string][]string{"default-vpc": {"vpc-123"}})
 	config.Set("iaas:ec2:key-id", "mykey")
 	config.Set("iaas:ec2:secret-key", "mysecret")
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
@@ -249,9 +258,35 @@ func (s *S) TestWaitForDnsName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := resp.Instances[0]
 	instance.PublicDnsName = aws.String("")
-	instance, err = ec2iaas.waitForDnsName(handler, instance)
+	dnsName, err := ec2iaas.waitForDnsName(handler, aws.StringValue(instance.InstanceId), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(*instance.PublicDnsName, check.Matches, `i-\d.testing.invalid`)
+	c.Assert(dnsName, check.Matches, `i-\d.testing.invalid`)
+}
+
+func (s *S) TestWaitForDnsNamePrivateDNSName(c *check.C) {
+	myiaas := newEC2IaaS("ec2")
+	ec2iaas := myiaas.(*EC2IaaS)
+	err := ec2iaas.Initialize()
+	c.Assert(err, check.IsNil)
+	handler, err := ec2iaas.createEC2Handler(s.srv.URL())
+	c.Assert(err, check.IsNil)
+	options := ec2.RunInstancesInput{
+		ImageId:      aws.String("ami-xxx"),
+		InstanceType: aws.String("m1.small"),
+		MinCount:     aws.Int64(1),
+		MaxCount:     aws.Int64(1),
+		SubnetId:     aws.String("subnet-0"),
+	}
+	resp, err := handler.RunInstances(&options)
+	c.Assert(err, check.IsNil)
+	instance := resp.Instances[0]
+	instance.PublicDnsName = aws.String("")
+	params := map[string]string{
+		"network-index": "0",
+	}
+	dnsName, err := ec2iaas.waitForDnsName(handler, aws.StringValue(instance.InstanceId), params)
+	c.Assert(err, check.IsNil)
+	c.Assert(dnsName, check.Matches, `i-\d.internal.invalid`)
 }
 
 func (s *S) TestCreateMachineValidations(c *check.C) {

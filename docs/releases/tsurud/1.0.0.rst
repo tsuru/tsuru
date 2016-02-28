@@ -90,14 +90,17 @@ General improvements
 
 * EC2 IaaS is now feature complete, supporting parameter such as IAM roles,
   extra volumes and multiple network interfaces. Since these parameters are
-  composed of multiple values, users must provide a JSON for using them. For
-  example, with IAM instance profiles and block devices:
+  composed of multiple values, users must provide a JSON for using them. It
+  also supports using private DNS names now, as long as the user specifies the
+  subnet-id and the index of the network interface that they want to use. For
+  example, with IAM instance profiles, block devices and running on a private
+  network:
 
 .. highlight:: bash
 
 ::
 
-    % tsuru-admin docker-node-add iaas=ec2 iaminstanceprofile='{"name":"docker-instances"}' blockdevicemappings='[[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100}}]' ...
+    % tsuru-admin docker-node-add iaas=ec2 'iaminstanceprofile={"name":"docker-instances"}' 'blockdevicemappings=[[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":100}}]' subnetid=subnet-1234 network-index=0 ...
 
 * All long running API handlers for the Docker provisioner now use a keep-alive
   to keep the connection open, properly handling low network timeouts (specially
