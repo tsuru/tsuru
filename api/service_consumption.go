@@ -45,8 +45,9 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		TeamOwner:   body["owner"],
 		Description: body["description"],
 	}
+	var teamOwner string
 	if instance.TeamOwner == "" {
-		teamOwner, err := permission.TeamForPermission(t, permission.PermServiceInstanceCreate)
+		teamOwner, err = permission.TeamForPermission(t, permission.PermServiceInstanceCreate)
 		if err != nil {
 			return err
 		}
