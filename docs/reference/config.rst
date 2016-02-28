@@ -724,6 +724,13 @@ Docker repository namespace to be used for application and platform images. Imag
 will be tagged in docker as <docker:repository-namespace>/<platform-name> and
 <docker:repository-namespace>/<app-name>
 
+docker:max-layers
++++++++++++++++++
+
+The maximum number of layers in Docker images. This number represents the
+number of times that Tsuru will reuse the previous image on application
+deploymet. The default value is 10.
+
 .. _config_bs:
 
 docker:bs:image

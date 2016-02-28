@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -149,6 +149,10 @@ func (s *S) TestUsePlatformImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app4)
 	c.Assert(ok, check.Equals, false)
+	config.Set("docker:max-layers", 19)
+	ok = s.p.usePlatformImage(app4)
+	c.Assert(ok, check.Equals, true)
+	config.Unset("docker:max-layers")
 	app5 := &app.App{
 		Name:           "app5",
 		Platform:       "python",

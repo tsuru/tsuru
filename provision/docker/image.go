@@ -382,8 +382,12 @@ func createImageMetadata(imageName string, processes map[string]string) ImageMet
 }
 
 func (p *dockerProvisioner) usePlatformImage(app provision.App) bool {
+	maxLayers, _ := config.GetUint("docker:max-layers")
+	if maxLayers == 0 {
+		maxLayers = 10
+	}
 	deploys := app.GetDeploys()
-	return deploys%10 == 0 || app.GetUpdatePlatform()
+	return deploys%maxLayers == 0 || app.GetUpdatePlatform()
 }
 
 func (p *dockerProvisioner) cleanImage(appName, imgName string) {
