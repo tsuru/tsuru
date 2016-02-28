@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -42,11 +42,12 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := newDigitalOceanIaas("digitalocean")
 	params := map[string]string{
-		"name":     "example.com",
-		"region":   "nyc3",
-		"size":     "512mb",
-		"image":    "ubuntu-14-04-x64",
-		"ssh_keys": "5050,2032,07:b9:a1:65:1b,13",
+		"name":               "example.com",
+		"region":             "nyc3",
+		"size":               "512mb",
+		"image":              "ubuntu-14-04-x64",
+		"ssh-keys":           "5050,2032,07:b9:a1:65:1b,13",
+		"private-networking": "1",
 	}
 	m, err := do.CreateMachine(params)
 	c.Assert(err, check.IsNil)
@@ -56,6 +57,7 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	c.Assert(m.Status, check.Equals, "active")
 	expectedKeys := []interface{}{float64(5050), float64(2032), "07:b9:a1:65:1b", float64(13)}
 	c.Assert(createRequest["ssh_keys"], check.DeepEquals, expectedKeys)
+	c.Assert(createRequest["private_networking"], check.Equals, true)
 }
 
 func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {

@@ -60,7 +60,7 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 		return nil, err
 	}
 	var sshKeys []godo.DropletCreateSSHKey
-	if rawSSHKeys, ok := params["ssh_keys"]; ok {
+	if rawSSHKeys, ok := params["ssh-keys"]; ok {
 		for _, key := range strings.Split(rawSSHKeys, ",") {
 			if keyID, atoiErr := strconv.Atoi(key); atoiErr == nil {
 				sshKeys = append(sshKeys, godo.DropletCreateSSHKey{ID: keyID})
@@ -69,13 +69,15 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 			}
 		}
 	}
+	privNetworking, _ := strconv.ParseBool(params["private-networking"])
 	createRequest := &godo.DropletCreateRequest{
-		Name:     params["name"],
-		Region:   params["region"],
-		Size:     params["size"],
-		Image:    image,
-		SSHKeys:  sshKeys,
-		UserData: userData,
+		Name:              params["name"],
+		Region:            params["region"],
+		Size:              params["size"],
+		PrivateNetworking: privNetworking,
+		Image:             image,
+		SSHKeys:           sshKeys,
+		UserData:          userData,
 	}
 	droplet, _, err := i.client.Droplets.Create(createRequest)
 	if err != nil {
@@ -152,7 +154,8 @@ func (i *digitalOceanIaas) Describe() string {
 
 There are also some optional parameters:
 
-  ssh_keys=<keys>            Comma separated list of keys. The key can be identified
+  private-networking=1/0     Whether to use private networking in this instance.
+  ssh-keys=<keys>            Comma separated list of keys. The key can be identified
                              by its ID or fingerprint.
 			     (e.g.: ssh_keys=5050,2032,07:b9:a1:65:1b,13 will result in
 		             the key IDs 5050, 2032 and 13, along with the fingerprint
