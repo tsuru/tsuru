@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ import (
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var file multipart.File
+	var fileSize int64
 	var err error
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
 		file, _, err = r.FormFile("file")
@@ -33,6 +35,11 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				Message: err.Error(),
 			}
 		}
+		fileSize, err = file.Seek(0, os.SEEK_END)
+		if err != nil {
+			return fmt.Errorf("unable to find uploaded file size: %s", err)
+		}
+		file.Seek(0, os.SEEK_SET)
 	}
 	archiveURL := r.PostFormValue("archive-url")
 	image := r.PostFormValue("image")
@@ -97,6 +104,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		Commit:       commit,
+		FileSize:     fileSize,
 		File:         file,
 		ArchiveURL:   archiveURL,
 		OutputStream: writer,

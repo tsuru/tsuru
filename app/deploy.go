@@ -126,6 +126,7 @@ type DeployOptions struct {
 	App          *App
 	Commit       string
 	ArchiveURL   string
+	FileSize     int64
 	File         io.ReadCloser
 	OutputStream io.Writer
 	User         string
@@ -184,7 +185,7 @@ func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) 
 	}
 	if opts.File != nil {
 		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
-			return deployer.UploadDeploy(opts.App, opts.File, opts.Build, writer)
+			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, writer)
 		}
 	}
 	return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, writer)

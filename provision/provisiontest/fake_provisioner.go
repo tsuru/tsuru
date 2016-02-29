@@ -517,7 +517,7 @@ func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w 
 	return "app-image", nil
 }
 
-func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, build bool, w io.Writer) (string, error) {
+func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fileSize int64, build bool, w io.Writer) (string, error) {
 	if err := p.getError("UploadDeploy"); err != nil {
 		return "", err
 	}

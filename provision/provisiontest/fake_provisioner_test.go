@@ -456,7 +456,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	_, err := p.UploadDeploy(app, file, false, &buf)
+	_, err := p.UploadDeploy(app, file, 0, false, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Upload deploy called")
 	c.Assert(p.apps[app.GetName()].lastFile, check.Equals, file)
@@ -466,7 +466,7 @@ func (s *S) TestUploadDeployUnknownApp(c *check.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	_, err := p.UploadDeploy(app, nil, false, &buf)
+	_, err := p.UploadDeploy(app, nil, 0, false, &buf)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
@@ -476,7 +476,7 @@ func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("UploadDeploy", err)
-	_, e := p.UploadDeploy(app, nil, false, &buf)
+	_, e := p.UploadDeploy(app, nil, 0, false, &buf)
 	c.Assert(e, check.NotNil)
 	c.Assert(e, check.Equals, err)
 }

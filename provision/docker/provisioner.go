@@ -7,7 +7,6 @@ package docker
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	stderr "errors"
 	"fmt"
 	"io"
@@ -442,31 +441,18 @@ func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, 
 	return imageId, p.deployAndClean(app, imageId, w)
 }
 
-func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, build bool, w io.Writer) (string, error) {
+func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, w io.Writer) (string, error) {
+	if build {
+		return "", stderr.New("running UploadDeploy with build=true is not yet supported")
+	}
 	dirPath := "/home/application/"
 	filePath := fmt.Sprintf("%sarchive.tar.gz", dirPath)
 	user, err := config.GetString("docker:user")
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
 	}
-	var imageName string
-	var buildErr error
 	defer archiveFile.Close()
-	var fileBuf bytes.Buffer
-	_, err = fileBuf.ReadFrom(archiveFile)
-	fileBytes := bytes.NewReader(fileBuf.Bytes())
-	if err != nil {
-		return "", err
-	}
-	if build {
-		imageName, buildErr = p.BuildImageWithDockerfile(app, &fileBuf, w)
-		if buildErr != nil {
-			return "", buildErr
-		}
-	}
-	if imageName == "" {
-		imageName = p.getBuildImage(app)
-	}
+	imageName := p.getBuildImage(app)
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -489,30 +475,40 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if err != nil {
 		return "", err
 	}
-	var buf bytes.Buffer
-	var archiveFileBuf bytes.Buffer
-	tarball := tar.NewWriter(&buf)
+	reader, writer := io.Pipe()
+	tarball := tar.NewWriter(writer)
 	if err != nil {
 		return "", err
 	}
-	n, err := archiveFileBuf.ReadFrom(fileBytes)
-	if err != nil {
-		return "", err
-	}
-	header := tar.Header{
-		Name: "archive.tar.gz",
-		Mode: 0666,
-		Size: n,
-	}
-	tarball.WriteHeader(&header)
-	archiveReader := bytes.NewReader(archiveFileBuf.Bytes())
-	_, err = io.Copy(&buf, archiveReader)
-	if err != nil {
-		return "", err
-	}
-	defer tarball.Close()
+	go func() {
+		header := tar.Header{
+			Name: "archive.tar.gz",
+			Mode: 0666,
+			Size: fileSize,
+		}
+		tarball.WriteHeader(&header)
+		n, tarErr := io.Copy(tarball, archiveFile)
+		if tarErr != nil {
+			log.Errorf("upload-deploy: unable to copy archive to tarball: %s", tarErr.Error())
+			writer.CloseWithError(tarErr)
+			tarball.Close()
+			return
+		}
+		if n != fileSize {
+			tarErr = stderr.New("upload-deploy: short-write copying to tarball")
+			log.Errorf(tarErr.Error())
+			writer.CloseWithError(tarErr)
+			tarball.Close()
+			return
+		}
+		tarErr = tarball.Close()
+		if tarErr != nil {
+			writer.CloseWithError(tarErr)
+		}
+		writer.Close()
+	}()
 	uploadOpts := docker.UploadToContainerOptions{
-		InputStream: &buf,
+		InputStream: reader,
 		Path:        dirPath,
 	}
 	err = cluster.UploadToContainer(cont.ID, uploadOpts)
@@ -529,25 +525,6 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		return "", err
 	}
 	return imageId, p.deployAndClean(app, imageId, w)
-}
-
-func (p *dockerProvisioner) BuildImageWithDockerfile(app provision.App, archiveFile io.Reader, w io.Writer) (string, error) {
-	cluster := p.Cluster()
-	archive, err := gzip.NewReader(archiveFile)
-	if err != nil {
-		return "", err
-	}
-	defer archive.Close()
-	imageName := app.GetName() + randomString()
-	buildOpts := docker.BuildImageOptions{
-		Name:           imageName,
-		NoCache:        true,
-		RmTmpContainer: true,
-		InputStream:    archive,
-		OutputStream:   w,
-	}
-	err = cluster.BuildImage(buildOpts)
-	return imageName, err
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
