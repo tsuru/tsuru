@@ -361,5 +361,18 @@ func (p *FakeDockerProvisioner) findContainer(id string) (container.Container, i
 			}
 		}
 	}
-	return container.Container{}, -1, &docker.NoSuchContainer{ID: id}
+	return container.Container{}, -1, &provision.UnitNotFoundError{ID: id}
+}
+
+func (p *FakeDockerProvisioner) DeleteContainer(id string) {
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	for h := range p.containers {
+		for i := 0; i < len(p.containers[h]); i++ {
+			if p.containers[h][i].ID == id {
+				p.containers[h] = append(p.containers[h][:i], p.containers[h][i+1:]...)
+				i--
+			}
+		}
+	}
 }

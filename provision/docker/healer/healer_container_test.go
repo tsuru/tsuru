@@ -89,6 +89,8 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	delete(queries[0], "lastsuccessstatusupdate")
 	c.Assert(time.Now().UTC().Add(-1*time.Minute).Sub(queryTime) < time.Second, check.Equals, true)
 	c.Assert(queries, check.DeepEquals, []bson.M{{
+		"id":      bson.M{"$ne": ""},
+		"appname": bson.M{"$ne": ""},
 		"$or": []bson.M{
 			{"hostport": bson.M{"$ne": ""}},
 			{"processname": bson.M{"$ne": ""}},
@@ -330,7 +332,6 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 		PullImage: true,
 	})
 	c.Assert(err, check.IsNil)
-
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
@@ -340,14 +341,13 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-5 * time.Minute)
-
 	p.PrepareListResult([]container.Container{containers[0], toMoveCont}, nil)
 	node1.PrepareFailure("createError", "/containers/create")
-
 	healer := NewContainerHealer(ContainerHealerArgs{Provisioner: p, Locker: dockertest.NewFakeLocker()})
-	healer.healContainerIfNeeded(toMoveCont)
-	healer.healContainerIfNeeded(toMoveCont)
-
+	err = healer.healContainerIfNeeded(toMoveCont)
+	c.Assert(err, check.IsNil)
+	err = healer.healContainerIfNeeded(toMoveCont)
+	c.Assert(err, check.IsNil)
 	expected := dockertest.ContainerMoving{
 		ContainerID: toMoveCont.ID,
 		HostFrom:    toMoveCont.HostAddr,
@@ -355,7 +355,6 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	}
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
-
 	healingColl, err := healingCollection()
 	c.Assert(err, check.IsNil)
 	defer healingColl.Close()
@@ -370,6 +369,32 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(events[0].Successful, check.Equals, true)
 	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "127.0.0.1")
+}
+
+func (s *S) TestRunContainerHealerRemovedFromDB(c *check.C) {
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	node1 := p.Servers()[0]
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	_, err = p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 1},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	containers := p.AllContainers()
+	c.Assert(err, check.IsNil)
+	p.DeleteContainer(containers[0].ID)
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	toMoveCont := containers[0]
+	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-5 * time.Minute)
+	p.PrepareListResult([]container.Container{containers[0], toMoveCont}, nil)
+	healer := NewContainerHealer(ContainerHealerArgs{Provisioner: p, Locker: dockertest.NewFakeLocker()})
+	err = healer.healContainerIfNeeded(toMoveCont)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
@@ -524,7 +549,7 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 	defer p.Destroy()
 	healer := NewContainerHealer(ContainerHealerArgs{Provisioner: p, Locker: dockertest.NewFakeLocker()})
 	err = healer.healContainerIfNeeded(toMoveCont)
-	c.Assert(err, check.ErrorMatches, "Containers healing: number of healings for container cont8 in the last 30 minutes exceeds limit of 3: 7")
+	c.Assert(err, check.ErrorMatches, "Containers healing: number of healings for container \"cont8\" in the last 30 minutes exceeds limit of 3: 7")
 	healingColl, err := healingCollection()
 	c.Assert(err, check.IsNil)
 	defer healingColl.Close()

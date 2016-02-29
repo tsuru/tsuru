@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
@@ -219,7 +220,7 @@ func (s *S) TestMoveOneContainerNotFound(c *check.C) {
 	c.Assert(result, check.DeepEquals, container.Container{})
 	err = <-errors
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*docker.NoSuchContainer)
+	e, ok := err.(*provision.UnitNotFoundError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.ID, check.Equals, cont.ID)
 }
