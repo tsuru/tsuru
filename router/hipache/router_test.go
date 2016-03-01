@@ -48,6 +48,12 @@ func init() {
 	check.Suite(suite)
 }
 
+func clearConnCache() {
+	redisClientsMut.Lock()
+	defer redisClientsMut.Unlock()
+	redisClients = map[string]redis.Client{}
+}
+
 func clearRedisKeys(keysPattern string, conn redis.Client, c *check.C) {
 	keys, err := conn.Keys(keysPattern).Result()
 	c.Assert(err, check.IsNil)

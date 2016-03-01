@@ -43,12 +43,6 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	return &hipacheRouter{prefix: configPrefix}, nil
 }
 
-func clearConnCache() {
-	redisClientsMut.Lock()
-	defer redisClientsMut.Unlock()
-	redisClients = map[string]tsuruRedis.Client{}
-}
-
 func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 	redisClientsMut.RLock()
 	client := redisClients[r.prefix]
