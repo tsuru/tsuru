@@ -301,7 +301,7 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 	if err != nil {
 		return stderr.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
-	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
+	err = runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
 		err := c.Start(&container.StartArgs{
 			Provisioner: p,
 			App:         app,
@@ -315,6 +315,8 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		}
 		return nil
 	}, nil, true)
+	routesRebuildOrEnqueue(app.GetName())
+	return err
 }
 
 func (p *dockerProvisioner) Stop(app provision.App, process string) error {
