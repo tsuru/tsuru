@@ -51,6 +51,9 @@ func init() {
 func clearConnCache() {
 	redisClientsMut.Lock()
 	defer redisClientsMut.Unlock()
+	for _, c := range redisClients {
+		c.Close()
+	}
 	redisClients = map[string]redis.Client{}
 }
 

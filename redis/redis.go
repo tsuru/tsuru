@@ -32,6 +32,7 @@ type baseClient interface {
 	Select(index int64) *redis.StatusCmd
 	Keys(pattern string) *redis.StringSliceCmd
 	LLen(key string) *redis.IntCmd
+	Close() error
 }
 
 type Client interface {
@@ -47,7 +48,6 @@ type PubSubClient interface {
 
 type Pipeline interface {
 	baseClient
-	Close() error
 	Exec() ([]redis.Cmder, error)
 }
 
