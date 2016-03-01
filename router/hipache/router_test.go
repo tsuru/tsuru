@@ -6,6 +6,7 @@ package hipache
 
 import (
 	"net/url"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -62,6 +63,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	clearConnCache()
 	config.Set("hipache:redis-server", "127.0.0.1:6379")
 	var err error
 	s.conn, err = db.Conn()
@@ -107,27 +109,41 @@ func (s *S) TestConnect(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestConnectCachesConnectionAcrossInstances(c *check.C) {
+	rtest := hipacheRouter{prefix: "hipache"}
+	got1, err := rtest.connect()
+	c.Assert(err, check.IsNil)
+	c.Assert(got1, check.NotNil)
+	got2, err := rtest.connect()
+	c.Assert(err, check.IsNil)
+	c.Assert(got2, check.NotNil)
+	rtest = hipacheRouter{prefix: "hipache"}
+	got3, err := rtest.connect()
+	c.Assert(err, check.IsNil)
+	c.Assert(got3, check.NotNil)
+	rtest = hipacheRouter{prefix: "hipache2"}
+	other, err := rtest.connect()
+	c.Assert(err, check.IsNil)
+	c.Assert(other, check.NotNil)
+	c.Assert(reflect.ValueOf(got1).Pointer(), check.Equals, reflect.ValueOf(got2).Pointer())
+	c.Assert(reflect.ValueOf(got1).Pointer(), check.Equals, reflect.ValueOf(got3).Pointer())
+	c.Assert(reflect.ValueOf(got1).Pointer(), check.Not(check.Equals), reflect.ValueOf(other).Pointer())
+}
+
 func (s *S) TestConnectWithPassword(c *check.C) {
 	config.Set("hipache:redis-password", "123456")
 	defer config.Unset("hipache:redis-password")
+	clearConnCache()
 	rtest := hipacheRouter{prefix: "hipache"}
 	got, err := rtest.connect()
 	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
 	c.Assert(got, check.IsNil)
 }
 
-func (s *S) TestConnectWhenPoolIsNil(c *check.C) {
-	rtest := hipacheRouter{prefix: "hipache"}
-	got, err := rtest.connect()
-	c.Assert(err, check.IsNil)
-	err = got.Ping().Err()
-	c.Assert(err, check.IsNil)
-	c.Assert(rtest.client, check.NotNil)
-}
-
 func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *check.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
+	clearConnCache()
 	rtest := hipacheRouter{prefix: "hipache"}
 	got, err := rtest.connect()
 	c.Assert(err, check.NotNil)
@@ -251,6 +267,7 @@ func (s *S) TestAddRouteConnectFailure(c *check.C) {
 	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
+	clearConnCache()
 	r2 := hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://www.tsuru.io")
 	err = r2.AddRoute("tip", addr)
@@ -327,6 +344,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *check.C) {
 	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
+	clearConnCache()
 	r2 := hipacheRouter{prefix: "hipache"}
 	addr, _ := url.Parse("http://tip.golang.org")
 	err = r2.RemoveRoute("tip", addr)
@@ -580,6 +598,7 @@ func (s *S) TestAddrConnectFailure(c *check.C) {
 	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
+	clearConnCache()
 	r2 := hipacheRouter{prefix: "hipache"}
 	addr, err := r2.Addr("tip")
 	c.Assert(addr, check.Equals, "")

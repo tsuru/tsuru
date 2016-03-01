@@ -29,6 +29,11 @@ import (
 
 const routerName = "hipache"
 
+var (
+	redisClients    = map[string]tsuruRedis.Client{}
+	redisClientsMut sync.RWMutex
+)
+
 func init() {
 	router.Register(routerName, createRouter)
 	hc.AddChecker("Router Hipache", router.BuildHealthCheck("hipache"))
@@ -38,14 +43,23 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	return &hipacheRouter{prefix: configPrefix}, nil
 }
 
+func clearConnCache() {
+	redisClientsMut.Lock()
+	defer redisClientsMut.Unlock()
+	redisClients = map[string]tsuruRedis.Client{}
+}
+
 func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
-	r.RLock()
-	if r.client == nil {
-		r.RUnlock()
-		r.Lock()
-		defer r.Unlock()
-		if r.client == nil {
-			client, err := tsuruRedis.NewRedisDefaultConfig(r.prefix, &tsuruRedis.CommonConfig{
+	redisClientsMut.RLock()
+	client := redisClients[r.prefix]
+	if client == nil {
+		redisClientsMut.RUnlock()
+		redisClientsMut.Lock()
+		defer redisClientsMut.Unlock()
+		client = redisClients[r.prefix]
+		if client == nil {
+			var err error
+			client, err = tsuruRedis.NewRedisDefaultConfig(r.prefix, &tsuruRedis.CommonConfig{
 				PoolSize:     1000,
 				PoolTimeout:  2 * time.Second,
 				IdleTimeout:  2 * time.Minute,
@@ -58,18 +72,16 @@ func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 			if err != nil {
 				return nil, err
 			}
-			r.client = client
+			redisClients[r.prefix] = client
 		}
 	} else {
-		r.RUnlock()
+		redisClientsMut.RUnlock()
 	}
-	return r.client, nil
+	return client, nil
 }
 
 type hipacheRouter struct {
-	sync.RWMutex
 	prefix string
-	client tsuruRedis.Client
 }
 
 func (r *hipacheRouter) AddBackend(name string) error {
