@@ -79,7 +79,7 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam"}
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
 	c.Assert(err, check.IsNil)
@@ -91,9 +91,10 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
-		"name": {"my-redis"},
-		"user": {"my@user"},
-		"team": {"theteam"},
+		"name":        {"my-redis"},
+		"user":        {"my@user"},
+		"team":        {"theteam"},
+		"description": {"xyz"},
 	})
 	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", check.Equals, h.request.Header.Get("Accept"))

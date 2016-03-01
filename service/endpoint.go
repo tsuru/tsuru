@@ -86,6 +86,9 @@ func (c *Client) Create(instance *ServiceInstance, user string) error {
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
 	}
+	if instance.Description != "" {
+		params["description"] = []string{instance.Description}
+	}
 	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
