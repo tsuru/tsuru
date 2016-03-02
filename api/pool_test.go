@@ -100,7 +100,10 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
+	defaultPools, err := provision.ListPools(bson.M{"default": true})
+	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
+		defaultPools[0],
 		{Name: "pool1", Public: true, Teams: []string{}},
 	}
 	token := userWithPermission(c, permission.Permission{
@@ -137,7 +140,10 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("nopool")
+	defaultPools, err := provision.ListPools(bson.M{"default": true})
+	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
+		defaultPools[0],
 		{Name: "pool1", Teams: []string{"angra"}},
 	}
 	req, err := http.NewRequest("GET", "/pool", nil)
@@ -159,7 +165,9 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	expected := []provision.Pool{}
+	defaultPools, err := provision.ListPools(bson.M{"default": true})
+	c.Assert(err, check.IsNil)
+	expected := []provision.Pool{defaultPools[0]}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
