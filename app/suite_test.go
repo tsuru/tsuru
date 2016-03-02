@@ -79,7 +79,7 @@ func customUserWithPermission(c *check.C, baseName string, perm ...permission.Pe
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	for _, p := range perm {
-		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType))
+		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType), "")
 		c.Assert(err, check.IsNil)
 		name := p.Scheme.FullName()
 		if name == "" {

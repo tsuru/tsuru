@@ -63,7 +63,7 @@ func createToken(c *check.C) auth.Token {
 func createTokenForUser(user *auth.User, c *check.C) auth.Token {
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("provisioner-docker", string(permission.CtxGlobal))
+	role, err := permission.NewRole("provisioner-docker", string(permission.CtxGlobal), "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("*")
 	c.Assert(err, check.IsNil)
@@ -1242,7 +1242,7 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestBsConfigGetFilteringPools(c *check.C) {
-	role, err := permission.NewRole("bs-config-get", string(permission.CtxPool))
+	role, err := permission.NewRole("bs-config-get", string(permission.CtxPool), "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions(permission.PermNodeBs.FullName())
 	c.Assert(err, check.IsNil)

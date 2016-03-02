@@ -22,7 +22,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleCreate) {
 		return permission.ErrUnauthorized
 	}
-	_, err := permission.NewRole(r.FormValue("name"), r.FormValue("context"))
+	_, err := permission.NewRole(r.FormValue("name"), r.FormValue("context"), r.FormValue("description"))
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 	}

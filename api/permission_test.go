@@ -57,7 +57,7 @@ func (s *S) TestAddRoleUnauthorized(c *check.C) {
 
 func (s *S) TestRemoveRole(c *check.C) {
 	s.conn.Roles().DropCollection()
-	_, err := permission.NewRole("test", "app")
+	_, err := permission.NewRole("test", "app", "")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/roles/test", nil)
 	c.Assert(err, check.IsNil)
@@ -84,7 +84,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 }
 
 func (s *S) TestRemoveRoleUnauthorized(c *check.C) {
-	_, err := permission.NewRole("test", "app")
+	_, err := permission.NewRole("test", "app", "")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("DELETE", "/roles/test", nil)
 	c.Assert(err, check.IsNil)
@@ -132,7 +132,7 @@ func (s *S) TestRoleInfo(c *check.C) {
 }
 
 func (s *S) TestAddPermissionsToARole(c *check.C) {
-	_, err := permission.NewRole("test", "team")
+	_, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	b := bytes.NewBufferString(`permission=app.update&permission=app.deploy`)
@@ -154,7 +154,7 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 }
 
 func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
-	_, err := permission.NewRole("test", "team")
+	_, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "userWithRole@groundcontrol.com", Password: "123456"}
 	_, err = nativeScheme.Create(user)
@@ -186,7 +186,7 @@ func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
 }
 
 func (s *S) TestRemovePermissionsFromRole(c *check.C) {
-	r, err := permission.NewRole("test", "team")
+	r, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	defer permission.DestroyRole(r.Name)
 	err = r.AddPermissions("app.update")
@@ -209,7 +209,7 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 }
 
 func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
-	r, err := permission.NewRole("test", "team")
+	r, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	defer permission.DestroyRole(r.Name)
 	err = r.AddPermissions("app.deploy")
@@ -244,7 +244,7 @@ func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
 }
 
 func (s *S) TestAssignRole(c *check.C) {
-	role, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
@@ -272,7 +272,7 @@ func (s *S) TestAssignRole(c *check.C) {
 }
 
 func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
-	role, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
@@ -301,7 +301,7 @@ func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 }
 
 func (s *S) TestDissociateRole(c *check.C) {
-	role, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
@@ -333,7 +333,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 }
 
 func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
-	role, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
@@ -366,7 +366,7 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 }
 
 func (s *S) TestListPermissions(c *check.C) {
-	role, err := permission.NewRole("test", "app")
+	role, err := permission.NewRole("test", "app", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app")
 	c.Assert(err, check.IsNil)
@@ -392,11 +392,11 @@ func (s *S) TestListPermissions(c *check.C) {
 }
 
 func (s *S) TestAddDefaultRole(c *check.C) {
-	_, err := permission.NewRole("r1", "team")
+	_, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
-	_, err = permission.NewRole("r2", "team")
+	_, err = permission.NewRole("r2", "team", "")
 	c.Assert(err, check.IsNil)
-	_, err = permission.NewRole("r3", "global")
+	_, err = permission.NewRole("r3", "global", "")
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	body := bytes.NewBufferString("team-create=r1&team-create=r2&user-create=r3")
@@ -423,7 +423,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 }
 
 func (s *S) TestAddDefaultRoleIncompatibleContext(c *check.C) {
-	_, err := permission.NewRole("r1", "team")
+	_, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	body := bytes.NewBufferString("user-create=r1")
@@ -459,7 +459,7 @@ func (s *S) TestAddDefaultRoleInvalidRole(c *check.C) {
 }
 
 func (s *S) TestRemoveDefaultRole(c *check.C) {
-	r1, err := permission.NewRole("r1", "team")
+	r1, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddEvent(permission.RoleEventTeamCreate.String())
 	c.Assert(err, check.IsNil)
@@ -484,7 +484,7 @@ func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)

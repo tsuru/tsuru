@@ -91,7 +91,7 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	user2 := auth.User{Email: "user2@company.com"}
 	err = conn.Users().Insert(user1, user2)
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("deployRole", string(permission.CtxTeam))
+	role, err := permission.NewRole("deployRole", string(permission.CtxTeam), "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.deploy")
 	c.Assert(err, check.IsNil)

@@ -280,9 +280,9 @@ func (l roleInstanceList) Less(i, j int) bool {
 }
 
 func (s *S) TestUserAddRole(c *check.C) {
-	_, err := permission.NewRole("r1", "app")
+	_, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
-	_, err = permission.NewRole("r2", "app")
+	_, err = permission.NewRole("r2", "app", "")
 	c.Assert(err, check.IsNil)
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err = u.Create()
@@ -373,7 +373,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.IsNil)
-	r1, err := permission.NewRole("r1", "app")
+	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -392,7 +392,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 }
 
 func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
-	role, err := permission.NewRole("test", "team")
+	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err = u.Create()
@@ -407,7 +407,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.IsNil)
-	r1, err := permission.NewRole("r1", "app")
+	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -432,7 +432,7 @@ func (s *S) TestListUsersWithPermissions(c *check.C) {
 	u2 := User{Email: "me2@tsuru.com", Password: "123"}
 	err = u2.Create()
 	c.Assert(err, check.IsNil)
-	r1, err := permission.NewRole("r1", "app")
+	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.update.env", "app.deploy")
 	c.Assert(err, check.IsNil)
@@ -457,7 +457,7 @@ func (s *S) TestListUsersWithPermissions(c *check.C) {
 }
 
 func (s *S) TestAddRolesForEvent(c *check.C) {
-	r1, err := permission.NewRole("r1", "team")
+	r1, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddEvent(permission.RoleEventTeamCreate.String())
 	c.Assert(err, check.IsNil)

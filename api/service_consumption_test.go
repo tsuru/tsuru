@@ -179,7 +179,7 @@ func (s *ConsumptionSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 		Scheme:  permission.PermServiceInstance,
 		Context: permission.Context(permission.CtxTeam, "anotherTeam"),
 	}
-	role, err := permission.NewRole("instance-user", string(p.Context.CtxType))
+	role, err := permission.NewRole("instance-user", string(p.Context.CtxType), "")
 	c.Assert(err, check.IsNil)
 	defer auth.RemoveRoleFromAllUsers("instance-user")
 	err = role.AddPermissions(p.Scheme.FullName())

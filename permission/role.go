@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -60,11 +60,12 @@ func (e *RoleEvent) String() string {
 type Role struct {
 	Name        string      `bson:"_id" json:"name"`
 	ContextType contextType `json:"context"`
-	SchemeNames []string    `json:"scheme_names,omitempty"`
-	Events      []string    `json:"events,omitempty"`
+	Description string
+	SchemeNames []string `json:"scheme_names,omitempty"`
+	Events      []string `json:"events,omitempty"`
 }
 
-func NewRole(name string, ctx string) (Role, error) {
+func NewRole(name string, ctx string, description string) (Role, error) {
 	ctxType, err := parseContext(ctx)
 	if err != nil {
 		return Role{}, err
@@ -78,7 +79,7 @@ func NewRole(name string, ctx string) (Role, error) {
 		return Role{}, err
 	}
 	defer coll.Close()
-	role := Role{Name: name, ContextType: ctxType}
+	role := Role{Name: name, ContextType: ctxType, Description: description}
 	err = coll.Insert(role)
 	if mgo.IsDup(err) {
 		return Role{}, ErrRoleAlreadyExists

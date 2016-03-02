@@ -1700,7 +1700,7 @@ func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	token := userWithPermission(c)
-	r, err := permission.NewRole("myrole", "team")
+	r, err := permission.NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("app.create", "app.deploy")
 	c.Assert(err, check.IsNil)

@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -74,7 +74,7 @@ func addSuperRole(u *auth.User) error {
 	defaultRoleName := "AllowAll"
 	r, err := permission.FindRole(defaultRoleName)
 	if err != nil {
-		r, err = permission.NewRole(defaultRoleName, string(permission.CtxGlobal))
+		r, err = permission.NewRole(defaultRoleName, string(permission.CtxGlobal), "")
 		if err != nil {
 			return err
 		}
