@@ -107,7 +107,7 @@ func (s *S) TestListRoles(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
-	expected := `[{"name":"majortomrole.update","context":"global","scheme_names":["role.update"]}]`
+	expected := `[{"name":"majortomrole.update","context":"global","Description":"","scheme_names":["role.update"]}]`
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
@@ -124,7 +124,7 @@ func (s *S) TestRoleInfo(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
-	expected := `{"name":"majortomrole.update","context":"global","scheme_names":["role.update"]}`
+	expected := `{"name":"majortomrole.update","context":"global","Description":"","scheme_names":["role.update"]}`
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
