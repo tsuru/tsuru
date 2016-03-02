@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,20 +11,20 @@ import (
 )
 
 func (s *S) TestNewRole(c *check.C) {
-	r, err := NewRole("myrole", "app")
+	r, err := NewRole("myrole", "app", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Name, check.Equals, "myrole")
 	c.Assert(r.ContextType, check.Equals, CtxApp)
-	_, err = NewRole("myrole", "global")
+	_, err = NewRole("myrole", "global", "")
 	c.Assert(err, check.Equals, ErrRoleAlreadyExists)
-	_, err = NewRole("  ", "app")
+	_, err = NewRole("  ", "app", "")
 	c.Assert(err, check.ErrorMatches, `invalid role name ""`)
-	_, err = NewRole("myrole2", "invalid")
+	_, err = NewRole("myrole2", "invalid", "")
 	c.Assert(err, check.ErrorMatches, `invalid context type "invalid"`)
 }
 
 func (s *S) TestListRoles(c *check.C) {
-	r, err := NewRole("test", "app")
+	r, err := NewRole("test", "app", "")
 	c.Assert(err, check.IsNil)
 	roles, err := ListRoles()
 	c.Assert(err, check.IsNil)
@@ -46,7 +46,7 @@ func (s *S) TestListRoles(c *check.C) {
 }
 
 func (s *S) TestFindRole(c *check.C) {
-	_, err := NewRole("myrole", "team")
+	_, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	r, err := FindRole("myrole")
 	c.Assert(err, check.IsNil)
@@ -57,7 +57,7 @@ func (s *S) TestFindRole(c *check.C) {
 }
 
 func (s *S) TestRoleAddPermissions(c *check.C) {
-	r, err := NewRole("myrole", "team")
+	r, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
@@ -74,7 +74,7 @@ func (s *S) TestRoleAddPermissions(c *check.C) {
 }
 
 func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
-	r, err := NewRole("myrole", "global")
+	r, err := NewRole("myrole", "global", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("")
 	c.Assert(err, check.ErrorMatches, "empty permission name")
@@ -92,7 +92,7 @@ func (s *S) TestRoleGlobalAddPermissions(c *check.C) {
 }
 
 func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {
-	r, err := NewRole("myrole", "team")
+	r, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("app.update.env.set.nih")
 	c.Assert(err, check.ErrorMatches, `permission named "app.update.env.set.nih" not found`)
@@ -101,7 +101,7 @@ func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {
 }
 
 func (s *S) TestRemovePermissions(c *check.C) {
-	r, err := NewRole("myrole", "team")
+	r, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("app.update", "app.update.env.set")
 	c.Assert(err, check.IsNil)
@@ -115,7 +115,7 @@ func (s *S) TestRemovePermissions(c *check.C) {
 }
 
 func (s *S) TestDestroyRole(c *check.C) {
-	_, err := NewRole("myrole", "team")
+	_, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = DestroyRole("myrole")
 	c.Assert(err, check.IsNil)
@@ -124,7 +124,7 @@ func (s *S) TestDestroyRole(c *check.C) {
 }
 
 func (s *S) TestPermissionsFor(c *check.C) {
-	r, err := NewRole("myrole", "team")
+	r, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	perms := r.PermissionsFor("something")
 	c.Assert(perms, check.DeepEquals, []Permission{})
@@ -142,7 +142,7 @@ func (s *S) TestPermissionsFor(c *check.C) {
 }
 
 func (s *S) TestRoleAddEvent(c *check.C) {
-	r, err := NewRole("myrole", "team")
+	r, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddEvent("team-create")
 	c.Assert(err, check.IsNil)
@@ -156,7 +156,7 @@ func (s *S) TestRoleAddEvent(c *check.C) {
 }
 
 func (s *S) TestRoleRemoveEvent(c *check.C) {
-	r, err := NewRole("myrole", "team")
+	r, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r.AddEvent("team-create")
 	c.Assert(err, check.IsNil)
@@ -171,11 +171,11 @@ func (s *S) TestRoleRemoveEvent(c *check.C) {
 }
 
 func (s *S) TestListRolesWithEvents(c *check.C) {
-	_, err := NewRole("myrole1", "team")
+	_, err := NewRole("myrole1", "team", "")
 	c.Assert(err, check.IsNil)
-	r2, err := NewRole("myrole2", "team")
+	r2, err := NewRole("myrole2", "team", "")
 	c.Assert(err, check.IsNil)
-	r3, err := NewRole("myrole3", "team")
+	r3, err := NewRole("myrole3", "team", "")
 	c.Assert(err, check.IsNil)
 	err = r2.AddEvent("team-create")
 	c.Assert(err, check.IsNil)
@@ -192,11 +192,11 @@ func (s *S) TestListRolesWithEvents(c *check.C) {
 }
 
 func (s *S) TestListRolesForEvent(c *check.C) {
-	_, err := NewRole("myrole1", "team")
+	_, err := NewRole("myrole1", "team", "")
 	c.Assert(err, check.IsNil)
-	r2, err := NewRole("myrole2", "team")
+	r2, err := NewRole("myrole2", "team", "")
 	c.Assert(err, check.IsNil)
-	r3, err := NewRole("myrole3", "global")
+	r3, err := NewRole("myrole3", "global", "")
 	c.Assert(err, check.IsNil)
 	err = r2.AddEvent("team-create")
 	c.Assert(err, check.IsNil)
