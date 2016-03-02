@@ -710,7 +710,7 @@ func (s *S) TestSetUnitStatusNotFound(c *check.C) {
 	c.Assert(e.ID, check.Equals, "someunit")
 }
 
-func (s *S) TestUpdateUnitsStatus(c *check.C) {
+func (s *S) TestUpdateNodeStatus(c *check.C) {
 	a := App{Name: "lapname", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
@@ -723,7 +723,7 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 		{ID: units[2].ID, Status: provision.Status("error")},
 		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
 	}
-	result, err := UpdateUnitsStatus(unitStates)
+	result, err := UpdateNodeStatus(UpdateNodeData{Units: unitStates})
 	c.Assert(err, check.IsNil)
 	expected := []UpdateUnitsResult{
 		{ID: units[0].ID, Found: true},

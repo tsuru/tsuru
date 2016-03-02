@@ -539,6 +539,25 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if t.GetAppName() != app.InternalAppName {
+		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
+	}
+	defer r.Body.Close()
+	var hostInput app.UpdateNodeData
+	err := json.NewDecoder(r.Body).Decode(&hostInput)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	result, err := app.UpdateNodeStatus(hostInput)
+	if err != nil {
+		return err
+	}
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(result)
+}
+
 func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if t.GetAppName() != app.InternalAppName {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
@@ -549,7 +568,7 @@ func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	result, err := app.UpdateUnitsStatus(input)
+	result, err := app.UpdateNodeStatus(app.UpdateNodeData{Units: input})
 	if err != nil {
 		return err
 	}

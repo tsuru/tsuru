@@ -537,6 +537,17 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 	return &provision.UnitNotFoundError{ID: unitName}
 }
 
+type UpdateNodeData struct {
+	Units  []UpdateUnitsData
+	Checks []HostCheckResult
+}
+
+type HostCheckResult struct {
+	Name       string
+	Err        string
+	Successful bool
+}
+
 type UpdateUnitsData struct {
 	ID     string
 	Name   string
@@ -548,11 +559,11 @@ type UpdateUnitsResult struct {
 	Found bool
 }
 
-// UpdateUnitsStatus updates the status of the given units, returning a map
-// which units were found during the update.
-func UpdateUnitsStatus(units []UpdateUnitsData) ([]UpdateUnitsResult, error) {
-	result := make([]UpdateUnitsResult, len(units))
-	for i, unitData := range units {
+// UpdateNodeStatus updates the status of the given node and its units,
+// returning a map which units were found during the update.
+func UpdateNodeStatus(node UpdateNodeData) ([]UpdateUnitsResult, error) {
+	result := make([]UpdateUnitsResult, len(node.Units))
+	for i, unitData := range node.Units {
 		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
 		err := Provisioner.SetUnitStatus(unit, unitData.Status)
 		_, ok := err.(*provision.UnitNotFoundError)
@@ -561,6 +572,7 @@ func UpdateUnitsStatus(units []UpdateUnitsData) ([]UpdateUnitsResult, error) {
 			return nil, err
 		}
 	}
+	// TODO(cezarsa): do something about node.Checks
 	return result, nil
 }
 

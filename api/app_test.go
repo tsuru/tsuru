@@ -1662,6 +1662,82 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	c.Assert(unit.Status, check.Equals, provision.StatusError)
 }
 
+func (s *S) TestSetNodeStatus(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	status := []string{"started", "error", "stopped"}
+	payload := fmt.Sprintf(`{
+		"units": [
+			{"ID": %q, "Status": "started"},
+			{"ID": %q, "Status": "error"},
+			{"ID": %q, "Status": "stopped"},
+			{"ID": "not-found1", "Status": "error"},
+			{"ID": "not-found2", "Status": "started"}
+		],
+		"checks": []
+	}`, units[0].ID, units[1].ID, units[2].ID)
+	body := strings.NewReader(payload)
+	request, err := http.NewRequest("POST", "/node/status", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	for i, unit := range units {
+		c.Check(unit.Status, check.Equals, provision.Status(status[i]))
+	}
+	var got updateList
+	expected := updateList([]app.UpdateUnitsResult{
+		{ID: units[0].ID, Found: true},
+		{ID: units[1].ID, Found: true},
+		{ID: units[2].ID, Found: true},
+		{ID: "not-found1", Found: false},
+		{ID: "not-found2", Found: false},
+	})
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	sort.Sort(&got)
+	sort.Sort(&expected)
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *S) TestSetNodeStatusNonInternalToken(c *check.C) {
+	body := bytes.NewBufferString("{{{-")
+	request, err := http.NewRequest("POST", "/node/status", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestSetNodeStatusInvalidBody(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	body := bytes.NewBufferString("{{{-")
+	request, err := http.NewRequest("POST", "/node/status", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestSetUnitsStatus(c *check.C) {
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
