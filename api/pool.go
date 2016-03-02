@@ -36,23 +36,26 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		teams = append(teams, c.Value)
 	}
-	var filter bson.M
-	if teams != nil {
-		filter = bson.M{"teams": bson.M{"$in": teams}}
+	queries := []bson.M{{"public": true}}
+	if teams == nil {
+		filter := bson.M{"default": false, "public": false}
+		queries = append(queries, filter)
 	}
-	pools, err := provision.ListPools(filter)
-	if err != nil {
-		return err
+	if teams != nil && len(teams) > 0 {
+		filter := bson.M{
+			"default": false,
+			"public":  false,
+			"teams":   bson.M{"$in": teams},
+		}
+		queries = append(queries, filter)
 	}
 	allowedDefault := permission.Check(t, permission.PermPoolUpdate)
 	if allowedDefault {
-		defaultPools, err := provision.ListPools(bson.M{"default": true})
-		if err != nil {
-			return err
-		}
-		if len(defaultPools) > 0 {
-			pools = append(pools, defaultPools[0])
-		}
+		queries = append(queries, bson.M{"default": true})
+	}
+	pools, err := provision.ListPools(bson.M{"$or": queries})
+	if err != nil {
+		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(pools)

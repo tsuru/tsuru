@@ -94,6 +94,30 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	c.Assert(p[0].Teams, check.DeepEquals, []string{})
 }
 
+func (s *S) TestPoolListPublicPool(c *check.C) {
+	pool := provision.Pool{Name: "pool1", Public: true}
+	opts := provision.AddPoolOptions{Name: pool.Name, Public: pool.Public}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(pool.Name)
+	expected := []provision.Pool{
+		{Name: "pool1", Public: true, Teams: []string{}},
+	}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermTeamCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req, err := http.NewRequest("GET", "/pool", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = poolList(rec, req, token)
+	c.Assert(err, check.IsNil)
+	var pools []provision.Pool
+	err = json.NewDecoder(rec.Body).Decode(&pools)
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.DeepEquals, expected)
+}
+
 func (s *S) TestPoolListHandler(c *check.C) {
 	team := auth.Team{Name: "angra"}
 	err := s.conn.Teams().Insert(team)
@@ -154,7 +178,7 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	perms := []permission.Permission{
 		{
 			Scheme:  permission.PermAppCreate,
-			Context: permission.Context(permission.CtxTeam, "angra"),
+			Context: permission.Context(permission.CtxGlobal, ""),
 		},
 		{
 			Scheme:  permission.PermPoolUpdate,
@@ -169,9 +193,6 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	test1, err := provision.ListPools(bson.M{"default": true})
-	c.Assert(err, check.IsNil)
-	expected := []provision.Pool{pool, test1[0]}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
@@ -180,7 +201,9 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	var pools []provision.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, expected)
+	c.Assert(pools, check.HasLen, 2)
+	c.Assert(pools[0].Name, check.Equals, "test1")
+	c.Assert(pools[1].Name, check.Equals, "pool1")
 }
 
 func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
