@@ -36,10 +36,10 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		teams = append(teams, c.Value)
 	}
-	queries := []bson.M{{"public": true}}
+	query := []bson.M{{"public": true}}
 	if teams == nil {
 		filter := bson.M{"default": false, "public": false}
-		queries = append(queries, filter)
+		query = append(query, filter)
 	}
 	if teams != nil && len(teams) > 0 {
 		filter := bson.M{
@@ -47,13 +47,13 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			"public":  false,
 			"teams":   bson.M{"$in": teams},
 		}
-		queries = append(queries, filter)
+		query = append(query, filter)
 	}
 	allowedDefault := permission.Check(t, permission.PermPoolUpdate)
 	if allowedDefault {
-		queries = append(queries, bson.M{"default": true})
+		query = append(query, bson.M{"default": true})
 	}
-	pools, err := provision.ListPools(bson.M{"$or": queries})
+	pools, err := provision.ListPools(bson.M{"$or": query})
 	if err != nil {
 		return err
 	}
