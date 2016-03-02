@@ -37,8 +37,8 @@ _tsurud_dry:
 
 test: _go_test _tsurud_dry
 
-_install_deadcode: git
-	go get $(GO_EXTRAFLAGS) github.com/reillywatson/go-misc/deadcode
+_install_deadcode:
+	go get $(GO_EXTRAFLAGS) github.com/remyoudompheng/go-misc/deadcode
 
 deadcode: _install_deadcode
 	@go list ./... | sed -e 's;github.com/tsuru/tsuru/;;' | grep -v vendor/ | xargs deadcode
