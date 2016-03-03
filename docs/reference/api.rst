@@ -190,21 +190,6 @@ Example:
     Content-Length: 142
     [{"Date":"2014-09-26T00:26:30.036Z","Message":"Booting worker with pid: 53","Source":"web","AppName":"tsuru-dashboard","Unit":"83535b503c96"}]
 
-List available pools
-********************
-
-    * Method: GET
-    * Endpoint: /pools
-
-Returns 200 in case of success.
-
-Example:
-
-::
-
-    GET /pools
-    [{"Team":"team1","Pools":["pool1","pool2"]},{"Team":"team2","Pools":["pool3"]}]
-
 Change the pool of an app
 *************************
 
@@ -941,7 +926,26 @@ Example:
     {"ID":"54ff355c283dbed9868f01fb","App":"tsuru-dashboard","Timestamp":"2015-03-10T15:18:04.301-03:00","Duration":20413970850,"Commit":"","Error":"","Image":"192.168.50.4:3030/tsuru/app-tsuru-dashboard:v2","Log":"[deploy log]","Origin":"app-deploy","CanRollback":false,"RemoveDate":"0001-01-01T00:00:00Z"}
 
 
-1.10 Metadata
+1.10 Pools
+----------
+
+List pools
+**********
+
+    * Method: GET
+    * Endpoint: /pools
+
+Returns 200 in case of success.
+Returns 204 if list is empty.
+
+Example:
+
+::
+
+    GET /pools
+    [{"Team":"team1","Pools":["pool1","pool2"]},{"Team":"team2","Pools":["pool3"]}]
+
+1.11 Metadata
 -------------
 
 Info about Tsuru API

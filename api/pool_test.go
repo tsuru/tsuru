@@ -19,7 +19,7 @@ import (
 
 func (s *S) TestAddPoolNameIsRequired(c *check.C) {
 	b := bytes.NewBufferString(`{"name": ""}`)
-	request, err := http.NewRequest("POST", "/pool", b)
+	request, err := http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -31,7 +31,7 @@ func (s *S) TestAddPoolNameIsRequired(c *check.C) {
 
 func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 	b := bytes.NewBufferString(`{"name": "pool1", "default": true}`)
-	req, err := http.NewRequest("POST", "/pool", b)
+	req, err := http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -44,7 +44,7 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 
 func (s *S) TestAddPool(c *check.C) {
 	b := bytes.NewBufferString(`{"name": "pool1"}`)
-	req, err := http.NewRequest("POST", "/pool", b)
+	req, err := http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -57,7 +57,7 @@ func (s *S) TestAddPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)
 	b = bytes.NewBufferString(`{"name": "pool2", "public": true}`)
-	req, err = http.NewRequest("POST", "/pool", b)
+	req, err = http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec = httptest.NewRecorder()
@@ -75,7 +75,7 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("DELETE", "/pool/pool1", nil)
+	req, err := http.NewRequest("DELETE", "/pools/pool1", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -95,7 +95,7 @@ func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
-	req, err := http.NewRequest("POST", "/pool/pool1/team?:name=pool1", b)
+	req, err := http.NewRequest("POST", "/pools/pool1/team?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addTeamToPoolHandler(rec, req, s.token)
@@ -114,7 +114,7 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
-	req, err := http.NewRequest("DELETE", "/pool/pool1/team?:name=pool1", b)
+	req, err := http.NewRequest("DELETE", "/pools/pool1/team?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeTeamToPoolHandler(rec, req, s.token)
@@ -140,7 +140,7 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 		Scheme:  permission.PermTeamCreate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
-	req, err := http.NewRequest("GET", "/pool", nil)
+	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
@@ -176,7 +176,7 @@ func (s *S) TestPoolListHandler(c *check.C) {
 		defaultPools[0],
 		{Name: "pool1", Teams: []string{"angra"}},
 	}
-	req, err := http.NewRequest("GET", "/pool", nil)
+	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
@@ -198,7 +198,7 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 	defaultPools, err := provision.ListPools(bson.M{"default": true})
 	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{defaultPools[0]}
-	req, err := http.NewRequest("GET", "/pool", nil)
+	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
@@ -231,7 +231,7 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	req, err := http.NewRequest("GET", "/pool", nil)
+	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
@@ -250,7 +250,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"public": true}`)
-	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool1", b)
+	req, err := http.NewRequest("POST", "/pools/pool1?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolUpdateHandler(rec, req, s.token)
@@ -267,7 +267,7 @@ func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"default": true}`)
-	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool1", b)
+	req, err := http.NewRequest("POST", "/pools/pool1?:name=pool1", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolUpdateHandler(rec, req, s.token)
@@ -288,7 +288,7 @@ func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	b := bytes.NewBufferString(`{"default": true}`)
-	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool2&force=true", b)
+	req, err := http.NewRequest("POST", "/pools/pool1?:name=pool2&force=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = poolUpdateHandler(rec, req, s.token)
@@ -309,7 +309,7 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	b := bytes.NewBufferString(`{"default": true}`)
-	request, err := http.NewRequest("POST", "/pool/pool2?:name=pool2", b)
+	request, err := http.NewRequest("POST", "/pools/pool2?:name=pool2", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
