@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -83,6 +83,7 @@ them to users:
 * ``tsuru role-permission-remove``
 * ``tsuru role-assign``
 * ``tsuru role-dissociate``
+* ``tsuru role-info``
 
 More details about each command can be found in the :doc:`client documentation
 </reference/tsuru-client>`.
@@ -225,4 +226,3 @@ installation:
 
     $ tsurud [--config <path to tsuru.conf>] root-user-create myemail@somewhere.com
     # type a password and confirmation (only if using native auth scheme)
-

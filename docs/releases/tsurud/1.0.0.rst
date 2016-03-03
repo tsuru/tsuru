@@ -50,11 +50,11 @@ Bug fixes
   If this check is not successful tsuru will schedule a message in it's internal
   queue system (monsterqueue) that will keep trying to ensure routers are
   consistent. This should completely remove the possibility of having incorrect
-  route entries after failures. 
+  route entries after failures.
 
 * Users are now dissociated from roles on role remove. Previously removing a
   role still being used would cause errors when checking permissions.
-  
+
 
 General improvements
 ====================
@@ -144,3 +144,6 @@ General improvements
 
 * Several performance improvement changes receiving log messages from
   applications.
+
+* Add description flag to role-add command (--description/-d), allowing users to
+  add a description for newly created roles.
