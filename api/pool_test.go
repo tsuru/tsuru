@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
@@ -310,13 +309,12 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	b := bytes.NewBufferString(`{"default": true}`)
-	req, err := http.NewRequest("POST", "/pool/pool2?:name=pool2", b)
+	request, err := http.NewRequest("POST", "/pool/pool2?:name=pool2", b)
 	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = poolUpdateHandler(rec, req, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(e.Message, check.Equals, "Default pool already exists.")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
 }

@@ -163,14 +163,11 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	poolName := r.URL.Query().Get(":name")
 	forceDefault, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 	err = provision.PoolUpdate(poolName, query, forceDefault)
-	if err != nil {
-		if err == provision.ErrDefaultPoolAlreadyExists {
-			return &terrors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "Default pool already exists.",
-			}
+	if err == provision.ErrDefaultPoolAlreadyExists {
+		return &terrors.HTTP{
+			Code:    http.StatusConflict,
+			Message: err.Error(),
 		}
-		return err
 	}
-	return nil
+	return err
 }
