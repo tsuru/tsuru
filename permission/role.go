@@ -20,6 +20,7 @@ var (
 	ErrRoleNotFound      = errors.New("role not found")
 	ErrRoleAlreadyExists = errors.New("role already exists")
 	ErrRoleEventNotFound = errors.New("role event not found")
+	ErrInvalidRoleName   = errors.New("invalid role name")
 
 	RoleEventUserCreate = &RoleEvent{
 		name:        "user-create",
@@ -72,7 +73,7 @@ func NewRole(name string, ctx string, description string) (Role, error) {
 	}
 	name = strings.TrimSpace(name)
 	if len(name) == 0 {
-		return Role{}, fmt.Errorf("invalid role name %q", name)
+		return Role{}, ErrInvalidRoleName
 	}
 	coll, err := rolesCollection()
 	if err != nil {

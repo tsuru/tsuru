@@ -23,6 +23,18 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	_, err := permission.NewRole(r.FormValue("name"), r.FormValue("context"), r.FormValue("description"))
+	if err == permission.ErrInvalidRoleName {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	if err == permission.ErrRoleAlreadyExists {
+		return &errors.HTTP{
+			Code:    http.StatusConflict,
+			Message: err.Error(),
+		}
+	}
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 	}

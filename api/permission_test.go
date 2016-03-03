@@ -55,6 +55,45 @@ func (s *S) TestAddRoleUnauthorized(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
+func (s *S) TestAddRoleInvalidName(c *check.C) {
+	role := bytes.NewBufferString("name=&context=global")
+	req, err := http.NewRequest("POST", "/roles", role)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, permission.ErrInvalidRoleName.Error()+"\n")
+}
+
+func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
+	_, err := permission.NewRole("ble", "global", "desc")
+	c.Assert(err, check.IsNil)
+	defer permission.DestroyRole("ble")
+	b := bytes.NewBufferString("name=ble&context=global")
+	req, err := http.NewRequest("POST", "/roles", b)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Equals, permission.ErrRoleAlreadyExists.Error()+"\n")
+}
+
 func (s *S) TestRemoveRole(c *check.C) {
 	s.conn.Roles().DropCollection()
 	_, err := permission.NewRole("test", "app", "")
