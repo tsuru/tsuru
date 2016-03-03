@@ -97,16 +97,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	var params map[string]string
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
-	}
-	return provision.RemovePool(params["pool"])
+	return provision.RemovePool(r.URL.Query().Get(":name"))
 }
 
 type teamsToPoolParams struct {
