@@ -6,6 +6,7 @@ package container
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -66,6 +67,15 @@ func (s *S) TestContainerAddress(c *check.C) {
 }
 
 func (s *S) TestContainerCreate(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
@@ -118,7 +128,98 @@ func (s *S) TestContainerCreate(c *check.C) {
 	})
 }
 
+func (s *S) TestContainerCreateAllocatesPortExposedInImage(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{"3000/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	config.Set("host", "my.cool.tsuru.addr:8080")
+	defer config.Unset("host")
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
+	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 50
+	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
+	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	img := "tsuru/brainfuck:latest"
+	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
+	cont := Container{
+		Name:        "myName",
+		AppName:     app.GetName(),
+		Type:        app.GetPlatform(),
+		Status:      "created",
+		ProcessName: "myprocess1",
+	}
+	err := cont.Create(&CreateArgs{
+		App:         app,
+		ImageID:     img,
+		Commands:    []string{"docker", "run"},
+		Provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(&cont)
+	dcli, _ := docker.NewClient(s.server.URL())
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Config.ExposedPorts, check.DeepEquals, map[docker.Port]struct{}{"3000/tcp": {}})
+}
+
+func (s *S) TestContainerCreateDontAllocatesPortToImageWithMoreThanOnePortExposed(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{"3000/tcp": {}, "80/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	config.Set("host", "my.cool.tsuru.addr:8080")
+	defer config.Unset("host")
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
+	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 50
+	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
+	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	img := "tsuru/brainfuck:latest"
+	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
+	cont := Container{
+		Name:        "myName",
+		AppName:     app.GetName(),
+		Type:        app.GetPlatform(),
+		Status:      "created",
+		ProcessName: "myprocess1",
+	}
+	err := cont.Create(&CreateArgs{
+		App:         app,
+		ImageID:     img,
+		Commands:    []string{"docker", "run"},
+		Provisioner: s.p,
+	})
+	c.Assert(err, check.NotNil)
+	defer s.removeTestContainer(&cont)
+}
+
 func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	config.Set("docker:security-opts", []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
 	defer config.Unset("docker:security-opts")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
@@ -150,6 +251,15 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 }
 
 func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	routertest.FakeRouter.AddBackend(app.GetName())
@@ -176,6 +286,15 @@ func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
 }
 
 func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	routertest.FakeRouter.AddBackend(app.GetName())
@@ -203,6 +322,15 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 }
 
 func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
@@ -240,6 +368,15 @@ func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
 }
 
 func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	oldUser, _ := config.Get("docker:user")
 	defer config.Set("docker:user", oldUser)
 	config.Unset("docker:user")
@@ -269,6 +406,15 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 }
 
 func (s *S) TestContainerCreateOverwriteEntrypoint(c *check.C) {
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				ExposedPorts: map[docker.Port]struct{}{},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
@@ -769,18 +915,6 @@ func (s *S) TestContainerStartDeployContainer(c *check.C) {
 	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
 	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
 	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
-}
-
-func (s *S) TestContainerStartWithoutPort(c *check.C) {
-	cont, err := s.newContainer(newContainerOpts{}, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	oldUser, _ := config.Get("docker:run-cmd:port")
-	defer config.Set("docker:run-cmd:port", oldUser)
-	config.Unset("docker:run-cmd:port")
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	err = cont.Start(&StartArgs{Provisioner: s.p, App: app})
-	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestContainerStartStartedUnits(c *check.C) {
