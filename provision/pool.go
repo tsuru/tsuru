@@ -18,8 +18,11 @@ type Pool struct {
 	Default bool
 }
 
-var ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
-var ErrDefaultPoolAlreadyExists = errors.New("Default pool already exists.")
+var (
+	ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
+	ErrDefaultPoolAlreadyExists       = errors.New("Default pool already exists.")
+	ErrPoolNameIsRequired             = errors.New("Pool name is required.")
+)
 
 const poolCollection = "pool"
 
@@ -32,7 +35,7 @@ type AddPoolOptions struct {
 
 func AddPool(opts AddPoolOptions) error {
 	if opts.Name == "" {
-		return errors.New("Pool name is required.")
+		return ErrPoolNameIsRequired
 	}
 	conn, err := db.Conn()
 	if err != nil {

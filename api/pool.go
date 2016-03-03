@@ -74,16 +74,22 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	forceAdd, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 	p.Force = forceAdd
 	err = provision.AddPool(p)
-	if err != nil {
-		if err == provision.ErrDefaultPoolAlreadyExists {
-			return &terrors.HTTP{
-				Code:    http.StatusConflict,
-				Message: "Default pool already exists.",
-			}
+	if err == provision.ErrDefaultPoolAlreadyExists {
+		return &terrors.HTTP{
+			Code:    http.StatusConflict,
+			Message: err.Error(),
 		}
-		return err
 	}
-	return nil
+	if err == provision.ErrPoolNameIsRequired {
+		return &terrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
+	return err
 }
 
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

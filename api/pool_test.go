@@ -18,13 +18,41 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (s *S) TestAddPoolHandler(c *check.C) {
+func (s *S) TestAddPoolNameIsRequired(c *check.C) {
+	b := bytes.NewBufferString(`{"name": ""}`)
+	request, err := http.NewRequest("POST", "/pool", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, provision.ErrPoolNameIsRequired.Error()+"\n")
+}
+
+func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
+	b := bytes.NewBufferString(`{"name": "pool1", "default": true}`)
+	req, err := http.NewRequest("POST", "/pool", b)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	defer provision.RemovePool("pool1")
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusConflict)
+	c.Assert(rec.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
+}
+
+func (s *S) TestAddPool(c *check.C) {
 	b := bytes.NewBufferString(`{"name": "pool1"}`)
 	req, err := http.NewRequest("POST", "/pool", b)
 	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	defer provision.RemovePool("pool1")
-	err = addPoolHandler(rec, req, s.token)
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	c.Assert(err, check.IsNil)
 	pools, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
@@ -32,10 +60,11 @@ func (s *S) TestAddPoolHandler(c *check.C) {
 	b = bytes.NewBufferString(`{"name": "pool2", "public": true}`)
 	req, err = http.NewRequest("POST", "/pool", b)
 	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec = httptest.NewRecorder()
 	defer provision.RemovePool("pool2")
-	err = addPoolHandler(rec, req, s.token)
-	c.Assert(err, check.IsNil)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	pools, err = provision.ListPools(bson.M{"_id": "pool2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(pools[0].Public, check.Equals, true)
