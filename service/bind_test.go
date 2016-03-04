@@ -23,8 +23,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const tsuruServicesEnvVar = "TSURU_SERVICES"
-
 type BindSuite struct {
 	conn   *db.Storage
 	user   auth.User

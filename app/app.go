@@ -1220,7 +1220,17 @@ func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 func (app *App) AddInstance(instanceApp bind.InstanceApp, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
 	serviceInstances := tsuruServices[instanceApp.ServiceName]
-	serviceInstances = append(serviceInstances, instanceApp.Instance)
+	serviceInstanceFound := false
+	for i, serviceInstance := range serviceInstances {
+		if serviceInstance.Name == instanceApp.Instance.Name {
+			serviceInstanceFound = true
+			serviceInstances[i] = instanceApp.Instance
+			break
+		}
+	}
+	if !serviceInstanceFound {
+		serviceInstances = append(serviceInstances, instanceApp.Instance)
+	}
 	tsuruServices[instanceApp.ServiceName] = serviceInstances
 	servicesJson, err := json.Marshal(tsuruServices)
 	if err != nil {

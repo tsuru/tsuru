@@ -1568,6 +1568,59 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
+func (s *S) TestAddInstanceDuplicated(c *check.C) {
+	a := &App{Name: "sith"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	instance := bind.ServiceInstance{
+		Name: "myinstance",
+		Envs: map[string]string{
+			"ZMQ_PEER": "localhost",
+		},
+	}
+	err = a.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "myservice",
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
+	c.Assert(err, check.IsNil)
+	// inserts duplicated
+	instance = bind.ServiceInstance{
+		Name: "myinstance",
+		Envs: map[string]string{
+			"ZMQ_PEER": "8.8.8.8",
+		},
+	}
+	err = a.AddInstance(
+		bind.InstanceApp{
+			ServiceName:   "myservice",
+			Instance:      instance,
+			ShouldRestart: true,
+		}, nil)
+	c.Assert(err, check.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
+	env, ok := a.Env[TsuruServicesEnvVar]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(env.Public, check.Equals, false)
+	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
+	var got map[string][]bind.ServiceInstance
+	err = json.Unmarshal([]byte(env.Value), &got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+	c.Assert(a.Env["ZMQ_PEER"], check.DeepEquals, bind.EnvVar{
+		Name:         "ZMQ_PEER",
+		Value:        "8.8.8.8",
+		Public:       false,
+		InstanceName: "myinstance",
+	})
+}
+
 func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	a := &App{Name: "dark", Quota: quota.Quota{Limit: 10}}
 	err := s.conn.Apps().Insert(a)
@@ -1703,7 +1756,7 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.parsedTsuruServices(), check.DeepEquals, expected)
-	delete(a.Env, "TSURU_SERVICES")
+	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
 		"DATABASE_NAME": {
 			Name:         "DATABASE_NAME",
@@ -1759,7 +1812,7 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	a, err = GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.parsedTsuruServices(), check.DeepEquals, expected)
-	delete(a.Env, "TSURU_SERVICES")
+	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{
 		"DATABASE_NAME": {
 			Name:         "DATABASE_NAME",
