@@ -39,39 +39,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *check.C) {
-	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/apps/%s/available?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
-}
-
-func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *check.C) {
-	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/apps/%s/available?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
 func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,

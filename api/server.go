@@ -170,7 +170,6 @@ func RunServer(dry bool) http.Handler {
 	// These handlers don't use {app} on purpose. Using :app means that only
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
-	m.Add("1.0", "Get", "/apps/{appname}/available", AuthorizationRequiredHandler(appIsAvailable))
 	m.Add("1.0", "Post", "/apps/{appname}/repository/clone", AuthorizationRequiredHandler(deploy))
 	m.Add("1.0", "Post", "/apps/{appname}/deploy", AuthorizationRequiredHandler(deploy))
 	diffDeployHandler := AuthorizationRequiredHandler(diffDeploy)
