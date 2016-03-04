@@ -18,7 +18,7 @@ func (s *S) TestNewRole(c *check.C) {
 	_, err = NewRole("myrole", "global", "")
 	c.Assert(err, check.Equals, ErrRoleAlreadyExists)
 	_, err = NewRole("  ", "app", "")
-	c.Assert(err, check.ErrorMatches, `invalid role name ""`)
+	c.Assert(err, check.ErrorMatches, "invalid role name")
 	_, err = NewRole("myrole2", "invalid", "")
 	c.Assert(err, check.ErrorMatches, `invalid context type "invalid"`)
 }
