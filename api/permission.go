@@ -244,9 +244,6 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	err = runWithPermSync(users, func() error {
 		return role.RemovePermissions(permName)
 	})
-	if err == nil {
-		w.WriteHeader(http.StatusOK)
-	}
 	return err
 }
 
