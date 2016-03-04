@@ -576,8 +576,8 @@ func UpdateNodeStatus(node UpdateNodeData) ([]UpdateUnitsResult, error) {
 	return result, nil
 }
 
-// Available returns true if at least one of N units is started or unreachable.
-func (app *App) Available() bool {
+// available returns true if at least one of N units is started or unreachable.
+func (app *App) available() bool {
 	units, err := app.Units()
 	if err != nil {
 		return false
@@ -815,7 +815,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 // Run executes the command in app units, sourcing apprc before running the
 // command.
 func (app *App) Run(cmd string, w io.Writer, once bool) error {
-	if !app.Available() {
+	if !app.available() {
 		return stderr.New("App must be available to run commands")
 	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru", "api")

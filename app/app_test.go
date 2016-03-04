@@ -3097,9 +3097,9 @@ func (s *S) TestAppAvailable(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	c.Assert(a.Available(), check.Equals, true)
+	c.Assert(a.available(), check.Equals, true)
 	s.provisioner.Stop(&a, "")
-	c.Assert(a.Available(), check.Equals, false)
+	c.Assert(a.available(), check.Equals, false)
 }
 
 func (s *S) TestSwap(c *check.C) {
