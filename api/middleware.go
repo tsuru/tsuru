@@ -208,7 +208,10 @@ func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, ne
 	start := time.Now()
 	next(rw, r)
 	duration := time.Since(start)
-	res := rw.(negroni.ResponseWriter)
+	statusCode := rw.(negroni.ResponseWriter).Status()
+	if statusCode == 0 {
+		statusCode = 200
+	}
 	nowFormatted := time.Now().Format(time.RFC3339Nano)
-	l.logger.Printf("%s %s %s %d in %0.6fms", nowFormatted, r.Method, r.URL.Path, res.Status(), float64(duration)/float64(time.Millisecond))
+	l.logger.Printf("%s %s %s %d in %0.6fms", nowFormatted, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond))
 }

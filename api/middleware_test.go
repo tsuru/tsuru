@@ -453,3 +453,20 @@ func (s *S) TestLoggerMiddleware(c *check.C) {
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
 	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 10\d\.\d+ms`+"\n", timePart))
 }
+
+func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/my/path", nil)
+	c.Assert(err, check.IsNil)
+	h, handlerLog := doHandler()
+	handlerLog.sleep = 100 * time.Millisecond
+	handlerLog.response = 0
+	var out bytes.Buffer
+	middle := loggerMiddleware{
+		logger: log.New(&out, "", 0),
+	}
+	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
+	c.Assert(handlerLog.called, check.Equals, true)
+	timePart := time.Now().Format(time.RFC3339Nano)[:19]
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 10\d\.\d+ms`+"\n", timePart))
+}
