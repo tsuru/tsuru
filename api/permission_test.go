@@ -192,6 +192,63 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{"app.deploy", "app.update"})
 }
 
+func (s *S) TestAddPermissionsToARolePermissionNotFound(c *check.C) {
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	b := bytes.NewBufferString(`permission=does.not.exists&permission=app.deploy`)
+	req, err := http.NewRequest("POST", "/roles/test/permissions", b)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(rec.Body.String(), check.Matches, "permission named .* not found\n")
+}
+
+func (s *S) TestAddPermissionsToARoleInvalidName(c *check.C) {
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	b := bytes.NewBufferString(`permission=&permission=app.deploy`)
+	req, err := http.NewRequest("POST", "/roles/test/permissions", b)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(rec.Body.String(), check.Equals, permission.ErrInvalidPermissionName.Error()+"\n")
+}
+
+func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	b := bytes.NewBufferString(`permission=node.create`)
+	req, err := http.NewRequest("POST", "/roles/test/permissions", b)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusConflict)
+	c.Assert(rec.Body.String(), check.Matches, "permission .* not allowed with context of type .*\n")
+}
+
 func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
 	_, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)

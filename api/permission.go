@@ -206,8 +206,23 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	err = runWithPermSync(users, func() error {
 		return role.AddPermissions(r.Form["permission"]...)
 	})
-	if err == nil {
-		w.WriteHeader(http.StatusOK)
+	if err == permission.ErrInvalidPermissionName {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	if perr, ok := err.(*permission.ErrPermissionNotFound); ok {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: perr.Error(),
+		}
+	}
+	if perr, ok := err.(*permission.ErrPermissionNotAllowed); ok {
+		return &errors.HTTP{
+			Code:    http.StatusConflict,
+			Message: perr.Error(),
+		}
 	}
 	return err
 }
