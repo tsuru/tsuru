@@ -400,14 +400,16 @@ func (s *AuthSuite) TestLogout(c *check.C) {
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
-func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *check.C) {
-	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
+func (s *AuthSuite) TestCreateTeam(c *check.C) {
+	b := strings.NewReader("name=timeredbull")
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = createTeam(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	t := new(auth.Team)
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -422,50 +424,35 @@ func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthent
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSON(c *check.C) {
-	b := bytes.NewBufferString(`{"name"["invalidjson"]}`)
+func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
+	b := strings.NewReader("ble=bla")
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = createTeam(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, auth.ErrInvalidTeamName.Error()+"\n")
 }
 
-func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *check.C) {
-	b := bytes.NewBufferString(`{"genre":"male"}`)
-	request, err := http.NewRequest("POST", "/teams", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createTeam(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, auth.ErrInvalidTeamName.Error())
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-}
-
-func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *check.C) {
+func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	err := conn.Teams().Insert(bson.M{"_id": "timeredbull"})
 	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
+	b := strings.NewReader("name=timeredbull")
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = createTeam(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusConflict)
-	c.Assert(e, check.ErrorMatches, "^team already exists$")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Equals, "team already exists\n")
 }
 
 func (s *AuthSuite) TestRemoveTeam(c *check.C) {

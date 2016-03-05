@@ -149,16 +149,11 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 }
 
 func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var params map[string]string
-	err := json.NewDecoder(r.Body).Decode(&params)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
 	allowed := permission.Check(t, permission.PermTeamCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	name := params["name"]
+	name := r.FormValue("name")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -171,7 +166,10 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	case auth.ErrTeamAlreadyExists:
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return nil
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
+	return err
 }
 
 func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
