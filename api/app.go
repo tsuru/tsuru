@@ -513,9 +513,6 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	if err == nil {
-		w.WriteHeader(http.StatusOK)
-	}
 	return err
 }
 
@@ -534,7 +531,6 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	return json.NewEncoder(w).Encode(result)
 }
 
@@ -553,7 +549,6 @@ func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	return json.NewEncoder(w).Encode(result)
 }
 
@@ -1232,7 +1227,6 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
-	w.WriteHeader(http.StatusOK)
 	return nil
 }
 

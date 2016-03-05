@@ -152,10 +152,5 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = dbTpl.Update(&paramTemplate)
-	if err != nil {
-		return err
-	}
-	w.WriteHeader(http.StatusOK)
-	return nil
+	return dbTpl.Update(&paramTemplate)
 }

@@ -1546,12 +1546,14 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	unit := units[0]
-	request, err := http.NewRequest("POST", "/apps/telegram/units/<unit-name>?:app=telegram&:unit="+unit.ID, body)
+	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.ID, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = setUnitStatus(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
 	unit = units[0]
@@ -4199,27 +4201,29 @@ func (l LogList) Len() int           { return len(l) }
 func (l LogList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l LogList) Less(i, j int) bool { return l[i].Message < l[j].Message }
 
-func (s *S) TestAddLogHandler(c *check.C) {
+func (s *S) TestAddLog(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`["message 1", "message 2", "message 3"]`)
 	body2 := strings.NewReader(`["message 4", "message 5"]`)
-	request, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp", body)
-	c.Assert(err, check.IsNil)
-	withSourceRequest, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp&source=mysource", body2)
-	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateLog,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
+	request, err := http.NewRequest("POST", "/apps/myapp/log", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	withSourceRequest, err := http.NewRequest("POST", "/apps/myapp/log?source=mysource", body2)
+	c.Assert(err, check.IsNil)
+	withSourceRequest.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	err = addLog(recorder, request, token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	recorder = httptest.NewRecorder()
-	err = addLog(recorder, withSourceRequest, token)
-	c.Assert(err, check.IsNil)
+	m.ServeHTTP(recorder, withSourceRequest)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	want := []string{
 		"message 1",
