@@ -270,9 +270,13 @@ func getKeyFromBody(b io.Reader) (repository.Key, bool, error) {
 // exists to be used in other places in the package without the http stuff (request and
 // response).
 func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	key, force, err := getKeyFromBody(r.Body)
-	if err != nil {
-		return err
+	key := repository.Key{
+		Body: r.FormValue("key"),
+		Name: r.FormValue("name"),
+	}
+	var force bool
+	if r.FormValue("force") == "true" {
+		force = true
 	}
 	if key.Body == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key content"}
@@ -283,7 +287,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	rec.Log(u.Email, "add-key", key.Name, key.Body)
 	err = u.AddKey(key, force)
-	if err == auth.ErrKeyDisabled {
+	if err == auth.ErrKeyDisabled || err == repository.ErrUserNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if err == repository.ErrKeyAlreadyExists {
