@@ -222,15 +222,14 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var a app.App
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
+	a := app.App{
+		TeamOwner:   r.FormValue("teamowner"),
+		Platform:    r.FormValue("platform"),
+		Plan:        app.Plan{Name: r.FormValue("plan")},
+		Name:        r.FormValue("name"),
+		Description: r.FormValue("description"),
 	}
-	if err = json.Unmarshal(body, &a); err != nil {
-		return err
-	}
+	var err error
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
 		if err != nil {
@@ -287,7 +286,10 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	repo, _ := repository.Manager().GetRepository(a.Name)
+	repo, err := repository.Manager().GetRepository(a.Name)
+	if err != nil {
+		return err
+	}
 	msg := map[string]string{
 		"status":         "success",
 		"repository_url": repo.ReadWriteURL,
@@ -297,6 +299,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonMsg)
 	return nil
 }

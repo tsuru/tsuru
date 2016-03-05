@@ -622,11 +622,11 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 
 func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	a := app.App{Name: "someapp"}
-	data := `{"name":"someapp","platform":"zend"}`
+	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -646,7 +646,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
@@ -658,7 +658,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -675,13 +675,13 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestCreateAppHandler(c *check.C) {
+func (s *S) TestCreateApp(c *check.C) {
 	a := app.App{Name: "someapp"}
-	data := `{"name":"someapp","platform":"zend"}`
+	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -701,7 +701,7 @@ func (s *S) TestCreateAppHandler(c *check.C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -720,11 +720,11 @@ func (s *S) TestCreateAppHandler(c *check.C) {
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	a := app.App{Name: "someapp"}
-	data := `{"name":"someapp","platform":"zend","teamOwner":"tsuruteam"}`
+	data := "name=someapp&platform=zend&teamOwner=tsuruteam"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -750,7 +750,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
@@ -774,11 +774,11 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	err := expectedPlan.Save()
 	c.Assert(err, check.IsNil)
 	defer app.PlanRemove(expectedPlan.Name)
-	data := `{"name":"someapp","platform":"zend","plan":{"name":"myplan"}}`
+	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -798,7 +798,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -816,11 +816,12 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 
 func (s *S) TestCreateAppWithDescription(c *check.C) {
 	a := app.App{Name: "someapp"}
-	data := `{"name":"someapp","platform":"zend","description":"my app description"}`
+	data, err := url.QueryUnescape("name=someapp&platform=zend&description=my app description")
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -829,8 +830,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -838,9 +838,8 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 		"repository_url": repoURL,
 		"ip":             "someapp.fakerouter.com",
 	}
-	err = json.Unmarshal(body, &obtained)
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -860,11 +859,11 @@ func (s *S) TestCreateAppTwoTeams(c *check.C) {
 	err := s.conn.Teams().Insert(team)
 	c.Check(err, check.IsNil)
 	defer s.conn.Teams().RemoveId(team.Name)
-	data := `{"name":"someapp","platform":"zend"}`
+	data := "name=someapp&platform=zend"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -892,10 +891,10 @@ func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
 	var limited quota.Quota
 	conn.Users().Update(bson.M{"email": u.Email}, bson.M{"$set": bson.M{"quota": limited}})
 	defer conn.Users().Update(bson.M{"email": u.Email}, bson.M{"$set": bson.M{"quota": quota.Unlimited}})
-	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
+	b := strings.NewReader("name=someapp&platform=zend")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
@@ -905,10 +904,10 @@ func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
 }
 
 func (s *S) TestCreateAppInvalidName(c *check.C) {
-	b := strings.NewReader(`{"name":"123myapp","platform":"zend"}`)
+	b := strings.NewReader("name=123myapp&platform=zend")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -926,10 +925,10 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 
 func (s *S) TestCreateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 	token := userWithPermission(c)
-	b := strings.NewReader(`{"name":"someapp", "platform":"django"}`)
+	b := strings.NewReader("name=someapp&platform=django")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -942,10 +941,10 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	a := app.App{Name: "plainsofdawn", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	b := strings.NewReader(`{"name":"plainsofdawn","platform":"zend"}`)
+	b := strings.NewReader("name=plainsofdawn&platform=zend")
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -969,11 +968,11 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	p := app.Platform{Name: "platDis", Disabled: true}
 	s.conn.Platforms().Insert(p)
 	a := app.App{Name: "someapp"}
-	data := `{"name":"someapp","platform":"platDis"}`
+	data := "name=someapp&platform=platDis"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
@@ -989,7 +988,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -1009,11 +1008,11 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
 	p := app.Platform{Name: "platDis", Disabled: true}
 	s.conn.Platforms().Insert(p)
-	data := `{"name":"someapp","platform":"platDis"}`
+	data := "name=someapp&platform=platDis"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
