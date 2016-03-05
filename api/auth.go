@@ -71,12 +71,16 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 }
 
 func login(w http.ResponseWriter, r *http.Request) error {
-	var params map[string]string
-	err := json.NewDecoder(r.Body).Decode(&params)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+	params := map[string]string{
+		"email": r.URL.Query().Get(":email"),
 	}
-	params["email"] = r.URL.Query().Get(":email")
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	for key := range r.Form {
+		params[key] = r.FormValue(key)
+	}
 	token, err := app.AuthScheme.Login(params)
 	if err != nil {
 		return handleAuthError(err)

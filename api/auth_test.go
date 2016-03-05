@@ -292,20 +292,20 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString(`{"password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	b := strings.NewReader("password=123456")
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var user auth.User
 	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
 	var recorderJSON map[string]string
-	r, _ := ioutil.ReadAll(recorder.Body)
-	json.Unmarshal(r, &recorderJSON)
+	json.Unmarshal(recorder.Body.Bytes(), &recorderJSON)
 	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
@@ -316,92 +316,58 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJSON(c *check.C) {
-	b := bytes.NewBufferString(`"invalid":"json"]`)
-	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+func (s *AuthSuite) TestLoginPasswordMissing(c *check.C) {
+	b := strings.NewReader("")
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Invalid JSON$")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Matches, "^you must provide a password to login\n$")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
-func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPassword(c *check.C) {
-	b := bytes.NewBufferString(`{}`)
-	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+func (s *AuthSuite) TestLoginUserDoesNotExist(c *check.C) {
+	b := strings.NewReader("password=123456")
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^you must provide a password to login$")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Matches, "^user not found\n$")
 }
 
-func (s *AuthSuite) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *check.C) {
-	b := bytes.NewBufferString(`{"password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^user not found$")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *AuthSuite) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *check.C) {
+func (s *AuthSuite) TestLoginPasswordDoesNotMatch(c *check.C) {
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString(`{"password":"1234567"}`)
-	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	b := strings.NewReader("password=1234567")
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Authentication failed, wrong password.$")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusUnauthorized)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Body.String(), check.Matches, "^Authentication failed, wrong password.\n$")
 }
 
-func (s *AuthSuite) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	err := b.Close()
+func (s *AuthSuite) TestLoginEmailIsNotValid(c *check.C) {
+	b := strings.NewReader("password=123456")
+	request, err := http.NewRequest("POST", "/users/nobody/tokens", b)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.NotNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, native.ErrInvalidEmail.Error()+"\n")
 }
 
-func (s *AuthSuite) TestLoginShouldReturnBadRequestIfEmailIsNotValid(c *check.C) {
-	b := bytes.NewBufferString(`{"password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users/nobody/token?:email=nobody", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = login(recorder, request)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, native.ErrInvalidEmail.Error())
-}
-
-func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *check.C) {
+func (s *AuthSuite) TestLoginPasswordIsInvalid(c *check.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
@@ -409,18 +375,16 @@ func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *chec
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
+	m := RunServer(true)
 	for _, password := range passwords {
-		b := bytes.NewBufferString(`{"password":"` + password + `"}`)
-		request, err := http.NewRequest("POST", "/users/me@globo.com/token?:email=me@globo.com", b)
+		b := strings.NewReader("password=" + password)
+		request, err := http.NewRequest("POST", "/users/me@globo.com/tokens", b)
 		c.Assert(err, check.IsNil)
-		request.Header.Set("Content-type", "application/json")
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
-		err = login(recorder, request)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-		c.Assert(e.Message, check.Matches, "Password.*")
+		m.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+		c.Assert(recorder.Body.String(), check.Matches, "Password.*\n")
 	}
 }
 
