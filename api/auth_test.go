@@ -112,14 +112,15 @@ func (s *AuthSuite) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+func (s *AuthSuite) TestCreateUser(c *check.C) {
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
 	action := rectest.Action{
@@ -133,13 +134,14 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *check.C) {
 func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	config.Set("quota:apps-per-user", 1)
 	defer config.Unset("quota:apps-per-user")
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Quota.Limit, check.Equals, 1)
@@ -147,130 +149,91 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
 }
 
-func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Code, check.Equals, 201)
-}
-
-func (s *AuthSuite) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	request.Body.Close()
-	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^.*bad file descriptor$")
-}
-
-func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c *check.C) {
-	b := bytes.NewBufferString(`["invalid json":"i'm invalid"]`)
-	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^invalid character.*$")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-}
-
-func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *check.C) {
+func (s *AuthSuite) TestCreateUserEmailAlreadyExists(c *check.C) {
 	u := auth.User{Email: "nobody@globo.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "this email is already registered")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusConflict)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Matches, "this email is already registered\n")
 }
 
-func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfEmailIsNotValid(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody","password":"123456"}`)
+func (s *AuthSuite) TestCreateUserEmailIsNotValid(c *check.C) {
+	b := strings.NewReader("email=nobody&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "invalid email")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid email\n")
 }
 
-func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *check.C) {
+func (s *AuthSuite) TestCreateUserPasswordHasLessThan6CharactersOrMoreThan50Characters(c *check.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
+	m := RunServer(true)
 	for _, password := range passwords {
-		b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"` + password + `"}`)
+		b := strings.NewReader("email=nobody@noboy.com&password=" + password)
 		request, err := http.NewRequest("POST", "/users", b)
 		c.Assert(err, check.IsNil)
-		request.Header.Set("Content-type", "application/json")
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
-		err = createUser(recorder, request)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-		c.Assert(e.Message, check.Equals, "password length should be least 6 characters and at most 50 characters")
+		m.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+		errMsg := "password length should be least 6 characters and at most 50 characters\n"
+		c.Assert(recorder.Body.String(), check.Equals, errMsg)
 	}
 }
 
 func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody@me.myself","password":"123456"}`)
+	b := strings.NewReader("email=nobody@me.myself&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys("nobody@me.myself")
 	c.Assert(err, check.IsNil)
 }
 
 func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabled(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	oldUserRegistration, err := config.GetBool("auth:user-registration")
 	c.Assert(err, check.IsNil)
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", oldUserRegistration)
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.Equals, createDisabledErr)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Body.String(), check.Equals, createDisabledErr.Error()+"\n")
 }
 
 func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *check.C) {
@@ -279,41 +242,44 @@ func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *c
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": simpleUser.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	oldUserRegistration, err := config.GetBool("auth:user-registration")
 	c.Assert(err, check.IsNil)
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", oldUserRegistration)
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.Equals, createDisabledErr)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Body.String(), check.Equals, createDisabledErr.Error()+"\n")
 }
 
 func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *check.C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	oldUserRegistration, err := config.GetBool("auth:user-registration")
 	c.Assert(err, check.IsNil)
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", oldUserRegistration)
 	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 }
 
 func (s *AuthSuite) TestCreateUserRollsbackAfterRepositoryError(c *check.C) {
 	repository.Manager().CreateUser("nobody@globo.com")
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)

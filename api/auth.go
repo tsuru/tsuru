@@ -57,12 +57,11 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 			return createDisabledErr
 		}
 	}
-	var u auth.User
-	err := json.NewDecoder(r.Body).Decode(&u)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	u := auth.User{
+		Email:    r.FormValue("email"),
+		Password: r.FormValue("password"),
 	}
-	_, err = app.AuthScheme.Create(&u)
+	_, err := app.AuthScheme.Create(&u)
 	if err != nil {
 		return handleAuthError(err)
 	}
