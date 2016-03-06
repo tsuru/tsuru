@@ -305,14 +305,11 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var updateData app.App
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	if err = json.Unmarshal(body, &updateData); err != nil {
-		return err
+	updateData := app.App{
+		TeamOwner:   r.FormValue("teamOwner"),
+		Plan:        app.Plan{Name: r.FormValue("plan")},
+		Pool:        r.FormValue("pool"),
+		Description: r.FormValue("description"),
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)

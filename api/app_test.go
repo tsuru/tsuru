@@ -1034,12 +1034,11 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permission.CtxApp, a.Name),
 	})
-	data := `{"description":"my app description"}`
-	b := strings.NewReader(data)
+	b := strings.NewReader("description=my app description")
 	request, err := http.NewRequest("POST", "/apps/myapp", b)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -1067,10 +1066,10 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	err = provision.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
-	data := `{"pool":"test"}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("POST", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1091,10 +1090,10 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 		Scheme:  permission.PermAppUpdatePool,
 		Context: permission.Context(permission.CtxApp, "-other-"),
 	})
-	data := `{"pool":"test"}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("POST", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1103,10 +1102,10 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
-	data := `{"pool":"test"}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("POST", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1131,10 +1130,10 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.logConn.Logs(a.Name).DropCollection()
-	data := `{"plan":{"name":"hiperplan"}}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("plan=hiperplan")
 	request, err := http.NewRequest("POST", "/apps/someapp", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1155,10 +1154,10 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.logConn.Logs(a.Name).DropCollection()
-	data := `{"plan":{"name":"hiperplan"}}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("plan=hiperplan")
 	request, err := http.NewRequest("POST", "/apps/someapp", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1179,12 +1178,11 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permission.CtxApp, a.Name),
 	})
-	data := `{}`
-	b := strings.NewReader(data)
+	b := strings.NewReader("{}")
 	request, err := http.NewRequest("POST", "/apps/myapp", b)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -1199,12 +1197,11 @@ func (s *S) TestUpdateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	token := userWithPermission(c)
-	data := `{"description":"description of my app"}`
-	b := strings.NewReader(data)
+	b := strings.NewReader("description=description of my app")
 	request, err := http.NewRequest("POST", "/apps/myapp", b)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -1225,10 +1222,10 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	err = s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
-	data := `{"teamOwner":"newowner"}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("teamOwner=newowner")
 	req, err := http.NewRequest("POST", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	rec := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1251,10 +1248,10 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	data := `{"teamOwner":"newowner"}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("teamOwner=newowner")
 	req, err := http.NewRequest("POST", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	rec := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1278,11 +1275,11 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	err = s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
-	data := `{"teamOwner":"newowner"}`
-	body := strings.NewReader(data)
+	body := strings.NewReader("teamOwner=newowner")
 	req, err := http.NewRequest("POST", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
