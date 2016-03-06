@@ -845,7 +845,7 @@ func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "user not found\n")
 }
 
-func (s *AuthSuite) TestRemoveKeyHandler(c *check.C) {
+func (s *AuthSuite) TestRemoveKey(c *check.C) {
 	b := strings.NewReader("name=the-key&key=my-key")
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -855,16 +855,16 @@ func (s *AuthSuite) TestRemoveKeyHandler(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	b = strings.NewReader(`{"name":"the-key","key":"my-key"}`)
-	request, err = http.NewRequest("DELETE", "/users/key", b)
+	request, err = http.NewRequest("DELETE", "/users/keys/the-key", nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	action := rectest.Action{
 		Action: "remove-key",
 		User:   s.user.Email,
-		Extra:  []interface{}{"the-key", "my-key"},
+		Extra:  []interface{}{"the-key"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
@@ -872,82 +872,30 @@ func (s *AuthSuite) TestRemoveKeyHandler(c *check.C) {
 	c.Assert(keys, check.HasLen, 0)
 }
 
-func (s *AuthSuite) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	b.Close()
-	request, err := http.NewRequest("DELETE", "/users/key", b)
+func (s *AuthSuite) TestRemoveKeyNotFound(c *check.C) {
+	request, err := http.NewRequest("DELETE", "/users/keys/the-key", nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-}
-
-func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *check.C) {
-	b := bytes.NewBufferString(`invalid"json}`)
-	request, err := http.NewRequest("DELETE", "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e, check.ErrorMatches, "^Invalid JSON$")
-}
-
-func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *check.C) {
-	b := bytes.NewBufferString(`{}`)
-	request, err := http.NewRequest("DELETE", "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e, check.ErrorMatches, "^Either the content or the name of the key must be provided$")
-}
-
-func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *check.C) {
-	b := bytes.NewBufferString(`{"name":""}`)
-	request, err := http.NewRequest("DELETE", "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e, check.ErrorMatches, "^Either the content or the name of the key must be provided$")
-}
-
-func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *check.C) {
-	b := bytes.NewBufferString(`{"name":"the-key"}`)
-	request, err := http.NewRequest("DELETE", "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *AuthSuite) TestRemoveKeyFromUserKeyManagerDisabled(c *check.C) {
 	config.Set("repo-manager", "none")
 	defer config.Set("repo-manager", "fake")
-	conn, _ := db.Conn()
-	defer conn.Close()
-	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
-	request, err := http.NewRequest("DELETE", "/users/keys", b)
+	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	request, err := http.NewRequest("DELETE", "/users/keys/the-key", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "key management is disabled")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "key management is disabled\n")
 }
 
 func (s *AuthSuite) TestListKeysHandler(c *check.C) {

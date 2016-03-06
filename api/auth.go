@@ -302,18 +302,17 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // exists to be used in other places in the package without the http stuff (request and
 // response).
 func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	key, _, err := getKeyFromBody(r.Body)
-	if err != nil {
-		return err
+	key := repository.Key{
+		Name: r.URL.Query().Get(":key"),
 	}
-	if key.Body == "" && key.Name == "" {
+	if key.Name == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Either the content or the name of the key must be provided"}
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "remove-key", key.Name, key.Body)
+	rec.Log(u.Email, "remove-key", key.Name)
 	err = u.RemoveKey(key)
 	if err == auth.ErrKeyDisabled {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
