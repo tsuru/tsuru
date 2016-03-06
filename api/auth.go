@@ -102,21 +102,15 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
 	}
-	var body map[string]string
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid JSON.",
-		}
-	}
-	if body["old"] == "" || body["new"] == "" {
+	oldPassword := r.FormValue("old")
+	newPassword := r.FormValue("new")
+	if oldPassword == "" || newPassword == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Both the old and the new passwords are required.",
 		}
 	}
-	err = managed.ChangePassword(t, body["old"], body["new"])
+	err := managed.ChangePassword(t, oldPassword, newPassword)
 	if err != nil {
 		return handleAuthError(err)
 	}

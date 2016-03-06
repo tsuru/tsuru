@@ -1027,7 +1027,7 @@ func (s *AuthSuite) TestRemoveAnotherUserNoPermission(c *check.C) {
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *AuthSuite) TestChangePasswordHandler(c *check.C) {
+func (s *AuthSuite) TestChangePassword(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
@@ -1038,12 +1038,15 @@ func (s *AuthSuite) TestChangePasswordHandler(c *check.C) {
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	body := bytes.NewBufferString(`{"old":"123456","new":"654321"}`)
+	body := strings.NewReader("old=123456&new=654321")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = changePassword(recorder, request, token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	otherUser, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Password, check.Not(check.Equals), oldPassword)
@@ -1064,57 +1067,46 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	body := bytes.NewBufferString(`{"old":"123456","new":"1234"}`)
+	body := strings.NewReader("old=123456&new=1234")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = changePassword(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Check(e.Code, check.Equals, http.StatusBadRequest)
-	c.Check(e.Message, check.Equals, "password length should be least 6 characters and at most 50 characters")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	msg := "password length should be least 6 characters and at most 50 characters\n"
+	c.Check(recorder.Body.String(), check.Equals, msg)
 }
 
 func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *check.C) {
-	body := bytes.NewBufferString(`{"old":"1234","new":"123456"}`)
+	body := strings.NewReader("old=1234&new=123456")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = changePassword(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Check(e.Code, check.Equals, http.StatusForbidden)
-	c.Check(e.Message, check.Equals, "the given password didn't match the user's current password")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	msg := "the given password didn't match the user's current password\n"
+	c.Assert(recorder.Body.String(), check.Equals, msg)
 }
 
-func (s *AuthSuite) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *check.C) {
-	body := bytes.NewBufferString(`{"invalid:"json`)
-	request, err := http.NewRequest("PUT", "/users/password", body)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = changePassword(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "Invalid JSON.")
-}
-
-func (s *AuthSuite) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNewPasswords(c *check.C) {
-	bodies := []string{`{"old": "something"}`, `{"new":"something"}`, "{}", "null"}
+func (s *AuthSuite) TestChangePasswordInvalidPasswords(c *check.C) {
+	bodies := []string{"old=something", "new=something", "{}", "null"}
+	m := RunServer(true)
 	for _, body := range bodies {
-		b := bytes.NewBufferString(body)
+		b := strings.NewReader(body)
 		request, err := http.NewRequest("PUT", "/users/password", b)
 		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
-		err = changePassword(recorder, request, s.token)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-		c.Assert(e.Message, check.Equals, "Both the old and the new passwords are required.")
+		m.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+		c.Assert(recorder.Body.String(), check.Equals, "Both the old and the new passwords are required.\n")
 	}
 }
 
