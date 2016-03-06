@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/tsuru/config"
@@ -238,24 +237,6 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
 	}
 	return nil
-}
-
-type keyBody struct {
-	Name  string
-	Key   string
-	Force bool
-}
-
-func getKeyFromBody(b io.Reader) (repository.Key, bool, error) {
-	var key repository.Key
-	var body keyBody
-	err := json.NewDecoder(b).Decode(&body)
-	if err != nil {
-		return key, false, &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
-	}
-	key.Body = body.Key
-	key.Name = body.Name
-	return key, body.Force, nil
 }
 
 // AddKeyToUser adds a key to a user.
