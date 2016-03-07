@@ -719,22 +719,36 @@ func (s *S) TestCreateApp(c *check.C) {
 }
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
+	t1 := auth.Team{Name: "team1"}
+	err := s.conn.Teams().Insert(t1)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Teams().Remove(t1)
+	t2 := auth.Team{Name: "team2"}
+	err = s.conn.Teams().Insert(t2)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Teams().Remove(t2)
+	permissions := []permission.Permission{
+		{
+			Scheme:  permission.PermAppCreate,
+			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: "team1"},
+		},
+		{
+			Scheme:  permission.PermAppCreate,
+			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: "team2"},
+		},
+	}
+	token := customUserWithPermission(c, "anotheruser", permissions...)
 	a := app.App{Name: "someapp"}
-	data := "name=someapp&platform=zend&teamOwner=tsuruteam"
+	data := "name=someapp&platform=zend&teamOwner=team1"
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppCreate,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
-	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -748,11 +762,10 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 		"repository_url": repoURL,
 		"ip":             appIP,
 	}
-	err = json.Unmarshal(body, &obtained)
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(gotApp.Teams, check.DeepEquals, []string{t1.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	u, _ := token.User()
 	action := rectest.Action{

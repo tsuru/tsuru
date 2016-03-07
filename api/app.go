@@ -223,7 +223,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a := app.App{
-		TeamOwner:   r.FormValue("teamowner"),
+		TeamOwner:   r.FormValue("teamOwner"),
 		Platform:    r.FormValue("platform"),
 		Plan:        app.Plan{Name: r.FormValue("plan")},
 		Name:        r.FormValue("name"),
