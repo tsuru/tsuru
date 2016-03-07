@@ -3798,7 +3798,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	case <-ch:
 		c.Succeed()
 	case <-time.After(1e9):
-		c.Errorf("Failed to call API after 1 second.")
+		c.Error("Failed to call API after 1 second.")
 	}
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 4)
@@ -3887,7 +3887,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	case <-ch:
 		c.Succeed()
 	case <-time.After(1e9):
-		c.Errorf("Failed to call API after 1 second.")
+		c.Error("Failed to call API after 1 second.")
 	}
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 3)
