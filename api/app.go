@@ -816,24 +816,18 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	msg := "You must provide the cname."
-	if r.Body == nil {
+	d := r.FormValue("cnames")
+	if len(d) == 0 {
+		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	var v map[string][]string
-	err := json.NewDecoder(r.Body).Decode(&v)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON in request body."}
-	}
-	if _, ok := v["cname"]; !ok {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
+	cnames := strings.Split(d, ",")
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rawCName := strings.Join(v["cname"], ", ")
+	rawCName := strings.Join(cnames, ", ")
 	rec.Log(u.Email, "add-cname", "app="+appName, "cname="+rawCName)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -848,7 +842,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	if err = a.AddCName(v["cname"]...); err == nil {
+	if err = a.AddCName(cnames...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {

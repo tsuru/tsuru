@@ -2867,17 +2867,20 @@ func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAddCNameHandler(c *check.C) {
+func (s *S) TestAddCName(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":["leper.secretcompany.com"]}`)
+	url := fmt.Sprintf("/apps/%s/cname", a.Name)
+	b := strings.NewReader("cnames=leper.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"leper.secretcompany.com"})
@@ -2889,17 +2892,20 @@ func (s *S) TestAddCNameHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestAddCNameHandlerAcceptsWildCard(c *check.C) {
+func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":["*.leper.secretcompany.com"]}`)
+	url := fmt.Sprintf("/apps/%s/cname", a.Name)
+	b := strings.NewReader("cnames=*.leper.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"*.leper.secretcompany.com"})
@@ -2911,71 +2917,51 @@ func (s *S) TestAddCNameHandlerAcceptsWildCard(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *check.C) {
+func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":["_leper.secretcompany.com"]}`)
+	url := fmt.Sprintf("/apps/%s/cname", a.Name)
+	b := strings.NewReader("cnames=_leper.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "Invalid cname")
-}
-
-func (s *S) TestAddCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
-	c.Assert(err, check.IsNil)
-	request.Body.Close()
-	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
 }
 
 func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *check.C) {
-	bodies := []io.Reader{nil, strings.NewReader(`{}`)}
+	a := app.App{Name: "leper", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("cnames=")}
 	for _, b := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
+		request, err := http.NewRequest("POST", "/apps/leper/cname", b)
 		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "b "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
-		err = setCName(recorder, request, s.token)
-		c.Check(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Check(ok, check.Equals, true)
-		c.Check(e.Code, check.Equals, http.StatusBadRequest)
-		c.Check(e.Message, check.Equals, "You must provide the cname.")
+		m := RunServer(true)
+		m.ServeHTTP(recorder, request)
+		c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
+		c.Check(recorder.Body.String(), check.Equals, "You must provide the cname.\n")
 	}
 }
 
-func (s *S) TestAddCNameHandlerInvalidJSON(c *check.C) {
-	b := strings.NewReader(`}"I'm invalid json"`)
-	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "Invalid JSON in request body.")
-}
-
 func (s *S) TestAddCNameHandlerUnknownApp(c *check.C) {
-	b := strings.NewReader(`{"cname": ["leper.secretcompany.com"]}`)
-	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
+	b := strings.NewReader("cnames=leper.secretcompany.com")
+	request, err := http.NewRequest("POST", "/apps/unknown/cname", b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
@@ -2984,20 +2970,20 @@ func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname": ["lost.secretcompany.com"]}`)
+	url := fmt.Sprintf("/apps/%s/cname", a.Name)
+	b := strings.NewReader("cnames=lost.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateCname,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = setCName(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestRemoveCNameHandler(c *check.C) {
