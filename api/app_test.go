@@ -2221,7 +2221,58 @@ func (s *S) TestRunUserDoesNotHaveAccessToTheApp(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *check.C) {
+func (s *S) TestGetEnvAllEnvs(c *check.C) {
+	a := app.App{
+		Name:      "everything-i-want",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true},
+		},
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env?envs=", a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	expected := []bind.EnvVar{
+		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		{Name: "DATABASE_USER", Value: "root", Public: true},
+		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: false},
+		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: false},
+		{Name: "TSURU_APP_TOKEN", Value: "123", Public: false},
+	}
+	result := []bind.EnvVar{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, len(expected))
+	for _, r := range result {
+		if r.Name == "TSURU_APP_TOKEN" {
+			continue
+		}
+		for _, e := range expected {
+			if e.Name == r.Name {
+				c.Check(e.Public, check.Equals, r.Public)
+				c.Check(e.Value, check.Equals, r.Value)
+			}
+		}
+	}
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	action := rectest.Action{
+		Action: "get-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[]"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestGetEnv(c *check.C) {
 	a := app.App{
 		Name:      "everything-i-want",
 		Platform:  "zend",
@@ -2260,7 +2311,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *check.C) {
+func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	a := app.App{
 		Name:      "four-sticks",
 		Platform:  "zend",
@@ -2298,29 +2349,18 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("GET", "/apps/unknown/env/?:app=unknown", b)
+func (s *S) TestGetEnvAppDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("GET", "/apps/unknown/env", nil)
 	c.Assert(err, check.IsNil)
-	request.Body.Close()
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = getEnv(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
 
-func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/env/?:app=unknown", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = getEnv(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-	c.Assert(e, check.ErrorMatches, "^App unknown not found.$")
-}
-
-func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
+func (s *S) TestGetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -2330,18 +2370,17 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Scheme:  permission.PermAppReadEnv,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
+	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST", a.Name)
+	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = getEnv(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromAppWithAppToken(c *check.C) {
+func (s *S) TestGetEnvWithAppToken(c *check.C) {
 	a := app.App{
 		Name:      "everything-i-want",
 		Platform:  "zend",
