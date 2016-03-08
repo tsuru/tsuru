@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -671,14 +670,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var variables []string
-	if r.Body != nil {
-		defer r.Body.Close()
-		err := json.NewDecoder(r.Body).Decode(&variables)
-		if err != nil && err != io.EOF {
-			return err
-		}
-	}
+	variables := strings.Split(r.URL.Query().Get("envs"), ",")
 	appName := r.URL.Query().Get(":app")
 	var u *auth.User
 	var err error

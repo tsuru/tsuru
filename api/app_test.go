@@ -2234,13 +2234,14 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
-	request.Header.Set("Content-Type", "application/json")
+	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST", a.Name)
+	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = getEnv(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := []map[string]interface{}{{
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
@@ -2272,12 +2273,14 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
+	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST,DATABASE_USER", a.Name)
+	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = getEnv(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
 	expected := []map[string]interface{}{
 		{"name": "DATABASE_HOST", "value": "localhost", "public": true},
@@ -2351,15 +2354,17 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromAppWithAppToken(c *check
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
-	request.Header.Set("Content-Type", "application/json")
+	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST", a.Name)
+	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.AppLogin(a.Name)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	token, err := nativeScheme.AppLogin("appToken")
 	c.Assert(err, check.IsNil)
-	err = getEnv(recorder, request, auth.Token(token))
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := []map[string]interface{}{{
 		"name":   "DATABASE_HOST",
 		"value":  "localhost",
