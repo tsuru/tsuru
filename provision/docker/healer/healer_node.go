@@ -232,10 +232,10 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	_, err = coll.UpsertId(node.Address, bson.M{
 		"$set": toInsert,
 		"$push": bson.M{
-			"checks": bson.D{
-				{Name: "$each", Value: []nodeChecks{{Time: now, Checks: nodeData.Checks}}},
-				{Name: "$slice", Value: -10},
-			},
+			"checks": bson.D([]bson.DocElem{
+				bson.DocElem{Name: "$each", Value: []nodeChecks{{Time: now, Checks: nodeData.Checks}}},
+				bson.DocElem{Name: "$slice", Value: -10},
+			}),
 		},
 	})
 	return err
