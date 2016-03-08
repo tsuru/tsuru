@@ -517,7 +517,7 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
 	}
 	defer r.Body.Close()
-	var hostInput app.UpdateNodeData
+	var hostInput provision.NodeStatusData
 	err := json.NewDecoder(r.Body).Decode(&hostInput)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -535,12 +535,12 @@ func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
 	}
 	defer r.Body.Close()
-	var input []app.UpdateUnitsData
+	var input []provision.UnitStatusData
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	result, err := app.UpdateNodeStatus(app.UpdateNodeData{Units: input})
+	result, err := app.UpdateNodeStatus(provision.NodeStatusData{Units: input})
 	if err != nil {
 		return err
 	}

@@ -537,23 +537,6 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 	return &provision.UnitNotFoundError{ID: unitName}
 }
 
-type UpdateNodeData struct {
-	Units  []UpdateUnitsData
-	Checks []HostCheckResult
-}
-
-type HostCheckResult struct {
-	Name       string
-	Err        string
-	Successful bool
-}
-
-type UpdateUnitsData struct {
-	ID     string
-	Name   string
-	Status provision.Status
-}
-
 type UpdateUnitsResult struct {
 	ID    string
 	Found bool
@@ -561,7 +544,7 @@ type UpdateUnitsResult struct {
 
 // UpdateNodeStatus updates the status of the given node and its units,
 // returning a map which units were found during the update.
-func UpdateNodeStatus(node UpdateNodeData) ([]UpdateUnitsResult, error) {
+func UpdateNodeStatus(node provision.NodeStatusData) ([]UpdateUnitsResult, error) {
 	result := make([]UpdateUnitsResult, len(node.Units))
 	for i, unitData := range node.Units {
 		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
@@ -572,7 +555,12 @@ func UpdateNodeStatus(node UpdateNodeData) ([]UpdateUnitsResult, error) {
 			return nil, err
 		}
 	}
-	// TODO(cezarsa): do something about node.Checks
+	if nodeProvisioner, ok := Provisioner.(provision.NodeStatusProvisioner); ok {
+		err := nodeProvisioner.SetNodeStatus(node)
+		if err != nil {
+			log.Errorf("unable to set node status: %s", err)
+		}
+	}
 	return result, nil
 }
 

@@ -717,13 +717,13 @@ func (s *S) TestUpdateNodeStatus(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	unitStates := []UpdateUnitsData{
+	unitStates := []provision.UnitStatusData{
 		{ID: units[0].ID, Status: provision.Status("started")},
 		{ID: units[1].ID, Status: provision.Status("stopped")},
 		{ID: units[2].ID, Status: provision.Status("error")},
 		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
 	}
-	result, err := UpdateNodeStatus(UpdateNodeData{Units: unitStates})
+	result, err := UpdateNodeStatus(provision.NodeStatusData{Units: unitStates})
 	c.Assert(err, check.IsNil)
 	expected := []UpdateUnitsResult{
 		{ID: units[0].ID, Found: true},

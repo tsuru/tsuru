@@ -62,6 +62,7 @@ type dockerProvisioner struct {
 	storage        cluster.Storage
 	scheduler      *segregatedScheduler
 	isDryMode      bool
+	nodeHealer     *healer.NodeHealer
 }
 
 func (p *dockerProvisioner) initDockerCluster() error {
@@ -110,14 +111,14 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		if waitSecondsNewMachine <= 0 {
 			waitSecondsNewMachine = 5 * 60
 		}
-		nodeHealer := healer.NewNodeHealer(healer.NodeHealerArgs{
+		p.nodeHealer = healer.NewNodeHealer(healer.NodeHealerArgs{
 			Provisioner:           p,
 			DisabledTime:          time.Duration(disabledSeconds) * time.Second,
 			WaitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
 			FailuresBeforeHealing: maxFailures,
 		})
-		shutdown.Register(nodeHealer)
-		p.cluster.Healer = nodeHealer
+		shutdown.Register(p.nodeHealer)
+		p.cluster.Healer = p.nodeHealer
 	}
 	healContainersSeconds, _ := config.GetInt("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {
@@ -1242,4 +1243,11 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 		}
 	}
 	return result, nil
+}
+
+func (p *dockerProvisioner) SetNodeStatus(nodeData provision.NodeStatusData) error {
+	if p.nodeHealer == nil {
+		return nil
+	}
+	return p.nodeHealer.UpdateNodeData(nodeData)
 }

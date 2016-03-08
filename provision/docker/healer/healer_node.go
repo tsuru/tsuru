@@ -12,11 +12,15 @@ import (
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/queue"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type NodeHealer struct {
@@ -171,4 +175,76 @@ func (h *NodeHealer) Shutdown() {
 
 func (h *NodeHealer) String() string {
 	return "node healer"
+}
+
+type nodeChecks struct {
+	Time   time.Time
+	Checks []provision.NodeCheckResult
+}
+
+type nodeStatusData struct {
+	Address     string       `bson:"_id,omitempty"`
+	Checks      []nodeChecks `bson:",omitempty"`
+	LastSuccess time.Time    `bson:",omitempty"`
+	LastUpdate  time.Time
+}
+
+func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
+	nodes, err := h.provisioner.Cluster().UnfilteredNodes()
+	if err != nil {
+		return err
+	}
+	nodeSet := map[string]*cluster.Node{}
+	for i := range nodes {
+		nodeSet[net.URLToHost(nodes[i].Address)] = &nodes[i]
+	}
+	var node *cluster.Node
+	for _, addr := range nodeData.Addrs {
+		n := nodeSet[addr]
+		if n != nil {
+			if node != nil {
+				return fmt.Errorf("[update node data] addrs match multiple nodes: %v", nodeData.Addrs)
+			}
+			node = n
+		}
+	}
+	if node == nil {
+		return fmt.Errorf("[update node data] node not found for addrs: %v", nodeData.Addrs)
+	}
+	coll, err := nodeDataCollection()
+	if err != nil {
+		return err
+	}
+	isSuccess := true
+	for _, c := range nodeData.Checks {
+		isSuccess = c.Successful
+		if isSuccess == false {
+			break
+		}
+	}
+	now := time.Now().UTC()
+	toInsert := nodeStatusData{
+		LastUpdate: now,
+	}
+	if isSuccess {
+		toInsert.LastSuccess = now
+	}
+	_, err = coll.UpsertId(node.Address, bson.M{
+		"$set": toInsert,
+		"$push": bson.M{
+			"checks": bson.D{
+				{Name: "$each", Value: []nodeChecks{{Time: now, Checks: nodeData.Checks}}},
+				{Name: "$slice", Value: -10},
+			},
+		},
+	})
+	return err
+}
+
+func nodeDataCollection() (*storage.Collection, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return conn.Collection("node_status"), nil
 }

@@ -355,6 +355,29 @@ type OptionalLogsProvisioner interface {
 	LogsEnabled(App) (bool, string, error)
 }
 
+type NodeStatusProvisioner interface {
+	// SetNodeStatus changes the status of a node and all its units.
+	SetNodeStatus(NodeStatusData) error
+}
+
+type NodeStatusData struct {
+	Addrs  []string
+	Units  []UnitStatusData
+	Checks []NodeCheckResult
+}
+
+type UnitStatusData struct {
+	ID     string
+	Name   string
+	Status Status
+}
+
+type NodeCheckResult struct {
+	Name       string
+	Err        string
+	Successful bool
+}
+
 // PlatformOptions is the set of options provided to PlatformAdd and
 // PlatformUpdate, in the ExtensibleProvisioner.
 type PlatformOptions struct {

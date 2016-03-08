@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -424,6 +425,87 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
 	c.Assert(events, check.HasLen, 7)
+}
+
+func (s *S) TestHealerUpdateNodeData(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	data := provision.NodeStatusData{
+		Addrs: []string{"127.0.0.1"},
+		Checks: []provision.NodeCheckResult{
+			{Name: "ok1", Successful: true},
+			{Name: "ok2", Successful: true},
+		},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.IsNil)
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	var result nodeStatusData
+	err = coll.FindId(node1.URL()).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
+	c.Assert(result.LastUpdate.IsZero(), check.Equals, false)
+	c.Assert(result.Checks[0].Time.IsZero(), check.Equals, false)
+	result.LastUpdate = time.Time{}
+	result.LastSuccess = time.Time{}
+	result.Checks[0].Time = time.Time{}
+	c.Assert(result, check.DeepEquals, nodeStatusData{
+		Address: node1.URL(),
+		Checks:  []nodeChecks{{Checks: data.Checks}},
+	})
+}
+
+func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	for i := 0; i < 20; i++ {
+		data := provision.NodeStatusData{
+			Addrs: []string{"127.0.0.1"},
+			Checks: []provision.NodeCheckResult{
+				{Name: fmt.Sprintf("ok1-%d", i), Successful: true},
+				{Name: fmt.Sprintf("ok2-%d", i), Successful: true},
+			},
+		}
+		err = healer.UpdateNodeData(data)
+		c.Assert(err, check.IsNil)
+	}
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	var result nodeStatusData
+	err = coll.FindId(node1.URL()).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
+	c.Assert(result.LastUpdate.IsZero(), check.Equals, false)
+	result.LastUpdate = time.Time{}
+	result.LastSuccess = time.Time{}
+	c.Assert(result.Checks, check.HasLen, 10)
+	expectedChecks := []nodeChecks{}
+	for i, check := range result.Checks {
+		expectedChecks = append(expectedChecks, nodeChecks{
+			Time: check.Time,
+			Checks: []provision.NodeCheckResult{
+				{Name: fmt.Sprintf("ok1-%d", 10+i), Successful: true},
+				{Name: fmt.Sprintf("ok2-%d", 10+i), Successful: true},
+			},
+		})
+	}
+	c.Assert(result, check.DeepEquals, nodeStatusData{
+		Address: node1.URL(),
+		Checks:  expectedChecks,
+	})
 }
 
 func (s *S) newFakeDockerProvisioner(servers ...string) (*dockertest.FakeDockerProvisioner, error) {
