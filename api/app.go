@@ -816,19 +816,22 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	d := r.FormValue("cnames")
-	if len(d) == 0 {
+	err := r.ParseForm()
+	if err != nil {
 		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	cnames := strings.Split(d, ",")
+	cnames := r.Form["cname"]
+	if len(cnames) == 0 {
+		msg := "You must provide the cname."
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rawCName := strings.Join(cnames, ", ")
-	rec.Log(u.Email, "add-cname", "app="+appName, "cname="+rawCName)
+	rec.Log(u.Email, "add-cname", "app="+appName, "cname="+strings.Join(cnames, ", "))
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err

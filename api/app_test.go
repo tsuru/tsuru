@@ -2872,7 +2872,7 @@ func (s *S) TestAddCName(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname", a.Name)
-	b := strings.NewReader("cnames=leper.secretcompany.com")
+	b := strings.NewReader("cname=leper.secretcompany.com&cname=blog.tsuru.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2883,11 +2883,11 @@ func (s *S) TestAddCName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.CName, check.DeepEquals, []string{"leper.secretcompany.com"})
+	c.Assert(app.CName, check.DeepEquals, []string{"leper.secretcompany.com", "blog.tsuru.com"})
 	action := rectest.Action{
 		Action: "add-cname",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "cname=leper.secretcompany.com"},
+		Extra:  []interface{}{"app=" + app.Name, "cname=leper.secretcompany.com, blog.tsuru.com"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -2897,7 +2897,7 @@ func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname", a.Name)
-	b := strings.NewReader("cnames=*.leper.secretcompany.com")
+	b := strings.NewReader("cname=*.leper.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2922,7 +2922,7 @@ func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname", a.Name)
-	b := strings.NewReader("cnames=_leper.secretcompany.com")
+	b := strings.NewReader("cname=_leper.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2934,11 +2934,26 @@ func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
 }
 
-func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *check.C) {
+func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsEmpty(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("cnames=")}
+	request, err := http.NewRequest("POST", "/apps/leper/cname", strings.NewReader("cname="))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
+}
+
+func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissing(c *check.C) {
+	a := app.App{Name: "leper", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, b := range bodies {
 		request, err := http.NewRequest("POST", "/apps/leper/cname", b)
 		c.Assert(err, check.IsNil)
@@ -2953,7 +2968,7 @@ func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c 
 }
 
 func (s *S) TestAddCNameHandlerUnknownApp(c *check.C) {
-	b := strings.NewReader("cnames=leper.secretcompany.com")
+	b := strings.NewReader("cname=leper.secretcompany.com")
 	request, err := http.NewRequest("POST", "/apps/unknown/cname", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2971,7 +2986,7 @@ func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.logConn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/cname", a.Name)
-	b := strings.NewReader("cnames=lost.secretcompany.com")
+	b := strings.NewReader("cname=lost.secretcompany.com")
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
