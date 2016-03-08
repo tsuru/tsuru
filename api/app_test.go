@@ -2097,7 +2097,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls&once=true"))
 	c.Assert(err, check.IsNil)

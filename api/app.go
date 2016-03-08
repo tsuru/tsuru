@@ -643,7 +643,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	once := r.FormValue("onde")
+	once := r.FormValue("once")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
