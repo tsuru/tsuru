@@ -341,17 +341,20 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	if err != nil {
 		return output, err
 	}
+	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
 	attachOptions := docker.AttachToContainerOptions{
 		Container:    cont.ID,
 		OutputStream: &output,
 		Stream:       true,
 		Stdout:       true,
+		Success:      make(chan struct{}),
 	}
 	waiter, err := cluster.AttachToContainerNonBlocking(attachOptions)
 	if err != nil {
 		return output, err
 	}
-	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
+	<-attachOptions.Success
+	close(attachOptions.Success)
 	err = cluster.StartContainer(cont.ID, nil)
 	if err != nil {
 		return output, err
