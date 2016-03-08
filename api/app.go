@@ -855,16 +855,9 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	msg := "You must provide the cname."
-	if r.Body == nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	var v map[string][]string
-	err := json.NewDecoder(r.Body).Decode(&v)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON in request body."}
-	}
-	if _, ok := v["cname"]; !ok {
+	cnames := r.URL.Query()["cname"]
+	if len(cnames) == 0 {
+		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	u, err := t.User()
@@ -872,7 +865,6 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rawCName := strings.Join(v["cname"], ", ")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -886,8 +878,8 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "remove-cname", "app="+appName, "cnames="+rawCName)
-	if err = a.RemoveCName(v["cname"]...); err == nil {
+	rec.Log(u.Email, "remove-cname", "app="+appName, "cnames="+strings.Join(cnames, ", "))
+	if err = a.RemoveCName(cnames...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {

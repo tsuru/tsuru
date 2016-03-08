@@ -3011,13 +3011,14 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddCName("foo.bar.com")
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
-	request, err := http.NewRequest("DELETE", url, b)
+	url := fmt.Sprintf("/apps/%s/cname?cname=foo.bar.com", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetCName(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{})
@@ -3029,7 +3030,7 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestUnsetTwoCnames(c *check.C) {
+func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
 	a := app.App{
 		Name:      "leper",
 		Platform:  "zend",
@@ -3041,13 +3042,14 @@ func (s *S) TestUnsetTwoCnames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddCName("bar.com")
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname": ["foo.bar.com", "bar.com"]}`)
-	request, err := http.NewRequest("DELETE", url, b)
+	url := fmt.Sprintf("/apps/%s/cname?cname=foo.bar.com&cname=bar.com", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetCName(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{})
@@ -3059,16 +3061,14 @@ func (s *S) TestUnsetTwoCnames(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestRemoveCNameHandlerUnknownApp(c *check.C) {
-	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
-	request, err := http.NewRequest("DELETE", "/apps/unknown/cname?:app=unknown", b)
+func (s *S) TestRemoveCNameUnknownApp(c *check.C) {
+	request, err := http.NewRequest("DELETE", "/apps/unknown/cname?cname=foo.bar.com", nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetCName(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestRemoveCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
@@ -3084,16 +3084,14 @@ func (s *S) TestRemoveCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 		Scheme:  permission.PermAppUpdateCnameRemove,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
-	request, err := http.NewRequest("DELETE", url, b)
+	url := fmt.Sprintf("/apps/%s/cname?cname=foo.bar.com", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetCName(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestAppLogShouldReturnNotFoundWhenAppDoesNotExist(c *check.C) {
