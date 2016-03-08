@@ -233,8 +233,8 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 		"$set": toInsert,
 		"$push": bson.M{
 			"checks": bson.D([]bson.DocElem{
-				bson.DocElem{Name: "$each", Value: []nodeChecks{{Time: now, Checks: nodeData.Checks}}},
-				bson.DocElem{Name: "$slice", Value: -10},
+				{Name: "$each", Value: []nodeChecks{{Time: now, Checks: nodeData.Checks}}},
+				{Name: "$slice", Value: -10},
 			}),
 		},
 	})
