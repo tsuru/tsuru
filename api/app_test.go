@@ -336,7 +336,6 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -2093,20 +2092,22 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
 }
 
-func (s *S) TestRunOnceHandler(c *check.C) {
+func (s *S) TestRunOnce(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s&once=true", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls&once=true"))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = runCommand(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of files"}`+"\n")
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
@@ -2120,20 +2121,22 @@ func (s *S) TestRunOnceHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestRunHandler(c *check.C) {
+func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("lots of\nfiles"))
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls"))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = runCommand(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of\nfiles"}`+"\n")
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
@@ -2147,63 +2150,58 @@ func (s *S) TestRunHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
+func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 	s.provisioner.PrepareFailure("ExecuteCommand", &errors.HTTP{Code: 500, Message: "something went wrong"})
 	s.provisioner.PrepareOutput([]byte("failure output"))
 	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls"))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = runCommand(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "something went wrong")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
 	expected := `{"Message":"failure output"}` + "\n" +
 		`{"Message":"","Error":"something went wrong"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
 }
 
-func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *check.C) {
+func (s *S) TestRunReturnsBadRequestIfTheCommandIsMissing(c *check.C) {
+	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unknown", body)
+		request, err := http.NewRequest("POST", "/apps/secrets/run", body)
 		c.Assert(err, check.IsNil)
+		request.Header.Set("content-type", "application/x-www-form-urlencoded")
+		request.Header.Set("authorization", "b "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
-		err = runCommand(recorder, request, s.token)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-		c.Assert(e, check.ErrorMatches, "^You must provide the command to run$")
+		m := RunServer(true)
+		m.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+		c.Assert(recorder.Body.String(), check.Equals, "You must provide the command to run\n")
 	}
 }
 
-func (s *S) TestRunHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/users", b)
+func (s *S) TestRunAppDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("POST", "/apps/unknown/run", strings.NewReader("command=ls"))
 	c.Assert(err, check.IsNil)
-	request.Body.Close()
+	request.Header.Set("content-type", "application/x-www-form-urlencoded")
+	request.Header.Set("authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = runCommand(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
 
-func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unknown", strings.NewReader("ls"))
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = runCommand(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-	c.Assert(e, check.ErrorMatches, "^App unknown not found.$")
-}
-
-func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
+func (s *S) TestRunUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -2212,15 +2210,15 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 		Scheme:  permission.PermAppRun,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls"))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("content-type", "application/x-www-form-urlencoded")
+	request.Header.Set("authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = runCommand(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *check.C) {

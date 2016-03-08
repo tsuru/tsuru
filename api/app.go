@@ -634,17 +634,9 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	w.Header().Set("Content-Type", "text")
 	msg := "You must provide the command to run"
-	if r.Body == nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	defer r.Body.Close()
-	c, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	if len(c) < 1 {
+	command := r.FormValue("command")
+	if len(command) < 1 {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	u, err := t.User()
@@ -652,7 +644,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	once := r.URL.Query().Get("once")
+	once := r.FormValue("onde")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -666,14 +658,14 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "run-command", "app="+appName, "command="+string(c))
+	rec.Log(u.Email, "run-command", "app="+appName, "command="+command)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Run(string(c), writer, once == "true")
+	err = a.Run(command, writer, once == "true")
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return err
+		return nil
 	}
 	return nil
 }
