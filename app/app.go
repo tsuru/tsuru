@@ -1136,7 +1136,7 @@ func (app *App) unsetEnvsToApp(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 // in the database or add the CName on the provisioner.
 func (app *App) AddCName(cnames ...string) error {
 	for _, cname := range cnames {
-		if cname != "" && !cnameRegexp.MatchString(cname) {
+		if !cnameRegexp.MatchString(cname) {
 			return stderr.New("Invalid cname")
 		}
 		if cnameExists(cname) {

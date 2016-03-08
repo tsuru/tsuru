@@ -1366,6 +1366,18 @@ func (s *S) TestAddCNameWithWildCard(c *check.C) {
 	c.Assert(app.CName, check.DeepEquals, []string{"*.mycompany.com"})
 }
 
+func (s *S) TestAddCNameErrsOnEmptyCName(c *check.C) {
+	app := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
+	err = app.AddCName("")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Invalid cname")
+}
+
 func (s *S) TestAddCNameErrsOnInvalid(c *check.C) {
 	app := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(app)
@@ -1417,7 +1429,7 @@ func (s *S) TestAddCNameValidatesTheCName(c *check.C) {
 		{".ktulu.mycompany.com", false},
 		{"0800.com", true},
 		{"-0800.com", false},
-		{"", true},
+		{"", false},
 	}
 	a := App{Name: "live-to-die"}
 	err := s.conn.Apps().Insert(a)
