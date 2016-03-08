@@ -768,19 +768,12 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	msg := "You must provide the list of environment variables, in JSON format"
-	if r.Body == nil {
+	msg := "You must provide the list of environment variables."
+	envs := r.URL.Query().Get("envs")
+	if envs == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	var variables []string
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&variables)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	if len(variables) == 0 {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
+	variables := strings.Split(envs, ",")
 	appName := r.URL.Query().Get(":app")
 	u, err := t.User()
 	if err != nil {

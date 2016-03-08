@@ -2377,7 +2377,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromAppWithAppToken(c *check
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 }
 
-func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *check.C) {
+func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -2617,7 +2617,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *check.C) {
+func (s *S) TestUnsetEnv(c *check.C) {
 	a := app.App{
 		Name:     "swift",
 		Platform: "zend",
@@ -2633,13 +2633,14 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *check
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetEnv(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	app, err := app.GetByName("swift")
 	c.Assert(err, check.IsNil)
@@ -2655,7 +2656,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *check
 `)
 }
 
-func (s *S) TestUnsetEnvHandlerNoRestart(c *check.C) {
+func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 	a := app.App{
 		Name:     "swift",
 		Platform: "zend",
@@ -2671,13 +2672,14 @@ func (s *S) TestUnsetEnvHandlerNoRestart(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=true", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
+	url := fmt.Sprintf("/apps/%s/env?noRestart=true&envs=DATABASE_HOST", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = unsetEnv(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	app, err := app.GetByName("swift")
 	c.Assert(err, check.IsNil)
@@ -2707,12 +2709,14 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST,DATABASE_USER", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetEnv(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	app, err := app.GetByName("let-it-be")
 	c.Assert(err, check.IsNil)
@@ -2746,13 +2750,14 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
-	b := strings.NewReader(`["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD"]`)
-	request, err := http.NewRequest("DELETE", url, b)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST,DATABASE_USER,DATABASE_PASSWORD", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetEnv(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	app, err := app.GetByName("letitbe")
 	c.Assert(err, check.IsNil)
@@ -2766,45 +2771,42 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	c.Assert(app.Env, check.DeepEquals, expected)
 }
 
-func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", b)
-	c.Assert(err, check.IsNil)
-	request.Body.Close()
-	recorder := httptest.NewRecorder()
-	err = unsetEnv(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
-	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("[]")}
-	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", body)
-		c.Assert(err, check.IsNil)
-		recorder := httptest.NewRecorder()
-		err = unsetEnv(recorder, request, s.token)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-		c.Assert(e, check.ErrorMatches, "^You must provide the list of environment variables, in JSON format$")
+func (s *S) TestUnsetEnvVariablesMissing(c *check.C) {
+	a := app.App{
+		Name:     "swift",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
 	}
-}
-
-func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
-	b := strings.NewReader(`["DATABASE_HOST"]`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown&noRestart=false", b)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	request, err := http.NewRequest("DELETE", "/apps/swift/env?noRestart=false&envs=", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = unsetEnv(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-	c.Assert(e, check.ErrorMatches, "^App unknown not found.$")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide the list of environment variables.\n")
 }
 
-func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
+func (s *S) TestUnsetEnvAppDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("DELETE", "/apps/unknown/env?noRestart=false&envs=ble", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
+}
+
+func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	a := app.App{Name: "mountain-mama"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -2814,17 +2816,16 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 		Scheme:  permission.PermAppUpdateEnvUnset,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s&noRestart=false", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader(`["DATABASE_HOST"]`))
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST", a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
-	err = unsetEnv(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestAddCNameHandler(c *check.C) {
