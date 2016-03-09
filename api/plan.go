@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -16,19 +17,23 @@ import (
 )
 
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var plan app.Plan
-	err := json.NewDecoder(r.Body).Decode(&plan)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "unable to parse request body",
-		}
+	cpuShare, _ := strconv.Atoi(r.FormValue("cpushare"))
+	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
+	memory, _ := strconv.ParseInt(r.FormValue("memory"), 10, 64)
+	swap, _ := strconv.ParseInt(r.FormValue("swap"), 10, 64)
+	plan := app.Plan{
+		Name:     r.FormValue("name"),
+		Memory:   memory,
+		Swap:     swap,
+		CpuShare: cpuShare,
+		Default:  isDefault,
+		Router:   r.FormValue("router"),
 	}
 	allowed := permission.Check(t, permission.PermPlanCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = plan.Save()
+	err := plan.Save()
 	if _, ok := err.(app.PlanValidationError); ok {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
