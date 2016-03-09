@@ -18,9 +18,10 @@ import (
 )
 
 func (s *S) TestAddPoolNameIsRequired(c *check.C) {
-	b := bytes.NewBufferString(`{"name": ""}`)
+	b := bytes.NewBufferString("name=")
 	request, err := http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -30,10 +31,11 @@ func (s *S) TestAddPoolNameIsRequired(c *check.C) {
 }
 
 func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
-	b := bytes.NewBufferString(`{"name": "pool1", "default": true}`)
+	b := bytes.NewBufferString("name=pool1&default=true")
 	req, err := http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	defer provision.RemovePool("pool1")
 	m := RunServer(true)
@@ -43,10 +45,11 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 }
 
 func (s *S) TestAddPool(c *check.C) {
-	b := bytes.NewBufferString(`{"name": "pool1"}`)
+	b := bytes.NewBufferString("name=pool1")
 	req, err := http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	defer provision.RemovePool("pool1")
 	m := RunServer(true)
@@ -56,10 +59,11 @@ func (s *S) TestAddPool(c *check.C) {
 	pools, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)
-	b = bytes.NewBufferString(`{"name": "pool2", "public": true}`)
+	b = bytes.NewBufferString("name=pool2&public=true")
 	req, err = http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec = httptest.NewRecorder()
 	defer provision.RemovePool("pool2")
 	m.ServeHTTP(rec, req)

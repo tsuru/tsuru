@@ -62,18 +62,16 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
+	public, _ := strconv.ParseBool(r.FormValue("public"))
+	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
+	force, _ := strconv.ParseBool(r.FormValue("force"))
+	p := provision.AddPoolOptions{
+		Name:    r.FormValue("name"),
+		Public:  public,
+		Default: isDefault,
+		Force:   force,
 	}
-	var p provision.AddPoolOptions
-	err = json.Unmarshal(b, &p)
-	if err != nil {
-		return err
-	}
-	forceAdd, _ := strconv.ParseBool(r.URL.Query().Get("force"))
-	p.Force = forceAdd
-	err = provision.AddPool(p)
+	err := provision.AddPool(p)
 	if err == provision.ErrDefaultPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
