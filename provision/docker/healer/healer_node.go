@@ -189,31 +189,67 @@ type nodeStatusData struct {
 	LastUpdate  time.Time
 }
 
-func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
+func (h *NodeHealer) findNodeForNodeData(nodeData provision.NodeStatusData) (*cluster.Node, error) {
 	nodes, err := h.provisioner.Cluster().UnfilteredNodes()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	nodeSet := map[string]*cluster.Node{}
 	for i := range nodes {
 		nodeSet[net.URLToHost(nodes[i].Address)] = &nodes[i]
 	}
+	containerIDs := make([]string, 0, len(nodeData.Units))
+	containerNames := make([]string, 0, len(nodeData.Units))
+	for _, u := range nodeData.Units {
+		if u.ID != "" {
+			containerIDs = append(containerIDs, u.ID)
+		}
+		if u.Name != "" {
+			containerNames = append(containerNames, u.Name)
+		}
+	}
+	containersForNode, err := h.provisioner.ListContainers(bson.M{
+		"$or": []bson.M{
+			{"name": bson.M{"$in": containerNames}},
+			{"id": bson.M{"$in": containerIDs}},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
 	var node *cluster.Node
+	for _, c := range containersForNode {
+		n := nodeSet[c.HostAddr]
+		if n != nil {
+			if node != nil && node.Address != n.Address {
+				return nil, fmt.Errorf("containers match multiple nodes: %s and %s", node.Address, n.Address)
+			}
+			node = n
+		}
+	}
+	if node != nil {
+		return node, nil
+	}
+	// Node not found through containers, try finding using addrs.
 	for _, addr := range nodeData.Addrs {
 		n := nodeSet[addr]
 		if n != nil {
 			if node != nil {
-				return fmt.Errorf("[update node data] addrs match multiple nodes: %v", nodeData.Addrs)
+				return nil, fmt.Errorf("addrs match multiple nodes: %v", nodeData.Addrs)
 			}
 			node = n
 		}
 	}
 	if node == nil {
-		return fmt.Errorf("[update node data] node not found for addrs: %v", nodeData.Addrs)
+		return nil, fmt.Errorf("node not found for addrs: %v", nodeData.Addrs)
 	}
-	coll, err := nodeDataCollection()
+	return node, nil
+}
+
+func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
+	node, err := h.findNodeForNodeData(nodeData)
 	if err != nil {
-		return err
+		return fmt.Errorf("[update node data] %s", err)
 	}
 	isSuccess := true
 	for _, c := range nodeData.Checks {
@@ -228,6 +264,10 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	}
 	if isSuccess {
 		toInsert.LastSuccess = now
+	}
+	coll, err := nodeDataCollection()
+	if err != nil {
+		return err
 	}
 	_, err = coll.UpsertId(node.Address, bson.M{
 		"$set": toInsert,

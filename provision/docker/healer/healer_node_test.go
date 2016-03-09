@@ -6,13 +6,15 @@ package healer
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"time"
 
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/iaas"
-	"github.com/tsuru/tsuru/net"
+	tsurunet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
@@ -57,7 +59,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
@@ -77,7 +79,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node2.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "localhost")
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -112,7 +114,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
@@ -140,7 +142,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 	c.Assert(nodes[0].FailureCount() > 0, check.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 	created, err := healer.healNode(&nodes[0])
@@ -151,7 +153,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
@@ -184,7 +186,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 	c.Assert(nodes[0].FailureCount() > 0, check.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 	created, err := healer.healNode(&nodes[0])
@@ -195,7 +197,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 }
 
 func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
@@ -236,7 +238,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
 	containers := p.AllContainers()
 	c.Assert(err, check.IsNil)
@@ -257,7 +259,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node2.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "localhost")
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -308,7 +310,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
 	machines, err := iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -325,7 +327,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node2.URL()))
-	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "localhost")
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
@@ -506,6 +508,148 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 		Address: node1.URL(),
 		Checks:  expectedChecks,
 	})
+}
+
+func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	data := provision.NodeStatusData{
+		Addrs: []string{"10.0.0.1"},
+		Checks: []provision.NodeCheckResult{
+			{Name: "ok1", Successful: true},
+			{Name: "ok2", Successful: true},
+		},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.ErrorMatches, `\[update node data\] node not found for addrs: \[10.0.0.1\]`)
+}
+
+func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	_, err = p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 1},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	conts := p.AllContainers()
+	c.Assert(conts, check.HasLen, 1)
+	data := provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: conts[0].ID},
+		},
+		Addrs: []string{"10.0.0.1"},
+		Checks: []provision.NodeCheckResult{
+			{Name: "ok1", Successful: true},
+			{Name: "ok2", Successful: true},
+		},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.IsNil)
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	var result nodeStatusData
+	err = coll.FindId(node1.URL()).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
+	c.Assert(result.LastUpdate.IsZero(), check.Equals, false)
+	c.Assert(result.Checks[0].Time.IsZero(), check.Equals, false)
+	result.LastUpdate = time.Time{}
+	result.LastSuccess = time.Time{}
+	result.Checks[0].Time = time.Time{}
+	c.Assert(result, check.DeepEquals, nodeStatusData{
+		Address: node1.URL(),
+		Checks:  []nodeChecks{{Checks: data.Checks}},
+	})
+}
+
+func (s *S) TestHealerUpdateNodeDataAmbiguousContainers(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2Url, _ := url.Parse(node2.URL())
+	_, port, _ := net.SplitHostPort(node2Url.Host)
+	node2Addr := fmt.Sprintf("http://localhost:%s/", port)
+	p, err := s.newFakeDockerProvisioner(node1.URL(), node2Addr)
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	_, err = p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 1},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node2Addr,
+		App:       app,
+		Amount:    map[string]int{"web": 1},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	conts := p.AllContainers()
+	c.Assert(conts, check.HasLen, 2)
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	data := provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: conts[0].ID},
+			{ID: conts[1].ID},
+		},
+		Addrs: []string{"10.0.0.1"},
+		Checks: []provision.NodeCheckResult{
+			{Name: "ok1", Successful: true},
+			{Name: "ok2", Successful: true},
+		},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.ErrorMatches, `\[update node data\] containers match multiple nodes: http://.*?/ and http://.*?/`)
+}
+
+func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2Url, _ := url.Parse(node2.URL())
+	_, port, _ := net.SplitHostPort(node2Url.Host)
+	node2Addr := fmt.Sprintf("http://localhost:%s/", port)
+	p, err := s.newFakeDockerProvisioner(node1.URL(), node2Addr)
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	data := provision.NodeStatusData{
+		Addrs: []string{"127.0.0.1", "localhost"},
+		Checks: []provision.NodeCheckResult{
+			{Name: "ok1", Successful: true},
+			{Name: "ok2", Successful: true},
+		},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.ErrorMatches, `\[update node data\] addrs match multiple nodes: \[.*? .*?\]`)
 }
 
 func (s *S) newFakeDockerProvisioner(servers ...string) (*dockertest.FakeDockerProvisioner, error) {

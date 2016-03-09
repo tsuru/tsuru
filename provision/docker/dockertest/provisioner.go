@@ -286,6 +286,19 @@ func (p *FakeDockerProvisioner) ListContainers(query bson.M) ([]container.Contai
 	}
 	coll := p.Collection()
 	defer coll.Close()
+	var insertedIDs []string
+	defer func() {
+		coll.RemoveAll(bson.M{"id": bson.M{"$in": insertedIDs}})
+	}()
+	for _, containers := range p.containers {
+		for _, c := range containers {
+			insertedIDs = append(insertedIDs, c.ID)
+			err := coll.Insert(c)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	var containers []container.Container
 	err := coll.Find(query).All(&containers)
 	if err != nil {
