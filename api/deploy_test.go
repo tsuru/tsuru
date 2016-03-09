@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -341,7 +342,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this app\n")
 }
 
 func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *check.C) {
@@ -412,6 +413,37 @@ func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	message := recorder.Body.String()
 	c.Assert(message, check.Equals, "you must specify either the archive-url, a image url or upload a file.\n")
+}
+
+func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
+	var tests = []struct {
+		input    app.DeployOptions
+		expected *permission.PermissionScheme
+	}{
+		{
+			app.DeployOptions{Commit: "abc123"},
+			permission.PermAppDeployGit,
+		},
+		{
+			app.DeployOptions{Image: "quay.io/tsuru/python"},
+			permission.PermAppDeployImage,
+		},
+		{
+			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil))},
+			permission.PermAppDeployUpload,
+		},
+		{
+			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil)), Build: true},
+			permission.PermAppDeployBuild,
+		},
+		{
+			app.DeployOptions{},
+			permission.PermAppDeploy,
+		},
+	}
+	for _, t := range tests {
+		c.Check(permSchemeForDeploy(t.input), check.Equals, t.expected)
+	}
 }
 
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
