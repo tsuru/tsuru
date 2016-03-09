@@ -126,6 +126,25 @@ func (c *ScopedConfig) PoolEntries(pool string) EntryMap {
 	return m
 }
 
+func (c *ScopedConfig) AllEntries() (EntryMap, map[string]EntryMap) {
+	base := make(EntryMap)
+	for _, e := range c.entries("") {
+		base[e.Name] = e
+	}
+	poolEntries := map[string]EntryMap{}
+	for _, p := range c.Pools {
+		m := make(EntryMap)
+		for k, v := range base {
+			m[k] = v
+		}
+		for _, e := range c.entries(p.Name) {
+			m[e.Name] = e
+		}
+		poolEntries[p.Name] = m
+	}
+	return base, poolEntries
+}
+
 func (c *ScopedConfig) PoolEntry(pool, name string) string {
 	entry, ok := c.entries(pool)[name]
 	var value interface{}

@@ -23,6 +23,14 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	HealerConfigEnabled             = "enabled"
+	HealerConfigMaxTimeSinceSuccess = "maxtimesincesuccess"
+	HealerConfigMaxUnresponsiveTime = "maxunresponsivetime"
+
+	nodeHealerConfigEntry = "node-healer"
+)
+
 type NodeHealer struct {
 	sync.Mutex
 	locks                 map[string]*sync.Mutex
@@ -30,6 +38,7 @@ type NodeHealer struct {
 	disabledTime          time.Duration
 	waitTimeNewMachine    time.Duration
 	failuresBeforeHealing int
+	quit                  chan bool
 }
 
 type NodeHealerArgs struct {
@@ -39,14 +48,32 @@ type NodeHealerArgs struct {
 	FailuresBeforeHealing int
 }
 
+type nodeStatusData struct {
+	Address     string       `bson:"_id,omitempty"`
+	Checks      []nodeChecks `bson:",omitempty"`
+	LastSuccess time.Time    `bson:",omitempty"`
+	LastUpdate  time.Time
+}
+
 func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
-	return &NodeHealer{
+	healer := &NodeHealer{
+		quit:                  make(chan bool),
 		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           args.Provisioner,
 		disabledTime:          args.DisabledTime,
 		waitTimeNewMachine:    args.WaitTimeNewMachine,
 		failuresBeforeHealing: args.FailuresBeforeHealing,
 	}
+	go func() {
+		defer close(healer.quit)
+		select {
+		case <-healer.quit:
+			return
+		case <-time.After(30 * time.Second):
+		}
+		healer.checkActiveHealing()
+	}()
+	return healer
 }
 
 func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
@@ -171,6 +198,8 @@ func (h *NodeHealer) Shutdown() {
 	for _, lock := range h.locks {
 		lock.Lock()
 	}
+	h.quit <- true
+	<-h.quit
 }
 
 func (h *NodeHealer) String() string {
@@ -180,13 +209,6 @@ func (h *NodeHealer) String() string {
 type nodeChecks struct {
 	Time   time.Time
 	Checks []provision.NodeCheckResult
-}
-
-type nodeStatusData struct {
-	Address     string       `bson:"_id,omitempty"`
-	Checks      []nodeChecks `bson:",omitempty"`
-	LastSuccess time.Time    `bson:",omitempty"`
-	LastUpdate  time.Time
 }
 
 func (h *NodeHealer) findNodeForNodeData(nodeData provision.NodeStatusData) (*cluster.Node, error) {
@@ -249,7 +271,7 @@ func (h *NodeHealer) findNodeForNodeData(nodeData provision.NodeStatusData) (*cl
 func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	node, err := h.findNodeForNodeData(nodeData)
 	if err != nil {
-		return fmt.Errorf("[update node data] %s", err)
+		return fmt.Errorf("[node healer update] %s", err)
 	}
 	isSuccess := true
 	for _, c := range nodeData.Checks {
@@ -279,6 +301,92 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 		},
 	})
 	return err
+}
+
+func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) bson.M {
+	now := time.Now().UTC()
+	if enabled, ok := entries[HealerConfigEnabled].Value.(bool); !ok || !enabled {
+		return nil
+	}
+	var orParts []bson.M
+	if maxTime, ok := entries[HealerConfigMaxTimeSinceSuccess].Value.(int); ok && maxTime > 0 {
+		lastSuccess := time.Duration(maxTime) * time.Second
+		orParts = append(orParts, bson.M{
+			"lastsuccess": bson.M{"$lt": now.Add(-lastSuccess)},
+		})
+	}
+	if maxTime, ok := entries[HealerConfigMaxUnresponsiveTime].Value.(int); ok && maxTime > 0 {
+		lastUpdate := time.Duration(maxTime) * time.Second
+		orParts = append(orParts, bson.M{
+			"lastupdate": bson.M{"$lt": now.Add(-lastUpdate)},
+		})
+	}
+	if len(orParts) == 0 {
+		return nil
+	}
+	nodeAddresses := make([]string, len(nodes))
+	for i := range nodes {
+		nodeAddresses[i] = nodes[i].Address
+	}
+	return bson.M{
+		"_id": bson.M{"$in": nodeAddresses},
+		"$or": orParts,
+	}
+}
+
+func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, error) {
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find config: %s", err)
+	}
+	nodes, err := h.provisioner.Cluster().UnfilteredNodes()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get cluster nodes: %s", err)
+	}
+	nodesPoolMap := map[string][]*cluster.Node{}
+	for i, n := range nodes {
+		pool := n.Metadata["pool"]
+		nodesPoolMap[pool] = append(nodesPoolMap[pool], &nodes[i])
+	}
+	baseEntries, poolEntries := conf.AllEntries()
+	query := []bson.M{}
+	for poolName, entries := range poolEntries {
+		q := queryPartForConfig(nodesPoolMap[poolName], entries)
+		if q != nil {
+			query = append(query, q)
+		}
+		delete(nodesPoolMap, poolName)
+	}
+	var remainingNodes []*cluster.Node
+	for _, poolNodes := range nodesPoolMap {
+		remainingNodes = append(remainingNodes, poolNodes...)
+	}
+	q := queryPartForConfig(remainingNodes, baseEntries)
+	if q != nil {
+		query = append(query, q)
+	}
+	if len(query) == 0 {
+		return nil, nil
+	}
+	coll, err := nodeDataCollection()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get node data collection: %s", err)
+	}
+	defer coll.Close()
+	var nodesStatus []nodeStatusData
+	err = coll.Find(bson.M{"$or": query}).All(&nodesStatus)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find nodes to heal: %s", err)
+	}
+	return nodesStatus, nil
+}
+
+func (h *NodeHealer) checkActiveHealing() {
+	_, err := h.findNodesForHealing()
+	if err != nil {
+		log.Errorf("[node healer check] %s", err)
+	}
+
 }
 
 func nodeDataCollection() (*storage.Collection, error) {

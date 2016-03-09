@@ -527,7 +527,7 @@ func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
 		},
 	}
 	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[update node data\] node not found for addrs: \[10.0.0.1\]`)
+	c.Assert(err, check.ErrorMatches, `\[node healer update\] node not found for addrs: \[10.0.0.1\]`)
 }
 
 func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
@@ -624,7 +624,7 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousContainers(c *check.C) {
 		},
 	}
 	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[update node data\] containers match multiple nodes: http://.*?/ and http://.*?/`)
+	c.Assert(err, check.ErrorMatches, `\[node healer update\] containers match multiple nodes: http://.*?/ and http://.*?/`)
 }
 
 func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
@@ -649,7 +649,48 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
 		},
 	}
 	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[update node data\] addrs match multiple nodes: \[.*? .*?\]`)
+	c.Assert(err, check.ErrorMatches, `\[node healer update\] addrs match multiple nodes: \[.*? .*?\]`)
+}
+
+func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	nodes, err := healer.findNodesForHealing()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
+func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	c.Assert(err, check.IsNil)
+	conf.Add(HealerConfigEnabled, true)
+	conf.Add(HealerConfigMaxUnresponsiveTime, 1)
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	data := provision.NodeStatusData{
+		Addrs:  []string{"127.0.0.1"},
+		Checks: []provision.NodeCheckResult{},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.IsNil)
+	time.Sleep(1200 * time.Millisecond)
+	nodes, err := healer.findNodesForHealing()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
 }
 
 func (s *S) newFakeDockerProvisioner(servers ...string) (*dockertest.FakeDockerProvisioner, error) {
