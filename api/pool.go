@@ -107,17 +107,13 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	b, err := ioutil.ReadAll(r.Body)
+	err := r.ParseForm()
 	if err != nil {
-		return err
-	}
-	var params teamsToPoolParams
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
+		msg := "You must provide the team."
+		return &terrors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	pool := r.URL.Query().Get(":name")
-	return provision.AddTeamsToPool(pool, params.Teams)
+	return provision.AddTeamsToPool(pool, r.Form["team"])
 }
 
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
@@ -92,18 +93,21 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	c.Assert(p, check.HasLen, 0)
 }
 
-func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
+func (s *S) TestAddTeamsToPool(c *check.C) {
 	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
-	req, err := http.NewRequest("POST", "/pools/pool1/team?:name=pool1", b)
+	b := strings.NewReader("team=test")
+	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
 	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	err = addTeamToPoolHandler(rec, req, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
