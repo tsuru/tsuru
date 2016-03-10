@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -86,6 +87,9 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 		},
 	}
 	err = saveImageCustomData(s.imageId, customData)
+	c.Assert(err, check.IsNil)
+	optsPull := docker.PullImageOptions{Repository: s.imageId, OutputStream: nil}
+	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name: s.appInstance.GetName(),
@@ -516,6 +520,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 			"iaas": "my-scale-iaas",
 		},
 	})
+	c.Assert(err, check.IsNil)
+	optsPull := docker.PullImageOptions{Repository: s.imageId, OutputStream: nil}
+	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
@@ -1094,6 +1101,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *chec
 		}},
 	)
 	c.Assert(err, check.IsNil)
+	optsPull := docker.PullImageOptions{Repository: s.imageId, OutputStream: nil}
+	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         s.appInstance,
@@ -1244,6 +1254,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 		imageId:     s.imageId,
 		provisioner: s.p,
 	})
+	c.Assert(err, check.IsNil)
+	optsPull := docker.PullImageOptions{Repository: imageId, OutputStream: nil}
+	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},

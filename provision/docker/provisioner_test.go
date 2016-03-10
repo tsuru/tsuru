@@ -903,7 +903,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData(registryURL+"/tsuru/app-"+a.Name+":v1", customData)
+	err = saveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
 	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,

@@ -118,6 +118,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		commands:      cmds,
 		provisioner:   s.p,
 		buildingImage: images[0].ID,
+		isDeploy:      true,
 	}
 	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err := createContainer.Forward(context)
@@ -139,6 +140,9 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		commands:    cmds,
 		provisioner: s.p,
 	}
+	optsPull := docker.PullImageOptions{Repository: images[0].ID, OutputStream: nil}
+	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
 	cont = container.Container{Name: "myName2", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	context = action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err = createContainer.Forward(context)

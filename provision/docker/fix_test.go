@@ -72,13 +72,14 @@ func (s *S) TestFixContainer(c *check.C) {
 	coll := p.Collection()
 	defer coll.Close()
 	cont := container.Container{
-		ID:       "9930c24f1c4x",
-		AppName:  "makea",
-		Type:     "python",
-		Status:   provision.StatusStarted.String(),
-		IP:       "127.0.0.4",
-		HostPort: "9025",
-		HostAddr: "127.0.0.1",
+		ID:          "9930c24f1c4x",
+		AppName:     "makea",
+		Type:        "python",
+		Status:      provision.StatusStarted.String(),
+		IP:          "127.0.0.4",
+		HostPort:    "9025",
+		HostAddr:    "127.0.0.1",
+		ExposedPort: "8888/tcp",
 	}
 	err := coll.Insert(cont)
 	c.Assert(err, check.IsNil)

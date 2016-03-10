@@ -50,6 +50,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		HostPort:    "3333",
 		HostAddr:    "127.0.0.1",
 		ProcessName: "web",
+		ExposedPort: "8888/tcp",
 	}
 	if p == nil {
 		p = s.p
