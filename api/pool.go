@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -131,24 +130,18 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	var params map[string]*bool
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
-	}
 	query := bson.M{}
-	for k, v := range params {
-		if v != nil {
-			query[k] = *v
-		}
+	if v := r.FormValue("default"); v != "" {
+		d, _ := strconv.ParseBool(v)
+		query["default"] = d
+	}
+	if v := r.FormValue("public"); v != "" {
+		public, _ := strconv.ParseBool(v)
+		query["public"] = public
 	}
 	poolName := r.URL.Query().Get(":name")
-	forceDefault, _ := strconv.ParseBool(r.URL.Query().Get("force"))
-	err = provision.PoolUpdate(poolName, query, forceDefault)
+	forceDefault, _ := strconv.ParseBool(r.FormValue("force"))
+	err := provision.PoolUpdate(poolName, query, forceDefault)
 	if err == provision.ErrDefaultPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
