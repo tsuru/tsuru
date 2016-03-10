@@ -438,7 +438,7 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 		},
 		{
 			app.DeployOptions{},
-			permission.PermAppDeploy,
+			permission.PermAppDeployArchiveUrl,
 		},
 	}
 	for _, t := range tests {

@@ -21,7 +21,7 @@ import (
 type DeployKind string
 
 const (
-	DeployArchiveURL  DeployKind = "archive"
+	DeployArchiveURL  DeployKind = "archive-url"
 	DeployGit         DeployKind = "git"
 	DeployImage       DeployKind = "image"
 	DeployRollback    DeployKind = "rollback"

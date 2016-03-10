@@ -130,6 +130,8 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 		return permission.PermAppDeployUpload
 	case app.DeployUploadBuild:
 		return permission.PermAppDeployBuild
+	case app.DeployArchiveURL:
+		return permission.PermAppDeployArchiveUrl
 	default:
 		return permission.PermAppDeploy
 	}

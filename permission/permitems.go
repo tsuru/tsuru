@@ -17,6 +17,7 @@ var (
 	PermAppCreate                        = PermissionRegistry.get("app.create")
 	PermAppDelete                        = PermissionRegistry.get("app.delete")
 	PermAppDeploy                        = PermissionRegistry.get("app.deploy")
+	PermAppDeployArchiveUrl              = PermissionRegistry.get("app.deploy.archive-url")
 	PermAppDeployBuild                   = PermissionRegistry.get("app.deploy.build")
 	PermAppDeployGit                     = PermissionRegistry.get("app.deploy.git")
 	PermAppDeployImage                   = PermissionRegistry.get("app.deploy.image")
