@@ -71,6 +71,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		userName = r.PostFormValue("user")
 	} else {
+		commit = ""
 		userName = t.GetUserName()
 	}
 	instance, err := app.GetByName(appName)
