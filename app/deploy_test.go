@@ -398,7 +398,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	c.Assert(result["image"], check.Equals, "myimage")
 	c.Assert(result["log"], check.Equals, "Image deploy called")
 	c.Assert(result["user"], check.Equals, "someone@themoon")
-	c.Assert(result["origin"], check.Equals, "git")
+	c.Assert(result["origin"], check.Equals, OriginGit)
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
@@ -418,7 +418,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 		App:          &a,
 		OutputStream: writer,
 		Image:        "some-image",
-		Origin:       "rollback",
+		Origin:       OriginImage,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -432,7 +432,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	c.Assert(result["duration"], check.Not(check.Equals), 0)
 	c.Assert(result["image"], check.Equals, "some-image")
 	c.Assert(result["log"], check.Equals, "Image deploy called")
-	c.Assert(result["origin"], check.Equals, "rollback")
+	c.Assert(result["origin"], check.Equals, OriginImage)
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
@@ -452,7 +452,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 		App:          &a,
 		OutputStream: writer,
 		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
-		Origin:       "app-deploy",
+		Origin:       OriginAppDeploy,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -466,7 +466,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	c.Assert(result["duration"], check.Not(check.Equals), 0)
 	c.Assert(result["image"], check.Equals, "app-image")
 	c.Assert(result["log"], check.Equals, "Upload deploy called")
-	c.Assert(result["origin"], check.Equals, "app-deploy")
+	c.Assert(result["origin"], check.Equals, OriginAppDeploy)
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
@@ -486,7 +486,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 		App:          &a,
 		OutputStream: writer,
 		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
-		Origin:       "drag-and-drop",
+		Origin:       OriginDragAndDrop,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -500,7 +500,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	c.Assert(result["duration"], check.Not(check.Equals), 0)
 	c.Assert(result["image"], check.Equals, "app-image")
 	c.Assert(result["log"], check.Equals, "Upload deploy called")
-	c.Assert(result["origin"], check.Equals, "drag-and-drop")
+	c.Assert(result["origin"], check.Equals, OriginDragAndDrop)
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
@@ -535,12 +535,13 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 }
 
 func (s *S) TestValidateOrigin(c *check.C) {
-	c.Assert(ValidateOrigin("app-deploy"), check.Equals, true)
-	c.Assert(ValidateOrigin("git"), check.Equals, true)
-	c.Assert(ValidateOrigin("rollback"), check.Equals, true)
-	c.Assert(ValidateOrigin("drag-and-drop"), check.Equals, true)
-	c.Assert(ValidateOrigin("image"), check.Equals, true)
-	c.Assert(ValidateOrigin("invalid"), check.Equals, false)
+	c.Check(ValidateOrigin(OriginAppDeploy), check.Equals, true)
+	c.Check(ValidateOrigin(OriginGit), check.Equals, true)
+	c.Check(ValidateOrigin(OriginRollback), check.Equals, true)
+	c.Check(ValidateOrigin(OriginDragAndDrop), check.Equals, true)
+	c.Check(ValidateOrigin(OriginImage), check.Equals, true)
+	c.Check(ValidateOrigin(OriginBuild), check.Equals, true)
+	c.Check(ValidateOrigin("invalid"), check.Equals, false)
 }
 
 func (s *S) TestDeployAsleepApp(c *check.C) {
@@ -846,4 +847,18 @@ func (s *S) TestGetImageNameInexistDeploy(c *check.C) {
 	_, err := getImage("otherapp", "v3")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not found")
+}
+
+func (s *S) TestOptionsRollback(c *check.C) {
+	var opts DeployOptions
+	c.Check(opts.rollback(), check.Equals, false)
+	opts.Origin = OriginRollback
+	c.Check(opts.rollback(), check.Equals, true)
+}
+
+func (s *S) TestOptionsBuild(c *check.C) {
+	var opts DeployOptions
+	c.Check(opts.build(), check.Equals, false)
+	opts.Origin = OriginBuild
+	c.Check(opts.build(), check.Equals, true)
 }

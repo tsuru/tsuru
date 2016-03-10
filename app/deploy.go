@@ -18,6 +18,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	OriginAppDeploy   = "app-deploy"
+	OriginBuild       = "build"
+	OriginDragAndDrop = "drag-and-drop"
+	OriginGit         = "git"
+	OriginImage       = "image"
+	OriginRollback    = "rollback"
+)
+
 type DeployData struct {
 	ID          bson.ObjectId `bson:"_id,omitempty"`
 	App         string
@@ -132,8 +141,14 @@ type DeployOptions struct {
 	User         string
 	Image        string
 	Origin       string
-	Rollback     bool
-	Build        bool
+}
+
+func (o *DeployOptions) rollback() bool {
+	return o.Origin == OriginRollback
+}
+
+func (o *DeployOptions) build() bool {
+	return o.Origin == OriginBuild
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
@@ -175,7 +190,7 @@ func Deploy(opts DeployOptions) error {
 }
 
 func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) {
-	if opts.Rollback {
+	if opts.rollback() {
 		return Provisioner.Rollback(opts.App, opts.Image, writer)
 	}
 	if opts.Image != "" {
@@ -185,7 +200,7 @@ func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) 
 	}
 	if opts.File != nil {
 		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
-			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, writer)
+			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.build(), writer)
 		}
 	}
 	return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, writer)
@@ -209,7 +224,7 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 	if opts.Origin != "" {
 		deploy.Origin = opts.Origin
 	} else if opts.Commit != "" {
-		deploy.Origin = "git"
+		deploy.Origin = OriginGit
 	}
 	if deployError != nil {
 		deploy.Error = deployError.Error()
@@ -228,7 +243,14 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 }
 
 func ValidateOrigin(origin string) bool {
-	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image"}
+	originList := []string{
+		OriginAppDeploy,
+		OriginBuild,
+		OriginDragAndDrop,
+		OriginGit,
+		OriginImage,
+		OriginRollback,
+	}
 	for _, ol := range originList {
 		if ol == origin {
 			return true
@@ -286,7 +308,7 @@ func Rollback(opts DeployOptions) error {
 		if err == nil {
 			opts.Image = img
 		}
-		opts.Rollback = true
+		opts.Origin = OriginRollback
 	}
 	return Deploy(opts)
 }
