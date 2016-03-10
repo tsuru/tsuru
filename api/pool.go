@@ -97,10 +97,6 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return provision.RemovePool(r.URL.Query().Get(":name"))
 }
 
-type teamsToPoolParams struct {
-	Teams []string `json:"teams"`
-}
-
 func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPoolUpdate)
 	if !allowed {
