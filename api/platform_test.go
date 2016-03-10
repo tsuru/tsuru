@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -88,10 +87,8 @@ func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
 	token := createToken(c)
 	result := platformAdd(recorder, request, token)
 	c.Assert(result, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
@@ -117,10 +114,8 @@ func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
 	c.Assert(result, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
@@ -143,10 +138,8 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
 	c.Assert(result, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
@@ -169,10 +162,8 @@ func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
 	c.Assert(result, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
@@ -195,10 +186,8 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
 	c.Assert(result, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
@@ -221,10 +210,8 @@ func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
 	c.Assert(result, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 

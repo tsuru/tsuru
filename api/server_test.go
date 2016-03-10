@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package api
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 
@@ -28,9 +27,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *check.C) {
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
-	b, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert("GET", check.Equals, string(b))
+	c.Assert("GET", check.Equals, rec.Body.String())
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPost(c *check.C) {
@@ -42,9 +39,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
-	b, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert("POST", check.Equals, string(b))
+	c.Assert("POST", check.Equals, rec.Body.String())
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPut(c *check.C) {
@@ -56,9 +51,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPut(c *check.C) {
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
-	b, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert("PUT", check.Equals, string(b))
+	c.Assert("PUT", check.Equals, rec.Body.String())
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *check.C) {
@@ -70,9 +63,7 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
-	b, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert("DELETE", check.Equals, string(b))
+	c.Assert("DELETE", check.Equals, rec.Body.String())
 }
 
 func (s *S) TestIsNotAdmin(c *check.C) {
@@ -84,6 +75,5 @@ func (s *S) TestIsNotAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
-	b, err := ioutil.ReadAll(rec.Body)
-	c.Assert("POST", check.Equals, string(b))
+	c.Assert("POST", check.Equals, rec.Body.String())
 }

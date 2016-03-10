@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -580,10 +579,8 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
 	recorder, request := makeRequestToRemoveInstanceHandler("foo", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Message, check.Equals, `service instance successfuly removed`)
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
 	c.Assert(err, check.IsNil)
@@ -646,11 +643,9 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	recorder, request := makeRequestToRemoveInstanceHandler("foo2", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	expected := ""
 	expected += `{"Message":"service instance successfuly removed"}` + "\n"
-	c.Assert(string(b), check.Equals, expected)
+	c.Assert(recorder.Body.String(), check.Equals, expected)
 	var result []service.ServiceInstance
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo2"}).Count()
 	c.Assert(err, check.IsNil)
@@ -662,13 +657,11 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	recorder, request = makeRequestToRemoveInstanceHandlerWithUnbind("foo", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err = ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	expected = ""
 	expected += `{"Message":"Unbind app \"app-instance\" ...\n"}` + "\n"
 	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance\" anymore.\n"}` + "\n"
 	expected += `{"Message":"service instance successfuly removed"}` + "\n"
-	c.Assert(string(b), check.Equals, expected)
+	c.Assert(recorder.Body.String(), check.Equals, expected)
 	n, err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
@@ -686,10 +679,8 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-service", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Error, check.Equals, permission.ErrUnauthorized.Error())
 }
 
@@ -705,10 +696,8 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	recorder, request := makeRequestToRemoveInstanceHandler("foo", "foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Error, check.Equals, "This service instance is bound to at least one app. Unbind them before removing it")
 }
 
@@ -812,10 +801,8 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	recorder, request := makeRequestToRemoveInstanceHandlerWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Error, check.Equals, service.ErrServiceInstanceBound.Error())
 }
 
@@ -866,10 +853,8 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	recorder, request := makeRequestToRemoveInstanceHandlerWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(b, &msg)
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Error, check.Equals, service.ErrServiceInstanceBound.Error())
 	expectedMsg := "app,app2"
 	c.Assert(msg.Message, check.Equals, expectedMsg)
@@ -931,10 +916,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = serviceInstances(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances []service.ServiceModel
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
 		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
@@ -976,10 +959,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = serviceInstances(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances []service.ServiceModel
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceModel{
 		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
@@ -1052,10 +1033,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 	recorder := httptest.NewRecorder()
 	err = serviceInstances(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances []service.ServiceModel
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	sort.Sort(ServiceModelList(instances))
 	expected := []service.ServiceModel{
@@ -1094,8 +1073,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *check.C) {
 	recorder, request := makeRequestToStatusHandler("mongodb", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(string(b), check.Equals, "Service instance \"my_nosql\" is up")
+	c.Assert(recorder.Body.String(), check.Equals, "Service instance \"my_nosql\" is up")
 	action := rectest.Action{
 		Action: "service-instance-status",
 		User:   s.user.Email,
@@ -1134,8 +1112,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusWithSameInstanceName(c *chec
 	recorder, request := makeRequestToStatusHandler("mongodb2", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(string(b), check.Equals, "Service instance \"my_nosql\" is down")
+	c.Assert(recorder.Body.String(), check.Equals, "Service instance \"my_nosql\" is down")
 	action := rectest.Action{
 		Action: "service-instance-status",
 		User:   s.user.Email,
@@ -1205,10 +1182,8 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler2(c *check.C) {
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
 	err = serviceInstanceInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances ServiceInstanceInfo
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := ServiceInstanceInfo{
 		Apps:      si.Apps,
@@ -1253,10 +1228,8 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
 	err = serviceInstanceInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances ServiceInstanceInfo
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := ServiceInstanceInfo{
 		Apps:            si.Apps,
@@ -1327,10 +1300,8 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = serviceInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances []service.ServiceInstance
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceInstance{si1, si2}
 	c.Assert(instances, check.DeepEquals, expected)
@@ -1370,10 +1341,8 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	recorder := httptest.NewRecorder()
 	err = serviceInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var instances []service.ServiceInstance
-	err = json.Unmarshal(body, &instances)
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceInstance{si1}
 	c.Assert(instances, check.DeepEquals, expected)
@@ -1460,9 +1429,7 @@ Collnosql is a really really cool nosql`
 	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
 	err = serviceDoc(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert(string(b), check.Equals, doc)
+	c.Assert(recorder.Body.String(), check.Equals, doc)
 	action := rectest.Action{
 		Action: "service-doc",
 		User:   s.user.Email,
@@ -1519,10 +1486,8 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = servicePlans(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var plans []service.Plan
-	err = json.Unmarshal(body, &plans)
+	err = json.Unmarshal(recorder.Body.Bytes(), &plans)
 	c.Assert(err, check.IsNil)
 	expected := []service.Plan{
 		{Name: "ignite", Description: "some value"},

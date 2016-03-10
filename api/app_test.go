@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -411,10 +410,8 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var apps []app.App
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
@@ -534,9 +531,7 @@ func (s *S) TestAppInfo(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	err = json.Unmarshal(body, &myApp)
+	err = json.Unmarshal(recorder.Body.Bytes(), &myApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(myApp["name"], check.Equals, expectedApp.Name)
 	c.Assert(myApp["repository"], check.Equals, "git@"+repositorytest.ServerHost+":"+expectedApp.Name+".git")
@@ -606,8 +601,6 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -615,7 +608,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 		"repository_url": repoURL,
 		"ip":             "someapp.fakerouter.com",
 	}
-	err = json.Unmarshal(body, &obtained)
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -649,8 +642,6 @@ func (s *S) TestCreateApp(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -658,7 +649,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		"repository_url": repoURL,
 		"ip":             "someapp.fakerouter.com",
 	}
-	err = json.Unmarshal(body, &obtained)
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -759,8 +750,6 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -768,7 +757,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 		"repository_url": repoURL,
 		"ip":             "someapp.fakerouter.com",
 	}
-	err = json.Unmarshal(body, &obtained)
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -949,8 +938,6 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -958,7 +945,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		"repository_url": repoURL,
 		"ip":             "someapp.fakerouter.com",
 	}
-	err = json.Unmarshal(body, &obtained)
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -3129,9 +3116,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 		recorder := httptest.NewRecorder()
 		logErr := appLog(recorder, request, token)
 		c.Assert(logErr, check.IsNil)
-		body, logErr := ioutil.ReadAll(recorder.Body)
-		c.Assert(logErr, check.IsNil)
-		splitted := strings.Split(strings.TrimSpace(string(body)), "\n")
+		splitted := strings.Split(strings.TrimSpace(recorder.Body.String()), "\n")
 		c.Assert(splitted, check.HasLen, 2)
 		c.Assert(splitted[0], check.Equals, "[]")
 		logs := []app.Applog{}
@@ -3182,9 +3167,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		recorder := httptest.NewRecorder()
 		logErr := appLog(recorder, request, token)
 		c.Assert(logErr, check.IsNil)
-		body, logErr := ioutil.ReadAll(recorder.Body)
-		c.Assert(logErr, check.IsNil)
-		splitted := strings.Split(strings.TrimSpace(string(body)), "\n")
+		splitted := strings.Split(strings.TrimSpace(recorder.Body.String()), "\n")
 		c.Assert(splitted, check.HasLen, 2)
 		c.Assert(splitted[0], check.Equals, "[]")
 		logs := []app.Applog{}
@@ -3256,10 +3239,8 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	logs := []app.Applog{}
-	err = json.Unmarshal(body, &logs)
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	action := rectest.Action{
@@ -3288,10 +3269,8 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	logs := []app.Applog{}
-	err = json.Unmarshal(body, &logs)
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "mars log")
@@ -3322,10 +3301,8 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	logs := []app.Applog{}
-	err = json.Unmarshal(body, &logs)
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "earth log")
@@ -3367,10 +3344,8 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var logs []app.Applog
-	err = json.Unmarshal(body, &logs)
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 3)
 	c.Assert(logs[0].Message, check.Equals, "12")
@@ -3403,10 +3378,8 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	logs := []app.Applog{}
-	err = json.Unmarshal(body, &logs)
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	var logged bool
 	for _, log := range logs {

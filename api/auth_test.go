@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -599,10 +598,8 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 	mux := RunServer(true)
 	mux.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var m []map[string]interface{}
-	err = json.Unmarshal(b, &m)
+	err = json.Unmarshal(recorder.Body.Bytes(), &m)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.HasLen, 1)
 	c.Assert(m[0]["name"], check.Equals, s.team.Name)
@@ -631,10 +628,8 @@ func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
 	mux := RunServer(true)
 	mux.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var m []map[string]interface{}
-	err = json.Unmarshal(b, &m)
+	err = json.Unmarshal(recorder.Body.Bytes(), &m)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.HasLen, 1)
 	c.Assert(m[0]["name"], check.Equals, s.team.Name)
@@ -657,10 +652,8 @@ func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
 	mux.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var m []map[string]interface{}
-	err = json.Unmarshal(b, &m)
+	err = json.Unmarshal(recorder.Body.Bytes(), &m)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.HasLen, 2)
 	names := []string{m[0]["name"].(string), m[1]["name"].(string)}
