@@ -291,6 +291,7 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	_, err = coll.UpsertId(node.Address, bson.M{
 		"$set": toInsert,
 		"$push": bson.M{
