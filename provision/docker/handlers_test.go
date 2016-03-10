@@ -916,11 +916,16 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	evt1, err := healer.NewHealingEvent(cluster.Node{Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	evt1.Update(cluster.Node{Address: "addr2"}, nil)
+	err = evt1.Update(cluster.Node{Address: "addr2"}, nil)
+	c.Assert(err, check.IsNil)
 	evt2, err := healer.NewHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.Update(cluster.Node{}, errors.New("some error"))
+	c.Assert(err, check.IsNil)
+	err = evt2.Update(cluster.Node{}, errors.New("some error"))
+	c.Assert(err, check.IsNil)
 	evt3, err := healer.NewHealingEvent(container.Container{ID: "1234"})
-	evt3.Update(container.Container{ID: "9876"}, nil)
+	c.Assert(err, check.IsNil)
+	err = evt3.Update(container.Container{ID: "9876"}, nil)
+	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
 	c.Assert(err, check.IsNil)
@@ -934,9 +939,11 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 2)
 	c.Assert(healings[0].Action, check.Equals, "node-healing")
-	c.Assert(healings[0].ID, check.Equals, evt2.ID)
+	c.Assert(healings[0].ID, check.Equals, evt2.ID.(bson.ObjectId).Hex())
+	c.Assert(healings[0].FailingNode.Address, check.Equals, evt2.FailingNode.Address)
 	c.Assert(healings[1].Action, check.Equals, "node-healing")
-	c.Assert(healings[1].ID, check.Equals, evt1.ID)
+	c.Assert(healings[1].ID, check.Equals, evt1.ID.(bson.ObjectId).Hex())
+	c.Assert(healings[1].FailingNode.Address, check.Equals, evt1.FailingNode.Address)
 }
 
 func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
