@@ -11,7 +11,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sort"
+	"strings"
 	"sync/atomic"
 
 	"github.com/tsuru/config"
@@ -94,13 +96,15 @@ func (s *ConsumptionSuite) TearDownSuite(c *check.C) {
 }
 
 func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(params)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/services/instances", &buf)
+	values := url.Values{}
+	for k, v := range params {
+		values.Add(k, v)
+	}
+	b := strings.NewReader(values.Encode())
+	request, err := http.NewRequest("POST", "/services/instances", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", params["token"])
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
@@ -124,7 +128,6 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *check.C) {
 		"owner":        s.team.Name,
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	request.Header.Set("Content-Type", "application/json")
 	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	var si service.ServiceInstance
@@ -158,7 +161,6 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
 		"plan":         "small",
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	request.Header.Set("Content-Type", "application/json")
 	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	var si service.ServiceInstance
@@ -365,7 +367,6 @@ func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
 		"description":  "desc",
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	request.Header.Set("Content-Type", "application/json")
 	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	var si service.ServiceInstance

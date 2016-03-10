@@ -21,16 +21,7 @@ import (
 )
 
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	var body map[string]string
-	err = json.Unmarshal(b, &body)
-	if err != nil {
-		return err
-	}
-	serviceName := body["service_name"]
+	serviceName := r.FormValue("service_name")
 	user, err := t.User()
 	if err != nil {
 		return err
@@ -40,10 +31,10 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	instance := service.ServiceInstance{
-		Name:        body["name"],
-		PlanName:    body["plan"],
-		TeamOwner:   body["owner"],
-		Description: body["description"],
+		Name:        r.FormValue("name"),
+		PlanName:    r.FormValue("plan"),
+		TeamOwner:   r.FormValue("owner"),
+		Description: r.FormValue("description"),
 	}
 	var teamOwner string
 	if instance.TeamOwner == "" {
@@ -68,7 +59,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			return permission.ErrUnauthorized
 		}
 	}
-	rec.Log(user.Email, "create-service-instance", string(b))
+	rec.Log(user.Email, "create-service-instance", fmt.Sprintf("%#v", instance))
 	err = service.CreateServiceInstance(instance, &srv, user)
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &errors.HTTP{
