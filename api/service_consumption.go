@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -80,19 +79,10 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	var body map[string]string
-	err = json.Unmarshal(b, &body)
-	if err != nil {
-		return err
-	}
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
-	description, ok := body["description"]
-	if !ok || description == "" {
+	description := r.FormValue("description")
+	if description == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid value for description",
@@ -112,7 +102,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	rec.Log(user.Email, "update-service-instance", string(b))
+	rec.Log(user.Email, "update-service-instance", "description="+description)
 	si.Description = description
 	return service.UpdateService(si)
 }
