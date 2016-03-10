@@ -616,7 +616,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 		App:          &a,
 		OutputStream: w,
 		Image:        "tsuru/app-otherapp:v1",
-		Rollback:     true,
+		Origin:       app.OriginRollback,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -655,7 +655,7 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 		App:          &a,
 		OutputStream: w,
 		Image:        "tsuru/app-otherapp:v1",
-		Rollback:     true,
+		Origin:       app.OriginRollback,
 	})
 	c.Assert(err, check.NotNil)
 	units, err := a.Units()
