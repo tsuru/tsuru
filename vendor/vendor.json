@@ -134,8 +134,8 @@
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "9184fe7a2d7c920b8cdd30faa64fe025f609ef20",
-			"revisionTime": "2016-02-13T15:21:03-02:00"
+			"revision": "73f08fbacc09c6fd1b7bc179193e58b14d7619cc",
+			"revisionTime": "2016-03-10T15:59:32-03:00"
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus",
@@ -234,8 +234,8 @@
 		},
 		{
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "6fb38e6bb3d544d7eb5b55fd396cd4e6850802d8",
-			"revisionTime": "2016-01-15T23:33:25-05:00"
+			"revision": "73f08fbacc09c6fd1b7bc179193e58b14d7619cc",
+			"revisionTime": "2016-03-10T15:59:32-03:00"
 		},
 		{
 			"path": "github.com/garyburd/redigo/redis",

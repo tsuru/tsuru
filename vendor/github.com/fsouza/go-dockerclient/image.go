@@ -465,7 +465,11 @@ func (c *Client) BuildImage(opts BuildImageOptions) error {
 	}
 
 	if len(opts.BuildArgs) > 0 {
-		if b, err := json.Marshal(opts.BuildArgs); err == nil {
+		v := make(map[string]string)
+		for _, arg := range opts.BuildArgs {
+			v[arg.Name] = arg.Value
+		}
+		if b, err := json.Marshal(v); err == nil {
 			item := url.Values(map[string][]string{})
 			item.Add("buildargs", string(b))
 			qs = fmt.Sprintf("%s&%s", qs, item.Encode())
