@@ -77,8 +77,29 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	opts := app.DeployOptions{
+		App:        instance,
+		Commit:     commit,
+		FileSize:   fileSize,
+		File:       file,
+		ArchiveURL: archiveURL,
+		User:       userName,
+		Image:      image,
+		Origin:     origin,
+	}
+	var build bool
+	buildString := r.URL.Query().Get("build")
+	if buildString != "" {
+		build, err = strconv.ParseBool(buildString)
+		if err != nil {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		if build {
+			opts.Origin = app.OriginBuild
+		}
+	}
 	if t.GetAppName() != app.InternalAppName {
-		canDeploy := permission.Check(t, permission.PermAppDeploy,
+		canDeploy := permission.Check(t, permSchemeForDeploy(opts),
 			append(permission.Contexts(permission.CtxTeam, instance.Teams),
 				permission.Context(permission.CtxApp, appName),
 				permission.Context(permission.CtxPool, instance.Pool),
@@ -90,33 +111,34 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
-	var build bool
-	buildString := r.URL.Query().Get("build")
-	if buildString != "" {
-		build, err = strconv.ParseBool(buildString)
-		if err != nil {
-			return &errors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
-	}
-	err = app.Deploy(app.DeployOptions{
-		App:          instance,
-		Commit:       commit,
-		FileSize:     fileSize,
-		File:         file,
-		ArchiveURL:   archiveURL,
-		OutputStream: writer,
-		User:         userName,
-		Image:        image,
-		Origin:       origin,
-		Build:        build,
-	})
+	opts.OutputStream = writer
+	err = app.Deploy(opts)
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
+
+func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
+	switch opts.Origin {
+	case app.OriginAppDeploy:
+		return permission.PermAppDeployUpload
+	case app.OriginBuild:
+		return permission.PermAppDeployBuild
+	case app.OriginDragAndDrop:
+		return permission.PermAppDeployDragAndDrop
+	case app.OriginGit:
+		return permission.PermAppDeployGit
+	case app.OriginImage:
+		return permission.PermAppDeployImage
+	case "":
+		if opts.Commit != "" {
+			return permission.PermAppDeployGit
+		}
+		fallthrough
+	default:
+		return permission.PermAppDeploy
+	}
 }
 
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {

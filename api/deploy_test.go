@@ -414,6 +414,45 @@ func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	c.Assert(message, check.Equals, "you must specify either the archive-url, a image url or upload a file.\n")
 }
 
+func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
+	var tests = []struct {
+		input    app.DeployOptions
+		expected *permission.PermissionScheme
+	}{
+		{
+			app.DeployOptions{Origin: "git"},
+			permission.PermAppDeployGit,
+		},
+		{
+			app.DeployOptions{Commit: "abc123"},
+			permission.PermAppDeployGit,
+		},
+		{
+			app.DeployOptions{Origin: app.OriginImage},
+			permission.PermAppDeployImage,
+		},
+		{
+			app.DeployOptions{Origin: app.OriginAppDeploy},
+			permission.PermAppDeployUpload,
+		},
+		{
+			app.DeployOptions{Origin: app.OriginDragAndDrop},
+			permission.PermAppDeployDragAndDrop,
+		},
+		{
+			app.DeployOptions{Origin: app.OriginBuild},
+			permission.PermAppDeployBuild,
+		},
+		{
+			app.DeployOptions{},
+			permission.PermAppDeploy,
+		},
+	}
+	for _, t := range tests {
+		c.Check(permSchemeForDeploy(t.input), check.Equals, t.expected)
+	}
+}
+
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	user := &auth.User{Email: "nonadmin@nonadmin.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
@@ -758,7 +797,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
@@ -790,7 +829,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) {
