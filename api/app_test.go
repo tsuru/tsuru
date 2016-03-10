@@ -40,10 +40,6 @@ import (
 )
 
 func (s *S) TestAppListFilteringByPlatform(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxGlobal, ""),
-	})
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -51,22 +47,19 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	s.conn.Platforms().Insert(platform)
 	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
 	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name}
-	u, _ := token.User()
-	err = app.CreateApp(&app2, u)
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps?platform=zend", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -78,38 +71,31 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	action := rectest.Action{Action: "app-list", User: u.Email, Extra: []interface{}{"platform=zend"}}
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"platform=zend"}}
 	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxGlobal, ""),
-	})
-	u, _ := token.User()
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&app1, u)
+	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	team2 := auth.Team{Name: "angra"}
 	err = s.conn.Teams().Insert(team2)
 	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name}
-	err = app.CreateApp(&app2, u)
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?teamowner=%s", s.team.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -122,7 +108,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
 	queryString := fmt.Sprintf("teamowner=%s", s.team.Name)
-	action := rectest.Action{Action: "app-list", User: u.Email, Extra: []interface{}{queryString}}
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
 	c.Assert(action, rectest.IsRecorded)
 }
 
@@ -150,10 +136,8 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -171,11 +155,6 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByLockState(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxGlobal, ""),
-	})
-	u, _ := token.User()
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -188,21 +167,19 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 		TeamOwner: s.team.Name,
 		Lock:      app.AppLock{Locked: true},
 	}
-	err = app.CreateApp(&app2, u)
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps?locked=true", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app2}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -214,15 +191,11 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	action := rectest.Action{Action: "app-list", User: u.Email, Extra: []interface{}{"locked=true"}}
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"locked=true"}}
 	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByPool(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
-	})
 	opts := []provision.AddPoolOptions{
 		{Name: "pool1", Default: false, Public: true},
 		{Name: "pool2", Default: false, Public: true},
@@ -240,16 +213,14 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?pool=%s", opts[1].Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app2}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -262,7 +233,7 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
 	queryString := fmt.Sprintf("pool=%s", opts[1].Name)
-	action := rectest.Action{Action: "app-list", User: token.GetUserName(), Extra: []interface{}{queryString}}
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
 	c.Assert(action, rectest.IsRecorded)
 }
 
@@ -305,10 +276,8 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	m = RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app1, app2}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -357,10 +326,8 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	m = RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	apps := []app.App{}
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	expected := []app.App{app2}
 	c.Assert(apps, check.HasLen, len(expected))
@@ -375,18 +342,13 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 }
 
 func (s *S) TestAppList(c *check.C) {
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
-	})
-	u, _ := token.User()
 	app1 := app.App{
 		Name:      "app1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app1"},
 	}
-	err := app.CreateApp(&app1, u)
+	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := app.App{
@@ -397,25 +359,23 @@ func (s *S) TestAppList(c *check.C) {
 		Lock: app.AppLock{
 			Locked:      true,
 			Reason:      "wanted",
-			Owner:       u.Email,
+			Owner:       s.user.Email,
 			AcquireDate: acquireDate,
 		},
 	}
-	err = app.CreateApp(&app2, u)
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
 	var apps []app.App
-	err = json.Unmarshal(body, &apps)
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
@@ -424,7 +384,7 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
 	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
-	action := rectest.Action{Action: "app-list", User: u.Email}
+	action := rectest.Action{Action: "app-list", User: s.user.Email}
 	c.Assert(action, rectest.IsRecorded)
 }
 
