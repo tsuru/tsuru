@@ -847,3 +847,38 @@ func (s *S) TestGetImageNameInexistDeploy(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not found")
 }
+
+func (s *S) TestDeployKind(c *check.C) {
+	var tests = []struct {
+		input    DeployOptions
+		expected DeployKind
+	}{
+		{
+			DeployOptions{Rollback: true},
+			DeployRollback,
+		},
+		{
+			DeployOptions{Image: "quay.io/tsuru/python"},
+			DeployImage,
+		},
+		{
+			DeployOptions{File: ioutil.NopCloser(bytes.NewBuffer(nil))},
+			DeployUpload,
+		},
+		{
+			DeployOptions{File: ioutil.NopCloser(bytes.NewBuffer(nil)), Build: true},
+			DeployUploadBuild,
+		},
+		{
+			DeployOptions{Commit: "abcef48439"},
+			DeployGit,
+		},
+		{
+			DeployOptions{},
+			DeployArchiveURL,
+		},
+	}
+	for _, t := range tests {
+		c.Check(t.input.Kind(), check.Equals, t.expected)
+	}
+}

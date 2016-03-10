@@ -71,25 +71,13 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		userName = r.PostFormValue("user")
 	} else {
+		commit = ""
 		userName = t.GetUserName()
 	}
 	instance, err := app.GetByName(appName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	if t.GetAppName() != app.InternalAppName {
-		canDeploy := permission.Check(t, permission.PermAppDeploy,
-			append(permission.Contexts(permission.CtxTeam, instance.Teams),
-				permission.Context(permission.CtxApp, appName),
-				permission.Context(permission.CtxPool, instance.Pool),
-			)...,
-		)
-		if !canDeploy {
-			return &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
-		}
-	}
-	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
-	defer writer.Stop()
 	var build bool
 	buildString := r.URL.Query().Get("build")
 	if buildString != "" {
@@ -101,22 +89,53 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
-	err = app.Deploy(app.DeployOptions{
-		App:          instance,
-		Commit:       commit,
-		FileSize:     fileSize,
-		File:         file,
-		ArchiveURL:   archiveURL,
-		OutputStream: writer,
-		User:         userName,
-		Image:        image,
-		Origin:       origin,
-		Build:        build,
-	})
+	opts := app.DeployOptions{
+		App:        instance,
+		Commit:     commit,
+		FileSize:   fileSize,
+		File:       file,
+		ArchiveURL: archiveURL,
+		User:       userName,
+		Image:      image,
+		Origin:     origin,
+		Build:      build,
+	}
+	if t.GetAppName() != app.InternalAppName {
+		canDeploy := permission.Check(t, permSchemeForDeploy(opts),
+			append(permission.Contexts(permission.CtxTeam, instance.Teams),
+				permission.Context(permission.CtxApp, appName),
+				permission.Context(permission.CtxPool, instance.Pool),
+			)...,
+		)
+		if !canDeploy {
+			return &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
+		}
+	}
+	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	defer writer.Stop()
+	opts.OutputStream = writer
+	err = app.Deploy(opts)
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
+
+func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
+	switch opts.Kind() {
+	case app.DeployGit:
+		return permission.PermAppDeployGit
+	case app.DeployImage:
+		return permission.PermAppDeployImage
+	case app.DeployUpload:
+		return permission.PermAppDeployUpload
+	case app.DeployUploadBuild:
+		return permission.PermAppDeployBuild
+	case app.DeployArchiveURL:
+		return permission.PermAppDeployArchiveUrl
+	default:
+		return permission.PermAppDeploy
+	}
 }
 
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {

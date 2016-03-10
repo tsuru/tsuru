@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -124,16 +125,22 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag-and-drop", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("file", "archive.tar.gz")
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
+	file.Write([]byte("hello world!"))
+	writer.Close()
+	request, err := http.NewRequest("POST", url, &body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "multipart/form-data; boundary="+writer.Boundary())
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Upload deploy called\nOK\n")
 	var result app.DeployData
 	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
 	c.Assert(result.Origin, check.Equals, "drag-and-drop")
@@ -236,6 +243,36 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	user, _ := s.token.User()
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Plan:      app.Plan{Router: "fake"},
+	}
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(deploys, check.Equals, 1)
+}
+
+func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
@@ -260,7 +297,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
 	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
 	c.Assert(err, check.IsNil)
-	c.Assert(deploys, check.Equals, 1)
+	c.Assert(deploys, check.Equals, 0)
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
@@ -341,7 +378,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	c.Assert(recorder.Body.String(), check.Equals, "User does not have access to this app\n")
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this app\n")
 }
 
 func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *check.C) {
@@ -412,6 +449,37 @@ func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	message := recorder.Body.String()
 	c.Assert(message, check.Equals, "you must specify either the archive-url, a image url or upload a file.\n")
+}
+
+func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
+	var tests = []struct {
+		input    app.DeployOptions
+		expected *permission.PermissionScheme
+	}{
+		{
+			app.DeployOptions{Commit: "abc123"},
+			permission.PermAppDeployGit,
+		},
+		{
+			app.DeployOptions{Image: "quay.io/tsuru/python"},
+			permission.PermAppDeployImage,
+		},
+		{
+			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil))},
+			permission.PermAppDeployUpload,
+		},
+		{
+			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil)), Build: true},
+			permission.PermAppDeployBuild,
+		},
+		{
+			app.DeployOptions{},
+			permission.PermAppDeployArchiveUrl,
+		},
+	}
+	for _, t := range tests {
+		c.Check(permSchemeForDeploy(t.input), check.Equals, t.expected)
+	}
 }
 
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
