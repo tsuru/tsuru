@@ -93,8 +93,8 @@ type CreateArgs struct {
 func (c *Container) Create(args *CreateArgs) error {
 	var err error
 	if !args.Deploy {
-		imageData, err := args.Provisioner.Cluster().InspectImage(args.ImageID)
-		if err != nil {
+		imageData, inspectErr := args.Provisioner.Cluster().InspectImage(args.ImageID)
+		if inspectErr != nil {
 			return err
 		}
 		if len(imageData.Config.ExposedPorts) > 1 {
@@ -104,8 +104,8 @@ func (c *Container) Create(args *CreateArgs) error {
 			c.ExposedPort = string(k)
 		}
 		if c.ExposedPort == "" {
-			port, err := getPort()
-			if err != nil {
+			port, portErr := getPort()
+			if portErr != nil {
 				log.Errorf("error on getting port for container %s - %s", c.AppName, port)
 				return err
 			}
@@ -506,8 +506,8 @@ func (c *Container) startWithPortSearch(p DockerProvisioner, hostConfig *docker.
 			break
 		}
 		var usedPorts map[string]struct{}
-		usedPorts, err := c.usedPortsForHost(p, c.HostAddr)
-		if err != nil {
+		usedPorts, portErr := c.usedPortsForHost(p, c.HostAddr)
+		if portErr != nil {
 			return err
 		}
 		var portStr string
