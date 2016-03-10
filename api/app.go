@@ -660,10 +660,9 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	envs := r.URL.Query().Get("envs")
 	var variables []string
-	if envs != "" {
-		variables = strings.Split(envs, ",")
+	if envs, ok := r.URL.Query()["env"]; ok {
+		variables = envs
 	}
 	appName := r.URL.Query().Get(":app")
 	var u *auth.User

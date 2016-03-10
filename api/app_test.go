@@ -2232,7 +2232,7 @@ func (s *S) TestGetEnv(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2271,7 +2271,7 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST,DATABASE_USER", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST&env=DATABASE_USER", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2340,7 +2340,7 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?envs=DATABASE_HOST", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.AppLogin(a.Name)
