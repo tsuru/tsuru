@@ -57,7 +57,7 @@ type Container struct {
 	LastSuccessStatusUpdate time.Time
 	LockedUntil             time.Time
 	Routable                bool `bson:"-"`
-	exposedPort             string
+	ExposedPort             string
 }
 
 func (c *Container) ShortID() string {
@@ -91,29 +91,32 @@ type CreateArgs struct {
 }
 
 func (c *Container) Create(args *CreateArgs) error {
-	imageData, err := args.Provisioner.Cluster().InspectImage(args.ImageID)
-	if err != nil {
-		return err
-	}
-	if len(imageData.Config.ExposedPorts) > 1 {
-		return errors.New("Too many ports. You should especify which one you want to.")
-	}
-	for k := range imageData.Config.ExposedPorts {
-		c.exposedPort = string(k)
-	}
-	if c.exposedPort == "" {
-		port, err := getPort()
+	var err error
+	if !args.Deploy {
+		imageData, err := args.Provisioner.Cluster().InspectImage(args.ImageID)
 		if err != nil {
-			log.Errorf("error on getting port for container %s - %s", c.AppName, port)
 			return err
 		}
-		c.exposedPort = port + "/tcp"
+		if len(imageData.Config.ExposedPorts) > 1 {
+			return errors.New("Too many ports. You should especify which one you want to.")
+		}
+		for k := range imageData.Config.ExposedPorts {
+			c.ExposedPort = string(k)
+		}
+		if c.ExposedPort == "" {
+			port, err := getPort()
+			if err != nil {
+				log.Errorf("error on getting port for container %s - %s", c.AppName, port)
+				return err
+			}
+			c.ExposedPort = port + "/tcp"
+		}
 	}
 	securityOpts, _ := config.GetList("docker:security-opts")
 	var exposedPorts map[docker.Port]struct{}
 	if !args.Deploy {
 		exposedPorts = map[docker.Port]struct{}{
-			docker.Port(c.exposedPort): {},
+			docker.Port(c.ExposedPort): {},
 		}
 	}
 	var user string
@@ -134,7 +137,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		SecurityOpts: securityOpts,
 		User:         user,
 	}
-	c.addEnvsToConfig(args, strings.TrimSuffix(c.exposedPort, "/tcp"), &config)
+	c.addEnvsToConfig(args, strings.TrimSuffix(c.ExposedPort, "/tcp"), &config)
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
 	if len(args.DestinationHosts) > 0 {
@@ -213,7 +216,7 @@ func (c *Container) NetworkInfo(p DockerProvisioner) (NetworkInfo, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		netInfo.IP = dockerContainer.NetworkSettings.IPAddress
-		httpPort := docker.Port(c.exposedPort)
+		httpPort := docker.Port(c.ExposedPort)
 		for _, port := range dockerContainer.NetworkSettings.Ports[httpPort] {
 			if port.HostPort != "" && port.HostIP != "" {
 				netInfo.HTTPHostPort = port.HostPort
@@ -442,7 +445,7 @@ func (c *Container) Start(args *StartArgs) error {
 	if !args.Deploy {
 		hostConfig.RestartPolicy = docker.AlwaysRestart()
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-			docker.Port(c.exposedPort): {{HostIP: "", HostPort: ""}},
+			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: ""}},
 		}
 		logConf := DockerLog{}
 		pool := args.App.GetPool()
@@ -518,7 +521,7 @@ func (c *Container) startWithPortSearch(p DockerProvisioner, hostConfig *docker.
 			break
 		}
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-			docker.Port(c.exposedPort): {{HostIP: "", HostPort: portStr}},
+			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: portStr}},
 		}
 		randN := rand.Uint32()
 		err = p.Cluster().StartContainer(c.ID, hostConfig)

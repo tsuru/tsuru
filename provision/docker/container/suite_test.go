@@ -84,7 +84,7 @@ func (s *S) newContainer(opts newContainerOpts, p *fakeDockerProvisioner) (*Cont
 		ProcessName: opts.ProcessName,
 		Image:       opts.Image,
 		AppName:     opts.AppName,
-		exposedPort: "8888/tcp",
+		ExposedPort: "8888/tcp",
 	}
 	if container.AppName == "" {
 		container.AppName = "container"
