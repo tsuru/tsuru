@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -768,28 +769,30 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 }
 
 func (s *ProvisionSuite) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c *check.C) {
-	b := bytes.NewBufferString("doc")
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", "mongodb", "mongodb"), b)
+	b := strings.NewReader("doc=doc")
+	request, err := http.NewRequest("PUT", "/services/mongodb/doc", b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = serviceAddDoc(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-	c.Assert(e, check.ErrorMatches, "^Service not found$")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *ProvisionSuite) TestAddDocHandler(c *check.C) {
 	se := service.Service{Name: "some_service", OwnerTeams: []string{s.team.Name}}
 	se.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	b := bytes.NewBufferString("doc")
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
+	b := strings.NewReader("doc=doc")
+	request, err := http.NewRequest("PUT", "/services/some_service/doc", b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = serviceAddDoc(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": "some_service"}
 	var serv service.Service
 	err = s.conn.Services().Find(query).One(&serv)
@@ -807,13 +810,13 @@ func (s *ProvisionSuite) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccess
 	se := service.Service{Name: "Mysql"}
 	se.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	b := bytes.NewBufferString("doc")
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
+	b := strings.NewReader("doc=doc")
+	request, err := http.NewRequest("PUT", "/services/Mysql/doc", b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = serviceAddDoc(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }

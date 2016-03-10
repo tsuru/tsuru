@@ -293,11 +293,6 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
 	serviceName := r.URL.Query().Get(":name")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -311,8 +306,8 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "service-add-doc", serviceName, string(body))
-	s.Doc = string(body)
+	s.Doc = r.FormValue("doc")
+	rec.Log(t.GetUserName(), "service-add-doc", serviceName, s.Doc)
 	return s.Update()
 }
 
