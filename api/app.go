@@ -131,46 +131,36 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	name := r.URL.Query().Get("name")
-	platform := r.URL.Query().Get("platform")
-	teamOwner := r.URL.Query().Get("teamowner")
-	owner := r.URL.Query().Get("owner")
-	pool := r.URL.Query().Get("pool")
-	description := r.URL.Query().Get("description")
-	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
-	status := r.URL.Query().Get("status")
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
-	if name != "" {
+	if name := r.URL.Query().Get("name"); name != "" {
 		extra = append(extra, fmt.Sprintf("name=%s", name))
 		filter.NameMatches = name
 	}
-	if platform != "" {
+	if platform := r.URL.Query().Get("platform"); platform != "" {
 		extra = append(extra, fmt.Sprintf("platform=%s", platform))
 		filter.Platform = platform
 	}
-	if teamOwner != "" {
+	if teamOwner := r.URL.Query().Get("teamOwner"); teamOwner != "" {
 		extra = append(extra, fmt.Sprintf("teamowner=%s", teamOwner))
 		filter.TeamOwner = teamOwner
 	}
-	if owner != "" {
+	if owner := r.URL.Query().Get("owner"); owner != "" {
 		extra = append(extra, fmt.Sprintf("owner=%s", owner))
 		filter.UserOwner = owner
 	}
-	if pool != "" {
+	if pool := r.URL.Query().Get("pool"); pool != "" {
 		extra = append(extra, fmt.Sprintf("pool=%s", pool))
 		filter.Pool = pool
 	}
-	if description != "" {
-		extra = append(extra, fmt.Sprintf("description=%s", description))
-	}
+	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	if locked {
 		extra = append(extra, fmt.Sprintf("locked=%v", locked))
 		filter.Locked = true
 	}
-	if status != "" {
-		extra = append(extra, fmt.Sprintf("status=%s", status))
-		filter.Statuses = strings.Split(status, ",")
+	if status, ok := r.URL.Query()["status"]; ok {
+		extra = append(extra, fmt.Sprintf("status=%s", strings.Join(status, ",")))
+		filter.Statuses = status
 	}
 	rec.Log(u.Email, "app-list", extra...)
 	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
