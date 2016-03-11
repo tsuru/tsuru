@@ -129,5 +129,10 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"debug",
 ).add(
-	"healing",
+	"healing.read",
+).addWithCtx(
+	"healing", []contextType{CtxPool},
+).add(
+	"healing.read",
+	"healing.update",
 )
