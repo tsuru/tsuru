@@ -162,6 +162,10 @@ func (c *ScopedConfig) PoolEntries(pool string) EntryMap {
 }
 
 func (c *ScopedConfig) AllEntries() (EntryMap, map[string]EntryMap) {
+	return c.AllEntriesMerge(true)
+}
+
+func (c *ScopedConfig) AllEntriesMerge(merge bool) (EntryMap, map[string]EntryMap) {
 	base := make(EntryMap)
 	for _, e := range c.entries("") {
 		base[e.Name] = e
@@ -169,8 +173,10 @@ func (c *ScopedConfig) AllEntries() (EntryMap, map[string]EntryMap) {
 	poolEntries := map[string]EntryMap{}
 	for _, p := range c.Pools {
 		m := make(EntryMap)
-		for k, v := range base {
-			m[k] = v
+		if merge {
+			for k, v := range base {
+				m[k] = v
+			}
 		}
 		for _, e := range c.entries(p.Name) {
 			m[e.Name] = e

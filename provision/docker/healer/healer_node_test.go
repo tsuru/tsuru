@@ -455,6 +455,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
+	defer coll.Close()
 	var result nodeStatusData
 	err = coll.FindId(node1.URL()).One(&result)
 	c.Assert(err, check.IsNil)
@@ -492,6 +493,7 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	}
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
+	defer coll.Close()
 	var result nodeStatusData
 	err = coll.FindId(node1.URL()).One(&result)
 	c.Assert(err, check.IsNil)
@@ -570,6 +572,7 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
+	defer coll.Close()
 	var result nodeStatusData
 	err = coll.FindId(node1.URL()).One(&result)
 	c.Assert(err, check.IsNil)

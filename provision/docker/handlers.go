@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/schema"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api"
@@ -49,6 +50,8 @@ func init() {
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/docker/containers/rebalance", "POST", api.AuthorizationRequiredHandler(rebalanceContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AuthorizationRequiredHandler(healingHistoryHandler))
+	api.RegisterHandler("/docker/healing/node", "GET", api.AuthorizationRequiredHandler(nodeHealingInfo))
+	api.RegisterHandler("/docker/healing/node", "POST", api.AuthorizationRequiredHandler(nodeHealingConfig))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/config", "GET", api.AuthorizationRequiredHandler(autoScaleGetConfig))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AuthorizationRequiredHandler(autoScaleRunHandler))
@@ -746,4 +749,39 @@ func tryRestartAppsByFilter(filter *app.Filter, writer *tsuruIo.SimpleJsonMessag
 		}(i)
 	}
 	wg.Wait()
+}
+
+func nodeHealingInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermHealing) {
+		return permission.ErrUnauthorized
+	}
+	configMap, err := healer.GetConfig()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(configMap)
+}
+
+func nodeHealingConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermHealing) {
+		return permission.ErrUnauthorized
+	}
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	poolName := r.FormValue("pool")
+	dec := schema.NewDecoder()
+	dec.ZeroEmpty(true)
+	dec.IgnoreUnknownKeys(true)
+	configMap, err := healer.GetConfig()
+	if err != nil {
+		return err
+	}
+	config := configMap[poolName]
+	err = dec.Decode(&config, r.Form)
+	if err != nil {
+		return err
+	}
+	return healer.UpdateConfig(poolName, config)
 }

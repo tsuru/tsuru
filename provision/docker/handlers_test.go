@@ -1678,3 +1678,61 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 		{Name: "p1", Envs: []provision.Entry{{Name: "log-driver", Value: "syslog"}}},
 	})
 }
+
+func (s *HandlersSuite) TestNodeHealingConfigInfo(c *check.C) {
+	doRequest := func(str string) map[string]healer.NodeHealerConfig {
+		body := bytes.NewBufferString(str)
+		request, err := http.NewRequest("POST", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder := httptest.NewRecorder()
+		server := api.RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		request, err = http.NewRequest("GET", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configMap map[string]healer.NodeHealerConfig
+		json.Unmarshal(recorder.Body.Bytes(), &configMap)
+		return configMap
+	}
+	tests := []struct {
+		A string
+		B map[string]healer.NodeHealerConfig
+	}{
+		{"", map[string]healer.NodeHealerConfig{
+			"": {},
+		}},
+		{"enabled=true&maxtimesincesuccess=60", map[string]healer.NodeHealerConfig{
+			"": {Enabled: true, MaxTimeSinceSuccess: 60},
+		}},
+		{"maxunresponsivetime=10", map[string]healer.NodeHealerConfig{
+			"": {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 10},
+		}},
+		{"enabled=false", map[string]healer.NodeHealerConfig{
+			"": {Enabled: false, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 10},
+		}},
+		{"maxunresponsivetime=20", map[string]healer.NodeHealerConfig{
+			"": {Enabled: false, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
+		}},
+		{"enabled=true", map[string]healer.NodeHealerConfig{
+			"": {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
+		}},
+		{"pool=p1&enabled=false", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
+			"p1": {Enabled: false},
+		}},
+		{"pool=p1&enabled=true", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
+			"p1": {Enabled: true},
+		}},
+	}
+	for i, t := range tests {
+		configMap := doRequest(t.A)
+		c.Assert(configMap, check.DeepEquals, t.B, check.Commentf("test %d", i+1))
+	}
+}

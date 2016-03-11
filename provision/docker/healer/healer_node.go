@@ -436,6 +436,46 @@ func (h *NodeHealer) runActiveHealing() {
 	}
 }
 
+func UpdateConfig(pool string, config NodeHealerConfig) error {
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	if err != nil {
+		return fmt.Errorf("unable to find config: %s", err)
+	}
+	err = conf.MarshalPool(pool, config)
+	if err != nil {
+		return fmt.Errorf("unable to marshal config: %s", err)
+	}
+	err = conf.SaveEnvs()
+	if err != nil {
+		return fmt.Errorf("unable to save config: %s", err)
+	}
+	return nil
+}
+
+func GetConfig() (map[string]NodeHealerConfig, error) {
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find config: %s", err)
+	}
+	baseEntries, poolEntries := conf.AllEntriesMerge(false)
+	ret := map[string]NodeHealerConfig{}
+	var config NodeHealerConfig
+	err = baseEntries.Unmarshal(&config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal config: %s", err)
+	}
+	ret[""] = config
+	for pName, pEntries := range poolEntries {
+		var pConfig NodeHealerConfig
+		err = pEntries.Unmarshal(&pConfig)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unmarshal pool config: %s", err)
+		}
+		ret[pName] = pConfig
+	}
+	return ret, nil
+}
+
 func nodeDataCollection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
