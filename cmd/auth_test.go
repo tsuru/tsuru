@@ -38,7 +38,10 @@ func (s *S) TestNativeLogin(c *check.C) {
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(r *http.Request) bool {
-			return r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" && r.FormValue("password") == "chico"
+			contentType := r.Header.Get("Content-Type") == "application/x-www-form-urlencoded"
+			password := r.FormValue("password") == "chico"
+			url := r.URL.Path == "/1.0/users/foo@foo.com/tokens"
+			return contentType && password && url
 		},
 	}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)

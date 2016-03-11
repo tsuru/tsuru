@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -41,12 +42,14 @@ func nativeLogin(context *Context, client *Client) error {
 		return err
 	}
 	fmt.Fprintln(context.Stdout)
-	url, err := GetURL("/users/" + email + "/tokens")
+	u, err := GetURL("/users/" + email + "/tokens")
 	if err != nil {
 		return err
 	}
-	b := strings.NewReader("password=" + password)
-	request, err := http.NewRequest("POST", url, b)
+	v := url.Values{}
+	v.Set("password", password)
+	b := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", u, b)
 	if err != nil {
 		return err
 	}
