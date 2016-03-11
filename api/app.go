@@ -1008,9 +1008,10 @@ func getServiceInstance(serviceName, instanceName, appName string) (*service.Ser
 }
 
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
-		r.URL.Query().Get(":service")
-	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	instanceName := r.URL.Query().Get(":instance")
+	appName := r.URL.Query().Get(":app")
+	serviceName := r.URL.Query().Get(":service")
+	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
