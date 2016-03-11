@@ -44,6 +44,7 @@ github.com/tsuru/tsuru/api.setNodeStatus
 github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.listNodesHandler
 github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
+github.com/tsuru/tsuru/provision/docker.nodeHealingRead
 EOF
     )
     ignored=$(echo "$ignored" | sort)
