@@ -23,6 +23,7 @@ type HealingEvent struct {
 	StartTime        time.Time
 	EndTime          time.Time `bson:",omitempty"`
 	Action           string
+	Reason           string
 	FailingNode      cluster.Node        `bson:",omitempty"`
 	CreatedNode      cluster.Node        `bson:",omitempty"`
 	FailingContainer container.Container `bson:",omitempty"`
@@ -49,9 +50,10 @@ func healingCollection() (*storage.Collection, error) {
 	return conn.Collection(name), nil
 }
 
-func NewHealingEvent(failing interface{}) (*HealingEvent, error) {
+func NewHealingEventWithReason(failing interface{}, reason string) (*HealingEvent, error) {
 	evt := HealingEvent{
 		StartTime: time.Now().UTC(),
+		Reason:    reason,
 	}
 	switch v := failing.(type) {
 	case cluster.Node:
@@ -71,6 +73,10 @@ func NewHealingEvent(failing interface{}) (*HealingEvent, error) {
 	}
 	defer coll.Close()
 	return &evt, coll.Insert(evt)
+}
+
+func NewHealingEvent(failing interface{}) (*HealingEvent, error) {
+	return NewHealingEventWithReason(failing, "")
 }
 
 func (evt *HealingEvent) Update(created interface{}, healingErr error) error {

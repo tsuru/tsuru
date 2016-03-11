@@ -26,10 +26,6 @@ import (
 )
 
 const (
-	HealerConfigEnabled             = "enabled"
-	HealerConfigMaxTimeSinceSuccess = "maxtimesincesuccess"
-	HealerConfigMaxUnresponsiveTime = "maxunresponsivetime"
-
 	nodeHealerConfigEntry = "node-healer"
 )
 
@@ -49,6 +45,12 @@ type NodeHealerArgs struct {
 	FailuresBeforeHealing int
 }
 
+type NodeHealerConfig struct {
+	Enabled             bool
+	MaxTimeSinceSuccess int
+	MaxUnresponsiveTime int
+}
+
 type nodeStatusData struct {
 	Address     string       `bson:"_id,omitempty"`
 	Checks      []nodeChecks `bson:",omitempty"`
@@ -64,15 +66,20 @@ func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
 		waitTimeNewMachine:    args.WaitTimeNewMachine,
 		failuresBeforeHealing: args.FailuresBeforeHealing,
 	}
+	if healer.provisioner == nil {
+		return healer
+	}
 	healer.wg.Add(1)
 	go func() {
 		defer close(healer.quit)
-		select {
-		case <-healer.quit:
-			return
-		case <-time.After(30 * time.Second):
+		for {
+			healer.runActiveHealing()
+			select {
+			case <-healer.quit:
+				return
+			case <-time.After(30 * time.Second):
+			}
 		}
-		healer.runActiveHealing()
 	}()
 	return healer
 }
@@ -142,13 +149,13 @@ func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	return createdNode, nil
 }
 
-func (h *NodeHealer) tryHealingNode(node *cluster.Node, cause string) error {
+func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string) error {
 	_, hasIaas := node.Metadata["iaas"]
 	if !hasIaas {
-		log.Debugf("node %q doesn't have IaaS information, healing won't run on it.", node.Address)
+		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address, reason)
 		return nil
 	}
-	evt, err := NewHealingEvent(*node)
+	evt, err := NewHealingEventWithReason(*node, reason)
 	if err != nil {
 		if mgo.IsDup(err) {
 			// Healing in progress.
@@ -186,7 +193,7 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, cause string) error {
 			node.Address, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
 		return nil
 	}
-	log.Errorf("initiating healing process for node %q due to: %s", node.Address, cause)
+	log.Errorf("initiating healing process for node %q due to: %s", node.Address, reason)
 	createdNode, evtErr = h.healNode(node)
 	return evtErr
 }
@@ -319,26 +326,31 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	return err
 }
 
-func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) bson.M {
+func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson.M, error) {
 	now := time.Now().UTC()
-	if enabled, ok := entries[HealerConfigEnabled].Value.(bool); !ok || !enabled {
-		return nil
+	var config NodeHealerConfig
+	err := entries.Unmarshal(&config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse entry map: %s", err)
+	}
+	if !config.Enabled {
+		return nil, nil
 	}
 	var orParts []bson.M
-	if maxTime, ok := entries[HealerConfigMaxTimeSinceSuccess].Value.(int); ok && maxTime > 0 {
-		lastSuccess := time.Duration(maxTime) * time.Second
+	if config.MaxTimeSinceSuccess > 0 {
+		lastSuccess := time.Duration(config.MaxTimeSinceSuccess) * time.Second
 		orParts = append(orParts, bson.M{
 			"lastsuccess": bson.M{"$lt": now.Add(-lastSuccess)},
 		})
 	}
-	if maxTime, ok := entries[HealerConfigMaxUnresponsiveTime].Value.(int); ok && maxTime > 0 {
-		lastUpdate := time.Duration(maxTime) * time.Second
+	if config.MaxUnresponsiveTime > 0 {
+		lastUpdate := time.Duration(config.MaxUnresponsiveTime) * time.Second
 		orParts = append(orParts, bson.M{
 			"lastupdate": bson.M{"$lt": now.Add(-lastUpdate)},
 		})
 	}
 	if len(orParts) == 0 {
-		return nil
+		return nil, nil
 	}
 	nodeAddresses := make([]string, len(nodes))
 	for i := range nodes {
@@ -347,7 +359,7 @@ func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) bson.
 	return bson.M{
 		"_id": bson.M{"$in": nodeAddresses},
 		"$or": orParts,
-	}
+	}, nil
 }
 
 func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluster.Node, error) {
@@ -369,7 +381,11 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 	baseEntries, poolEntries := conf.AllEntries()
 	query := []bson.M{}
 	for poolName, entries := range poolEntries {
-		q := queryPartForConfig(nodesPoolMap[poolName], entries)
+		var q bson.M
+		q, err = queryPartForConfig(nodesPoolMap[poolName], entries)
+		if err != nil {
+			return nil, nil, err
+		}
 		if q != nil {
 			query = append(query, q)
 		}
@@ -379,7 +395,10 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 	for _, poolNodes := range nodesPoolMap {
 		remainingNodes = append(remainingNodes, poolNodes...)
 	}
-	q := queryPartForConfig(remainingNodes, baseEntries)
+	q, err := queryPartForConfig(remainingNodes, baseEntries)
+	if err != nil {
+		return nil, nil, err
+	}
 	if q != nil {
 		query = append(query, q)
 	}
@@ -406,10 +425,10 @@ func (h *NodeHealer) runActiveHealing() {
 		return
 	}
 	for _, n := range nodesStatus {
-		lastUpdate := n.LastUpdate.Format(time.RFC3339)
-		lastSuccess := n.LastSuccess.Format(time.RFC3339)
+		sinceUpdate := time.Since(n.LastUpdate)
+		sinceSuccess := time.Since(n.LastSuccess)
 		err = h.tryHealingNode(nodesAddrMap[n.Address],
-			fmt.Sprintf("last update %s, last success %s", lastUpdate, lastSuccess),
+			fmt.Sprintf("last update %v ago, last success %v ago", sinceUpdate, sinceSuccess),
 		)
 		if err != nil {
 			log.Errorf("[node healer active] %s", err)
