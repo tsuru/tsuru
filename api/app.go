@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/schema"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -707,23 +708,32 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 	return json.NewEncoder(w).Encode(result)
 }
 
+type envs struct {
+	Envs      []struct{ Name, Value string } `schema:"envs"`
+	NoRestart bool                           `schema:"noRestart"`
+	Private   bool                           `schema:"private"`
+}
+
 func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	msg := "You must provide the environment variables in a JSON object"
-	if r.Body == nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	var variables map[string]string
-	err := json.NewDecoder(r.Body).Decode(&variables)
+	err := r.ParseForm()
 	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	decoder := schema.NewDecoder()
+	e := envs{}
+	err = decoder.Decode(&e, r.PostForm)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	if len(e.Envs) == 0 {
+		msg := "You must provide the list of environment variables"
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
-	isPrivateEnv, _ := strconv.ParseBool(r.URL.Query().Get("private"))
-	extra := fmt.Sprintf("private=%t", isPrivateEnv)
+	extra := fmt.Sprintf("private=%t", e.Private)
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -738,20 +748,22 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "set-env", "app="+appName, variables, extra)
-	envs := make([]bind.EnvVar, 0, len(variables))
-	for k, v := range variables {
-		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: !isPrivateEnv})
+	envs := map[string]string{}
+	variables := []bind.EnvVar{}
+	for _, v := range e.Envs {
+		envs[v.Name] = v.Value
+		variables = append(variables, bind.EnvVar{Name: v.Name, Value: v.Value, Public: !e.Private})
 	}
+	rec.Log(u.Email, "set-env", "app="+appName, envs, extra)
 	w.Header().Set("Content-Type", "application/json")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.SetEnvs(
 		bind.SetEnvApp{
-			Envs:          envs,
+			Envs:          variables,
 			PublicOnly:    true,
-			ShouldRestart: !noRestart,
+			ShouldRestart: !e.NoRestart,
 		}, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
