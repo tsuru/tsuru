@@ -774,11 +774,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	msg := "You must provide the list of environment variables."
-	envs := r.URL.Query().Get("envs")
-	if envs == "" {
+	if r.URL.Query().Get("env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	variables := strings.Split(envs, ",")
+	var variables []string
+	if envs, ok := r.URL.Query()["env"]; ok {
+		variables = envs
+	} else {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
 	appName := r.URL.Query().Get(":app")
 	u, err := t.User()
 	if err != nil {

@@ -2648,7 +2648,7 @@ func (s *S) TestUnsetEnv(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2687,7 +2687,7 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env?noRestart=true&envs=DATABASE_HOST", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=true&env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2724,7 +2724,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST,DATABASE_USER", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2765,7 +2765,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST,DATABASE_USER,DATABASE_PASSWORD", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER&env=DATABASE_PASSWORD", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2800,7 +2800,7 @@ func (s *S) TestUnsetEnvVariablesMissing(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	request, err := http.NewRequest("DELETE", "/apps/swift/env?noRestart=false&envs=", nil)
+	request, err := http.NewRequest("DELETE", "/apps/swift/env?noRestart=false&env=", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -2811,7 +2811,7 @@ func (s *S) TestUnsetEnvVariablesMissing(c *check.C) {
 }
 
 func (s *S) TestUnsetEnvAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("DELETE", "/apps/unknown/env?noRestart=false&envs=ble", nil)
+	request, err := http.NewRequest("DELETE", "/apps/unknown/env?noRestart=false&env=ble", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -2831,7 +2831,7 @@ func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 		Scheme:  permission.PermAppUpdateEnvUnset,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&envs=DATABASE_HOST", a.Name)
+	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
