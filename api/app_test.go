@@ -4382,7 +4382,29 @@ func (s *S) TestSwap(c *check.C) {
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&cnameOnly=false", nil)
+	recorder := httptest.NewRecorder()
+	err = swap(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	action := rectest.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1=app1", "app2=app2"}}
+	c.Assert(action, rectest.IsRecorded)
+	var dbApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+}
+
+func (s *S) TestSwapCnameOnly(c *check.C) {
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&cnameOnly=true", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
@@ -4406,7 +4428,7 @@ func (s *S) TestSwapApp1Locked(c *check.C) {
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&cnameOnly=false", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.ErrorMatches, "app1: App locked by x, running /test. Acquired in .*")
@@ -4421,7 +4443,7 @@ func (s *S) TestSwapApp2Locked(c *check.C) {
 	}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&cnameOnly=false", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.ErrorMatches, "app2: App locked by x, running /test. Acquired in .*")
@@ -4440,7 +4462,7 @@ func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	err = s.provisioner.Provision(&app2)
 	c.Assert(err, check.IsNil)
-	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&cnameOnly=false", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.NotNil)
@@ -4464,7 +4486,7 @@ func (s *S) TestSwapIncompatibleUnits(c *check.C) {
 	err = s.provisioner.Provision(&app2)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnit(&app2, provision.Unit{})
-	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&cnameOnly=false", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.NotNil)
@@ -4487,7 +4509,7 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	err = s.provisioner.Provision(&app2)
 	c.Assert(err, check.IsNil)
-	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&force=true", nil)
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2&force=true&cnameOnly=false", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.IsNil)

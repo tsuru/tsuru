@@ -1227,6 +1227,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	app1Name := r.URL.Query().Get("app1")
 	app2Name := r.URL.Query().Get("app2")
 	forceSwap := r.URL.Query().Get("force")
+	cnameOnly, _ := strconv.ParseBool(r.URL.Query().Get("cnameOnly"))
 	if forceSwap == "" {
 		forceSwap = "false"
 	}
@@ -1293,7 +1294,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	rec.Log(u.Email, "swap", "app1="+app1Name, "app2="+app2Name)
-	return app.Swap(app1, app2)
+	return app.Swap(app1, app2, cnameOnly)
 }
 
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {

@@ -158,11 +158,41 @@ func (s *S) TestDeleteSwappedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.Provision(app2)
 	c.Assert(err, check.IsNil)
-	err = Swap(&a, app2)
+	err = Swap(&a, app2, false)
 	c.Assert(err, check.IsNil)
 	err = Delete(&a, nil)
 	c.Assert(err, check.ErrorMatches, "application is swapped with \"app2\", cannot remove it")
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, true)
+}
+
+func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
+	s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota.limit": 1, "quota.inuse": 1}},
+	)
+	defer s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
+	)
+	a := App{
+		Name:     "ritual",
+		Platform: "ruby",
+		Owner:    s.user.Email,
+	}
+	err := s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	app2 := &App{Name: "app2"}
+	err = s.conn.Apps().Insert(app2)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(app2)
+	c.Assert(err, check.IsNil)
+	err = Swap(&a, app2, true)
+	c.Assert(err, check.IsNil)
+	err = Delete(&a, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 }
 
 func (s *S) TestCreateApp(c *check.C) {
@@ -3136,12 +3166,42 @@ func (s *S) TestSwap(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": app1.Name})
 		s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	}()
-	err = Swap(app1, app2)
+	err = Swap(app1, app2, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(app1.CName, check.IsNil)
 	c.Assert(app2.CName, check.DeepEquals, []string{"cname"})
 	c.Assert(app1.Ip, check.Equals, oldIp2)
 	c.Assert(app2.Ip, check.Equals, oldIp1)
+}
+
+func (s *S) TestSwapCnameOnly(c *check.C) {
+	var err error
+	app1 := &App{Name: "app1", CName: []string{"app1.cname", "app1.cname2"}}
+	err = s.provisioner.Provision(app1)
+	c.Assert(err, check.IsNil)
+	app1.Ip, err = s.provisioner.Addr(app1)
+	c.Assert(err, check.IsNil)
+	oldIp1 := app1.Ip
+	err = s.conn.Apps().Insert(app1)
+	c.Assert(err, check.IsNil)
+	app2 := &App{Name: "app2", CName: []string{"app2.cname"}}
+	err = s.provisioner.Provision(app2)
+	c.Assert(err, check.IsNil)
+	app2.Ip, err = s.provisioner.Addr(app2)
+	c.Assert(err, check.IsNil)
+	oldIp2 := app2.Ip
+	err = s.conn.Apps().Insert(app2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": app1.Name})
+		s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	}()
+	err = Swap(app1, app2, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(app1.CName, check.DeepEquals, []string{"app2.cname"})
+	c.Assert(app2.CName, check.DeepEquals, []string{"app1.cname", "app1.cname2"})
+	c.Assert(app1.Ip, check.Equals, oldIp1)
+	c.Assert(app2.Ip, check.Equals, oldIp2)
 }
 
 func (s *S) TestStart(c *check.C) {
@@ -3664,7 +3724,7 @@ func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddRoute(a1.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
 	routertest.FakeRouter.RemoveRoute(a2.Name, units2[0].Address)
-	err = Swap(&a1, &a2)
+	err = Swap(&a1, &a2, false)
 	c.Assert(err, check.IsNil)
 	changes1, err := a1.RebuildRoutes()
 	c.Assert(err, check.IsNil)

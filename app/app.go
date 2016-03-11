@@ -1482,10 +1482,12 @@ func List(filter *Filter) ([]App, error) {
 
 // Swap calls the Provisioner.Swap.
 // And updates the app.CName in the database.
-func Swap(app1, app2 *App) error {
-	err := Provisioner.Swap(app1, app2)
-	if err != nil {
-		return err
+func Swap(app1, app2 *App, cnameOnly bool) error {
+	if !cnameOnly {
+		err := Provisioner.Swap(app1, app2)
+		if err != nil {
+			return err
+		}
 	}
 	conn, err := db.Conn()
 	if err != nil {
