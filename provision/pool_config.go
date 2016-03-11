@@ -216,6 +216,10 @@ func (c *ScopedConfig) ResetBaseEnvs() {
 }
 
 func (c *ScopedConfig) ResetPoolEnvs(pool string) {
+	if pool == "" {
+		c.ResetBaseEnvs()
+		return
+	}
 	if c.poolEntryMap != nil {
 		delete(c.poolEntryMap, pool)
 	}
