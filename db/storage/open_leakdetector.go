@@ -9,11 +9,15 @@ package storage
 import (
 	"fmt"
 	"runtime"
+	"sync"
 
 	"gopkg.in/mgo.v2"
 )
 
-var pointerMap = map[string][2048]byte{}
+var (
+	pointerMap = map[string][2048]byte{}
+	pointerMut sync.Mutex
+)
 
 func Open(addr, dbname string) (storage *Storage, err error) {
 	sessionLock.RLock()
@@ -32,9 +36,11 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 	}
 	cloned := sessions[addr].Clone()
 	pointerAddr := fmt.Sprintf("%p", cloned)
+	pointerMut.Lock()
 	buf := pointerMap[pointerAddr]
 	runtime.Stack(buf[:], false)
 	pointerMap[pointerAddr] = buf
+	pointerMut.Unlock()
 	runtime.SetFinalizer(cloned, sessionFinalizer)
 	storage = &Storage{
 		session: cloned,
@@ -48,7 +54,9 @@ func sessionFinalizer(session *mgo.Session) {
 	defer func() {
 		recover()
 		delete(pointerMap, ptr)
+		pointerMut.Unlock()
 	}()
+	pointerMut.Lock()
 	session.DB("tsuru").C("mycoll").Find(nil).Count()
 	buf := pointerMap[ptr]
 	fmt.Printf("\n********** LEAK **********\n%s\n********** ENDLEAK **********\n", string(buf[:]))
