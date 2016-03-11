@@ -32,7 +32,16 @@ func (s *S) TestNativeLogin(c *check.C) {
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token": "sometoken", "is_admin": true}`, Status: http.StatusOK}}, nil, manager)
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: `{"token": "sometoken", "is_admin": true}`,
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(r *http.Request) bool {
+			return r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" && r.FormValue("password") == "chico"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)

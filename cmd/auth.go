@@ -50,6 +50,7 @@ func nativeLogin(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := client.Do(request)
 	if err != nil {
 		return err
