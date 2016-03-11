@@ -766,7 +766,7 @@ func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		for _, p := range pools {
 			allowedPoolSet[p] = struct{}{}
 		}
-		for k, _ := range configMap {
+		for k := range configMap {
 			if k == "" {
 				continue
 			}
