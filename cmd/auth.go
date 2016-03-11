@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,7 +45,7 @@ func nativeLogin(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
+	b := strings.NewReader("password=" + password)
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
