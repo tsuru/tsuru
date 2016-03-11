@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"encoding/json"
 	"reflect"
 
 	"github.com/tsuru/tsuru/db"
@@ -55,12 +56,44 @@ func FindScopedConfig(scope string) (*ScopedConfig, error) {
 	return &result, err
 }
 
+func (e EntryMap) Unmarshal(val interface{}) error {
+	basicMap := map[string]interface{}{}
+	for k, v := range e {
+		basicMap[k] = v.Value
+	}
+	v, err := json.Marshal(basicMap)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(v, val)
+}
+
 func (c *ScopedConfig) Add(name string, value interface{}) {
 	c.add("", name, value, false)
 }
 
 func (c *ScopedConfig) AddPool(pool, name string, value interface{}) {
 	c.add(pool, name, value, false)
+}
+
+func (c *ScopedConfig) Marshal(value interface{}) error {
+	return c.MarshalPool("", value)
+}
+
+func (c *ScopedConfig) MarshalPool(pool string, value interface{}) error {
+	v, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	var fields map[string]interface{}
+	err = json.Unmarshal(v, &fields)
+	if err != nil {
+		return err
+	}
+	for name, value := range fields {
+		c.add(pool, name, value, false)
+	}
+	return nil
 }
 
 func (c *ScopedConfig) UpdateWith(other *ScopedConfig) error {
@@ -120,8 +153,10 @@ func (c *ScopedConfig) PoolEntries(pool string) EntryMap {
 	for _, e := range c.entries("") {
 		m[e.Name] = e
 	}
-	for _, e := range c.entries(pool) {
-		m[e.Name] = e
+	if pool != "" {
+		for _, e := range c.entries(pool) {
+			m[e.Name] = e
+		}
 	}
 	return m
 }

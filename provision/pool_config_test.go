@@ -228,3 +228,96 @@ func (s *S) TestScopedConfigFilterPools(c *check.C) {
 	c.Assert(conf.Envs, check.DeepEquals, []Entry{{Name: "a", Value: "a0"}, {Name: "b", Value: "b0"}})
 	c.Assert(conf.Pools, check.DeepEquals, []PoolEntry{{Name: "p1", Envs: []Entry{{Name: "a", Value: "a1"}}}})
 }
+
+func (s *S) TestScopedConfigMarshal(c *check.C) {
+	tests := []struct {
+		A interface{}
+		B []Entry
+	}{
+		{map[string]interface{}{
+			"v1": "a",
+			"v2": 1,
+			"v3": 1.1,
+		}, []Entry{
+			{Name: "v1", Value: "a"},
+			{Name: "v2", Value: float64(1)},
+			{Name: "v3", Value: 1.1},
+		}},
+		{struct {
+			V1 string
+			V2 int
+			V3 float64
+		}{
+			V1: "a",
+			V2: 1,
+			V3: 1.1,
+		}, []Entry{
+			{Name: "V1", Value: "a"},
+			{Name: "V2", Value: float64(1)},
+			{Name: "V3", Value: 1.1},
+		}},
+		{struct {
+			V1 string `json:"v1"`
+			V2 int
+			V3 float64
+		}{
+			V1: "a",
+			V2: 1,
+			V3: 1.1,
+		}, []Entry{
+			{Name: "V2", Value: float64(1)},
+			{Name: "V3", Value: 1.1},
+			{Name: "v1", Value: "a"},
+		}},
+	}
+	for i, t := range tests {
+		conf, err := FindScopedConfig(fmt.Sprintf("x%d", i))
+		c.Assert(err, check.IsNil)
+		err = conf.Marshal(t.A)
+		c.Assert(err, check.IsNil)
+		sort.Sort(ConfigEntryList(conf.Envs))
+		c.Assert(conf.Envs, check.DeepEquals, t.B, check.Commentf("test %d failed", i+1))
+	}
+}
+
+func (s *S) TestScopedConfigEntryMapUnmarshalWithMap(c *check.C) {
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	err = conf.Marshal(map[string]interface{}{
+		"v1": "a",
+		"v2": 1,
+		"v3": 1.1,
+	})
+	c.Assert(err, check.IsNil)
+	entries := conf.PoolEntries("")
+	var result map[string]interface{}
+	err = entries.Unmarshal(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]interface{}{
+		"v1": "a",
+		"v2": float64(1),
+		"v3": 1.1,
+	})
+}
+
+func (s *S) TestScopedConfigEntryMapUnmarshalWithStruct(c *check.C) {
+	type baseStruct struct {
+		V1 string
+		V2 int
+		V3 float64
+	}
+	expected := baseStruct{
+		V1: "a",
+		V2: 1,
+		V3: 1.1,
+	}
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	err = conf.Marshal(expected)
+	c.Assert(err, check.IsNil)
+	entries := conf.PoolEntries("")
+	var result baseStruct
+	err = entries.Unmarshal(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+}
