@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -140,7 +141,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
-	s.token = createTokenForUser(s.user, c)
+	s.token = createTokenForUser(s.user, "*", string(permission.CtxGlobal), "", c)
 }
 
 func (s *S) TearDownTest(c *check.C) {

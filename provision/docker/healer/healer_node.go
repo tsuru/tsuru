@@ -452,6 +452,19 @@ func UpdateConfig(pool string, config NodeHealerConfig) error {
 	return nil
 }
 
+func RemoveConfig(pool string) error {
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	if err != nil {
+		return fmt.Errorf("unable to find config: %s", err)
+	}
+	conf.ResetPoolEnvs(pool)
+	err = conf.SaveEnvs()
+	if err != nil {
+		return fmt.Errorf("unable to save config: %s", err)
+	}
+	return nil
+}
+
 func GetConfig() (map[string]NodeHealerConfig, error) {
 	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
 	if err != nil {

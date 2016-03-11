@@ -57,17 +57,17 @@ func createToken(c *check.C) auth.Token {
 	nativeScheme.Remove(user)
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	return createTokenForUser(user, c)
+	return createTokenForUser(user, "*", string(permission.CtxGlobal), "", c)
 }
 
-func createTokenForUser(user *auth.User, c *check.C) auth.Token {
+func createTokenForUser(user *auth.User, perm, contextType, contextValue string, c *check.C) auth.Token {
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("provisioner-docker", string(permission.CtxGlobal), "")
+	role, err := permission.NewRole("provisioner-docker-"+user.Email+perm, contextType, "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("*")
+	err = role.AddPermissions(perm)
 	c.Assert(err, check.IsNil)
-	err = user.AddRole(role.Name, "")
+	err = user.AddRole(role.Name, contextValue)
 	c.Assert(err, check.IsNil)
 	return token
 }
@@ -1679,7 +1679,7 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	})
 }
 
-func (s *HandlersSuite) TestNodeHealingConfigInfo(c *check.C) {
+func (s *HandlersSuite) TestNodeHealingUpdateRead(c *check.C) {
 	doRequest := func(str string) map[string]healer.NodeHealerConfig {
 		body := bytes.NewBufferString(str)
 		request, err := http.NewRequest("POST", "/docker/healing/node", body)
@@ -1730,9 +1730,85 @@ func (s *HandlersSuite) TestNodeHealingConfigInfo(c *check.C) {
 			"":   {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
 			"p1": {Enabled: true},
 		}},
+		{"pool=p1", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
+			"p1": {Enabled: true},
+		}},
+		{"pool=p1&enabled=false", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: true, MaxTimeSinceSuccess: 60, MaxUnresponsiveTime: 20},
+			"p1": {Enabled: false},
+		}},
 	}
 	for i, t := range tests {
 		configMap := doRequest(t.A)
 		c.Assert(configMap, check.DeepEquals, t.B, check.Commentf("test %d", i+1))
 	}
+	request, err := http.NewRequest("DELETE", "/docker/healing/node", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	configMap := doRequest("")
+	c.Assert(configMap, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"":   {},
+		"p1": {Enabled: false},
+	})
+	request, err = http.NewRequest("DELETE", "/docker/healing/node?pool=p1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	configMap = doRequest("")
+	c.Assert(configMap, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {},
+	})
+}
+
+func (s *HandlersSuite) TestNodeHealingConfigUpdateReadLimited(c *check.C) {
+	doRequest := func(t auth.Token, code int, str string) map[string]healer.NodeHealerConfig {
+		body := bytes.NewBufferString(str)
+		request, err := http.NewRequest("POST", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+t.GetValue())
+		recorder := httptest.NewRecorder()
+		server := api.RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, code)
+		request, err = http.NewRequest("GET", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+t.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configMap map[string]healer.NodeHealerConfig
+		json.Unmarshal(recorder.Body.Bytes(), &configMap)
+		return configMap
+	}
+	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
+	_, err := nativeScheme.Create(limitedUser)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(limitedUser)
+	createTokenForUser(limitedUser, "healing.update", string(permission.CtxPool), "p2", c)
+	t := createTokenForUser(limitedUser, "healing.read", string(permission.CtxPool), "p2", c)
+	data := doRequest(t, http.StatusForbidden, "enabled=true&maxtimesincesuccess=60")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {},
+	})
+	data = doRequest(s.token, http.StatusOK, "enabled=true&maxtimesincesuccess=60")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {Enabled: true, MaxTimeSinceSuccess: 60},
+	})
+	data = doRequest(t, http.StatusForbidden, "pool=p1&enabled=true&maxtimesincesuccess=20")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {Enabled: true, MaxTimeSinceSuccess: 60},
+	})
+	data = doRequest(t, http.StatusOK, "pool=p2&enabled=true&maxtimesincesuccess=20")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"":   {Enabled: true, MaxTimeSinceSuccess: 60},
+		"p2": {Enabled: true, MaxTimeSinceSuccess: 20},
+	})
 }

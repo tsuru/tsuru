@@ -50,8 +50,9 @@ func init() {
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/docker/containers/rebalance", "POST", api.AuthorizationRequiredHandler(rebalanceContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AuthorizationRequiredHandler(healingHistoryHandler))
-	api.RegisterHandler("/docker/healing/node", "GET", api.AuthorizationRequiredHandler(nodeHealingInfo))
-	api.RegisterHandler("/docker/healing/node", "POST", api.AuthorizationRequiredHandler(nodeHealingConfig))
+	api.RegisterHandler("/docker/healing/node", "GET", api.AuthorizationRequiredHandler(nodeHealingRead))
+	api.RegisterHandler("/docker/healing/node", "POST", api.AuthorizationRequiredHandler(nodeHealingUpdate))
+	api.RegisterHandler("/docker/healing/node", "DELETE", api.AuthorizationRequiredHandler(nodeHealingDelete))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/config", "GET", api.AuthorizationRequiredHandler(autoScaleGetConfig))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AuthorizationRequiredHandler(autoScaleRunHandler))
@@ -527,7 +528,7 @@ func unmarshal(body io.ReadCloser) (map[string]string, error) {
 }
 
 func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermHealing) {
+	if !permission.Check(t, permission.PermHealingRead) {
 		return permission.ErrUnauthorized
 	}
 	filter := r.URL.Query().Get("filter")
@@ -751,26 +752,48 @@ func tryRestartAppsByFilter(filter *app.Filter, writer *tsuruIo.SimpleJsonMessag
 	wg.Wait()
 }
 
-func nodeHealingInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermHealing) {
-		return permission.ErrUnauthorized
+func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	pools, err := listContextValues(t, permission.PermHealingRead, true)
+	if err != nil {
+		return err
 	}
 	configMap, err := healer.GetConfig()
 	if err != nil {
 		return err
 	}
+	if len(pools) > 0 {
+		allowedPoolSet := map[string]struct{}{}
+		for _, p := range pools {
+			allowedPoolSet[p] = struct{}{}
+		}
+		for k, _ := range configMap {
+			if k == "" {
+				continue
+			}
+			if _, ok := allowedPoolSet[k]; !ok {
+				delete(configMap, k)
+			}
+		}
+	}
 	return json.NewEncoder(w).Encode(configMap)
 }
 
-func nodeHealingConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermHealing) {
-		return permission.ErrUnauthorized
-	}
+func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
 		return err
 	}
 	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermHealingUpdate) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermHealingUpdate,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
 	dec := schema.NewDecoder()
 	dec.ZeroEmpty(true)
 	dec.IgnoreUnknownKeys(true)
@@ -784,4 +807,23 @@ func nodeHealingConfig(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	return healer.UpdateConfig(poolName, config)
+}
+
+func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermHealingUpdate) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermHealingUpdate,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
+	return healer.RemoveConfig(poolName)
 }
