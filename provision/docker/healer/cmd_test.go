@@ -205,3 +205,118 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *check.C) {
 `, startTStr08, endTStr08, startTStr06, endTStr06, startTStr02, endTStr02)
 	c.Assert(buf.String(), check.Equals, expected)
 }
+
+func (s *S) TestGetNodeHealingConfigCmd(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{
+"": {"enabled": true, "maxunresponsivetime": 2},
+"p1": {"enabled": false, "maxunresponsivetime": 2, "maxunresponsivetimeinherited": true},
+"p2": {"enabled": true, "maxunresponsivetime": 3, "enabledinherited": true}
+}`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/1.0/docker/healing/node"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	healing := &GetNodeHealingConfigCmd{}
+	err := healing.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `Default:
++------------------------+----------+
+| Config                 | Value    |
++------------------------+----------+
+| Enabled                | true     |
+| Max unresponsive time  | 2s       |
+| Max time since success | disabled |
++------------------------+----------+
+
+Pool "p1":
++------------------------+----------+-----------+
+| Config                 | Value    | Inherited |
++------------------------+----------+-----------+
+| Enabled                | false    | false     |
+| Max unresponsive time  | 2s       | true      |
+| Max time since success | disabled | false     |
++------------------------+----------+-----------+
+
+Pool "p2":
++------------------------+----------+-----------+
+| Config                 | Value    | Inherited |
++------------------------+----------+-----------+
+| Enabled                | true     | true      |
+| Max unresponsive time  | 3s       | false     |
+| Max time since success | disabled | false     |
++------------------------+----------+-----------+
+`
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
+func (s *S) TestGetNodeHealingConfigCmdEmpty(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/1.0/docker/healing/node"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	healing := &GetNodeHealingConfigCmd{}
+	err := healing.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `Default:
++------------------------+----------+
+| Config                 | Value    |
++------------------------+----------+
+| Enabled                | false    |
+| Max unresponsive time  | disabled |
+| Max time since success | disabled |
++------------------------+----------+
+`
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
+func (s *S) TestDeleteNodeHealingConfigCmd(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			req.ParseForm()
+			return req.URL.Path == "/1.0/docker/healing/node" && req.Method == "DELETE" &&
+				req.Form.Get("name") == "enabled" && req.Form.Get("pool") == "p1"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	healing := &DeleteNodeHealingConfigCmd{}
+	healing.Flags().Parse(true, []string{"--enabled", "--pool", "p1", "-y"})
+	err := healing.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node healing configuration successfully removed.\n")
+}
+
+func (s *S) TestSetNodeHealingConfigCmd(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			req.ParseForm()
+			return req.URL.Path == "/1.0/docker/healing/node" && req.Method == "POST" &&
+				req.Form.Get("MaxUnresponsiveTime") == "10" && req.Form.Get("pool") == "p1" &&
+				req.Form.Get("Enabled") == "true"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	healing := &SetNodeHealingConfigCmd{}
+	healing.Flags().Parse(true, []string{"--pool", "p1", "--enable", "--max-unresponsive", "10"})
+	err := healing.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node healing configuration successfully updated.\n")
+}

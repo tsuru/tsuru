@@ -680,10 +680,18 @@ func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {
 	})
 }
 
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
 func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: true, MaxUnresponsiveTime: 1})
+	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	err = conf.SaveEnvs()
 	c.Assert(err, check.IsNil)
@@ -709,7 +717,7 @@ func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: true, MaxUnresponsiveTime: 1})
+	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	err = conf.SaveEnvs()
 	c.Assert(err, check.IsNil)
@@ -741,7 +749,7 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 func (s *S) TestCheckActiveHealing(c *check.C) {
 	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: true, MaxUnresponsiveTime: 1})
+	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	err = conf.SaveEnvs()
 	c.Assert(err, check.IsNil)
@@ -909,8 +917,8 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 
 func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 	err := UpdateConfig("", NodeHealerConfig{
-		Enabled:             true,
-		MaxUnresponsiveTime: 1,
+		Enabled:             boolPtr(true),
+		MaxUnresponsiveTime: intPtr(1),
 	})
 	c.Assert(err, check.IsNil)
 	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
@@ -920,11 +928,13 @@ func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 	err = entries.Unmarshal(&nodeConf)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
-		Enabled:             true,
-		MaxUnresponsiveTime: 1,
+		Enabled:                      boolPtr(true),
+		MaxUnresponsiveTime:          intPtr(1),
+		EnabledInherited:             true,
+		MaxUnresponsiveTimeInherited: true,
 	})
 	err = UpdateConfig("p1", NodeHealerConfig{
-		MaxTimeSinceSuccess: 2,
+		MaxTimeSinceSuccess: intPtr(2),
 	})
 	c.Assert(err, check.IsNil)
 	conf, err = provision.FindScopedConfig(nodeHealerConfigEntry)
@@ -934,9 +944,11 @@ func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 	err = entries.Unmarshal(&nodeConf)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
-		Enabled:             true,
-		MaxUnresponsiveTime: 1,
-		MaxTimeSinceSuccess: 2,
+		Enabled:                      boolPtr(true),
+		MaxUnresponsiveTime:          intPtr(1),
+		MaxTimeSinceSuccess:          intPtr(2),
+		EnabledInherited:             true,
+		MaxUnresponsiveTimeInherited: true,
 	})
 }
 

@@ -798,11 +798,7 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	dec := schema.NewDecoder()
 	dec.ZeroEmpty(true)
 	dec.IgnoreUnknownKeys(true)
-	configMap, err := healer.GetConfig()
-	if err != nil {
-		return err
-	}
-	config := configMap[poolName]
+	var config healer.NodeHealerConfig
 	err = dec.Decode(&config, r.Form)
 	if err != nil {
 		return err
@@ -826,5 +822,14 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return permission.ErrUnauthorized
 		}
 	}
-	return healer.RemoveConfig(poolName)
+	if len(r.Form["name"]) == 0 {
+		return healer.RemoveConfig(poolName, "")
+	}
+	for _, v := range r.Form["name"] {
+		err = healer.RemoveConfig(poolName, v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -46,9 +46,12 @@ type NodeHealerArgs struct {
 }
 
 type NodeHealerConfig struct {
-	Enabled             bool
-	MaxTimeSinceSuccess int
-	MaxUnresponsiveTime int
+	Enabled                      *bool `json:",omitempty"`
+	MaxTimeSinceSuccess          *int  `json:",omitempty"`
+	MaxUnresponsiveTime          *int  `json:",omitempty"`
+	EnabledInherited             bool
+	MaxTimeSinceSuccessInherited bool
+	MaxUnresponsiveTimeInherited bool
 }
 
 type nodeStatusData struct {
@@ -333,18 +336,18 @@ func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse entry map: %s", err)
 	}
-	if !config.Enabled {
+	if config.Enabled == nil || !*config.Enabled {
 		return nil, nil
 	}
 	var orParts []bson.M
-	if config.MaxTimeSinceSuccess > 0 {
-		lastSuccess := time.Duration(config.MaxTimeSinceSuccess) * time.Second
+	if config.MaxTimeSinceSuccess != nil && *config.MaxTimeSinceSuccess > 0 {
+		lastSuccess := time.Duration(*config.MaxTimeSinceSuccess) * time.Second
 		orParts = append(orParts, bson.M{
 			"lastsuccess": bson.M{"$lt": now.Add(-lastSuccess)},
 		})
 	}
-	if config.MaxUnresponsiveTime > 0 {
-		lastUpdate := time.Duration(config.MaxUnresponsiveTime) * time.Second
+	if config.MaxUnresponsiveTime != nil && *config.MaxUnresponsiveTime > 0 {
+		lastUpdate := time.Duration(*config.MaxUnresponsiveTime) * time.Second
 		orParts = append(orParts, bson.M{
 			"lastupdate": bson.M{"$lt": now.Add(-lastUpdate)},
 		})
@@ -452,12 +455,16 @@ func UpdateConfig(pool string, config NodeHealerConfig) error {
 	return nil
 }
 
-func RemoveConfig(pool string) error {
+func RemoveConfig(pool, name string) error {
 	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
 	if err != nil {
 		return fmt.Errorf("unable to find config: %s", err)
 	}
-	conf.ResetPoolEnvs(pool)
+	if name == "" {
+		conf.ResetPoolEnvs(pool)
+	} else {
+		conf.RemovePool(pool, name)
+	}
 	err = conf.SaveEnvs()
 	if err != nil {
 		return fmt.Errorf("unable to save config: %s", err)
@@ -470,7 +477,7 @@ func GetConfig() (map[string]NodeHealerConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to find config: %s", err)
 	}
-	baseEntries, poolEntries := conf.AllEntriesMerge(false)
+	baseEntries, poolEntries := conf.AllEntries()
 	ret := map[string]NodeHealerConfig{}
 	var config NodeHealerConfig
 	err = baseEntries.Unmarshal(&config)
