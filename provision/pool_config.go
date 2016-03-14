@@ -7,6 +7,7 @@ package provision
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2"
@@ -23,9 +24,10 @@ type ScopedConfig struct {
 }
 
 type Entry struct {
-	Name    string
-	Value   interface{}
-	Private bool
+	Name      string
+	Value     interface{}
+	Private   bool
+	Inherited bool
 }
 
 type PoolEntry struct {
@@ -60,6 +62,7 @@ func (e EntryMap) Unmarshal(val interface{}) error {
 	basicMap := map[string]interface{}{}
 	for k, v := range e {
 		basicMap[k] = v.Value
+		basicMap[k+"inherited"] = v.Inherited
 	}
 	v, err := json.Marshal(basicMap)
 	if err != nil {
@@ -69,11 +72,19 @@ func (e EntryMap) Unmarshal(val interface{}) error {
 }
 
 func (c *ScopedConfig) Add(name string, value interface{}) {
-	c.add("", name, value, false)
+	c.add("", name, value, false, false)
 }
 
 func (c *ScopedConfig) AddPool(pool, name string, value interface{}) {
-	c.add(pool, name, value, false)
+	c.add(pool, name, value, false, false)
+}
+
+func (c *ScopedConfig) Remove(name string) {
+	c.remove("", name)
+}
+
+func (c *ScopedConfig) RemovePool(pool, name string) {
+	c.remove(pool, name)
 }
 
 func (c *ScopedConfig) Marshal(value interface{}) error {
@@ -91,18 +102,21 @@ func (c *ScopedConfig) MarshalPool(pool string, value interface{}) error {
 		return err
 	}
 	for name, value := range fields {
-		c.add(pool, name, value, false)
+		if strings.HasSuffix(strings.ToLower(name), "inherited") {
+			continue
+		}
+		c.add(pool, name, value, true, false)
 	}
 	return nil
 }
 
 func (c *ScopedConfig) UpdateWith(other *ScopedConfig) error {
 	for _, env := range other.Envs {
-		c.add("", env.Name, env.Value, env.Private)
+		c.add("", env.Name, env.Value, false, env.Private)
 	}
 	for _, pool := range other.Pools {
 		for _, env := range pool.Envs {
-			c.add(pool.Name, env.Name, env.Value, env.Private)
+			c.add(pool.Name, env.Name, env.Value, false, env.Private)
 		}
 	}
 	return c.SaveEnvs()
@@ -151,6 +165,9 @@ func (c *ScopedConfig) GetExtraString(name string) string {
 func (c *ScopedConfig) PoolEntries(pool string) EntryMap {
 	m := make(EntryMap)
 	for _, e := range c.entries("") {
+		if pool != "" {
+			e.Inherited = true
+		}
 		m[e.Name] = e
 	}
 	if pool != "" {
@@ -175,6 +192,7 @@ func (c *ScopedConfig) AllEntriesMerge(merge bool) (EntryMap, map[string]EntryMa
 		m := make(EntryMap)
 		if merge {
 			for k, v := range base {
+				v.Inherited = true
 				m[k] = v
 			}
 		}
@@ -303,7 +321,7 @@ func (c *ScopedConfig) reload() error {
 	return err
 }
 
-func (c *ScopedConfig) add(pool, name string, value interface{}, private bool) {
+func (c *ScopedConfig) add(pool, name string, value interface{}, writeEmpty, private bool) {
 	var m EntryMap
 	if pool == "" {
 		m = c.entryMap
@@ -313,13 +331,18 @@ func (c *ScopedConfig) add(pool, name string, value interface{}, private bool) {
 		}
 		m = c.poolEntryMap[pool]
 	}
-	cmpValue := value
-	zero := reflect.Zero(reflect.ValueOf(value).Type()).Interface()
-	if reflect.ValueOf(value).Kind() == reflect.Ptr {
-		cmpValue = reflect.ValueOf(value).Elem().Interface()
-		zero = reflect.Zero(reflect.ValueOf(value).Elem().Type()).Interface()
+	defer c.updateFromMap()
+	isEmpty := false
+	if !writeEmpty {
+		cmpValue := value
+		zero := reflect.Zero(reflect.ValueOf(value).Type()).Interface()
+		if reflect.ValueOf(value).Kind() == reflect.Ptr {
+			cmpValue = reflect.ValueOf(value).Elem().Interface()
+			zero = reflect.Zero(reflect.ValueOf(value).Elem().Type()).Interface()
+		}
+		isEmpty = reflect.DeepEqual(cmpValue, zero)
 	}
-	if value == nil || reflect.DeepEqual(cmpValue, zero) {
+	if value == nil || (!writeEmpty && isEmpty) {
 		delete(m, name)
 		return
 	}
@@ -327,6 +350,27 @@ func (c *ScopedConfig) add(pool, name string, value interface{}, private bool) {
 		Name:    name,
 		Value:   value,
 		Private: private,
+	}
+}
+
+func (c *ScopedConfig) remove(pool, name string) {
+	var m EntryMap
+	if pool == "" {
+		m = c.entryMap
+	} else {
+		if c.poolEntryMap[pool] == nil {
+			return
+		}
+		m = c.poolEntryMap[pool]
+	}
+	for k := range m {
+		if strings.ToLower(k) == strings.ToLower(name) {
+			delete(m, k)
+			break
+		}
+	}
+	if pool != "" && len(m) == 0 {
+		delete(c.poolEntryMap, pool)
 	}
 	c.updateFromMap()
 }

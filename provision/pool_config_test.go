@@ -53,6 +53,38 @@ func (s *S) TestScopedConfigAddPool(c *check.C) {
 	c.Assert(conf.Pools, check.DeepEquals, expected)
 }
 
+func (s *S) TestScopedConfigRemove(c *check.C) {
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	conf.Add("a", "b")
+	conf.Add("c", "d")
+	conf.Remove("a")
+	c.Assert(conf.Envs, check.DeepEquals, []Entry{{Name: "c", Value: "d"}})
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	conf, err = FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	conf.Remove("c")
+	c.Assert(conf.Envs, check.IsNil)
+}
+
+func (s *S) TestScopedConfigRemovePool(c *check.C) {
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	conf.Add("a", "b")
+	conf.AddPool("p", "a", "c")
+	expected := []PoolEntry{{Name: "p", Envs: []Entry{{Name: "a", Value: "c"}}}}
+	c.Assert(conf.Envs, check.DeepEquals, []Entry{{Name: "a", Value: "b"}})
+	c.Assert(conf.Pools, check.DeepEquals, expected)
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	conf, err = FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	conf.RemovePool("p", "a")
+	c.Assert(conf.Envs, check.DeepEquals, []Entry{{Name: "a", Value: "b"}})
+	c.Assert(conf.Pools, check.IsNil)
+}
+
 func (s *S) TestScopedConfigUpdateWith(c *check.C) {
 	conf, err := FindScopedConfig("x")
 	c.Assert(err, check.IsNil)
@@ -152,17 +184,17 @@ func (s *S) TestScopedConfigPoolEntries(c *check.C) {
 	entries := conf.PoolEntries("p1")
 	c.Assert(entries, check.DeepEquals, EntryMap{
 		"a": Entry{Name: "a", Value: "a1"},
-		"b": Entry{Name: "b", Value: "b0"},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
 	})
 	entries = conf.PoolEntries("p2")
 	c.Assert(entries, check.DeepEquals, EntryMap{
-		"a": Entry{Name: "a", Value: "a0"},
+		"a": Entry{Name: "a", Value: "a0", Inherited: true},
 		"b": Entry{Name: "b", Value: "b1"},
 	})
 	entries = conf.PoolEntries("p3")
 	c.Assert(entries, check.DeepEquals, EntryMap{
-		"a": Entry{Name: "a", Value: "a0"},
-		"b": Entry{Name: "b", Value: "b0"},
+		"a": Entry{Name: "a", Value: "a0", Inherited: true},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
 	})
 	err = conf.SaveEnvs()
 	c.Assert(err, check.IsNil)
@@ -171,7 +203,46 @@ func (s *S) TestScopedConfigPoolEntries(c *check.C) {
 	entries = dbConf.PoolEntries("p1")
 	c.Assert(entries, check.DeepEquals, EntryMap{
 		"a": Entry{Name: "a", Value: "a1"},
-		"b": Entry{Name: "b", Value: "b0"},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
+	})
+}
+
+func (s *S) TestScopedConfigPoolEntriesWriteEmpty(c *check.C) {
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	conf.add("", "a", "a0", true, false)
+	conf.add("", "b", "b0", true, false)
+	conf.add("p1", "a", "a1", true, false)
+	conf.add("p2", "b", "b1", true, false)
+	conf.add("p3", "a", "", true, false)
+	entries := conf.PoolEntries("p1")
+	c.Assert(entries, check.DeepEquals, EntryMap{
+		"a": Entry{Name: "a", Value: "a1"},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
+	})
+	entries = conf.PoolEntries("p2")
+	c.Assert(entries, check.DeepEquals, EntryMap{
+		"a": Entry{Name: "a", Value: "a0", Inherited: true},
+		"b": Entry{Name: "b", Value: "b1"},
+	})
+	entries = conf.PoolEntries("p3")
+	c.Assert(entries, check.DeepEquals, EntryMap{
+		"a": Entry{Name: "a", Value: ""},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
+	})
+	entries = conf.PoolEntries("p4")
+	c.Assert(entries, check.DeepEquals, EntryMap{
+		"a": Entry{Name: "a", Value: "a0", Inherited: true},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
+	})
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	dbConf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	entries = dbConf.PoolEntries("p1")
+	c.Assert(entries, check.DeepEquals, EntryMap{
+		"a": Entry{Name: "a", Value: "a1"},
+		"b": Entry{Name: "b", Value: "b0", Inherited: true},
 	})
 }
 
@@ -265,8 +336,8 @@ func (s *S) TestScopedConfigAddEmpty(c *check.C) {
 	conf, err = FindScopedConfig("x")
 	c.Assert(err, check.IsNil)
 	entryMap := conf.PoolEntries("p1")
-	c.Assert(entryMap["a"], check.DeepEquals, Entry{Name: "a", Value: map[string]interface{}{"x": "999"}})
-	c.Assert(entryMap["b"], check.DeepEquals, Entry{Name: "b", Value: map[string]interface{}{"x": "123"}})
+	c.Assert(entryMap["a"], check.DeepEquals, Entry{Name: "a", Value: map[string]interface{}{"x": "999"}, Inherited: true})
+	c.Assert(entryMap["b"], check.DeepEquals, Entry{Name: "b", Value: map[string]interface{}{"x": "123"}, Inherited: true})
 }
 
 func (s *S) TestScopedConfigMarshal(c *check.C) {
@@ -309,6 +380,19 @@ func (s *S) TestScopedConfigMarshal(c *check.C) {
 			{Name: "V3", Value: 1.1},
 			{Name: "v1", Value: "a"},
 		}},
+		{struct {
+			V1 string
+			V2 int
+			V3 float64
+		}{
+			V1: "a",
+			V2: 0,
+			V3: 1.1,
+		}, []Entry{
+			{Name: "V1", Value: "a"},
+			{Name: "V2", Value: float64(0)},
+			{Name: "V3", Value: 1.1},
+		}},
 	}
 	for i, t := range tests {
 		conf, err := FindScopedConfig(fmt.Sprintf("x%d", i))
@@ -334,9 +418,12 @@ func (s *S) TestScopedConfigEntryMapUnmarshalWithMap(c *check.C) {
 	err = entries.Unmarshal(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, map[string]interface{}{
-		"v1": "a",
-		"v2": float64(1),
-		"v3": 1.1,
+		"v1":          "a",
+		"v2":          float64(1),
+		"v3":          1.1,
+		"v1inherited": false,
+		"v2inherited": false,
+		"v3inherited": false,
 	})
 }
 
