@@ -248,6 +248,27 @@ func (s *S) TestScopedConfigFilterPools(c *check.C) {
 	c.Assert(conf.Pools, check.DeepEquals, []PoolEntry{{Name: "p1", Envs: []Entry{{Name: "a", Value: "a1"}}}})
 }
 
+func (s *S) TestScopedConfigAddEmpty(c *check.C) {
+	conf, err := FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	type myStruct struct {
+		X string
+	}
+	conf.Add("a", myStruct{X: "999"})
+	conf.Add("b", &myStruct{X: "123"})
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	conf.AddPool("p1", "a", myStruct{})
+	conf.AddPool("p1", "b", &myStruct{})
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	conf, err = FindScopedConfig("x")
+	c.Assert(err, check.IsNil)
+	entryMap := conf.PoolEntries("p1")
+	c.Assert(entryMap["a"], check.DeepEquals, Entry{Name: "a", Value: map[string]interface{}{"x": "999"}})
+	c.Assert(entryMap["b"], check.DeepEquals, Entry{Name: "b", Value: map[string]interface{}{"x": "123"}})
+}
+
 func (s *S) TestScopedConfigMarshal(c *check.C) {
 	tests := []struct {
 		A interface{}

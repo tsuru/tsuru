@@ -313,7 +313,13 @@ func (c *ScopedConfig) add(pool, name string, value interface{}, private bool) {
 		}
 		m = c.poolEntryMap[pool]
 	}
-	if value == nil || value == reflect.Zero(reflect.ValueOf(value).Type()).Interface() {
+	cmpValue := value
+	zero := reflect.Zero(reflect.ValueOf(value).Type()).Interface()
+	if reflect.ValueOf(value).Kind() == reflect.Ptr {
+		cmpValue = reflect.ValueOf(value).Elem().Interface()
+		zero = reflect.Zero(reflect.ValueOf(value).Elem().Type()).Interface()
+	}
+	if value == nil || reflect.DeepEqual(cmpValue, zero) {
 		delete(m, name)
 		return
 	}
