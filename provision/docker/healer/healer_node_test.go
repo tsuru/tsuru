@@ -907,6 +907,39 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	c.Assert(events[0].CreatedNode.Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL())))
 }
 
+func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
+	err := UpdateConfig("", NodeHealerConfig{
+		Enabled:             true,
+		MaxUnresponsiveTime: 1,
+	})
+	c.Assert(err, check.IsNil)
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	c.Assert(err, check.IsNil)
+	entries := conf.PoolEntries("p1")
+	var nodeConf NodeHealerConfig
+	err = entries.Unmarshal(&nodeConf)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
+		Enabled:             true,
+		MaxUnresponsiveTime: 1,
+	})
+	err = UpdateConfig("p1", NodeHealerConfig{
+		MaxTimeSinceSuccess: 2,
+	})
+	c.Assert(err, check.IsNil)
+	conf, err = provision.FindScopedConfig(nodeHealerConfigEntry)
+	c.Assert(err, check.IsNil)
+	entries = conf.PoolEntries("p1")
+	nodeConf = NodeHealerConfig{}
+	err = entries.Unmarshal(&nodeConf)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
+		Enabled:             true,
+		MaxUnresponsiveTime: 1,
+		MaxTimeSinceSuccess: 2,
+	})
+}
+
 func (s *S) newFakeDockerProvisioner(servers ...string) (*dockertest.FakeDockerProvisioner, error) {
 	p, err := dockertest.NewFakeDockerProvisioner(servers...)
 	if err != nil {
