@@ -1076,7 +1076,7 @@ func (s *HandlersSuite) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].CreationStatus, check.DeepEquals, cluster.NodeStatusReady)
+	c.Assert(nodes[0].CreationStatus, check.DeepEquals, cluster.NodeCreationStatusCreated)
 }
 
 func (s *HandlersSuite) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
@@ -1095,6 +1095,82 @@ func (s *HandlersSuite) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *HandlersSuite) TestUpdateNodeHandlerEnableCanMoveContainers(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:2375", CreationStatus: cluster.NodeCreationStatusDisabled},
+	)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	defer provision.RemovePool("pool1")
+	jsons := `{"address": "localhost:2375"}`
+	b := bytes.NewBufferString(jsons)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node?enabled=true", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].CreationStatus, check.DeepEquals, cluster.NodeCreationStatusCreated)
+	recorder = httptest.NewRecorder()
+	b = bytes.NewBufferString(`{"from": "localhost", "to": "127.0.0.1"}`)
+	request, err = http.NewRequest("POST", "/docker/containers/move", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	mainDockerProvisioner.Cluster().Register(cluster.Node{Address: "http://127.0.0.1:2375"})
+	server = api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	var result []tsuruIo.SimpleJsonMessage
+	err = json.Unmarshal([]byte(validJson), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, []tsuruIo.SimpleJsonMessage{
+		{Message: "No units to move in localhost\n"},
+		{Message: "Containers moved successfully!\n"},
+	})
+}
+
+func (s *HandlersSuite) TestUpdateNodeHandlerDisableCannotMoveContainers(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:2375", CreationStatus: cluster.NodeCreationStatusCreated},
+	)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	defer provision.RemovePool("pool1")
+	jsons := `{"address": "localhost:2375"}`
+	b := bytes.NewBufferString(jsons)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node?disabled=true", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].CreationStatus, check.DeepEquals, cluster.NodeCreationStatusDisabled)
+	recorder = httptest.NewRecorder()
+	b = bytes.NewBufferString(`{"from": "localhost", "to": "127.0.0.1"}`)
+	request, err = http.NewRequest("POST", "/docker/containers/move", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	mainDockerProvisioner.Cluster().Register(cluster.Node{Address: "http://127.0.0.1:2375"})
+	server = api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	c.Assert(validJson, check.Equals, "[Host `localhost` not found]")
 }
 
 func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {

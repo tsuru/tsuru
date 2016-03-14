@@ -361,7 +361,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		node.CreationStatus = cluster.NodeCreationStatusDisabled
 	}
 	if enabled {
-		node.CreationStatus = cluster.NodeStatusReady
+		node.CreationStatus = cluster.NodeCreationStatusCreated
 	}
 	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	return err
