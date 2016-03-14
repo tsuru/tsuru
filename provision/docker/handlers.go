@@ -775,6 +775,7 @@ func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			}
 		}
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(configMap)
 }
 
