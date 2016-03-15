@@ -331,6 +331,19 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	return err
 }
 
+func (h *NodeHealer) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
+	coll, err := nodeDataCollection()
+	if err != nil {
+		return fmt.Errorf("unable to get node data collection: %s", err)
+	}
+	defer coll.Close()
+	err = coll.RemoveId(node.Address)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	return nil
+}
+
 func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson.M, error) {
 	now := time.Now().UTC()
 	var config NodeHealerConfig
