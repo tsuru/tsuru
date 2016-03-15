@@ -36,6 +36,7 @@ type NodeHealer struct {
 	waitTimeNewMachine    time.Duration
 	failuresBeforeHealing int
 	quit                  chan bool
+	started               time.Time
 }
 
 type NodeHealerArgs struct {
@@ -68,6 +69,7 @@ func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
 		disabledTime:          args.DisabledTime,
 		waitTimeNewMachine:    args.WaitTimeNewMachine,
 		failuresBeforeHealing: args.FailuresBeforeHealing,
+		started:               time.Now().UTC(),
 	}
 	if healer.provisioner == nil {
 		return healer
@@ -329,7 +331,7 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	return err
 }
 
-func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson.M, error) {
+func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson.M, error) {
 	now := time.Now().UTC()
 	var config NodeHealerConfig
 	err := entries.Unmarshal(&config)
@@ -342,15 +344,21 @@ func queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson
 	var orParts []bson.M
 	if config.MaxTimeSinceSuccess != nil && *config.MaxTimeSinceSuccess > 0 {
 		lastSuccess := time.Duration(*config.MaxTimeSinceSuccess) * time.Second
-		orParts = append(orParts, bson.M{
-			"lastsuccess": bson.M{"$lt": now.Add(-lastSuccess)},
-		})
+		nowMinusLastSuccess := now.Add(-lastSuccess)
+		if h.started.Add(lastSuccess).Before(nowMinusLastSuccess) {
+			orParts = append(orParts, bson.M{
+				"lastsuccess": bson.M{"$lt": nowMinusLastSuccess},
+			})
+		}
 	}
 	if config.MaxUnresponsiveTime != nil && *config.MaxUnresponsiveTime > 0 {
 		lastUpdate := time.Duration(*config.MaxUnresponsiveTime) * time.Second
-		orParts = append(orParts, bson.M{
-			"lastupdate": bson.M{"$lt": now.Add(-lastUpdate)},
-		})
+		nowMinusLastUpdate := now.Add(-lastUpdate)
+		if h.started.Add(lastUpdate).Before(nowMinusLastUpdate) {
+			orParts = append(orParts, bson.M{
+				"lastupdate": bson.M{"$lt": nowMinusLastUpdate},
+			})
+		}
 	}
 	if len(orParts) == 0 {
 		return nil, nil
@@ -385,7 +393,7 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 	query := []bson.M{}
 	for poolName, entries := range poolEntries {
 		var q bson.M
-		q, err = queryPartForConfig(nodesPoolMap[poolName], entries)
+		q, err = h.queryPartForConfig(nodesPoolMap[poolName], entries)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -398,7 +406,7 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 	for _, poolNodes := range nodesPoolMap {
 		remainingNodes = append(remainingNodes, poolNodes...)
 	}
-	q, err := queryPartForConfig(remainingNodes, baseEntries)
+	q, err := h.queryPartForConfig(remainingNodes, baseEntries)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -729,6 +729,7 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.started = time.Now().Add(-3 * time.Second)
 	data := provision.NodeStatusData{
 		Addrs:  []string{"127.0.0.1"},
 		Checks: []provision.NodeCheckResult{},
@@ -739,6 +740,39 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	nodes, nodesMap, err := healer.findNodesForHealing()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
+	n, err := p.Cluster().GetNode(node1.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(nodesMap, check.DeepEquals, map[string]*cluster.Node{
+		n.Address: &n,
+	})
+}
+
+func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
+	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	c.Assert(err, check.IsNil)
+	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
+	c.Assert(err, check.IsNil)
+	err = conf.SaveEnvs()
+	c.Assert(err, check.IsNil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner: p,
+	})
+	healer.started = time.Now()
+	data := provision.NodeStatusData{
+		Addrs:  []string{"127.0.0.1"},
+		Checks: []provision.NodeCheckResult{},
+	}
+	err = healer.UpdateNodeData(data)
+	c.Assert(err, check.IsNil)
+	time.Sleep(1200 * time.Millisecond)
+	nodes, nodesMap, err := healer.findNodesForHealing()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
 	n, err := p.Cluster().GetNode(node1.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(nodesMap, check.DeepEquals, map[string]*cluster.Node{
@@ -784,6 +818,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 		Provisioner:        p,
 		WaitTimeNewMachine: time.Minute,
 	})
+	healer.started = time.Now().Add(-3 * time.Second)
 
 	data := provision.NodeStatusData{
 		Addrs:  []string{"127.0.0.1"},
