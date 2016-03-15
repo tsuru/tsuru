@@ -54,17 +54,9 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 		if addr == "" {
 			return addr, nil, errors.New("CreateContainer needs a non empty node addr")
 		}
-		err = nil
-		if c.Hook != nil {
-			dbNode, retrieveErr := c.storage().RetrieveNode(addr)
-			if retrieveErr != nil {
-				retrieveErr = fmt.Errorf("could not retrieve node from cluster: %s", retrieveErr)
-				return addr, nil, retrieveErr
-			}
-			err = c.Hook.BeforeCreateContainer(dbNode)
-			if err != nil {
-				log.Errorf("Error in before create container hook in node %q: %s. Trying again in another node...", addr, err)
-			}
+		err = c.runHookForAddr(HookEventBeforeContainerCreate, addr)
+		if err != nil {
+			log.Errorf("Error in before create container hook in node %q: %s. Trying again in another node...", addr, err)
 		}
 		if err == nil {
 			container, err = c.createContainerInNode(opts, addr)

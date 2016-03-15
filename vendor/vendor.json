@@ -321,8 +321,8 @@
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/cluster",
-			"revision": "b04d855dd21abbd1d9a30fada6af33257536957f",
-			"revisionTime": "2016-02-24T16:01:39-03:00"
+			"revision": "b2f1def29606df654b6be4986da3442f3cd06a9b",
+			"revisionTime": "2016-03-15T20:30:04-03:00"
 		},
 		{
 			"path": "github.com/tsuru/docker-cluster/log",

@@ -85,8 +85,16 @@ type Storage interface {
 	NodeStorage
 }
 
-type ClusterHook interface {
-	BeforeCreateContainer(node Node) error
+type HookEvent int
+
+const (
+	HookEventBeforeContainerCreate = iota
+	HookEventBeforeNodeRegister
+	HookEventBeforeNodeUnregister
+)
+
+type Hook interface {
+	RunClusterHook(evt HookEvent, node *Node) error
 }
 
 // Cluster is the basic type of the package. It manages internal nodes, and
@@ -94,11 +102,11 @@ type ClusterHook interface {
 // which creates a container in one node of the cluster.
 type Cluster struct {
 	Healer         Healer
-	Hook           ClusterHook
 	scheduler      Scheduler
 	stor           Storage
 	monitoringDone chan bool
 	dryServer      *testing.DockerServer
+	hooks          map[HookEvent][]Hook
 }
 
 type DockerNodeError struct {
@@ -167,6 +175,10 @@ func (c *Cluster) Register(node Node) error {
 	if node.Address == "" {
 		return errors.New("Invalid address")
 	}
+	err := c.runHooks(HookEventBeforeNodeRegister, &node)
+	if err != nil {
+		return err
+	}
 	return c.storage().StoreNode(node)
 }
 
@@ -199,10 +211,20 @@ func (c *Cluster) UpdateNode(node Node) (Node, error) {
 
 // Unregister removes nodes from the cluster.
 func (c *Cluster) Unregister(address string) error {
+	err := c.runHookForAddr(HookEventBeforeNodeUnregister, address)
+	if err != nil {
+		return err
+	}
 	return c.storage().RemoveNode(address)
 }
 
 func (c *Cluster) UnregisterNodes(addresses ...string) error {
+	for _, address := range addresses {
+		err := c.runHookForAddr(HookEventBeforeNodeUnregister, address)
+		if err != nil {
+			return err
+		}
+	}
 	return c.storage().RemoveNodes(addresses)
 }
 
@@ -534,4 +556,42 @@ func (c *Cluster) getNodeByAddr(address string) (node, error) {
 	client.HTTPClient = timeout10Client
 	client.Dialer = timeout10Dialer
 	return node{addr: address, Client: client}, nil
+}
+
+func (c *Cluster) AddHook(evt HookEvent, h Hook) {
+	if c.hooks == nil {
+		c.hooks = map[HookEvent][]Hook{}
+	}
+	c.hooks[evt] = append(c.hooks[evt], h)
+}
+
+func (c *Cluster) Hooks(evt HookEvent) []Hook {
+	if c.hooks == nil {
+		return nil
+	}
+	return c.hooks[evt]
+}
+
+func (c *Cluster) runHookForAddr(evt HookEvent, address string) error {
+	if c.hooks == nil || len(c.hooks[evt]) == 0 {
+		return nil
+	}
+	node, err := c.storage().RetrieveNode(address)
+	if err != nil {
+		return err
+	}
+	return c.runHooks(evt, &node)
+}
+
+func (c *Cluster) runHooks(evt HookEvent, n *Node) error {
+	if c.hooks == nil {
+		return nil
+	}
+	for _, h := range c.hooks[evt] {
+		err := h.RunClusterHook(evt, n)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
