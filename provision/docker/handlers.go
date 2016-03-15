@@ -320,15 +320,11 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if address == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
-	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
+	oldNode, err := mainDockerProvisioner.Cluster().GetNode(address)
 	if err != nil {
-		return err
-	}
-	var oldNode *cluster.Node
-	for i := range nodes {
-		if nodes[i].Address == address {
-			oldNode = &nodes[i]
-			break
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
 		}
 	}
 	oldPool, _ := oldNode.Metadata["pool"]

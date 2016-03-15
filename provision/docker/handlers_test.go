@@ -1035,6 +1035,34 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
+func (s *HandlersSuite) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "127.0.0.1:1999", Metadata: map[string]string{
+			"m1": "v1",
+			"m2": "v2",
+		}},
+	)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	defer provision.RemovePool("pool1")
+	json := `{"address": "127.0.0.2:1999", "m1": "", "m2": "v9", "m3": "v8"}`
+	b := bytes.NewBufferString(json)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "No such node in storage\n")
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"m1": "v1",
+		"m2": "v2",
+	})
+}
+
 func (s *HandlersSuite) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
 		cluster.Node{Address: "localhost:1999", CreationStatus: cluster.NodeCreationStatusCreated},
