@@ -119,7 +119,7 @@ func deleteTargetFile() {
 	filesystem().Remove(JoinWithUserDir(".tsuru", "target"))
 }
 
-func GetURLVersion(version, path string) (string, error) {
+func GetTarget() (string, error) {
 	var prefix string
 	target, err := ReadTarget()
 	if err != nil {
@@ -128,7 +128,15 @@ func GetURLVersion(version, path string) (string, error) {
 	if m, _ := regexp.MatchString("^https?://", target); !m {
 		prefix = "http://"
 	}
-	return prefix + strings.TrimRight(target, "/") + "/" + version + path, nil
+	return prefix + target, nil
+}
+
+func GetURLVersion(version, path string) (string, error) {
+	target, err := GetTarget()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(target, "/") + "/" + version + path, nil
 }
 
 func GetURL(path string) (string, error) {

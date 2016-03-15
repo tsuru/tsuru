@@ -125,6 +125,26 @@ func (s *S) TestDeleteTargetFile(c *check.C) {
 	c.Assert(rfs.HasAction("remove "+targetFile), check.Equals, true)
 }
 
+func (s *S) TestGetTarget(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
+	var tests = []struct {
+		expected string
+		target   string
+	}{
+		{"http://localhost", "http://localhost"},
+		{"http://localhost/tsuru/", "http://localhost/tsuru/"},
+		{"https://localhost", "https://localhost"},
+		{"http://remotehost", "remotehost"},
+	}
+	for _, t := range tests {
+		fsystem = &fstest.RecordingFs{FileContent: t.target}
+		got, err := GetTarget()
+		c.Check(err, check.IsNil)
+		c.Check(got, check.Equals, t.expected)
+		fsystem = nil
+	}
+}
+
 func (s *S) TestGetURLVersion(c *check.C) {
 	os.Unsetenv("TSURU_TARGET")
 	var tests = []struct {
