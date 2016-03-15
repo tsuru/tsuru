@@ -2593,7 +2593,7 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(p.cluster, check.NotNil)
-	c.Assert(p.cluster.Hook, check.DeepEquals, &bs.ClusterHook{Provisioner: &p})
+	c.Assert(p.cluster.Hooks(cluster.HookEventBeforeContainerCreate), check.DeepEquals, []cluster.Hook{&bs.ClusterHook{Provisioner: &p}})
 }
 
 func (s *S) TestProvisionerLogsEnabled(c *check.C) {

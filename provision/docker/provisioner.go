@@ -96,7 +96,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	if err != nil {
 		return err
 	}
-	p.cluster.Hook = &bs.ClusterHook{Provisioner: p}
+	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &bs.ClusterHook{Provisioner: p})
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
 		disabledSeconds, _ := config.GetInt("docker:healing:disabled-time")
@@ -119,6 +119,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		})
 		shutdown.Register(p.nodeHealer)
 		p.cluster.Healer = p.nodeHealer
+		p.cluster.AddHook(cluster.HookEventBeforeNodeUnregister, p.nodeHealer)
 	}
 	healContainersSeconds, _ := config.GetInt("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {

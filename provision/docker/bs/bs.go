@@ -276,7 +276,7 @@ type ClusterHook struct {
 	Provisioner DockerProvisioner
 }
 
-func (h *ClusterHook) BeforeCreateContainer(node cluster.Node) error {
+func (h *ClusterHook) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
 	err := createContainer(node.Address, node.Metadata["pool"], h.Provisioner, false)
 	if err != nil {
 		return err

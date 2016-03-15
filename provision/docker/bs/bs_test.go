@@ -206,7 +206,7 @@ func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	hook := ClusterHook{Provisioner: p}
-	err = hook.BeforeCreateContainer(nodes[0])
+	err = hook.RunClusterHook(cluster.HookEventBeforeContainerCreate, &nodes[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	client, err := nodes[0].Client()
@@ -234,7 +234,7 @@ func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	hook := ClusterHook{Provisioner: p}
-	err = hook.BeforeCreateContainer(nodes[0])
+	err = hook.RunClusterHook(cluster.HookEventBeforeContainerCreate, &nodes[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	client, err := nodes[0].Client()
@@ -272,7 +272,7 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(contData.State.Running, check.Equals, false)
 	hook := ClusterHook{Provisioner: p}
-	err = hook.BeforeCreateContainer(nodes[0])
+	err = hook.RunClusterHook(cluster.HookEventBeforeContainerCreate, &nodes[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	client, err = nodes[0].Client()
