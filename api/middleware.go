@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	tsuruMin      = "1.0.0"
+	tsuruMin      = "1.0.1"
 	craneMin      = "1.0.0"
 	tsuruAdminMin = "1.0.0"
 )
