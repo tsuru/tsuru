@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestHealerHealNode(c *check.C) {
@@ -867,6 +868,8 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	c.Assert(events[0].EndTime, check.Not(check.DeepEquals), time.Time{})
 	c.Assert(events[0].Error, check.Equals, "")
 	c.Assert(events[0].Reason, check.Matches, `last update 1\.\d*?s ago, last success 1\.\d*?s ago`)
+	extraObj := events[0].Extra.(bson.M)
+	c.Assert(extraObj["time"].(time.Time).IsZero(), check.Equals, false)
 	c.Assert(events[0].Successful, check.Equals, true)
 	c.Assert(events[0].FailingNode.Address, check.Equals, fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL())))
 	c.Assert(events[0].CreatedNode.Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL())))
@@ -919,7 +922,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := healer.tryHealingNode(&nodes[0], "something")
+			err := healer.tryHealingNode(&nodes[0], "something", "extra")
 			c.Assert(err, check.IsNil)
 		}()
 	}
@@ -945,6 +948,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	c.Assert(events[0].EndTime, check.Not(check.DeepEquals), time.Time{})
 	c.Assert(events[0].Error, check.Equals, "")
 	c.Assert(events[0].Reason, check.Equals, "something")
+	c.Assert(events[0].Extra, check.Equals, "extra")
 	c.Assert(events[0].Successful, check.Equals, true)
 	c.Assert(events[0].FailingNode.Address, check.Equals, fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL())))
 	c.Assert(events[0].CreatedNode.Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL())))

@@ -154,13 +154,13 @@ func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	return createdNode, nil
 }
 
-func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string) error {
+func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, extra interface{}) error {
 	_, hasIaas := node.Metadata["iaas"]
 	if !hasIaas {
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address, reason)
 		return nil
 	}
-	evt, err := NewHealingEventWithReason(*node, reason)
+	evt, err := NewHealingEventWithReason(*node, reason, extra)
 	if err != nil {
 		if mgo.IsDup(err) {
 			// Healing in progress.
@@ -215,7 +215,7 @@ func (h *NodeHealer) HandleError(node *cluster.Node) time.Duration {
 		log.Debugf("Node %q has never been successfully reached, healing won't run on it.", node.Address)
 		return h.disabledTime
 	}
-	err := h.tryHealingNode(node, fmt.Sprintf("%d consecutive failures", failures))
+	err := h.tryHealingNode(node, fmt.Sprintf("%d consecutive failures", failures), nil)
 	if err != nil {
 		log.Errorf("[node healer handle error] %s", err)
 	}
@@ -453,6 +453,7 @@ func (h *NodeHealer) runActiveHealing() {
 		sinceSuccess := time.Since(n.LastSuccess)
 		err = h.tryHealingNode(nodesAddrMap[n.Address],
 			fmt.Sprintf("last update %v ago, last success %v ago", sinceUpdate, sinceSuccess),
+			n.Checks[len(n.Checks)-1],
 		)
 		if err != nil {
 			log.Errorf("[node healer active] %s", err)
