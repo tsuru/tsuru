@@ -13,7 +13,7 @@ import (
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/scopedconfig"
 )
 
 type EnvSetCmd struct {
@@ -43,7 +43,7 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	var envList []provision.Entry
+	var envList []scopedconfig.Entry
 	for _, arg := range context.Args {
 		parts := strings.SplitN(arg, "=", 2)
 		if len(parts) < 2 {
@@ -52,13 +52,13 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		if parts[0] == "" {
 			return fmt.Errorf("invalid variable values")
 		}
-		envList = append(envList, provision.Entry{Name: parts[0], Value: parts[1]})
+		envList = append(envList, scopedconfig.Entry{Name: parts[0], Value: parts[1]})
 	}
-	conf := provision.ScopedConfig{}
+	conf := scopedconfig.ScopedConfig{}
 	if c.pool == "" {
 		conf.Envs = envList
 	} else {
-		conf.Pools = []provision.PoolEntry{{
+		conf.Pools = []scopedconfig.PoolEntry{{
 			Name: c.pool,
 			Envs: envList,
 		}}
@@ -117,7 +117,7 @@ func (c *InfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	var conf provision.ScopedConfig
+	var conf scopedconfig.ScopedConfig
 	err = json.NewDecoder(response.Body).Decode(&conf)
 	if err != nil {
 		return err

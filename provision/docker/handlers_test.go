@@ -40,6 +40,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -1262,15 +1263,15 @@ func (s *HandlersSuite) TestBsEnvSetHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	conf, err := bs.LoadConfig(nil)
 	c.Assert(err, check.IsNil)
-	sort.Sort(provision.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "VAR1", Value: "VALUE1"}, {Name: "VAR2", Value: "VALUE2"}})
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "VAR1", Value: "VALUE1"}, {Name: "VAR2", Value: "VALUE2"}})
 	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(provision.ConfigEntryList(conf.Pools[0].Envs))
-	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
-		{Name: "POOL1", Envs: []provision.Entry{{Name: "VAR3", Value: "VALUE3"}, {Name: "VAR4", Value: "VALUE4"}}},
-		{Name: "POOL2", Envs: []provision.Entry{{Name: "VAR5", Value: "VALUE5"}, {Name: "VAR6", Value: "VALUE6"}}},
+	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[0].Envs))
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
+		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "VAR3", Value: "VALUE3"}, {Name: "VAR4", Value: "VALUE4"}}},
+		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "VAR5", Value: "VALUE5"}, {Name: "VAR6", Value: "VALUE6"}}},
 	})
 }
 
@@ -1310,10 +1311,10 @@ func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
 	conf, err = bs.LoadConfig(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.GetExtraString("image"), check.Equals, "myimg")
-	sort.Sort(provision.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "VAR2", Value: "VAL2"}, {Name: "VAR3", Value: "VAL3"}})
-	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
-		{Name: "POOL1", Envs: []provision.Entry{{Name: "VAR4", Value: "VAL4"}}},
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "VAR2", Value: "VAL2"}, {Name: "VAR3", Value: "VAL3"}})
+	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
+		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "VAR4", Value: "VAL4"}}},
 	})
 }
 
@@ -1325,8 +1326,8 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := &provision.ScopedConfig{}
-	var conf provision.ScopedConfig
+	expected := &scopedconfig.ScopedConfig{}
+	var conf scopedconfig.ScopedConfig
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
@@ -1390,7 +1391,7 @@ func (s *HandlersSuite) TestBsConfigGetFilteringPools(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected, err := bs.LoadConfig([]string{"POOL1", "POOL3"})
 	c.Assert(err, check.IsNil)
-	var conf provision.ScopedConfig
+	var conf scopedconfig.ScopedConfig
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
@@ -1630,16 +1631,16 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := provision.FindScopedConfig("logs")
+	conf, err := scopedconfig.FindScopedConfig("logs")
 	c.Assert(err, check.IsNil)
-	sort.Sort(provision.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
 	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
-		{Name: "POOL1", Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}}},
-		{Name: "POOL2", Envs: []provision.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
+		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}}},
+		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
 	})
 }
 
@@ -1677,16 +1678,16 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := provision.FindScopedConfig("logs")
+	conf, err := scopedconfig.FindScopedConfig("logs")
 	c.Assert(err, check.IsNil)
-	sort.Sort(provision.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
 	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
-		{Name: "POOL1", Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}}},
-		{Name: "POOL2", Envs: []provision.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
+		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}}},
+		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
 	})
 }
 
@@ -1739,14 +1740,14 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 	c.Assert(responseParts, check.HasLen, 15)
 	c.Assert(responseParts[0], check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}")
 	c.Assert(responseParts[1], check.Equals, "{\"Message\":\"Restarting 2 applications: [app1, app2]\\n\"}")
-	conf, err := provision.FindScopedConfig("logs")
+	conf, err := scopedconfig.FindScopedConfig("logs")
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(provision.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
-		{Name: "POOL1", Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}}},
-		{Name: "POOL2", Envs: []provision.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
+		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}}},
+		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
 	})
 }
 
@@ -1758,16 +1759,16 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := &provision.ScopedConfig{}
-	var conf provision.ScopedConfig
+	expected := &scopedconfig.ScopedConfig{}
+	var conf scopedconfig.ScopedConfig
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
 	c.Assert(conf.Pools, check.DeepEquals, expected.Pools)
 	logConf := container.DockerLog{}
-	logConf.Update(&provision.ScopedConfig{
-		Pools: []provision.PoolEntry{
-			{Name: "p1", Envs: []provision.Entry{
+	logConf.Update(&scopedconfig.ScopedConfig{
+		Pools: []scopedconfig.PoolEntry{
+			{Name: "p1", Envs: []scopedconfig.Entry{
 				{Name: "log-driver", Value: "syslog"},
 			}},
 		},
@@ -1777,9 +1778,9 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Envs, check.DeepEquals, []provision.Entry{})
-	c.Assert(conf.Pools, check.DeepEquals, []provision.PoolEntry{
-		{Name: "p1", Envs: []provision.Entry{{Name: "log-driver", Value: "syslog"}}},
+	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{})
+	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
+		{Name: "p1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "syslog"}}},
 	})
 }
 

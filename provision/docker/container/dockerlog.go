@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/scopedconfig"
 )
 
 var (
@@ -23,7 +23,7 @@ const (
 )
 
 type DockerLog struct {
-	conf *provision.ScopedConfig
+	conf *scopedconfig.ScopedConfig
 }
 
 func (d *DockerLog) loadConfig() error {
@@ -31,7 +31,7 @@ func (d *DockerLog) loadConfig() error {
 		return nil
 	}
 	var err error
-	d.conf, err = provision.FindScopedConfig(dockerLogConfigEntry)
+	d.conf, err = scopedconfig.FindScopedConfig(dockerLogConfigEntry)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (d *DockerLog) LogOpts(pool string) (string, map[string]string, error) {
 	return driverVal, logOpts, nil
 }
 
-func (d *DockerLog) validateEnvLogDriver(envs []provision.Entry) error {
+func (d *DockerLog) validateEnvLogDriver(envs []scopedconfig.Entry) error {
 	var driver string
 	for _, env := range envs {
 		if env.Name == DockerLogDriverConfig {
@@ -87,7 +87,7 @@ func (d *DockerLog) IsBS(pool string) (bool, error) {
 	return driver == dockerLogBsDriver || driver == "", nil
 }
 
-func (d *DockerLog) Update(toMerge *provision.ScopedConfig) error {
+func (d *DockerLog) Update(toMerge *scopedconfig.ScopedConfig) error {
 	err := d.loadConfig()
 	if err != nil {
 		return err

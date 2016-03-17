@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -690,7 +691,7 @@ func intPtr(i int) *int {
 }
 
 func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
 	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
@@ -716,7 +717,7 @@ func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 }
 
 func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
 	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
@@ -749,7 +750,7 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 }
 
 func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
 	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
@@ -782,7 +783,7 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 }
 
 func (s *S) TestCheckActiveHealing(c *check.C) {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
 	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
@@ -960,7 +961,7 @@ func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 		MaxUnresponsiveTime: intPtr(1),
 	})
 	c.Assert(err, check.IsNil)
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
 	entries := conf.PoolEntries("p1")
 	var nodeConf NodeHealerConfig
@@ -976,7 +977,7 @@ func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 		MaxTimeSinceSuccess: intPtr(2),
 	})
 	c.Assert(err, check.IsNil)
-	conf, err = provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err = scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	c.Assert(err, check.IsNil)
 	entries = conf.PoolEntries("p1")
 	nodeConf = NodeHealerConfig{}

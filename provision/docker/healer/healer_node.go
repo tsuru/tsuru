@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -344,7 +345,7 @@ func (h *NodeHealer) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) e
 	return nil
 }
 
-func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, entries provision.EntryMap) (bson.M, error) {
+func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, entries scopedconfig.EntryMap) (bson.M, error) {
 	now := time.Now().UTC()
 	var config NodeHealerConfig
 	err := entries.Unmarshal(&config)
@@ -398,7 +399,7 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 		nodesPoolMap[pool] = append(nodesPoolMap[pool], &nodes[i])
 		nodesAddrMap[n.Address] = &nodes[i]
 	}
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to find config: %s", err)
 	}
@@ -462,7 +463,7 @@ func (h *NodeHealer) runActiveHealing() {
 }
 
 func UpdateConfig(pool string, config NodeHealerConfig) error {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	if err != nil {
 		return fmt.Errorf("unable to find config: %s", err)
 	}
@@ -478,7 +479,7 @@ func UpdateConfig(pool string, config NodeHealerConfig) error {
 }
 
 func RemoveConfig(pool, name string) error {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	if err != nil {
 		return fmt.Errorf("unable to find config: %s", err)
 	}
@@ -495,7 +496,7 @@ func RemoveConfig(pool, name string) error {
 }
 
 func GetConfig() (map[string]NodeHealerConfig, error) {
-	conf, err := provision.FindScopedConfig(nodeHealerConfigEntry)
+	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find config: %s", err)
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 )
 
@@ -622,13 +622,13 @@ func (s *S) TestDockerLogUpdateRun(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := provision.ScopedConfig{
-				Envs: []provision.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
+			expected := scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
 			}
 			var data logsSetData
 			err = json.Unmarshal(body, &data)
 			c.Assert(err, check.IsNil)
-			sort.Sort(provision.ConfigEntryList(data.Config.Envs))
+			sort.Sort(scopedconfig.ConfigEntryList(data.Config.Envs))
 			c.Assert(data.Config, check.DeepEquals, expected)
 			return req.URL.Path == "/1.0/docker/logs" && req.Method == "POST"
 		},
@@ -657,18 +657,18 @@ func (s *S) TestDockerLogUpdateForPoolRun(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := provision.ScopedConfig{
-				Pools: []provision.PoolEntry{
+			expected := scopedconfig.ScopedConfig{
+				Pools: []scopedconfig.PoolEntry{
 					{
 						Name: "p1",
-						Envs: []provision.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
+						Envs: []scopedconfig.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
 					},
 				},
 			}
 			var data logsSetData
 			err = json.Unmarshal(body, &data)
 			c.Assert(err, check.IsNil)
-			sort.Sort(provision.ConfigEntryList(data.Config.Pools[0].Envs))
+			sort.Sort(scopedconfig.ConfigEntryList(data.Config.Pools[0].Envs))
 			c.Assert(data.Config, check.DeepEquals, expected)
 			return req.URL.Path == "/1.0/docker/logs" && req.Method == "POST"
 		},
@@ -689,16 +689,16 @@ func (s *S) TestDockerLogInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := provision.ScopedConfig{
-		Envs: []provision.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
-		Pools: []provision.PoolEntry{
+	conf := scopedconfig.ScopedConfig{
+		Envs: []scopedconfig.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
+		Pools: []scopedconfig.PoolEntry{
 			{
 				Name: "p1",
-				Envs: []provision.Entry{{Name: "a", Value: "9"}, {Name: "log-driver", Value: "x"}},
+				Envs: []scopedconfig.Entry{{Name: "a", Value: "9"}, {Name: "log-driver", Value: "x"}},
 			},
 			{
 				Name: "p2",
-				Envs: []provision.Entry{{Name: "log-driver", Value: "bs"}},
+				Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}},
 			},
 		},
 	}

@@ -18,9 +18,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/fix"
+	"github.com/tsuru/tsuru/scopedconfig"
 )
 
 type DockerProvisioner interface {
@@ -34,7 +34,7 @@ const (
 )
 
 func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
-	bsConf, err := provision.FindScopedConfig(bsUniqueID)
+	bsConf, err := scopedconfig.FindScopedConfig(bsUniqueID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
 	return envList, nil
 }
 
-func getToken(bsConf *provision.ScopedConfig) (string, error) {
+func getToken(bsConf *scopedconfig.ScopedConfig) (string, error) {
 	token := bsConf.GetExtraString("token")
 	if token != "" {
 		return token, nil
@@ -97,15 +97,15 @@ func getToken(bsConf *provision.ScopedConfig) (string, error) {
 }
 
 func SaveImage(digest string) error {
-	bsConf, err := provision.FindScopedConfig(bsUniqueID)
+	bsConf, err := scopedconfig.FindScopedConfig(bsUniqueID)
 	if err != nil {
 		return err
 	}
 	return bsConf.SetExtra("image", digest)
 }
 
-func LoadConfig(pools []string) (*provision.ScopedConfig, error) {
-	bsConf, err := provision.FindScopedConfig(bsUniqueID)
+func LoadConfig(pools []string) (*scopedconfig.ScopedConfig, error) {
+	bsConf, err := scopedconfig.FindScopedConfig(bsUniqueID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func dockerClient(endpoint string) (*docker.Client, error) {
 	return client, nil
 }
 
-func getImage(bsConf *provision.ScopedConfig) string {
+func getImage(bsConf *scopedconfig.ScopedConfig) string {
 	image := bsConf.GetExtraString("image")
 	if image != "" {
 		return image
@@ -140,7 +140,7 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 	if err != nil {
 		return err
 	}
-	bsConf, err := provision.FindScopedConfig(bsUniqueID)
+	bsConf, err := scopedconfig.FindScopedConfig(bsUniqueID)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 )
 
@@ -32,10 +32,10 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := provision.ScopedConfig{
-				Envs: []provision.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
+			expected := scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
 			}
-			var conf provision.ScopedConfig
+			var conf scopedconfig.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
@@ -64,10 +64,10 @@ func (s *S) TestBsEnvSetRunAllowEmpty(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := provision.ScopedConfig{
-				Envs: []provision.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: ""}},
+			expected := scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: ""}},
 			}
-			var conf provision.ScopedConfig
+			var conf scopedconfig.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
@@ -115,13 +115,13 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := provision.ScopedConfig{
-				Pools: []provision.PoolEntry{{
+			expected := scopedconfig.ScopedConfig{
+				Pools: []scopedconfig.PoolEntry{{
 					Name: "pool1",
-					Envs: []provision.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
+					Envs: []scopedconfig.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
 				}},
 			}
-			var conf provision.ScopedConfig
+			var conf scopedconfig.ScopedConfig
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
@@ -143,18 +143,18 @@ func (s *S) TestBsInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := provision.ScopedConfig{
+	conf := scopedconfig.ScopedConfig{
 		Extra: map[string]interface{}{"image": "tsuru/bs"},
-		Envs: []provision.Entry{
+		Envs: []scopedconfig.Entry{
 			{Name: "A", Value: "1"},
 			{Name: "B", Value: "2"},
 		},
-		Pools: []provision.PoolEntry{
-			{Name: "pool1", Envs: []provision.Entry{
+		Pools: []scopedconfig.PoolEntry{
+			{Name: "pool1", Envs: []scopedconfig.Entry{
 				{Name: "A", Value: "9"},
 				{Name: "Z", Value: "8"},
 			}},
-			{Name: "pool2", Envs: []provision.Entry{
+			{Name: "pool2", Envs: []scopedconfig.Entry{
 				{Name: "Y", Value: "7"},
 			}},
 		},

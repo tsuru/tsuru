@@ -19,8 +19,8 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/scopedconfig"
 )
 
 type addNodeToSchedulerCmd struct {
@@ -703,17 +703,17 @@ func (c *dockerLogUpdate) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	envList := []provision.Entry{
+	envList := []scopedconfig.Entry{
 		{Name: "log-driver", Value: c.logDriver},
 	}
 	for name, value := range c.logOpts {
-		envList = append(envList, provision.Entry{Name: name, Value: value})
+		envList = append(envList, scopedconfig.Entry{Name: name, Value: value})
 	}
-	conf := provision.ScopedConfig{}
+	conf := scopedconfig.ScopedConfig{}
 	if c.pool == "" {
 		conf.Envs = envList
 	} else {
-		conf.Pools = []provision.PoolEntry{{
+		conf.Pools = []scopedconfig.PoolEntry{{
 			Name: c.pool,
 			Envs: envList,
 		}}
@@ -764,7 +764,7 @@ func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	var conf provision.ScopedConfig
+	var conf scopedconfig.ScopedConfig
 	err = json.NewDecoder(response.Body).Decode(&conf)
 	if err != nil {
 		return err
@@ -781,7 +781,7 @@ func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
 		t.Sort()
 		context.Stdout.Write(t.Bytes())
 	}
-	sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
+	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
 	for _, pool := range conf.Pools {
 		t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
 		for _, envVar := range pool.Envs {

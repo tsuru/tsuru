@@ -7,82 +7,82 @@ package container
 import (
 	"sort"
 
-	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestDockerLogUpdate(c *check.C) {
 	testCases := []struct {
-		conf    provision.ScopedConfig
-		entries []provision.Entry
-		pools   []provision.PoolEntry
+		conf    scopedconfig.ScopedConfig
+		entries []scopedconfig.Entry
+		pools   []scopedconfig.PoolEntry
 		err     error
 	}{
 		{
-			provision.ScopedConfig{
-				Envs: []provision.Entry{
+			scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{
 					{Name: "log-driver", Value: "fluentd"},
 					{Name: "fluentd-address", Value: "localhost:24224"},
 				},
-			}, []provision.Entry{
+			}, []scopedconfig.Entry{
 				{Name: "log-driver", Value: "fluentd"},
 				{Name: "fluentd-address", Value: "localhost:24224"},
-			}, []provision.PoolEntry{}, nil,
+			}, []scopedconfig.PoolEntry{}, nil,
 		},
 		{
-			provision.ScopedConfig{
-				Envs: []provision.Entry{
+			scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{
 					{Name: "log-driver", Value: "bs"},
 					{Name: "tag", Value: "ahoy"},
 				},
-			}, []provision.Entry{
+			}, []scopedconfig.Entry{
 				{Name: "log-driver", Value: "fluentd"},
 				{Name: "fluentd-address", Value: "localhost:24224"},
-			}, []provision.PoolEntry{}, ErrLogDriverBSNoParams,
+			}, []scopedconfig.PoolEntry{}, ErrLogDriverBSNoParams,
 		},
 		{
-			provision.ScopedConfig{
-				Envs: []provision.Entry{
+			scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{
 					{Name: "tag", Value: "ahoy"},
 				},
-			}, []provision.Entry{
+			}, []scopedconfig.Entry{
 				{Name: "log-driver", Value: "fluentd"},
 				{Name: "fluentd-address", Value: "localhost:24224"},
-			}, []provision.PoolEntry{}, ErrLogDriverMandatory,
+			}, []scopedconfig.PoolEntry{}, ErrLogDriverMandatory,
 		},
 		{
-			provision.ScopedConfig{
-				Envs: []provision.Entry{
+			scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{
 					{Name: "log-driver", Value: "bs"},
 				},
-			}, []provision.Entry{
+			}, []scopedconfig.Entry{
 				{Name: "log-driver", Value: "bs"},
-			}, []provision.PoolEntry{}, nil,
+			}, []scopedconfig.PoolEntry{}, nil,
 		},
 		{
-			provision.ScopedConfig{
-				Envs: []provision.Entry{
+			scopedconfig.ScopedConfig{
+				Envs: []scopedconfig.Entry{
 					{Name: "log-driver", Value: "fluentd"},
 					{Name: "tag", Value: "x"},
 				},
-			}, []provision.Entry{
+			}, []scopedconfig.Entry{
 				{Name: "log-driver", Value: "fluentd"},
 				{Name: "tag", Value: "x"},
-			}, []provision.PoolEntry{}, nil,
+			}, []scopedconfig.PoolEntry{}, nil,
 		},
 		{
-			provision.ScopedConfig{
-				Pools: []provision.PoolEntry{
-					{Name: "p1", Envs: []provision.Entry{
+			scopedconfig.ScopedConfig{
+				Pools: []scopedconfig.PoolEntry{
+					{Name: "p1", Envs: []scopedconfig.Entry{
 						{Name: "log-driver", Value: "journald"},
 						{Name: "tag", Value: "y"},
 					}},
 				},
-			}, []provision.Entry{
+			}, []scopedconfig.Entry{
 				{Name: "log-driver", Value: "fluentd"},
 				{Name: "tag", Value: "x"},
-			}, []provision.PoolEntry{
-				{Name: "p1", Envs: []provision.Entry{
+			}, []scopedconfig.PoolEntry{
+				{Name: "p1", Envs: []scopedconfig.Entry{
 					{Name: "log-driver", Value: "journald"},
 					{Name: "tag", Value: "y"},
 				}},
@@ -93,17 +93,17 @@ func (s *S) TestDockerLogUpdate(c *check.C) {
 	for _, testData := range testCases {
 		err := logConf.Update(&testData.conf)
 		c.Assert(err, check.DeepEquals, testData.err)
-		conf, err := provision.FindScopedConfig(dockerLogConfigEntry)
+		conf, err := scopedconfig.FindScopedConfig(dockerLogConfigEntry)
 		c.Assert(err, check.IsNil)
-		sort.Sort(provision.ConfigEntryList(conf.Envs))
-		sort.Sort(provision.ConfigEntryList(testData.entries))
-		sort.Sort(provision.ConfigPoolEntryList(conf.Pools))
-		sort.Sort(provision.ConfigPoolEntryList(testData.pools))
+		sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
+		sort.Sort(scopedconfig.ConfigEntryList(testData.entries))
+		sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
+		sort.Sort(scopedconfig.ConfigPoolEntryList(testData.pools))
 		for i := range conf.Pools {
-			sort.Sort(provision.ConfigEntryList(conf.Pools[i].Envs))
+			sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[i].Envs))
 		}
 		for i := range testData.pools {
-			sort.Sort(provision.ConfigEntryList(testData.pools[i].Envs))
+			sort.Sort(scopedconfig.ConfigEntryList(testData.pools[i].Envs))
 		}
 		c.Assert(conf.Envs, check.DeepEquals, testData.entries)
 		c.Assert(conf.Pools, check.DeepEquals, testData.pools)

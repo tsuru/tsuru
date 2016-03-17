@@ -31,11 +31,11 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/mgo.v2"
 )
 
@@ -575,7 +575,7 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var requestConfig provision.ScopedConfig
+	var requestConfig scopedconfig.ScopedConfig
 	err := json.NewDecoder(r.Body).Decode(&requestConfig)
 	if err != nil {
 		return &errors.HTTP{
@@ -661,7 +661,7 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	conf, err := provision.FindScopedConfig("logs")
+	conf, err := scopedconfig.FindScopedConfig("logs")
 	if err != nil {
 		return err
 	}
@@ -670,7 +670,7 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 }
 
 type logsSetData struct {
-	Config  provision.ScopedConfig
+	Config  scopedconfig.ScopedConfig
 	Restart bool
 }
 

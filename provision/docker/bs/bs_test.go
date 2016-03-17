@@ -15,34 +15,34 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/safe"
+	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestLoadConfigPoolFiltering(c *check.C) {
-	base := provision.ScopedConfig{
-		Envs: []provision.Entry{{Name: "USER", Value: "root"}},
-		Pools: []provision.PoolEntry{
-			{Name: "pool1", Envs: []provision.Entry{{Name: "USER", Value: "nonroot"}}},
-			{Name: "pool2", Envs: []provision.Entry{{Name: "USER", Value: "superroot"}}},
-			{Name: "pool3", Envs: []provision.Entry{{Name: "USER", Value: "watroot"}}},
-			{Name: "pool4", Envs: []provision.Entry{{Name: "USER", Value: "kindaroot"}}},
+	base := scopedconfig.ScopedConfig{
+		Envs: []scopedconfig.Entry{{Name: "USER", Value: "root"}},
+		Pools: []scopedconfig.PoolEntry{
+			{Name: "pool1", Envs: []scopedconfig.Entry{{Name: "USER", Value: "nonroot"}}},
+			{Name: "pool2", Envs: []scopedconfig.Entry{{Name: "USER", Value: "superroot"}}},
+			{Name: "pool3", Envs: []scopedconfig.Entry{{Name: "USER", Value: "watroot"}}},
+			{Name: "pool4", Envs: []scopedconfig.Entry{{Name: "USER", Value: "kindaroot"}}},
 		},
 	}
-	conf, err := provision.FindScopedConfig(bsUniqueID)
+	conf, err := scopedconfig.FindScopedConfig(bsUniqueID)
 	c.Assert(err, check.IsNil)
 	err = conf.UpdateWith(&base)
 	c.Assert(err, check.IsNil)
 	conf, err = LoadConfig([]string{"pool1", "pool4"})
 	c.Assert(err, check.IsNil)
-	expectedConfig := provision.ScopedConfig{
-		Envs: []provision.Entry{{Name: "USER", Value: "root"}},
-		Pools: []provision.PoolEntry{
-			{Name: "pool1", Envs: []provision.Entry{{Name: "USER", Value: "nonroot"}}},
-			{Name: "pool4", Envs: []provision.Entry{{Name: "USER", Value: "kindaroot"}}},
+	expectedConfig := scopedconfig.ScopedConfig{
+		Envs: []scopedconfig.Entry{{Name: "USER", Value: "root"}},
+		Pools: []scopedconfig.PoolEntry{
+			{Name: "pool1", Envs: []scopedconfig.Entry{{Name: "USER", Value: "nonroot"}}},
+			{Name: "pool4", Envs: []scopedconfig.Entry{{Name: "USER", Value: "kindaroot"}}},
 		},
 	}
 	c.Assert(conf.Envs, check.DeepEquals, expectedConfig.Envs)
