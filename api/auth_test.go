@@ -714,16 +714,6 @@ func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-key"}})
 }
 
-func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *check.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	b.Close()
-	request, err := http.NewRequest("POST", "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-}
-
 func (s *AuthSuite) TestAddKeyToUserKeyIsMissing(c *check.C) {
 	b := strings.NewReader("")
 	request, err := http.NewRequest("POST", "/users/key", b)
