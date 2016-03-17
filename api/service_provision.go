@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
@@ -15,26 +14,17 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
-	"gopkg.in/yaml.v1"
 )
 
-type serviceYaml struct {
-	Id       string
-	Username string
-	Password string
-	Endpoint map[string]string
-	Team     string
-}
-
-func (sy *serviceYaml) validate() error {
-	if sy.Id == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide an id in the manifest file."}
+func serviceValidate(s service.Service) error {
+	if s.Name == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service id is required"}
 	}
-	if sy.Password == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a password in the manifest file."}
+	if s.Password == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service password is requried"}
 	}
-	if _, ok := sy.Endpoint["production"]; !ok {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
+	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service production endpoint is required"}
 	}
 	return nil
 }
@@ -90,18 +80,16 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
+	s := service.Service{
+		Name:     r.FormValue("id"),
+		Username: r.FormValue("username"),
+		Endpoint: map[string]string{"production": r.FormValue("endpoint")},
+		Password: r.FormValue("password"),
 	}
-	var input serviceYaml
-	err = yaml.Unmarshal(body, &input)
-	if err != nil {
-		return err
-	}
-	if input.Team == "" {
-		input.Team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
+	team := r.FormValue("team")
+	if team == "" {
+		var err error
+		team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
 		if err == permission.ErrTooManyTeams {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
@@ -112,24 +100,18 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
-	err = input.validate()
+	s.OwnerTeams = []string{team}
+	err := serviceValidate(s)
 	if err != nil {
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceCreate,
-		permission.Context(permission.CtxTeam, input.Team),
+		permission.Context(permission.CtxTeam, s.OwnerTeams[0]),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "create-service", input.Id, input.Endpoint)
-	s := service.Service{
-		Name:       input.Id,
-		Username:   input.Username,
-		Endpoint:   input.Endpoint,
-		Password:   input.Password,
-		OwnerTeams: []string{input.Team},
-	}
+	rec.Log(t.GetUserName(), "create-service", s.Name, s.Endpoint["production"])
 	err = s.Create()
 	if err != nil {
 		httpError := http.StatusInternalServerError
@@ -138,26 +120,23 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return &errors.HTTP{Code: httpError, Message: err.Error()}
 	}
+	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, "success")
 	return nil
 }
 
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
+	d := service.Service{
+		Username: r.FormValue("username"),
+		Endpoint: map[string]string{"production": r.FormValue("endpoint")},
+		Password: r.FormValue("password"),
+		Name:     r.URL.Query().Get(":name"),
+	}
+	err := serviceValidate(d)
 	if err != nil {
 		return err
 	}
-	var y serviceYaml
-	err = yaml.Unmarshal(body, &y)
-	if err != nil {
-		return err
-	}
-	err = y.validate()
-	if err != nil {
-		return err
-	}
-	s, err := getService(y.Id)
+	s, err := getService(d.Name)
 	if err != nil {
 		return err
 	}
@@ -169,14 +148,13 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "update-service", y.Id, y.Endpoint)
-	s.Endpoint = y.Endpoint
-	s.Password = y.Password
-	s.Username = y.Username
+	rec.Log(t.GetUserName(), "update-service", d.Name, d.Endpoint["production"])
+	s.Endpoint = d.Endpoint
+	s.Password = d.Password
+	s.Username = d.Username
 	if err = s.Update(); err != nil {
 		return err
 	}
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
