@@ -142,6 +142,8 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Service updated
 //   400: Invalid data
 //   401: Unauthorized
+//   403: Forbidden (team is not the owner)
+//   404: Service not found
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	d := service.Service{
 		Username: r.FormValue("username"),
@@ -175,6 +177,14 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: service update
+// path: /services/{name}
+// method: DELETE
+// responses:
+//   200: Service removed
+//   401: Unauthorized
+//   403: Forbidden (team is not the owner or service with instances)
+//   404: Service not found
 func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	s, err := getService(r.URL.Query().Get(":name"))
 	if err != nil {
@@ -194,14 +204,14 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	if len(instances) > 0 {
-		msg := "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service."
+		msg := "This service cannot be removed because it has instances.\n"
+		msg += "Please remove these instances before removing the service."
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	err = s.Delete()
 	if err != nil {
 		return err
 	}
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 

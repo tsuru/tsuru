@@ -324,7 +324,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
 	s.m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": se.Name}
 	err := s.conn.Services().Find(query).One(&se)
 	count, err := s.conn.Services().Find(query).Count()
