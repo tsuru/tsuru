@@ -79,6 +79,15 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: service create
+// path: /services
+// method: POST
+// consume: x-www-form-urlencoded
+// responses:
+//   201: Service created
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Service already exists
 func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	s := service.Service{
 		Name:     r.FormValue("id"),
