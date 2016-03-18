@@ -350,9 +350,11 @@
 			"revisionTime": "2015-10-09T16:39:43-03:00"
 		},
 		{
+			"checksumSHA1": "AXlXheqr/rfhRiXkdwC3vmbKX+M=",
+			"origin": "github.com/tsuru/tsuru/vendor/github.com/tsuru/gandalf/gandalftest",
 			"path": "github.com/tsuru/gandalf/gandalftest",
-			"revision": "62c82eb4151d86b4cba86cbd720af0492d76f84b",
-			"revisionTime": "2015-10-09T16:39:43-03:00"
+			"revision": "d017a9ed8a1f6c01844d20e8fe2ed6090efc56ff",
+			"revisionTime": "2016-03-18T15:59:11-03:00"
 		},
 		{
 			"path": "github.com/tsuru/gandalf/multipartzip",
@@ -375,9 +377,11 @@
 			"revisionTime": "2015-12-17T14:20:21-02:00"
 		},
 		{
+			"checksumSHA1": "fEFhleHvK5HxK3pw7JXyxC3AxD4=",
+			"origin": "github.com/tsuru/tsuru/vendor/github.com/tsuru/go-gandalfclient",
 			"path": "github.com/tsuru/go-gandalfclient",
-			"revision": "6f5a04eb8172e1380ca09d426e67a07687828b7a",
-			"revisionTime": "2015-07-29T16:09:23-03:00"
+			"revision": "6f982f89707f926401c07c4d2a131960cba66e2f",
+			"revisionTime": "2016-03-16T15:43:00-03:00"
 		},
 		{
 			"path": "github.com/tsuru/monsterqueue",

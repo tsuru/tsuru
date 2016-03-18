@@ -92,6 +92,19 @@ func (c *Client) post(b interface{}, path string) error {
 	return nil
 }
 
+func (c *Client) put(b, path string) error {
+	response, err := c.doRequest("PUT", path, strings.NewReader(b))
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		b, _ := ioutil.ReadAll(response.Body)
+		return &HTTPError{Code: response.StatusCode, Reason: string(b)}
+	}
+	return nil
+}
+
 func (c *Client) delete(b interface{}, path string) error {
 	body, err := c.formatBody(b)
 	if err != nil {
@@ -186,7 +199,7 @@ func (c *Client) AddKey(uName string, key map[string]string) error {
 
 func (c *Client) UpdateKey(uName, kName, kBody string) error {
 	url := fmt.Sprintf("/user/%s/key/%s", uName, kName)
-	return c.post(kBody, url)
+	return c.put(kBody, url)
 }
 
 // RemoveKey removes the key from the user.
