@@ -548,7 +548,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnNotFoundIfTheTeamDoes
 	u := fmt.Sprintf("/services/%s/team/nonono", se.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
 	s.m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Team not found\n")
 }
 

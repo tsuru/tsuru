@@ -233,6 +233,15 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return service.Proxy(&s, path, w, r)
 }
 
+// title: grant access to a service
+// path: /services/{service}/team/{team}
+// method: PUT
+// responses:
+//   200: Service updated
+//   400: Team not found
+//   401: Unauthorized
+//   404: Service not found
+//   409: Team already has access to this service
 func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
@@ -251,7 +260,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
 		if err == auth.ErrTeamNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
 		}
 		return err
 	}
@@ -297,6 +306,13 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	return s.Update()
 }
 
+// title: change service documentation
+// path: /services/{name}/doc
+// method: PUT
+// responses:
+//   200: Documentation updated
+//   401: Unauthorized
+//   403: Forbidden (team is not the owner or service with instances)
 func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":name")
 	s, err := getService(serviceName)
