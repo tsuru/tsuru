@@ -134,6 +134,14 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: service update
+// path: /services/{name}
+// method: PUT
+// consume: x-www-form-urlencoded
+// responses:
+//   200: Service updated
+//   400: Invalid data
+//   401: Unauthorized
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	d := service.Service{
 		Username: r.FormValue("username"),
