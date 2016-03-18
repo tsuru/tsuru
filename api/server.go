@@ -108,7 +108,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/services/{service}/instances/{instance}/info", AuthorizationRequiredHandler(serviceInstanceInfo))
 
 	m.AddAll("1.0", "/services/{service}/proxy/{instance}", AuthorizationRequiredHandler(serviceInstanceProxy))
-	m.AddAll("1,0", "/services/proxy/service/{service}", AuthorizationRequiredHandler(serviceProxy))
+	m.AddAll("1.0", "/services/proxy/service/{service}", AuthorizationRequiredHandler(serviceProxy))
 
 	m.Add("1.0", "Get", "/services", AuthorizationRequiredHandler(serviceList))
 	m.Add("1.0", "Post", "/services", AuthorizationRequiredHandler(serviceCreate))
