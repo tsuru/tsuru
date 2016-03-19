@@ -272,6 +272,15 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	return s.Update()
 }
 
+// title: revoke access to a service
+// path: /services/{service}/team/{team}
+// method: DELETE
+// responses:
+//   200: Access revoked
+//   400: Team not found
+//   401: Unauthorized
+//   404: Service not found
+//   409: Team does not has access to this service
 func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
@@ -290,7 +299,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
 		if err == auth.ErrTeamNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
 		}
 		return err
 	}
@@ -301,7 +310,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	rec.Log(t.GetUserName(), "revoke-service-access", "service="+serviceName, "team="+teamName)
 	err = s.RevokeAccess(team)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return s.Update()
 }

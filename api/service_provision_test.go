@@ -611,7 +611,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheTeam
 	u := fmt.Sprintf("/services/%s/team/nonono", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
 	s.m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Team not found\n")
 }
 
@@ -638,7 +638,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
 	s.m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
 
 func (s *ProvisionSuite) TestAddDocServiceDoesNotExist(c *check.C) {
