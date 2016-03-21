@@ -3783,6 +3783,24 @@ func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.String()), check.Equals, true)
 }
 
+func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	oldIp := a.Ip
+	a.Plan = Plan{Router: "fake-hc"}
+	_, err = a.RebuildRoutes()
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Ip, check.Not(check.Equals), oldIp)
+	na, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(na.Ip, check.Equals, a.Ip)
+}
+
 func (s *S) TestUpdateDescription(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)

@@ -1612,6 +1612,7 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 		if err != nil {
 			return nil, err
 		}
+		app.Ip = newAddr
 	}
 	for _, cname := range app.CName {
 		err = r.SetCName(cname, app.Name)
