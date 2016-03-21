@@ -91,7 +91,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: service create
 // path: /services
 // method: POST
-// consume: x-www-form-urlencoded
+// consume: application/x-www-form-urlencoded
 // responses:
 //   201: Service created
 //   400: Invalid data
@@ -146,7 +146,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: service update
 // path: /services/{name}
 // method: PUT
-// consume: x-www-form-urlencoded
+// consume: application/x-www-form-urlencoded
 // responses:
 //   200: Service updated
 //   400: Invalid data
@@ -326,6 +326,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 
 // title: change service documentation
 // path: /services/{name}/doc
+// consume: application/x-www-form-urlencoded
 // method: PUT
 // responses:
 //   200: Documentation updated
