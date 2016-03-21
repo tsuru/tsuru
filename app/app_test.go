@@ -4054,31 +4054,6 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(routesStr, check.DeepEquals, expected)
 }
 
-func (s *S) TestUpdatePlanNoRestartNeeded(c *check.C) {
-	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 50, Memory: 536870912}
-	err := s.conn.Plans().Insert(plan)
-	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
-	updateData := App{Name: "my-test-app", Plan: Plan{Name: "something"}}
-	err = a.Update(updateData, new(bytes.Buffer))
-	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Plan, check.DeepEquals, plan)
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
-	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, false)
-	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, true)
-}
-
 func (s *S) TestUpdateDescriptionPoolAndPlan(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test"}
 	err := provision.AddPool(opts)
