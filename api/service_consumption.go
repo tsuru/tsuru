@@ -19,6 +19,15 @@ import (
 	"github.com/tsuru/tsuru/service"
 )
 
+// title: service instance create
+// path: /services/instances
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: Service created
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Service already exists
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.FormValue("service_name")
 	user, err := t.User()
