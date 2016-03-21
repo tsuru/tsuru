@@ -97,6 +97,7 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, check.DeepEquals, expected)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	action := rectest.Action{Action: "list-services", User: s.user.Email}
 	c.Assert(action, rectest.IsRecorded)
 }

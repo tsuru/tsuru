@@ -29,6 +29,14 @@ func serviceValidate(s service.Service) error {
 	return nil
 }
 
+// title: service list
+// path: /services
+// method: GET
+// produce: application/json
+// responses:
+//   200: List services
+//   204: No content
+//   401: Unauthorized
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	rec.Log(t.GetUserName(), "list-services")
 	teams := []string{}
@@ -76,6 +84,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if n != len(b) {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return err
 }
 
