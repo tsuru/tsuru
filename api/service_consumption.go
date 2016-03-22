@@ -92,10 +92,10 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Service updated
+//   200: Service instance updated
 //   400: Invalid data
 //   401: Unauthorized
-//   404: Service not found
+//   404: Service instance not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
@@ -125,6 +125,14 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return service.UpdateService(si)
 }
 
+// title: remove service instance
+// path: /services/{name}/instances/{instance}
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//   200: Service removed
+//   401: Unauthorized
+//   404: Service instance not found
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
@@ -133,6 +141,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})

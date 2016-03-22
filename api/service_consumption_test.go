@@ -559,7 +559,6 @@ func makeRequestToRemoveInstanceHandler(service, instance string, c *check.C) (*
 	url := fmt.Sprintf("/services/%s/instances/%s?:service=%s&:instance=%s", service, instance, service, instance)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
@@ -577,8 +576,11 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo", "foo-instance", c)
-	err = removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Message, check.Equals, `service instance successfuly removed`)
