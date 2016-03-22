@@ -95,7 +95,7 @@ func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
 }
 
 func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
-	config, err := s.loadConfig()
+	conf, err := s.loadConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +107,8 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if !ok {
 		return nil, ErrMissingCodeRedirectUrl
 	}
-	config.RedirectURL = redirectUrl
-	oauthToken, err := config.Exchange(context.Background(), code)
+	conf.RedirectURL = redirectUrl
+	oauthToken, err := conf.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
 	}
