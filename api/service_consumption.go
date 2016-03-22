@@ -87,6 +87,15 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return err
 }
 
+// title: service instance update
+// path: /services/{service}/instances/{instance}
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Service updated
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Service not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")

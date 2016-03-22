@@ -386,8 +386,8 @@ func makeRequestToUpdateInstanceHandler(params map[string]string, serviceName, i
 		values.Add(k, v)
 	}
 	b := strings.NewReader(values.Encode())
-	url := fmt.Sprintf("/services/%s/instances/%s/update?:service=%s&:instance=%s", serviceName, instanceName, serviceName, instanceName)
-	request, err := http.NewRequest("POST", url, b)
+	url := fmt.Sprintf("/services/%s/instances/%s", serviceName, instanceName)
+	request, err := http.NewRequest("PUT", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token)
