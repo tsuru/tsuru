@@ -77,19 +77,21 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
-	conf, err := LoadConfig(nil)
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
-	token, _ := getToken(conf)
+	var entry BSConfigEntry
+	err = conf.LoadBase(&entry)
+	c.Assert(err, check.IsNil)
 	expectedEnv := []string{
 		"DOCKER_ENDPOINT=" + server.URL(),
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
-		"TSURU_TOKEN=" + token,
+		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
 	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
-	c.Assert(conf.GetExtraString("image"), check.Equals, "myregistry/tsuru/bs@"+digest)
+	c.Assert(entry.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
@@ -131,19 +133,21 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(container.HostConfig.Privileged, check.Equals, true)
 	c.Assert(container.HostConfig.NetworkMode, check.Equals, "host")
 	c.Assert(container.State.Running, check.Equals, true)
-	conf, err := LoadConfig(nil)
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
-	token, _ := getToken(conf)
+	var entry BSConfigEntry
+	err = conf.LoadBase(&entry)
+	c.Assert(err, check.IsNil)
 	expectedEnv := []string{
 		"DOCKER_ENDPOINT=" + server.URL(),
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
-		"TSURU_TOKEN=" + token,
+		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
 	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
-	c.Assert(conf.GetExtraString("image"), check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
+	c.Assert(entry.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 }
 
 func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
@@ -185,19 +189,21 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	c.Assert(container.HostConfig.Privileged, check.Equals, true)
 	c.Assert(container.HostConfig.NetworkMode, check.Equals, "host")
 	c.Assert(container.State.Running, check.Equals, true)
-	conf, err := LoadConfig(nil)
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
-	token, _ := getToken(conf)
+	var entry BSConfigEntry
+	err = conf.LoadBase(&entry)
+	c.Assert(err, check.IsNil)
 	expectedEnv := []string{
 		"DOCKER_ENDPOINT=" + server.URL(),
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
-		"TSURU_TOKEN=" + token,
+		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
 	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
-	c.Assert(conf.GetExtraString("image"), check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
+	c.Assert(entry.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
@@ -216,15 +222,19 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	defer config.Unset("docker:bs:socket")
 	config.Set("docker:bs:syslog-port", 1519)
 	defer config.Unset("docker:bs:syslog-port")
-	conf, err := LoadConfig(nil)
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
-	conf.Add("VAR1", "VALUE1")
-	conf.Add("VAR2", "VALUE2")
-	conf.Add("TSURU_ENDPOINT", "ignored")
-	conf.AddPool("pool1", "VAR2", "VALUE_FOR_POOL1")
-	conf.AddPool("pool2", "VAR2", "VALUE_FOR_POOL2")
-	conf.AddPool("pool1", "SYSLOG_LISTEN_ADDRESS", "alsoignored")
-	err = conf.SaveEnvs()
+	err = conf.SaveMerge("", BSConfigEntry{
+		Envs: map[string]string{"VAR1": "VALUE1", "VAR2": "VALUE2", "TSURU_ENDPOINT": "ignored"},
+	})
+	c.Assert(err, check.IsNil)
+	err = conf.SaveMerge("pool1", BSConfigEntry{
+		Envs: map[string]string{"VAR2": "VALUE_FOR_POOL1", "SYSLOG_LISTEN_ADDRESS": "alsoignored"},
+	})
+	c.Assert(err, check.IsNil)
+	err = conf.SaveMerge("pool2", BSConfigEntry{
+		Envs: map[string]string{"VAR2": "VALUE_FOR_POOL2"},
+	})
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
@@ -242,13 +252,15 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
-	conf, err = LoadConfig(nil)
+	conf, err = LoadConfig()
 	c.Assert(err, check.IsNil)
-	token, _ := getToken(conf)
+	var entry BSConfigEntry
+	err = conf.LoadBase(&entry)
+	c.Assert(err, check.IsNil)
 	expectedEnv := []string{
 		"DOCKER_ENDPOINT=unix:///var/run/docker.sock",
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
-		"TSURU_TOKEN=" + token,
+		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1519",
 		"VAR1=VALUE1",
 		"VAR2=VALUE_FOR_POOL1",
@@ -256,5 +268,5 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
 	c.Assert(container.Config.Env, check.DeepEquals, expectedEnv)
-	c.Assert(conf.GetExtraString("image"), check.Equals, "myregistry/tsuru/bs")
+	c.Assert(entry.Image, check.Equals, "myregistry/tsuru/bs")
 }

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ajg/form"
 	"github.com/gorilla/schema"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
@@ -575,29 +576,35 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var requestConfig scopedconfig.ScopedConfig
-	err := json.NewDecoder(r.Body).Decode(&requestConfig)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("unable to parse body as json: %s", err),
-		}
-	}
-	if len(requestConfig.Envs) > 0 && !permission.Check(t, permission.PermNodeBs) {
-		return permission.ErrUnauthorized
-	}
-	for _, poolEnv := range requestConfig.Pools {
-		hasPermission := permission.Check(t, permission.PermNodeBs,
-			permission.Context(permission.CtxPool, poolEnv.Name))
-		if !hasPermission {
-			return permission.ErrUnauthorized
-		}
-	}
-	currentConfig, err := bs.LoadConfig(nil)
+	err := r.ParseForm()
 	if err != nil {
 		return err
 	}
-	err = currentConfig.UpdateWith(&requestConfig)
+	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermNodeBs) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermNodeBs,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
+	delete(r.Form, "pool")
+	var entry bs.BSConfigEntry
+	err = form.DecodeValues(&entry, r.Form)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("unable to parse entries: %s", err),
+		}
+	}
+	bsConf, err := bs.LoadConfig()
+	if err != nil {
+		return err
+	}
+	err = bsConf.SaveMerge(poolName, entry)
 	if err != nil {
 		return err
 	}
@@ -616,11 +623,16 @@ func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if err != nil {
 		return err
 	}
-	currentConfig, err := bs.LoadConfig(pools)
+	bsConf, err := bs.LoadConfig()
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(currentConfig)
+	entries := map[string]bs.BSConfigEntry{}
+	err = bsConf.LoadPools(pools, entries)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(entries)
 }
 
 func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

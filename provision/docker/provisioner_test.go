@@ -2539,11 +2539,14 @@ func (s *S) TestDryMode(c *check.C) {
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {
-	conf, err := bs.LoadConfig(nil)
+	conf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
-	conf.AddPool("mypool", "METRICS_BACKEND", "LOGSTASH")
-	conf.AddPool("mypool", "METRICS_LOGSTASH_URI", "localhost:2222")
-	err = conf.SaveEnvs()
+	err = conf.Save("mypool", bs.BSConfigEntry{
+		Envs: map[string]string{
+			"METRICS_BACKEND":      "LOGSTASH",
+			"METRICS_LOGSTASH_URI": "localhost:2222",
+		},
+	})
 	c.Assert(err, check.IsNil)
 	appInstance := &app.App{
 		Name: "impius",
@@ -2618,26 +2621,27 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 		{map[string]string{}, map[string]map[string]string{"otherpool": {"LOG_BACKENDS": "abc"}}, true, "", nil},
 		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc, tsuru "}}, true, "", nil},
 	}
-	for _, t := range tests {
+	for i, t := range tests {
 		if t.envMap != nil || t.poolEnvMap != nil {
-			conf, err := bs.LoadConfig(nil)
+			conf, err := bs.LoadConfig()
 			c.Assert(err, check.IsNil)
-			conf.ResetEnvs()
-			for k, v := range t.envMap {
-				conf.Add(k, v)
-			}
+			err = conf.Save("", bs.BSConfigEntry{Envs: t.envMap})
+			c.Assert(err, check.IsNil)
 			for pool, envs := range t.poolEnvMap {
-				for k, v := range envs {
-					conf.AddPool(pool, k, v)
-				}
+				err = conf.Save(pool, bs.BSConfigEntry{Envs: envs})
+				c.Assert(err, check.IsNil)
 			}
-			err = conf.SaveEnvs()
-			c.Assert(err, check.IsNil)
 		}
 		enabled, msg, err := s.p.LogsEnabled(fakeApp)
 		c.Assert(err, check.Equals, t.err)
-		c.Assert(enabled, check.Equals, t.enabled)
+		c.Assert(enabled, check.Equals, t.enabled, check.Commentf("%d test", i))
 		c.Assert(msg, check.Equals, t.msg)
+		for pool := range t.poolEnvMap {
+			conf, err := bs.LoadConfig()
+			c.Assert(err, check.IsNil)
+			err = conf.Remove(pool)
+			c.Assert(err, check.IsNil)
+		}
 	}
 }
 

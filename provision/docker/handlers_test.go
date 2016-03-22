@@ -1232,89 +1232,93 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 
 func (s *HandlersSuite) TestBsEnvSetHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
-	json := `{
-		"envs": [
-			{"name": "VAR1", "value": "VALUE1"},
-			{"name": "VAR2", "value": "VALUE2"}
-		],
-		"pools": [
-			{
-				"name": "POOL1",
-				"envs": [
-					{"name": "VAR3", "value": "VALUE3"},
-					{"name": "VAR4", "value": "VALUE4"}
-				]
-			},
-			{
-				"name": "POOL2",
-				"envs": [
-					{"name": "VAR5", "value": "VALUE5"},
-					{"name": "VAR6", "value": "VALUE6"}
-				]
-			}
-		]
-	}`
-	body := bytes.NewBufferString(json)
+	values := url.Values{}
+	values.Set("Envs.VAR1", "VALUE1")
+	values.Set("Envs.VAR2", "VALUE2")
+	body := bytes.NewBufferString(values.Encode())
 	request, err := http.NewRequest("POST", "/docker/bs/env", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := bs.LoadConfig(nil)
+	values = url.Values{}
+	values.Set("pool", "POOL1")
+	values.Set("Envs.VAR3", "VALUE3")
+	values.Set("Envs.VAR4", "VALUE4")
+	body = bytes.NewBufferString(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/bs/env", body)
 	c.Assert(err, check.IsNil)
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "VAR1", Value: "VALUE1"}, {Name: "VAR2", Value: "VALUE2"}})
-	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[0].Envs))
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
-		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "VAR3", Value: "VALUE3"}, {Name: "VAR4", Value: "VALUE4"}}},
-		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "VAR5", Value: "VALUE5"}, {Name: "VAR6", Value: "VALUE6"}}},
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	values = url.Values{}
+	values.Set("pool", "POOL2")
+	values.Set("Envs.VAR5", "VALUE5")
+	values.Set("Envs.VAR6", "VALUE6")
+	body = bytes.NewBufferString(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/bs/env", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	conf, err := bs.LoadConfig()
+	c.Assert(err, check.IsNil)
+	poolEntries := map[string]bs.BSConfigEntry{}
+	err = conf.LoadAll(poolEntries)
+	c.Assert(err, check.IsNil)
+	c.Assert(poolEntries, check.DeepEquals, map[string]bs.BSConfigEntry{
+		"":      {Envs: map[string]string{"VAR1": "VALUE1", "VAR2": "VALUE2"}},
+		"POOL1": {Envs: map[string]string{"VAR1": "VALUE1", "VAR2": "VALUE2", "VAR3": "VALUE3", "VAR4": "VALUE4"}},
+		"POOL2": {Envs: map[string]string{"VAR1": "VALUE1", "VAR2": "VALUE2", "VAR5": "VALUE5", "VAR6": "VALUE6"}},
 	})
 }
 
 func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
-	err := bs.SaveImage("myimg")
+	conf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
-	conf, err := bs.LoadConfig(nil)
+	err = conf.SaveBase(bs.BSConfigEntry{
+		Image: "my/img",
+		Envs:  map[string]string{"VAR1": "BASE1", "VAR2": "BASE2"},
+	})
 	c.Assert(err, check.IsNil)
-	conf.Add("VAR1", "VAL1")
-	conf.Add("VAR2", "VAL2")
-	conf.AddPool("POOL1", "VAR3", "VAL3")
-	conf.AddPool("POOL1", "VAR4", "VAL4")
-	err = conf.SaveEnvs()
+	err = conf.Save("POOL1", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR3": "VAL3", "VAR4": "VAL4"},
+	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	json := `{
-		"envs": [
-			{"name": "VAR1", "value": ""},
-			{"name": "VAR3", "value": "VAL3"}
-		],
-		"pools": [
-			{
-				"name": "POOL1",
-				"envs": [
-					{"name": "VAR3", "value": ""}
-				]
-			}
-		]
-	}`
-	body := bytes.NewBufferString(json)
+	values := url.Values{}
+	values.Set("Envs.VAR1", "")
+	values.Set("Envs.VAR3", "BASE3")
+	body := bytes.NewBufferString(values.Encode())
 	request, err := http.NewRequest("POST", "/docker/bs/env", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err = bs.LoadConfig(nil)
+	values = url.Values{}
+	values.Set("pool", "POOL1")
+	values.Set("Envs.VAR3", "")
+	body = bytes.NewBufferString(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/bs/env", body)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.GetExtraString("image"), check.Equals, "myimg")
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "VAR2", Value: "VAL2"}, {Name: "VAR3", Value: "VAL3"}})
-	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
-		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "VAR4", Value: "VAL4"}}},
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	conf, err = bs.LoadConfig()
+	c.Assert(err, check.IsNil)
+	poolEntries := map[string]bs.BSConfigEntry{}
+	err = conf.LoadAll(poolEntries)
+	c.Assert(err, check.IsNil)
+	c.Assert(poolEntries, check.DeepEquals, map[string]bs.BSConfigEntry{
+		"":      {Envs: map[string]string{"VAR2": "BASE2", "VAR3": "BASE3"}, Image: "my/img"},
+		"POOL1": {Envs: map[string]string{"VAR2": "BASE2", "VAR3": "BASE3", "VAR4": "VAL4"}, Image: "my/img"},
 	})
 }
 
@@ -1326,31 +1330,31 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := &scopedconfig.ScopedConfig{}
-	var conf scopedconfig.ScopedConfig
+	expected := map[string]bs.BSConfigEntry{}
+	var conf map[string]bs.BSConfigEntry
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
-	c.Assert(conf.Pools, check.DeepEquals, expected.Pools)
-	err = bs.SaveImage("myimg")
+	c.Assert(conf, check.DeepEquals, expected)
+	bsConf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
-	baseConf, err := bs.LoadConfig(nil)
+	err = bsConf.SaveBase(bs.BSConfigEntry{
+		Image: "myimg",
+		Envs:  map[string]string{"VAR1": "BASE1", "VAR2": "BASE2"},
+	})
 	c.Assert(err, check.IsNil)
-	baseConf.Add("VAR1", "VAL1")
-	baseConf.Add("VAR2", "VAL2")
-	baseConf.AddPool("POOL1", "VAR3", "VAL3")
-	baseConf.AddPool("POOL1", "VAR4", "VAL4")
-	err = baseConf.SaveEnvs()
-	c.Assert(err, check.IsNil)
-	expected, err = bs.LoadConfig(nil)
+	err = bsConf.Save("POOL1", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR3": "VAL3", "VAR4": "VAL4"},
+	})
 	c.Assert(err, check.IsNil)
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
-	c.Assert(conf.Pools, check.DeepEquals, expected.Pools)
+	c.Assert(conf, check.DeepEquals, map[string]bs.BSConfigEntry{
+		"":      {Envs: map[string]string{"VAR1": "BASE1", "VAR2": "BASE2"}, Image: "myimg"},
+		"POOL1": {Envs: map[string]string{"VAR1": "BASE1", "VAR2": "BASE2", "VAR3": "VAL3", "VAR4": "VAL4"}, Image: "myimg"},
+	})
 }
 
 func (s *HandlersSuite) TestBsConfigGetFilteringPools(c *check.C) {
@@ -1372,30 +1376,44 @@ func (s *HandlersSuite) TestBsConfigGetFilteringPools(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = bs.SaveImage("myimg")
 	c.Assert(err, check.IsNil)
-	baseConf, err := bs.LoadConfig(nil)
+
+	bsConf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
-	baseConf.Add("VAR1", "VAL1")
-	baseConf.Add("VAR2", "VAL2")
-	baseConf.AddPool("POOL1", "VAR3", "VAL3")
-	baseConf.AddPool("POOL1", "VAR4", "VAL4")
-	baseConf.AddPool("POOL2", "VAR3", "VAL4")
-	baseConf.AddPool("POOL2", "VAR4", "VAL5")
-	baseConf.AddPool("POOL3", "VAR3", "VAL5")
-	baseConf.AddPool("POOL3", "VAR4", "VAL6")
-	baseConf.AddPool("POOL4", "VAR3", "VAL7")
-	baseConf.AddPool("POOL5", "VAR4", "VAL7")
-	err = baseConf.SaveEnvs()
+	err = bsConf.SaveBase(bs.BSConfigEntry{
+		Image: "myimg",
+		Envs:  map[string]string{"VAR1": "VAL1", "VAR2": "VAL2"},
+	})
+	c.Assert(err, check.IsNil)
+	err = bsConf.Save("POOL1", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR3": "VAL3", "VAR4": "VAL4"},
+	})
+	c.Assert(err, check.IsNil)
+	err = bsConf.Save("POOL2", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR3": "VAL3", "VAR4": "VAL4"},
+	})
+	c.Assert(err, check.IsNil)
+	err = bsConf.Save("POOL3", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR3": "VAL3", "VAR4": "VAL4"},
+	})
+	c.Assert(err, check.IsNil)
+	err = bsConf.Save("POOL4", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR3": "VAL7"},
+	})
+	c.Assert(err, check.IsNil)
+	err = bsConf.Save("POOL4", bs.BSConfigEntry{
+		Envs: map[string]string{"VAR4": "VAL7"},
+	})
 	c.Assert(err, check.IsNil)
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected, err := bs.LoadConfig([]string{"POOL1", "POOL3"})
+	expected := map[string]bs.BSConfigEntry{}
+	err = bsConf.LoadPools([]string{"POOL1", "POOL3"}, expected)
 	c.Assert(err, check.IsNil)
-	var conf scopedconfig.ScopedConfig
-	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	var result map[string]bs.BSConfigEntry
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
-	c.Assert(conf.Pools, check.DeepEquals, expected.Pools)
+	c.Assert(result, check.DeepEquals, expected)
 }
 
 func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
@@ -1408,9 +1426,12 @@ func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := bs.LoadConfig(nil)
+	conf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.GetExtraString("image"), check.Equals, "")
+	var entry bs.BSConfigEntry
+	err = conf.LoadBase(&entry)
+	c.Assert(err, check.IsNil)
+	c.Assert(entry.Image, check.Equals, "")
 }
 
 func (s *HandlersSuite) TestAutoScaleConfigHandler(c *check.C) {

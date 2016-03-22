@@ -1183,11 +1183,16 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		msg := fmt.Sprintf("Logs not available through tsuru. Enabled log driver is %q.", driver)
 		return false, msg, nil
 	}
-	config, err := bs.LoadConfig([]string{app.GetPool()})
+	config, err := bs.LoadConfig()
 	if err != nil {
 		return false, "", err
 	}
-	enabledBackends := config.PoolEntry(app.GetPool(), logBackendsEnv)
+	var entry bs.BSConfigEntry
+	err = config.Load(app.GetPool(), &entry)
+	if err != nil {
+		return false, "", err
+	}
+	enabledBackends := entry.Envs[logBackendsEnv]
 	if enabledBackends == "" {
 		return true, "", nil
 	}
@@ -1201,7 +1206,7 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 	var docs []string
 	for _, backendName := range backendsList {
 		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
-		backendDoc := config.PoolEntry(app.GetPool(), keyName)
+		backendDoc := entry.Envs[keyName]
 		var docLine string
 		if backendDoc == "" {
 			docLine = fmt.Sprintf("* %s", backendName)
