@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -27,8 +28,8 @@ type nScopedConfigEntry struct {
 	Val  bson.Raw
 }
 
-func FindNScopedConfig(coll string) (*NScopedConfig, error) {
-	return &NScopedConfig{coll: fmt.Sprintf("scoped_%s", coll)}, nil
+func FindNScopedConfig(coll string) *NScopedConfig {
+	return &NScopedConfig{coll: fmt.Sprintf("scoped_%s", coll)}
 }
 
 func (n *NScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (bool, error) {
@@ -37,6 +38,7 @@ func (n *NScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (bo
 		return false, err
 	}
 	defer coll.Close()
+	name = strings.ToLower(name)
 	_, err = coll.Upsert(bson.M{
 		"_id": pool,
 		"$or": []bson.M{{"val." + name: ""}, {"val." + name: bson.M{"$exists": false}}},
@@ -56,6 +58,7 @@ func (n *NScopedConfig) SetField(pool, name string, value interface{}) error {
 		return err
 	}
 	defer coll.Close()
+	name = strings.ToLower(name)
 	_, err = coll.UpsertId(pool, bson.M{"$set": bson.M{"val." + name: value}})
 	return err
 }
@@ -98,7 +101,7 @@ func (n *NScopedConfig) SaveMerge(pool string, val interface{}) error {
 	} else if err != mgo.ErrNotFound {
 		return err
 	}
-	err = n.mergeInto(previousValue.Elem(), reflect.ValueOf(val))
+	_, err = n.mergeIntoInherited(previousValue.Elem(), reflect.ValueOf(val), false)
 	if err != nil {
 		return err
 	}
@@ -111,10 +114,18 @@ func (n *NScopedConfig) LoadAll(allVal interface{}) error {
 
 func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) error {
 	allValValue := reflect.ValueOf(allVal)
+	var isPtr bool
+	if allValValue.Type().Kind() == reflect.Ptr {
+		isPtr = true
+		allValValue = allValValue.Elem()
+	}
 	if allValValue.Type().Kind() != reflect.Map ||
 		allValValue.Type().Key().Kind() != reflect.String ||
 		allValValue.Type().Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("received object must be a map[string]<yourstruct>, received: %v", allValValue.Type())
+	}
+	if isPtr {
+		allValValue.Set(reflect.MakeMap(allValValue.Type()))
 	}
 	if allValValue.IsNil() {
 		return fmt.Errorf("uninitialized map")
@@ -127,12 +138,19 @@ func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) erro
 	}
 	defer coll.Close()
 	err = coll.FindId("").One(&defaultValues)
-	if err == mgo.ErrNotFound {
-		return nil
-	}
-	if err != nil {
+	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
+	mapType := allValValue.Type().Elem()
+	baseValue := reflect.New(mapType)
+	baseVal := baseValue.Interface()
+	if defaultValues.Val.Data != nil {
+		err = defaultValues.Val.Unmarshal(baseVal)
+		if err != nil {
+			return err
+		}
+	}
+	allValValue.SetMapIndex(reflect.ValueOf(""), baseValue.Elem())
 	if len(filterPools) == 0 {
 		err = coll.Find(bson.M{"_id": bson.M{"$ne": ""}}).All(&allPoolValues)
 	} else {
@@ -141,14 +159,6 @@ func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) erro
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
-	mapType := allValValue.Type().Elem()
-	baseValue := reflect.New(mapType)
-	baseVal := baseValue.Interface()
-	err = defaultValues.Val.Unmarshal(baseVal)
-	if err != nil {
-		return err
-	}
-	allValValue.SetMapIndex(reflect.ValueOf(""), baseValue.Elem())
 	for i := range allPoolValues {
 		baseValue = reflect.New(mapType)
 		baseVal = baseValue.Interface()
@@ -162,7 +172,7 @@ func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) erro
 		if err != nil {
 			return err
 		}
-		err = n.mergeInto(baseValue.Elem(), poolValue.Elem())
+		_, err = n.mergeInto(baseValue.Elem(), poolValue.Elem())
 		if err != nil {
 			return err
 		}
@@ -222,8 +232,6 @@ func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal i
 			return errors.New("received object must the same type")
 		}
 	}
-	baseCopy := reflect.New(baseValue.Elem().Type())
-	baseCopyVal := baseCopy.Interface()
 	coll, err := n.collection()
 	if err != nil {
 		return err
@@ -236,12 +244,20 @@ func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal i
 		if err != nil {
 			return err
 		}
+	} else if err != mgo.ErrNotFound {
+		return err
+	}
+	if pool == "" {
+		poolValue.Elem().Set(baseValue.Elem())
+		return nil
+	}
+	baseCopy := reflect.New(baseValue.Elem().Type())
+	if defaultValues.Val.Data != nil {
+		baseCopyVal := baseCopy.Interface()
 		err = defaultValues.Val.Unmarshal(baseCopyVal)
 		if err != nil {
 			return err
 		}
-	} else if err != mgo.ErrNotFound {
-		return err
 	}
 	err = coll.FindId(pool).One(&poolValues)
 	if err == nil {
@@ -252,7 +268,7 @@ func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal i
 	} else if err != mgo.ErrNotFound {
 		return err
 	}
-	err = n.mergeInto(baseCopy.Elem(), poolValue.Elem())
+	_, err = n.mergeInto(baseCopy.Elem(), poolValue.Elem())
 	if err != nil {
 		return err
 	}
@@ -269,7 +285,25 @@ func (n *NScopedConfig) Remove(pool string) error {
 	return coll.RemoveId(pool)
 }
 
-func (n *NScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (err error) {
+func (n *NScopedConfig) RemoveField(pool, name string) error {
+	coll, err := n.collection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	name = strings.ToLower(name)
+	err = coll.UpdateId(pool, bson.M{"$unset": bson.M{"val." + name: ""}})
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	return nil
+}
+
+func (n *NScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (merged bool, err error) {
+	return n.mergeIntoInherited(base, pool, true)
+}
+
+func (n *NScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value, setInherited bool) (merged bool, err error) {
 	switch base.Kind() {
 	case reflect.Struct:
 		if _, isTime := base.Interface().(time.Time); isTime {
@@ -281,20 +315,35 @@ func (n *NScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (err e
 		numField := base.Type().NumField()
 		for i := 0; i < numField; i++ {
 			fieldType := base.Type().Field(i)
+			isInherited := strings.HasSuffix(strings.ToLower(fieldType.Name), "inherited")
+			if isInherited {
+				continue
+			}
+			inheritedField, hasInherited := base.Type().FieldByNameFunc(func(name string) bool {
+				return strings.ToLower(name) == strings.ToLower(fieldType.Name+"inherited")
+			})
 			if fieldType.PkgPath != "" && !fieldType.Anonymous {
 				continue
 			}
 			f1Value := base.Field(i)
 			f2Value := pool.Field(i)
-			err = n.mergeInto(f1Value, f2Value)
+			var fieldMerged bool
+			fieldMerged, err = n.mergeIntoInherited(f1Value, f2Value, setInherited)
 			if err != nil {
 				return
+			}
+			if setInherited && hasInherited && inheritedField.Type.Kind() == reflect.Bool {
+				base.FieldByIndex(inheritedField.Index).Set(reflect.ValueOf(!fieldMerged))
+			}
+			if fieldMerged {
+				merged = true
 			}
 		}
 	case reflect.Map:
 		for _, k := range pool.MapKeys() {
 			poolVal := pool.MapIndex(k)
 			if !n.isEmpty(poolVal) {
+				merged = true
 				if base.IsNil() {
 					base.Set(reflect.MakeMap(reflect.MapOf(k.Type(), poolVal.Type())))
 				}
@@ -310,6 +359,7 @@ func (n *NScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (err e
 			}
 		}()
 		if !n.isEmpty(pool) {
+			merged = true
 			base.Set(pool)
 		}
 	}

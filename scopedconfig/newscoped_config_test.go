@@ -327,9 +327,8 @@ func (s *S) TestNScopedConfigMulti(c *check.C) {
 		},
 	}
 	for i, t := range tests {
-		sc, err := FindNScopedConfig("testcoll")
-		c.Assert(err, check.IsNil)
-		err = sc.Save("", t.base)
+		sc := FindNScopedConfig("testcoll")
+		err := sc.Save("", t.base)
 		c.Assert(err, check.IsNil)
 		err = sc.Save("p1", t.pool)
 		c.Assert(err, check.IsNil)
@@ -350,20 +349,19 @@ func (s *S) TestNScopedConfigMulti(c *check.C) {
 		err = sc.Load("p1", result3.Interface())
 		c.Assert(err, check.IsNil)
 		c.Assert(result3.Elem().Interface(), check.DeepEquals, t.expectedEmpty)
-		all := reflect.MakeMap(reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf(t.base)))
+		all := reflect.New(reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf(t.base)))
 		err = sc.LoadAll(all.Interface())
 		c.Assert(err, check.IsNil)
 		expected := reflect.MakeMap(reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf(t.base)))
 		expected.SetMapIndex(reflect.ValueOf(""), reflect.ValueOf(t.base))
 		expected.SetMapIndex(reflect.ValueOf("p1"), reflect.ValueOf(t.expectedEmpty))
-		c.Assert(all.Interface(), check.DeepEquals, expected.Interface())
+		c.Assert(all.Elem().Interface(), check.DeepEquals, expected.Interface())
 	}
 }
 
 func (s *S) TestNScopedConfigSaveMerge(c *check.C) {
-	sc, err := FindNScopedConfig("testcoll")
-	c.Assert(err, check.IsNil)
-	err = sc.SaveMerge("", TestDeepMerge{Envs: map[string]string{"A": "a1"}, A: TestStdAux{A: "a2"}})
+	sc := FindNScopedConfig("testcoll")
+	err := sc.SaveMerge("", TestDeepMerge{Envs: map[string]string{"A": "a1"}, A: TestStdAux{A: "a2"}})
 	c.Assert(err, check.IsNil)
 	var result1 TestDeepMerge
 	err = sc.LoadBase(&result1)
