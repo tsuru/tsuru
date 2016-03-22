@@ -5,15 +5,14 @@
 package bs
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/scopedconfig"
 )
 
 type EnvSetCmd struct {
@@ -43,7 +42,9 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	var envList []scopedconfig.Entry
+	conf := BSConfigEntry{
+		Envs: map[string]string{},
+	}
 	for _, arg := range context.Args {
 		parts := strings.SplitN(arg, "=", 2)
 		if len(parts) < 2 {
@@ -52,27 +53,19 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		if parts[0] == "" {
 			return fmt.Errorf("invalid variable values")
 		}
-		envList = append(envList, scopedconfig.Entry{Name: parts[0], Value: parts[1]})
+		conf.Envs[parts[0]] = parts[1]
 	}
-	conf := scopedconfig.ScopedConfig{}
-	if c.pool == "" {
-		conf.Envs = envList
-	} else {
-		conf.Pools = []scopedconfig.PoolEntry{{
-			Name: c.pool,
-			Envs: envList,
-		}}
-	}
-	b, err := json.Marshal(conf)
+	values, err := form.EncodeToValues(conf)
 	if err != nil {
 		return err
 	}
-	buffer := bytes.NewBuffer(b)
-	request, err := http.NewRequest("POST", url, buffer)
+	values.Set("pool", c.pool)
+	reader := strings.NewReader(values.Encode())
+	request, err := http.NewRequest("POST", url, reader)
 	if err != nil {
 		return err
 	}
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := client.Do(request)
 	if err != nil {
 		return err
@@ -117,22 +110,24 @@ func (c *InfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	var conf scopedconfig.ScopedConfig
-	err = json.NewDecoder(response.Body).Decode(&conf)
+	var poolEntries map[string]BSConfigEntry
+	err = json.NewDecoder(response.Body).Decode(&poolEntries)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, "Image: %s\n\nEnvironment Variables [Default]:\n", conf.Extra["image"])
+	defaultEntry := poolEntries[""]
+	delete(poolEntries, "")
+	fmt.Fprintf(context.Stdout, "Image: %s\n\nEnvironment Variables [Default]:\n", defaultEntry.Image)
 	t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
-	for _, envVar := range conf.Envs {
-		t.AddRow(cmd.Row([]string{envVar.Name, fmt.Sprintf("%v", envVar.Value)}))
+	for envName, envValue := range defaultEntry.Envs {
+		t.AddRow(cmd.Row([]string{envName, fmt.Sprintf("%v", envValue)}))
 	}
 	context.Stdout.Write(t.Bytes())
-	for _, pool := range conf.Pools {
+	for poolName, entry := range poolEntries {
 		t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
-		fmt.Fprintf(context.Stdout, "\nEnvironment Variables [%s]:\n", pool.Name)
-		for _, envVar := range pool.Envs {
-			t.AddRow(cmd.Row([]string{envVar.Name, fmt.Sprintf("%v", envVar.Value)}))
+		fmt.Fprintf(context.Stdout, "\nEnvironment Variables [%s]:\n", poolName)
+		for envName, envValue := range entry.Envs {
+			t.AddRow(cmd.Row([]string{envName, fmt.Sprintf("%v", envValue)}))
 		}
 		context.Stdout.Write(t.Bytes())
 	}

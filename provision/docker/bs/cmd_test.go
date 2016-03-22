@@ -7,13 +7,12 @@ package bs
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 )
 
@@ -29,15 +28,15 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			err := req.ParseForm()
 			c.Assert(err, check.IsNil)
-			expected := scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
-			}
-			var conf scopedconfig.ScopedConfig
-			err = json.Unmarshal(body, &conf)
-			c.Assert(conf, check.DeepEquals, expected)
+			c.Assert(req.Form, check.DeepEquals, url.Values{
+				"pool":   []string{""},
+				"Envs.A": []string{"1"},
+				"Envs.B": []string{"2"},
+				"Token":  []string{""},
+				"Image":  []string{""},
+			})
 			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
 		},
 	}
@@ -61,15 +60,15 @@ func (s *S) TestBsEnvSetRunAllowEmpty(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			err := req.ParseForm()
 			c.Assert(err, check.IsNil)
-			expected := scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: ""}},
-			}
-			var conf scopedconfig.ScopedConfig
-			err = json.Unmarshal(body, &conf)
-			c.Assert(conf, check.DeepEquals, expected)
+			c.Assert(req.Form, check.DeepEquals, url.Values{
+				"pool":   []string{""},
+				"Envs.A": []string{"1"},
+				"Envs.B": []string{""},
+				"Token":  []string{""},
+				"Image":  []string{""},
+			})
 			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
 		},
 	}
@@ -112,18 +111,15 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			err := req.ParseForm()
 			c.Assert(err, check.IsNil)
-			expected := scopedconfig.ScopedConfig{
-				Pools: []scopedconfig.PoolEntry{{
-					Name: "pool1",
-					Envs: []scopedconfig.Entry{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
-				}},
-			}
-			var conf scopedconfig.ScopedConfig
-			err = json.Unmarshal(body, &conf)
-			c.Assert(conf, check.DeepEquals, expected)
+			c.Assert(req.Form, check.DeepEquals, url.Values{
+				"pool":   []string{"pool1"},
+				"Envs.A": []string{"1"},
+				"Envs.B": []string{"2"},
+				"Token":  []string{""},
+				"Image":  []string{""},
+			})
 			return req.URL.Path == "/1.0/docker/bs/env" && req.Method == "POST"
 		},
 	}
@@ -143,21 +139,10 @@ func (s *S) TestBsInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := scopedconfig.ScopedConfig{
-		Extra: map[string]interface{}{"image": "tsuru/bs"},
-		Envs: []scopedconfig.Entry{
-			{Name: "A", Value: "1"},
-			{Name: "B", Value: "2"},
-		},
-		Pools: []scopedconfig.PoolEntry{
-			{Name: "pool1", Envs: []scopedconfig.Entry{
-				{Name: "A", Value: "9"},
-				{Name: "Z", Value: "8"},
-			}},
-			{Name: "pool2", Envs: []scopedconfig.Entry{
-				{Name: "Y", Value: "7"},
-			}},
-		},
+	conf := map[string]BSConfigEntry{
+		"":      {Image: "tsuru/bs", Envs: map[string]string{"A": "1", "B": "2"}},
+		"pool1": {Envs: map[string]string{"A": "9", "Z": "8"}},
+		"pool2": {Envs: map[string]string{"Y": "7"}},
 	}
 	result, err := json.Marshal(conf)
 	c.Assert(err, check.IsNil)
@@ -205,7 +190,6 @@ func (s *S) TestBsUpgradeRun(c *check.C) {
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
-		Args:   []string{"A=1", "B=2"},
 	}
 	msg := io.SimpleJsonMessage{Message: "it worked!"}
 	result, err := json.Marshal(msg)
