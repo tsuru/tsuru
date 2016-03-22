@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/scopedconfig"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -691,11 +690,8 @@ func intPtr(i int) *int {
 }
 
 func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
-	c.Assert(err, check.IsNil)
-	err = conf.SaveEnvs()
+	conf := healerConfig()
+	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -717,11 +713,8 @@ func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 }
 
 func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
-	c.Assert(err, check.IsNil)
-	err = conf.SaveEnvs()
+	conf := healerConfig()
+	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -750,11 +743,8 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 }
 
 func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
-	c.Assert(err, check.IsNil)
-	err = conf.SaveEnvs()
+	conf := healerConfig()
+	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -783,11 +773,8 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 }
 
 func (s *S) TestCheckActiveHealing(c *check.C) {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	c.Assert(err, check.IsNil)
-	err = conf.Marshal(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
-	c.Assert(err, check.IsNil)
-	err = conf.SaveEnvs()
+	conf := healerConfig()
+	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
 	factory, iaasInst := dockertest.NewHealerIaaSConstructorWithInst("127.0.0.1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
@@ -961,27 +948,23 @@ func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 		MaxUnresponsiveTime: intPtr(1),
 	})
 	c.Assert(err, check.IsNil)
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	c.Assert(err, check.IsNil)
-	entries := conf.PoolEntries("p1")
+	conf := healerConfig()
 	var nodeConf NodeHealerConfig
-	err = entries.Unmarshal(&nodeConf)
+	err = conf.Load("p1", &nodeConf)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
 		Enabled:                      boolPtr(true),
 		MaxUnresponsiveTime:          intPtr(1),
 		EnabledInherited:             true,
 		MaxUnresponsiveTimeInherited: true,
+		MaxTimeSinceSuccessInherited: true,
 	})
 	err = UpdateConfig("p1", NodeHealerConfig{
 		MaxTimeSinceSuccess: intPtr(2),
 	})
 	c.Assert(err, check.IsNil)
-	conf, err = scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	c.Assert(err, check.IsNil)
-	entries = conf.PoolEntries("p1")
 	nodeConf = NodeHealerConfig{}
-	err = entries.Unmarshal(&nodeConf)
+	err = conf.Load("p1", &nodeConf)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
 		Enabled:                      boolPtr(true),
@@ -989,7 +972,25 @@ func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {
 		MaxTimeSinceSuccess:          intPtr(2),
 		EnabledInherited:             true,
 		MaxUnresponsiveTimeInherited: true,
+		MaxTimeSinceSuccessInherited: false,
 	})
+	err = UpdateConfig("p1", NodeHealerConfig{
+		MaxTimeSinceSuccess: intPtr(2),
+		MaxUnresponsiveTime: intPtr(9),
+	})
+	c.Assert(err, check.IsNil)
+	nodeConf = NodeHealerConfig{}
+	err = conf.Load("p1", &nodeConf)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeConf, check.DeepEquals, NodeHealerConfig{
+		Enabled:                      boolPtr(true),
+		MaxUnresponsiveTime:          intPtr(9),
+		MaxTimeSinceSuccess:          intPtr(2),
+		EnabledInherited:             true,
+		MaxUnresponsiveTimeInherited: false,
+		MaxTimeSinceSuccessInherited: false,
+	})
+
 }
 
 func (s *S) newFakeDockerProvisioner(servers ...string) (*dockertest.FakeDockerProvisioner, error) {

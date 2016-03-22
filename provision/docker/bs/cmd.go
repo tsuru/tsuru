@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/ajg/form"
@@ -123,7 +124,13 @@ func (c *InfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		t.AddRow(cmd.Row([]string{envName, fmt.Sprintf("%v", envValue)}))
 	}
 	context.Stdout.Write(t.Bytes())
-	for poolName, entry := range poolEntries {
+	poolNames := make([]string, 0, len(poolEntries))
+	for poolName := range poolEntries {
+		poolNames = append(poolNames, poolName)
+	}
+	sort.Strings(poolNames)
+	for _, poolName := range poolNames {
+		entry := poolEntries[poolName]
 		t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
 		fmt.Fprintf(context.Stdout, "\nEnvironment Variables [%s]:\n", poolName)
 		for envName, envValue := range entry.Envs {

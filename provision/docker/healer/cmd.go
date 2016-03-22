@@ -300,13 +300,13 @@ func (c *DeleteNodeHealingConfigCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 	v := url.Values{}
 	v.Set("pool", c.pool)
 	if c.enabled {
-		v.Add("name", "enabled")
+		v.Add("name", "Enabled")
 	}
 	if c.maxUnresponsive {
-		v.Add("name", "maxUnresponsiveTime")
+		v.Add("name", "MaxUnresponsiveTime")
 	}
 	if c.maxUnsuccessful {
-		v.Add("name", "maxTimeSinceSuccess")
+		v.Add("name", "MaxTimeSinceSuccess")
 	}
 	u, err := cmd.GetURL("/docker/healing/node?" + v.Encode())
 	if err != nil {

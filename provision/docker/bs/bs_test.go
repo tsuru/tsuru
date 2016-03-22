@@ -23,9 +23,8 @@ import (
 )
 
 func (s *S) TestLoadConfigPool(c *check.C) {
-	conf, err := scopedconfig.FindNScopedConfig(bsConfigCollection)
-	c.Assert(err, check.IsNil)
-	err = conf.SaveMerge("", BSConfigEntry{Envs: map[string]string{"USER": "root"}})
+	conf := scopedconfig.FindNScopedConfig(bsConfigCollection)
+	err := conf.SaveMerge("", BSConfigEntry{Envs: map[string]string{"USER": "root"}})
 	c.Assert(err, check.IsNil)
 	err = conf.SaveMerge("pool1", BSConfigEntry{Envs: map[string]string{"USER": "nonroot"}})
 	c.Assert(err, check.IsNil)

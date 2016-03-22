@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/ajg/form"
-	"github.com/gorilla/schema"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api"
@@ -803,11 +802,9 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return permission.ErrUnauthorized
 		}
 	}
-	dec := schema.NewDecoder()
-	dec.ZeroEmpty(true)
-	dec.IgnoreUnknownKeys(true)
 	var config healer.NodeHealerConfig
-	err = dec.Decode(&config, r.Form)
+	delete(r.Form, "pool")
+	err = form.DecodeValues(&config, r.Form)
 	if err != nil {
 		return err
 	}

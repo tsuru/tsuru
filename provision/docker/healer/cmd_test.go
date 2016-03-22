@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
@@ -288,7 +289,7 @@ func (s *S) TestDeleteNodeHealingConfigCmd(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			req.ParseForm()
 			return req.URL.Path == "/1.0/docker/healing/node" && req.Method == "DELETE" &&
-				req.Form.Get("name") == "enabled" && req.Form.Get("pool") == "p1"
+				req.Form.Get("name") == "Enabled" && req.Form.Get("pool") == "p1"
 		},
 	}
 	manager := cmd.Manager{}
@@ -307,15 +308,18 @@ func (s *S) TestSetNodeHealingConfigCmd(c *check.C) {
 		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			req.ParseForm()
-			return req.URL.Path == "/1.0/docker/healing/node" && req.Method == "POST" &&
-				req.Form.Get("MaxUnresponsiveTime") == "10" && req.Form.Get("pool") == "p1" &&
-				req.Form.Get("Enabled") == "true"
+			c.Assert(req.Form, check.DeepEquals, url.Values{
+				"pool":                []string{"p1"},
+				"MaxUnresponsiveTime": []string{"10"},
+				"Enabled":             []string{"false"},
+			})
+			return req.URL.Path == "/1.0/docker/healing/node" && req.Method == "POST"
 		},
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	healing := &SetNodeHealingConfigCmd{}
-	healing.Flags().Parse(true, []string{"--pool", "p1", "--enable", "--max-unresponsive", "10"})
+	healing.Flags().Parse(true, []string{"--pool", "p1", "--disable", "--max-unresponsive", "10"})
 	err := healing.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Node healing configuration successfully updated.\n")

@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	nodeHealerConfigEntry = "node-healer"
+	nodeHealerConfigCollection = "node-healer"
 )
 
 type NodeHealer struct {
@@ -48,9 +48,9 @@ type NodeHealerArgs struct {
 }
 
 type NodeHealerConfig struct {
-	Enabled                      *bool `json:",omitempty"`
-	MaxTimeSinceSuccess          *int  `json:",omitempty"`
-	MaxUnresponsiveTime          *int  `json:",omitempty"`
+	Enabled                      *bool
+	MaxTimeSinceSuccess          *int
+	MaxUnresponsiveTime          *int
 	EnabledInherited             bool
 	MaxTimeSinceSuccessInherited bool
 	MaxUnresponsiveTimeInherited bool
@@ -345,13 +345,14 @@ func (h *NodeHealer) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) e
 	return nil
 }
 
-func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, entries scopedconfig.EntryMap) (bson.M, error) {
+func healerConfig() *scopedconfig.NScopedConfig {
+	conf := scopedconfig.FindNScopedConfig(nodeHealerConfigCollection)
+	conf.AllowEmpty = true
+	return conf
+}
+
+func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, config NodeHealerConfig) (bson.M, error) {
 	now := time.Now().UTC()
-	var config NodeHealerConfig
-	err := entries.Unmarshal(&config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse entry map: %s", err)
-	}
 	if config.Enabled == nil || !*config.Enabled {
 		return nil, nil
 	}
@@ -399,15 +400,19 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 		nodesPoolMap[pool] = append(nodesPoolMap[pool], &nodes[i])
 		nodesAddrMap[n.Address] = &nodes[i]
 	}
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
+	conf := healerConfig()
+	var entries map[string]NodeHealerConfig
+	err = conf.LoadAll(&entries)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to find config: %s", err)
+		return nil, nil, err
 	}
-	baseEntries, poolEntries := conf.AllEntries()
 	query := []bson.M{}
-	for poolName, entries := range poolEntries {
+	for poolName, entry := range entries {
+		if poolName == "" {
+			continue
+		}
 		var q bson.M
-		q, err = h.queryPartForConfig(nodesPoolMap[poolName], entries)
+		q, err = h.queryPartForConfig(nodesPoolMap[poolName], entry)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -420,7 +425,7 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 	for _, poolNodes := range nodesPoolMap {
 		remainingNodes = append(remainingNodes, poolNodes...)
 	}
-	q, err := h.queryPartForConfig(remainingNodes, baseEntries)
+	q, err := h.queryPartForConfig(remainingNodes, entries[""])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -463,15 +468,8 @@ func (h *NodeHealer) runActiveHealing() {
 }
 
 func UpdateConfig(pool string, config NodeHealerConfig) error {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	if err != nil {
-		return fmt.Errorf("unable to find config: %s", err)
-	}
-	err = conf.MarshalPool(pool, config)
-	if err != nil {
-		return fmt.Errorf("unable to marshal config: %s", err)
-	}
-	err = conf.SaveEnvs()
+	conf := healerConfig()
+	err := conf.SaveMerge(pool, config)
 	if err != nil {
 		return fmt.Errorf("unable to save config: %s", err)
 	}
@@ -479,42 +477,22 @@ func UpdateConfig(pool string, config NodeHealerConfig) error {
 }
 
 func RemoveConfig(pool, name string) error {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	if err != nil {
-		return fmt.Errorf("unable to find config: %s", err)
-	}
+	conf := healerConfig()
+	var err error
 	if name == "" {
-		conf.ResetPoolEnvs(pool)
+		err = conf.Remove(pool)
 	} else {
-		conf.RemovePool(pool, name)
+		err = conf.RemoveField(pool, name)
 	}
-	err = conf.SaveEnvs()
-	if err != nil {
-		return fmt.Errorf("unable to save config: %s", err)
-	}
-	return nil
+	return err
 }
 
 func GetConfig() (map[string]NodeHealerConfig, error) {
-	conf, err := scopedconfig.FindScopedConfig(nodeHealerConfigEntry)
-	if err != nil {
-		return nil, fmt.Errorf("unable to find config: %s", err)
-	}
-	baseEntries, poolEntries := conf.AllEntries()
-	ret := map[string]NodeHealerConfig{}
-	var config NodeHealerConfig
-	err = baseEntries.Unmarshal(&config)
+	conf := healerConfig()
+	var ret map[string]NodeHealerConfig
+	err := conf.LoadAll(&ret)
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal config: %s", err)
-	}
-	ret[""] = config
-	for pName, pEntries := range poolEntries {
-		var pConfig NodeHealerConfig
-		err = pEntries.Unmarshal(&pConfig)
-		if err != nil {
-			return nil, fmt.Errorf("unable to unmarshal pool config: %s", err)
-		}
-		ret[pName] = pConfig
 	}
 	return ret, nil
 }
