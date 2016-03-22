@@ -41,11 +41,11 @@ func (s *S) TestLoadConfigPool(c *check.C) {
 	err = conf.LoadAll(allVal)
 	c.Assert(err, check.IsNil)
 	expectedConfig := map[string]BSConfigEntry{
-		"":      BSConfigEntry{Envs: map[string]string{"USER": "root"}},
-		"pool1": BSConfigEntry{Envs: map[string]string{"USER": "nonroot"}},
-		"pool2": BSConfigEntry{Envs: map[string]string{"USER": "superroot"}},
-		"pool3": BSConfigEntry{Envs: map[string]string{"USER": "watroot"}},
-		"pool4": BSConfigEntry{Envs: map[string]string{"USER": "kindaroot"}},
+		"":      {Envs: map[string]string{"USER": "root"}},
+		"pool1": {Envs: map[string]string{"USER": "nonroot"}},
+		"pool2": {Envs: map[string]string{"USER": "superroot"}},
+		"pool3": {Envs: map[string]string{"USER": "watroot"}},
+		"pool4": {Envs: map[string]string{"USER": "kindaroot"}},
 	}
 	c.Assert(allVal, check.DeepEquals, expectedConfig)
 }
