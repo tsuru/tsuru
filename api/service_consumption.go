@@ -20,7 +20,7 @@ import (
 )
 
 // title: service instance create
-// path: /services/instances
+// path: /services/{service}/instances
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
@@ -29,7 +29,7 @@ import (
 //   401: Unauthorized
 //   409: Service already exists
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	serviceName := r.FormValue("service_name")
+	serviceName := r.URL.Query().Get(":service")
 	user, err := t.User()
 	if err != nil {
 		return err

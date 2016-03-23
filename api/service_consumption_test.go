@@ -95,11 +95,13 @@ func (s *ConsumptionSuite) TearDownSuite(c *check.C) {
 
 func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	values := url.Values{}
+	url := fmt.Sprintf("/services/%s/instances", params["service_name"])
+	delete(params, "service_name")
 	for k, v := range params {
 		values.Add(k, v)
 	}
 	b := strings.NewReader(values.Encode())
-	request, err := http.NewRequest("POST", "/services/instances", b)
+	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", params["token"])
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -126,10 +128,12 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *check.C) {
 		"owner":        s.team.Name,
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var si service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
+	err := s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan_name":    "small",
@@ -159,10 +163,12 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C) {
 		"plan":         "small",
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var si service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
+	err := s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan_name":    "small",
@@ -226,6 +232,7 @@ func (s *ConsumptionSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Body.String(), check.Equals, "")
+	params["service_name"] = "mysql"
 	recorder, request = makeRequestToCreateInstanceHandler(params, c)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
@@ -261,10 +268,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerHasAccessToTheServiceInTheIn
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
+		"token":        s.token.GetValue(),
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err = createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var si service.ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
 	c.Assert(err, check.IsNil)
@@ -278,13 +287,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUs
 		"name":         "brainSQL",
 		"service_name": "mysqlrestricted",
 		"owner":        s.team.Name,
+		"token":        s.token.GetValue(),
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *check.C) {
@@ -292,12 +300,14 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
+		"token":        s.token.GetValue(),
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var si service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
+	err := s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Name, check.Equals, "brainSQL")
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
@@ -309,10 +319,15 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerNoPermission(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysqlnoperms"})
-	params := map[string]string{"name": "brainSQL", "service_name": "mysqlnoperms"}
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysqlnoperms",
+		"token":        token.GetValue(),
+	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err = createServiceInstance(recorder, request, token)
-	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *check.C) {
@@ -341,8 +356,10 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICa
 		"owner":        s.team.Name,
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err = createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
@@ -365,10 +382,12 @@ func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
 		"description":  "desc",
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
-	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var si service.ServiceInstance
-	err = s.conn.ServiceInstances().Find(bson.M{
+	err := s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan_name":    "small",
