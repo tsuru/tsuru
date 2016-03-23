@@ -937,6 +937,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = serviceInstances(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var instances []service.ServiceModel
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)

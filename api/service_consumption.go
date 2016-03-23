@@ -236,6 +236,14 @@ func readableServices(t auth.Token) ([]service.Service, error) {
 	return service.GetServicesByTeamsAndServices(teams, serviceNames)
 }
 
+// title: service instance list
+// path: /services/instances
+// method: GET
+// produce: application/json
+// responses:
+//   200: List services instances
+//   204: No content
+//   401: Unauthorized
 func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get("app")
 	rec.Log(t.GetUserName(), "list-service-instances", "app="+appName)
@@ -280,6 +288,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if n != len(body) {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write the response body."}
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return err
 }
 
