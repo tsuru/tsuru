@@ -118,7 +118,7 @@ type TestDeepMerge struct {
 	A    TestStdAux
 }
 
-func (s *S) TestNScopedConfigMulti(c *check.C) {
+func (s *S) TestScopedConfigMulti(c *check.C) {
 	t1 := time.Unix(time.Now().Unix(), 0)
 	t2 := t1.Add(time.Minute)
 	intPtr := func(a int) *int {
@@ -394,7 +394,7 @@ func (s *S) TestNScopedConfigMulti(c *check.C) {
 	}
 }
 
-func (s *S) TestNScopedConfigSaveMerge(c *check.C) {
+func (s *S) TestScopedConfigSaveMerge(c *check.C) {
 	sc := FindScopedConfig("testcoll")
 	err := sc.SaveMerge("", TestDeepMerge{Envs: map[string]string{"A": "a1"}, A: TestStdAux{A: "a2"}})
 	c.Assert(err, check.IsNil)
@@ -435,7 +435,7 @@ func (s *S) TestNScopedConfigSaveMerge(c *check.C) {
 	})
 }
 
-func (s *S) TestNScopedConfigSetFieldAtomic(c *check.C) {
+func (s *S) TestScopedConfigSetFieldAtomic(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	nRoutines := 50
 	values := make([]bool, nRoutines)
@@ -468,7 +468,7 @@ func (s *S) TestNScopedConfigSetFieldAtomic(c *check.C) {
 	c.Assert(val.Myvalue, check.Equals, fmt.Sprintf("val-%d", *valueSet))
 }
 
-func (s *S) TestNScopedConfigSetField(c *check.C) {
+func (s *S) TestScopedConfigSetField(c *check.C) {
 	conf := FindScopedConfig("x")
 	var val1, val2 struct{ Myvalue string }
 	err := conf.SetField("", "myvalue", "v1")
@@ -483,7 +483,7 @@ func (s *S) TestNScopedConfigSetField(c *check.C) {
 	c.Assert(val2.Myvalue, check.Equals, "v2")
 }
 
-func (s *S) TestNScopedConfigRemove(c *check.C) {
+func (s *S) TestScopedConfigRemove(c *check.C) {
 	conf := FindScopedConfig("x")
 	err := conf.Save("", TestStdAux{A: "x1", B: "y"})
 	c.Assert(err, check.IsNil)
