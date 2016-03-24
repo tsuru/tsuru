@@ -285,9 +285,6 @@ func (c *DeleteNodeHealingConfigCmd) Flags() *gnuflag.FlagSet {
 }
 
 func (c *DeleteNodeHealingConfigCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	if !(c.enabled || c.maxUnresponsive || c.maxUnsuccessful) {
-		return errors.New("At least one configuration option must be selected for removal.")
-	}
 	msg := "Are you sure you want to remove %snode healing configuration%s?"
 	if c.pool == "" {
 		msg = fmt.Sprintf(msg, "the default ", "")
