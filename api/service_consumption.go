@@ -506,6 +506,13 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	return serviceInstance.Grant(teamName)
 }
 
+// title: revoke access to service instance
+// path: /services/{service}/instances/{instance}/status
+// method: DELETE
+// responses:
+//   200: Access revoked
+//   401: Unauthorized
+//   404: Service instance not found
 func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
