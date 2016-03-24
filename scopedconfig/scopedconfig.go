@@ -121,10 +121,14 @@ func (n *ScopedConfig) SaveMerge(pool string, val interface{}) error {
 }
 
 func (n *ScopedConfig) LoadAll(allVal interface{}) error {
-	return n.LoadPools(nil, allVal)
+	return n.LoadPoolsMerge(nil, allVal, true)
 }
 
 func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error {
+	return n.LoadPoolsMerge(filterPools, allVal, true)
+}
+
+func (n *ScopedConfig) LoadPoolsMerge(filterPools []string, allVal interface{}, merge bool) error {
 	allValValue := reflect.ValueOf(allVal)
 	var isPtr bool
 	if allValValue.Type().Kind() == reflect.Ptr {
@@ -172,12 +176,14 @@ func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error
 		return err
 	}
 	for i := range allPoolValues {
-		baseValue = reflect.New(mapType)
-		baseVal = baseValue.Interface()
-		if defaultValues.Val.Data != nil {
-			err = defaultValues.Val.Unmarshal(baseVal)
-			if err != nil {
-				return err
+		if merge {
+			baseValue = reflect.New(mapType)
+			baseVal = baseValue.Interface()
+			if defaultValues.Val.Data != nil {
+				err = defaultValues.Val.Unmarshal(baseVal)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		poolValue := reflect.New(mapType)
@@ -186,11 +192,16 @@ func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error
 		if err != nil {
 			return err
 		}
-		_, err = n.mergeInto(baseValue.Elem(), poolValue.Elem())
-		if err != nil {
-			return err
+		indexValue := reflect.ValueOf(allPoolValues[i].Pool)
+		if merge {
+			_, err = n.mergeInto(baseValue.Elem(), poolValue.Elem())
+			if err != nil {
+				return err
+			}
+			allValValue.SetMapIndex(indexValue, baseValue.Elem())
+		} else {
+			allValValue.SetMapIndex(indexValue, poolValue.Elem())
 		}
-		allValValue.SetMapIndex(reflect.ValueOf(allPoolValues[i].Pool), baseValue.Elem())
 	}
 	return nil
 }
