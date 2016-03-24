@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -36,6 +37,10 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-service-proxy-actions", migrateServiceProxyActions)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
+	err = migration.Register("migrate-bs-envs", migrateBSEnvs)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -281,6 +286,73 @@ func migrateRoles() error {
 			err = u.AddRole(teamCreator.Name, "")
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
+			}
+		}
+	}
+	return nil
+}
+
+func migrateBSEnvs() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var entry map[string]interface{}
+	err = conn.Collection("bsconfig").FindId("bs").One(&entry)
+	if err != nil {
+		return err
+	}
+	image, _ := entry["image"].(string)
+	token, _ := entry["token"].(string)
+	envs, _ := entry["envs"].([]interface{})
+	envMap := map[string]string{}
+	for _, envEntry := range envs {
+		mapEntry, _ := envEntry.(map[string]interface{})
+		if mapEntry == nil {
+			continue
+		}
+		name, _ := mapEntry["name"].(string)
+		value, _ := mapEntry["value"].(string)
+		envMap[name] = value
+	}
+	conf, err := bs.LoadConfig()
+	if err != nil {
+		return err
+	}
+	err = conf.SaveBase(bs.BSConfigEntry{
+		Image: image,
+		Token: token,
+		Envs:  envMap,
+	})
+	if err != nil {
+		return err
+	}
+	pools, _ := entry["pools"].([]interface{})
+	for _, poolData := range pools {
+		poolMap, _ := poolData.(map[string]interface{})
+		if poolMap == nil {
+			continue
+		}
+		poolName, _ := poolMap["name"].(string)
+		if poolName == "" {
+			continue
+		}
+		envs, _ := poolMap["envs"].([]interface{})
+		envMap := map[string]string{}
+		for _, envEntry := range envs {
+			mapEntry, _ := envEntry.(map[string]interface{})
+			if mapEntry == nil {
+				continue
+			}
+			name, _ := mapEntry["name"].(string)
+			value, _ := mapEntry["value"].(string)
+			envMap[name] = value
+		}
+		if len(envMap) > 0 {
+			err = conf.Save(poolName, bs.BSConfigEntry{Envs: envMap})
+			if err != nil {
+				return err
 			}
 		}
 	}
