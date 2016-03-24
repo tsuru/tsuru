@@ -292,6 +292,13 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return err
 }
 
+// title: service instance status
+// path: /services/{service}/instances/{instance}/status
+// method: GET
+// responses:
+//   200: List services instances
+//   401: Unauthorized
+//   404: Service instance not found
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
@@ -388,12 +395,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(instances)
-	if err != nil {
-		return nil
-	}
-	w.Write(b)
-	return nil
+	return json.NewEncoder(w).Encode(instances)
 }
 
 func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
