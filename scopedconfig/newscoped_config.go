@@ -21,6 +21,7 @@ type NScopedConfig struct {
 	coll         string
 	AllowedPools []string
 	AllowEmpty   bool
+	ShallowMerge bool
 }
 
 type nScopedConfigEntry struct {
@@ -162,9 +163,11 @@ func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) erro
 	for i := range allPoolValues {
 		baseValue = reflect.New(mapType)
 		baseVal = baseValue.Interface()
-		err = defaultValues.Val.Unmarshal(baseVal)
-		if err != nil {
-			return err
+		if defaultValues.Val.Data != nil {
+			err = defaultValues.Val.Unmarshal(baseVal)
+			if err != nil {
+				return err
+			}
 		}
 		poolValue := reflect.New(mapType)
 		poolVal := poolValue.Interface()
@@ -327,6 +330,13 @@ func (n *NScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Valu
 			}
 			f1Value := base.Field(i)
 			f2Value := pool.Field(i)
+			if n.ShallowMerge {
+				if !n.isEmpty(f2Value) {
+					merged = true
+					f1Value.Set(f2Value)
+				}
+				continue
+			}
 			var fieldMerged bool
 			fieldMerged, err = n.mergeIntoInherited(f1Value, f2Value, setInherited)
 			if err != nil {
