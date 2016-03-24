@@ -258,9 +258,16 @@ func fieldInfo(f reflect.StructField) (k string, oe bool) {
 	return k, oe
 }
 
-func findField(v reflect.Value, n string) (reflect.Value, bool) {
+func findField(v reflect.Value, n string, ignoreCase bool) (reflect.Value, bool) {
 	t := v.Type()
 	l := v.NumField()
+
+	var lowerN string
+	caseInsensitiveMatch := -1
+	if ignoreCase {
+		lowerN = strings.ToLower(n)
+	}
+
 	// First try named fields.
 	for i := 0; i < l; i++ {
 		f := t.Field(i)
@@ -269,7 +276,14 @@ func findField(v reflect.Value, n string) (reflect.Value, bool) {
 			continue
 		} else if n == k {
 			return v.Field(i), true
+		} else if ignoreCase && lowerN == strings.ToLower(k) {
+			caseInsensitiveMatch = i
 		}
+	}
+
+	// If no exact match was found try case insensitive match.
+	if caseInsensitiveMatch != -1 {
+		return v.Field(caseInsensitiveMatch), true
 	}
 
 	// Then try anonymous (embedded) fields.
@@ -289,7 +303,7 @@ func findField(v reflect.Value, n string) (reflect.Value, bool) {
 		if fk != reflect.Struct {
 			continue
 		}
-		if ev, ok := findField(fv, n); ok {
+		if ev, ok := findField(fv, n, ignoreCase); ok {
 			return ev, true
 		}
 	}
