@@ -40,7 +40,7 @@ type BSConfigEntry struct {
 }
 
 func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
-	bsConf := scopedconfig.FindNScopedConfig(bsConfigCollection)
+	bsConf := scopedconfig.FindScopedConfig(bsConfigCollection)
 	var baseConf, poolConf BSConfigEntry
 	err := bsConf.LoadWithBase(poolName, &baseConf, &poolConf)
 	if err != nil {
@@ -79,7 +79,7 @@ func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
 	return envList, nil
 }
 
-func getToken(bsConf *scopedconfig.NScopedConfig, token string) (string, error) {
+func getToken(bsConf *scopedconfig.ScopedConfig, token string) (string, error) {
 	if token != "" {
 		return token, nil
 	}
@@ -105,12 +105,12 @@ func getToken(bsConf *scopedconfig.NScopedConfig, token string) (string, error) 
 }
 
 func SaveImage(digest string) error {
-	bsConf := scopedconfig.FindNScopedConfig(bsConfigCollection)
+	bsConf := scopedconfig.FindScopedConfig(bsConfigCollection)
 	return bsConf.SetField("", "image", digest)
 }
 
-func LoadConfig() (*scopedconfig.NScopedConfig, error) {
-	return scopedconfig.FindNScopedConfig(bsConfigCollection), nil
+func LoadConfig() (*scopedconfig.ScopedConfig, error) {
+	return scopedconfig.FindScopedConfig(bsConfigCollection), nil
 }
 
 func dockerClient(endpoint string) (*docker.Client, error) {
@@ -139,7 +139,7 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 	if err != nil {
 		return err
 	}
-	bsConf := scopedconfig.FindNScopedConfig(bsConfigCollection)
+	bsConf := scopedconfig.FindScopedConfig(bsConfigCollection)
 	var configEntry BSConfigEntry
 	err = bsConf.LoadBase(&configEntry)
 	if err != nil {

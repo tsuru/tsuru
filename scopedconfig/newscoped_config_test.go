@@ -362,7 +362,7 @@ func (s *S) TestNScopedConfigMulti(c *check.C) {
 		},
 	}
 	for i, t := range tests {
-		sc := FindNScopedConfig("testcoll")
+		sc := FindScopedConfig("testcoll")
 		err := sc.Save("", t.base)
 		c.Assert(err, check.IsNil)
 		err = sc.Save("p1", t.pool)
@@ -395,7 +395,7 @@ func (s *S) TestNScopedConfigMulti(c *check.C) {
 }
 
 func (s *S) TestNScopedConfigSaveMerge(c *check.C) {
-	sc := FindNScopedConfig("testcoll")
+	sc := FindScopedConfig("testcoll")
 	err := sc.SaveMerge("", TestDeepMerge{Envs: map[string]string{"A": "a1"}, A: TestStdAux{A: "a2"}})
 	c.Assert(err, check.IsNil)
 	var result1 TestDeepMerge
@@ -442,7 +442,7 @@ func (s *S) TestNScopedConfigSetFieldAtomic(c *check.C) {
 	var wg sync.WaitGroup
 	getTokenRoutine := func(wg *sync.WaitGroup, i int) {
 		defer wg.Done()
-		conf := FindNScopedConfig("x")
+		conf := FindScopedConfig("x")
 		isSet, err := conf.SetFieldAtomic("", "myvalue", fmt.Sprintf("val-%d", i))
 		c.Assert(err, check.IsNil)
 		values[i] = isSet
@@ -461,7 +461,7 @@ func (s *S) TestNScopedConfigSetFieldAtomic(c *check.C) {
 		}
 	}
 	c.Assert(valueSet, check.NotNil)
-	conf := FindNScopedConfig("x")
+	conf := FindScopedConfig("x")
 	var val struct{ Myvalue string }
 	err := conf.LoadBase(&val)
 	c.Assert(err, check.IsNil)
@@ -469,7 +469,7 @@ func (s *S) TestNScopedConfigSetFieldAtomic(c *check.C) {
 }
 
 func (s *S) TestNScopedConfigSetField(c *check.C) {
-	conf := FindNScopedConfig("x")
+	conf := FindScopedConfig("x")
 	var val1, val2 struct{ Myvalue string }
 	err := conf.SetField("", "myvalue", "v1")
 	c.Assert(err, check.IsNil)
@@ -484,7 +484,7 @@ func (s *S) TestNScopedConfigSetField(c *check.C) {
 }
 
 func (s *S) TestNScopedConfigRemove(c *check.C) {
-	conf := FindNScopedConfig("x")
+	conf := FindScopedConfig("x")
 	err := conf.Save("", TestStdAux{A: "x1", B: "y"})
 	c.Assert(err, check.IsNil)
 	err = conf.Save("p1", TestStdAux{A: "x2", B: "y"})

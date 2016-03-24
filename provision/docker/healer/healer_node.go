@@ -345,8 +345,8 @@ func (h *NodeHealer) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) e
 	return nil
 }
 
-func healerConfig() *scopedconfig.NScopedConfig {
-	conf := scopedconfig.FindNScopedConfig(nodeHealerConfigCollection)
+func healerConfig() *scopedconfig.ScopedConfig {
+	conf := scopedconfig.FindScopedConfig(nodeHealerConfigCollection)
 	conf.AllowEmpty = true
 	return conf
 }

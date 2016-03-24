@@ -69,7 +69,7 @@ func (s *S) TestDockerLogUpdate(c *check.C) {
 	for _, testData := range testCases {
 		err := testData.conf.Save(testData.pool)
 		c.Assert(err, check.DeepEquals, testData.err)
-		conf := scopedconfig.FindNScopedConfig(dockerLogConfigCollection)
+		conf := scopedconfig.FindScopedConfig(dockerLogConfigCollection)
 		var all map[string]DockerLogConfig
 		err = conf.LoadAll(&all)
 		c.Assert(err, check.IsNil)

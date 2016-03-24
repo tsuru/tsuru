@@ -26,8 +26,8 @@ type DockerLogConfig struct {
 	LogOpts map[string]string
 }
 
-func loadLogConfig() *scopedconfig.NScopedConfig {
-	conf := scopedconfig.FindNScopedConfig(dockerLogConfigCollection)
+func loadLogConfig() *scopedconfig.ScopedConfig {
+	conf := scopedconfig.FindScopedConfig(dockerLogConfigCollection)
 	conf.ShallowMerge = true
 	return conf
 }

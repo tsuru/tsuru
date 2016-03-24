@@ -17,23 +17,23 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type NScopedConfig struct {
+type ScopedConfig struct {
 	coll         string
 	AllowedPools []string
 	AllowEmpty   bool
 	ShallowMerge bool
 }
 
-type nScopedConfigEntry struct {
+type scopedConfigEntry struct {
 	Pool string `bson:"_id"`
 	Val  bson.Raw
 }
 
-func FindNScopedConfig(coll string) *NScopedConfig {
-	return &NScopedConfig{coll: fmt.Sprintf("scoped_%s", coll)}
+func FindScopedConfig(coll string) *ScopedConfig {
+	return &ScopedConfig{coll: fmt.Sprintf("scoped_%s", coll)}
 }
 
-func (n *NScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (bool, error) {
+func (n *ScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (bool, error) {
 	coll, err := n.collection()
 	if err != nil {
 		return false, err
@@ -53,7 +53,7 @@ func (n *NScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (bo
 	return false, err
 }
 
-func (n *NScopedConfig) SetField(pool, name string, value interface{}) error {
+func (n *ScopedConfig) SetField(pool, name string, value interface{}) error {
 	coll, err := n.collection()
 	if err != nil {
 		return err
@@ -64,11 +64,11 @@ func (n *NScopedConfig) SetField(pool, name string, value interface{}) error {
 	return err
 }
 
-func (n *NScopedConfig) SaveBase(val interface{}) error {
+func (n *ScopedConfig) SaveBase(val interface{}) error {
 	return n.Save("", val)
 }
 
-func (n *NScopedConfig) Save(pool string, val interface{}) error {
+func (n *ScopedConfig) Save(pool string, val interface{}) error {
 	if reflect.TypeOf(val).Kind() != reflect.Struct {
 		return errors.New("a struct type is required as value")
 	}
@@ -81,7 +81,7 @@ func (n *NScopedConfig) Save(pool string, val interface{}) error {
 	return err
 }
 
-func (n *NScopedConfig) SaveMerge(pool string, val interface{}) error {
+func (n *ScopedConfig) SaveMerge(pool string, val interface{}) error {
 	newValue := reflect.ValueOf(val)
 	if newValue.Type().Kind() != reflect.Struct {
 		return errors.New("received object must be a struct")
@@ -91,7 +91,7 @@ func (n *NScopedConfig) SaveMerge(pool string, val interface{}) error {
 		return err
 	}
 	defer coll.Close()
-	var poolValues nScopedConfigEntry
+	var poolValues scopedConfigEntry
 	previousValue := reflect.New(reflect.ValueOf(val).Type())
 	err = coll.FindId(pool).One(&poolValues)
 	if err == nil {
@@ -109,11 +109,11 @@ func (n *NScopedConfig) SaveMerge(pool string, val interface{}) error {
 	return n.Save(pool, previousValue.Elem().Interface())
 }
 
-func (n *NScopedConfig) LoadAll(allVal interface{}) error {
+func (n *ScopedConfig) LoadAll(allVal interface{}) error {
 	return n.LoadPools(nil, allVal)
 }
 
-func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) error {
+func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error {
 	allValValue := reflect.ValueOf(allVal)
 	var isPtr bool
 	if allValValue.Type().Kind() == reflect.Ptr {
@@ -131,8 +131,8 @@ func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) erro
 	if allValValue.IsNil() {
 		return fmt.Errorf("uninitialized map")
 	}
-	var defaultValues nScopedConfigEntry
-	var allPoolValues []nScopedConfigEntry
+	var defaultValues scopedConfigEntry
+	var allPoolValues []scopedConfigEntry
 	coll, err := n.collection()
 	if err != nil {
 		return err
@@ -184,15 +184,15 @@ func (n *NScopedConfig) LoadPools(filterPools []string, allVal interface{}) erro
 	return nil
 }
 
-func (n *NScopedConfig) Load(pool string, poolVal interface{}) error {
+func (n *ScopedConfig) Load(pool string, poolVal interface{}) error {
 	return n.LoadWithBase(pool, nil, poolVal)
 }
 
-func (n *NScopedConfig) LoadBase(poolVal interface{}) error {
+func (n *ScopedConfig) LoadBase(poolVal interface{}) error {
 	return n.LoadWithBase("", nil, poolVal)
 }
 
-func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal interface{}) error {
+func (n *ScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal interface{}) error {
 	poolValue := reflect.ValueOf(poolVal)
 	if poolValue.Type().Kind() != reflect.Ptr ||
 		poolValue.Elem().Type().Kind() != reflect.Struct {
@@ -216,7 +216,7 @@ func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal i
 		return err
 	}
 	defer coll.Close()
-	var defaultValues, poolValues nScopedConfigEntry
+	var defaultValues, poolValues scopedConfigEntry
 	err = coll.FindId("").One(&defaultValues)
 	if err == nil {
 		err = defaultValues.Val.Unmarshal(baseVal)
@@ -255,7 +255,7 @@ func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal i
 	return nil
 }
 
-func (n *NScopedConfig) Remove(pool string) error {
+func (n *ScopedConfig) Remove(pool string) error {
 	coll, err := n.collection()
 	if err != nil {
 		return err
@@ -264,7 +264,7 @@ func (n *NScopedConfig) Remove(pool string) error {
 	return coll.RemoveId(pool)
 }
 
-func (n *NScopedConfig) RemoveField(pool, name string) error {
+func (n *ScopedConfig) RemoveField(pool, name string) error {
 	coll, err := n.collection()
 	if err != nil {
 		return err
@@ -278,11 +278,11 @@ func (n *NScopedConfig) RemoveField(pool, name string) error {
 	return nil
 }
 
-func (n *NScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (merged bool, err error) {
+func (n *ScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (merged bool, err error) {
 	return n.mergeIntoInherited(base, pool, true)
 }
 
-func (n *NScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value, setInherited bool) (merged bool, err error) {
+func (n *ScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value, setInherited bool) (merged bool, err error) {
 	switch base.Kind() {
 	case reflect.Struct:
 		if _, isTime := base.Interface().(time.Time); isTime {
@@ -352,7 +352,7 @@ func (n *NScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Valu
 	return
 }
 
-func (n *NScopedConfig) isEmpty(valValue reflect.Value) bool {
+func (n *ScopedConfig) isEmpty(valValue reflect.Value) bool {
 	switch valValue.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
 		if valValue.IsNil() {
@@ -374,7 +374,7 @@ func (n *NScopedConfig) isEmpty(valValue reflect.Value) bool {
 	return reflect.DeepEqual(cmpValue.Interface(), zero)
 }
 
-func (n *NScopedConfig) collection() (*storage.Collection, error) {
+func (n *ScopedConfig) collection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
