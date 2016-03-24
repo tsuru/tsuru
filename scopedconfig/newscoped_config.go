@@ -192,30 +192,6 @@ func (n *NScopedConfig) LoadBase(poolVal interface{}) error {
 	return n.LoadWithBase("", nil, poolVal)
 }
 
-func (n *NScopedConfig) LoadNoMerge(pool string, poolVal interface{}) error {
-	poolValue := reflect.ValueOf(poolVal)
-	if poolValue.Type().Kind() != reflect.Ptr ||
-		poolValue.Elem().Type().Kind() != reflect.Struct {
-		return errors.New("received object must be a pointer to a struct")
-	}
-	coll, err := n.collection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	var poolValues nScopedConfigEntry
-	err = coll.FindId(pool).One(&poolValues)
-	if err == nil {
-		err = poolValues.Val.Unmarshal(poolVal)
-		if err != nil {
-			return err
-		}
-	} else if err != mgo.ErrNotFound {
-		return err
-	}
-	return nil
-}
-
 func (n *NScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal interface{}) error {
 	poolValue := reflect.ValueOf(poolVal)
 	if poolValue.Type().Kind() != reflect.Ptr ||

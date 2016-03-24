@@ -5,7 +5,10 @@
 package scopedconfig
 
 import (
+	"fmt"
 	"reflect"
+	"runtime"
+	"sync"
 	"time"
 
 	"gopkg.in/check.v1"
@@ -397,5 +400,87 @@ func (s *S) TestNScopedConfigSaveMerge(c *check.C) {
 	c.Assert(result4, check.DeepEquals, TestDeepMerge{
 		Envs: map[string]string{"A": ""},
 		A:    TestStdAux{A: "", B: ""},
+	})
+}
+
+func (s *S) TestNScopedConfigSetFieldAtomic(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	nRoutines := 50
+	values := make([]bool, nRoutines)
+	var wg sync.WaitGroup
+	getTokenRoutine := func(wg *sync.WaitGroup, i int) {
+		defer wg.Done()
+		conf := FindNScopedConfig("x")
+		isSet, err := conf.SetFieldAtomic("", "myvalue", fmt.Sprintf("val-%d", i))
+		c.Assert(err, check.IsNil)
+		values[i] = isSet
+	}
+	for i := 0; i < nRoutines; i++ {
+		wg.Add(1)
+		go getTokenRoutine(&wg, i)
+	}
+	wg.Wait()
+	var valueSet *int
+	for i := range values {
+		if values[i] {
+			c.Assert(valueSet, check.IsNil)
+			valueSet = new(int)
+			*valueSet = i
+		}
+	}
+	c.Assert(valueSet, check.NotNil)
+	conf := FindNScopedConfig("x")
+	var val struct{ Myvalue string }
+	err := conf.LoadBase(&val)
+	c.Assert(err, check.IsNil)
+	c.Assert(val.Myvalue, check.Equals, fmt.Sprintf("val-%d", *valueSet))
+}
+
+func (s *S) TestNScopedConfigSetField(c *check.C) {
+	conf := FindNScopedConfig("x")
+	var val1, val2 struct{ Myvalue string }
+	err := conf.SetField("", "myvalue", "v1")
+	c.Assert(err, check.IsNil)
+	err = conf.LoadBase(&val1)
+	c.Assert(err, check.IsNil)
+	c.Assert(val1.Myvalue, check.Equals, "v1")
+	err = conf.SetField("", "myvalue", "v2")
+	c.Assert(err, check.IsNil)
+	err = conf.LoadBase(&val2)
+	c.Assert(err, check.IsNil)
+	c.Assert(val2.Myvalue, check.Equals, "v2")
+}
+
+func (s *S) TestNScopedConfigRemove(c *check.C) {
+	conf := FindNScopedConfig("x")
+	err := conf.Save("", TestStdAux{A: "x1", B: "y"})
+	c.Assert(err, check.IsNil)
+	err = conf.Save("p1", TestStdAux{A: "x2", B: "y"})
+	c.Assert(err, check.IsNil)
+	err = conf.Save("p2", TestStdAux{A: "x3", B: "y"})
+	c.Assert(err, check.IsNil)
+	var all map[string]TestStdAux
+	err = conf.LoadAll(&all)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
+		"":   TestStdAux{A: "x1", B: "y"},
+		"p1": TestStdAux{A: "x2", B: "y"},
+		"p2": TestStdAux{A: "x3", B: "y"},
+	})
+	err = conf.Remove("p2")
+	c.Assert(err, check.IsNil)
+	err = conf.LoadAll(&all)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
+		"":   TestStdAux{A: "x1", B: "y"},
+		"p1": TestStdAux{A: "x2", B: "y"},
+	})
+	err = conf.RemoveField("p1", "a")
+	c.Assert(err, check.IsNil)
+	err = conf.LoadAll(&all)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
+		"":   TestStdAux{A: "x1", B: "y"},
+		"p1": TestStdAux{A: "x1", B: "y"},
 	})
 }
