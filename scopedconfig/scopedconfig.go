@@ -17,20 +17,30 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	defaultConfigName = ""
+)
+
 type ScopedConfig struct {
 	coll         string
+	name         string
 	AllowedPools []string
 	AllowEmpty   bool
 	ShallowMerge bool
 }
 
 type scopedConfigEntry struct {
-	Pool string `bson:"_id"`
+	Name string
+	Pool string
 	Val  bson.Raw
 }
 
 func FindScopedConfig(coll string) *ScopedConfig {
-	return &ScopedConfig{coll: fmt.Sprintf("scoped_%s", coll)}
+	return FindScopedConfigFor(coll, defaultConfigName)
+}
+
+func FindScopedConfigFor(coll, name string) *ScopedConfig {
+	return &ScopedConfig{coll: fmt.Sprintf("scoped_%s", coll), name: name}
 }
 
 func (n *ScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (bool, error) {
@@ -41,8 +51,9 @@ func (n *ScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (boo
 	defer coll.Close()
 	name = strings.ToLower(name)
 	_, err = coll.Upsert(bson.M{
-		"_id": pool,
-		"$or": []bson.M{{"val." + name: ""}, {"val." + name: bson.M{"$exists": false}}},
+		"name": n.name,
+		"pool": pool,
+		"$or":  []bson.M{{"val." + name: ""}, {"val." + name: bson.M{"$exists": false}}},
 	}, bson.M{"$set": bson.M{"val." + name: value}})
 	if err == nil {
 		return true, nil
@@ -60,7 +71,7 @@ func (n *ScopedConfig) SetField(pool, name string, value interface{}) error {
 	}
 	defer coll.Close()
 	name = strings.ToLower(name)
-	_, err = coll.UpsertId(pool, bson.M{"$set": bson.M{"val." + name: value}})
+	_, err = coll.Upsert(bson.M{"name": n.name, "pool": pool}, bson.M{"$set": bson.M{"val." + name: value}})
 	return err
 }
 
@@ -77,7 +88,7 @@ func (n *ScopedConfig) Save(pool string, val interface{}) error {
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.UpsertId(pool, bson.M{"_id": pool, "val": val})
+	_, err = coll.Upsert(bson.M{"name": n.name, "pool": pool}, bson.M{"name": n.name, "pool": pool, "val": val})
 	return err
 }
 
@@ -93,7 +104,7 @@ func (n *ScopedConfig) SaveMerge(pool string, val interface{}) error {
 	defer coll.Close()
 	var poolValues scopedConfigEntry
 	previousValue := reflect.New(reflect.ValueOf(val).Type())
-	err = coll.FindId(pool).One(&poolValues)
+	err = coll.Find(bson.M{"name": n.name, "pool": pool}).One(&poolValues)
 	if err == nil {
 		err = poolValues.Val.Unmarshal(previousValue.Interface())
 		if err != nil {
@@ -138,7 +149,7 @@ func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error
 		return err
 	}
 	defer coll.Close()
-	err = coll.FindId("").One(&defaultValues)
+	err = coll.Find(bson.M{"name": n.name, "pool": ""}).One(&defaultValues)
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -153,9 +164,9 @@ func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error
 	}
 	allValValue.SetMapIndex(reflect.ValueOf(""), baseValue.Elem())
 	if len(filterPools) == 0 {
-		err = coll.Find(bson.M{"_id": bson.M{"$ne": ""}}).All(&allPoolValues)
+		err = coll.Find(bson.M{"name": n.name, "pool": bson.M{"$ne": ""}}).All(&allPoolValues)
 	} else {
-		err = coll.Find(bson.M{"_id": bson.M{"$in": filterPools}}).All(&allPoolValues)
+		err = coll.Find(bson.M{"name": n.name, "pool": bson.M{"$in": filterPools}}).All(&allPoolValues)
 	}
 	if err != nil && err != mgo.ErrNotFound {
 		return err
@@ -217,7 +228,7 @@ func (n *ScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal in
 	}
 	defer coll.Close()
 	var defaultValues, poolValues scopedConfigEntry
-	err = coll.FindId("").One(&defaultValues)
+	err = coll.Find(bson.M{"name": n.name, "pool": ""}).One(&defaultValues)
 	if err == nil {
 		err = defaultValues.Val.Unmarshal(baseVal)
 		if err != nil {
@@ -238,7 +249,7 @@ func (n *ScopedConfig) LoadWithBase(pool string, baseVal interface{}, poolVal in
 			return err
 		}
 	}
-	err = coll.FindId(pool).One(&poolValues)
+	err = coll.Find(bson.M{"name": n.name, "pool": pool}).One(&poolValues)
 	if err == nil {
 		err = poolValues.Val.Unmarshal(poolVal)
 		if err != nil {
@@ -261,7 +272,7 @@ func (n *ScopedConfig) Remove(pool string) error {
 		return err
 	}
 	defer coll.Close()
-	return coll.RemoveId(pool)
+	return coll.Remove(bson.M{"name": n.name, "pool": pool})
 }
 
 func (n *ScopedConfig) RemoveField(pool, name string) error {
@@ -271,7 +282,7 @@ func (n *ScopedConfig) RemoveField(pool, name string) error {
 	}
 	defer coll.Close()
 	name = strings.ToLower(name)
-	err = coll.UpdateId(pool, bson.M{"$unset": bson.M{"val." + name: ""}})
+	err = coll.Update(bson.M{"name": n.name, "pool": pool}, bson.M{"$unset": bson.M{"val." + name: ""}})
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -379,5 +390,11 @@ func (n *ScopedConfig) collection() (*storage.Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return conn.Collection(n.coll), nil
+	coll := conn.Collection(n.coll)
+	err = coll.EnsureIndex(mgo.Index{Key: []string{"name", "pool"}, Unique: true})
+	if err != nil {
+		coll.Close()
+		return nil, err
+	}
+	return coll, nil
 }

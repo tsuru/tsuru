@@ -516,3 +516,31 @@ func (s *S) TestScopedConfigRemove(c *check.C) {
 		"p1": {A: "x1", B: "y"},
 	})
 }
+
+func (s *S) TestScopedConfigForName(c *check.C) {
+	conf := FindScopedConfigFor("x", "a")
+	err := conf.Save("", TestStdAux{A: "x1", B: "y"})
+	c.Assert(err, check.IsNil)
+	err = conf.Save("p1", TestStdAux{A: "x2", B: "y"})
+	c.Assert(err, check.IsNil)
+	conf = FindScopedConfigFor("x", "b")
+	err = conf.Save("", TestStdAux{A: "Z1", B: "Zy"})
+	c.Assert(err, check.IsNil)
+	err = conf.Save("p2", TestStdAux{A: "Z2", B: "Zy"})
+	c.Assert(err, check.IsNil)
+	conf = FindScopedConfigFor("x", "a")
+	var all map[string]TestStdAux
+	err = conf.LoadAll(&all)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
+		"":   {A: "x1", B: "y"},
+		"p1": {A: "x2", B: "y"},
+	})
+	conf = FindScopedConfigFor("x", "b")
+	err = conf.LoadAll(&all)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
+		"":   {A: "Z1", B: "Zy"},
+		"p2": {A: "Z2", B: "Zy"},
+	})
+}
