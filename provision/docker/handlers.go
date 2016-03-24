@@ -628,7 +628,7 @@ func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		return err
 	}
 	entries := map[string]bs.BSConfigEntry{}
-	err = bsConf.LoadPools(pools, entries)
+	err = bsConf.LoadPoolsMerge(pools, entries, false)
 	if err != nil {
 		return err
 	}

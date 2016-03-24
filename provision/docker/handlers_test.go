@@ -1352,7 +1352,7 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conf, check.DeepEquals, map[string]bs.BSConfigEntry{
 		"":      {Envs: map[string]string{"VAR1": "BASE1", "VAR2": "BASE2"}, Image: "myimg"},
-		"POOL1": {Envs: map[string]string{"VAR1": "BASE1", "VAR2": "BASE2", "VAR3": "VAL3", "VAR4": "VAL4"}, Image: "myimg"},
+		"POOL1": {Envs: map[string]string{"VAR3": "VAL3", "VAR4": "VAL4"}},
 	})
 }
 
@@ -1407,7 +1407,7 @@ func (s *HandlersSuite) TestBsConfigGetFilteringPools(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := map[string]bs.BSConfigEntry{}
-	err = bsConf.LoadPools([]string{"POOL1", "POOL3"}, expected)
+	err = bsConf.LoadPoolsMerge([]string{"POOL1", "POOL3"}, expected, false)
 	c.Assert(err, check.IsNil)
 	var result map[string]bs.BSConfigEntry
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
