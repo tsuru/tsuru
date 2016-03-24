@@ -495,24 +495,24 @@ func (s *S) TestNScopedConfigRemove(c *check.C) {
 	err = conf.LoadAll(&all)
 	c.Assert(err, check.IsNil)
 	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
-		"":   TestStdAux{A: "x1", B: "y"},
-		"p1": TestStdAux{A: "x2", B: "y"},
-		"p2": TestStdAux{A: "x3", B: "y"},
+		"":   {A: "x1", B: "y"},
+		"p1": {A: "x2", B: "y"},
+		"p2": {A: "x3", B: "y"},
 	})
 	err = conf.Remove("p2")
 	c.Assert(err, check.IsNil)
 	err = conf.LoadAll(&all)
 	c.Assert(err, check.IsNil)
 	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
-		"":   TestStdAux{A: "x1", B: "y"},
-		"p1": TestStdAux{A: "x2", B: "y"},
+		"":   {A: "x1", B: "y"},
+		"p1": {A: "x2", B: "y"},
 	})
 	err = conf.RemoveField("p1", "a")
 	c.Assert(err, check.IsNil)
 	err = conf.LoadAll(&all)
 	c.Assert(err, check.IsNil)
 	c.Assert(all, check.DeepEquals, map[string]TestStdAux{
-		"":   TestStdAux{A: "x1", B: "y"},
-		"p1": TestStdAux{A: "x1", B: "y"},
+		"":   {A: "x1", B: "y"},
+		"p1": {A: "x1", B: "y"},
 	})
 }
