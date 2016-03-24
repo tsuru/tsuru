@@ -772,6 +772,7 @@ func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	for poolName := range conf {
 		poolNames = append(poolNames, poolName)
 	}
+	sort.Strings(poolNames)
 	for _, poolName := range poolNames {
 		poolConf := conf[poolName]
 		t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
