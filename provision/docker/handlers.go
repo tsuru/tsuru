@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ajg/form"
+	"github.com/cezarsa/form"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api"
@@ -591,7 +591,9 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	delete(r.Form, "pool")
 	var entry bs.BSConfigEntry
-	err = form.DecodeValues(&entry, r.Form)
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&entry, r.Form)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -700,7 +702,9 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	delete(r.Form, "pool")
 	delete(r.Form, "restart")
 	var conf container.DockerLogConfig
-	err = form.DecodeValues(&conf, r.Form)
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&conf, r.Form)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -810,7 +814,9 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	var config healer.NodeHealerConfig
 	delete(r.Form, "pool")
-	err = form.DecodeValues(&config, r.Form)
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&config, r.Form)
 	if err != nil {
 		return err
 	}
