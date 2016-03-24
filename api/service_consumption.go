@@ -485,6 +485,13 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return service.Proxy(serviceInstance.Service(), path, w, r)
 }
 
+// title: grant access to service instance
+// path: /services/{service}/instances/permission/{instance}/{team}
+// method: PUT
+// responses:
+//   200: Access revoked
+//   401: Unauthorized
+//   404: Service instance not found
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
@@ -507,7 +514,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 }
 
 // title: revoke access to service instance
-// path: /services/{service}/instances/{instance}/status
+// path: /services/{service}/instances/permission/{instance}/{team}
 // method: DELETE
 // responses:
 //   200: Access revoked
