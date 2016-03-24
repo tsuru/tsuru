@@ -447,9 +447,8 @@ func (c *Container) Start(args *StartArgs) error {
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: ""}},
 		}
-		logConf := DockerLog{}
 		pool := args.App.GetPool()
-		driver, opts, logErr := logConf.LogOpts(pool)
+		driver, opts, logErr := LogOpts(pool)
 		if logErr != nil {
 			return logErr
 		}

@@ -5,114 +5,81 @@
 package container
 
 import (
-	"sort"
-
 	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestDockerLogUpdate(c *check.C) {
 	testCases := []struct {
-		conf    scopedconfig.ScopedConfig
-		entries []scopedconfig.Entry
-		pools   []scopedconfig.PoolEntry
-		err     error
+		pool   string
+		conf   DockerLogConfig
+		result map[string]DockerLogConfig
+		err    error
 	}{
 		{
-			scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{
-					{Name: "log-driver", Value: "fluentd"},
-					{Name: "fluentd-address", Value: "localhost:24224"},
-				},
-			}, []scopedconfig.Entry{
-				{Name: "log-driver", Value: "fluentd"},
-				{Name: "fluentd-address", Value: "localhost:24224"},
-			}, []scopedconfig.PoolEntry{}, nil,
+			"",
+			DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
+			map[string]DockerLogConfig{
+				"": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
+			},
+			nil,
 		},
 		{
-			scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{
-					{Name: "log-driver", Value: "bs"},
-					{Name: "tag", Value: "ahoy"},
-				},
-			}, []scopedconfig.Entry{
-				{Name: "log-driver", Value: "fluentd"},
-				{Name: "fluentd-address", Value: "localhost:24224"},
-			}, []scopedconfig.PoolEntry{}, ErrLogDriverBSNoParams,
+			"",
+			DockerLogConfig{Driver: "bs", LogOpts: map[string]string{"tag": "ahoy"}},
+			map[string]DockerLogConfig{
+				"": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
+			},
+			ErrLogDriverBSNoParams,
 		},
 		{
-			scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{
-					{Name: "tag", Value: "ahoy"},
-				},
-			}, []scopedconfig.Entry{
-				{Name: "log-driver", Value: "fluentd"},
-				{Name: "fluentd-address", Value: "localhost:24224"},
-			}, []scopedconfig.PoolEntry{}, ErrLogDriverMandatory,
+			"",
+			DockerLogConfig{Driver: "", LogOpts: map[string]string{"tag": "ahoy"}},
+			map[string]DockerLogConfig{
+				"": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
+			},
+			ErrLogDriverMandatory,
 		},
 		{
-			scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{
-					{Name: "log-driver", Value: "bs"},
-				},
-			}, []scopedconfig.Entry{
-				{Name: "log-driver", Value: "bs"},
-			}, []scopedconfig.PoolEntry{}, nil,
+			"",
+			DockerLogConfig{Driver: "bs", LogOpts: nil},
+			map[string]DockerLogConfig{
+				"": {Driver: "bs", LogOpts: map[string]string{}},
+			},
+			nil,
 		},
 		{
-			scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{
-					{Name: "log-driver", Value: "fluentd"},
-					{Name: "tag", Value: "x"},
-				},
-			}, []scopedconfig.Entry{
-				{Name: "log-driver", Value: "fluentd"},
-				{Name: "tag", Value: "x"},
-			}, []scopedconfig.PoolEntry{}, nil,
+			"",
+			DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}},
+			map[string]DockerLogConfig{
+				"": {Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}},
+			},
+			nil,
 		},
 		{
-			scopedconfig.ScopedConfig{
-				Pools: []scopedconfig.PoolEntry{
-					{Name: "p1", Envs: []scopedconfig.Entry{
-						{Name: "log-driver", Value: "journald"},
-						{Name: "tag", Value: "y"},
-					}},
-				},
-			}, []scopedconfig.Entry{
-				{Name: "log-driver", Value: "fluentd"},
-				{Name: "tag", Value: "x"},
-			}, []scopedconfig.PoolEntry{
-				{Name: "p1", Envs: []scopedconfig.Entry{
-					{Name: "log-driver", Value: "journald"},
-					{Name: "tag", Value: "y"},
-				}},
-			}, nil,
+			"p1",
+			DockerLogConfig{Driver: "journald", LogOpts: map[string]string{"tag": "y"}},
+			map[string]DockerLogConfig{
+				"":   {Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}},
+				"p1": {Driver: "journald", LogOpts: map[string]string{"tag": "y"}},
+			},
+			nil,
 		},
 	}
-	logConf := DockerLog{}
 	for _, testData := range testCases {
-		err := logConf.Update(&testData.conf)
+		err := testData.conf.Save(testData.pool)
 		c.Assert(err, check.DeepEquals, testData.err)
-		conf, err := scopedconfig.FindScopedConfig(dockerLogConfigEntry)
+		conf := scopedconfig.FindNScopedConfig(dockerLogConfigCollection)
+		var all map[string]DockerLogConfig
+		err = conf.LoadAll(&all)
 		c.Assert(err, check.IsNil)
-		sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
-		sort.Sort(scopedconfig.ConfigEntryList(testData.entries))
-		sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
-		sort.Sort(scopedconfig.ConfigPoolEntryList(testData.pools))
-		for i := range conf.Pools {
-			sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[i].Envs))
-		}
-		for i := range testData.pools {
-			sort.Sort(scopedconfig.ConfigEntryList(testData.pools[i].Envs))
-		}
-		c.Assert(conf.Envs, check.DeepEquals, testData.entries)
-		c.Assert(conf.Pools, check.DeepEquals, testData.pools)
+		c.Assert(all, check.DeepEquals, testData.result)
 	}
-	driver, opts, err := logConf.LogOpts("p1")
+	driver, opts, err := LogOpts("p1")
 	c.Assert(err, check.IsNil)
 	c.Assert(driver, check.Equals, "journald")
 	c.Assert(opts, check.DeepEquals, map[string]string{"tag": "y"})
-	driver, opts, err = logConf.LogOpts("other")
+	driver, opts, err = LogOpts("other")
 	c.Assert(err, check.IsNil)
 	c.Assert(driver, check.Equals, "fluentd")
 	c.Assert(opts, check.DeepEquals, map[string]string{"tag": "x"})

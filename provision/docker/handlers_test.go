@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -40,7 +39,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/scopedconfig"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -1620,127 +1618,83 @@ func (s *HandlersSuite) TestAutoScaleDeleteRuleNotFound(c *check.C) {
 }
 
 func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
-	recorder := httptest.NewRecorder()
-	json := `{
-		"restart": false,
-		"config": {
-			"envs": [
-				{"name": "log-driver", "value": "awslogs"},
-				{"name": "awslogs-region", "value": "sa-east-1"}
-			],
-			"pools": [
-				{
-					"name": "POOL1",
-					"envs": [
-						{"name": "log-driver", "value": "bs"}
-					]
-				},
-				{
-					"name": "POOL2",
-					"envs": [
-						{"name": "log-driver", "value": "fluentd"},
-						{"name": "fluentd-address", "value": "localhost:2222"}
-					]
-				}
-			]
-		}
-	}`
-	body := bytes.NewBufferString(json)
-	request, err := http.NewRequest("POST", "/docker/logs", body)
+	values1 := url.Values{
+		"Driver":                 []string{"awslogs"},
+		"LogOpts.awslogs-region": []string{"sa-east1"},
+	}
+	values2 := url.Values{
+		"pool":   []string{"POOL1"},
+		"Driver": []string{"bs"},
+	}
+	values3 := url.Values{
+		"pool":                    []string{"POOL2"},
+		"Driver":                  []string{"fluentd"},
+		"LogOpts.fluentd-address": []string{"localhost:2222"},
+	}
+	doReq := func(val url.Values) {
+		reader := strings.NewReader(val.Encode())
+		recorder := httptest.NewRecorder()
+		request, err := http.NewRequest("POST", "/docker/logs", reader)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		server := api.RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	}
+	doReq(values1)
+	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := scopedconfig.FindScopedConfig("logs")
+	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
+		"": {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
+	})
+	doReq(values2)
+	entries, err = container.LogLoadAll()
 	c.Assert(err, check.IsNil)
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
-	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
-		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}}},
-		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
+		"":      {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
+		"POOL1": {Driver: "bs", LogOpts: map[string]string{}},
+	})
+	doReq(values3)
+	entries, err = container.LogLoadAll()
+	c.Assert(err, check.IsNil)
+	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
+		"":      {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
+		"POOL1": {Driver: "bs", LogOpts: map[string]string{}},
+		"POOL2": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:2222"}},
 	})
 }
 
 func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C) {
+	values := url.Values{
+		"restart":                []string{"true"},
+		"Driver":                 []string{"awslogs"},
+		"LogOpts.awslogs-region": []string{"sa-east1"},
+	}
 	recorder := httptest.NewRecorder()
-	json := `{
-		"restart": true,
-		"config": {
-			"envs": [
-				{"name": "log-driver", "value": "awslogs"},
-				{"name": "awslogs-region", "value": "sa-east-1"}
-			],
-			"pools": [
-				{
-					"name": "POOL1",
-					"envs": [
-						{"name": "log-driver", "value": "bs"}
-					]
-				},
-				{
-					"name": "POOL2",
-					"envs": [
-						{"name": "log-driver", "value": "fluentd"},
-						{"name": "fluentd-address", "value": "localhost:2222"}
-					]
-				}
-			]
-		}
-	}`
-	body := bytes.NewBufferString(json)
-	request, err := http.NewRequest("POST", "/docker/logs", body)
+	reader := strings.NewReader(values.Encode())
+	request, err := http.NewRequest("POST", "/docker/logs", reader)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	conf, err := scopedconfig.FindScopedConfig("logs")
+	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{{Name: "awslogs-region", Value: "sa-east-1"}, {Name: "log-driver", Value: "awslogs"}})
-	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
-		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}}},
-		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
+		"": {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
 	})
 }
 
 func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
-	recorder := httptest.NewRecorder()
-	json := `{
-		"restart": true,
-		"config": {
-			"pools": [
-				{
-					"name": "POOL1",
-					"envs": [
-						{"name": "log-driver", "value": "bs"}
-					]
-				},
-				{
-					"name": "POOL2",
-					"envs": [
-						{"name": "log-driver", "value": "fluentd"},
-						{"name": "fluentd-address", "value": "localhost:2222"}
-					]
-				}
-			]
-		}
-	}`
-	appPools := [][]string{{"app1", "POOL1"}, {"app2", "POOL2"}, {"app3", "POOL3"}}
+	appPools := [][]string{{"app1", "POOL1"}, {"app2", "POOL2"}, {"app3", "POOL2"}}
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
-		err := provision.AddPool(opts)
-		c.Assert(err, check.IsNil)
-		err = s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
+		provision.AddPool(opts)
+		err := s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
 		appStruct := &app.App{
@@ -1751,25 +1705,30 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 		err = s.storage.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
 	}
-	body := bytes.NewBufferString(json)
-	request, err := http.NewRequest("POST", "/docker/logs", body)
+	values := url.Values{
+		"pool":                   []string{"POOL2"},
+		"restart":                []string{"true"},
+		"Driver":                 []string{"awslogs"},
+		"LogOpts.awslogs-region": []string{"sa-east1"},
+	}
+	recorder := httptest.NewRecorder()
+	reader := strings.NewReader(values.Encode())
+	request, err := http.NewRequest("POST", "/docker/logs", reader)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	responseParts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(responseParts, check.HasLen, 15)
 	c.Assert(responseParts[0], check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}")
-	c.Assert(responseParts[1], check.Equals, "{\"Message\":\"Restarting 2 applications: [app1, app2]\\n\"}")
-	conf, err := scopedconfig.FindScopedConfig("logs")
+	c.Assert(responseParts[1], check.Equals, "{\"Message\":\"Restarting 2 applications: [app2, app3]\\n\"}")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Pools, check.HasLen, 2)
-	sort.Sort(scopedconfig.ConfigPoolEntryList(conf.Pools))
-	sort.Sort(scopedconfig.ConfigEntryList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
-		{Name: "POOL1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}}},
-		{Name: "POOL2", Envs: []scopedconfig.Entry{{Name: "fluentd-address", Value: "localhost:2222"}, {Name: "log-driver", Value: "fluentd"}}},
+	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
+		"":      {},
+		"POOL2": {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
 	})
 }
 
@@ -1781,28 +1740,27 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := &scopedconfig.ScopedConfig{}
-	var conf scopedconfig.ScopedConfig
+	var conf map[string]container.DockerLogConfig
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Envs, check.DeepEquals, expected.Envs)
-	c.Assert(conf.Pools, check.DeepEquals, expected.Pools)
-	logConf := container.DockerLog{}
-	logConf.Update(&scopedconfig.ScopedConfig{
-		Pools: []scopedconfig.PoolEntry{
-			{Name: "p1", Envs: []scopedconfig.Entry{
-				{Name: "log-driver", Value: "syslog"},
-			}},
-		},
+	c.Assert(conf, check.DeepEquals, map[string]container.DockerLogConfig{
+		"": {},
 	})
+	newConf := container.DockerLogConfig{Driver: "syslog"}
+	err = newConf.Save("p1")
+	c.Assert(err, check.IsNil)
+	request, err = http.NewRequest("GET", "/docker/logs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	var conf2 map[string]container.DockerLogConfig
+	err = json.Unmarshal(recorder.Body.Bytes(), &conf2)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf.Envs, check.DeepEquals, []scopedconfig.Entry{})
-	c.Assert(conf.Pools, check.DeepEquals, []scopedconfig.PoolEntry{
-		{Name: "p1", Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "syslog"}}},
+	c.Assert(conf2, check.DeepEquals, map[string]container.DockerLogConfig{
+		"":   {},
+		"p1": {Driver: "syslog", LogOpts: map[string]string{}},
 	})
 }
 

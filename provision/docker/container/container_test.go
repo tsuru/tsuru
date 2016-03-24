@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -845,45 +844,23 @@ func (s *S) TestContainerStartCustomLog(c *check.C) {
 	testCases := []struct {
 		name string
 		opts map[string]string
-		conf scopedconfig.ScopedConfig
 	}{
 		{"fluentd", map[string]string{
 			"fluentd-address": "localhost:24224",
-		}, scopedconfig.ScopedConfig{
-			Envs: []scopedconfig.Entry{
-				{Name: "log-driver", Value: "fluentd"},
-				{Name: "fluentd-address", Value: "localhost:24224"},
-			},
 		}},
 		{"syslog", map[string]string{
 			"syslog-address": "udp://localhost:1514",
-		}, scopedconfig.ScopedConfig{
-			Envs: []scopedconfig.Entry{
-				{Name: "log-driver", Value: "bs"},
-			},
 		}},
 		{"fluentd", map[string]string{
 			"fluentd-address": "somewhere:24224",
 			"tag":             "x",
-		}, scopedconfig.ScopedConfig{
-			Envs: []scopedconfig.Entry{
-				{Name: "log-driver", Value: "syslog"},
-				{Name: "tag", Value: "y"},
-			},
-			Pools: []scopedconfig.PoolEntry{
-				{Name: "mypool", Envs: []scopedconfig.Entry{
-					{Name: "log-driver", Value: "fluentd"},
-					{Name: "fluentd-address", Value: "somewhere:24224"},
-					{Name: "tag", Value: "x"},
-				}},
-			},
 		}},
 	}
-	logConf := DockerLog{}
 	for _, testData := range testCases {
 		cont, err := s.newContainer(newContainerOpts{}, nil)
 		c.Assert(err, check.IsNil)
-		err = logConf.Update(&testData.conf)
+		conf := DockerLogConfig{Driver: testData.name, LogOpts: testData.opts}
+		err = conf.Save(app.Pool)
 		c.Assert(err, check.IsNil)
 		err = cont.Start(&StartArgs{Provisioner: s.p, App: app})
 		c.Assert(err, check.IsNil)

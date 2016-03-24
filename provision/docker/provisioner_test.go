@@ -36,7 +36,6 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
-	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -2649,18 +2648,15 @@ func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	fakeApp.Pool = "mypool"
-	logConf := container.DockerLog{}
-	err := logConf.Update(&scopedconfig.ScopedConfig{
-		Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "x"}},
-	})
+	logConf := container.DockerLogConfig{Driver: "x"}
+	err := logConf.Save("")
 	c.Assert(err, check.IsNil)
 	enabled, msg, err := s.p.LogsEnabled(fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(enabled, check.Equals, false)
 	c.Assert(msg, check.Equals, "Logs not available through tsuru. Enabled log driver is \"x\".")
-	err = logConf.Update(&scopedconfig.ScopedConfig{
-		Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}},
-	})
+	logConf = container.DockerLogConfig{Driver: "bs"}
+	err = logConf.Save("")
 	c.Assert(err, check.IsNil)
 	enabled, msg, err = s.p.LogsEnabled(fakeApp)
 	c.Assert(err, check.IsNil)

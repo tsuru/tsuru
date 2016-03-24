@@ -1173,13 +1173,12 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		logDocKeyFormat     = "LOG_%s_DOC"
 		tsuruLogBackendName = "tsuru"
 	)
-	logConf := container.DockerLog{}
-	isBS, err := logConf.IsBS(app.GetPool())
+	isBS, err := container.LogIsBS(app.GetPool())
 	if err != nil {
 		return false, "", err
 	}
 	if !isBS {
-		driver, _, _ := logConf.LogOpts(app.GetPool())
+		driver, _, _ := container.LogOpts(app.GetPool())
 		msg := fmt.Sprintf("Logs not available through tsuru. Enabled log driver is %q.", driver)
 		return false, msg, nil
 	}

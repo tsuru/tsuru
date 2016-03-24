@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sort"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/scopedconfig"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
 )
 
@@ -619,17 +619,15 @@ func (s *S) TestDockerLogUpdateRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			err := req.ParseForm()
 			c.Assert(err, check.IsNil)
-			expected := scopedconfig.ScopedConfig{
-				Envs: []scopedconfig.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
-			}
-			var data logsSetData
-			err = json.Unmarshal(body, &data)
-			c.Assert(err, check.IsNil)
-			sort.Sort(scopedconfig.ConfigEntryList(data.Config.Envs))
-			c.Assert(data.Config, check.DeepEquals, expected)
+			c.Assert(req.Form, check.DeepEquals, url.Values{
+				"restart":   []string{"false"},
+				"pool":      []string{""},
+				"Driver":    []string{"x"},
+				"LogOpts.a": []string{"1"},
+				"LogOpts.b": []string{"2"},
+			})
 			return req.URL.Path == "/1.0/docker/logs" && req.Method == "POST"
 		},
 	}
@@ -654,22 +652,15 @@ func (s *S) TestDockerLogUpdateForPoolRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: string(result), Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			err := req.ParseForm()
 			c.Assert(err, check.IsNil)
-			expected := scopedconfig.ScopedConfig{
-				Pools: []scopedconfig.PoolEntry{
-					{
-						Name: "p1",
-						Envs: []scopedconfig.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
-					},
-				},
-			}
-			var data logsSetData
-			err = json.Unmarshal(body, &data)
-			c.Assert(err, check.IsNil)
-			sort.Sort(scopedconfig.ConfigEntryList(data.Config.Pools[0].Envs))
-			c.Assert(data.Config, check.DeepEquals, expected)
+			c.Assert(req.Form, check.DeepEquals, url.Values{
+				"restart":   []string{"false"},
+				"pool":      []string{"p1"},
+				"Driver":    []string{"x"},
+				"LogOpts.a": []string{"1"},
+				"LogOpts.b": []string{"2"},
+			})
 			return req.URL.Path == "/1.0/docker/logs" && req.Method == "POST"
 		},
 	}
@@ -689,18 +680,10 @@ func (s *S) TestDockerLogInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := scopedconfig.ScopedConfig{
-		Envs: []scopedconfig.Entry{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}, {Name: "log-driver", Value: "x"}},
-		Pools: []scopedconfig.PoolEntry{
-			{
-				Name: "p1",
-				Envs: []scopedconfig.Entry{{Name: "a", Value: "9"}, {Name: "log-driver", Value: "x"}},
-			},
-			{
-				Name: "p2",
-				Envs: []scopedconfig.Entry{{Name: "log-driver", Value: "bs"}},
-			},
-		},
+	conf := map[string]container.DockerLogConfig{
+		"":   {Driver: "x", LogOpts: map[string]string{"a": "1", "b": "2"}},
+		"p1": {Driver: "x", LogOpts: map[string]string{"a": "9"}},
+		"p2": {Driver: "bs"},
 	}
 	result, _ := json.Marshal(conf)
 	trans := &cmdtest.ConditionalTransport{

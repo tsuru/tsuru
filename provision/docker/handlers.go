@@ -35,7 +35,6 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/mgo.v2"
 )
 
@@ -672,44 +671,51 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	conf, err := scopedconfig.FindScopedConfig("logs")
+	configEntries, err := container.LogLoadAll()
 	if err != nil {
 		return err
 	}
-	conf.FilterPools(pools)
-	return json.NewEncoder(w).Encode(conf)
-}
-
-type logsSetData struct {
-	Config  scopedconfig.ScopedConfig
-	Restart bool
+	if len(pools) == 0 {
+		return json.NewEncoder(w).Encode(configEntries)
+	}
+	newMap := map[string]container.DockerLogConfig{}
+	for _, p := range pools {
+		if entry, ok := configEntries[p]; ok {
+			newMap[p] = entry
+		}
+	}
+	return json.NewEncoder(w).Encode(newMap)
 }
 
 func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var requestData logsSetData
-	err := json.NewDecoder(r.Body).Decode(&requestData)
+	err := r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("unable to parse body as json: %s", err),
+			Message: fmt.Sprintf("unable to parse form values: %s", err),
 		}
 	}
-	requestConfig := requestData.Config
-	if len(requestConfig.Envs) > 0 && !permission.Check(t, permission.PermPoolUpdateLogs) {
+	pool := r.Form.Get("pool")
+	restart, _ := strconv.ParseBool(r.Form.Get("restart"))
+	delete(r.Form, "pool")
+	delete(r.Form, "restart")
+	var conf container.DockerLogConfig
+	err = form.DecodeValues(&conf, r.Form)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("unable to parse fields in docker log config: %s", err),
+		}
+	}
+	if pool == "" && !permission.Check(t, permission.PermPoolUpdateLogs) {
 		return permission.ErrUnauthorized
 	}
-	updateAll := len(requestConfig.Envs) > 0
-	var receivedPools []string
-	for _, poolEnv := range requestConfig.Pools {
-		receivedPools = append(receivedPools, poolEnv.Name)
-		hasPermission := permission.Check(t, permission.PermPoolUpdateLogs,
-			permission.Context(permission.CtxPool, poolEnv.Name))
-		if !hasPermission {
-			return permission.ErrUnauthorized
-		}
+	hasPermission := permission.Check(t, permission.PermPoolUpdateLogs,
+		permission.Context(permission.CtxPool, pool))
+	if !hasPermission {
+		return permission.ErrUnauthorized
 	}
-	dockerLog := container.DockerLog{}
-	err = dockerLog.Update(&requestConfig)
+	err = conf.Save(pool)
 	if err != nil {
 		return err
 	}
@@ -717,10 +723,10 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	fmt.Fprintln(writer, "Log config successfully updated.")
-	if requestData.Restart {
+	if restart {
 		filter := &app.Filter{}
-		if !updateAll {
-			filter.Pools = receivedPools
+		if pool != "" {
+			filter.Pools = []string{pool}
 		}
 		tryRestartAppsByFilter(filter, writer)
 	}
