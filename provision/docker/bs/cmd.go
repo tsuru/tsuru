@@ -123,6 +123,7 @@ func (c *InfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	for envName, envValue := range defaultEntry.Envs {
 		t.AddRow(cmd.Row([]string{envName, fmt.Sprintf("%v", envValue)}))
 	}
+	t.Sort()
 	context.Stdout.Write(t.Bytes())
 	poolNames := make([]string, 0, len(poolEntries))
 	for poolName := range poolEntries {
@@ -136,6 +137,7 @@ func (c *InfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		for envName, envValue := range entry.Envs {
 			t.AddRow(cmd.Row([]string{envName, fmt.Sprintf("%v", envValue)}))
 		}
+		t.Sort()
 		context.Stdout.Write(t.Bytes())
 	}
 	return nil
