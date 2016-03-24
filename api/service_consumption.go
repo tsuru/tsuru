@@ -292,25 +292,6 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return err
 }
 
-func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	serviceName := r.URL.Query().Get(":service")
-	instanceName := r.URL.Query().Get(":instance")
-	permissionValue := serviceName + "/" + instanceName
-	instance, err := getServiceInstanceOrError(serviceName, instanceName)
-	if err != nil {
-		return err
-	}
-	allowed := permission.Check(t, permission.PermServiceInstanceRead,
-		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxServiceInstance, permissionValue),
-		)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	return json.NewEncoder(w).Encode(instance)
-}
-
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
@@ -341,7 +322,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-type ServiceInstanceInfo struct {
+type serviceInstanceInfo struct {
 	Apps            []string
 	Teams           []string
 	TeamOwner       string
@@ -351,7 +332,15 @@ type ServiceInstanceInfo struct {
 	CustomInfo      map[string]string
 }
 
-func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+// title: service instance info
+// path: /services/{service}/instances/{instance}
+// method: GET
+// produce: application/json
+// responses:
+//   200: List services instances
+//   401: Unauthorized
+//   404: Service instance not found
+func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
@@ -376,7 +365,7 @@ func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
-	sInfo := ServiceInstanceInfo{
+	sInfo := serviceInstanceInfo{
 		Apps:            serviceInstance.Apps,
 		Teams:           serviceInstance.Teams,
 		TeamOwner:       serviceInstance.TeamOwner,
@@ -385,12 +374,7 @@ func serviceInstanceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		PlanDescription: plan.Description,
 		CustomInfo:      info,
 	}
-	b, err := json.Marshal(sInfo)
-	if err != nil {
-		return nil
-	}
-	w.Write(b)
-	return nil
+	return json.NewEncoder(w).Encode(sInfo)
 }
 
 func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {

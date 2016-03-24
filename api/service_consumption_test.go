@@ -40,6 +40,7 @@ type ConsumptionSuite struct {
 	pool        string
 	service     *service.Service
 	ts          *httptest.Server
+	m           http.Handler
 }
 
 var _ = check.Suite(&ConsumptionSuite{})
@@ -78,6 +79,7 @@ func (s *ConsumptionSuite) SetUpTest(c *check.C) {
 		Endpoint: map[string]string{"production": s.ts.URL},
 	}
 	s.service.Create()
+	s.m = RunServer(true)
 }
 
 func (s *ConsumptionSuite) TearDownTest(c *check.C) {
@@ -1166,10 +1168,11 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbidden
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-func makeRequestToInfoHandler(service string, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/%s/instances/%s/info/?:instance=%s&:service=%s", service, instance, instance, service)
+func makeRequestToInfoHandler(service, instance, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+	url := fmt.Sprintf("/services/%s/instances/%s", service, instance)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token)
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
@@ -1201,13 +1204,13 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler2(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
-	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
-	err = serviceInstanceInfo(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	var instances ServiceInstanceInfo
+	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
+	s.m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var instances serviceInstanceInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
-	expected := ServiceInstanceInfo{
+	expected := serviceInstanceInfo{
 		Apps:      si.Apps,
 		Teams:     si.Teams,
 		TeamOwner: si.TeamOwner,
@@ -1247,13 +1250,13 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
-	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
-	err = serviceInstanceInfo(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	var instances ServiceInstanceInfo
+	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
+	s.m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var instances serviceInstanceInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
-	expected := ServiceInstanceInfo{
+	expected := serviceInstanceInfo{
 		Apps:            si.Apps,
 		Teams:           si.Teams,
 		TeamOwner:       si.TeamOwner,
@@ -1272,9 +1275,9 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *check.C) {
-	recorder, request := makeRequestToInfoHandler("mongodb", "inexistent-instance", c)
-	err := serviceInstanceInfo(recorder, request, s.token)
-	c.Assert(err, check.ErrorMatches, "^service instance not found$")
+	recorder, request := makeRequestToInfoHandler("mongodb", "inexistent-instance", s.token.GetValue(), c)
+	s.m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnForbiddenWhenUserDontHaveAccess(c *check.C) {
@@ -1286,12 +1289,9 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnForbiddenWh
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
-	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", c)
-	err = serviceInstanceInfo(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
+	s.m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
@@ -1380,53 +1380,6 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerReturns404WhenTheServiceDoesNot
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 	c.Assert(e, check.ErrorMatches, "^Service not found$")
-}
-
-func (s *ConsumptionSuite) TestGetServiceInstance(c *check.C) {
-	instance := service.ServiceInstance{
-		Name:        "mongo-1",
-		ServiceName: "mongodb",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{"myapp"},
-	}
-	s.conn.ServiceInstances().Insert(instance)
-	defer s.conn.ServiceInstances().Remove(instance)
-	request, _ := http.NewRequest("GET", "/services/mongodb/instances/mongo-1?:service=mongodb&:instance=mongo-1", nil)
-	recorder := httptest.NewRecorder()
-	err := serviceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	var got service.ServiceInstance
-	err = json.NewDecoder(recorder.Body).Decode(&got)
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.DeepEquals, instance)
-}
-
-func (s *ConsumptionSuite) TestGetServiceInstanceNotFound(c *check.C) {
-	request, _ := http.NewRequest("GET", "/services/mongodb/instances/mongo-1?:service=mongodb&:instance=mongo-1", nil)
-	recorder := httptest.NewRecorder()
-	err := serviceInstance(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-	c.Assert(e.Message, check.Equals, service.ErrServiceInstanceNotFound.Error())
-}
-
-func (s *ConsumptionSuite) TestGetServiceInstanceForbidden(c *check.C) {
-	instance := service.ServiceInstance{
-		Name:        "mongo-1",
-		ServiceName: "mongodb",
-		Apps:        []string{"myapp"},
-	}
-	s.conn.ServiceInstances().Insert(instance)
-	defer s.conn.ServiceInstances().Remove(instance)
-	request, _ := http.NewRequest("GET", "/services/mongodb/instances/mongo-1?:service=mongodb&:instance=mongo-1", nil)
-	recorder := httptest.NewRecorder()
-	err := serviceInstance(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ConsumptionSuite) makeRequestToGetDocHandler(name string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
