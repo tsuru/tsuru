@@ -843,10 +843,6 @@ func (app *App) Restart(process string, w io.Writer) error {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
 	}
-	_, err = app.RebuildRoutes()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

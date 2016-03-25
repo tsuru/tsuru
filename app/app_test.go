@@ -3261,7 +3261,6 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-
 	var b bytes.Buffer
 	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
@@ -3270,7 +3269,6 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
 	}
-
 	err = a.Restart("web", &b)
 	c.Assert(err, check.IsNil)
 	routes, err := routertest.FakeRouter.Routes(a.Name)
