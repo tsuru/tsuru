@@ -7,6 +7,7 @@ package provisiontest
 import (
 	"errors"
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"net/url"
 	"sync"
@@ -15,8 +16,10 @@ import (
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 )
 
@@ -32,6 +35,7 @@ func init() {
 type FakeApp struct {
 	name           string
 	cname          []string
+	Ip             string
 	platform       string
 	units          []provision.Unit
 	logs           []string
@@ -267,7 +271,7 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 }
 
 func (a *FakeApp) GetIp() string {
-	return ""
+	return a.Ip
 }
 
 func (a *FakeApp) GetLock() provision.AppLock {
@@ -380,10 +384,10 @@ func (p *FakeProvisioner) MetricEnvs(app provision.App) map[string]string {
 }
 
 // Restarts returns the number of restarts for a given app.
-func (p *FakeProvisioner) Restarts(app provision.App, process string) int {
+func (p *FakeProvisioner) Restarts(a provision.App, process string) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].restarts[process]
+	return p.apps[a.GetName()].restarts[process]
 }
 
 // Starts returns the number of starts for a given app.
@@ -601,6 +605,64 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer
 	p.apps[app.GetName()] = pApp
 	if w != nil {
 		fmt.Fprintf(w, "restarting app")
+	}
+	r := routertest.FakeRouter
+	err := r.AddBackend(app.GetName())
+	if err != nil && err != router.ErrBackendExists {
+		return err
+	}
+	var newAddr string
+	if newAddr, err = r.Addr(app.GetName()); err == nil && newAddr != app.GetIp() {
+		var conn *db.Storage
+		conn, err = db.Conn()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		err = conn.Apps().Update(bson.M{"name": app.GetName()}, bson.M{"$set": bson.M{"ip": newAddr}})
+		if err != nil {
+			return err
+		}
+	}
+	for _, cname := range app.GetCname() {
+		println(cname)
+		err = r.SetCName(cname, app.GetName())
+		if err != nil && err != router.ErrCNameExists {
+			return err
+		}
+	}
+	oldRoutes, err := r.Routes(app.GetName())
+	if err != nil {
+		return err
+	}
+	expectedMap := make(map[string]*url.URL)
+	units := p.apps[app.GetName()].units
+	if err != nil {
+		return err
+	}
+	for _, unit := range units {
+		println(unit.Address.String())
+		expectedMap[unit.Address.String()] = unit.Address
+	}
+	var toRemove []*url.URL
+	for _, url := range oldRoutes {
+		if _, isPresent := expectedMap[url.String()]; isPresent {
+			delete(expectedMap, url.String())
+		} else {
+			toRemove = append(toRemove, url)
+		}
+	}
+	for _, toAddUrl := range expectedMap {
+		err := r.AddRoute(app.GetName(), toAddUrl)
+		if err != nil {
+			return err
+		}
+	}
+	for _, toRemoveUrl := range toRemove {
+		err := r.RemoveRoute(app.GetName(), toRemoveUrl)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
