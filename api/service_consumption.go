@@ -344,7 +344,7 @@ type serviceInstanceInfo struct {
 // method: GET
 // produce: application/json
 // responses:
-//   200: List services instances
+//   200: OK
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -435,6 +435,14 @@ func getServiceInstanceOrError(serviceName string, instanceName string) (*servic
 	return serviceInstance, nil
 }
 
+// title: service plans
+// path: /services/{name}/plans
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Service not found
 func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":name")
 	s, err := getService(serviceName)
@@ -456,12 +464,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(plans)
-	if err != nil {
-		return nil
-	}
-	w.Write(b)
-	return nil
+	return json.NewEncoder(w).Encode(plans)
 }
 
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
