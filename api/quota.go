@@ -15,6 +15,14 @@ import (
 	"github.com/tsuru/tsuru/permission"
 )
 
+// title: user quota
+// path: /users/{email}/quota
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: User not found
 func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermUserUpdateQuota)
 	if !allowed {
@@ -31,6 +39,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(user.Quota)
 }
 
