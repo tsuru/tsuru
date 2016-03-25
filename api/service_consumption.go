@@ -381,6 +381,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		PlanDescription: plan.Description,
 		CustomInfo:      info,
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(sInfo)
 }
 

@@ -1177,7 +1177,7 @@ func makeRequestToInfoHandler(service, instance, token string, c *check.C) (*htt
 	return recorder, request
 }
 
-func (s *ConsumptionSuite) TestServiceInstanceInfoHandler2(c *check.C) {
+func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/resources/my_nosql" {
 			w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
@@ -1185,7 +1185,6 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler2(c *check.C) {
 		if r.Method == "GET" && r.URL.Path == "/resources/plans" {
 			w.Write([]byte(`[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`))
 		}
-
 	}))
 	defer ts.Close()
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
@@ -1207,6 +1206,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler2(c *check.C) {
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var instances serviceInstanceInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
