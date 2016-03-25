@@ -465,6 +465,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(plans)
 }
 
