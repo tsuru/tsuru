@@ -103,6 +103,15 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(a.Quota)
 }
 
+// title: update application quota
+// path: /apps/{appname}/quota
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Quota updated
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Application not found
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	limit, err := strconv.Atoi(r.FormValue("limit"))
 	if err != nil {

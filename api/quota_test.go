@@ -273,7 +273,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	body := bytes.NewBufferString("limit=40")
-	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -303,7 +303,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, "-other-"),
 	})
 	body := bytes.NewBufferString("limit=40")
-	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -326,7 +326,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 	values := []string{"four", ""}
 	for _, value := range values {
 		body := bytes.NewBufferString("limit=" + value)
-		request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+		request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
@@ -339,7 +339,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 
 func (s *QuotaSuite) TestChangeAppQuotaAppNotFound(c *check.C) {
 	body := bytes.NewBufferString("limit=2")
-	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+	request, _ := http.NewRequest("PUT", "/apps/shangrila/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
