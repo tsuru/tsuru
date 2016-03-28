@@ -118,7 +118,8 @@ func (n *ScopedConfig) Save(pool string, val interface{}) error {
 	defer coll.Close()
 	if n.Jsonfy {
 		var result map[string]interface{}
-		data, err := json.Marshal(val)
+		var data []byte
+		data, err = json.Marshal(val)
 		if err != nil {
 			return err
 		}
