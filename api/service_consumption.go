@@ -492,6 +492,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 
 // title: grant access to service instance
 // path: /services/{service}/instances/permission/{instance}/{team}
+// consume: application/x-www-form-urlencoded
 // method: PUT
 // responses:
 //   200: Access revoked
