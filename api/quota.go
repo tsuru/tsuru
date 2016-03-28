@@ -43,6 +43,15 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(user.Quota)
 }
 
+// title: update user quota
+// path: /users/{email}/quota
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Quota updated
+//   400: Invalid data
+//   401: Unauthorized
+//   404: User not found
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermUserUpdateQuota)
 	if !allowed {

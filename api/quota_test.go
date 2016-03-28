@@ -132,7 +132,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
 	body := bytes.NewBufferString("limit=40")
-	request, _ := http.NewRequest("POST", "/users/radio@gaga.com/quota", body)
+	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -158,7 +158,7 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	body := bytes.NewBufferString("limit=40")
-	request, _ := http.NewRequest("POST", "/users/radio@gaga.com/quota", body)
+	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -171,7 +171,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 	values := []string{"four", ""}
 	for _, value := range values {
 		body := bytes.NewBufferString("limit=" + value)
-		request, _ := http.NewRequest("POST", "/users/radio@gaga.com/quota", body)
+		request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
@@ -184,7 +184,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 
 func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *check.C) {
 	body := bytes.NewBufferString("limit=2")
-	request, _ := http.NewRequest("POST", "/users/radio@gaga.com/quota", body)
+	request, _ := http.NewRequest("PUT", "/users/radio@gaga.com/quota", body)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()

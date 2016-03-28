@@ -190,7 +190,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Post", "/users/{email}/password", Handler(resetPassword))
 	m.Add("1.0", "Post", "/users/{email}/tokens", Handler(login))
 	m.Add("1.0", "Get", "/users/{email}/quota", AuthorizationRequiredHandler(getUserQuota))
-	m.Add("1.0", "Post", "/users/{email}/quota", AuthorizationRequiredHandler(changeUserQuota))
+	m.Add("1.0", "Put", "/users/{email}/quota", AuthorizationRequiredHandler(changeUserQuota))
 	m.Add("1.0", "Delete", "/users/tokens", AuthorizationRequiredHandler(logout))
 	m.Add("1.0", "Put", "/users/password", AuthorizationRequiredHandler(changePassword))
 	m.Add("1.0", "Delete", "/users", AuthorizationRequiredHandler(removeUser))
