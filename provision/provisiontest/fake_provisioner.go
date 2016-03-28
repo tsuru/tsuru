@@ -625,7 +625,6 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer
 		}
 	}
 	for _, cname := range app.GetCname() {
-		println(cname)
 		err = r.SetCName(cname, app.GetName())
 		if err != nil && err != router.ErrCNameExists {
 			return err
@@ -641,7 +640,6 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer
 		return err
 	}
 	for _, unit := range units {
-		println(unit.Address.String())
 		expectedMap[unit.Address.String()] = unit.Address
 	}
 	var toRemove []*url.URL

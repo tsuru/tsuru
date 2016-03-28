@@ -11,11 +11,14 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) {
@@ -534,12 +537,21 @@ func (s *S) TestDoubleProvision(c *check.C) {
 }
 
 func (s *S) TestRestart(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	err := p.Restart(app, "web", nil)
+	conn, err := db.Conn()
+	defer conn.Close()
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Restarts(app, "web"), check.Equals, 1)
+	a := NewFakeApp("kid-gloves", "rush", 1)
+	nApp := app.App{
+		Name: a.name,
+	}
+	err = conn.Apps().Insert(nApp)
+	defer conn.Apps().Remove(bson.M{"name": nApp.Name})
+	c.Assert(err, check.IsNil)
+	p := NewFakeProvisioner()
+	p.Provision(a)
+	err = p.Restart(a, "web", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Restarts(a, "web"), check.Equals, 1)
 }
 
 func (s *S) TestStart(c *check.C) {
