@@ -68,6 +68,14 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return auth.ChangeQuota(user, limit)
 }
 
+// title: application quota
+// path: /apps/{appname}/quota
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Application not found
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":appname"), r)
 	if err != nil {
@@ -82,6 +90,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(a.Quota)
 }
 

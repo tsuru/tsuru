@@ -216,6 +216,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var qt quota.Quota
 	err = json.NewDecoder(recorder.Body).Decode(&qt)
 	c.Assert(err, check.IsNil)
