@@ -87,6 +87,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
 		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+		"HOST_PROC=/prochost",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
@@ -143,6 +144,7 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
 		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+		"HOST_PROC=/prochost",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
@@ -199,6 +201,7 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 		"TSURU_ENDPOINT=http://127.0.0.1:8080/",
 		"TSURU_TOKEN=" + entry.Token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+		"HOST_PROC=/prochost",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)
@@ -249,7 +252,11 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
-	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
+	expectedBinds := []string{
+		"/proc:/prochost:ro",
+		"/tmp/docker.sock:/var/run/docker.sock:rw",
+	}
+	c.Assert(container.HostConfig.Binds, check.DeepEquals, expectedBinds)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
 	conf, err = LoadConfig()
@@ -264,6 +271,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1519",
 		"VAR1=VALUE1",
 		"VAR2=VALUE_FOR_POOL1",
+		"HOST_PROC=/prochost",
 	}
 	sort.Strings(expectedEnv)
 	sort.Strings(container.Config.Env)

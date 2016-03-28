@@ -31,6 +31,7 @@ type DockerProvisioner interface {
 const (
 	bsConfigCollection = "bs"
 	bsDefaultImageName = "tsuru/bs:v1"
+	bsHostProc         = "/prochost"
 )
 
 type BSConfigEntry struct {
@@ -65,6 +66,7 @@ func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
 		"TSURU_ENDPOINT":        tsuruEndpoint,
 		"TSURU_TOKEN":           token,
 		"SYSLOG_LISTEN_ADDRESS": fmt.Sprintf("udp://0.0.0.0:%d", container.BsSysLogPort()),
+		"HOST_PROC":             bsHostProc,
 	}
 	var envList []string
 	for envName, envValue := range poolConf.Envs {
@@ -154,10 +156,11 @@ func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 		RestartPolicy: docker.AlwaysRestart(),
 		Privileged:    true,
 		NetworkMode:   "host",
+		Binds:         []string{fmt.Sprintf("/proc:%s:ro", bsHostProc)},
 	}
 	socket, _ := config.GetString("docker:bs:socket")
 	if socket != "" {
-		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
+		hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s:/var/run/docker.sock:rw", socket))
 	}
 	env, err := EnvListForEndpoint(dockerEndpoint, poolName)
 	if err != nil {
