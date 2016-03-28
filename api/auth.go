@@ -103,10 +103,17 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	oldPassword := r.FormValue("old")
 	newPassword := r.FormValue("new")
+	confirmPassword := r.FormValue("confirm")
 	if oldPassword == "" || newPassword == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Both the old and the new passwords are required.",
+		}
+	}
+	if newPassword != confirmPassword {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "New password and password confirmation didn't match.",
 		}
 	}
 	err := managed.ChangePassword(t, oldPassword, newPassword)

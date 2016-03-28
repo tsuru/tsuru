@@ -1021,7 +1021,7 @@ func (s *AuthSuite) TestChangePassword(c *check.C) {
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	body := strings.NewReader("old=123456&new=654321")
+	body := strings.NewReader("old=123456&new=654321&confirm=654321")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -1050,7 +1050,7 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	body := strings.NewReader("old=123456&new=1234")
+	body := strings.NewReader("old=123456&new=1234&confirm=1234")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -1063,8 +1063,31 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.
 	c.Check(recorder.Body.String(), check.Equals, msg)
 }
 
+func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordAndConfirmPasswordDidntMatch(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
+	_, err := nativeScheme.Create(u)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	body := strings.NewReader("old=123456&new=12345678&confirm=1234567810")
+	request, err := http.NewRequest("PUT", "/users/password", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	msg := "New password and password confirmation didn't match.\n"
+	c.Check(recorder.Body.String(), check.Equals, msg)
+}
+
 func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *check.C) {
-	body := strings.NewReader("old=1234&new=123456")
+	body := strings.NewReader("old=1234&new=123456&confirm=123456")
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
