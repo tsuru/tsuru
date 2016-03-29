@@ -131,6 +131,10 @@ func deployableApps(u *auth.User, rolesCache map[string]*permission.Role) ([]str
 }
 
 func syncRepositoryApps(user *auth.User, beforeApps []string, roleCache map[string]*permission.Role) error {
+	err := user.Reload()
+	if err != nil {
+		return err
+	}
 	afterApps, err := deployableApps(user, roleCache)
 	if err != nil {
 		return err
@@ -156,6 +160,7 @@ func syncRepositoryApps(user *auth.User, beforeApps []string, roleCache map[stri
 		}
 	}
 	return nil
+
 }
 
 func runWithPermSync(users []auth.User, callback func() error) error {
