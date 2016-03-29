@@ -37,7 +37,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestAddPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	defer coll.RemoveId("pool1")
 	opts := AddPoolOptions{
 		Name:    "pool1",
@@ -49,7 +49,7 @@ func (s *S) TestAddPool(c *check.C) {
 }
 
 func (s *S) TestAddNonPublicPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	defer coll.RemoveId("pool1")
 	opts := AddPoolOptions{
 		Name:    "pool1",
@@ -65,7 +65,7 @@ func (s *S) TestAddNonPublicPool(c *check.C) {
 }
 
 func (s *S) TestAddPublicPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	defer coll.RemoveId("pool1")
 	opts := AddPoolOptions{
 		Name:    "pool1",
@@ -103,7 +103,7 @@ func (s *S) TestAddDefaultPool(c *check.C) {
 }
 
 func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "nonteams", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -114,7 +114,7 @@ func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
 }
 
 func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "nonteams", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -130,7 +130,7 @@ func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
 }
 
 func (s *S) TestForceAddDefaultPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	opts := AddPoolOptions{
 		Name:    "pool1",
 		Public:  false,
@@ -158,7 +158,7 @@ func (s *S) TestForceAddDefaultPool(c *check.C) {
 }
 
 func (s *S) TestRemovePool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -170,7 +170,7 @@ func (s *S) TestRemovePool(c *check.C) {
 }
 
 func (s *S) TestAddTeamToPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -184,7 +184,7 @@ func (s *S) TestAddTeamToPool(c *check.C) {
 }
 
 func (s *S) TestAddTeamToPollWithTeams(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -198,7 +198,7 @@ func (s *S) TestAddTeamToPollWithTeams(c *check.C) {
 }
 
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -212,7 +212,7 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 }
 
 func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "nonteams", Public: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -223,7 +223,7 @@ func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsFromPool(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -237,7 +237,7 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 }
 
 func (s *S) TestPoolUpdate(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -251,7 +251,7 @@ func (s *S) TestPoolUpdate(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateToDefault(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false, Default: false}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -265,7 +265,7 @@ func (s *S) TestPoolUpdateToDefault(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateForceToDefault(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -283,7 +283,7 @@ func (s *S) TestPoolUpdateForceToDefault(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -298,7 +298,7 @@ func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) 
 }
 
 func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -313,7 +313,7 @@ func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
 }
 
 func (s *S) TestListPoolAll(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
@@ -324,7 +324,7 @@ func (s *S) TestListPoolAll(c *check.C) {
 }
 
 func (s *S) TestListPoolByQuery(c *check.C) {
-	coll := s.storage.Collection(poolCollection)
+	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false, Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
