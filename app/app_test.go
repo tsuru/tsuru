@@ -2367,13 +2367,14 @@ func (s *S) TestGetUnits(c *check.C) {
 	app := App{Name: "app"}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1, "web", nil)
+	s.provisioner.AddUnits(&app, 2, "web", nil)
 	bindUnits, err := app.GetUnits()
 	c.Assert(err, check.IsNil)
-	c.Assert(bindUnits, check.HasLen, 1)
+	c.Assert(bindUnits, check.HasLen, 2)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Ip, check.Equals, bindUnits[0].GetIp())
+	c.Assert(units[1].Ip, check.Equals, bindUnits[1].GetIp())
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {

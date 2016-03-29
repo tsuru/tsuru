@@ -904,13 +904,13 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() ([]bind.Unit, error) {
-	var units []bind.Unit
 	provUnits, err := app.Units()
 	if err != nil {
 		return nil, err
 	}
-	for _, unit := range provUnits {
-		units = append(units, &unit)
+	units := make([]bind.Unit, len(provUnits))
+	for i := range provUnits {
+		units[i] = &provUnits[i]
 	}
 	return units, nil
 }
