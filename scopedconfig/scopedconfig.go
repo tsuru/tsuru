@@ -74,7 +74,6 @@ func (n *ScopedConfig) SetFieldAtomic(pool, name string, value interface{}) (boo
 		return false, err
 	}
 	defer coll.Close()
-	name = strings.ToLower(name)
 	_, err = coll.Upsert(bson.M{
 		"name": n.name,
 		"pool": pool,
@@ -95,7 +94,6 @@ func (n *ScopedConfig) SetField(pool, name string, value interface{}) error {
 		return err
 	}
 	defer coll.Close()
-	name = strings.ToLower(name)
 	_, err = coll.Upsert(bson.M{"name": n.name, "pool": pool}, bson.M{"$set": bson.M{"val." + name: value}})
 	return err
 }
