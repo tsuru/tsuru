@@ -75,8 +75,9 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 			},
 		},
 		HostConfig: docker.HostConfig{
-			Privileged: true,
-			Binds:      []string{"/xyz:/abc:rw"},
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			Binds:         []string{"/xyz:/abc:rw"},
 		},
 	}
 	err := AddNewContainer("", &c1)
@@ -131,7 +132,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 		HostConfig docker.HostConfig
 	}{
 		{
-			Config: docker.Config{Env: []string{"A=1", "B=2"}, Image: "bsimg"},
+			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "A=1", "B=2"}, Image: "bsimg"},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
 				Privileged:    true,
@@ -140,7 +141,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 			},
 		},
 		{
-			Config: docker.Config{Env: []string{"X=Z"}, Image: "sysdigimg"},
+			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "X=Z"}, Image: "sysdigimg"},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
 				Privileged:    true,

@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision/docker/fix"
 	"github.com/tsuru/tsuru/scopedconfig"
@@ -46,7 +47,17 @@ func AddNewContainer(pool string, c *NodeContainerConfig) error {
 	return conf.Save(pool, c)
 }
 
-func EnsureContainersStarted(p DockerProvisioner, w io.Writer) error {
+func LoadNodeContainer(pool string, name string) (*NodeContainerConfig, error) {
+	conf := configFor(name)
+	var result NodeContainerConfig
+	err := conf.Load(pool, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func EnsureContainersStarted(p DockerProvisioner, w io.Writer, nodes ...cluster.Node) error {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -54,39 +65,44 @@ func EnsureContainersStarted(p DockerProvisioner, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	cluster := p.Cluster()
-	nodes, err := cluster.UnfilteredNodes()
-	if err != nil {
-		return err
+	if len(nodes) == 0 {
+		nodes, err = p.Cluster().UnfilteredNodes()
+		if err != nil {
+			return err
+		}
 	}
 	errChan := make(chan error, len(nodes))
 	wg := sync.WaitGroup{}
 	log.Debugf("[node containers] recreating %d containers", len(nodes))
+	recreateContainer := func(node *cluster.Node, c *scopedconfig.ScopedConfig) {
+		defer wg.Done()
+		c.Jsonfy = true
+		c.ShallowMerge = true
+		var containerConfig NodeContainerConfig
+		pool := node.Metadata["pool"]
+		confErr := c.Load(pool, &containerConfig)
+		if confErr != nil {
+			errChan <- confErr
+			return
+		}
+		log.Debugf("[node containers] recreating container %q in %s [%s]", c.GetName(), node.Address, pool)
+		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", c.GetName(), node.Address, pool)
+		confErr = containerConfig.Create(node.Address, pool, p, true)
+		if confErr != nil {
+			msg := fmt.Sprintf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
+			log.Error(msg)
+			errChan <- errors.New(msg)
+		}
+	}
 	for i := range nodes {
 		wg.Add(1)
-		go func(i int) {
+		go func(node *cluster.Node) {
 			defer wg.Done()
-			node := &nodes[i]
-			pool := node.Metadata["pool"]
-			for _, c := range confs {
-				c.Jsonfy = true
-				c.ShallowMerge = true
-				var containerConfig NodeContainerConfig
-				confErr := c.Load(pool, &containerConfig)
-				if confErr != nil {
-					errChan <- confErr
-					continue
-				}
-				log.Debugf("[node containers] recreating container %q in %s [%s]", c.GetName(), node.Address, pool)
-				fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", c.GetName(), node.Address, pool)
-				confErr = containerConfig.Create(node.Address, pool, p, true)
-				if confErr != nil {
-					msg := fmt.Sprintf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
-					log.Error(msg)
-					errChan <- errors.New(msg)
-				}
+			for j := range confs {
+				wg.Add(1)
+				go recreateContainer(node, confs[j])
 			}
-		}(i)
+		}(&nodes[i])
 	}
 	wg.Wait()
 	close(errChan)
@@ -143,8 +159,8 @@ func (c *NodeContainerConfig) Create(dockerEndpoint, poolName string, p DockerPr
 	if err != nil {
 		return err
 	}
-	c.HostConfig.RestartPolicy = docker.AlwaysRestart()
 	c.Config.Image = c.image()
+	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + dockerEndpoint}, c.Config.Env...)
 	opts := docker.CreateContainerOptions{
 		Name:       c.Name,
 		HostConfig: &c.HostConfig,

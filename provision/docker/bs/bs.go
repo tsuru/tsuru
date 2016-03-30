@@ -34,6 +34,60 @@ const (
 	bsHostProc         = "/prochost"
 )
 
+func InitializeBS() (bool, error) {
+	bsNodeContainer, err := LoadNodeContainer("", "big-sibling")
+	if err != nil {
+		return false, err
+	}
+	if len(bsNodeContainer.Config.Env) > 0 {
+		return false, nil
+	}
+	tokenData, err := app.AuthScheme.AppLogin(app.InternalAppName)
+	if err != nil {
+		return false, err
+	}
+	token := tokenData.GetValue()
+	conf := configFor("big-sibling")
+	isSet, err := conf.SetFieldAtomic("", "Config.Env", []string{
+		"TSURU_TOKEN=" + token,
+	})
+	if !isSet {
+		// Already set by someone else, just bail out.
+		app.AuthScheme.Logout(token)
+		return false, nil
+	}
+	bsNodeContainer, err = LoadNodeContainer("", "big-sibling")
+	if err != nil {
+		return true, err
+	}
+	tsuruEndpoint, _ := config.GetString("host")
+	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
+		tsuruEndpoint = "http://" + tsuruEndpoint
+	}
+	tsuruEndpoint = strings.TrimRight(tsuruEndpoint, "/") + "/"
+	socket, _ := config.GetString("docker:bs:socket")
+	image, _ := config.GetString("docker:bs:image")
+	if image == "" {
+		image = bsDefaultImageName
+	}
+	bsNodeContainer.Name = "big-sibling"
+	bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, []string{
+		"TSURU_ENDPOINT=" + tsuruEndpoint,
+		"HOST_PROC=" + bsHostProc,
+		"SYSLOG_LISTEN_ADDRESS=" + fmt.Sprintf("udp://0.0.0.0:%d", container.BsSysLogPort()),
+	}...)
+	bsNodeContainer.Config.Image = image
+	bsNodeContainer.HostConfig.RestartPolicy = docker.AlwaysRestart()
+	bsNodeContainer.HostConfig.Privileged = true
+	bsNodeContainer.HostConfig.NetworkMode = "host"
+	bsNodeContainer.HostConfig.Binds = []string{fmt.Sprintf("/proc:%s:ro", bsHostProc)}
+	if socket != "" {
+		bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, "DOCKER_ENDPOINT=unix:///var/run/docker.sock")
+		bsNodeContainer.HostConfig.Binds = append(bsNodeContainer.HostConfig.Binds, fmt.Sprintf("%s:/var/run/docker.sock:rw", socket))
+	}
+	return true, conf.Save("", bsNodeContainer)
+}
+
 type BSConfigEntry struct {
 	Token string
 	Image string
