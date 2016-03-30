@@ -82,7 +82,9 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		dbName = db.DefaultDatabaseName
 	}
-	fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
+	if !dry {
+		fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
+	}
 
 	m := apiRouter.NewRouter()
 
@@ -254,7 +256,9 @@ func RunServer(dry bool) http.Handler {
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
-	n.Use(newLoggerMiddleware())
+	if !dry {
+		n.Use(newLoggerMiddleware())
+	}
 	n.UseHandler(m)
 	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
 	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
