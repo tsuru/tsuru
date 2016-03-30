@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cezarsa/form"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -2368,7 +2369,16 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	b := strings.NewReader("private=false&noRestart=false&envs.0.name=DATABASE_HOST&envs.0.value=localhost")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "localhost"},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2401,7 +2411,16 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	b := strings.NewReader("private=true&noRestart=false&envs.0.name=DATABASE_HOST&envs.0.value=localhost")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "localhost"},
+		},
+		NoRestart: false,
+		Private:   true,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2434,7 +2453,16 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	b := strings.NewReader("private=true&noRestart=false&envs.0.name=DATABASE_HOST&envs.0.value=localhost")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "localhost"},
+		},
+		NoRestart: false,
+		Private:   true,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2444,7 +2472,16 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	b = strings.NewReader("private=true&noRestart=false&envs.0.name=DATABASE_HOST&envs.0.value=127.0.0.1")
+	d = Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "127.0.0.1"},
+		},
+		NoRestart: false,
+		Private:   true,
+	}
+	v, err = form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b = strings.NewReader(v.Encode())
 	request, err = http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2476,7 +2513,17 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	b := strings.NewReader("private=false&noRestart=false&envs.0.name=DATABASE_HOST&envs.0.value=localhost&envs.1.name=DATABASE_USER&envs.1.value=root")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "localhost"},
+			{"DATABASE_USER", "root"},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2518,7 +2565,16 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	b := strings.NewReader("private=false&noRestart=false&envs.0.name=DATABASE_HOST&envs.0.value=http://foo.com:8080")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "http://foo.com:8080"},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2537,8 +2593,17 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s&noRestart=true&private=false", a.Name, a.Name)
-	b := strings.NewReader("private=false&noRestart=true&envs.0.name=DATABASE_HOST&envs.0.value=localhost")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "localhost"},
+		},
+		NoRestart: true,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -2620,7 +2685,16 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Scheme:  permission.PermAppUpdateEnvSet,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	b := strings.NewReader("noRestart=false&private=false&envs.0.name=DATABASE_HOST&envs.0.value=localhost")
+	d := Envs{
+		Envs: []struct{ Name, Value string }{
+			{"DATABASE_HOST", "localhost"},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)

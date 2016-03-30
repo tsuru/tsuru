@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/schema"
+	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -708,7 +708,9 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 	return json.NewEncoder(w).Encode(result)
 }
 
-type envs struct {
+// Envs represents the configuration of an environment variable data
+// for the remote API
+type Envs struct {
 	Envs      []struct{ Name, Value string } `schema:"envs"`
 	NoRestart bool                           `schema:"noRestart"`
 	Private   bool                           `schema:"private"`
@@ -729,9 +731,10 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	decoder := schema.NewDecoder()
-	e := envs{}
-	err = decoder.Decode(&e, r.PostForm)
+	var e Envs
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&e, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
