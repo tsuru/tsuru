@@ -197,25 +197,22 @@ func (s *S) TestPoolListHandler(c *check.C) {
 }
 
 func (s *S) TestPoolListEmptyHandler(c *check.C) {
+	_, err := s.conn.Pools().RemoveAll(nil)
+	c.Assert(err, check.IsNil)
 	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err = nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	defaultPools, err := provision.ListPools(bson.M{"default": true})
-	c.Assert(err, check.IsNil)
-	expected := []provision.Pool{defaultPools[0]}
 	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "b "+token.GetValue())
 	rec := httptest.NewRecorder()
-	err = poolList(rec, req, token)
-	c.Assert(err, check.IsNil)
-	var pools []provision.Pool
-	err = json.NewDecoder(rec.Body).Decode(&pools)
-	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, expected)
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
 }
 
 func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
