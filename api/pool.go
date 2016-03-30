@@ -69,6 +69,15 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(pools)
 }
 
+// title: pool create
+// path: /pools
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: Pool create
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Pool already exists
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPoolCreate)
 	if !allowed {
