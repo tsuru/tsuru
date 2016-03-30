@@ -714,6 +714,16 @@ type envs struct {
 	Private   bool                           `schema:"private"`
 }
 
+// title: set envs
+// path: /apps/{app}/env
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Envs updated
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
@@ -755,7 +765,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		variables = append(variables, bind.EnvVar{Name: v.Name, Value: v.Value, Public: !e.Private})
 	}
 	rec.Log(u.Email, "set-env", "app="+appName, envs, extra)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
