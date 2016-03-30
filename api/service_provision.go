@@ -186,7 +186,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-// title: service update
+// title: service delete
 // path: /services/{name}
 // method: DELETE
 // responses:
