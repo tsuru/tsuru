@@ -451,7 +451,7 @@ func (s *S) TestLoggerMiddleware(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 10\d\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
 }
 
 func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
@@ -468,5 +468,5 @@ func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
 	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
-	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 10\d\.\d+ms`+"\n", timePart))
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
 }
