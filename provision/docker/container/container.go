@@ -592,6 +592,10 @@ func (c *Container) AsUnit(a provision.App) provision.Unit {
 	}
 }
 
+func (c *Container) ValidAddr() bool {
+	return c.HostAddr != "" && c.HostPort != "" && c.HostPort != "0"
+}
+
 func getPort() (string, error) {
 	port, err := config.Get("docker:run-cmd:port")
 	if err != nil {

@@ -397,7 +397,7 @@ var addNewRoutes = action.Action{
 			if c.ProcessName != webProcessName {
 				continue
 			}
-			if c.HostPort != "0" && c.HostPort != "" {
+			if c.ValidAddr() {
 				routesToAdd = append(routesToAdd, c.Address())
 				newContainers[i].Routable = true
 			}
@@ -480,7 +480,7 @@ var removeOldRoutes = action.Action{
 			if c.ProcessName != webProcessName {
 				continue
 			}
-			if c.HostPort != "0" && c.HostPort != "" {
+			if c.ValidAddr() {
 				routesToRemove = append(routesToRemove, c.Address())
 				args.toRemove[i].Routable = true
 			}

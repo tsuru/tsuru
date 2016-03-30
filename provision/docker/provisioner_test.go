@@ -2696,6 +2696,36 @@ func (s *S) TestProvisionerRoutableUnits(c *check.C) {
 	})
 }
 
+func (s *S) TestProvisionerRoutableUnitsInvalidContainers(c *check.C) {
+	appName := "my-fake-app"
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	err := appendAppImageName(appName, "myimg")
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(s.p, "myimg", nil)
+	c.Assert(err, check.IsNil)
+	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
+		app:         fakeApp,
+		imageId:     "myimg",
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 3)
+	conts[0].HostAddr = ""
+	conts[1].HostPort = ""
+	coll := s.p.Collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": conts[0].ID}, conts[0])
+	c.Assert(err, check.IsNil)
+	err = coll.Update(bson.M{"id": conts[1].ID}, conts[1])
+	c.Assert(err, check.IsNil)
+	routes, err := s.p.RoutableUnits(fakeApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []provision.Unit{
+		conts[2].AsUnit(fakeApp),
+	})
+}
+
 func (s *S) TestFilterAppsByUnitStatus(c *check.C) {
 	app1 := provisiontest.NewFakeApp("app1", "python", 0)
 	app2 := provisiontest.NewFakeApp("app2", "python", 0)

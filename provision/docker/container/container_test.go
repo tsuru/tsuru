@@ -1034,3 +1034,10 @@ func (s *S) TestSafeAttachWaitContainerAttachBlock(c *check.C) {
 	c.Assert(status, check.Equals, 0)
 	c.Assert(buf.String(), check.Equals, "")
 }
+
+func (s *S) TestContainerValidAddr(c *check.C) {
+	c.Assert((&Container{}).ValidAddr(), check.Equals, false)
+	c.Assert((&Container{HostAddr: "1.1.1.1"}).ValidAddr(), check.Equals, false)
+	c.Assert((&Container{HostAddr: "1.1.1.1", HostPort: "0"}).ValidAddr(), check.Equals, false)
+	c.Assert((&Container{HostAddr: "1.1.1.1", HostPort: "123"}).ValidAddr(), check.Equals, true)
+}

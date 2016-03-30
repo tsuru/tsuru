@@ -1065,7 +1065,7 @@ func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, 
 	}
 	units := make([]provision.Unit, 0, len(containers))
 	for _, container := range containers {
-		if container.ProcessName == webProcessName {
+		if container.ProcessName == webProcessName && container.ValidAddr() {
 			units = append(units, container.AsUnit(app))
 		}
 	}
