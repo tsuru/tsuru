@@ -150,6 +150,15 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	return provision.RemoveTeamsFromPool(pool, teams)
 }
 
+// title: pool update
+// path: /pools/{name}
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Pool updated
+//   401: Unauthorized
+//   404: Pool not found
+//   409: Default pool already defined
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPoolUpdate)
 	if !allowed {
