@@ -111,6 +111,13 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return err
 }
 
+// title: remove pool
+// path: /pools/{name}
+// method: DELETE
+// responses:
+//   200: Pool removed
+//   401: Unauthorized
+//   404: Pool not found
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPoolDelete)
 	if !allowed {
