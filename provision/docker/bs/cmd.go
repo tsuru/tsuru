@@ -6,6 +6,7 @@ package bs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -49,10 +50,10 @@ func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	for _, arg := range context.Args {
 		parts := strings.SplitN(arg, "=", 2)
 		if len(parts) < 2 {
-			return fmt.Errorf("invalid variable values")
+			return errors.New("invalid variable values")
 		}
 		if parts[0] == "" {
-			return fmt.Errorf("invalid variable values")
+			return errors.New("invalid variable values")
 		}
 		conf.Envs[parts[0]] = parts[1]
 	}
