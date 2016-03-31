@@ -93,6 +93,23 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	c.Assert(p, check.HasLen, 0)
 }
 
+func (s *S) TestAddTeamsToPoolWithoutTeam(c *check.C) {
+	pool := provision.Pool{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(pool.Name)
+	b := strings.NewReader("")
+	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestAddTeamsToPool(c *check.C) {
 	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name}
