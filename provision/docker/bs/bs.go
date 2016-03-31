@@ -5,22 +5,14 @@
 package bs
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"strings"
-	"sync"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/provision/docker/fix"
-	"github.com/tsuru/tsuru/scopedconfig"
 )
 
 type DockerProvisioner interface {
@@ -29,13 +21,13 @@ type DockerProvisioner interface {
 }
 
 const (
-	bsConfigCollection = "bs"
+	BsDefaultName      = "big-sibling"
 	bsDefaultImageName = "tsuru/bs:v1"
 	bsHostProc         = "/prochost"
 )
 
 func InitializeBS() (bool, error) {
-	bsNodeContainer, err := LoadNodeContainer("", "big-sibling")
+	bsNodeContainer, err := LoadNodeContainer("", BsDefaultName)
 	if err != nil {
 		return false, err
 	}
@@ -47,7 +39,7 @@ func InitializeBS() (bool, error) {
 		return false, err
 	}
 	token := tokenData.GetValue()
-	conf := configFor("big-sibling")
+	conf := configFor(BsDefaultName)
 	isSet, err := conf.SetFieldAtomic("", "Config.Env", []string{
 		"TSURU_TOKEN=" + token,
 	})
@@ -56,7 +48,7 @@ func InitializeBS() (bool, error) {
 		app.AuthScheme.Logout(token)
 		return false, nil
 	}
-	bsNodeContainer, err = LoadNodeContainer("", "big-sibling")
+	bsNodeContainer, err = LoadNodeContainer("", BsDefaultName)
 	if err != nil {
 		return true, err
 	}
@@ -70,7 +62,7 @@ func InitializeBS() (bool, error) {
 	if image == "" {
 		image = bsDefaultImageName
 	}
-	bsNodeContainer.Name = "big-sibling"
+	bsNodeContainer.Name = BsDefaultName
 	bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, []string{
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"HOST_PROC=" + bsHostProc,
@@ -86,258 +78,4 @@ func InitializeBS() (bool, error) {
 		bsNodeContainer.HostConfig.Binds = append(bsNodeContainer.HostConfig.Binds, fmt.Sprintf("%s:/var/run/docker.sock:rw", socket))
 	}
 	return true, conf.Save("", bsNodeContainer)
-}
-
-type BSConfigEntry struct {
-	Token string
-	Image string
-	Envs  map[string]string
-}
-
-func EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
-	bsConf := scopedconfig.FindScopedConfig(bsConfigCollection)
-	var baseConf, poolConf BSConfigEntry
-	err := bsConf.LoadWithBase(poolName, &baseConf, &poolConf)
-	if err != nil {
-		return nil, err
-	}
-	tsuruEndpoint, _ := config.GetString("host")
-	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
-		tsuruEndpoint = "http://" + tsuruEndpoint
-	}
-	tsuruEndpoint = strings.TrimRight(tsuruEndpoint, "/") + "/"
-	endpoint := dockerEndpoint
-	socket, _ := config.GetString("docker:bs:socket")
-	if socket != "" {
-		endpoint = "unix:///var/run/docker.sock"
-	}
-	token, err := getToken(bsConf, baseConf.Token)
-	if err != nil {
-		return nil, err
-	}
-	baseEnvMap := map[string]string{
-		"DOCKER_ENDPOINT":       endpoint,
-		"TSURU_ENDPOINT":        tsuruEndpoint,
-		"TSURU_TOKEN":           token,
-		"SYSLOG_LISTEN_ADDRESS": fmt.Sprintf("udp://0.0.0.0:%d", container.BsSysLogPort()),
-		"HOST_PROC":             bsHostProc,
-	}
-	var envList []string
-	for envName, envValue := range poolConf.Envs {
-		if _, isBase := baseEnvMap[envName]; isBase {
-			continue
-		}
-		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
-	}
-	for name, value := range baseEnvMap {
-		envList = append(envList, fmt.Sprintf("%s=%s", name, value))
-	}
-	return envList, nil
-}
-
-func getToken(bsConf *scopedconfig.ScopedConfig, token string) (string, error) {
-	if token != "" {
-		return token, nil
-	}
-	tokenData, err := app.AuthScheme.AppLogin(app.InternalAppName)
-	if err != nil {
-		return "", err
-	}
-	token = tokenData.GetValue()
-	isSet, err := bsConf.SetFieldAtomic("", "token", token)
-	if isSet {
-		return token, nil
-	}
-	app.AuthScheme.Logout(token)
-	if err != nil {
-		return "", err
-	}
-	var entry BSConfigEntry
-	err = bsConf.LoadBase(&entry)
-	if entry.Token == "" {
-		return "", fmt.Errorf("invalid empty bs api token")
-	}
-	return entry.Token, nil
-}
-
-func SaveImage(digest string) error {
-	bsConf := scopedconfig.FindScopedConfig(bsConfigCollection)
-	return bsConf.SetField("", "image", digest)
-}
-
-func LoadConfig() (*scopedconfig.ScopedConfig, error) {
-	return scopedconfig.FindScopedConfig(bsConfigCollection), nil
-}
-
-func dockerClient(endpoint string) (*docker.Client, error) {
-	client, err := docker.NewClient(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	client.HTTPClient = net.Dial5Full300ClientNoKeepAlive
-	client.Dialer = net.Dial5Dialer
-	return client, nil
-}
-
-func getImage(image string) string {
-	if image != "" {
-		return image
-	}
-	image, _ = config.GetString("docker:bs:image")
-	if image == "" {
-		image = bsDefaultImageName
-	}
-	return image
-}
-
-func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
-	client, err := dockerClient(dockerEndpoint)
-	if err != nil {
-		return err
-	}
-	bsConf := scopedconfig.FindScopedConfig(bsConfigCollection)
-	var configEntry BSConfigEntry
-	err = bsConf.LoadBase(&configEntry)
-	if err != nil {
-		return err
-	}
-	bsImage := getImage(configEntry.Image)
-	err = pullBsImage(bsImage, dockerEndpoint, p)
-	if err != nil {
-		return err
-	}
-	hostConfig := docker.HostConfig{
-		RestartPolicy: docker.AlwaysRestart(),
-		Privileged:    true,
-		NetworkMode:   "host",
-		Binds:         []string{fmt.Sprintf("/proc:%s:ro", bsHostProc)},
-	}
-	socket, _ := config.GetString("docker:bs:socket")
-	if socket != "" {
-		hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s:/var/run/docker.sock:rw", socket))
-	}
-	env, err := EnvListForEndpoint(dockerEndpoint, poolName)
-	if err != nil {
-		return err
-	}
-	opts := docker.CreateContainerOptions{
-		Name:       "big-sibling",
-		HostConfig: &hostConfig,
-		Config: &docker.Config{
-			Image: bsImage,
-			Env:   env,
-		},
-	}
-	container, err := client.CreateContainer(opts)
-	if relaunch && err == docker.ErrContainerAlreadyExists {
-		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
-		if err != nil {
-			return err
-		}
-		container, err = client.CreateContainer(opts)
-	}
-	if err != nil && err != docker.ErrContainerAlreadyExists {
-		return err
-	}
-	if container == nil {
-		container, err = client.InspectContainer("big-sibling")
-		if err != nil {
-			return err
-		}
-	}
-	err = client.StartContainer(container.ID, &hostConfig)
-	if _, ok := err.(*docker.ContainerAlreadyRunning); !ok {
-		return err
-	}
-	return nil
-}
-
-func pullWithRetry(maxTries int, image, dockerEndpoint string, p DockerProvisioner) (string, error) {
-	client, err := dockerClient(dockerEndpoint)
-	if err != nil {
-		return "", err
-	}
-	var buf bytes.Buffer
-	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
-	registryAuth := p.RegistryAuthConfig()
-	for ; maxTries > 0; maxTries-- {
-		err = client.PullImage(pullOpts, registryAuth)
-		if err == nil {
-			return buf.String(), nil
-		}
-	}
-	return "", err
-}
-
-func pullBsImage(image, dockerEndpoint string, p DockerProvisioner) error {
-	output, err := pullWithRetry(3, image, dockerEndpoint, p)
-	if err != nil {
-		return err
-	}
-	if shouldPinBsImage(image) {
-		digest, _ := fix.GetImageDigest(output)
-		if digest != "" {
-			image = fmt.Sprintf("%s@%s", image, digest)
-		}
-	}
-	return SaveImage(image)
-}
-
-func shouldPinBsImage(image string) bool {
-	parts := strings.SplitN(image, "/", 3)
-	lastPart := parts[len(parts)-1]
-	return len(strings.SplitN(lastPart, ":", 2)) < 2
-}
-
-// RecreateContainers relaunch all bs containers in the cluster for the given
-// DockerProvisioner, logging progress to the given writer.
-//
-// It assumes that the given writer is thread safe.
-func RecreateContainers(p DockerProvisioner, w io.Writer) error {
-	cluster := p.Cluster()
-	nodes, err := cluster.UnfilteredNodes()
-	if err != nil {
-		return err
-	}
-	errChan := make(chan error, len(nodes))
-	wg := sync.WaitGroup{}
-	log.Debugf("[bs containers] recreating %d containers", len(nodes))
-	for i := range nodes {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			node := &nodes[i]
-			pool := node.Metadata["pool"]
-			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
-			fmt.Fprintf(w, "relaunching bs container in the node %s [%s]\n", node.Address, pool)
-			createErr := createContainer(node.Address, pool, p, true)
-			if createErr != nil {
-				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, createErr)
-				log.Error(msg)
-				errChan <- errors.New(msg)
-			}
-		}(i)
-	}
-	wg.Wait()
-	close(errChan)
-	var allErrors []string
-	for err = range errChan {
-		allErrors = append(allErrors, err.Error())
-	}
-	if len(allErrors) == 0 {
-		return nil
-	}
-	return fmt.Errorf("multiple errors: %s", strings.Join(allErrors, ", "))
-}
-
-type ClusterHook struct {
-	Provisioner DockerProvisioner
-}
-
-func (h *ClusterHook) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
-	err := createContainer(node.Address, node.Metadata["pool"], h.Provisioner, false)
-	if err != nil {
-		return err
-	}
-	return nil
 }

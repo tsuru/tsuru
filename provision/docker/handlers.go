@@ -6,6 +6,7 @@ package docker
 
 import (
 	"encoding/json"
+	stderror "errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -574,83 +575,15 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return err
-	}
-	poolName := r.FormValue("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermNodeBs) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermNodeBs,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
-	}
-	delete(r.Form, "pool")
-	var entry bs.BSConfigEntry
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&entry, r.Form)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("unable to parse entries: %s", err),
-		}
-	}
-	bsConf, err := bs.LoadConfig()
-	if err != nil {
-		return err
-	}
-	err = bsConf.SaveMerge(poolName, entry)
-	if err != nil {
-		return err
-	}
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = bs.RecreateContainers(mainDockerProvisioner, writer)
-	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-	}
-	return nil
+	return stderror.New("this route is deprecated, please use POST /docker/nodecontainer/{name} (node-container-update command)")
 }
 
 func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	pools, err := listContextValues(t, permission.PermNodeBs, true)
-	if err != nil {
-		return err
-	}
-	bsConf, err := bs.LoadConfig()
-	if err != nil {
-		return err
-	}
-	entries := map[string]bs.BSConfigEntry{}
-	err = bsConf.LoadPoolsMerge(pools, entries, false)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(entries)
+	return stderror.New("this route is deprecated, please use GET /docker/nodecontainer/{name} (node-container-info command)")
 }
 
 func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermNodeBs) {
-		return permission.ErrUnauthorized
-	}
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err := bs.SaveImage("")
-	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-	}
-	err = bs.RecreateContainers(mainDockerProvisioner, writer)
-	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-	}
-	return nil
+	return stderror.New("this route is deprecated, please use POST /docker/nodecontainer/{name}/upgrade (node-container-upgrade command)")
 }
 
 func listContextValues(t permission.Token, scheme *permission.PermissionScheme, failIfEmpty bool) ([]string, error) {

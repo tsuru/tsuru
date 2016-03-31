@@ -947,9 +947,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&autoScaleSetRuleCmd{},
 		&autoScaleDeleteRuleCmd{},
 		&updateNodeToSchedulerCmd{},
-		&bs.EnvSetCmd{},
-		&bs.InfoCmd{},
-		&bs.UpgradeCmd{},
 		&dockerLogInfo{},
 		&dockerLogUpdate{},
 	}
@@ -1152,19 +1149,17 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 }
 
 func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
-	envMap := map[string]string{}
-	envs, err := bs.EnvListForEndpoint("", app.GetPool())
+	bsContainer, err := bs.LoadNodeContainer(app.GetPool(), bs.BsDefaultName)
 	if err != nil {
-		return envMap
+		return map[string]string{}
 	}
-	for _, env := range envs {
-		// TODO(cezarsa): ugly as hell
-		if strings.HasPrefix(env, "METRICS_") {
-			slice := strings.SplitN(env, "=", 2)
-			envMap[slice[0]] = slice[1]
+	envs := bsContainer.EnvMap()
+	for envName := range envs {
+		if !strings.HasPrefix(envName, "METRICS_") {
+			delete(envs, envName)
 		}
 	}
-	return envMap
+	return envs
 }
 
 func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
@@ -1182,16 +1177,12 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		msg := fmt.Sprintf("Logs not available through tsuru. Enabled log driver is %q.", driver)
 		return false, msg, nil
 	}
-	config, err := bs.LoadConfig()
+	bsContainer, err := bs.LoadNodeContainer(app.GetPool(), bs.BsDefaultName)
 	if err != nil {
 		return false, "", err
 	}
-	var entry bs.BSConfigEntry
-	err = config.Load(app.GetPool(), &entry)
-	if err != nil {
-		return false, "", err
-	}
-	enabledBackends := entry.Envs[logBackendsEnv]
+	envs := bsContainer.EnvMap()
+	enabledBackends := envs[logBackendsEnv]
 	if enabledBackends == "" {
 		return true, "", nil
 	}
@@ -1205,7 +1196,7 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 	var docs []string
 	for _, backendName := range backendsList {
 		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
-		backendDoc := entry.Envs[keyName]
+		backendDoc := envs[keyName]
 		var docLine string
 		if backendDoc == "" {
 			docLine = fmt.Sprintf("* %s", backendName)

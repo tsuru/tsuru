@@ -37,25 +37,24 @@ func (t *runBs) Name() string {
 func (t *runBs) Run(job monsterqueue.Job) {
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
-	node := cluster.Node{Address: dockerEndpoint}
 	err := t.waitDocker(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
 		return
 	}
-	node.CreationStatus = cluster.NodeCreationStatusCreated
-	rawMetadata := params["metadata"].(monsterqueue.JobParams)
-	metadata := make(map[string]string, len(rawMetadata))
-	for key, value := range rawMetadata {
-		metadata[key] = value.(string)
+	node, err := t.provisioner.Cluster().GetNode(dockerEndpoint)
+	if err != nil {
+		job.Error(err)
+		return
 	}
-	err = createContainer(dockerEndpoint, metadata["pool"], t.provisioner, true)
+	node.CreationStatus = cluster.NodeCreationStatusCreated
+	err = RecreateContainers(t.provisioner, nil, node)
 	if err != nil {
 		t.provisioner.Cluster().UpdateNode(node)
 		job.Error(err)
 		return
 	}
-	node.Metadata = map[string]string{"LastSuccess": time.Now().Format(time.RFC3339)}
+	node.Metadata["LastSuccess"] = time.Now().Format(time.RFC3339)
 	_, err = t.provisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)

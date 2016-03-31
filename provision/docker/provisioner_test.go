@@ -1655,9 +1655,6 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&autoScaleSetRuleCmd{},
 		&autoScaleDeleteRuleCmd{},
 		&updateNodeToSchedulerCmd{},
-		&bs.EnvSetCmd{},
-		&bs.InfoCmd{},
-		&bs.UpgradeCmd{},
 		&dockerLogInfo{},
 		&dockerLogUpdate{},
 	}
@@ -2538,12 +2535,14 @@ func (s *S) TestDryMode(c *check.C) {
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {
-	conf, err := bs.LoadConfig()
-	c.Assert(err, check.IsNil)
-	err = conf.Save("mypool", bs.BSConfigEntry{
-		Envs: map[string]string{
-			"METRICS_BACKEND":      "LOGSTASH",
-			"METRICS_LOGSTASH_URI": "localhost:2222",
+	err := bs.AddNewContainer("", &bs.NodeContainerConfig{
+		Name: bs.BsDefaultName,
+		Config: docker.Config{
+			Env: []string{
+				"OTHER_ENV=asd",
+				"METRICS_BACKEND=LOGSTASH",
+				"METRICS_LOGSTASH_URI=localhost:2222",
+			},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -2604,30 +2603,38 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	fakeApp.Pool = "mypool"
 	tests := []struct {
-		envMap     map[string]string
-		poolEnvMap map[string]map[string]string
-		enabled    bool
-		msg        string
-		err        error
+		envs     []string
+		poolEnvs map[string][]string
+		enabled  bool
+		msg      string
+		err      error
 	}{
 		{nil, nil, true, "", nil},
-		{map[string]string{}, nil, true, "", nil},
-		{map[string]string{"LOG_BACKENDS": "xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
-		{map[string]string{"LOG_BACKENDS": "xxx", "LOG_XXX_DOC": "my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
-		{map[string]string{"LOG_BACKENDS": "a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
-		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
-		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc", "LOG_ABC_DOC": "doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
-		{map[string]string{}, map[string]map[string]string{"otherpool": {"LOG_BACKENDS": "abc"}}, true, "", nil},
-		{map[string]string{}, map[string]map[string]string{"mypool": {"LOG_BACKENDS": "abc, tsuru "}}, true, "", nil},
+		{[]string{}, nil, true, "", nil},
+		{[]string{"LOG_BACKENDS=xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
+		{[]string{"LOG_BACKENDS=xxx", "LOG_XXX_DOC=my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
+		{[]string{"LOG_BACKENDS=a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
+		{[]string{}, map[string][]string{"mypool": {"LOG_BACKENDS=abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
+		{[]string{}, map[string][]string{"mypool": {"LOG_BACKENDS=abc", "LOG_ABC_DOC=doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
+		{[]string{}, map[string][]string{"otherpool": {"LOG_BACKENDS=abc"}}, true, "", nil},
+		{[]string{}, map[string][]string{"mypool": {"LOG_BACKENDS=abc, tsuru "}}, true, "", nil},
 	}
 	for i, t := range tests {
-		if t.envMap != nil || t.poolEnvMap != nil {
-			conf, err := bs.LoadConfig()
+		if t.envs != nil || t.poolEnvs != nil {
+			err := bs.AddNewContainer("", &bs.NodeContainerConfig{
+				Name: bs.BsDefaultName,
+				Config: docker.Config{
+					Env: t.envs,
+				},
+			})
 			c.Assert(err, check.IsNil)
-			err = conf.Save("", bs.BSConfigEntry{Envs: t.envMap})
-			c.Assert(err, check.IsNil)
-			for pool, envs := range t.poolEnvMap {
-				err = conf.Save(pool, bs.BSConfigEntry{Envs: envs})
+			for pool, envs := range t.poolEnvs {
+				err := bs.AddNewContainer(pool, &bs.NodeContainerConfig{
+					Name: bs.BsDefaultName,
+					Config: docker.Config{
+						Env: envs,
+					},
+				})
 				c.Assert(err, check.IsNil)
 			}
 		}
@@ -2635,10 +2642,8 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 		c.Assert(err, check.Equals, t.err)
 		c.Assert(enabled, check.Equals, t.enabled, check.Commentf("%d test", i))
 		c.Assert(msg, check.Equals, t.msg)
-		for pool := range t.poolEnvMap {
-			conf, err := bs.LoadConfig()
-			c.Assert(err, check.IsNil)
-			err = conf.Remove(pool)
+		for pool := range t.poolEnvs {
+			err = bs.RemoveContainer(pool, bs.BsDefaultName)
 			c.Assert(err, check.IsNil)
 		}
 	}
