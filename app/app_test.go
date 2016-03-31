@@ -1493,6 +1493,58 @@ func (s *S) TestAddCNameCallsProvisionerSetCName(c *check.C) {
 	c.Assert(hasCName, check.Equals, true)
 }
 
+func (s *S) TestAddCnameRollback(c *check.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	err = a.AddCName("ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com")
+	c.Assert(err, check.NotNil)
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
+	hasCName := s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+	hasCName = s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+	invalidCName := "-------"
+	err = a.AddCName("ktulu2.mycompany.com", invalidCName)
+	c.Assert(err, check.NotNil)
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
+	hasCName = s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+	s.provisioner.PrepareFailure("SetCName", stderr.New("error"))
+	err = a.AddCName("ktulu2.mycompany.com")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "error")
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
+	hasCName = s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+}
+
+func (s *S) TestRemoveCNameRollback(c *check.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.AddCName("ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	err = a.RemoveCName("ktulu2.mycompany.com", "test.com")
+	c.Assert(err, check.NotNil)
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com"})
+	hasCName := s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	c.Assert(hasCName, check.Equals, true)
+	s.provisioner.PrepareFailure("UnsetCName", stderr.New("error"))
+	err = a.RemoveCName("ktulu2.mycompany.com")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "error")
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com"})
+}
+
 func (s *S) TestRemoveCNameRemovesFromDatabase(c *check.C) {
 	a := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)

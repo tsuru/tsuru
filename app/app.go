@@ -1177,6 +1177,8 @@ func (app *App) AddCName(cnames ...string) error {
 }
 
 func (app *App) RemoveCName(cnames ...string) error {
+	var err error
+	var cnamesDone []string
 	for _, cname := range cnames {
 		count := 0
 		for _, appCname := range app.CName {
@@ -1185,16 +1187,18 @@ func (app *App) RemoveCName(cnames ...string) error {
 			}
 		}
 		if count == 0 {
-			return stderr.New("cname not exists!")
+			err = stderr.New("cname not exists!")
+			break
 		}
 		if s, ok := Provisioner.(provision.CNameManager); ok {
-			if err := s.UnsetCName(app, cname); err != nil {
-				return err
+			err = s.UnsetCName(app, cname)
+			if err != nil {
+				break
 			}
 		}
 		conn, err := db.Conn()
 		if err != nil {
-			return err
+			break
 		}
 		defer conn.Close()
 		err = conn.Apps().Update(
@@ -1202,8 +1206,17 @@ func (app *App) RemoveCName(cnames ...string) error {
 			bson.M{"$pull": bson.M{"cname": cname}},
 		)
 		if err != nil {
-			return err
+			break
 		}
+		cnamesDone = append(cnamesDone, cname)
+	}
+	if err != nil {
+		var rollback rollbackFunc
+		if s, ok := Provisioner.(provision.CNameManager); ok {
+			rollback = s.SetCName
+		}
+		app.rollbackCNames(rollback, cnamesDone, "$push")
+		return err
 	}
 	return nil
 }
