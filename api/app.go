@@ -1233,22 +1233,6 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	rec.Log(u.Email, "platform-list")
-	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-		permission.Check(t, permission.PermPlatformCreate)
-	platforms, err := app.Platforms(!canUsePlat)
-	if err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(platforms)
-}
-
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {

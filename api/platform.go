@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/rec"
 )
 
 // title: add platform
@@ -113,4 +114,32 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	name := r.URL.Query().Get(":name")
 	return app.PlatformRemove(name)
+}
+
+// title: platform list
+// path: /platforms
+// method: GET
+// produce: application/json
+// responses:
+//   200: List platforms
+//   204: No content
+//   401: Unauthorized
+func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "platform-list")
+	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+		permission.Check(t, permission.PermPlatformCreate)
+	platforms, err := app.Platforms(!canUsePlat)
+	if err != nil {
+		return err
+	}
+	if len(platforms) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(platforms)
 }

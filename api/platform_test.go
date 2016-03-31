@@ -24,10 +24,13 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/rec/rectest"
 	"gopkg.in/check.v1"
 )
 
-type PlatformSuite struct{}
+type PlatformSuite struct {
+	conn *db.Storage
+}
 
 var _ = check.Suite(&PlatformSuite{})
 
@@ -50,10 +53,15 @@ func createToken(c *check.C) auth.Token {
 func (s *PlatformSuite) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_platform_test")
-	conn, err := db.Conn()
+	var err error
+	app.AuthScheme = nativeScheme
+	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
+}
+
+func (s *PlatformSuite) TearDownTest(c *check.C) {
+	s.conn.Close()
 }
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
@@ -134,7 +142,8 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dockerfileURL := ""
 	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
-	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
+	request, err := http.NewRequest("PUT", "/platforms/wat?disabled=true", strings.NewReader(body))
+	c.Assert(err, check.IsNil)
 	token := createToken(c)
 	request.Header.Add("Authorization", "b "+token.GetValue())
 	request.Header.Add("Content-Type", "multipart/form-data")
@@ -236,4 +245,115 @@ func (*PlatformSuite) TestPlatformRemove(c *check.C) {
 	token := createToken(c)
 	err = platformRemove(recorder, request, token)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *PlatformSuite) TestPlatformList(c *check.C) {
+	platforms := []app.Platform{
+		{Name: "python"},
+		{Name: "java"},
+		{Name: "ruby20"},
+		{Name: "static"},
+	}
+	for _, p := range platforms {
+		s.conn.Platforms().Insert(p)
+		defer s.conn.Platforms().Remove(p)
+	}
+	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got []app.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, platforms)
+	u, err := token.User()
+	c.Assert(err, check.IsNil)
+	action := rectest.Action{Action: "platform-list", User: u.Email}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
+	platforms := []app.Platform{
+		{Name: "python", Disabled: true},
+		{Name: "java"},
+		{Name: "ruby20", Disabled: true},
+		{Name: "static"},
+	}
+	for _, p := range platforms {
+		s.conn.Platforms().Insert(p)
+		defer s.conn.Platforms().Remove(p)
+	}
+	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got []app.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, platforms)
+	u, err := token.User()
+	c.Assert(err, check.IsNil)
+	action := rectest.Action{Action: "platform-list", User: u.Email}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
+	platforms := []app.Platform{
+		{Name: "python", Disabled: true},
+		{Name: "java", Disabled: false},
+		{Name: "ruby20", Disabled: true},
+		{Name: "static"},
+	}
+	expectedPlatforms := []app.Platform{
+		{Name: "java", Disabled: false},
+		{Name: "static"},
+	}
+	for _, p := range platforms {
+		s.conn.Platforms().Insert(p)
+		defer s.conn.Platforms().Remove(p)
+	}
+	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got []app.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expectedPlatforms)
+	u, err := token.User()
+	c.Assert(err, check.IsNil)
+	action := rectest.Action{Action: "platform-list", User: u.Email}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *PlatformSuite) TestPlatformListNoContent(c *check.C) {
+	request, err := http.NewRequest("GET", "/platforms", nil)
+	c.Assert(err, check.IsNil)
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
