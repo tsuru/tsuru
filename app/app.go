@@ -1114,37 +1114,65 @@ func (app *App) unsetEnvsToApp(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 	return Provisioner.Restart(app, "", w)
 }
 
+type rollbackFunc func(provision.App, string) error
+
+func (app *App) rollbackCNames(r rollbackFunc, cnames []string, mongoCommand string) {
+	conn, _ := db.Conn()
+	for _, c := range cnames {
+		r(app, c)
+		conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{mongoCommand: bson.M{"cname": c}},
+		)
+	}
+
+}
+
 // AddCName adds a CName to app. It updates the attribute,
 // calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change
 // in the database or add the CName on the provisioner.
 func (app *App) AddCName(cnames ...string) error {
+	var cnamesDone []string
+	var err error
 	for _, cname := range cnames {
 		if !cnameRegexp.MatchString(cname) {
-			return stderr.New("Invalid cname")
+			err = stderr.New("Invalid cname")
+			break
 		}
 		if cnameExists(cname) {
-			return stderr.New("cname already exists!")
+			err = stderr.New("cname already exists!")
+			break
 		}
 		if s, ok := Provisioner.(provision.CNameManager); ok {
-			if err := s.SetCName(app, cname); err != nil {
-				return err
+			err = s.SetCName(app, cname)
+			if err != nil {
+				break
 			}
 		}
 		conn, err := db.Conn()
 		if err != nil {
-			return err
+			break
 		}
 		defer conn.Close()
-		app.CName = append(app.CName, cname)
 		err = conn.Apps().Update(
 			bson.M{"name": app.Name},
 			bson.M{"$push": bson.M{"cname": cname}},
 		)
 		if err != nil {
-			return err
+			break
 		}
+		cnamesDone = append(cnamesDone, cname)
 	}
+	if err != nil {
+		var rollback rollbackFunc
+		if s, ok := Provisioner.(provision.CNameManager); ok {
+			rollback = s.UnsetCName
+		}
+		app.rollbackCNames(rollback, cnamesDone, "$pull")
+		return err
+	}
+	app.CName = append(app.CName, cnamesDone...)
 	return nil
 }
 

@@ -7,6 +7,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	stderr "errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
