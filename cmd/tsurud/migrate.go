@@ -293,6 +293,18 @@ func migrateRoles() error {
 }
 
 func migrateBSEnvs() error {
+	scheme, err := config.GetString("auth:scheme")
+	if err != nil {
+		scheme = "native"
+	}
+	app.AuthScheme, err = auth.GetScheme(scheme)
+	if err != nil {
+		return err
+	}
+	_, err = bs.InitializeBS()
+	if err != nil {
+		return err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -304,9 +316,8 @@ func migrateBSEnvs() error {
 		return err
 	}
 	image, _ := entry["image"].(string)
-	token, _ := entry["token"].(string)
 	envs, _ := entry["envs"].([]interface{})
-	envMap := map[string]string{}
+	var baseEnvs []string
 	for _, envEntry := range envs {
 		mapEntry, _ := envEntry.(map[string]interface{})
 		if mapEntry == nil {
@@ -314,17 +325,17 @@ func migrateBSEnvs() error {
 		}
 		name, _ := mapEntry["name"].(string)
 		value, _ := mapEntry["value"].(string)
-		envMap[name] = value
+		baseEnvs = append(baseEnvs, fmt.Sprintf("%s=%s", name, value))
 	}
-	conf, err := bs.LoadConfig()
+	bsNodeContainer, err := bs.LoadNodeContainer("", bs.BsDefaultName)
 	if err != nil {
 		return err
 	}
-	err = conf.SaveBase(bs.BSConfigEntry{
-		Image: image,
-		Token: token,
-		Envs:  envMap,
-	})
+	if len(baseEnvs) > 0 {
+		bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, baseEnvs...)
+	}
+	bsNodeContainer.PinnedImage = image
+	err = bs.AddNewContainer("", bsNodeContainer)
 	if err != nil {
 		return err
 	}
@@ -339,7 +350,7 @@ func migrateBSEnvs() error {
 			continue
 		}
 		envs, _ := poolMap["envs"].([]interface{})
-		envMap := map[string]string{}
+		var toAdd []string
 		for _, envEntry := range envs {
 			mapEntry, _ := envEntry.(map[string]interface{})
 			if mapEntry == nil {
@@ -347,10 +358,12 @@ func migrateBSEnvs() error {
 			}
 			name, _ := mapEntry["name"].(string)
 			value, _ := mapEntry["value"].(string)
-			envMap[name] = value
+			toAdd = append(toAdd, fmt.Sprintf("%s=%s", name, value))
 		}
-		if len(envMap) > 0 {
-			err = conf.Save(poolName, bs.BSConfigEntry{Envs: envMap})
+		if len(toAdd) > 0 {
+			bsCont := bs.NodeContainerConfig{Name: bs.BsDefaultName}
+			bsCont.Config.Env = append(bsCont.Config.Env, toAdd...)
+			err = bs.AddNewContainer(poolName, &bsCont)
 			if err != nil {
 				return err
 			}

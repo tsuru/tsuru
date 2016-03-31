@@ -5,6 +5,7 @@
 package main
 
 import (
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"gopkg.in/check.v1"
@@ -15,12 +16,9 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	conf, err := bs.LoadConfig()
+	entries, err := bs.LoadNodeContainersForPools(bs.BsDefaultName)
 	c.Assert(err, check.IsNil)
-	var entries map[string]bs.BSConfigEntry
-	err = conf.LoadAll(&entries)
-	c.Assert(err, check.IsNil)
-	c.Assert(entries, check.DeepEquals, map[string]bs.BSConfigEntry{
+	c.Assert(entries, check.DeepEquals, map[string]bs.NodeContainerConfig{
 		"": {},
 	})
 	coll := conn.Collection("bsconfig")
@@ -36,18 +34,30 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = migrateBSEnvs()
 	c.Assert(err, check.IsNil)
-	err = conf.LoadAll(&entries)
+	entries, err = bs.LoadNodeContainersForPools(bs.BsDefaultName)
 	c.Assert(err, check.IsNil)
-	c.Assert(entries, check.DeepEquals, map[string]bs.BSConfigEntry{
-		"": {Image: "tsuru/bs@shacabum", Token: "999", Envs: map[string]string{"FOO": "1"}},
-	})
-	err = migrateBSEnvs()
-	c.Assert(err, check.IsNil)
-	err = conf.LoadAll(&entries)
-	c.Assert(err, check.IsNil)
-	c.Assert(entries, check.DeepEquals, map[string]bs.BSConfigEntry{
-		"": {Image: "tsuru/bs@shacabum", Token: "999", Envs: map[string]string{"FOO": "1"}},
-	})
+	defaultEntry := entries[""]
+	c.Assert(defaultEntry.Config.Env, check.HasLen, 5)
+	c.Assert(defaultEntry.Config.Env[0], check.Matches, `TSURU_TOKEN=\w{40}`)
+	defaultEntry.Config.Env = defaultEntry.Config.Env[1:]
+	entries[""] = defaultEntry
+	expected := map[string]bs.NodeContainerConfig{
+		"": {Name: "big-sibling", PinnedImage: "tsuru/bs@shacabum", Config: docker.Config{
+			Image: "tsuru/bs:v1",
+			Env: []string{
+				"TSURU_ENDPOINT=http://tsuru.server:8080/",
+				"HOST_PROC=/prochost",
+				"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:1514",
+				"FOO=1",
+			},
+		}, HostConfig: docker.HostConfig{
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			NetworkMode:   "host",
+			Binds:         []string{"/proc:/prochost:ro"},
+		}},
+	}
+	c.Assert(entries, check.DeepEquals, expected)
 	err = coll.UpdateId("bs", bson.M{
 		"$set": bson.M{"pools": []bson.M{
 			{"name": "p1", "envs": []bson.M{{"name": "A", "value": "x"}}},
@@ -58,12 +68,23 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = migrateBSEnvs()
 	c.Assert(err, check.IsNil)
-	err = conf.LoadAll(&entries)
+	entries, err = bs.LoadNodeContainersForPools(bs.BsDefaultName)
 	c.Assert(err, check.IsNil)
-	c.Assert(entries, check.DeepEquals, map[string]bs.BSConfigEntry{
-		"":   {Image: "tsuru/bs@shacabum", Token: "999", Envs: map[string]string{"FOO": "1"}},
-		"p1": {Image: "tsuru/bs@shacabum", Token: "999", Envs: map[string]string{"FOO": "1", "A": "x"}},
-		"p2": {Image: "tsuru/bs@shacabum", Token: "999", Envs: map[string]string{"FOO": "1", "A": "y"}},
-		"p3": {Image: "tsuru/bs@shacabum", Token: "999", Envs: map[string]string{"FOO": "2", "B": "z"}},
-	})
+	for k, v := range entries {
+		v.Config.Env = v.Config.Env[1:]
+		entries[k] = v
+	}
+	expectedBase := expected[""]
+	expectedP1 := expectedBase
+	expectedP2 := expectedBase
+	expectedP3 := expectedBase
+	expectedBase.Config.Env = append(expectedBase.Config.Env, "FOO=1")
+	baseEnvs := append([]string{}, expectedBase.Config.Env...)
+	expectedP1.Config.Env = append(baseEnvs, "A=x")
+	expectedP2.Config.Env = append(baseEnvs, "A=y")
+	expectedP3.Config.Env = append(baseEnvs, "B=z", "FOO=2")
+	c.Assert(entries[""], check.DeepEquals, expectedBase)
+	c.Assert(entries["p1"], check.DeepEquals, expectedP1)
+	c.Assert(entries["p2"], check.DeepEquals, expectedP2)
+	c.Assert(entries["p3"], check.DeepEquals, expectedP3)
 }
