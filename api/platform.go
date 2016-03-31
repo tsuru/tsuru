@@ -16,6 +16,15 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
+// title: add platform
+// path: /platforms
+// method: POST
+// consume: multipart/form-data
+// produce: application/x-json-stream
+// responses:
+//   200: Platform created
+//   400: Invalid data
+//   401: Unauthorized
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	name := r.FormValue("name")
@@ -31,7 +40,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canCreatePlatform {
 		return permission.ErrUnauthorized
 	}
-	w.Header().Set("Content-Type", "text")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}

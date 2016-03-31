@@ -74,7 +74,7 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: Pool create
+//   201: Pool created
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Pool already exists

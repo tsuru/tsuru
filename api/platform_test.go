@@ -135,11 +135,14 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	dockerfileURL := ""
 	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
+	token := createToken(c)
+	request.Header.Add("Authorization", "b "+token.GetValue())
 	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
-	token := createToken(c)
-	result := platformUpdate(recorder, request, token)
-	c.Assert(result, check.IsNil)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
