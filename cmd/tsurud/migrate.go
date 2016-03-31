@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
-	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -301,7 +301,7 @@ func migrateBSEnvs() error {
 	if err != nil {
 		return err
 	}
-	_, err = bs.InitializeBS()
+	_, err = nodecontainer.InitializeBS()
 	if err != nil {
 		return err
 	}
@@ -327,7 +327,7 @@ func migrateBSEnvs() error {
 		value, _ := mapEntry["value"].(string)
 		baseEnvs = append(baseEnvs, fmt.Sprintf("%s=%s", name, value))
 	}
-	bsNodeContainer, err := bs.LoadNodeContainer("", bs.BsDefaultName)
+	bsNodeContainer, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	if err != nil {
 		return err
 	}
@@ -335,7 +335,7 @@ func migrateBSEnvs() error {
 		bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, baseEnvs...)
 	}
 	bsNodeContainer.PinnedImage = image
-	err = bs.AddNewContainer("", bsNodeContainer)
+	err = nodecontainer.AddNewContainer("", bsNodeContainer)
 	if err != nil {
 		return err
 	}
@@ -361,9 +361,9 @@ func migrateBSEnvs() error {
 			toAdd = append(toAdd, fmt.Sprintf("%s=%s", name, value))
 		}
 		if len(toAdd) > 0 {
-			bsCont := bs.NodeContainerConfig{Name: bs.BsDefaultName}
+			bsCont := nodecontainer.NodeContainerConfig{Name: nodecontainer.BsDefaultName}
 			bsCont.Config.Env = append(bsCont.Config.Env, toAdd...)
-			err = bs.AddNewContainer(poolName, &bsCont)
+			err = nodecontainer.AddNewContainer(poolName, &bsCont)
 			if err != nil {
 				return err
 			}

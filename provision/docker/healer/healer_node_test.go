@@ -18,8 +18,8 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	tsurunet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
@@ -1000,6 +1000,6 @@ func (s *S) newFakeDockerProvisioner(servers ...string) (*dockertest.FakeDockerP
 	}
 	p.SetContainers("127.0.0.1", nil)
 	p.SetContainers("localhost", nil)
-	err = bs.RegisterQueueTask(p)
+	err = nodecontainer.RegisterQueueTask(p)
 	return p, err
 }

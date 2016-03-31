@@ -27,9 +27,9 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -2535,8 +2535,8 @@ func (s *S) TestDryMode(c *check.C) {
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {
-	err := bs.AddNewContainer("", &bs.NodeContainerConfig{
-		Name: bs.BsDefaultName,
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: nodecontainer.BsDefaultName,
 		Config: docker.Config{
 			Env: []string{
 				"OTHER_ENV=asd",
@@ -2595,7 +2595,7 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(p.cluster, check.NotNil)
-	c.Assert(p.cluster.Hooks(cluster.HookEventBeforeContainerCreate), check.DeepEquals, []cluster.Hook{&bs.ClusterHook{Provisioner: &p}})
+	c.Assert(p.cluster.Hooks(cluster.HookEventBeforeContainerCreate), check.DeepEquals, []cluster.Hook{&nodecontainer.ClusterHook{Provisioner: &p}})
 }
 
 func (s *S) TestProvisionerLogsEnabled(c *check.C) {
@@ -2621,16 +2621,16 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 	}
 	for i, t := range tests {
 		if t.envs != nil || t.poolEnvs != nil {
-			err := bs.AddNewContainer("", &bs.NodeContainerConfig{
-				Name: bs.BsDefaultName,
+			err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+				Name: nodecontainer.BsDefaultName,
 				Config: docker.Config{
 					Env: t.envs,
 				},
 			})
 			c.Assert(err, check.IsNil)
 			for pool, envs := range t.poolEnvs {
-				err := bs.AddNewContainer(pool, &bs.NodeContainerConfig{
-					Name: bs.BsDefaultName,
+				err := nodecontainer.AddNewContainer(pool, &nodecontainer.NodeContainerConfig{
+					Name: nodecontainer.BsDefaultName,
 					Config: docker.Config{
 						Env: envs,
 					},
@@ -2643,7 +2643,7 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 		c.Assert(enabled, check.Equals, t.enabled, check.Commentf("%d test", i))
 		c.Assert(msg, check.Equals, t.msg)
 		for pool := range t.poolEnvs {
-			err = bs.RemoveContainer(pool, bs.BsDefaultName)
+			err = nodecontainer.RemoveContainer(pool, nodecontainer.BsDefaultName)
 			c.Assert(err, check.IsNil)
 		}
 	}

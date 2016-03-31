@@ -32,9 +32,9 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/mgo.v2"
 )
@@ -162,7 +162,7 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 		return response, err
 	}
 	jobParams := monsterqueue.JobParams{"endpoint": address, "machine": machineID, "metadata": params}
-	_, err = q.Enqueue(bs.QueueTaskName, jobParams)
+	_, err = q.Enqueue(nodecontainer.QueueTaskName, jobParams)
 	return response, err
 }
 

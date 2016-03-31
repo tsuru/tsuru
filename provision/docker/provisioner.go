@@ -29,9 +29,9 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -96,7 +96,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	if err != nil {
 		return err
 	}
-	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &bs.ClusterHook{Provisioner: p})
+	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &nodecontainer.ClusterHook{Provisioner: p})
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
 		disabledSeconds, _ := config.GetInt("docker:healing:disabled-time")
@@ -251,7 +251,7 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	err := bs.RegisterQueueTask(p)
+	err := nodecontainer.RegisterQueueTask(p)
 	if err != nil {
 		return err
 	}
@@ -1149,7 +1149,7 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 }
 
 func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
-	bsContainer, err := bs.LoadNodeContainer(app.GetPool(), bs.BsDefaultName)
+	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
 	if err != nil {
 		return map[string]string{}
 	}
@@ -1177,7 +1177,7 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		msg := fmt.Sprintf("Logs not available through tsuru. Enabled log driver is %q.", driver)
 		return false, msg, nil
 	}
-	bsContainer, err := bs.LoadNodeContainer(app.GetPool(), bs.BsDefaultName)
+	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
 	if err != nil {
 		return false, "", err
 	}

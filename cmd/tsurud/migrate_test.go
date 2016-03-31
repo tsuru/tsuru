@@ -7,7 +7,7 @@ package main
 import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -16,9 +16,9 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	entries, err := bs.LoadNodeContainersForPools(bs.BsDefaultName)
+	entries, err := nodecontainer.LoadNodeContainersForPools(nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
-	c.Assert(entries, check.DeepEquals, map[string]bs.NodeContainerConfig{
+	c.Assert(entries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
 		"": {},
 	})
 	coll := conn.Collection("bsconfig")
@@ -34,14 +34,14 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = migrateBSEnvs()
 	c.Assert(err, check.IsNil)
-	entries, err = bs.LoadNodeContainersForPools(bs.BsDefaultName)
+	entries, err = nodecontainer.LoadNodeContainersForPools(nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	defaultEntry := entries[""]
 	c.Assert(defaultEntry.Config.Env, check.HasLen, 5)
 	c.Assert(defaultEntry.Config.Env[0], check.Matches, `TSURU_TOKEN=\w{40}`)
 	defaultEntry.Config.Env = defaultEntry.Config.Env[1:]
 	entries[""] = defaultEntry
-	expected := map[string]bs.NodeContainerConfig{
+	expected := map[string]nodecontainer.NodeContainerConfig{
 		"": {Name: "big-sibling", PinnedImage: "tsuru/bs@shacabum", Config: docker.Config{
 			Image: "tsuru/bs:v1",
 			Env: []string{
@@ -68,7 +68,7 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = migrateBSEnvs()
 	c.Assert(err, check.IsNil)
-	entries, err = bs.LoadNodeContainersForPools(bs.BsDefaultName)
+	entries, err = nodecontainer.LoadNodeContainersForPools(nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	for k, v := range entries {
 		v.Config.Env = v.Config.Env[1:]

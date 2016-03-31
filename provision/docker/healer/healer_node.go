@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/mgo.v2/bson"
@@ -129,7 +129,7 @@ func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 		"machine":  machine.Id,
 		"metadata": createdNode.Metadata,
 	}
-	job, err := q.EnqueueWait(bs.QueueTaskName, jobParams, h.waitTimeNewMachine)
+	job, err := q.EnqueueWait(nodecontainer.QueueTaskName, jobParams, h.waitTimeNewMachine)
 	if err == nil {
 		_, err = job.Result()
 	}
