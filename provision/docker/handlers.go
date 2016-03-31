@@ -63,6 +63,12 @@ func init() {
 	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AuthorizationRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AuthorizationRequiredHandler(bsEnvSetHandler))
 	api.RegisterHandler("/docker/bs", "GET", api.AuthorizationRequiredHandler(bsConfigGetHandler))
+	api.RegisterHandler("/docker/nodecontainers", "GET", api.AuthorizationRequiredHandler(nodeContainerList))
+	api.RegisterHandler("/docker/nodecontainers", "POST", api.AuthorizationRequiredHandler(nodeContainerCreate))
+	api.RegisterHandler("/docker/nodecontainers/{name}", "GET", api.AuthorizationRequiredHandler(nodeContainerInfo))
+	api.RegisterHandler("/docker/nodecontainers/{name}", "DELETE", api.AuthorizationRequiredHandler(nodeContainerDelete))
+	api.RegisterHandler("/docker/nodecontainers/{name}", "POST", api.AuthorizationRequiredHandler(nodeContainerUpdate))
+	api.RegisterHandler("/docker/nodecontainers/{name}/upgrade", "POST", api.AuthorizationRequiredHandler(nodeContainerUpgrade))
 	api.RegisterHandler("/docker/logs", "GET", api.AuthorizationRequiredHandler(logsConfigGetHandler))
 	api.RegisterHandler("/docker/logs", "POST", api.AuthorizationRequiredHandler(logsConfigSetHandler))
 }
@@ -781,5 +787,35 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return err
 		}
 	}
+	return nil
+}
+
+func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	//TODO(cezarsa) fill the blank
+	return nil
+}
+
+func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	//TODO(cezarsa) fill the blank
+	return nil
+}
+
+func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	//TODO(cezarsa) fill the blank
+	return nil
+}
+
+func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	//TODO(cezarsa) fill the blank
+	return nil
+}
+
+func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	//TODO(cezarsa) fill the blank
+	return nil
+}
+
+func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	//TODO(cezarsa) fill the blank
 	return nil
 }

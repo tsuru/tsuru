@@ -949,6 +949,12 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&updateNodeToSchedulerCmd{},
 		&dockerLogInfo{},
 		&dockerLogUpdate{},
+		&nodecontainer.NodeContainerList{},
+		&nodecontainer.NodeContainerAdd{},
+		&nodecontainer.NodeContainerInfo{},
+		&nodecontainer.NodeContainerUpdate{},
+		&nodecontainer.NodeContainerDelete{},
+		&nodecontainer.NodeContainerUpgrade{},
 	}
 }
 

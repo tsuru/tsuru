@@ -1657,6 +1657,12 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&updateNodeToSchedulerCmd{},
 		&dockerLogInfo{},
 		&dockerLogUpdate{},
+		&nodecontainer.NodeContainerList{},
+		&nodecontainer.NodeContainerAdd{},
+		&nodecontainer.NodeContainerInfo{},
+		&nodecontainer.NodeContainerUpdate{},
+		&nodecontainer.NodeContainerDelete{},
+		&nodecontainer.NodeContainerUpgrade{},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }
