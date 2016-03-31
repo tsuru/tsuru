@@ -785,6 +785,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: unset envs
+// path: /apps/{app}/env
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//   200: Envs removed
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	msg := "You must provide the list of environment variables."
 	if r.URL.Query().Get("env") == "" {
@@ -815,7 +824,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "unset-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
