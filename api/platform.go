@@ -84,6 +84,12 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return nil
 }
 
+// title: remove platform
+// path: /platforms/{name}
+// method: DELETE
+// responses:
+//   200: Platform removed
+//   401: Unauthorized
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
 	if !canDeletePlatform {

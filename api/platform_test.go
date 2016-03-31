@@ -63,7 +63,7 @@ func (s *PlatformSuite) TearDownSuite(c *check.C) {
 	conn.Apps().Database.DropDatabase()
 }
 
-func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
+func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -92,7 +92,7 @@ func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -119,7 +119,7 @@ func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -130,8 +130,8 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
-	dockerfile_url := ""
-	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	dockerfileURL := ""
+	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
 	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
@@ -143,7 +143,7 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -154,8 +154,8 @@ func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
-	dockerfile_url := "http://localhost/Dockerfile"
-	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	dockerfileURL := "http://localhost/Dockerfile"
+	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
 	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
@@ -167,7 +167,7 @@ func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -178,8 +178,8 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
-	dockerfile_url := ""
-	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	dockerfileURL := ""
+	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
 	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
@@ -191,7 +191,7 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -202,8 +202,8 @@ func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
-	dockerfile_url := "http://localhost/Dockerfile"
-	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	dockerfileURL := "http://localhost/Dockerfile"
+	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
 	request.Header.Add("Content-Type", "multipart/form-data")
 	recorder := httptest.NewRecorder()
@@ -215,7 +215,7 @@ func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (p *PlatformSuite) TestPlatformRemove(c *check.C) {
+func (*PlatformSuite) TestPlatformRemove(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
