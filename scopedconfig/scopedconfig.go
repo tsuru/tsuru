@@ -23,12 +23,14 @@ const (
 )
 
 type ScopedConfig struct {
-	coll         string
-	name         string
-	AllowedPools []string
-	AllowEmpty   bool
-	ShallowMerge bool
-	Jsonfy       bool
+	coll          string
+	name          string
+	AllowedPools  []string
+	AllowEmpty    bool
+	ShallowMerge  bool
+	Jsonfy        bool
+	SliceAdd      bool
+	AllowMapEmpty bool
 }
 
 type scopedConfigEntry struct {
@@ -360,6 +362,11 @@ func (n *ScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (merged
 }
 
 func (n *ScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value, setInherited bool) (merged bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error trying to merge items: %s", r)
+		}
+	}()
 	switch base.Kind() {
 	case reflect.Struct:
 		if _, isTime := base.Interface().(time.Time); isTime {
@@ -405,7 +412,7 @@ func (n *ScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value
 	case reflect.Map:
 		for _, k := range pool.MapKeys() {
 			poolVal := pool.MapIndex(k)
-			if !n.isEmpty(poolVal) {
+			if n.AllowMapEmpty || !n.isEmpty(poolVal) {
 				merged = true
 				if base.IsNil() {
 					base.Set(reflect.MakeMap(reflect.MapOf(k.Type(), poolVal.Type())))
@@ -415,12 +422,13 @@ func (n *ScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value
 				base.SetMapIndex(k, reflect.Value{})
 			}
 		}
+	case reflect.Slice:
+		if n.SliceAdd {
+			base.Set(reflect.AppendSlice(base, pool))
+			break
+		}
+		fallthrough
 	default:
-		defer func() {
-			if r := recover(); r != nil {
-				err = fmt.Errorf("error trying to set field: %s", r)
-			}
-		}()
 		if !n.isEmpty(pool) {
 			merged = true
 			base.Set(pool)
