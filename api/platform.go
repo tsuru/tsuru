@@ -50,6 +50,13 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: update platform
+// path: /platforms/{name}
+// method: PUT
+// produce: application/x-json-stream
+// responses:
+//   200: Platform updated
+//   401: Unauthorized
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	name := r.URL.Query().Get(":name")
@@ -65,7 +72,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !canUpdatePlatform {
 		return permission.ErrUnauthorized
 	}
-	w.Header().Set("Content-Type", "text")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}

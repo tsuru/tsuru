@@ -108,15 +108,17 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	writer := multipart.NewWriter(&buf)
 	writer.WriteField("dockerfile", dockerfileURL)
 	writer.Close()
-	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", &buf)
+	request, _ := http.NewRequest("PUT", "/platforms/wat", &buf)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
-	recorder := httptest.NewRecorder()
 	token := createToken(c)
-	result := platformUpdate(recorder, request, token)
-	c.Assert(result, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
