@@ -660,6 +660,14 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: get envs
+// path: /apps/{app}/env
+// method: GET
+// produce: application/x-json-stream
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: App not found
 func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var variables []string
 	if envs, ok := r.URL.Query()["env"]; ok {
