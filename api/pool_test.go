@@ -113,6 +113,23 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
 }
 
+func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
+	pool := provision.Pool{Name: "pool1", Teams: []string{"test"}}
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(pool.Name)
+	req, err := http.NewRequest("DELETE", "/pools/pool1/team", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	pool := provision.Pool{Name: "pool1", Teams: []string{"test"}}
 	opts := provision.AddPoolOptions{Name: pool.Name}
@@ -128,9 +145,10 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.ListPools(nil)
+	var p provision.Pool
+	err = s.conn.Pools().FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
-	c.Assert(p[0].Teams, check.DeepEquals, []string{})
+	c.Assert(p.Teams, check.DeepEquals, []string{})
 }
 
 func (s *S) TestPoolListPublicPool(c *check.C) {

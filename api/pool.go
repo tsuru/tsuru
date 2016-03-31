@@ -140,14 +140,27 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return provision.AddTeamsToPool(pool, r.Form["team"])
 }
 
+// title: remove team from pool
+// path: /pools/{name}/team
+// method: DELETE
+// responses:
+//   200: Pool updated
+//   401: Unauthorized
+//   400: Invalid data
+//   404: Pool not found
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPoolUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	pool := r.URL.Query().Get(":name")
-	teams := r.URL.Query()["teams"]
-	return provision.RemoveTeamsFromPool(pool, teams)
+	if teams, ok := r.URL.Query()["team"]; ok {
+		return provision.RemoveTeamsFromPool(pool, teams)
+	}
+	return &terrors.HTTP{
+		Code:    http.StatusBadRequest,
+		Message: "You must provide the team",
+	}
 }
 
 // title: pool update
