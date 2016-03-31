@@ -1,5 +1,3 @@
-#!/bin/bash -e
-
 function check_go {
     set +e
     version=$(go version | grep -o 'go1.5')
@@ -45,6 +43,14 @@ github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.listNodesHandler
 github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.nodeHealingRead
+github.com/tsuru/tsuru/provision/docker.bsEnvSetHandler
+github.com/tsuru/tsuru/provision/docker.bsUpgradeHandler
+github.com/tsuru/tsuru/provision/docker.nodeContainerCreate
+github.com/tsuru/tsuru/provision/docker.nodeContainerDelete
+github.com/tsuru/tsuru/provision/docker.nodeContainerInfo
+github.com/tsuru/tsuru/provision/docker.nodeContainerList
+github.com/tsuru/tsuru/provision/docker.nodeContainerUpdate
+github.com/tsuru/tsuru/provision/docker.nodeContainerUpgrade
 EOF
     )
     ignored=$(echo "$ignored" | sort)
