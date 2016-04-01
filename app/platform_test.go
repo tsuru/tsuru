@@ -455,6 +455,7 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	defer conn.Close()
 	err = PlatformRemove("platform_dont_exists")
 	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrPlatformNotFound)
 	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"

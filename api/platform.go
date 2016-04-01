@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -107,13 +108,18 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 // responses:
 //   200: Platform removed
 //   401: Unauthorized
+//   404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
 	if !canDeletePlatform {
 		return permission.ErrUnauthorized
 	}
 	name := r.URL.Query().Get(":name")
-	return app.PlatformRemove(name)
+	err := app.PlatformRemove(name)
+	if err == app.ErrPlatformNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
 }
 
 // title: platform list

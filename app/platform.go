@@ -157,7 +157,11 @@ func PlatformRemove(name string) error {
 	if err != nil {
 		log.Errorf("Failed to remove platform from provisioner: %s", err)
 	}
-	return conn.Platforms().Remove(bson.M{"_id": name})
+	err = conn.Platforms().Remove(bson.M{"_id": name})
+	if err == mgo.ErrNotFound {
+		return ErrPlatformNotFound
+	}
+	return err
 }
 
 func GetPlatform(name string) (*Platform, error) {
