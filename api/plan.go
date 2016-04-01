@@ -112,7 +112,6 @@ func getSize(formValue string) int64 {
 		default:
 			return 0
 		}
-	} else {
-		return value
 	}
+	return value
 }
