@@ -68,7 +68,7 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = migrateBSEnvs()
 	c.Assert(err, check.IsNil)
-	entries, err = nodecontainer.LoadNodeContainersForPools(nodecontainer.BsDefaultName)
+	entries, err = nodecontainer.LoadNodeContainersForPoolsMerge(nodecontainer.BsDefaultName, true)
 	c.Assert(err, check.IsNil)
 	for k, v := range entries {
 		v.Config.Env = v.Config.Env[1:]

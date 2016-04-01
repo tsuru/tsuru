@@ -93,9 +93,13 @@ func LoadNodeContainer(pool string, name string) (*NodeContainerConfig, error) {
 }
 
 func LoadNodeContainersForPools(name string) (map[string]NodeContainerConfig, error) {
+	return LoadNodeContainersForPoolsMerge(name, false)
+}
+
+func LoadNodeContainersForPoolsMerge(name string, merge bool) (map[string]NodeContainerConfig, error) {
 	conf := configFor(name)
 	var result map[string]NodeContainerConfig
-	err := conf.LoadPoolsMerge(nil, &result, false)
+	err := conf.LoadPoolsMerge(nil, &result, merge)
 	if err != nil {
 		return nil, err
 	}
