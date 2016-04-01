@@ -74,6 +74,16 @@ func (s *S) TestAddPool(c *check.C) {
 	c.Assert(pools[0].Public, check.Equals, true)
 }
 
+func (s *S) TestRemovePoolNotFound(c *check.C) {
+	req, err := http.NewRequest("DELETE", "/pools/not-found", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestRemovePoolHandler(c *check.C) {
 	opts := provision.AddPoolOptions{
 		Name: "pool1",
@@ -84,7 +94,6 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	err = removePoolHandler(rec, req, s.token)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)

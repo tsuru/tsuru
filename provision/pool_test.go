@@ -157,6 +157,11 @@ func (s *S) TestForceAddDefaultPool(c *check.C) {
 	c.Assert(p.Default, check.Equals, true)
 }
 
+func (s *S) TestRemovePoolNotFound(c *check.C) {
+	err := RemovePool("notfound")
+	c.Assert(err, check.Equals, ErrPoolNotFound)
+}
+
 func (s *S) TestRemovePool(c *check.C) {
 	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1"}

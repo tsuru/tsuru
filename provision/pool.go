@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/tsuru/tsuru/db"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -22,6 +23,7 @@ var (
 	ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
 	ErrDefaultPoolAlreadyExists       = errors.New("Default pool already exists.")
 	ErrPoolNameIsRequired             = errors.New("Pool name is required.")
+	ErrPoolNotFound                   = errors.New("Pool does not exist.")
 )
 
 type AddPoolOptions struct {
@@ -75,7 +77,11 @@ func RemovePool(poolName string) error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Pools().Remove(bson.M{"_id": poolName})
+	err = conn.Pools().Remove(bson.M{"_id": poolName})
+	if err == mgo.ErrNotFound {
+		return ErrPoolNotFound
+	}
+	return err
 }
 
 func AddTeamsToPool(poolName string, teams []string) error {

@@ -123,7 +123,11 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	return provision.RemovePool(r.URL.Query().Get(":name"))
+	err := provision.RemovePool(r.URL.Query().Get(":name"))
+	if err == provision.ErrPoolNotFound {
+		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
 }
 
 // title: add team too pool
