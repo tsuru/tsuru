@@ -19,8 +19,8 @@ import (
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	cpuShare, _ := strconv.Atoi(r.FormValue("cpushare"))
 	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
-	memory, _ := strconv.ParseInt(r.FormValue("memory"), 10, 64)
-	swap, _ := strconv.ParseInt(r.FormValue("swap"), 10, 64)
+	memory := getSize(r.FormValue("memory"))
+	swap := getSize(r.FormValue("swap"))
 	plan := app.Plan{
 		Name:     r.FormValue("name"),
 		Memory:   memory,
@@ -94,4 +94,24 @@ func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(routers)
+}
+
+func getSize(formValue string) int64 {
+	const OneKbInBytes = 1024
+	value, err := strconv.ParseInt(formValue, 10, 64)
+	if err != nil {
+		unit := formValue[len(formValue)-1:]
+		size, _ := strconv.ParseInt(formValue[0:len(formValue)-1], 10, 64)
+		switch unit {
+		case "K":
+			return size * OneKbInBytes
+		case "M":
+			return size * OneKbInBytes * OneKbInBytes
+		case "G":
+			return size * OneKbInBytes * OneKbInBytes * OneKbInBytes
+		default:
+			return 0
+		}
+	}
+	return value
 }
