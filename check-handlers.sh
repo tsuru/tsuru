@@ -45,12 +45,8 @@ github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.nodeHealingRead
 github.com/tsuru/tsuru/provision/docker.bsEnvSetHandler
 github.com/tsuru/tsuru/provision/docker.bsUpgradeHandler
-github.com/tsuru/tsuru/provision/docker.nodeContainerCreate
-github.com/tsuru/tsuru/provision/docker.nodeContainerDelete
 github.com/tsuru/tsuru/provision/docker.nodeContainerInfo
 github.com/tsuru/tsuru/provision/docker.nodeContainerList
-github.com/tsuru/tsuru/provision/docker.nodeContainerUpdate
-github.com/tsuru/tsuru/provision/docker.nodeContainerUpgrade
 EOF
     )
     ignored=$(echo "$ignored" | sort)
