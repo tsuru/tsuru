@@ -20,7 +20,6 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	cpuShare, _ := strconv.Atoi(r.FormValue("cpushare"))
 	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
 	memory := getSize(r.FormValue("memory"))
-
 	swap := getSize(r.FormValue("swap"))
 	plan := app.Plan{
 		Name:     r.FormValue("name"),
