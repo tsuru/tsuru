@@ -1118,6 +1118,7 @@ type rollbackFunc func(provision.App, string) error
 
 func (app *App) rollbackCNames(r rollbackFunc, cnames []string, mongoCommand string) {
 	conn, _ := db.Conn()
+	defer conn.Close()
 	for _, c := range cnames {
 		r(app, c)
 		conn.Apps().Update(
