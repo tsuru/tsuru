@@ -47,7 +47,7 @@ func FindScopedConfigFor(coll, name string) *ScopedConfig {
 	return &ScopedConfig{coll: fmt.Sprintf("scoped_%s", coll), name: name}
 }
 
-func FindAllScopedConfig(collName string) ([]*ScopedConfig, error) {
+func FindAllScopedConfigNames(collName string) ([]string, error) {
 	base := FindScopedConfig(collName)
 	coll, err := base.collection()
 	if err != nil {
@@ -56,14 +56,7 @@ func FindAllScopedConfig(collName string) ([]*ScopedConfig, error) {
 	defer coll.Close()
 	var names []string
 	err = coll.Find(nil).Distinct("name", &names)
-	if err != nil {
-		return nil, err
-	}
-	configs := make([]*ScopedConfig, len(names))
-	for i, n := range names {
-		configs[i] = FindScopedConfigFor(collName, n)
-	}
-	return configs, nil
+	return names, err
 }
 
 func (n *ScopedConfig) GetName() string {
@@ -134,9 +127,11 @@ func (n *ScopedConfig) Save(pool string, val interface{}) error {
 }
 
 func (n *ScopedConfig) SaveMerge(pool string, val interface{}) error {
-	newValue := reflect.ValueOf(val)
-	if newValue.Type().Kind() != reflect.Struct {
-		return errors.New("received object must be a struct")
+	if reflect.TypeOf(val).Kind() == reflect.Ptr {
+		val = reflect.ValueOf(val).Elem().Interface()
+	}
+	if reflect.TypeOf(val).Kind() != reflect.Struct {
+		return errors.New("a struct type or pointer to a struct is required as value")
 	}
 	coll, err := n.collection()
 	if err != nil {
