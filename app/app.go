@@ -1150,7 +1150,8 @@ func (app *App) AddCName(cnames ...string) error {
 				break
 			}
 		}
-		conn, err := db.Conn()
+		var conn *db.Storage
+		conn, err = db.Conn()
 		if err != nil {
 			break
 		}
@@ -1196,7 +1197,8 @@ func (app *App) RemoveCName(cnames ...string) error {
 				break
 			}
 		}
-		conn, err := db.Conn()
+		var conn *db.Storage
+		conn, err = db.Conn()
 		if err != nil {
 			break
 		}
