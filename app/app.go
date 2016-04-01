@@ -1219,18 +1219,7 @@ func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 //func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, shouldRestart bool, writer io.Writer) error {
 func (app *App) AddInstance(instanceApp bind.InstanceApp, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
-	serviceInstances := tsuruServices[instanceApp.ServiceName]
-	serviceInstanceFound := false
-	for i, serviceInstance := range serviceInstances {
-		if serviceInstance.Name == instanceApp.Instance.Name {
-			serviceInstanceFound = true
-			serviceInstances[i] = instanceApp.Instance
-			break
-		}
-	}
-	if !serviceInstanceFound {
-		serviceInstances = append(serviceInstances, instanceApp.Instance)
-	}
+	serviceInstances := appendOrUpdateServiceInstance(tsuruServices[instanceApp.ServiceName], instanceApp.Instance)
 	tsuruServices[instanceApp.ServiceName] = serviceInstances
 	servicesJson, err := json.Marshal(tsuruServices)
 	if err != nil {
@@ -1259,6 +1248,21 @@ func (app *App) AddInstance(instanceApp bind.InstanceApp, writer io.Writer) erro
 			PublicOnly:    false,
 			ShouldRestart: instanceApp.ShouldRestart,
 		}, writer)
+}
+
+func appendOrUpdateServiceInstance(services []bind.ServiceInstance, service bind.ServiceInstance) []bind.ServiceInstance {
+	serviceInstanceFound := false
+	for i, serviceInstance := range services {
+		if serviceInstance.Name == service.Name {
+			serviceInstanceFound = true
+			services[i] = service
+			break
+		}
+	}
+	if !serviceInstanceFound {
+		services = append(services, service)
+	}
+	return services
 }
 
 func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string) (string, string) {
