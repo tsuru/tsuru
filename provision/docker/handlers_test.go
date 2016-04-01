@@ -14,10 +14,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cezarsa/form"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -35,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
+	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -1717,5 +1721,451 @@ func (s *HandlersSuite) TestNodeHealingConfigUpdateReadLimited(c *check.C) {
 	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
 		"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60)},
 		"p2": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(20), MaxUnresponsiveTimeInherited: true},
+	})
+}
+
+func (s *HandlersSuite) TestNodeContainerList(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=2"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c2",
+		Config: docker.Config{
+			Env: []string{"B=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/docker/nodecontainers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var configEntries []nodecontainer.NodeContainerConfigGroup
+	json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+	sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
+	c.Assert(configEntries, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"":   {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+			"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
+		}},
+		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c2", Config: docker.Config{Env: []string{"B=1"}}},
+		}},
+	})
+}
+
+func (s *HandlersSuite) TestNodeContainerListLimited(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=2"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p3", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=3"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
+	_, err = nativeScheme.Create(limitedUser)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(limitedUser)
+	t := createTokenForUser(limitedUser, "nodecontainer.read", string(permission.CtxPool), "p3", c)
+	request, err := http.NewRequest("GET", "/docker/nodecontainers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+t.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var configEntries []nodecontainer.NodeContainerConfigGroup
+	json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+	sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
+	c.Assert(configEntries, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"":   {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+			"p3": {Name: "c1", Config: docker.Config{Env: []string{"A=3"}}},
+		}},
+	})
+}
+
+func (s *HandlersSuite) TestNodeContainerInfo(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=2"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c2",
+		Config: docker.Config{
+			Env: []string{"B=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/docker/nodecontainers/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var configEntries map[string]nodecontainer.NodeContainerConfig
+	json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+	c.Assert(configEntries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
+		"":   {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+		"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
+	})
+}
+
+func (s *HandlersSuite) TestNodeContainerInfoLimited(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=2"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c2",
+		Config: docker.Config{
+			Env: []string{"B=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
+	_, err = nativeScheme.Create(limitedUser)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(limitedUser)
+	t := createTokenForUser(limitedUser, "nodecontainer.read", string(permission.CtxPool), "p-none", c)
+	request, err := http.NewRequest("GET", "/docker/nodecontainers/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+t.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var configEntries map[string]nodecontainer.NodeContainerConfig
+	json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+	c.Assert(configEntries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+	})
+}
+
+func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
+	doReq := func(cont nodecontainer.NodeContainerConfig, expected []nodecontainer.NodeContainerConfigGroup, pool ...string) {
+		values, err := form.EncodeToValues(cont)
+		c.Assert(err, check.IsNil)
+		if len(pool) > 0 {
+			values.Set("pool", pool[0])
+		}
+		reader := strings.NewReader(values.Encode())
+		request, err := http.NewRequest("POST", "/docker/nodecontainers", reader)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		server := api.RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		request, err = http.NewRequest("GET", "/docker/nodecontainers", nil)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configEntries []nodecontainer.NodeContainerConfigGroup
+		json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+		sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
+		c.Assert(configEntries, check.DeepEquals, expected)
+	}
+	doReq(nodecontainer.NodeContainerConfig{Name: "c1"}, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c1"},
+		}},
+	})
+	doReq(nodecontainer.NodeContainerConfig{
+		Name:       "c2",
+		Config:     docker.Config{Env: []string{"A=1"}},
+		HostConfig: docker.HostConfig{Memory: 256, Privileged: true},
+	}, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c1"},
+		}},
+		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+		}},
+	})
+	doReq(nodecontainer.NodeContainerConfig{
+		Name:       "c2",
+		Config:     docker.Config{Env: []string{"Z=9"}},
+		HostConfig: docker.HostConfig{Memory: 256},
+	}, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c1"},
+		}},
+		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}}, HostConfig: docker.HostConfig{Memory: 256}},
+		}},
+	})
+	doReq(nodecontainer.NodeContainerConfig{
+		Name:   "c2",
+		Config: docker.Config{Env: []string{"X=1"}},
+	}, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c1"},
+		}},
+		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}}, HostConfig: docker.HostConfig{Memory: 256}},
+			"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}}},
+		}},
+	}, "p1")
+}
+
+func (s *HandlersSuite) TestNodeContainerCreateInvalid(c *check.C) {
+	reader := strings.NewReader("")
+	request, err := http.NewRequest("POST", "/docker/nodecontainers", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Matches, "node container config name cannot be empty\n")
+	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: ""})
+	c.Assert(err, check.IsNil)
+	reader = strings.NewReader(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/nodecontainers", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Matches, "node container config name cannot be empty\n")
+	values, err = form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	values.Set("pool", "p1")
+	reader = strings.NewReader(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/nodecontainers", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "it's not possible to override image in pool, please set image as a default value\n")
+}
+
+func (s *HandlersSuite) TestNodeContainerCreateLimited(c *check.C) {
+	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
+	_, err := nativeScheme.Create(limitedUser)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(limitedUser)
+	t := createTokenForUser(limitedUser, "nodecontainer.create", string(permission.CtxPool), "p1", c)
+	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1"})
+	c.Assert(err, check.IsNil)
+	reader := strings.NewReader(values.Encode())
+	request, err := http.NewRequest("POST", "/docker/nodecontainers", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+t.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	values.Set("pool", "p1")
+	reader = strings.NewReader(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/nodecontainers", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+t.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *HandlersSuite) TestNodeContainerUpdate(c *check.C) {
+	doReq := func(cont nodecontainer.NodeContainerConfig, expected map[string]nodecontainer.NodeContainerConfig, pool ...string) {
+		values, err := form.EncodeToValues(cont)
+		c.Assert(err, check.IsNil)
+		if len(pool) > 0 {
+			values.Set("pool", pool[0])
+		}
+		reader := strings.NewReader(values.Encode())
+		request, err := http.NewRequest("POST", "/docker/nodecontainers/"+cont.Name, reader)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		server := api.RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		request, err = http.NewRequest("GET", "/docker/nodecontainers/"+cont.Name, nil)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configEntries map[string]nodecontainer.NodeContainerConfig
+		json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+		c.Assert(configEntries, check.DeepEquals, expected)
+	}
+	doReq(nodecontainer.NodeContainerConfig{Name: "c1"}, map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c1"},
+	})
+	doReq(nodecontainer.NodeContainerConfig{
+		Name:       "c2",
+		Config:     docker.Config{Env: []string{"A=1"}},
+		HostConfig: docker.HostConfig{Memory: 256, Privileged: true},
+	}, map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+	})
+	doReq(nodecontainer.NodeContainerConfig{
+		Name:       "c2",
+		Config:     docker.Config{Env: []string{"Z=9"}},
+		HostConfig: docker.HostConfig{Memory: 256},
+	}, map[string]nodecontainer.NodeContainerConfig{
+		"": {Name: "c2", Config: docker.Config{Env: []string{"A=1", "Z=9"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+	})
+	doReq(nodecontainer.NodeContainerConfig{
+		Name:   "c2",
+		Config: docker.Config{Env: []string{"X=1"}},
+	}, map[string]nodecontainer.NodeContainerConfig{
+		"":   {Name: "c2", Config: docker.Config{Env: []string{"A=1", "Z=9"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+		"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}}},
+	}, "p1")
+}
+
+func (s *HandlersSuite) TestNodeContainerUpdateLimited(c *check.C) {
+	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
+	_, err := nativeScheme.Create(limitedUser)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(limitedUser)
+	t := createTokenForUser(limitedUser, "nodecontainer.update", string(permission.CtxPool), "p1", c)
+	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1"})
+	c.Assert(err, check.IsNil)
+	reader := strings.NewReader(values.Encode())
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+t.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	values.Set("pool", "p1")
+	reader = strings.NewReader(values.Encode())
+	request, err = http.NewRequest("POST", "/docker/nodecontainers/c1", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+t.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *HandlersSuite) TestNodeContainerDelete(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Env: []string{"A=2"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/docker/nodecontainers/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	all, err := nodecontainer.AllNodeContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"":   {},
+			"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
+		}},
+	})
+	request, err = http.NewRequest("DELETE", "/docker/nodecontainers/c1?pool=p1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	all, err = nodecontainer.AllNodeContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{})
+}
+
+func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name:        "c1",
+		PinnedImage: "tsuru/c1@sha256:abcef384829283eff",
+		Config: docker.Config{
+			Env: []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	all, err := nodecontainer.AllNodeContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+		}},
 	})
 }

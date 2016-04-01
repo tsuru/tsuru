@@ -179,7 +179,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	var result1 NodeContainerConfig
 	err = conf.Load("", &result1)
 	c.Assert(err, check.IsNil)
-	c.Assert(result1.PinnedImage, check.Equals, "bsimg")
+	c.Assert(result1.PinnedImage, check.Equals, "")
 	client, err := docker.NewClient(p.Servers()[0].URL())
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)

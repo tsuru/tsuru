@@ -32,12 +32,49 @@ type NodeContainerConfig struct {
 	HostConfig  docker.HostConfig
 }
 
-func AddNewContainer(pool string, c *NodeContainerConfig) error {
+type NodeContainerConfigGroup struct {
+	Name        string
+	ConfigPools map[string]NodeContainerConfig
+}
+
+type NodeContainerConfigGroupSlice []NodeContainerConfigGroup
+
+type ValidationErr struct {
+	message string
+}
+
+func (n ValidationErr) Error() string {
+	return n.message
+}
+
+func (l NodeContainerConfigGroupSlice) Len() int           { return len(l) }
+func (l NodeContainerConfigGroupSlice) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l NodeContainerConfigGroupSlice) Less(i, j int) bool { return l[i].Name < l[j].Name }
+
+func (c *NodeContainerConfig) validate(pool string) error {
 	if c.Name == "" {
-		return errors.New("container config name cannot be empty")
+		return ValidationErr{message: "node container config name cannot be empty"}
+	}
+	if c.Config.Image != "" && pool != "" {
+		return ValidationErr{message: "it's not possible to override image in pool, please set image as a default value"}
+	}
+	return nil
+}
+
+func AddNewContainer(pool string, c *NodeContainerConfig) error {
+	if err := c.validate(pool); err != nil {
+		return err
 	}
 	conf := configFor(c.Name)
 	return conf.Save(pool, c)
+}
+
+func UpdateContainer(pool string, c *NodeContainerConfig) error {
+	if err := c.validate(pool); err != nil {
+		return err
+	}
+	conf := configFor(c.Name)
+	return conf.SaveMerge(pool, c)
 }
 
 func RemoveContainer(pool string, name string) error {
@@ -58,9 +95,25 @@ func LoadNodeContainer(pool string, name string) (*NodeContainerConfig, error) {
 func LoadNodeContainersForPools(name string) (map[string]NodeContainerConfig, error) {
 	conf := configFor(name)
 	var result map[string]NodeContainerConfig
-	err := conf.LoadAll(&result)
+	err := conf.LoadPoolsMerge(nil, &result, false)
 	if err != nil {
 		return nil, err
+	}
+	return result, nil
+}
+
+func AllNodeContainers() ([]NodeContainerConfigGroup, error) {
+	confNames, err := scopedconfig.FindAllScopedConfigNames(nodeContainerCollection)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]NodeContainerConfigGroup, len(confNames))
+	for i, n := range confNames {
+		confMap, err := LoadNodeContainersForPools(n)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = NodeContainerConfigGroup{Name: n, ConfigPools: confMap}
 	}
 	return result, nil
 }
@@ -77,7 +130,7 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, no
 	if w == nil {
 		w = ioutil.Discard
 	}
-	confs, err := scopedconfig.FindAllScopedConfig(nodeContainerCollection)
+	confNames, err := scopedconfig.FindAllScopedConfigNames(nodeContainerCollection)
 	if err != nil {
 		return err
 	}
@@ -90,18 +143,16 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, no
 	errChan := make(chan error, len(nodes))
 	wg := sync.WaitGroup{}
 	log.Debugf("[node containers] recreating %d containers", len(nodes))
-	recreateContainer := func(node *cluster.Node, c *scopedconfig.ScopedConfig) {
+	recreateContainer := func(node *cluster.Node, confName string) {
 		defer wg.Done()
-		c = configFor(c.GetName())
-		var containerConfig NodeContainerConfig
 		pool := node.Metadata["pool"]
-		confErr := c.Load(pool, &containerConfig)
+		containerConfig, confErr := LoadNodeContainer(pool, confName)
 		if confErr != nil {
 			errChan <- confErr
 			return
 		}
-		log.Debugf("[node containers] recreating container %q in %s [%s]", c.GetName(), node.Address, pool)
-		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", c.GetName(), node.Address, pool)
+		log.Debugf("[node containers] recreating container %q in %s [%s]", confName, node.Address, pool)
+		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", confName, node.Address, pool)
 		confErr = containerConfig.create(node.Address, pool, p, relaunch)
 		if confErr != nil {
 			msg := fmt.Sprintf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
@@ -113,9 +164,9 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, no
 		wg.Add(1)
 		go func(node *cluster.Node) {
 			defer wg.Done()
-			for j := range confs {
+			for j := range confNames {
 				wg.Add(1)
-				go recreateContainer(node, confs[j])
+				go recreateContainer(node, confNames[j])
 			}
 		}(&nodes[i])
 	}
@@ -140,6 +191,11 @@ func (c *NodeContainerConfig) EnvMap() map[string]string {
 	return envMap
 }
 
+func (c *NodeContainerConfig) ResetImage() error {
+	conf := configFor(c.Name)
+	return conf.SetField("", "pinnedimage", "")
+}
+
 func (c *NodeContainerConfig) image() string {
 	if c.PinnedImage != "" {
 		return c.PinnedImage
@@ -147,21 +203,25 @@ func (c *NodeContainerConfig) image() string {
 	return c.Config.Image
 }
 
-func (c *NodeContainerConfig) pullImage(client *docker.Client, poolName string, p DockerProvisioner) error {
+func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvisioner) (string, error) {
 	image := c.image()
 	output, err := pullWithRetry(client, p, image, 3)
 	if err != nil {
-		return err
+		return "", err
 	}
+	var pinnedImage string
 	if shouldPinImage(image) {
 		digest, _ := fix.GetImageDigest(output)
 		if digest != "" {
-			image = fmt.Sprintf("%s@%s", image, digest)
+			pinnedImage = fmt.Sprintf("%s@%s", image, digest)
 		}
 	}
-	c.PinnedImage = image
-	conf := configFor(c.Name)
-	return conf.SetField(poolName, "pinnedimage", image)
+	if pinnedImage != image {
+		c.PinnedImage = pinnedImage
+		conf := configFor(c.Name)
+		err = conf.SetField("", "pinnedimage", pinnedImage)
+	}
+	return image, err
 }
 
 func (c *NodeContainerConfig) create(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
@@ -169,8 +229,7 @@ func (c *NodeContainerConfig) create(dockerEndpoint, poolName string, p DockerPr
 	if err != nil {
 		return err
 	}
-	c.Config.Image = c.image()
-	err = c.pullImage(client, poolName, p)
+	c.Config.Image, err = c.pullImage(client, p)
 	if err != nil {
 		return err
 	}

@@ -791,31 +791,180 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) err
 }
 
 func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	//TODO(cezarsa) fill the blank
-	return nil
+	pools, err := listContextValues(t, permission.PermNodecontainerRead, true)
+	if err != nil {
+		return err
+	}
+	lst, err := nodecontainer.AllNodeContainers()
+	if err != nil {
+		return err
+	}
+	if pools != nil {
+		poolMap := map[string]struct{}{}
+		for _, p := range pools {
+			poolMap[p] = struct{}{}
+		}
+		for i, entry := range lst {
+			for poolName := range entry.ConfigPools {
+				if poolName == "" {
+					continue
+				}
+				if _, ok := poolMap[poolName]; !ok {
+					delete(entry.ConfigPools, poolName)
+				}
+			}
+			lst[i] = entry
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(lst)
 }
 
 func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	//TODO(cezarsa) fill the blank
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermNodecontainerCreate) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermNodecontainerCreate,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	var config nodecontainer.NodeContainerConfig
+	err = dec.DecodeValues(&config, r.Form)
+	if err != nil {
+		return err
+	}
+	err = nodecontainer.AddNewContainer(poolName, &config)
+	if err != nil {
+		if _, ok := err.(nodecontainer.ValidationErr); ok {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+			}
+		}
+		return err
+	}
 	return nil
 }
 
 func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	//TODO(cezarsa) fill the blank
-	return nil
+	pools, err := listContextValues(t, permission.PermNodecontainerRead, true)
+	if err != nil {
+		return err
+	}
+	name := r.URL.Query().Get(":name")
+	configMap, err := nodecontainer.LoadNodeContainersForPools(name)
+	if err != nil {
+		return err
+	}
+	if pools != nil {
+		poolMap := map[string]struct{}{}
+		for _, p := range pools {
+			poolMap[p] = struct{}{}
+		}
+		for poolName := range configMap {
+			if poolName == "" {
+				continue
+			}
+			if _, ok := poolMap[poolName]; !ok {
+				delete(configMap, poolName)
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(configMap)
 }
 
 func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	//TODO(cezarsa) fill the blank
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermNodecontainerUpdate) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermNodecontainerUpdate,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	var config nodecontainer.NodeContainerConfig
+	err = dec.DecodeValues(&config, r.Form)
+	if err != nil {
+		return err
+	}
+	err = nodecontainer.UpdateContainer(poolName, &config)
+	if err != nil {
+		if _, ok := err.(nodecontainer.ValidationErr); ok {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+			}
+		}
+		return err
+	}
 	return nil
 }
 
 func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	//TODO(cezarsa) fill the blank
-	return nil
+	name := r.URL.Query().Get(":name")
+	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermNodecontainerDelete) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermNodecontainerDelete,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
+	return nodecontainer.RemoveContainer(poolName, name)
 }
 
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	//TODO(cezarsa) fill the blank
+	name := r.URL.Query().Get(":name")
+	poolName := r.FormValue("pool")
+	if poolName == "" {
+		if !permission.Check(t, permission.PermNodecontainerUpdateUpgrade) {
+			return permission.ErrUnauthorized
+		}
+	} else {
+		if !permission.Check(t, permission.PermNodecontainerUpdateUpgrade,
+			permission.Context(permission.CtxPool, poolName)) {
+			return permission.ErrUnauthorized
+		}
+	}
+	config, err := nodecontainer.LoadNodeContainer("", name)
+	if err != nil {
+		return err
+	}
+	err = config.ResetImage()
+	if err != nil {
+		return err
+	}
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	err = nodecontainer.RecreateContainers(mainDockerProvisioner, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+	}
 	return nil
 }
