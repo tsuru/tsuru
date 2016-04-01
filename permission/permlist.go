@@ -134,4 +134,12 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"healing.read",
 	"healing.update",
+).addWithCtx(
+	"nodecontainer", []contextType{CtxPool},
+).add(
+	"nodecontainer.create",
+	"nodecontainer.read",
+	"nodecontainer.update",
+	"nodecontainer.update.upgrade",
+	"nodecontainer.delete",
 )
