@@ -36,6 +36,63 @@ func (s *S) TestPlanAdd(c *check.C) {
 	})
 }
 
+func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100&router=fake")
+	request, err := http.NewRequest("POST", "/plans", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	defer s.conn.Plans().RemoveAll(nil)
+	var plans []app.Plan
+	err = s.conn.Plans().Find(nil).All(&plans)
+	c.Assert(err, check.IsNil)
+	c.Assert(plans, check.DeepEquals, []app.Plan{
+		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100, Router: "fake"},
+	})
+}
+
+func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100&router=fake")
+	request, err := http.NewRequest("POST", "/plans", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	defer s.conn.Plans().RemoveAll(nil)
+	var plans []app.Plan
+	err = s.conn.Plans().Find(nil).All(&plans)
+	c.Assert(err, check.IsNil)
+	c.Assert(plans, check.DeepEquals, []app.Plan{
+		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100, Router: "fake"},
+	})
+}
+
+func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=512M&cpushare=100&router=fake")
+	request, err := http.NewRequest("POST", "/plans", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	defer s.conn.Plans().RemoveAll(nil)
+	var plans []app.Plan
+	err = s.conn.Plans().Find(nil).All(&plans)
+	c.Assert(err, check.IsNil)
+	c.Assert(plans, check.DeepEquals, []app.Plan{
+		{Name: "xyz", Memory: 9223372036854775807, Swap: 536870912, CpuShare: 100, Router: "fake"},
+	})
+}
+
 func (s *S) TestPlanAddWithNoPermission(c *check.C) {
 	token := userWithPermission(c)
 	recorder := httptest.NewRecorder()
