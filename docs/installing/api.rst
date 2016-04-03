@@ -75,6 +75,10 @@ configuration is described below, please note that you should replace the values
         collection: docker_containers
         repository-namespace: tsuru
         deploy-cmd: /var/lib/tsuru/deploy
+        bs:
+            image: tsuru/bs:v1
+            reporter-interval: 10
+            socket: /var/run/docker.sock
         cluster:
             storage: mongodb
             mongo-url: <your-mongodb-server>:27017
