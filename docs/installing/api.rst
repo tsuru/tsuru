@@ -136,7 +136,7 @@ For a description
 
 ::
 
-    $ tsurud [--config <path to tsuru.conf>] root-user-create myemail@somewhere.com
+    $ tsurud root-user-create [--config <path to tsuru.conf>] myemail@somewhere.com
     # type a password and confirmation (only if using native auth scheme)
 
     $ sudo apt-get install tsuru-client
