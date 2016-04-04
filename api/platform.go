@@ -68,6 +68,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // responses:
 //   200: Platform updated
 //   401: Unauthorized
+//   404: Not found
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	name := r.URL.Query().Get(":name")
@@ -94,6 +95,9 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Output: writer,
 	})
 	if err != nil {
+		if err == app.ErrPlatformNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
 		writer.Write([]byte("Failed to update platform!\n"))
 		return nil

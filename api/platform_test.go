@@ -229,6 +229,32 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
+func (*PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	var buf bytes.Buffer
+	dockerfileURL := "http://localhost/Dockerfile"
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("dockerfile", dockerfileURL)
+	writer.Close()
+	request, _ := http.NewRequest("PUT", "/platforms/not-found", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	token := createToken(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(recorder.Body.Bytes(), &msg)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
 func (*PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
