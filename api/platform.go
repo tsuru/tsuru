@@ -94,10 +94,10 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Input:  file,
 		Output: writer,
 	})
+	if err == app.ErrPlatformNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
 	if err != nil {
-		if err == app.ErrPlatformNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
 		writer.Write([]byte("Failed to update platform!\n"))
 		return nil
