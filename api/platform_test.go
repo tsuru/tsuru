@@ -250,8 +250,6 @@ func (*PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
