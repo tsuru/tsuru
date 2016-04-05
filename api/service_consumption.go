@@ -138,15 +138,14 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	permissionValue := serviceName + "/" + instanceName
+	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	if err != nil {
+		return err
+	}
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
-	if err != nil {
-		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
-		return nil
-	}
 	allowed := permission.Check(t, permission.PermServiceInstanceDelete,
 		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
 			permission.Context(permission.CtxServiceInstance, permissionValue),
