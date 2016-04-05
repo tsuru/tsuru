@@ -235,6 +235,56 @@ func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	c.Assert(nodeContainer.PinnedImage, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
+func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	_, err := InitializeBS()
+	c.Assert(err, check.IsNil)
+	cont, err := LoadNodeContainer("", BsDefaultName)
+	c.Assert(err, check.IsNil)
+	cont.PinnedImage = "myregistry/tsuru/bs@" + digest
+	err = AddNewContainer("", cont)
+	c.Assert(err, check.IsNil)
+	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		server.DefaultHandler().ServeHTTP(w, r)
+		w.Write([]byte(pullOutputDigest))
+	}))
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	err = client.PullImage(docker.PullImageOptions{
+		Repository: "base",
+	}, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
+	_, err = client.CreateContainer(docker.CreateContainerOptions{
+		Name:       BsDefaultName,
+		Config:     &docker.Config{Image: "base"},
+		HostConfig: &docker.HostConfig{},
+	})
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true)
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
+	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
+	c.Assert(container.State.Running, check.Equals, true)
+	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeContainer.PinnedImage, check.Equals, "myregistry/tsuru/bs@"+digest)
+}
+
 func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
 	_, err := InitializeBS()
 	c.Assert(err, check.IsNil)

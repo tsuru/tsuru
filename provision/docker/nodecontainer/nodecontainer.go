@@ -197,7 +197,7 @@ func (c *NodeContainerConfig) EnvMap() map[string]string {
 
 func (c *NodeContainerConfig) ResetImage() error {
 	conf := configFor(c.Name)
-	return conf.SetField("", "pinnedimage", "")
+	return conf.SetField("", "PinnedImage", "")
 }
 
 func (c *NodeContainerConfig) image() string {
@@ -219,11 +219,11 @@ func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvision
 		if digest != "" {
 			pinnedImage = fmt.Sprintf("%s@%s", image, digest)
 		}
-	}
-	if pinnedImage != image {
-		c.PinnedImage = pinnedImage
-		conf := configFor(c.Name)
-		err = conf.SetField("", "pinnedimage", pinnedImage)
+		if pinnedImage != image {
+			c.PinnedImage = pinnedImage
+			conf := configFor(c.Name)
+			err = conf.SetField("", "PinnedImage", pinnedImage)
+		}
 	}
 	return image, err
 }
@@ -272,7 +272,8 @@ func configFor(name string) *scopedconfig.ScopedConfig {
 func shouldPinImage(image string) bool {
 	parts := strings.SplitN(image, "/", 3)
 	lastPart := parts[len(parts)-1]
-	return len(strings.SplitN(lastPart, ":", 2)) < 2
+	versionParts := strings.SplitN(lastPart, ":", 2)
+	return len(versionParts) < 2 || versionParts[1] == "latest"
 }
 
 func dockerClient(endpoint string) (*docker.Client, error) {
