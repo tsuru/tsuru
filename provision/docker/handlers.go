@@ -911,6 +911,12 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	}
 	err = nodecontainer.UpdateContainer(poolName, &config)
 	if err != nil {
+		if err == nodecontainer.ErrNodeContainerNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		if _, ok := err.(nodecontainer.ValidationErr); ok {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
@@ -962,7 +968,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = nodecontainer.RecreateContainers(mainDockerProvisioner, writer)
+	err = nodecontainer.RecreateNamedContainers(mainDockerProvisioner, writer, name)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}

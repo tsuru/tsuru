@@ -2544,6 +2544,7 @@ func (s *S) TestMetricEnvs(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: nodecontainer.BsDefaultName,
 		Config: docker.Config{
+			Image: "img1",
 			Env: []string{
 				"OTHER_ENV=asd",
 				"METRICS_BACKEND=LOGSTASH",
@@ -2630,7 +2631,8 @@ func (s *S) TestProvisionerLogsEnabled(c *check.C) {
 			err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 				Name: nodecontainer.BsDefaultName,
 				Config: docker.Config{
-					Env: t.envs,
+					Env:   t.envs,
+					Image: "img1",
 				},
 			})
 			c.Assert(err, check.IsNil)

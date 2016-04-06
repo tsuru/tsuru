@@ -89,6 +89,60 @@ func (s *S) TestAddNewContainer(c *check.C) {
 	c.Assert(result3, check.DeepEquals, expected2)
 }
 
+func (s *S) TestAddNewContainerInvalid(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{})
+	c.Assert(err, check.ErrorMatches, "node container config name cannot be empty")
+	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: ""}})
+	c.Assert(err, check.ErrorMatches, "node container config image cannot be empty")
+	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: ""}})
+	c.Assert(err, check.ErrorMatches, "node container config image cannot be empty")
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: ""}})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: "img2"}})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: "img3"}})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: ""}})
+	c.Assert(err, check.ErrorMatches, "node container config image cannot be empty")
+}
+
+func (s *S) TestUpdateContainer(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = UpdateContainer("", &NodeContainerConfig{Name: "x", HostConfig: docker.HostConfig{Privileged: true}})
+	c.Assert(err, check.IsNil)
+	entry, err := LoadNodeContainer("", "x")
+	c.Assert(err, check.IsNil)
+	c.Assert(entry, check.DeepEquals, &NodeContainerConfig{
+		Name:       "x",
+		Config:     docker.Config{Image: "img1"},
+		HostConfig: docker.HostConfig{Privileged: true}},
+	)
+}
+
+func (s *S) TestUpdateContainerInvalid(c *check.C) {
+	err := UpdateContainer("", &NodeContainerConfig{})
+	c.Assert(err, check.ErrorMatches, "node container config name cannot be empty")
+	err = UpdateContainer("", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
+	err = UpdateContainer("", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
+	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = UpdateContainer("p1", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
+	err = UpdateContainer("", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.IsNil)
+	err = UpdateContainer("p1", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
+	err = AddNewContainer("p1", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.IsNil)
+	err = UpdateContainer("p1", &NodeContainerConfig{Name: "x"})
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestEnsureContainersStarted(c *check.C) {
 	c1 := NodeContainerConfig{
 		Name: "bs",
@@ -130,7 +184,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	}))
 	defer p.Destroy()
 	buf := safe.NewBuffer(nil)
-	err = ensureContainersStarted(p, buf, true)
+	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.IsNil)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 5)
@@ -219,7 +273,7 @@ func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	err = ensureContainersStarted(p, buf, true)
+	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -233,6 +287,89 @@ func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeContainer.PinnedImage, check.Equals, "myregistry/tsuru/bs@"+digest)
+}
+
+func (s *S) TestEnsureContainersStartedPinImgInParent(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "myregistry/tsuru/bs",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{
+		Name: "c1",
+	})
+	c.Assert(err, check.IsNil)
+	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		server.DefaultHandler().ServeHTTP(w, r)
+		w.Write([]byte(pullOutputDigest))
+	}))
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	node, err := p.Cluster().GetNode(server.URL())
+	c.Assert(err, check.IsNil)
+	node.Metadata["pool"] = "p1"
+	_, err = p.Cluster().UpdateNode(node)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	all, err := LoadNodeContainersForPoolsMerge("c1", false)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]NodeContainerConfig{
+		"":   {Name: "c1", PinnedImage: "myregistry/tsuru/bs@" + digest, Config: docker.Config{Image: "myregistry/tsuru/bs"}},
+		"p1": {Name: "c1", PinnedImage: ""},
+	})
+}
+
+func (s *S) TestEnsureContainersStartedPinImgInChild(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "myrootimg",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "myregistry/tsuru/bs",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		server.DefaultHandler().ServeHTTP(w, r)
+		w.Write([]byte(pullOutputDigest))
+	}))
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	node, err := p.Cluster().GetNode(server.URL())
+	c.Assert(err, check.IsNil)
+	node.Metadata["pool"] = "p1"
+	_, err = p.Cluster().UpdateNode(node)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	all, err := LoadNodeContainersForPoolsMerge("c1", false)
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, map[string]NodeContainerConfig{
+		"":   {Name: "c1", PinnedImage: "", Config: docker.Config{Image: "myrootimg"}},
+		"p1": {Name: "c1", PinnedImage: "myregistry/tsuru/bs@" + digest, Config: docker.Config{Image: "myregistry/tsuru/bs"}},
+	})
 }
 
 func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
@@ -269,7 +406,7 @@ func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	err = ensureContainersStarted(p, buf, true)
+	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)

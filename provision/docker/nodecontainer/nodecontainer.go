@@ -25,6 +25,11 @@ const (
 	nodeContainerCollection = "nodeContainer"
 )
 
+var (
+	ErrNodeContainerNotFound = errors.New("node container not found")
+	ErrNodeContainerNoName   = ValidationErr{message: "node container config name cannot be empty"}
+)
+
 type NodeContainerConfig struct {
 	Name        string
 	PinnedImage string
@@ -53,10 +58,14 @@ func (l NodeContainerConfigGroupSlice) Less(i, j int) bool { return l[i].Name < 
 
 func (c *NodeContainerConfig) validate(pool string) error {
 	if c.Name == "" {
-		return ValidationErr{message: "node container config name cannot be empty"}
+		return ErrNodeContainerNoName
 	}
-	if c.Config.Image != "" && pool != "" {
-		return ValidationErr{message: "it's not possible to override image in pool, please set image as a default value"}
+	base, err := LoadNodeContainer("", c.Name)
+	if err != nil {
+		return err
+	}
+	if c.Config.Image == "" && (pool == "" || base.Config.Image == "") {
+		return ValidationErr{message: "node container config image cannot be empty"}
 	}
 	return nil
 }
@@ -70,10 +79,17 @@ func AddNewContainer(pool string, c *NodeContainerConfig) error {
 }
 
 func UpdateContainer(pool string, c *NodeContainerConfig) error {
-	if err := c.validate(pool); err != nil {
-		return err
+	if c.Name == "" {
+		return ErrNodeContainerNoName
 	}
 	conf := configFor(c.Name)
+	hasEntry, err := conf.HasEntry(pool)
+	if err != nil {
+		return err
+	}
+	if !hasEntry {
+		return ErrNodeContainerNotFound
+	}
 	return conf.SaveMerge(pool, c)
 }
 
@@ -127,16 +143,23 @@ func AllNodeContainers() ([]NodeContainerConfigGroup, error) {
 //
 // It assumes that the given writer is thread safe.
 func RecreateContainers(p DockerProvisioner, w io.Writer, nodes ...cluster.Node) error {
-	return ensureContainersStarted(p, w, true, nodes...)
+	return ensureContainersStarted(p, w, true, nil, nodes...)
 }
 
-func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, nodes ...cluster.Node) error {
+func RecreateNamedContainers(p DockerProvisioner, w io.Writer, name string, nodes ...cluster.Node) error {
+	return ensureContainersStarted(p, w, true, []string{name}, nodes...)
+}
+
+func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, names []string, nodes ...cluster.Node) error {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	confNames, err := scopedconfig.FindAllScopedConfigNames(nodeContainerCollection)
-	if err != nil {
-		return err
+	var err error
+	if len(names) == 0 {
+		names, err = scopedconfig.FindAllScopedConfigNames(nodeContainerCollection)
+		if err != nil {
+			return err
+		}
 	}
 	if len(nodes) == 0 {
 		nodes, err = p.Cluster().UnfilteredNodes()
@@ -168,9 +191,9 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, no
 		wg.Add(1)
 		go func(node *cluster.Node) {
 			defer wg.Done()
-			for j := range confNames {
+			for j := range names {
 				wg.Add(1)
-				go recreateContainer(node, confNames[j])
+				go recreateContainer(node, names[j])
 			}
 		}(&nodes[i])
 	}
@@ -207,7 +230,7 @@ func (c *NodeContainerConfig) image() string {
 	return c.Config.Image
 }
 
-func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvisioner) (string, error) {
+func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvisioner, pool string) (string, error) {
 	image := c.image()
 	output, err := pullWithRetry(client, p, image, 3)
 	if err != nil {
@@ -215,6 +238,14 @@ func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvision
 	}
 	var pinnedImage string
 	if shouldPinImage(image) {
+		base, err := LoadNodeContainer("", c.Name)
+		if err != nil {
+			return "", err
+		}
+		var pinToPool string
+		if base.image() != image {
+			pinToPool = pool
+		}
 		digest, _ := fix.GetImageDigest(output)
 		if digest != "" {
 			pinnedImage = fmt.Sprintf("%s@%s", image, digest)
@@ -222,7 +253,7 @@ func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvision
 		if pinnedImage != image {
 			c.PinnedImage = pinnedImage
 			conf := configFor(c.Name)
-			err = conf.SetField("", "PinnedImage", pinnedImage)
+			err = conf.SetField(pinToPool, "PinnedImage", pinnedImage)
 		}
 	}
 	return image, err
@@ -233,7 +264,7 @@ func (c *NodeContainerConfig) create(dockerEndpoint, poolName string, p DockerPr
 	if err != nil {
 		return err
 	}
-	c.Config.Image, err = c.pullImage(client, p)
+	c.Config.Image, err = c.pullImage(client, p, poolName)
 	if err != nil {
 		return err
 	}
@@ -309,7 +340,7 @@ func (h *ClusterHook) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) 
 	if err != nil {
 		return fmt.Errorf("unable to initialize bs node container: %s", err)
 	}
-	err = ensureContainersStarted(h.Provisioner, nil, false, *node)
+	err = ensureContainersStarted(h.Provisioner, nil, false, nil, *node)
 	if err != nil {
 		return fmt.Errorf("unable to start node containers: %s", err)
 	}

@@ -1728,7 +1728,8 @@ func (s *HandlersSuite) TestNodeContainerList(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
-			Env: []string{"A=1"},
+			Image: "img1",
+			Env:   []string{"A=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1742,7 +1743,8 @@ func (s *HandlersSuite) TestNodeContainerList(c *check.C) {
 	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c2",
 		Config: docker.Config{
-			Env: []string{"B=1"},
+			Image: "img1",
+			Env:   []string{"B=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1758,11 +1760,11 @@ func (s *HandlersSuite) TestNodeContainerList(c *check.C) {
 	sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
 	c.Assert(configEntries, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"":   {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+			"":   {Name: "c1", Config: docker.Config{Image: "img1", Env: []string{"A=1"}}},
 			"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"B=1"}}},
+			"": {Name: "c2", Config: docker.Config{Image: "img1", Env: []string{"B=1"}}},
 		}},
 	})
 }
@@ -1771,7 +1773,8 @@ func (s *HandlersSuite) TestNodeContainerListLimited(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
-			Env: []string{"A=1"},
+			Image: "img1",
+			Env:   []string{"A=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1806,7 +1809,7 @@ func (s *HandlersSuite) TestNodeContainerListLimited(c *check.C) {
 	sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
 	c.Assert(configEntries, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"":   {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+			"":   {Name: "c1", Config: docker.Config{Image: "img1", Env: []string{"A=1"}}},
 			"p3": {Name: "c1", Config: docker.Config{Env: []string{"A=3"}}},
 		}},
 	})
@@ -1816,7 +1819,8 @@ func (s *HandlersSuite) TestNodeContainerInfo(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
-			Env: []string{"A=1"},
+			Image: "img1",
+			Env:   []string{"A=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1830,7 +1834,8 @@ func (s *HandlersSuite) TestNodeContainerInfo(c *check.C) {
 	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c2",
 		Config: docker.Config{
-			Env: []string{"B=1"},
+			Image: "img1",
+			Env:   []string{"B=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1844,7 +1849,7 @@ func (s *HandlersSuite) TestNodeContainerInfo(c *check.C) {
 	var configEntries map[string]nodecontainer.NodeContainerConfig
 	json.Unmarshal(recorder.Body.Bytes(), &configEntries)
 	c.Assert(configEntries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
-		"":   {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+		"":   {Name: "c1", Config: docker.Config{Image: "img1", Env: []string{"A=1"}}},
 		"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
 	})
 }
@@ -1853,7 +1858,8 @@ func (s *HandlersSuite) TestNodeContainerInfoLimited(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
-			Env: []string{"A=1"},
+			Image: "img1",
+			Env:   []string{"A=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1867,7 +1873,8 @@ func (s *HandlersSuite) TestNodeContainerInfoLimited(c *check.C) {
 	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c2",
 		Config: docker.Config{
-			Env: []string{"B=1"},
+			Image: "img1",
+			Env:   []string{"B=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -1886,7 +1893,7 @@ func (s *HandlersSuite) TestNodeContainerInfoLimited(c *check.C) {
 	var configEntries map[string]nodecontainer.NodeContainerConfig
 	json.Unmarshal(recorder.Body.Bytes(), &configEntries)
 	c.Assert(configEntries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
-		"": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+		"": {Name: "c1", Config: docker.Config{Image: "img1", Env: []string{"A=1"}}},
 	})
 }
 
@@ -1917,33 +1924,33 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 		sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
 		c.Assert(configEntries, check.DeepEquals, expected)
 	}
-	doReq(nodecontainer.NodeContainerConfig{Name: "c1"}, []nodecontainer.NodeContainerConfigGroup{
+	doReq(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1"},
+			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:       "c2",
-		Config:     docker.Config{Env: []string{"A=1"}},
+		Config:     docker.Config{Env: []string{"A=1"}, Image: "img2"},
 		HostConfig: docker.HostConfig{Memory: 256, Privileged: true},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1"},
+			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:       "c2",
-		Config:     docker.Config{Env: []string{"Z=9"}},
+		Config:     docker.Config{Env: []string{"Z=9"}, Image: "img2"},
 		HostConfig: docker.HostConfig{Memory: 256},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1"},
+			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}}, HostConfig: docker.HostConfig{Memory: 256}},
+			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
@@ -1951,10 +1958,10 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 		Config: docker.Config{Env: []string{"X=1"}},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1"},
+			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}}, HostConfig: docker.HostConfig{Memory: 256}},
+			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256}},
 			"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}}},
 		}},
 	}, "p1")
@@ -1982,9 +1989,8 @@ func (s *HandlersSuite) TestNodeContainerCreateInvalid(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Matches, "node container config name cannot be empty\n")
-	values, err = form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
+	values, err = form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "x1"})
 	c.Assert(err, check.IsNil)
-	values.Set("pool", "p1")
 	reader = strings.NewReader(values.Encode())
 	request, err = http.NewRequest("POST", "/docker/nodecontainers", reader)
 	c.Assert(err, check.IsNil)
@@ -1993,7 +1999,7 @@ func (s *HandlersSuite) TestNodeContainerCreateInvalid(c *check.C) {
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "it's not possible to override image in pool, please set image as a default value\n")
+	c.Assert(recorder.Body.String(), check.Matches, "node container config image cannot be empty\n")
 }
 
 func (s *HandlersSuite) TestNodeContainerCreateLimited(c *check.C) {
@@ -2002,7 +2008,7 @@ func (s *HandlersSuite) TestNodeContainerCreateLimited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer nativeScheme.Remove(limitedUser)
 	t := createTokenForUser(limitedUser, "nodecontainer.create", string(permission.CtxPool), "p1", c)
-	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1"})
+	values, err := form.EncodeToValues(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
 	c.Assert(err, check.IsNil)
 	reader := strings.NewReader(values.Encode())
 	request, err := http.NewRequest("POST", "/docker/nodecontainers", reader)
@@ -2050,35 +2056,59 @@ func (s *HandlersSuite) TestNodeContainerUpdate(c *check.C) {
 		json.Unmarshal(recorder.Body.Bytes(), &configEntries)
 		c.Assert(configEntries, check.DeepEquals, expected)
 	}
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{Name: "c2", Config: docker.Config{Image: "img2"}})
+	c.Assert(err, check.IsNil)
 	doReq(nodecontainer.NodeContainerConfig{Name: "c1"}, map[string]nodecontainer.NodeContainerConfig{
-		"": {Name: "c1"},
+		"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:       "c2",
 		Config:     docker.Config{Env: []string{"A=1"}},
 		HostConfig: docker.HostConfig{Memory: 256, Privileged: true},
 	}, map[string]nodecontainer.NodeContainerConfig{
-		"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+		"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:       "c2",
 		Config:     docker.Config{Env: []string{"Z=9"}},
 		HostConfig: docker.HostConfig{Memory: 256},
 	}, map[string]nodecontainer.NodeContainerConfig{
-		"": {Name: "c2", Config: docker.Config{Env: []string{"A=1", "Z=9"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+		"": {Name: "c2", Config: docker.Config{Env: []string{"A=1", "Z=9"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
 	})
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{Name: "c2"})
+	c.Assert(err, check.IsNil)
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:   "c2",
 		Config: docker.Config{Env: []string{"X=1"}},
 	}, map[string]nodecontainer.NodeContainerConfig{
-		"":   {Name: "c2", Config: docker.Config{Env: []string{"A=1", "Z=9"}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+		"":   {Name: "c2", Config: docker.Config{Env: []string{"A=1", "Z=9"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
 		"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}}},
 	}, "p1")
 }
 
+func (s *HandlersSuite) TestNodeContainerUpdateInvalid(c *check.C) {
+	cont := nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}}
+	val, err := form.EncodeToValues(cont)
+	c.Assert(err, check.IsNil)
+	reader := strings.NewReader(val.Encode())
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1", reader)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Matches, "node container not found\n")
+}
+
 func (s *HandlersSuite) TestNodeContainerUpdateLimited(c *check.C) {
+	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})
+	c.Assert(err, check.IsNil)
 	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
-	_, err := nativeScheme.Create(limitedUser)
+	_, err = nativeScheme.Create(limitedUser)
 	c.Assert(err, check.IsNil)
 	defer nativeScheme.Remove(limitedUser)
 	t := createTokenForUser(limitedUser, "nodecontainer.update", string(permission.CtxPool), "p1", c)
@@ -2108,7 +2138,8 @@ func (s *HandlersSuite) TestNodeContainerDelete(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
-			Env: []string{"A=1"},
+			Image: "img1",
+			Env:   []string{"A=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -2150,7 +2181,8 @@ func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
 		Name:        "c1",
 		PinnedImage: "tsuru/c1@sha256:abcef384829283eff",
 		Config: docker.Config{
-			Env: []string{"A=1"},
+			Image: "img1",
+			Env:   []string{"A=1"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -2165,7 +2197,7 @@ func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}}},
+			"": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}, Image: "img1"}},
 		}},
 	})
 }
