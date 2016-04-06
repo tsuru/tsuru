@@ -92,6 +92,9 @@ func AddTeamsToPool(poolName string, teams []string) error {
 	defer conn.Close()
 	var pool Pool
 	err = conn.Pools().Find(bson.M{"_id": poolName}).One(&pool)
+	if err == mgo.ErrNotFound {
+		return ErrPoolNotFound
+	}
 	if err != nil {
 		return err
 	}

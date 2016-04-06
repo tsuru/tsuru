@@ -102,6 +102,11 @@ func (s *S) TestAddDefaultPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestAddTeamToPoolNotFound(c *check.C) {
+	err := AddTeamsToPool("notfound", []string{"ateam"})
+	c.Assert(err, check.Equals, ErrPoolNotFound)
+}
+
 func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
 	coll := s.storage.Pools()
 	pool := Pool{Name: "nonteams", Public: false, Default: true}
