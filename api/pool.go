@@ -171,7 +171,11 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	pool := r.URL.Query().Get(":name")
 	if teams, ok := r.URL.Query()["team"]; ok {
-		return provision.RemoveTeamsFromPool(pool, teams)
+		err := provision.RemoveTeamsFromPool(pool, teams)
+		if err == provision.ErrPoolNotFound {
+			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
 	}
 	return &terrors.HTTP{
 		Code:    http.StatusBadRequest,

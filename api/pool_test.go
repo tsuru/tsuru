@@ -139,6 +139,16 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
 }
 
+func (s *S) TestRemoveTeamsToPoolNotFound(c *check.C) {
+	req, err := http.NewRequest("DELETE", "/pools/not-found/team?team=team", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
 	pool := provision.Pool{Name: "pool1", Teams: []string{"test"}}
 	opts := provision.AddPoolOptions{Name: pool.Name}
