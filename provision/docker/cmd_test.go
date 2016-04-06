@@ -222,6 +222,30 @@ func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *check.C) {
 `
 	c.Assert(buf.String(), check.Equals, expected)
 }
+func (s *S) TestListNodesInTheSchedulerCmdRunWithFlagQ(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{
+	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
+	"nodes": [
+		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
+		{"Address": "http://localhost2:9090", "Status": "ready"}
+	]
+}`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/1.0/docker/node"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := listNodesInTheSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"-q"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := "http://localhost1:8080\nhttp://localhost2:9090\n"
+	c.Assert(buf.String(), check.Equals, expected)
+}
 
 func (s *S) TestListAutoScaleHistoryCmdRunEmpty(c *check.C) {
 	var buf bytes.Buffer

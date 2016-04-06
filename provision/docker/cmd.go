@@ -225,8 +225,9 @@ func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
 }
 
 type listNodesInTheSchedulerCmd struct {
-	fs     *gnuflag.FlagSet
-	filter cmd.MapFlag
+	fs         *gnuflag.FlagSet
+	filter     cmd.MapFlag
+	simplified bool
 }
 
 func (c *listNodesInTheSchedulerCmd) Info() *cmd.Info {
@@ -248,6 +249,7 @@ func (c *listNodesInTheSchedulerCmd) Flags() *gnuflag.FlagSet {
 		filter := "Filter by metadata name and value"
 		c.fs.Var(&c.filter, "filter", filter)
 		c.fs.Var(&c.filter, "f", filter)
+		c.fs.BoolVar(&c.simplified, "q", false, "Display only nodes IP address")
 	}
 	return c.fs
 }
@@ -278,11 +280,18 @@ func (c *listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 			machineMap[machine["Address"].(string)] = m.(map[string]interface{})
 		}
 	}
-	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
 	var nodes []interface{}
 	if result["nodes"] != nil {
 		nodes = result["nodes"].([]interface{})
 	}
+	if c.simplified {
+		for _, n := range nodes {
+			node := n.(map[string]interface{})
+			fmt.Fprintln(ctx.Stdout, node["Address"].(string))
+		}
+		return nil
+	}
+	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
 	for _, n := range nodes {
 		node := n.(map[string]interface{})
 		addr := node["Address"].(string)
