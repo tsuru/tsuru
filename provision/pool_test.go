@@ -241,6 +241,11 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(p.Teams, check.DeepEquals, []string{"ateam"})
 }
 
+func (s *S) TestPoolUpdateNotFound(c *check.C) {
+	err := PoolUpdate("notfound", bson.M{"public": true}, false)
+	c.Assert(err, check.Equals, ErrPoolNotFound)
+}
+
 func (s *S) TestPoolUpdate(c *check.C) {
 	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Public: false}

@@ -143,5 +143,9 @@ func PoolUpdate(poolName string, query bson.M, forceDefault bool) error {
 			return err
 		}
 	}
-	return conn.Pools().UpdateId(poolName, bson.M{"$set": query})
+	err = conn.Pools().UpdateId(poolName, bson.M{"$set": query})
+	if err == mgo.ErrNotFound {
+		return ErrPoolNotFound
+	}
+	return err
 }

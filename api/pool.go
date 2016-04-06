@@ -205,6 +205,9 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	poolName := r.URL.Query().Get(":name")
 	forceDefault, _ := strconv.ParseBool(r.FormValue("force"))
 	err := provision.PoolUpdate(poolName, query, forceDefault)
+	if err == provision.ErrPoolNotFound {
+		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
 	if err == provision.ErrDefaultPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
