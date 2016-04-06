@@ -238,7 +238,8 @@ func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvision
 	}
 	var pinnedImage string
 	if shouldPinImage(image) {
-		base, err := LoadNodeContainer("", c.Name)
+		var base *NodeContainerConfig
+		base, err = LoadNodeContainer("", c.Name)
 		if err != nil {
 			return "", err
 		}
