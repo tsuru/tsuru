@@ -151,7 +151,11 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	if teams, ok := r.Form["team"]; ok {
 		pool := r.URL.Query().Get(":name")
-		return provision.AddTeamsToPool(pool, teams)
+		err := provision.AddTeamsToPool(pool, teams)
+		if err == provision.ErrPoolNotFound {
+			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
 	}
 	return &terrors.HTTP{Code: http.StatusBadRequest, Message: msg}
 }

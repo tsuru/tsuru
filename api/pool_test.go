@@ -139,6 +139,18 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
 }
 
+func (s *S) TestAddTeamsToPoolNotFound(c *check.C) {
+	b := strings.NewReader("team=test")
+	req, err := http.NewRequest("POST", "/pools/notfound/team", b)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestRemoveTeamsToPoolNotFound(c *check.C) {
 	req, err := http.NewRequest("DELETE", "/pools/not-found/team?team=team", nil)
 	c.Assert(err, check.IsNil)
