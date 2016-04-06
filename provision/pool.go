@@ -114,7 +114,11 @@ func RemoveTeamsFromPool(poolName string, teams []string) error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Pools().UpdateId(poolName, bson.M{"$pullAll": bson.M{"teams": teams}})
+	err = conn.Pools().UpdateId(poolName, bson.M{"$pullAll": bson.M{"teams": teams}})
+	if err == mgo.ErrNotFound {
+		return ErrPoolNotFound
+	}
+	return err
 }
 
 func ListPools(query bson.M) ([]Pool, error) {

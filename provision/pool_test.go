@@ -227,6 +227,11 @@ func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
 	c.Assert(err, check.Equals, ErrPublicDefaultPollCantHaveTeams)
 }
 
+func (s *S) TestRemoveTeamsFromPoolNotFound(c *check.C) {
+	err := RemoveTeamsFromPool("notfound", []string{"test"})
+	c.Assert(err, check.Equals, ErrPoolNotFound)
+}
+
 func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	coll := s.storage.Pools()
 	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
