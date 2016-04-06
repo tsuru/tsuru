@@ -126,6 +126,19 @@ func (n *ScopedConfig) Save(pool string, val interface{}) error {
 	return err
 }
 
+func (n *ScopedConfig) HasEntry(pool string) (bool, error) {
+	coll, err := n.collection()
+	if err != nil {
+		return false, err
+	}
+	defer coll.Close()
+	count, err := coll.Find(bson.M{"name": n.name, "pool": pool}).Count()
+	if err != nil {
+		return false, err
+	}
+	return count == 1, nil
+}
+
 func (n *ScopedConfig) SaveMerge(pool string, val interface{}) error {
 	if reflect.TypeOf(val).Kind() == reflect.Ptr {
 		val = reflect.ValueOf(val).Elem().Interface()
