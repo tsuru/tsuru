@@ -208,6 +208,19 @@ func (s *S) TestPlanRemoveInvalid(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
+func (s *S) TestRoutersListNoContent(c *check.C) {
+	err := config.Unset("routers")
+	c.Assert(err, check.IsNil)
+	defer config.Set("routers:fake:type", "fake")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/plans/routers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *S) TestRoutersList(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")

@@ -83,6 +83,13 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: router list
+// path: /plan/routers
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   204: No content
 func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPlanCreate)
 	if !allowed {
@@ -91,6 +98,10 @@ func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	routers, err := router.List()
 	if err != nil {
 		return err
+	}
+	if len(routers) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(routers)
