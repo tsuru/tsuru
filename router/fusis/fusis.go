@@ -183,31 +183,77 @@ func (r *fusisRouter) SetCName(cname, name string) error {
 func (r *fusisRouter) UnsetCName(cname, name string) error {
 	return nil
 }
-func (r *fusisRouter) Addr(name string) (string, error) {
-	// backendName, err := router.Retrieve(name)
-	// if err != nil {
-	// 	return "", err
-	// }
+
+type Service struct {
+	Name         string
+	Host         string
+	Port         uint16
+	Destinations []Destination
+}
+
+type Destination struct {
+	Name      string
+	Host      string
+	Port      uint16
+	Weight    int32
+	Mode      string
+	ServiceId string `json:"service_id"`
+}
+
+func (r *fusisRouter) findService(name string) (*Service, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
 	rsp, err := r.doRequest("GET", "/services", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+	data, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
+	}
+	var services []Service
+	err = json.Unmarshal(data, &services)
+	if err != nil {
+		return nil, fmt.Errorf("unable unmarshal %q: %s", string(data), err)
+	}
+	var foundService *Service
+	for i, s := range services {
+		if s.Name == backendName {
+			foundService = &services[i]
+			break
+		}
+	}
+	if foundService == nil {
+		return nil, fmt.Errorf("service %s not found", backendName)
+	}
+	return foundService, nil
+}
+
+func (r *fusisRouter) Addr(name string) (string, error) {
+	srv, err := r.findService(name)
 	if err != nil {
 		return "", err
 	}
-	defer rsp.Body.Close()
-	if rsp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(rsp.Body)
-		return "", fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
-	}
-	// TODO
-	return "", nil
+	return fmt.Sprintf("%s:%s", srv.Host, srv.Port), nil
 }
 func (r *fusisRouter) Swap(backend1 string, backend2 string) error {
 	return router.Swap(r, backend1, backend2)
 }
 func (r *fusisRouter) Routes(name string) ([]*url.URL, error) {
-	// backendName, err := router.Retrieve(name)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// TODO
-	return nil, nil
+	srv, err := r.findService(name)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*url.URL, len(srv.Destinations))
+	for i, d := range srv.Destinations {
+		var err error
+		result[i], err = url.Parse(fmt.Sprintf("http://%s:%s", d.Host, d.Port))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
