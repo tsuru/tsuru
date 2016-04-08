@@ -76,7 +76,7 @@ func (r *fusisRouter) doRequest(method, path string, params interface{}) (*http.
 		if err == nil {
 			code = rsp.StatusCode
 		}
-		log.Debugf("request %s %s %s: %d", method, url, bodyData, code)
+		log.Debugf("[fusis router] request %s %s %s: %d", method, url, bodyData, code)
 	}
 	return rsp, err
 }
@@ -92,8 +92,15 @@ func (r *fusisRouter) AddBackend(name string) error {
 		return err
 	}
 	defer rsp.Body.Close()
+	data, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode == 422 {
+		// TODO: differentiate from other errors
+		if r.debug {
+			log.Debugf("[fusis router] conflict response %d: %s", rsp.StatusCode, string(data))
+		}
+		return router.ErrBackendExists
+	}
 	if rsp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(rsp.Body)
 		return fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
 	}
 	return router.Store(name, name, routerType)
@@ -127,12 +134,13 @@ func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
 		host = address.Host
 		port = "80"
 	}
-	portInt, _ := strconv.ParseInt(port, 10, 16)
+	portInt, _ := strconv.ParseUint(port, 10, 16)
 	data := map[string]interface{}{
-		"Name": r.routeName(backendName, address),
-		"Host": host,
-		"Port": portInt,
-		"Mode": r.mode,
+		"Name":       r.routeName(backendName, address),
+		"Host":       host,
+		"Port":       portInt,
+		"Mode":       r.mode,
+		"service_id": backendName,
 	}
 	rsp, err := r.doRequest("POST", fmt.Sprintf("/services/%s/destinations", backendName), data)
 	if err != nil {
@@ -205,31 +213,24 @@ func (r *fusisRouter) findService(name string) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	rsp, err := r.doRequest("GET", "/services", nil)
+	rsp, err := r.doRequest("GET", "/services/"+backendName, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer rsp.Body.Close()
 	data, _ := ioutil.ReadAll(rsp.Body)
+	if r.debug {
+		log.Debugf("[fusis router] GET /service/%s: %s", backendName, data)
+	}
 	if rsp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
 	}
-	var services []Service
-	err = json.Unmarshal(data, &services)
+	var service Service
+	err = json.Unmarshal(data, &service)
 	if err != nil {
 		return nil, fmt.Errorf("unable unmarshal %q: %s", string(data), err)
 	}
-	var foundService *Service
-	for i, s := range services {
-		if s.Name == backendName {
-			foundService = &services[i]
-			break
-		}
-	}
-	if foundService == nil {
-		return nil, fmt.Errorf("service %s not found", backendName)
-	}
-	return foundService, nil
+	return &service, nil
 }
 
 func (r *fusisRouter) Addr(name string) (string, error) {
@@ -237,7 +238,7 @@ func (r *fusisRouter) Addr(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s:%s", srv.Host, srv.Port), nil
+	return fmt.Sprintf("%s:%d", srv.Host, srv.Port), nil
 }
 func (r *fusisRouter) Swap(backend1 string, backend2 string) error {
 	return router.Swap(r, backend1, backend2)
@@ -250,7 +251,7 @@ func (r *fusisRouter) Routes(name string) ([]*url.URL, error) {
 	result := make([]*url.URL, len(srv.Destinations))
 	for i, d := range srv.Destinations {
 		var err error
-		result[i], err = url.Parse(fmt.Sprintf("http://%s:%s", d.Host, d.Port))
+		result[i], err = url.Parse(fmt.Sprintf("http://%s:%d", d.Host, d.Port))
 		if err != nil {
 			return nil, err
 		}
