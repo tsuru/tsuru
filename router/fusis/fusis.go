@@ -6,6 +6,7 @@ package fusis
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 )
@@ -27,6 +29,7 @@ type fusisRouter struct {
 	port      uint16
 	scheduler string
 	mode      string
+	debug     bool
 }
 
 func init() {
@@ -38,12 +41,13 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := fusisRouter{
+	r := &fusisRouter{
 		apiUrl:    apiUrl,
 		proto:     "tcp",
 		port:      80,
 		scheduler: "rr",
 		mode:      "nat",
+		debug:     true,
 	}
 	return r, nil
 }
@@ -58,7 +62,7 @@ func (r *fusisRouter) doRequest(method, path string, params interface{}) (*http.
 	}
 	url := fmt.Sprintf("%s/%s", strings.TrimRight(r.apiUrl, "/"), strings.TrimLeft(path, "/"))
 	var bodyData string
-	if r.Debug {
+	if r.debug {
 		bodyData = buf.String()
 	}
 	req, err := http.NewRequest(method, url, &buf)
@@ -67,7 +71,7 @@ func (r *fusisRouter) doRequest(method, path string, params interface{}) (*http.
 	}
 	req.Header.Set("Content-Type", "application/json")
 	rsp, err := tsuruNet.Dial5Full60Client.Do(req)
-	if true {
+	if r.debug {
 		var code int
 		if err == nil {
 			code = rsp.StatusCode
@@ -109,6 +113,10 @@ func (r *fusisRouter) RemoveBackend(name string) error {
 	}
 	return nil
 }
+func (r *fusisRouter) routeName(name string, address *url.URL) string {
+	return fmt.Sprintf("%s_%s", name, address.String())
+}
+
 func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
@@ -119,9 +127,11 @@ func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
 		host = address.Host
 		port = "80"
 	}
+	portInt, _ := strconv.ParseInt(port, 10, 16)
 	data := map[string]interface{}{
+		"Name": r.routeName(backendName, address),
 		"Host": host,
-		"Port": strconv.ParseInt(port, 10, 16),
+		"Port": portInt,
 		"Mode": r.mode,
 	}
 	rsp, err := r.doRequest("POST", fmt.Sprintf("/services/%s/destinations", backendName), data)
@@ -148,7 +158,14 @@ func (r *fusisRouter) RemoveRoute(name string, address *url.URL) error {
 	if err != nil {
 		return err
 	}
-	// TODO
+	rsp, err := r.doRequest("DELETE", fmt.Sprintf("/services/%s/destinations/%s", backendName, r.routeName(backendName, address)), nil)
+	if err != nil {
+		return err
+	}
+	if rsp.StatusCode != http.StatusOK {
+		data, _ := ioutil.ReadAll(rsp.Body)
+		return fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
+	}
 	return nil
 }
 func (r *fusisRouter) RemoveRoutes(name string, addresses []*url.URL) error {
@@ -167,21 +184,30 @@ func (r *fusisRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 func (r *fusisRouter) Addr(name string) (string, error) {
-	backendName, err := router.Retrieve(name)
+	// backendName, err := router.Retrieve(name)
+	// if err != nil {
+	// 	return "", err
+	// }
+	rsp, err := r.doRequest("GET", "/services", nil)
 	if err != nil {
 		return "", err
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		data, _ := ioutil.ReadAll(rsp.Body)
+		return "", fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
 	}
 	// TODO
 	return "", nil
 }
-func (r *fusisRouter) Swap(string, string) error {
+func (r *fusisRouter) Swap(backend1 string, backend2 string) error {
 	return router.Swap(r, backend1, backend2)
 }
 func (r *fusisRouter) Routes(name string) ([]*url.URL, error) {
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return nil, err
-	}
+	// backendName, err := router.Retrieve(name)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	// TODO
 	return nil, nil
 }
