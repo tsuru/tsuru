@@ -454,11 +454,20 @@ var addNewRoutes = action.Action{
 
 var removeOldRoutes = action.Action{
 	Name: "remove-old-routes",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
+	Forward: func(ctx action.FWContext) (result action.Result, err error) {
+		result = ctx.Previous
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if args.appDestroy {
+			defer func() {
+				if err != nil {
+					log.Errorf("ignored error during remove routes in app destroy: %s", err)
+				}
+				err = nil
+			}()
+		}
 		r, err := getRouterForApp(args.app)
 		if err != nil {
-			return nil, err
+			return
 		}
 		writer := args.writer
 		if writer == nil {
@@ -469,7 +478,7 @@ var removeOldRoutes = action.Action{
 		}
 		currentImageName, err := appCurrentImageName(args.app.GetName())
 		if err != nil && err != errNoImagesAvailable {
-			return nil, err
+			return
 		}
 		webProcessName, err := getImageWebProcessName(currentImageName)
 		if err != nil {
@@ -486,19 +495,21 @@ var removeOldRoutes = action.Action{
 			}
 		}
 		if len(routesToRemove) == 0 {
-			return ctx.Previous, nil
+			return
 		}
 		err = r.RemoveRoutes(args.app.GetName(), routesToRemove)
 		if err != nil {
-			r.AddRoutes(args.app.GetName(), routesToRemove)
-			return nil, err
+			if !args.appDestroy {
+				r.AddRoutes(args.app.GetName(), routesToRemove)
+			}
+			return
 		}
 		for _, c := range args.toRemove {
 			if c.Routable {
 				fmt.Fprintf(writer, " ---> Removed route from unit %s [%s]\n", c.ShortID(), c.ProcessName)
 			}
 		}
-		return ctx.Previous, nil
+		return
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
