@@ -304,7 +304,7 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		return stderr.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
 	err = runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
-		err := c.Start(&container.StartArgs{
+		err = c.Start(&container.StartArgs{
 			Provisioner: p,
 			App:         app,
 		})
@@ -312,7 +312,8 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 			return err
 		}
 		c.SetStatus(p, provision.StatusStarting, true)
-		if info, err := c.NetworkInfo(p); err == nil {
+		var info container.NetworkInfo
+		if info, err = c.NetworkInfo(p); err == nil {
 			p.fixContainer(c, info)
 		}
 		return nil

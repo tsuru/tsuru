@@ -860,11 +860,11 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 func (s *S) TestProvisionerDestroy(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp(cont.AppName, "python", 1)
-	unit := cont.AsUnit(app)
-	app.BindUnit(&unit)
-	s.p.Provision(app)
-	err = s.p.Destroy(app)
+	a := provisiontest.NewFakeApp(cont.AppName, "python", 1)
+	unit := cont.AsUnit(a)
+	a.BindUnit(&unit)
+	s.p.Provision(a)
+	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
 	coll := s.p.Collection()
 	defer coll.Close()
@@ -872,7 +872,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, false)
-	c.Assert(app.HasBind(&unit), check.Equals, false)
+	c.Assert(a.HasBind(&unit), check.Equals, false)
 }
 
 func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
@@ -931,17 +931,17 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	s.p.Provision(app)
-	err := s.p.Destroy(app)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	s.p.Provision(a)
+	err := s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(app)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(a)
 	c.Assert(err, check.IsNil)
-	err = s.p.Destroy(app)
+	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, false)
 }
@@ -950,10 +950,10 @@ func (s *S) TestProvisionerAddr(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
-	app := provisiontest.NewFakeApp(cont.AppName, "python", 1)
-	addr, err := s.p.Addr(app)
+	a := provisiontest.NewFakeApp(cont.AppName, "python", 1)
+	addr, err := s.p.Addr(a)
 	c.Assert(err, check.IsNil)
-	r, err := getRouterForApp(app)
+	r, err := getRouterForApp(a)
 	c.Assert(err, check.IsNil)
 	expected, err := r.Addr(cont.AppName)
 	c.Assert(err, check.IsNil)
@@ -963,19 +963,19 @@ func (s *S) TestProvisionerAddr(c *check.C) {
 func (s *S) TestProvisionerAddUnits(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	app.Deploys = 1
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
-	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	a.Deploys = 1
+	s.p.Provision(a)
+	defer s.p.Destroy(a)
+	_, err = s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.p.AddUnits(app, 3, "web", nil)
+	units, err := s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	coll := s.p.Collection()
 	defer coll.Close()
-	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	defer coll.RemoveAll(bson.M{"appname": a.GetName()})
 	c.Assert(units, check.HasLen, 3)
-	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	count, err := coll.Find(bson.M{"appname": a.GetName()}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 4)
 }
@@ -983,13 +983,13 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 func (s *S) TestProvisionerAddUnitsInvalidProcess(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	app.Deploys = 1
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
-	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	a.Deploys = 1
+	s.p.Provision(a)
+	defer s.p.Destroy(a)
+	_, err = s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnits(app, 3, "bogus", nil)
+	_, err = s.p.AddUnits(a, 3, "bogus", nil)
 	c.Assert(err, check.FitsTypeOf, provision.InvalidProcessError{})
 	c.Assert(err, check.ErrorMatches, `process error: no command declared in Procfile for process "bogus"`)
 }
@@ -1007,16 +1007,16 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 	defer s.server.CustomHandler("/containers/create", s.server.DefaultHandler())
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	s.p.Provision(a)
+	defer s.p.Destroy(a)
 	coll := s.p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
+	coll.Insert(container.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
-	_, err = s.p.AddUnits(app, 3, "web", nil)
+	_, err = s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.NotNil)
-	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	count, err := coll.Find(bson.M{"appname": a.GetName()}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 }
@@ -1024,25 +1024,25 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	app.Deploys = 1
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	a.Deploys = 1
+	s.p.Provision(a)
+	defer s.p.Destroy(a)
 	coll := s.p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
+	coll.Insert(container.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
-	units, err := s.p.AddUnits(app, 0, "web", nil)
+	units, err := s.p.AddUnits(a, 0, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add 0 units")
 }
 
 func (s *S) TestProvisionerAddUnitsWithNoDeploys(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
-	units, err := s.p.AddUnits(app, 1, "web", nil)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
+	s.p.Provision(a)
+	defer s.p.Destroy(a)
+	units, err := s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "New units can only be added after the first deployment")
@@ -1053,27 +1053,27 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	p.Provision(app)
-	defer p.Destroy(app)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(a)
+	defer p.Destroy(a)
 	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python:latest"})
+	coll.Insert(container.Container{ID: "xxxfoo", AppName: a.GetName(), Version: "123987", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
-	imageId, err := appCurrentImageName(app.GetName())
+	imageID, err := appCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         app,
-		imageId:     imageId,
+		app:         a,
+		imageId:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	defer coll.RemoveAll(bson.M{"appname": a.GetName()})
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units[0].HostAddr, check.Equals, "localhost")
-	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	count, err := coll.Find(bson.M{"appname": a.GetName()}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 2)
 }
@@ -1081,10 +1081,10 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
-	imageId, err := appCurrentImageName(app.GetName())
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	s.p.Provision(a)
+	defer s.p.Destroy(a)
+	imageId, err := appCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	var callCount int32
 	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1096,7 +1096,7 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	}))
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		app:         app,
+		app:         a,
 		imageId:     imageId,
 		provisioner: s.p,
 	})
@@ -1104,7 +1104,7 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	c.Assert(units, check.HasLen, 0)
 	coll := s.p.Collection()
 	defer coll.Close()
-	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	count, err := coll.Find(bson.M{"appname": a.GetName()}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 }
@@ -1512,14 +1512,14 @@ func (s *S) TestProvisionerSetUnitStatusSearchByName(c *check.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *check.C) {
-	app := provisiontest.NewFakeApp("starbreaker", "python", 1)
-	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("starbreaker", "python", 1)
+	container1, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container1)
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container1.ID}, container1)
-	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	container2, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container2)
 	coll.Update(bson.M{"id": container2.ID}, container2)
@@ -1528,27 +1528,27 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 		executed = true
 	})
 	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(&stdout, &stderr, app, "ls", "-l")
+	err = s.p.ExecuteCommand(&stdout, &stderr, a, "ls", "-l")
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, true)
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *check.C) {
-	app := provisiontest.NewFakeApp("almah", "static", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
-	err := s.p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
+	err := s.p.ExecuteCommand(&buf, &buf, a, "ls", "-lh")
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
 func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
-	app := provisiontest.NewFakeApp("starbreaker", "python", 1)
-	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("starbreaker", "python", 1)
+	container1, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	container2, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	container3, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	container3, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	container4, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	container4, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	container2.SetStatus(s.p, provision.StatusCreated, true)
 	container3.SetStatus(s.p, provision.StatusBuilding, true)
@@ -1569,14 +1569,14 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 		executed++
 	})
 	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(&stdout, &stderr, app, "echo x")
+	err = s.p.ExecuteCommand(&stdout, &stderr, a, "echo x")
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, 1)
 }
 
 func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
-	app := provisiontest.NewFakeApp("almah", "static", 1)
-	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
+	container, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
 	coll := s.p.Collection()
@@ -1587,15 +1587,15 @@ func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 	s.server.PrepareExec("*", func() {
 		executed = true
 	})
-	err = s.p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-l")
+	err = s.p.ExecuteCommandOnce(&stdout, &stderr, a, "ls", "-l")
 	c.Assert(err, check.IsNil)
 	c.Assert(executed, check.Equals, true)
 }
 
 func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
-	app := provisiontest.NewFakeApp("almah", "static", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
-	err := s.p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
+	err := s.p.ExecuteCommandOnce(&buf, &buf, a, "ls", "-lh")
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
@@ -1606,28 +1606,28 @@ func (s *S) TestProvisionCollection(c *check.C) {
 }
 
 func (s *S) TestProvisionSetCName(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend("myapp")
 	addr, _ := url.Parse("http://127.0.0.1")
 	routertest.FakeRouter.AddRoute("myapp", addr)
 	cname := "mycname.com"
-	err := s.p.SetCName(app, cname)
+	err := s.p.SetCName(a, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
 }
 
 func (s *S) TestProvisionUnsetCName(c *check.C) {
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend("myapp")
 	addr, _ := url.Parse("http://127.0.0.1")
 	routertest.FakeRouter.AddRoute("myapp", addr)
 	cname := "mycname.com"
-	err := s.p.SetCName(app, cname)
+	err := s.p.SetCName(a, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
-	err = s.p.UnsetCName(app, cname)
+	err = s.p.UnsetCName(a, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, false)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, false)
@@ -1691,7 +1691,7 @@ func (s *S) TestSwap(c *check.C) {
 func (s *S) TestProvisionerStart(c *check.C) {
 	err := s.storage.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("almah", "static", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1699,16 +1699,16 @@ func (s *S) TestProvisionerStart(c *check.C) {
 		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "web",
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
 	cont2, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "worker",
 	}, nil)
@@ -1722,7 +1722,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	err = s.p.Start(app, "")
+	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
@@ -1749,7 +1749,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 func (s *S) TestProvisionerStartProcess(c *check.C) {
 	err := s.storage.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("almah", "static", 1)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1757,16 +1757,16 @@ func (s *S) TestProvisionerStartProcess(c *check.C) {
 		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "web",
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
 	cont2, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "worker",
 	}, nil)
@@ -1780,7 +1780,7 @@ func (s *S) TestProvisionerStartProcess(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	err = s.p.Start(app, "web")
+	err = s.p.Start(a, "web")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
@@ -1799,7 +1799,7 @@ func (s *S) TestProvisionerStartProcess(c *check.C) {
 
 func (s *S) TestProvisionerStop(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	app := provisiontest.NewFakeApp("almah", "static", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1807,16 +1807,16 @@ func (s *S) TestProvisionerStop(c *check.C) {
 		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "web",
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
 	cont2, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "worker",
 	}, nil)
@@ -1832,7 +1832,7 @@ func (s *S) TestProvisionerStop(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = s.p.Stop(app, "")
+	err = s.p.Stop(a, "")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
@@ -1844,7 +1844,7 @@ func (s *S) TestProvisionerStop(c *check.C) {
 
 func (s *S) TestProvisionerStopProcess(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	app := provisiontest.NewFakeApp("almah", "static", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1852,16 +1852,16 @@ func (s *S) TestProvisionerStopProcess(c *check.C) {
 		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "web",
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont1)
 	cont2, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "worker",
 	}, nil)
@@ -1877,7 +1877,7 @@ func (s *S) TestProvisionerStopProcess(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = s.p.Stop(app, "worker")
+	err = s.p.Stop(a, "worker")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
@@ -1889,8 +1889,8 @@ func (s *S) TestProvisionerStopProcess(c *check.C) {
 
 func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	app := provisiontest.NewFakeApp("almah", "static", 2)
-	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
+	container, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
 	err = dcli.StartContainer(container.ID, nil)
@@ -1898,7 +1898,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dockerContainer, err := dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	container2, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container2)
 	err = dcli.StartContainer(container2.ID, nil)
@@ -1908,7 +1908,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dockerContainer2, err := dcli.InspectContainer(container2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer2.State.Running, check.Equals, false)
-	err = s.p.Stop(app, "")
+	err = s.p.Stop(a, "")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1921,7 +1921,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 func (s *S) TestProvisionerSleep(c *check.C) {
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("almah", "static", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1929,8 +1929,8 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "web",
 	}, nil)
@@ -1941,8 +1941,8 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 	err = cont1.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	cont2, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "worker",
 	}, nil)
@@ -1958,7 +1958,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = s.p.Sleep(app, "")
+	err = s.p.Sleep(a, "")
 	c.Assert(err, check.IsNil)
 	coll := s.p.Collection()
 	defer coll.Close()
@@ -1978,7 +1978,7 @@ func (s *S) TestProvisionerSleep(c *check.C) {
 
 func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
-	app := provisiontest.NewFakeApp("almah", "static", 2)
+	a := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
@@ -1986,8 +1986,8 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "web",
 	}, nil)
@@ -1996,8 +1996,8 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	err = cont1.SetStatus(s.p, provision.StatusStarted, true)
 	c.Assert(err, check.IsNil)
 	cont2, err := s.newContainer(&newContainerOpts{
-		AppName:         app.GetName(),
-		Image:           "tsuru/app-" + app.GetName(),
+		AppName:         a.GetName(),
+		Image:           "tsuru/app-" + a.GetName(),
 		ImageCustomData: customData,
 		ProcessName:     "worker",
 	}, nil)
@@ -2015,7 +2015,7 @@ func (s *S) TestProvisionerSleepProcess(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = s.p.Sleep(app, "web")
+	err = s.p.Sleep(a, "web")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
@@ -2492,13 +2492,13 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("almah", "static", 1)
-	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
+	cont, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: app, Conn: conn, Width: 10, Height: 10, Unit: cont.ID}
+	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10, Unit: cont.ID}
 	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
 }
@@ -2506,13 +2506,13 @@ func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("almah", "static", 1)
-	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
+	cont, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: app, Conn: conn, Width: 10, Height: 10}
+	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10}
 	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
 }

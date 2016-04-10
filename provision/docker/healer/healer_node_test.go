@@ -910,7 +910,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := healer.tryHealingNode(&nodes[0], "something", "extra")
+			err = healer.tryHealingNode(&nodes[0], "something", "extra")
 			c.Assert(err, check.IsNil)
 		}()
 	}
