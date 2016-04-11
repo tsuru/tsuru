@@ -1607,7 +1607,7 @@ func (s *S) TestRemoveCNameWhichNoExists(c *check.C) {
 	defer s.provisioner.Destroy(a)
 	err = a.RemoveCName("ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cname not exists!")
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com not exists in app")
 }
 
 func (s *S) TestRemoveMoreThanOneCName(c *check.C) {
