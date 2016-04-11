@@ -2161,7 +2161,6 @@ func (s *HandlersSuite) TestNodeContainerDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"":   {},
 			"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
 		}},
 	})

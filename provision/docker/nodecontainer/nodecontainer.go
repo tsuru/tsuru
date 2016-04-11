@@ -98,6 +98,20 @@ func RemoveContainer(pool string, name string) error {
 	return conf.Remove(pool)
 }
 
+func ResetImage(pool string, name string) error {
+	conf := configFor(name)
+	var poolResult, base NodeContainerConfig
+	err := conf.LoadWithBase(pool, &base, &poolResult)
+	if err != nil {
+		return err
+	}
+	var setPool string
+	if poolResult.image() != base.image() {
+		setPool = pool
+	}
+	return conf.SetField(setPool, "PinnedImage", "")
+}
+
 func LoadNodeContainer(pool string, name string) (*NodeContainerConfig, error) {
 	conf := configFor(name)
 	var result NodeContainerConfig
@@ -115,7 +129,7 @@ func LoadNodeContainersForPools(name string) (map[string]NodeContainerConfig, er
 func LoadNodeContainersForPoolsMerge(name string, merge bool) (map[string]NodeContainerConfig, error) {
 	conf := configFor(name)
 	var result map[string]NodeContainerConfig
-	err := conf.LoadPoolsMerge(nil, &result, merge)
+	err := conf.LoadPoolsMerge(nil, &result, merge, false)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +192,9 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 			errChan <- confErr
 			return
 		}
+		if !containerConfig.valid() {
+			return
+		}
 		log.Debugf("[node containers] recreating container %q in %s [%s]", confName, node.Address, pool)
 		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", confName, node.Address, pool)
 		confErr = containerConfig.create(node.Address, pool, p, relaunch)
@@ -218,9 +235,8 @@ func (c *NodeContainerConfig) EnvMap() map[string]string {
 	return envMap
 }
 
-func (c *NodeContainerConfig) ResetImage() error {
-	conf := configFor(c.Name)
-	return conf.SetField("", "PinnedImage", "")
+func (c *NodeContainerConfig) valid() bool {
+	return c.image() != ""
 }
 
 func (c *NodeContainerConfig) image() string {

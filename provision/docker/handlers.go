@@ -957,11 +957,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			return permission.ErrUnauthorized
 		}
 	}
-	config, err := nodecontainer.LoadNodeContainer("", name)
-	if err != nil {
-		return err
-	}
-	err = config.ResetImage()
+	err := nodecontainer.ResetImage(poolName, name)
 	if err != nil {
 		return err
 	}

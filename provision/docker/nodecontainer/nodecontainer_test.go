@@ -422,6 +422,42 @@ func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
 	c.Assert(nodeContainer.PinnedImage, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
+func (s *S) TestEnsureContainersStartedOnlyChild(c *check.C) {
+	err := AddNewContainer("p1", &NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "myregistry/tsuru/bs",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	clust := p.Cluster()
+	nodes, err := clust.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	nodes[0].Metadata["pool"] = "p1"
+	_, err = p.Cluster().UpdateNode(nodes[0])
+	c.Assert(err, check.IsNil)
+	nodes[1].Metadata["pool"] = "p2"
+	_, err = p.Cluster().UpdateNode(nodes[1])
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	client, err := docker.NewClient(nodes[0].Address)
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	client2, err := docker.NewClient(nodes[1].Address)
+	c.Assert(err, check.IsNil)
+	containers2, err := client2.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers2, check.HasLen, 0)
+}
+
 func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
 	_, err := InitializeBS()
 	c.Assert(err, check.IsNil)
@@ -522,4 +558,24 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, BsDefaultName)
 	c.Assert(container.State.Running, check.Equals, true)
+}
+
+func (s *S) TestLoadNodeContainersForPools(c *check.C) {
+	err := AddNewContainer("p1", &NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "myregistry/tsuru/bs",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	result, err := LoadNodeContainersForPools("c1")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
+		"p1": {
+			Name: "c1",
+			Config: docker.Config{
+				Image: "myregistry/tsuru/bs",
+			},
+		},
+	})
 }
