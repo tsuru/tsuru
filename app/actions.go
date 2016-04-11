@@ -504,8 +504,11 @@ var validateNewCNames = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 		cnames := ctx.Params[1].([]string)
-		conn, _ := db.Conn()
+		conn, err := db.Conn()
 		defer conn.Close()
+		if err != nil {
+			return nil, err
+		}
 		for _, cname := range cnames {
 			if !cnameRegexp.MatchString(cname) {
 				return nil, errors.New("Invalid cname")
@@ -565,14 +568,14 @@ var saveCNames = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
+		var conn *db.Storage
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
 		var cnamesDone []string
 		for _, cname := range cnames {
-			var conn *db.Storage
-			conn, err := db.Conn()
-			if err != nil {
-				return nil, err
-			}
-			defer conn.Close()
 			err = conn.Apps().Update(
 				bson.M{"name": app.Name},
 				bson.M{"$push": bson.M{"cname": cname}},
@@ -586,6 +589,7 @@ var saveCNames = action.Action{
 				}
 				return nil, err
 			}
+			cnamesDone = append(cnamesDone, cname)
 		}
 		return cnamesDone, nil
 	},
@@ -623,8 +627,11 @@ var checkCNameExists = action.Action{
 	Name: "cname-exists",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		cnames := ctx.Params[1].([]string)
-		conn, _ := db.Conn()
+		conn, err := db.Conn()
 		defer conn.Close()
+		if err != nil {
+			return nil, err
+		}
 		for _, cname := range cnames {
 			cs, err := conn.Apps().Find(bson.M{"cname": cname}).Count()
 			if err != nil {
@@ -681,14 +688,14 @@ var removeCNameFromDatabase = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
+		var conn *db.Storage
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
 		var cnamesDone []string
 		for _, cname := range cnames {
-			var conn *db.Storage
-			conn, err := db.Conn()
-			if err != nil {
-				return nil, err
-			}
-			defer conn.Close()
 			err = conn.Apps().Update(
 				bson.M{"name": app.Name},
 				bson.M{"$pull": bson.M{"cname": cname}},
@@ -702,6 +709,7 @@ var removeCNameFromDatabase = action.Action{
 				}
 				return nil, err
 			}
+			cnamesDone = append(cnamesDone, cname)
 		}
 		return cnamesDone, nil
 	},
