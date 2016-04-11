@@ -18,9 +18,7 @@ func (s *S) TestMigrateBSEnvs(c *check.C) {
 	defer conn.Close()
 	entries, err := nodecontainer.LoadNodeContainersForPools(nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
-	c.Assert(entries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
-		"": {},
-	})
+	c.Assert(entries, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{})
 	coll := conn.Collection("bsconfig")
 	err = coll.Insert(bson.M{
 		"_id":   "bs",
