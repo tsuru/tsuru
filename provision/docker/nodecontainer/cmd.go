@@ -34,11 +34,11 @@ func (c *NodeContainerList) Info() *cmd.Info {
 }
 
 func (c *NodeContainerList) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL("/docker/nodecontainers")
+	u, err := cmd.GetURL("/docker/nodecontainers")
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return err
 	}
@@ -160,11 +160,11 @@ func (c *NodeContainerInfo) Info() *cmd.Info {
 }
 
 func (c *NodeContainerInfo) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL("/docker/nodecontainers/" + context.Args[0])
+	u, err := cmd.GetURL("/docker/nodecontainers/" + context.Args[0])
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return err
 	}
