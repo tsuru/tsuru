@@ -58,10 +58,21 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: plan list
+// path: /plans
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   204: No content
 func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	plans, err := app.PlansList()
 	if err != nil {
 		return err
+	}
+	if len(plans) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(plans)
@@ -84,7 +95,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 // title: router list
-// path: /plan/routers
+// path: /plans/routers
 // method: GET
 // produce: application/json
 // responses:

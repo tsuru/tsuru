@@ -134,6 +134,16 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
 
+func (s *S) TestPlanListEmpty(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/plans", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *S) TestPlanList(c *check.C) {
 	recorder := httptest.NewRecorder()
 	expected := []app.Plan{
