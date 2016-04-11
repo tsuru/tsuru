@@ -35,8 +35,7 @@ var Provisioner provision.Provisioner
 var AuthScheme auth.Scheme
 
 var (
-	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-	cnameRegexp = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
+	nameRegexp = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
 
 	ErrAlreadyHaveAccess = stderr.New("team already have access to this app")
 	ErrNoAccess          = stderr.New("team does not have access to this app")
@@ -1134,47 +1133,16 @@ func (app *App) rollbackCNames(r rollbackFunc, cnames []string, mongoCommand str
 // the app in the database, returning an error when it cannot save the change
 // in the database or add the CName on the provisioner.
 func (app *App) AddCName(cnames ...string) error {
-	var cnamesDone []string
-	var err error
-	for _, cname := range cnames {
-		if !cnameRegexp.MatchString(cname) {
-			err = stderr.New("Invalid cname")
-			break
-		}
-		if cnameExists(cname) {
-			err = stderr.New("cname already exists!")
-			break
-		}
-		if s, ok := Provisioner.(provision.CNameManager); ok {
-			err = s.SetCName(app, cname)
-			if err != nil {
-				break
-			}
-		}
-		var conn *db.Storage
-		conn, err = db.Conn()
-		if err != nil {
-			break
-		}
-		defer conn.Close()
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$push": bson.M{"cname": cname}},
-		)
-		if err != nil {
-			break
-		}
-		cnamesDone = append(cnamesDone, cname)
+	actions := []*action.Action{
+		&validateNewCNames,
+		&setNewCNamesToProvisioner,
+		&saveCNames,
+		&updateApp,
 	}
+	err := action.NewPipeline(actions...).Execute(app, cnames)
 	if err != nil {
-		var rollback rollbackFunc
-		if s, ok := Provisioner.(provision.CNameManager); ok {
-			rollback = s.UnsetCName
-		}
-		app.rollbackCNames(rollback, cnamesDone, "$pull")
 		return err
 	}
-	app.CName = append(app.CName, cnamesDone...)
 	return nil
 }
 

@@ -1493,7 +1493,7 @@ func (s *S) TestAddCNameCallsProvisionerSetCName(c *check.C) {
 	c.Assert(hasCName, check.Equals, true)
 }
 
-func (s *S) TestAddCnameRollback(c *check.C) {
+func (s *S) TestAddCnameRollbackWithDuplicatedCName(c *check.C) {
 	a := App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -1509,18 +1509,55 @@ func (s *S) TestAddCnameRollback(c *check.C) {
 	c.Assert(hasCName, check.Equals, false)
 	hasCName = s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
-	invalidCName := "-------"
-	err = a.AddCName("ktulu2.mycompany.com", invalidCName)
-	c.Assert(err, check.NotNil)
-	c.Assert(a.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
-	hasCName = s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
-	c.Assert(hasCName, check.Equals, false)
-	s.provisioner.PrepareFailure("SetCName", stderr.New("error"))
+}
+
+func (s *S) TestAddCnameRollbackWithInvalidCName(c *check.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	err = a.AddCName("ktulu2.mycompany.com")
+	c.Assert(err, check.IsNil)
+	invalidCName := "-------"
+	err = a.AddCName("ktulu3.mycompany.com", invalidCName)
+	c.Assert(err, check.NotNil)
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com"})
+	hasCName := s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+}
+
+func (s *S) TestAddCnameRollbackWithProvisionerFailure(c *check.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.AddCName("ktulu2.mycompany.com")
+	c.Assert(err, check.IsNil)
+	s.provisioner.PrepareFailure("SetCName", stderr.New("error"))
+	err = a.AddCName("ktulu3.mycompany.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "error")
-	c.Assert(a.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
-	hasCName = s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com"})
+	hasCName := s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
+	c.Assert(hasCName, check.Equals, false)
+}
+
+func (s *S) TestAddCnameRollbackWithDatabaseFailure(c *check.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.AddCName("ktulu2.mycompany.com")
+	c.Assert(err, check.IsNil)
+	s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = a.AddCName("ktulu3.mycompany.com")
+	c.Assert(err, check.NotNil)
+	hasCName := s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
 }
 

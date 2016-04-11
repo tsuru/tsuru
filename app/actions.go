@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"regexp"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -16,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
@@ -493,5 +495,125 @@ var removeOldBackend = action.Action{
 			}
 		}
 		return result, nil
+	},
+}
+
+var validateNewCNames = action.Action{
+	Name: "validate-new-cnames",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
+		cnames := ctx.Params[1].([]string)
+		conn, _ := db.Conn()
+		defer conn.Close()
+		for _, cname := range cnames {
+			if !cnameRegexp.MatchString(cname) {
+				return nil, errors.New("Invalid cname")
+			}
+			cs, err := conn.Apps().Find(bson.M{"cname": cname}).Count()
+			if err != nil {
+				return nil, err
+			}
+			if cs > 0 {
+				return nil, errors.New("cname already exists!")
+			}
+		}
+		return cnames, nil
+	},
+}
+
+var setNewCNamesToProvisioner = action.Action{
+	Name: "set-new-cnames-to-provisioner",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		p, ok := Provisioner.(provision.CNameManager)
+		if !ok {
+			return nil, errors.New("Provisioner doesn't support cname change.")
+		}
+		app := ctx.Params[0].(*App)
+		cnames := ctx.Params[1].([]string)
+		var cnamesDone []string
+		for _, cname := range cnames {
+			err := p.SetCName(app, cname)
+			if err != nil {
+				for _, c := range cnamesDone {
+					p.UnsetCName(app, c)
+				}
+				return nil, err
+			}
+			cnamesDone = append(cnamesDone, cname)
+		}
+		return cnames, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		p, ok := Provisioner.(provision.CNameManager)
+		if !ok {
+			log.Error("Provisioner doesn't support cname change.")
+		}
+		cnames := ctx.Params[1].([]string)
+		app := ctx.Params[0].(*App)
+		for _, cname := range cnames {
+			err := p.UnsetCName(app, cname)
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
+	},
+}
+
+var saveCNames = action.Action{
+	Name: "add-cname-save-in-database",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		cnames := ctx.Params[1].([]string)
+		var cnamesDone []string
+		for _, cname := range cnames {
+			var conn *db.Storage
+			conn, err := db.Conn()
+			if err != nil {
+				return nil, err
+			}
+			defer conn.Close()
+			err = conn.Apps().Update(
+				bson.M{"name": app.Name},
+				bson.M{"$push": bson.M{"cname": cname}},
+			)
+			if err != nil {
+				for _, c := range cnamesDone {
+					conn.Apps().Update(
+						bson.M{"name": app.Name},
+						bson.M{"$pull": bson.M{"cname": c}},
+					)
+				}
+				return nil, err
+			}
+		}
+		return cnamesDone, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		cnames := ctx.Params[1].([]string)
+		conn, err := db.Conn()
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		defer conn.Close()
+		for _, c := range cnames {
+			err := conn.Apps().Update(
+				bson.M{"name": app.Name},
+				bson.M{"$pull": bson.M{"cname": c}},
+			)
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
+	},
+}
+
+var updateApp = action.Action{
+	Name: "add-cname-update-app",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		app.CName = append(app.CName, ctx.Params[1].([]string)...)
+		return app.CName, nil
 	},
 }
