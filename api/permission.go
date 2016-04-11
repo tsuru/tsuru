@@ -73,6 +73,12 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: role list
+// path: /roles
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
 func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !(permission.Check(t, permission.PermRoleUpdate) ||
 		permission.Check(t, permission.PermRoleUpdateAssign) ||
