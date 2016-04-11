@@ -79,6 +79,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // produce: application/json
 // responses:
 //   200: OK
+//   401: Unauthorized
 func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !(permission.Check(t, permission.PermRoleUpdate) ||
 		permission.Check(t, permission.PermRoleUpdateAssign) ||
@@ -100,6 +101,14 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: role info
+// path: /roles/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Role not found
 func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !(permission.Check(t, permission.PermRoleUpdate) ||
 		permission.Check(t, permission.PermRoleUpdateAssign) ||
@@ -110,6 +119,12 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	roleName := r.URL.Query().Get(":name")
 	role, err := permission.FindRole(roleName)
+	if err == permission.ErrRoleNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
 	if err != nil {
 		return err
 	}

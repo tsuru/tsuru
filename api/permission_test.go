@@ -153,6 +153,21 @@ func (s *S) TestListRoles(c *check.C) {
 	c.Assert(rec.Body.String(), check.Equals, expected)
 }
 
+func (s *S) TestRoleInfoNotFound(c *check.C) {
+	s.conn.Roles().DropCollection()
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "/roles/xpto.update", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestRoleInfo(c *check.C) {
 	s.conn.Roles().DropCollection()
 	rec := httptest.NewRecorder()
