@@ -909,6 +909,7 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
+	config.Name = r.URL.Query().Get(":name")
 	err = nodecontainer.UpdateContainer(poolName, &config)
 	if err != nil {
 		if err == nodecontainer.ErrNodeContainerNotFound {
