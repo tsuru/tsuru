@@ -50,6 +50,13 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: remove role
+// path: /roles/{name}
+// method: DELETE
+// responses:
+//   200: Role removed
+//   401: Unauthorized
+//   404: Role not found
 func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleDelete) {
 		return permission.ErrUnauthorized
