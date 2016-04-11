@@ -87,6 +87,13 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(plans)
 }
 
+// title: remove plan
+// path: /plans/{name}
+// method: DELETE
+// responses:
+//   200: Plan removed
+//   401: Unauthorized
+//   404: Plan not found
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermPlanDelete)
 	if !allowed {
