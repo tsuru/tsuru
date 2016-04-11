@@ -16,6 +16,15 @@ import (
 	"github.com/tsuru/tsuru/router"
 )
 
+// title: plan create
+// path: /plans
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: Plan created
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Plan already exists
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	cpuShare, _ := strconv.Atoi(r.FormValue("cpushare"))
 	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
