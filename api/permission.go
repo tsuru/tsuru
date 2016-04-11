@@ -18,6 +18,15 @@ import (
 	"github.com/tsuru/tsuru/repository"
 )
 
+// title: role create
+// path: /roles
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: Role created
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Role already exists
 func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleCreate) {
 		return permission.ErrUnauthorized
