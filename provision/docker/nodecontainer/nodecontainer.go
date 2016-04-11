@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/fix"
 	"github.com/tsuru/tsuru/scopedconfig"
+	"gopkg.in/mgo.v2"
 )
 
 const (
@@ -95,21 +96,43 @@ func UpdateContainer(pool string, c *NodeContainerConfig) error {
 
 func RemoveContainer(pool string, name string) error {
 	conf := configFor(name)
-	return conf.Remove(pool)
+	err := conf.Remove(pool)
+	if err == mgo.ErrNotFound {
+		return ErrNodeContainerNotFound
+	}
+	return err
 }
 
 func ResetImage(pool string, name string) error {
+	var poolsToReset []string
+	if pool == "" {
+		poolMap, err := LoadNodeContainersForPools(name)
+		if err != nil {
+			return err
+		}
+		for poolName := range poolMap {
+			poolsToReset = append(poolsToReset, poolName)
+		}
+	} else {
+		poolsToReset = []string{pool}
+	}
 	conf := configFor(name)
-	var poolResult, base NodeContainerConfig
-	err := conf.LoadWithBase(pool, &base, &poolResult)
-	if err != nil {
-		return err
+	for _, pool = range poolsToReset {
+		var poolResult, base NodeContainerConfig
+		err := conf.LoadWithBase(pool, &base, &poolResult)
+		if err != nil {
+			return err
+		}
+		var setPool string
+		if poolResult.image() != base.image() {
+			setPool = pool
+		}
+		err = conf.SetField(setPool, "PinnedImage", "")
+		if err != nil {
+			return err
+		}
 	}
-	var setPool string
-	if poolResult.image() != base.image() {
-		setPool = pool
-	}
-	return conf.SetField(setPool, "PinnedImage", "")
+	return nil
 }
 
 func LoadNodeContainer(pool string, name string) (*NodeContainerConfig, error) {

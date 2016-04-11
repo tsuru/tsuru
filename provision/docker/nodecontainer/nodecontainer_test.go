@@ -579,3 +579,67 @@ func (s *S) TestLoadNodeContainersForPools(c *check.C) {
 		},
 	})
 }
+
+func (s *S) TestResetImage(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{
+		Name:        "c1",
+		PinnedImage: "img1@1",
+		Config: docker.Config{
+			Image: "img1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = AddNewContainer("p1", &NodeContainerConfig{
+		Name:        "c1",
+		PinnedImage: "img1@2",
+	})
+	err = AddNewContainer("p2", &NodeContainerConfig{
+		Name: "c1",
+	})
+	c.Assert(err, check.IsNil)
+	err = ResetImage("p1", "c1")
+	c.Assert(err, check.IsNil)
+	result, err := LoadNodeContainersForPools("c1")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
+		"": {
+			Name:        "c1",
+			PinnedImage: "img1@1",
+			Config: docker.Config{
+				Image: "img1",
+			},
+		},
+		"p1": {Name: "c1"},
+		"p2": {Name: "c1"},
+	})
+	err = ResetImage("p2", "c1")
+	c.Assert(err, check.IsNil)
+	result, err = LoadNodeContainersForPools("c1")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
+		"": {
+			Name: "c1",
+			Config: docker.Config{
+				Image: "img1",
+			},
+		},
+		"p1": {Name: "c1"},
+		"p2": {Name: "c1"},
+	})
+	err = UpdateContainer("p1", &NodeContainerConfig{Name: "c1", PinnedImage: "img1@1"})
+	c.Assert(err, check.IsNil)
+	err = ResetImage("", "c1")
+	c.Assert(err, check.IsNil)
+	result, err = LoadNodeContainersForPools("c1")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
+		"": {
+			Name: "c1",
+			Config: docker.Config{
+				Image: "img1",
+			},
+		},
+		"p1": {Name: "c1"},
+		"p2": {Name: "c1"},
+	})
+}
