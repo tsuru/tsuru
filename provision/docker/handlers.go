@@ -941,7 +941,14 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 			return permission.ErrUnauthorized
 		}
 	}
-	return nodecontainer.RemoveContainer(poolName, name)
+	err := nodecontainer.RemoveContainer(poolName, name)
+	if err == nodecontainer.ErrNodeContainerNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: fmt.Sprintf("node container %q not found for pool %q", name, poolName),
+		}
+	}
+	return err
 }
 
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) error {

@@ -2175,6 +2175,31 @@ func (s *HandlersSuite) TestNodeContainerDelete(c *check.C) {
 	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{})
 }
 
+func (s *HandlersSuite) TestNodeContainerDeleteNotFounc(c *check.C) {
+	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "img1",
+			Env:   []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/docker/nodecontainers/c1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "node container \"c1\" not found for pool \"\"\n")
+	request, err = http.NewRequest("DELETE", "/docker/nodecontainers/c1?pool=p1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
 func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name:        "c1",
