@@ -1160,16 +1160,6 @@ func (app *App) RemoveCName(cnames ...string) error {
 	return nil
 }
 
-func cnameExists(cname string) bool {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	cnames, _ := conn.Apps().Find(bson.M{"cname": cname}).Count()
-	if cnames > 0 {
-		return true
-	}
-	return false
-}
-
 func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 	var tsuruServices map[string][]bind.ServiceInstance
 	if servicesEnv, ok := app.Env[TsuruServicesEnvVar]; ok {
