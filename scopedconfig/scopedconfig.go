@@ -170,14 +170,14 @@ func (n *ScopedConfig) SaveMerge(pool string, val interface{}) error {
 }
 
 func (n *ScopedConfig) LoadAll(allVal interface{}) error {
-	return n.LoadPoolsMerge(nil, allVal, true)
+	return n.LoadPoolsMerge(nil, allVal, true, true)
 }
 
 func (n *ScopedConfig) LoadPools(filterPools []string, allVal interface{}) error {
-	return n.LoadPoolsMerge(filterPools, allVal, true)
+	return n.LoadPoolsMerge(filterPools, allVal, true, true)
 }
 
-func (n *ScopedConfig) LoadPoolsMerge(filterPools []string, allVal interface{}, merge bool) error {
+func (n *ScopedConfig) LoadPoolsMerge(filterPools []string, allVal interface{}, merge bool, includeDefault bool) error {
 	allValValue := reflect.ValueOf(allVal)
 	var isPtr bool
 	if allValValue.Type().Kind() == reflect.Ptr {
@@ -215,7 +215,9 @@ func (n *ScopedConfig) LoadPoolsMerge(filterPools []string, allVal interface{}, 
 			return err
 		}
 	}
-	allValValue.SetMapIndex(reflect.ValueOf(""), baseValue.Elem())
+	if includeDefault || defaultValues.Val.Data != nil {
+		allValValue.SetMapIndex(reflect.ValueOf(""), baseValue.Elem())
+	}
 	if len(filterPools) == 0 {
 		err = coll.Find(bson.M{"name": n.name, "pool": bson.M{"$ne": ""}}).All(&allPoolValues)
 	} else {
