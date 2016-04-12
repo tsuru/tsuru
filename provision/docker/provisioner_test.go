@@ -1663,9 +1663,9 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&nodecontainer.NodeContainerUpdate{},
 		&nodecontainer.NodeContainerDelete{},
 		&nodecontainer.NodeContainerUpgrade{},
-		&cmd.RemovedCommand{Name: "bs-env-set", Help: "You should use `tsuru node-container-update big-sibling` instead."},
-		&cmd.RemovedCommand{Name: "bs-info", Help: "You should use `tsuru node-container-info big-sibling` instead."},
-		&cmd.RemovedCommand{Name: "bs-upgrade", Help: "You should use `tsuru node-container-upgrade big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-env-set", Help: "You should use `tsuru-admin node-container-update big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-info", Help: "You should use `tsuru-admin node-container-info big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-upgrade", Help: "You should use `tsuru-admin node-container-upgrade big-sibling` instead."},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }
