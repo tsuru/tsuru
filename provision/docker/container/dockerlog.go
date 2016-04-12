@@ -13,7 +13,7 @@ import (
 
 var (
 	ErrLogDriverMandatory  = errors.New("log-driver is mandatory")
-	ErrLogDriverBSNoParams = errors.New("bs log-driver do not accept log-opts, please use bs-env-set to configure it.")
+	ErrLogDriverBSNoParams = errors.New("bs log-driver do not accept log-opts, please use node-container-update to configure it.")
 )
 
 const (
