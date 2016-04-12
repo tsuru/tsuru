@@ -956,6 +956,9 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&nodecontainer.NodeContainerUpdate{},
 		&nodecontainer.NodeContainerDelete{},
 		&nodecontainer.NodeContainerUpgrade{},
+		&cmd.RemovedCommand{Name: "bs-env-set", Help: "You should use `tsuru-admin node-container-update big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-info", Help: "You should use `tsuru-admin node-container-info big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-upgrade", Help: "You should use `tsuru-admin node-container-upgrade big-sibling` instead."},
 	}
 }
 
