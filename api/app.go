@@ -136,6 +136,14 @@ contextsLoop:
 	return filter
 }
 
+// title: app list
+// path: /apps
+// method: GET
+// produce: application/json
+// responses:
+//   200: List apps
+//   204: No content
+//   401: Unauthorized
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
