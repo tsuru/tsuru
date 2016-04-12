@@ -53,6 +53,14 @@ func getApp(name string) (*app.App, error) {
 	return a, nil
 }
 
+// title: remove app
+// path: /apps/{name}
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//   200: App removed
+//   401: Unauthorized
+//   404: Not found
 func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -75,6 +83,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	err = app.Delete(&a, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})

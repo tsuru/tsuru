@@ -454,6 +454,7 @@ func (s *S) TestDelete(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	action := rectest.Action{
 		Action: "app-delete",
 		User:   s.user.Email,
