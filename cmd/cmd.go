@@ -105,15 +105,15 @@ func (m *Manager) RegisterDeprecated(command Command, oldName string) {
 }
 
 type RemovedCommand struct {
-	name string
-	help string
+	Name string
+	Help string
 }
 
 func (c *RemovedCommand) Info() *Info {
 	return &Info{
-		Name:  c.name,
-		Usage: c.name,
-		Desc:  fmt.Sprintf("This command was removed. %s", c.help),
+		Name:  c.Name,
+		Usage: c.Name,
+		Desc:  fmt.Sprintf("This command was removed. %s", c.Help),
 		fail:  true,
 	}
 }
@@ -130,7 +130,7 @@ func (m *Manager) RegisterRemoved(name string, help string) {
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
-	m.Commands[name] = &RemovedCommand{name: name, help: help}
+	m.Commands[name] = &RemovedCommand{Name: name, Help: help}
 }
 
 func (m *Manager) RegisterTopic(name, content string) {
