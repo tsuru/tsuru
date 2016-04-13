@@ -330,6 +330,15 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: app update
+// path: /apps/{name}
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: App updated
+//   401: Unauthorized
+//   404: Not found
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	updateData := app.App{
 		TeamOwner:   r.FormValue("teamOwner"),
@@ -400,6 +409,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Update(updateData, writer)
 	if err == app.ErrPlanNotFound {
