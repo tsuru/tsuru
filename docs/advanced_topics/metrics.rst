@@ -5,14 +5,18 @@
 Metrics
 =======
 
-Since 0.12.x **tsuru** get metrics from `Docker <https://www.docker.com/>`_ (using `docker stats <https://docs.docker.com/reference/commandline/stats/>`_) and store this data in a time series database.
+Since 0.12.x **tsuru** is capable of reading metrics from `Docker
+<https://www.docker.com/>`_ (using `docker stats
+<https://docs.docker.com/reference/commandline/stats/>`_) and store this data in
+a time series database.
 
 Installing
 ----------
 
 You will need a `Elasticsearch <https://www.elastic.co/guide/en/elasticsearch/reference/current/_installation.html>`_ and a `Logstash <https://www.elastic.co/guide/en/logstash/current/getting-started-with-logstash.html#installing-logstash>`_ installed.
 
-tsuru send data to Logstash using udp protocol and the message is formatted in json that requires a custom Logstash configuration:
+tsuru send data to Logstash using udp protocol and the message is formatted in
+json that requires a custom Logstash configuration:
 
 .. highlight:: ruby
 
@@ -50,41 +54,30 @@ tsuru send data to Logstash using udp protocol and the message is formatted in j
 Configuring
 -----------
 
-You should use `tsuru-admin bs-env-set` to define the config values.
+You should use `tsuru-admin node-container-update big-sibling --env NAME=VALUE`
+to define the config values.
 
 The available configs are:
 
-`METRICS_INTERVAL` is the interval in seconds between metrics collecting and reporting from bs to the metric backend. The default value is 60 seconds.
+`METRICS_INTERVAL` is the interval in seconds between metrics collecting and
+reporting from bs to the metric backend. The default value is 60 seconds.
 
-`METRICS_BACKEND` is the metric backend. Supported backends are logstash and statsd.
-
-.. note::
-
-    In production we recommend logstash/elasticsearch
+`METRICS_BACKEND` is the metric backend. Only 'logstash' is supported right now.
 
 Logstash specific configs:
 
-`METRICS_LOGSTASH_CLIENT` is the client name used to identify who is sending the metric. The default value is tsuru.
+`METRICS_LOGSTASH_CLIENT` is the client name used to identify who is sending the
+metric. The default value is tsuru.
 
 `METRICS_LOGSTASH_PORT` is the Logstash port. The default value is 1984.
 
 `METRICS_LOGSTASH_HOST` is the Logstash host. The default value is localhost.
 
-Statsd specific configs:
-
-`METRICS_STATSD_PREFIX` is the prefix for the Statsd key. The key is composed by {prefix}tsuru.{appname}.{hostname}. The default value is an empty string "".
-
-`METRICS_STATSD_PORT` is the Statsd port. The default value is 8125.
-
-`METRICS_STATSD_HOST` is the Statsd host. The default value is localhost.
-
 Metrics graph on tsuru-dashboard
 --------------------------------
 
-**tsuru-dashboard** can be used to show a graphic for each metric by application.
+**tsuru-dashboard** can be used to show a graphic for each metric by
+application.
 
-To enable it define the `METRICS_ELASTICSEARCH_HOST` using `tsuru-admin bs-env-set`.
-
-.. note::
-
-    tsuru-dashboard supports only logstash/elasticsearch backend.
+To enable it define the `METRICS_ELASTICSEARCH_HOST` using `tsuru-admin
+node-container-update big-sibling --env`.
