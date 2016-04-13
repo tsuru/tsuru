@@ -12,6 +12,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/cezarsa/form"
+	"github.com/docker/go-connections/nat"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
 )
@@ -92,16 +95,77 @@ func (c *NodeContainerList) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
+type dockerCmd struct {
+	config NodeContainerConfig
+	raw    cmd.MapFlag
+	ports  cmd.StringSliceFlag
+}
+
+func (c *dockerCmd) info() string {
+	return "[-r/--raw path=value]... [docker run flags]..."
+}
+
+func (c *dockerCmd) addMany(fs *gnuflag.FlagSet, val gnuflag.Value, desc string, triggers ...string) {
+	for _, t := range triggers {
+		fs.Var(val, t, desc)
+	}
+}
+
+func (c *dockerCmd) flags(fs *gnuflag.FlagSet) {
+	c.addMany(fs, &c.raw, "Add raw parameter to node container api call", "r", "raw")
+	c.addMany(fs, cmd.StringSliceFlagWrapper{Dst: &c.config.Config.Env}, "Set environment variables", "e", "env")
+	c.addMany(fs, cmd.StringSliceFlagWrapper{Dst: &c.config.HostConfig.Binds}, "Bind mount a volume", "v", "volume")
+	c.addMany(fs, cmd.MapFlagWrapper{Dst: &c.config.HostConfig.LogConfig.Config}, "Log driver options", "log-opt")
+	c.addMany(fs, &c.ports, "Publish a container's port(s) to the host", "p", "publish")
+	fs.BoolVar(&c.config.HostConfig.Privileged, "privileged", false, "Give extended privileges to this container")
+	fs.StringVar(&c.config.Config.Image, "image", "", "Image that will be used")
+	fs.StringVar(&c.config.HostConfig.RestartPolicy.Name, "restart", "", "Restart policy to apply when a container exits")
+	fs.StringVar(&c.config.HostConfig.NetworkMode, "net", "", "Connect a container to a network")
+	fs.StringVar(&c.config.HostConfig.LogConfig.Type, "log-driver", "", "Logging driver for container")
+}
+
+func (c *dockerCmd) toValues() (url.Values, error) {
+	ports, portBindings, err := nat.ParsePortSpecs(c.ports)
+	c.config.Config.ExposedPorts = map[docker.Port]struct{}{}
+	for k, v := range ports {
+		c.config.Config.ExposedPorts[docker.Port(k)] = v
+	}
+	c.config.HostConfig.PortBindings = map[docker.Port][]docker.PortBinding{}
+	for k, v := range portBindings {
+		var val []docker.PortBinding
+		for _, b := range v {
+			val = append(val, docker.PortBinding{HostIP: b.HostIP, HostPort: b.HostPort})
+		}
+		c.config.HostConfig.PortBindings[docker.Port(k)] = val
+	}
+	val, err := form.EncodeToValues(c.config)
+	if err != nil {
+		return nil, err
+	}
+	for k := range val {
+		lower := strings.ToLower(k)
+		if lower == k {
+			continue
+		}
+		val[lower] = val[k]
+		delete(val, k)
+	}
+	for k, v := range c.raw {
+		val.Set(strings.ToLower(k), v)
+	}
+	return val, nil
+}
+
 type NodeContainerAdd struct {
-	fs   *gnuflag.FlagSet
-	raw  cmd.MapFlag
-	pool string
+	fs        *gnuflag.FlagSet
+	pool      string
+	dockerCmd dockerCmd
 }
 
 func (c *NodeContainerAdd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "node-container-add",
-		Usage: "node-container-add <name> [-p/--pool poolname] [-r/--raw path=value]...",
+		Usage: fmt.Sprintf("node-container-add <name> [-p/--pool poolname] %s", c.dockerCmd.info()),
 		Desc: `Add new node container or overwrite existing one. If the pool name is omitted
 the node container will be valid for all pools.`,
 		MinArgs: 1,
@@ -114,9 +178,9 @@ func (c *NodeContainerAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	val := url.Values{}
-	for k, v := range c.raw {
-		val.Set(k, v)
+	val, err := c.dockerCmd.toValues()
+	if err != nil {
+		return err
 	}
 	val.Set("name", context.Args[0])
 	val.Set("pool", c.pool)
@@ -137,11 +201,9 @@ func (c *NodeContainerAdd) Run(context *cmd.Context, client *cmd.Client) error {
 func (c *NodeContainerAdd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("flags", gnuflag.ExitOnError)
-		msg := "Add raw parameter to node container api call."
-		c.fs.Var(&c.raw, "r", msg)
-		c.fs.Var(&c.raw, "raw", msg)
-		msg = "Pool to add container config. If empty it'll be a default entry to all pools."
-		c.fs.StringVar(&c.pool, "p", "", msg)
+		c.dockerCmd.flags(c.fs)
+		msg := "Pool to add container config. If empty it'll be a default entry to all pools."
+		c.fs.StringVar(&c.pool, "o", "", msg)
 		c.fs.StringVar(&c.pool, "pool", "", msg)
 	}
 	return c.fs
@@ -196,15 +258,15 @@ func (c *NodeContainerInfo) Run(context *cmd.Context, client *cmd.Client) error 
 }
 
 type NodeContainerUpdate struct {
-	fs   *gnuflag.FlagSet
-	raw  cmd.MapFlag
-	pool string
+	fs        *gnuflag.FlagSet
+	pool      string
+	dockerCmd dockerCmd
 }
 
 func (c *NodeContainerUpdate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "node-container-update",
-		Usage: "node-container-update <name> [-p/--pool poolname] [-r/--raw path=value]...",
+		Usage: fmt.Sprintf("node-container-update <name> [-p/--pool poolname] %s", c.dockerCmd.info()),
 		Desc: `Update an existing node container. If the pool name is omitted the default
 configuration will be updated. When updating node containers the specified
 configuration will be merged with the existing configuration.`,
@@ -218,9 +280,9 @@ func (c *NodeContainerUpdate) Run(context *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	val := url.Values{}
-	for k, v := range c.raw {
-		val.Set(k, v)
+	val, err := c.dockerCmd.toValues()
+	if err != nil {
+		return err
 	}
 	val.Set("pool", c.pool)
 	reader := strings.NewReader(val.Encode())
@@ -240,11 +302,9 @@ func (c *NodeContainerUpdate) Run(context *cmd.Context, client *cmd.Client) erro
 func (c *NodeContainerUpdate) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("flags", gnuflag.ExitOnError)
-		msg := "Add raw parameter to node container api call."
-		c.fs.Var(&c.raw, "r", msg)
-		c.fs.Var(&c.raw, "raw", msg)
-		msg = "Pool to update container config. If empty it'll be a default entry to all pools."
-		c.fs.StringVar(&c.pool, "p", "", msg)
+		c.dockerCmd.flags(c.fs)
+		msg := "Pool to update container config. If empty it'll be a default entry to all pools."
+		c.fs.StringVar(&c.pool, "o", "", msg)
 		c.fs.StringVar(&c.pool, "pool", "", msg)
 	}
 	return c.fs
