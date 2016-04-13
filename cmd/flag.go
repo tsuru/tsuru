@@ -29,6 +29,38 @@ func (f *MapFlag) Set(val string) error {
 	return nil
 }
 
+type MapFlagWrapper struct {
+	Dst *map[string]string
+}
+
+func (f MapFlagWrapper) String() string {
+	m := MapFlag(*f.Dst)
+	return m.String()
+}
+
+func (f MapFlagWrapper) Set(val string) error {
+	parts := strings.SplitN(val, "=", 2)
+	if *f.Dst == nil {
+		*f.Dst = map[string]string{}
+	}
+	(*f.Dst)[parts[0]] = parts[1]
+	return nil
+}
+
+type StringSliceFlagWrapper struct {
+	Dst *[]string
+}
+
+func (f StringSliceFlagWrapper) String() string {
+	s := StringSliceFlag(*f.Dst)
+	return s.String()
+}
+
+func (f StringSliceFlagWrapper) Set(val string) error {
+	*f.Dst = append(*f.Dst, val)
+	return nil
+}
+
 type StringSliceFlag []string
 
 func (f *StringSliceFlag) String() string {
