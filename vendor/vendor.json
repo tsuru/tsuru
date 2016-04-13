@@ -138,6 +138,12 @@
 			"revisionTime": "2015-09-25T14:57:45-05:00"
 		},
 		{
+			"checksumSHA1": "kktbWelM0xVH61fOWltCEOR/87E=",
+			"path": "github.com/docker/go-connections/nat",
+			"revision": "f549a9393d05688dff0992ef3efd8bbe6c628aeb",
+			"revisionTime": "2016-03-04T22:48:11Z"
+		},
+		{
 			"path": "github.com/fsouza/go-dockerclient",
 			"revision": "73f08fbacc09c6fd1b7bc179193e58b14d7619cc",
 			"revisionTime": "2016-03-10T15:59:32-03:00"
@@ -788,5 +794,6 @@
 			"revision": "4914593b9558e85597f08346c798aea8f6fb899f",
 			"revisionTime": "2014-03-06T13:54:45-03:00"
 		}
-	]
+	],
+	"rootPath": "github.com/tsuru/tsuru"
 }
