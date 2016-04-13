@@ -7,7 +7,6 @@ package healer
 import (
 	"bytes"
 	"fmt"
-	"gopkg.in/mgo.v2"
 	"sync"
 	"time"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/scopedconfig"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 

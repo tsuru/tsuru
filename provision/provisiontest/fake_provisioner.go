@@ -7,7 +7,6 @@ package provisiontest
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
 	"io"
 	"net/url"
 	"sync"
@@ -21,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var errNotProvisioned = &provision.Error{Reason: "App is not provisioned."}
