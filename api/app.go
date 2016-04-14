@@ -439,6 +439,16 @@ func numberOfUnits(r *http.Request) (uint, error) {
 	return uint(n), nil
 }
 
+// title: add units
+// path: /apps/{name}/units
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Units added
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	n, err := numberOfUnits(r)
 	if err != nil {
@@ -464,7 +474,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "add-units", "app="+appName, fmt.Sprintf("units=%d", n))
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
