@@ -729,31 +729,32 @@ docker:max-layers
 
 The maximum number of layers in Docker images. This number represents the
 number of times that Tsuru will reuse the previous image on application
-deploymet. The default value is 10.
+deployment. The default value is 10.
 
 .. _config_bs:
 
 docker:bs:image
 +++++++++++++++
 
-``docker:bs:image`` is the name of the Docker image to be used to create `big
-sibling <https://github.com/tsuru/bs>`_ containers. The default value is
-"tsuru/bs", which represents `the official image hosted at Docker Hub
-<https://registry.hub.docker.com/u/tsuru/bs/>`_, maintained by the tsuru team.
+This setting is deprecated in favor of dynamically configuring with
+``tsuru-admin docker-node-update big-sibling --image <image>``.
 
 docker:bs:socket
 ++++++++++++++++
 
-``docker:bs:socket`` is the path to the Unix socket in the Docker host. This
-should be configured so bs can connect to Docker via socket instead of TCP.
-This is an optional setting, when omitted, bs will talk to the Docker API using
-the TCP endpoint.
+This setting is deprecated in favor of dynamically configuring with
+``tsuru-admin docker-node-update big-sibling --volume <local>:<remote> --env
+DOCKER_ENDPOINT=<remote>``.
 
 docker:bs:syslog-port
 +++++++++++++++++++++
 
 ``docker:bs:syslog-port`` is the port in the Docker node that will be used by
 the bs container for collecting logs. The default value is 1514.
+
+If this value is changed bs node containers must be update with ``tsuru-admin
+docker-node-update big-sibling --env
+SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:<port>``.
 
 docker:max-workers
 ++++++++++++++++++

@@ -147,3 +147,16 @@ General improvements
 
 * Add description flag to role-add command (--description/-d), allowing users to
   add a description for newly created roles.
+
+Backward incompatible changes (action needed)
+=============================================
+
+* The way the ``bs`` container is managed has changed. If you have any
+  configuration setting for ``bs`` that was added using ``tsuru-admin
+  bs-env-set`` you must run ``tsurud migrate`` to ensure every config env has
+  been copied to the new structure.
+
+  ``bs`` containers should now be managed using ``tsuru-admin
+  node-container-update big-sibling [options...]``. See `node containers
+  reference <https://tsuru-admin.readthedocs.org/en/master/reference.html#node-containers-management>`_
+  for more information.
