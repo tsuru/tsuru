@@ -654,6 +654,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)

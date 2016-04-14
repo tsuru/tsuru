@@ -326,6 +326,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonMsg)
 	return nil
 }
