@@ -486,6 +486,15 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: remove units
+// path: /apps/{name}/units
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//   200: Units removed
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	n, err := numberOfUnits(r)
 	if err != nil {
@@ -511,7 +520,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
