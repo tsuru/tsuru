@@ -163,7 +163,7 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, extra int
 	}
 	evt, err := NewHealingEventWithReason(*node, reason, extra)
 	if err != nil {
-		if mgo.IsDup(err) {
+		if err == errHealingInProgress {
 			// Healing in progress.
 			return nil
 		}

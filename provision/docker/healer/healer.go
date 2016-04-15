@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -31,11 +32,17 @@ type HealingEvent struct {
 	CreatedContainer container.Container `bson:",omitempty"`
 	Successful       bool
 	Error            string `bson:",omitempty"`
+	LockUpdateTime   time.Time
+	done             chan bool
 }
 
 var (
 	consecutiveHealingsTimeframe        = 30 * time.Minute
 	consecutiveHealingsLimitInTimeframe = 3
+	lockUpdateInterval                  = 30 * time.Second
+	lockExpireTimeout                   = 5 * time.Minute
+
+	errHealingInProgress = errors.New("healing already in progress")
 )
 
 func healingCollection() (*storage.Collection, error) {
@@ -52,10 +59,13 @@ func healingCollection() (*storage.Collection, error) {
 }
 
 func NewHealingEventWithReason(failing interface{}, reason string, extra interface{}) (*HealingEvent, error) {
+	now := time.Now().UTC()
 	evt := HealingEvent{
-		StartTime: time.Now().UTC(),
-		Reason:    reason,
-		Extra:     extra,
+		StartTime:      now,
+		LockUpdateTime: now,
+		Reason:         reason,
+		Extra:          extra,
+		done:           make(chan bool),
 	}
 	switch v := failing.(type) {
 	case cluster.Node:
@@ -74,11 +84,58 @@ func NewHealingEventWithReason(failing interface{}, reason string, extra interfa
 		return nil, err
 	}
 	defer coll.Close()
-	return &evt, coll.Insert(evt)
+	maxRetries := 1
+	for i := 0; i < maxRetries+1; i++ {
+		err = coll.Insert(evt)
+		if err == nil {
+			go evt.startLockUpdate(evt.ID)
+			return &evt, nil
+		}
+		if mgo.IsDup(err) {
+			err = errHealingInProgress
+			if i < maxRetries && checkIsExpired(coll, evt.ID) {
+				coll.RemoveId(evt.ID)
+			}
+		}
+	}
+	return nil, err
+}
+
+func checkIsExpired(coll *storage.Collection, id interface{}) bool {
+	var existingEvt HealingEvent
+	err := coll.FindId(id).One(&existingEvt)
+	if err == nil {
+		now := time.Now().UTC()
+		lastUpdate := existingEvt.LockUpdateTime.UTC()
+		if now.After(lastUpdate.Add(lockExpireTimeout)) {
+			existingEvt.Update(nil, fmt.Errorf("healing event expired, no update for %v", time.Since(lastUpdate)))
+			return true
+		}
+	}
+	return false
 }
 
 func NewHealingEvent(failing interface{}) (*HealingEvent, error) {
 	return NewHealingEventWithReason(failing, "", nil)
+}
+
+func (evt *HealingEvent) startLockUpdate(id interface{}) {
+	for {
+		select {
+		case <-time.After(lockUpdateInterval):
+		case <-evt.done:
+			return
+		}
+		coll, err := healingCollection()
+		if err == nil {
+			err = coll.UpdateId(id, bson.M{"$set": bson.M{"lockupdatetime": time.Now().UTC()}})
+			coll.Close()
+			if err == mgo.ErrNotFound {
+				<-evt.done
+				return
+			}
+		}
+	}
 }
 
 func (evt *HealingEvent) Update(created interface{}, healingErr error) error {
@@ -87,6 +144,10 @@ func (evt *HealingEvent) Update(created interface{}, healingErr error) error {
 		return err
 	}
 	defer coll.Close()
+	if evt.done != nil {
+		evt.done <- true
+		close(evt.done)
+	}
 	if created == nil && healingErr == nil {
 		return coll.RemoveId(evt.ID)
 	}
