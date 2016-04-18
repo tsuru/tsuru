@@ -532,6 +532,15 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: set unit status
+// path: /apps/{app}/units/{unit}
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App or unit not found
 func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	unitName := r.URL.Query().Get(":unit")
 	if unitName == "" {
