@@ -53,14 +53,14 @@ type autoScaler interface {
 
 type metaWithFrequency struct {
 	metadata map[string]string
-	freq     int
+	nodes    []*cluster.Node
 }
 
 type metaWithFrequencyList []metaWithFrequency
 
 func (l metaWithFrequencyList) Len() int           { return len(l) }
 func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l metaWithFrequencyList) Less(i, j int) bool { return l[i].freq < l[j].freq }
+func (l metaWithFrequencyList) Less(i, j int) bool { return len(l[i].nodes) < len(l[j].nodes) }
 
 func (a *autoScaleConfig) initialize() {
 	if a.TotalMemoryMetadata == "" {
@@ -429,7 +429,7 @@ func canRemoveNode(chosenNode *cluster.Node, nodes []*cluster.Node) (bool, error
 	if len(nodes) == 1 {
 		return false, nil
 	}
-	exclusiveList, _, err := splitMetadata(createMetadataList(nodes))
+	exclusiveList, _, err := splitMetadata(nodes)
 	if err != nil {
 		return false, err
 	}
@@ -446,7 +446,7 @@ func canRemoveNode(chosenNode *cluster.Node, nodes []*cluster.Node) (bool, error
 	}
 	for _, item := range exclusiveList {
 		if hasMetadata(chosenNode, item.metadata) {
-			if item.freq > 1 {
+			if len(item.nodes) > 1 {
 				return true, nil
 			}
 			return false, nil
@@ -455,18 +455,30 @@ func canRemoveNode(chosenNode *cluster.Node, nodes []*cluster.Node) (bool, error
 	return false, nil
 }
 
-func splitMetadata(nodesMetadata []map[string]string) (metaWithFrequencyList, map[string]string, error) {
+func cleanMetadata(n *cluster.Node) map[string]string {
+	// iaas-id is ignored because it wasn't created in previous tsuru versions
+	// and having nodes with and without it would cause unbalanced metadata
+	// errors.
+	ignoredMetadata := []string{"iaas-id"}
+	metadata := n.CleanMetadata()
+	for _, val := range ignoredMetadata {
+		delete(metadata, val)
+	}
+	return metadata
+}
+
+func splitMetadata(nodes []*cluster.Node) (metaWithFrequencyList, map[string]string, error) {
 	common := make(map[string]string)
-	exclusive := make([]map[string]string, len(nodesMetadata))
-	for i := range nodesMetadata {
-		metadata := nodesMetadata[i]
+	exclusive := make([]map[string]string, len(nodes))
+	for i := range nodes {
+		metadata := cleanMetadata(nodes[i])
 		for k, v := range metadata {
 			isExclusive := false
-			for j := range nodesMetadata {
+			for j := range nodes {
 				if i == j {
 					continue
 				}
-				otherMetadata := nodesMetadata[j]
+				otherMetadata := cleanMetadata(nodes[j])
 				if v != otherMetadata[k] {
 					isExclusive = true
 					break
@@ -485,7 +497,7 @@ func splitMetadata(nodesMetadata []map[string]string) (metaWithFrequencyList, ma
 	var group metaWithFrequencyList
 	sameMap := make(map[int]bool)
 	for i := range exclusive {
-		freq := 1
+		groupNodes := []*cluster.Node{nodes[i]}
 		for j := range exclusive {
 			if i == j {
 				continue
@@ -496,23 +508,23 @@ func splitMetadata(nodesMetadata []map[string]string) (metaWithFrequencyList, ma
 					diffCount++
 				}
 			}
-			if diffCount > 0 && diffCount < len(exclusive[i]) {
+			if diffCount > 0 && (diffCount < len(exclusive[i]) || diffCount > len(exclusive[j])) {
 				return nil, nil, fmt.Errorf("unbalanced metadata for node group: %v vs %v", exclusive[i], exclusive[j])
 			}
 			if diffCount == 0 {
 				sameMap[j] = true
-				freq++
+				groupNodes = append(groupNodes, nodes[j])
 			}
 		}
 		if !sameMap[i] && exclusive[i] != nil {
-			group = append(group, metaWithFrequency{metadata: exclusive[i], freq: freq})
+			group = append(group, metaWithFrequency{metadata: exclusive[i], nodes: groupNodes})
 		}
 	}
 	return group, common, nil
 }
 
 func chooseMetadataFromNodes(modelNodes []*cluster.Node) (map[string]string, error) {
-	exclusiveList, baseMetadata, err := splitMetadata(createMetadataList(modelNodes))
+	exclusiveList, baseMetadata, err := splitMetadata(modelNodes)
 	if err != nil {
 		return nil, err
 	}
@@ -572,20 +584,4 @@ func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int
 		totalCount += contCount
 	}
 	return totalCount, maxCount - minCount, nil
-}
-
-func createMetadataList(nodes []*cluster.Node) []map[string]string {
-	// iaas-id is ignored because it wasn't created in previous tsuru versions
-	// and having nodes with and without it would cause unbalanced metadata
-	// errors.
-	ignoredMetadata := []string{"iaas-id"}
-	metadataList := make([]map[string]string, len(nodes))
-	for i, n := range nodes {
-		metadata := n.CleanMetadata()
-		for _, val := range ignoredMetadata {
-			delete(metadata, val)
-		}
-		metadataList[i] = metadata
-	}
-	return metadataList
 }

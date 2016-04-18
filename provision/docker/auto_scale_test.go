@@ -1394,59 +1394,73 @@ func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
 
 func (s *S) TestSplitMetadata(c *check.C) {
 	var err error
-	exclusive, common, err := splitMetadata([]map[string]string{
-		{"1": "a", "2": "z1", "3": "n1"},
-		{"1": "a", "2": "z2", "3": "n2"},
-		{"1": "a", "2": "z3", "3": "n3"},
-		{"1": "a", "2": "z3", "3": "n3"},
-	})
+	makeNode := func(addr string, metadata map[string]string) *cluster.Node {
+		return &cluster.Node{Address: addr, Metadata: metadata}
+	}
+	params := []*cluster.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2"}),
+		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n3"}),
+		makeNode("n4", map[string]string{"1": "a", "2": "z3", "3": "n3"}),
+	}
+	exclusive, common, err := splitMetadata(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(exclusive, check.DeepEquals, metaWithFrequencyList{
-		{metadata: map[string]string{"2": "z1", "3": "n1"}, freq: 1},
-		{metadata: map[string]string{"2": "z2", "3": "n2"}, freq: 1},
-		{metadata: map[string]string{"2": "z3", "3": "n3"}, freq: 2},
+		{metadata: map[string]string{"2": "z1", "3": "n1"}, nodes: []*cluster.Node{params[0]}},
+		{metadata: map[string]string{"2": "z2", "3": "n2"}, nodes: []*cluster.Node{params[1]}},
+		{metadata: map[string]string{"2": "z3", "3": "n3"}, nodes: []*cluster.Node{params[2], params[3]}},
 	})
 	c.Assert(common, check.DeepEquals, map[string]string{
 		"1": "a",
 	})
-	exclusive, common, err = splitMetadata([]map[string]string{
-		{"1": "a", "2": "z1", "3": "n1", "4": "b"},
-		{"1": "a", "2": "z2", "3": "n2", "4": "b"},
-	})
+	params = []*cluster.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
+	}
+	exclusive, common, err = splitMetadata(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(exclusive, check.DeepEquals, metaWithFrequencyList{
-		{metadata: map[string]string{"2": "z1", "3": "n1"}, freq: 1},
-		{metadata: map[string]string{"2": "z2", "3": "n2"}, freq: 1},
+		{metadata: map[string]string{"2": "z1", "3": "n1"}, nodes: []*cluster.Node{params[0]}},
+		{metadata: map[string]string{"2": "z2", "3": "n2"}, nodes: []*cluster.Node{params[1]}},
 	})
 	c.Assert(common, check.DeepEquals, map[string]string{
 		"1": "a",
 		"4": "b",
 	})
-	exclusive, common, err = splitMetadata([]map[string]string{
-		{"1": "a", "2": "b"},
-		{"1": "a", "2": "b"},
-	})
+	params = []*cluster.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "b"}),
+	}
+	exclusive, common, err = splitMetadata(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(exclusive, check.IsNil)
 	c.Assert(common, check.DeepEquals, map[string]string{
 		"1": "a",
 		"2": "b",
 	})
-	exclusive, common, err = splitMetadata([]map[string]string{})
+	exclusive, common, err = splitMetadata([]*cluster.Node{})
 	c.Assert(err, check.IsNil)
 	c.Assert(exclusive, check.IsNil)
 	c.Assert(common, check.DeepEquals, map[string]string{})
-	_, _, err = splitMetadata([]map[string]string{
-		{"1": "a", "2": "z1", "3": "n1", "4": "b"},
-		{"1": "a", "2": "z2", "3": "n2", "4": "b"},
-		{"1": "a", "2": "z3", "3": "n3", "4": "c"},
-	})
+	params = []*cluster.Node{
+		makeNode("n1", map[string]string{"1": "a"}),
+		makeNode("n2", map[string]string{}),
+	}
+	_, _, err = splitMetadata(params)
 	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
-	_, _, err = splitMetadata([]map[string]string{
-		{"1": "a", "2": "z1", "3": "n1", "4": "b"},
-		{"1": "a", "2": "z2", "3": "n2", "4": "b"},
-		{"1": "a", "2": "z3", "3": "n1", "4": "b"},
-	})
+	params = []*cluster.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
+		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n3", "4": "c"}),
+	}
+	_, _, err = splitMetadata(params)
+	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
+	params = []*cluster.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
+		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n1", "4": "b"}),
+	}
+	_, _, err = splitMetadata(params)
 	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
 }
 
