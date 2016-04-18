@@ -616,7 +616,6 @@ func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 
 // title: grant access to app
 // path: /apps/{app}/teams/{team}
-// consume: application/x-www-form-urlencoded
 // method: PUT
 // responses:
 //   200: Access granted
@@ -715,6 +714,15 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 }
 
+// title: run commands
+// path: /apps/{app}/run
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// method: POST
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	msg := "You must provide the command to run"
 	command := r.FormValue("command")
@@ -741,6 +749,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "run-command", "app="+appName, "command="+command)
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
