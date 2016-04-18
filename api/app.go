@@ -951,6 +951,15 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: set cname
+// path: /apps/{app}/cname
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
