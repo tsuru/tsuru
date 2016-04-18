@@ -494,7 +494,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // consume: application/x-www-form-urlencoded
 // method: PUT
 // responses:
-//   200: Access revoked
+//   200: Access granted
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
