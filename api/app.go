@@ -999,6 +999,14 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: unset cname
+// path: /apps/{app}/cname
+// method: DELETE
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	cnames := r.URL.Query()["cname"]
 	if len(cnames) == 0 {
