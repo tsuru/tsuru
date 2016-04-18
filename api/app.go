@@ -661,6 +661,14 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return err
 }
 
+// title: revoke access to app
+// path: /apps/{app}/teams/{team}
+// method: DELETE
+// responses:
+//   200: Access revoked
+//   401: Unauthorized
+//   403: Forbidden
+//   404: App or team not found
 func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
