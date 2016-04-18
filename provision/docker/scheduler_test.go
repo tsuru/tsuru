@@ -610,6 +610,55 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 	c.Check(n, check.Equals, 1)
 }
 
+func (s *S) TestChooseNodeDistributesNodesConsideringMetadata(c *check.C) {
+	nodes := []cluster.Node{
+		{Address: "http://server1:1234", Metadata: map[string]string{
+			"region": "a",
+		}},
+		{Address: "http://server2:1234", Metadata: map[string]string{
+			"region": "a",
+		}},
+		{Address: "http://server3:1234", Metadata: map[string]string{
+			"region": "b",
+		}},
+	}
+	var i int
+	addUnit := func(app string, process string) {
+		i++
+		sched := segregatedScheduler{provisioner: s.p}
+		contColl := s.p.Collection()
+		defer contColl.Close()
+		cont := container.Container{Name: fmt.Sprintf("unit%d", i), AppName: app, ProcessName: process}
+		err := contColl.Insert(cont)
+		c.Assert(err, check.IsNil)
+		node, err := sched.chooseNodeToAdd(nodes, cont.Name, app, process)
+		c.Assert(err, check.IsNil)
+		c.Assert(node, check.Not(check.Equals), "")
+	}
+	addUnit("anomander", "rake")
+	addUnit("anomander", "rake")
+	contColl := s.p.Collection()
+	defer contColl.Close()
+	n1, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	c.Assert(err, check.Equals, nil)
+	n2, err := contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Assert((n1 == 1 && n2 == 0) || (n1 == 0 && n2 == 1), check.Equals, true, check.Commentf("n1: %d, n2: %d", n1, n2))
+	n3, err := contColl.Find(bson.M{"hostaddr": "server3"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Assert(n3, check.Equals, 1)
+	addUnit("anomander", "rake")
+	n1, err = contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Assert(n1, check.Equals, 1)
+	n2, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Assert(n2, check.Equals, 1)
+	n3, err = contColl.Find(bson.M{"hostaddr": "server3"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Assert(n3, check.Equals, 1)
+}
+
 func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 	nodes := []cluster.Node{
 		{Address: "http://server1:1234"},

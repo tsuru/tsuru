@@ -235,10 +235,36 @@ func (s *segregatedScheduler) chooseContainerToRemove(nodes []cluster.Node, appN
 	return containerID, err
 }
 
+func appGroupCount(hostGroups map[string]int, appCountHost map[string]int) map[string]int {
+	groupCounters := map[int]int{}
+	for host, count := range appCountHost {
+		groupCounters[hostGroups[host]] += count
+	}
+	result := map[string]int{}
+	for host := range hostGroups {
+		result[host] = groupCounters[hostGroups[host]]
+	}
+	return result
+}
+
 // Find the host with the minimum (good to add a new container) and maximum
 // (good to remove a container) value for the pair [(number of containers for
 // app-process), (number of containers in host)]
 func (s *segregatedScheduler) minMaxNodes(nodes []cluster.Node, appName, process string) (string, string, error) {
+	nodesPtr := make([]*cluster.Node, len(nodes))
+	for i := range nodes {
+		nodesPtr[i] = &nodes[i]
+	}
+	metaFreqList, _, err := splitMetadata(nodesPtr)
+	if err != nil {
+		log.Debugf("[scheduler] ignoring metadata diff when selecting node: %s", err)
+	}
+	hostGroupMap := map[string]int{}
+	for i, m := range metaFreqList {
+		for _, n := range m.nodes {
+			hostGroupMap[net.URLToHost(n.Address)] = i
+		}
+	}
 	hosts, hostsMap := s.nodesToHosts(nodes)
 	hostCountMap, err := s.aggregateContainersByHost(hosts)
 	if err != nil {
@@ -248,17 +274,21 @@ func (s *segregatedScheduler) minMaxNodes(nodes []cluster.Node, appName, process
 	if err != nil {
 		return "", "", err
 	}
+	priorityEntries := []map[string]int{appGroupCount(hostGroupMap, appCountMap), appCountMap, hostCountMap}
 	var minHost, maxHost string
-	minCount := math.MaxInt32
-	maxCount := 0
+	var minScore uint64 = math.MaxUint64
+	var maxScore uint64 = 0
 	for _, host := range hosts {
-		adjCount := appCountMap[host]*10000 + hostCountMap[host]
-		if adjCount < minCount {
-			minCount = adjCount
+		var score uint64
+		for i, e := range priorityEntries {
+			score += uint64(e[host]) << uint((len(priorityEntries)-i-1)*(64/len(priorityEntries)))
+		}
+		if score < minScore {
+			minScore = score
 			minHost = host
 		}
-		if adjCount > maxCount {
-			maxCount = adjCount
+		if score > maxScore {
+			maxScore = score
 			maxHost = host
 		}
 	}
