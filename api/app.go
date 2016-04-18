@@ -614,6 +614,15 @@ func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return json.NewEncoder(w).Encode(result)
 }
 
+// title: grant access to app
+// path: /apps/{app}/teams/{team}
+// consume: application/x-www-form-urlencoded
+// method: PUT
+// responses:
+//   200: Access granted
+//   401: Unauthorized
+//   404: App or team not found
+//   409: Grant already exists
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
