@@ -52,7 +52,7 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	if err != nil {
 		return cluster.Node{}, err
 	}
-	node, err := s.chooseNode(nodes, opts.Name, appName, processName)
+	node, err := s.chooseNodeToAdd(nodes, opts.Name, appName, processName)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -167,42 +167,7 @@ func (s *segregatedScheduler) GetRemovableContainer(appName string, process stri
 	if err != nil {
 		return "", err
 	}
-	return s.chooseContainerFromMaxContainersCountInNode(nodes, appName, process)
-}
-
-// chooseNodeWithMaxContainersCount finds which is the node with maximum number
-// of containers and returns it
-func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes []cluster.Node, appName, process string) (string, error) {
-	hosts, hostsMap := s.nodesToHosts(nodes)
-	log.Debugf("[scheduler] Possible nodes for remove a container: %#v", hosts)
-	s.hostMutex.Lock()
-	defer s.hostMutex.Unlock()
-	hostCountMap, err := s.aggregateContainersByHost(hosts)
-	if err != nil {
-		return "", err
-	}
-	appCountMap, err := s.aggregateContainersByHostAppProcess(hosts, appName, process)
-	if err != nil {
-		return "", err
-	}
-	// Finally finding the host with the maximum value for
-	// the pair [appCount, hostCount]
-	var maxHost string
-	maxCount := 0
-	for _, host := range hosts {
-		adjCount := appCountMap[host]*10000 + hostCountMap[host]
-		if adjCount > maxCount {
-			maxCount = adjCount
-			maxHost = host
-		}
-	}
-	chosenNode := hostsMap[maxHost]
-	log.Debugf("[scheduler] Chosen node for remove a container: %#v Count: %d", chosenNode, hostCountMap[maxHost])
-	containerID, err := s.getContainerFromHost(maxHost, appName, process)
-	if err != nil {
-		return "", err
-	}
-	return containerID, err
+	return s.chooseContainerToRemove(nodes, appName, process)
 }
 
 func (s *segregatedScheduler) getContainerFromHost(host string, appName, process string) (string, error) {
@@ -210,7 +175,7 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 	defer coll.Close()
 	var c container.Container
 	query := bson.M{
-		"hostaddr": host,
+		"hostaddr": net.URLToHost(host),
 		"appname":  appName,
 		"id":       bson.M{"$nin": s.ignoredContainers},
 	}
@@ -236,39 +201,66 @@ func (s *segregatedScheduler) nodesToHosts(nodes []cluster.Node) ([]string, map[
 	return hosts, hostsMap
 }
 
-// chooseNode finds which is the node with the minimum number
-// of containers and returns it
-func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName, process string) (string, error) {
-	var chosenNode string
-	hosts, hostsMap := s.nodesToHosts(nodes)
-	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
+// chooseNodeToAdd finds which is the node with the minimum number of containers
+// and returns it
+func (s *segregatedScheduler) chooseNodeToAdd(nodes []cluster.Node, contName string, appName, process string) (string, error) {
+	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, nodes)
 	s.hostMutex.Lock()
 	defer s.hostMutex.Unlock()
+	chosenNode, _, err := s.minMaxNodes(nodes, appName, process)
+	if err != nil {
+		return "", err
+	}
+	log.Debugf("[scheduler] Chosen node for container %s: %#v", contName, chosenNode)
+	if contName != "" {
+		coll := s.provisioner.Collection()
+		defer coll.Close()
+		err = coll.Update(bson.M{"name": contName}, bson.M{"$set": bson.M{"hostaddr": net.URLToHost(chosenNode)}})
+	}
+	return chosenNode, err
+}
+
+// chooseContainerToRemove finds a container from the the node with maximum
+// number of containers and returns it
+func (s *segregatedScheduler) chooseContainerToRemove(nodes []cluster.Node, appName, process string) (string, error) {
+	_, chosenNode, err := s.minMaxNodes(nodes, appName, process)
+	if err != nil {
+		return "", err
+	}
+	log.Debugf("[scheduler] Chosen node for remove a container: %#v", chosenNode)
+	containerID, err := s.getContainerFromHost(chosenNode, appName, process)
+	if err != nil {
+		return "", err
+	}
+	return containerID, err
+}
+
+// Find the host with the minimum (good to add a new container) and maximum
+// (good to remove a container) value for the pair [(number of containers for
+// app-process), (number of containers in host)]
+func (s *segregatedScheduler) minMaxNodes(nodes []cluster.Node, appName, process string) (string, string, error) {
+	hosts, hostsMap := s.nodesToHosts(nodes)
 	hostCountMap, err := s.aggregateContainersByHost(hosts)
 	if err != nil {
-		return chosenNode, err
+		return "", "", err
 	}
 	appCountMap, err := s.aggregateContainersByHostAppProcess(hosts, appName, process)
 	if err != nil {
-		return chosenNode, err
+		return "", "", err
 	}
-	// Finally finding the host with the minimum value for
-	// the pair [appCount, hostCount]
-	var minHost string
+	var minHost, maxHost string
 	minCount := math.MaxInt32
+	maxCount := 0
 	for _, host := range hosts {
 		adjCount := appCountMap[host]*10000 + hostCountMap[host]
 		if adjCount < minCount {
 			minCount = adjCount
 			minHost = host
 		}
+		if adjCount > maxCount {
+			maxCount = adjCount
+			maxHost = host
+		}
 	}
-	chosenNode = hostsMap[minHost]
-	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", contName, chosenNode, minCount)
-	if contName != "" {
-		coll := s.provisioner.Collection()
-		defer coll.Close()
-		err = coll.Update(bson.M{"name": contName}, bson.M{"$set": bson.M{"hostaddr": minHost}})
-	}
-	return chosenNode, err
+	return hostsMap[minHost], hostsMap[maxHost], nil
 }

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -470,6 +471,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 }
 
 func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	nodes := []cluster.Node{
 		{Address: "http://server1:1234"},
 		{Address: "http://server2:1234"},
@@ -485,7 +487,7 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	cont2 := container.Container{ID: "pre2", Name: "existingUnit2", AppName: "coolapp9", HostAddr: "server2"}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.Equals, nil)
-	numberOfUnits := 38
+	numberOfUnits := 58
 	unitsPerNode := (numberOfUnits + 2) / 4
 	wg := sync.WaitGroup{}
 	wg.Add(numberOfUnits)
@@ -496,7 +498,7 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
-			node, insertErr := sched.chooseNode(nodes, cont.Name, "coolapp9", "web")
+			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "coolapp9", "web")
 			c.Assert(insertErr, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
@@ -544,7 +546,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion", ProcessName: "web"}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
-			node, insertErr := sched.chooseNode(nodes, cont.Name, "oblivion", "web")
+			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "oblivion", "web")
 			c.Assert(insertErr, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
@@ -588,7 +590,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "skyrim", ProcessName: "worker"}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
-			node, insertErr := sched.chooseNode(nodes, cont.Name, "skyrim", "worker")
+			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "skyrim", "worker")
 			c.Assert(insertErr, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
@@ -644,7 +646,7 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 	err = contColl.Insert(cont3)
 	c.Assert(err, check.Equals, nil)
 	scheduler := segregatedScheduler{provisioner: s.p}
-	containerID, err := scheduler.chooseContainerFromMaxContainersCountInNode(nodes, "coolapp9", "web")
+	containerID, err := scheduler.chooseContainerToRemove(nodes, "coolapp9", "web")
 	c.Assert(err, check.IsNil)
 	c.Assert(containerID, check.Equals, "pre1")
 }
@@ -697,7 +699,7 @@ func (s *S) TestChooseContainerToBeRemovedMultipleProcesses(c *check.C) {
 	err = contColl.Insert(map[string]string{"id": "pre6", "appname": "coolapp9", "hostaddr": "server2"})
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
-	containerID, err := scheduler.chooseContainerFromMaxContainersCountInNode(nodes, "coolapp9", "")
+	containerID, err := scheduler.chooseContainerToRemove(nodes, "coolapp9", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(containerID == "pre5" || containerID == "pre6", check.Equals, true)
 }
@@ -855,7 +857,7 @@ func (s *S) TestChooseContainerToBeRemovedMultipleApps(c *check.C) {
 	err = contColl.Insert(cont6)
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
-	containerID, err := scheduler.chooseContainerFromMaxContainersCountInNode(nodes, "coolapp2", "")
+	containerID, err := scheduler.chooseContainerToRemove(nodes, "coolapp2", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(containerID == "pre5" || containerID == "pre6", check.Equals, true)
 }
