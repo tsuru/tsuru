@@ -1041,6 +1041,14 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: app log
+// path: /apps/{app}/log
+// method: GET
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var err error
 	var lines int
