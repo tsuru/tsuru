@@ -1545,6 +1545,14 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: app unlock
+// path: /apps/{app}/lock
+// method: DELETE
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1561,7 +1569,6 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return permission.ErrUnauthorized
 	}
 	app.ReleaseApplicationLock(a.Name)
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 

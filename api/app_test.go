@@ -4594,7 +4594,7 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "")
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
