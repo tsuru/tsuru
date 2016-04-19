@@ -684,8 +684,8 @@ func (s *S) TestImageDeploy(c *check.C) {
 		}
 		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
 		w.WriteHeader(http.StatusOK)
-		conn, _, err := hijacker.Hijack()
-		if err != nil {
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -761,8 +761,8 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 		}
 		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
 		w.WriteHeader(http.StatusOK)
-		conn, _, err := hijacker.Hijack()
-		if err != nil {
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -818,8 +818,8 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 		}
 		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
 		w.WriteHeader(http.StatusOK)
-		conn, _, err := hijacker.Hijack()
-		if err != nil {
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
