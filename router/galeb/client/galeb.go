@@ -73,7 +73,7 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 		req.SetBasicAuth(c.Username, c.Password)
 	}
 	req.Header.Set("Content-Type", contentType)
-	rsp, err := net.Dial5Full60Client.Do(req)
+	rsp, err := net.Dial5Full60ClientNoKeepAlive.Do(req)
 	if c.Debug {
 		var code int
 		if err == nil {

@@ -27,8 +27,7 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration,
 }
 
 var (
-	Dial5Full60Client, Dial5Dialer   = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, 5)
-	Dial5Full300Client, _            = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5)
+	Dial5Full300Client, Dial5Dialer  = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5)
 	Dial5FullUnlimitedClient, _      = makeTimeoutHTTPClient(5*time.Second, 0, 5)
 	Dial5Full300ClientNoKeepAlive, _ = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1)
 	Dial5Full60ClientNoKeepAlive, _  = makeTimeoutHTTPClient(5*time.Second, 1*time.Minute, -1)
