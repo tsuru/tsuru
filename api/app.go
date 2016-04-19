@@ -1631,6 +1631,14 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(a.MetricEnvs())
 }
 
+// title: rebuild routes
+// path: /apps/{app}/routes
+// method: POST
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
 func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
