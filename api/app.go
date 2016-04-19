@@ -1296,9 +1296,17 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: app sleep
+// path: /apps/{app}/sleep
+// method: POST
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	process := r.URL.Query().Get("process")
-	w.Header().Set("Content-Type", "text")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -1327,7 +1335,16 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "sleep", "app="+appName)
-	return a.Sleep(w, process, proxyURL)
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	err = a.Sleep(w, process, proxyURL)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
+	}
+	return nil
 }
 
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
