@@ -3324,10 +3324,9 @@ func (s *S) TestAppLogShouldHaveContentType(c *check.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	request.Header.Set("Content-Type", "application/json")
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 }
 
 func (s *S) TestAppLogSelectByLines(c *check.C) {
@@ -3345,7 +3344,6 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	request.Header.Set("Content-Type", "application/json")
 	err = appLog(recorder, request, token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

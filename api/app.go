@@ -1044,6 +1044,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: app log
 // path: /apps/{app}/log
 // method: GET
+// produce: application/x-json-stream
 // responses:
 //   200: Ok
 //   400: Invalid data
@@ -1061,7 +1062,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	} else {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: `Parameter "lines" is mandatory.`}
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	source := r.URL.Query().Get("source")
 	unit := r.URL.Query().Get("unit")
 	follow := r.URL.Query().Get("follow")
