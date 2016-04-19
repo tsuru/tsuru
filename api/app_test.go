@@ -4166,13 +4166,15 @@ func (s *S) TestRestartHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/restart?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	url := fmt.Sprintf("/apps/%s/restart", a.Name)
+	request, err := http.NewRequest("POST", url, nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = restart(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	action := rectest.Action{
 		Action: "restart",
 		User:   s.user.Email,

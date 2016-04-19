@@ -1255,9 +1255,16 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
+// title: app restart
+// path: /apps/{app}/restart
+// method: POST
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	process := r.URL.Query().Get("process")
-	w.Header().Set("Content-Type", "text")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -1277,6 +1284,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	rec.Log(u.Email, "restart", "app="+appName)
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
