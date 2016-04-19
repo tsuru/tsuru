@@ -206,6 +206,10 @@ func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error)
 	if err != nil {
 		return nil, err
 	}
+	opts := provision.AddPoolOptions{Name: "pool1", Public: true}
+	err = provision.AddPool(opts)
+	opts = provision.AddPoolOptions{Name: "pool2", Public: true}
+	err = provision.AddPool(opts)
 	p.storage = &cluster.MapStorage{}
 	sched := segregatedScheduler{provisioner: &p}
 	p.cluster, err = cluster.New(&sched, p.storage,
