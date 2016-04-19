@@ -669,6 +669,9 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	app.Provisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -700,22 +703,23 @@ func (s *S) TestImageDeploy(c *check.C) {
 		w.Write(j)
 	}))
 	customData := map[string]interface{}{}
-	err := s.newFakeImage(s.p, imageName, customData)
+	err = s.newFakeImage(p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	pushOpts := docker.PushImageOptions{
 		Name:     imageName,
 		Registry: s.server.URL(),
 	}
-	err = s.p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
+	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
 		Quota:    quota.Unlimited,
+		Pool:     "pool1",
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	s.p.Provision(&a)
+	p.Provision(&a)
 	defer s.p.Destroy(&a)
 	dataColl, err := imageCustomDataColl()
 	defer dataColl.Close()
@@ -742,6 +746,9 @@ func (s *S) TestImageDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeployWithProcfile(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	app.Provisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -764,17 +771,18 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 		conn.Close()
 	}))
 	customData := map[string]interface{}{}
-	err := s.newFakeImage(s.p, imageName, customData)
+	err = s.newFakeImage(p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
 		Quota:    quota.Unlimited,
+		Pool:     "pool1",
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	s.p.Provision(&a)
-	defer s.p.Destroy(&a)
+	p.Provision(&a)
+	defer p.Destroy(&a)
 	dataColl, err := imageCustomDataColl()
 	defer dataColl.Close()
 	c.Assert(err, check.IsNil)
@@ -795,6 +803,9 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 }
 
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	app.Provisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -826,23 +837,24 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 		w.Write(j)
 	}))
 	customData := map[string]interface{}{}
-	err := s.newFakeImage(s.p, imageName, customData)
+	err = s.newFakeImage(p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	pushOpts := docker.PushImageOptions{
 		Name:     imageName,
 		Registry: s.server.URL(),
 	}
-	err = s.p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
+	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
 		Quota:    quota.Unlimited,
+		Pool:     "pool1",
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	s.p.Provision(&a)
-	defer s.p.Destroy(&a)
+	p.Provision(&a)
+	defer p.Destroy(&a)
 	dataColl, err := imageCustomDataColl()
 	defer dataColl.Close()
 	c.Assert(err, check.IsNil)

@@ -379,7 +379,15 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 		Repository:   imageId,
 		OutputStream: w,
 	}
-	err := cluster.PullImage(pullOpts, docker.AuthConfiguration{})
+	nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
+	if err != nil {
+		return "", err
+	}
+	node, _, err := p.scheduler.minMaxNodes(nodes, app.GetName(), "")
+	if err != nil {
+		return "", err
+	}
+	err = cluster.PullImage(pullOpts, docker.AuthConfiguration{}, node)
 	if err != nil {
 		return "", err
 	}
