@@ -1463,8 +1463,15 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return app.Swap(app1, app2, cnameOnly)
 }
 
+// title: app start
+// path: /apps/{app}/start
+// method: POST
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	w.Header().Set("Content-Type", "text")
 	process := r.URL.Query().Get("process")
 	u, err := t.User()
 	if err != nil {
@@ -1485,7 +1492,16 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	return a.Start(w, process)
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	err = a.Start(w, process)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
+	}
+	return nil
 }
 
 // title: app stop
