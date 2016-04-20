@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -25,6 +26,44 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func (s *S) TestRunInContainers(c *check.C) {
+	conts := []container.Container{
+		{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "4"},
+	}
+	var called []string
+	var mtx sync.Mutex
+	runFunc := func(cont *container.Container, ch chan *container.Container) error {
+		mtx.Lock()
+		defer mtx.Unlock()
+		called = append(called, cont.ID)
+		return nil
+	}
+	err := runInContainers(conts, runFunc, nil, true)
+	c.Assert(err, check.IsNil)
+	sort.Strings(called)
+	c.Assert(called, check.DeepEquals, []string{"1", "2", "3", "4"})
+}
+
+func (s *S) TestRunInContainersOddMaxWorkers(c *check.C) {
+	config.Set("docker:max-workers", 3)
+	defer config.Unset("docker:max-workers")
+	conts := []container.Container{
+		{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "4"},
+	}
+	var called []string
+	var mtx sync.Mutex
+	runFunc := func(cont *container.Container, ch chan *container.Container) error {
+		mtx.Lock()
+		defer mtx.Unlock()
+		called = append(called, cont.ID)
+		return nil
+	}
+	err := runInContainers(conts, runFunc, nil, true)
+	c.Assert(err, check.IsNil)
+	sort.Strings(called)
+	c.Assert(called, check.DeepEquals, []string{"1", "2", "3", "4"})
+}
 
 func (s *S) TestInsertEmptyContainerInDBName(c *check.C) {
 	c.Assert(insertEmptyContainerInDB.Name, check.Equals, "insert-empty-container")

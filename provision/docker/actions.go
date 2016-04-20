@@ -61,7 +61,10 @@ func runInContainers(containers []container.Container, callback callbackFunc, ro
 	if workers == 0 {
 		workers = len(containers)
 	}
-	step := len(containers)/workers + 1
+	step := len(containers) / workers
+	if len(containers)%workers != 0 {
+		step += 1
+	}
 	toRollback := make(chan *container.Container, len(containers))
 	errs := make(chan error, len(containers))
 	var wg sync.WaitGroup
