@@ -1385,15 +1385,26 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: app swap
+// path: /swap
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
+//   409: App locked
+//   412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	app1Name := r.URL.Query().Get("app1")
-	app2Name := r.URL.Query().Get("app2")
-	forceSwap := r.URL.Query().Get("force")
-	cnameOnly, _ := strconv.ParseBool(r.URL.Query().Get("cnameOnly"))
+	app1Name := r.FormValue("app1")
+	app2Name := r.FormValue("app2")
+	forceSwap := r.FormValue("force")
+	cnameOnly, _ := strconv.ParseBool(r.FormValue("cnameOnly"))
 	if forceSwap == "" {
 		forceSwap = "false"
 	}
