@@ -4305,17 +4305,25 @@ func (s *S) TestAddLog(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	body := strings.NewReader(`["message 1", "message 2", "message 3"]`)
-	body2 := strings.NewReader(`["message 4", "message 5"]`)
+	v := url.Values{}
+	v.Add("message", "message 1")
+	v.Add("message", "message 2")
+	v.Add("message", "message 3")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateLog,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	request, err := http.NewRequest("POST", "/apps/myapp/log", body)
+	request, err := http.NewRequest("POST", "/apps/myapp/log", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	withSourceRequest, err := http.NewRequest("POST", "/apps/myapp/log?source=mysource", body2)
+	v = url.Values{}
+	v.Add("message", "message 4")
+	v.Add("message", "message 5")
+	v.Set("source", "mysource")
+	withSourceRequest, err := http.NewRequest("POST", "/apps/myapp/log", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
+	withSourceRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	withSourceRequest.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	err = addLog(recorder, request, token)

@@ -1347,16 +1347,23 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: app log
+// path: /apps/{app}/log
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	queryValues := r.URL.Query()
-	a, err := app.GetByName(queryValues.Get(":app"))
+	a, err := app.GetByName(r.URL.Query().Get(":app"))
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
+	err = r.ParseForm()
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if t.GetAppName() != app.InternalAppName {
 		allowed := permission.Check(t, permission.PermAppUpdateLog,
@@ -1369,13 +1376,12 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
-	var logs []string
-	err = json.Unmarshal(body, &logs)
-	source := queryValues.Get("source")
-	if len(source) == 0 {
+	logs := r.Form["message"]
+	source := r.FormValue("source")
+	if source == "" {
 		source = "app"
 	}
-	unit := queryValues.Get("unit")
+	unit := r.FormValue("unit")
 	for _, log := range logs {
 		err := a.Log(log, source, unit)
 		if err != nil {
