@@ -220,7 +220,11 @@ func (s *S) TestGetContainerPartialIdAmbiguous(c *check.C) {
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
 	_, err := s.p.GetContainer("container")
-	c.Assert(err, check.Equals, errAmbiguousContainer)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*AmbiguousContainerError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.ID, check.Equals, "container")
+	c.Assert(err.Error(), check.Equals, `ambiguous container name/id: "container"`)
 }
 
 func (s *S) TestGetContainerPartialIdNotFound(c *check.C) {

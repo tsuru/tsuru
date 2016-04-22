@@ -5,17 +5,15 @@
 package docker
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
 )
-
-var errAmbiguousContainer error = errors.New("ambiguous container name")
 
 func (p *dockerProvisioner) GetContainer(id string) (*container.Container, error) {
 	var containers []container.Container
@@ -31,7 +29,8 @@ func (p *dockerProvisioner) GetContainer(id string) (*container.Container, error
 		return nil, &provision.UnitNotFoundError{ID: id}
 	}
 	if lenContainers > 1 {
-		return nil, errAmbiguousContainer
+		log.Debugf("ambiguous container id. found %d containers (%v) when looking for %q", lenContainers, containers, id)
+		return nil, &AmbiguousContainerError{ID: id}
 	}
 	return &containers[0], nil
 }
@@ -49,7 +48,7 @@ func (p *dockerProvisioner) GetContainerByName(name string) (*container.Containe
 		return nil, &provision.UnitNotFoundError{ID: name}
 	}
 	if lenContainers > 1 {
-		return nil, errAmbiguousContainer
+		return nil, &AmbiguousContainerError{ID: name}
 	}
 	return &containers[0], nil
 }
@@ -164,4 +163,12 @@ func (p *dockerProvisioner) getContainerCountForAppName(appName string) (int, er
 	coll := p.Collection()
 	defer coll.Close()
 	return coll.Find(bson.M{"appname": appName}).Count()
+}
+
+type AmbiguousContainerError struct {
+	ID string
+}
+
+func (e *AmbiguousContainerError) Error() string {
+	return fmt.Sprintf("ambiguous container name/id: %q", e.ID)
 }
