@@ -315,9 +315,8 @@ func (s *S) TestProvisioned(c *check.C) {
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Provisioned(app), check.Equals, true)
-	otherapp := *app
-	otherapp.name = "blue-sector"
-	c.Assert(p.Provisioned(&otherapp), check.Equals, false)
+	otherapp := NewFakeApp("blue-sector", "rush", 1)
+	c.Assert(p.Provisioned(otherapp), check.Equals, false)
 }
 
 func (s *S) TestRestarts(c *check.C) {
@@ -386,10 +385,9 @@ func (s *S) TestGetCmds(c *check.C) {
 	c.Assert(p.GetCmds("ls -lh", app), check.HasLen, 1)
 	c.Assert(p.GetCmds("l", app), check.HasLen, 0)
 	c.Assert(p.GetCmds("", app), check.HasLen, 2)
-	otherapp := *app
-	otherapp.name = "enemy-without"
-	c.Assert(p.GetCmds("ls -lh", &otherapp), check.HasLen, 0)
-	c.Assert(p.GetCmds("", &otherapp), check.HasLen, 0)
+	otherapp := NewFakeApp("enemy-without", "rush", 1)
+	c.Assert(p.GetCmds("ls -lh", otherapp), check.HasLen, 0)
+	c.Assert(p.GetCmds("", otherapp), check.HasLen, 0)
 }
 
 func (s *S) TestGetUnits(c *check.C) {
