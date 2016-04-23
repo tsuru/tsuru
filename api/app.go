@@ -1164,6 +1164,16 @@ func getServiceInstance(serviceName, instanceName, appName string) (*service.Ser
 	return instance, &app, nil
 }
 
+// title: bind service instance
+// path: /services/{service}/instances/{instance}/{app}
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	instanceName := r.URL.Query().Get(":instance")
 	appName := r.URL.Query().Get(":app")
@@ -1191,7 +1201,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return permission.ErrUnauthorized
 	}
 	rec.Log(t.GetUserName(), "bind-app", "instance="+instanceName, "app="+appName)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
