@@ -305,16 +305,15 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		return stderr.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
 	err = runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
-		err = c.Start(&container.StartArgs{
+		startErr := c.Start(&container.StartArgs{
 			Provisioner: p,
 			App:         app,
 		})
-		if err != nil {
-			return err
+		if startErr != nil {
+			return startErr
 		}
 		c.SetStatus(p, provision.StatusStarting, true)
-		var info container.NetworkInfo
-		if info, err = c.NetworkInfo(p); err == nil {
+		if info, infoErr := c.NetworkInfo(p); infoErr == nil {
 			p.fixContainer(c, info)
 		}
 		return nil
