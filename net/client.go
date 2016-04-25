@@ -26,6 +26,10 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration,
 	return client, dialer
 }
 
+const (
+	StreamInactivityTimeout = time.Minute
+)
+
 var (
 	Dial5Full300Client, Dial5Dialer  = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, 5)
 	Dial5FullUnlimitedClient, _      = makeTimeoutHTTPClient(5*time.Second, 0, 5)
