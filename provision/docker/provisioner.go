@@ -64,6 +64,7 @@ type dockerProvisioner struct {
 	scheduler      *segregatedScheduler
 	isDryMode      bool
 	nodeHealer     *healer.NodeHealer
+	actionLimiter  provision.ActionLimiter
 }
 
 func (p *dockerProvisioner) initDockerCluster() error {
@@ -142,7 +143,16 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		shutdown.Register(autoScale)
 		go autoScale.run()
 	}
+	p.actionLimiter = &provision.LocalLimiter{}
+	actionLimit, _ := config.GetUint("docker:max-simultaneous-actions-node")
+	if actionLimit > 0 {
+		p.actionLimiter.SetLimit(actionLimit)
+	}
 	return nil
+}
+
+func (p *dockerProvisioner) ActionLimiter() provision.ActionLimiter {
+	return p.actionLimiter
 }
 
 func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
@@ -197,6 +207,7 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container.Container) (*d
 	overridenProvisioner := &dockerProvisioner{
 		collectionName: "containers_dry_" + randomString(),
 		isDryMode:      true,
+		actionLimiter:  provision.NoopLimiter{},
 	}
 	containerIds := make([]string, len(ignoredContainers))
 	for i := range ignoredContainers {
@@ -481,7 +492,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		},
 	}
 	cluster := p.Cluster()
-	_, cont, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""}, net.StreamInactivityTimeout)
+	_, cont, err := cluster.CreateContainerSchedulerOpts(options, &container.SchedulerOpts{AppName: app.GetName()}, net.StreamInactivityTimeout)
 	if err != nil {
 		return "", err
 	}

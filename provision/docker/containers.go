@@ -337,7 +337,7 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 		},
 	}
 	cluster := p.Cluster()
-	_, cont, err := cluster.CreateContainerSchedulerOpts(createOptions, []string{app.GetName(), ""}, net.StreamInactivityTimeout)
+	_, cont, err := cluster.CreateContainerSchedulerOpts(createOptions, &container.SchedulerOpts{AppName: app.GetName()}, net.StreamInactivityTimeout)
 	if err != nil {
 		return output, err
 	}

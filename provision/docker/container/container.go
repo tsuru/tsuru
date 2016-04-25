@@ -35,6 +35,21 @@ type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
 	Collection() *storage.Collection
 	PushImage(name, tag string) error
+	ActionLimiter() provision.ActionLimiter
+}
+
+type SchedulerOpts struct {
+	AppName       string
+	ProcessName   string
+	ActionLimiter provision.ActionLimiter
+}
+
+type SchedulerError struct {
+	Base error
+}
+
+func (e *SchedulerError) Error() string {
+	return fmt.Sprintf("error in scheduler: %s", e.Base)
 }
 
 type Container struct {
@@ -148,12 +163,20 @@ func (c *Container) Create(args *CreateArgs) error {
 		}
 		nodeList = []string{nodeName}
 	}
-	schedulerOpts := []string{args.App.GetName(), args.ProcessName}
+	schedulerOpts := &SchedulerOpts{
+		AppName:       args.App.GetName(),
+		ProcessName:   args.ProcessName,
+		ActionLimiter: args.Provisioner.ActionLimiter(),
+	}
 	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout, nodeList...)
 	if err != nil {
+		if _, isSchedErr := err.(*SchedulerError); !isSchedErr {
+			args.Provisioner.ActionLimiter().Done(addr)
+		}
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
 	}
+	args.Provisioner.ActionLimiter().Done(addr)
 	c.ID = cont.ID
 	c.HostAddr = net.URLToHost(addr)
 	return nil

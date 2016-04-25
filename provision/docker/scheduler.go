@@ -23,7 +23,7 @@ import (
 
 // errNoDefaultPool is the error returned when no default hosts are configured in
 // the segregated scheduler.
-var errNoDefaultPool = errors.New("No default pool configured in the scheduler: you should create a default pool.")
+var errNoDefaultPool = errors.New("no default pool configured in the scheduler: you should create a default pool.")
 
 type segregatedScheduler struct {
 	hostMutex           sync.Mutex
@@ -37,24 +37,27 @@ type segregatedScheduler struct {
 }
 
 func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
-	schedOpts, _ := schedulerOpts.([]string)
-	if len(schedOpts) != 2 {
-		return cluster.Node{}, fmt.Errorf("invalid scheduler opts: %#v", schedulerOpts)
+	schedOpts, ok := schedulerOpts.(*container.SchedulerOpts)
+	if !ok {
+		return cluster.Node{}, &container.SchedulerError{
+			Base: fmt.Errorf("invalid scheduler opts: %#v", schedulerOpts),
+		}
 	}
-	appName := schedOpts[0]
-	processName := schedOpts[1]
-	a, _ := app.GetByName(appName)
+	a, _ := app.GetByName(schedOpts.AppName)
 	nodes, err := s.provisioner.Nodes(a)
 	if err != nil {
-		return cluster.Node{}, err
+		return cluster.Node{}, &container.SchedulerError{Base: err}
 	}
 	nodes, err = s.filterByMemoryUsage(a, nodes, s.maxMemoryRatio, s.TotalMemoryMetadata)
 	if err != nil {
-		return cluster.Node{}, err
+		return cluster.Node{}, &container.SchedulerError{Base: err}
 	}
-	node, err := s.chooseNodeToAdd(nodes, opts.Name, appName, processName)
+	node, err := s.chooseNodeToAdd(nodes, opts.Name, schedOpts.AppName, schedOpts.ProcessName)
 	if err != nil {
-		return cluster.Node{}, err
+		return cluster.Node{}, &container.SchedulerError{Base: err}
+	}
+	if schedOpts.ActionLimiter != nil {
+		schedOpts.ActionLimiter.Add(node)
 	}
 	return cluster.Node{Address: node}, nil
 }

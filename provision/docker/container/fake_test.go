@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/provision"
 )
 
 type push struct {
@@ -65,4 +66,8 @@ func (p *fakeDockerProvisioner) PushImage(name, tag string) error {
 	default:
 	}
 	return nil
+}
+
+func (p *fakeDockerProvisioner) ActionLimiter() provision.ActionLimiter {
+	return provision.NoopLimiter{}
 }

@@ -41,6 +41,7 @@ type FakeDockerProvisioner struct {
 	preparedErrors  chan error
 	preparedResults chan []container.Container
 	movings         []ContainerMoving
+	actionLimiter   provision.ActionLimiter
 }
 
 func NewFakeDockerProvisioner(servers ...string) (*FakeDockerProvisioner, error) {
@@ -52,6 +53,7 @@ func NewFakeDockerProvisioner(servers ...string) (*FakeDockerProvisioner, error)
 		preparedErrors:  make(chan error, 10),
 		preparedResults: make(chan []container.Container, 10),
 		containers:      make(map[string][]container.Container),
+		actionLimiter:   &provision.LocalLimiter{},
 	}
 	nodes := make([]cluster.Node, len(servers))
 	for i, server := range servers {
@@ -80,6 +82,10 @@ func StartMultipleServersCluster() (*FakeDockerProvisioner, error) {
 	}
 	p.servers = []*testing.DockerServer{server1, server2}
 	return p, nil
+}
+
+func (p *FakeDockerProvisioner) ActionLimiter() provision.ActionLimiter {
+	return p.actionLimiter
 }
 
 func (p *FakeDockerProvisioner) SetAuthConfig(config docker.AuthConfiguration) {
