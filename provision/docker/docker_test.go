@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -88,7 +89,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	}
 	createOptions := docker.CreateContainerOptions{Config: &config}
 	createOptions.Name = randomString()
-	_, c, err := p.Cluster().CreateContainer(createOptions)
+	_, c, err := p.Cluster().CreateContainer(createOptions, net.StreamInactivityTimeout)
 	if err != nil {
 		return nil, err
 	}

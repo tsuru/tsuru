@@ -341,7 +341,7 @@ func (p *FakeDockerProvisioner) StartContainers(args StartContainersArgs) ([]con
 	for processName, amount := range args.Amount {
 		opts.Config.Cmd = []string{processName}
 		for i := 0; i < amount; i++ {
-			_, cont, err := p.Cluster().CreateContainer(opts, args.Endpoint)
+			_, cont, err := p.Cluster().CreateContainer(opts, net.StreamInactivityTimeout, args.Endpoint)
 			if err != nil {
 				return nil, err
 			}

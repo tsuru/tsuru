@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -113,7 +114,7 @@ func (s *S) newContainer(opts newContainerOpts, p *fakeDockerProvisioner) (*Cont
 	if err != nil {
 		return nil, err
 	}
-	_, c, err := p.Cluster().CreateContainer(docker.CreateContainerOptions{Config: &config})
+	_, c, err := p.Cluster().CreateContainer(docker.CreateContainerOptions{Config: &config}, net.StreamInactivityTimeout)
 	if err != nil {
 		return nil, err
 	}

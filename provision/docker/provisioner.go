@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
@@ -376,8 +377,9 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	}
 	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
 	pullOpts := docker.PullImageOptions{
-		Repository:   imageId,
-		OutputStream: w,
+		Repository:        imageId,
+		OutputStream:      w,
+		InactivityTimeout: net.StreamInactivityTimeout,
 	}
 	nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
 	if err != nil {
@@ -428,10 +430,11 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	}
 	fmt.Fprintln(w, "---- Pushing image to tsuru ----")
 	pushOpts := docker.PushImageOptions{
-		Name:         strings.Join(imageInfo[:len(imageInfo)-1], ":"),
-		Tag:          imageInfo[len(imageInfo)-1],
-		Registry:     registry,
-		OutputStream: w,
+		Name:              strings.Join(imageInfo[:len(imageInfo)-1], ":"),
+		Tag:               imageInfo[len(imageInfo)-1],
+		Registry:          registry,
+		OutputStream:      w,
+		InactivityTimeout: net.StreamInactivityTimeout,
 	}
 	err = cluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	if err != nil {
@@ -479,7 +482,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		},
 	}
 	cluster := p.Cluster()
-	_, cont, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""})
+	_, cont, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""}, net.StreamInactivityTimeout)
 	if err != nil {
 		return "", err
 	}
@@ -1017,13 +1020,14 @@ func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w
 	imageName := platformImageName(name)
 	cluster := p.Cluster()
 	buildOptions := docker.BuildImageOptions{
-		Name:           imageName,
-		Pull:           true,
-		NoCache:        true,
-		RmTmpContainer: true,
-		Remote:         dockerfileURL,
-		InputStream:    inputStream,
-		OutputStream:   w,
+		Name:              imageName,
+		Pull:              true,
+		NoCache:           true,
+		RmTmpContainer:    true,
+		Remote:            dockerfileURL,
+		InputStream:       inputStream,
+		OutputStream:      w,
+		InactivityTimeout: net.StreamInactivityTimeout,
 	}
 	err := cluster.BuildImage(buildOptions)
 	if err != nil {

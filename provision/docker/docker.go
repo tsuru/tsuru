@@ -155,7 +155,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 func (p *dockerProvisioner) PushImage(name, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
-		pushOpts := docker.PushImageOptions{Name: name, Tag: tag, OutputStream: &buf}
+		pushOpts := docker.PushImageOptions{Name: name, Tag: tag, OutputStream: &buf, InactivityTimeout: net.StreamInactivityTimeout}
 		err = p.Cluster().PushImage(pushOpts, p.RegistryAuthConfig())
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())

@@ -149,7 +149,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		nodeList = []string{nodeName}
 	}
 	schedulerOpts := []string{args.App.GetName(), args.ProcessName}
-	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, nodeList...)
+	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout, nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err

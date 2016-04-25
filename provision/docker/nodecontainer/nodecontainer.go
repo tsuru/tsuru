@@ -360,7 +360,7 @@ func dockerClient(endpoint string) (*docker.Client, error) {
 func pullWithRetry(client *docker.Client, p DockerProvisioner, image string, maxTries int) (string, error) {
 	var buf bytes.Buffer
 	var err error
-	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
+	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf, InactivityTimeout: net.StreamInactivityTimeout}
 	registryAuth := p.RegistryAuthConfig()
 	for ; maxTries > 0; maxTries-- {
 		err = client.PullImage(pullOpts, registryAuth)
