@@ -84,6 +84,7 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 		"Apps":        si.Apps,
 		"ServiceName": si.ServiceName,
 		"Info":        info,
+		"TeamOwner":   si.TeamOwner,
 	}
 	return json.Marshal(&data)
 }
