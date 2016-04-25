@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/log"
@@ -24,13 +25,13 @@ type Container struct {
 // specified, it will create the container in a node selected by the scheduler.
 //
 // It returns the container, or an error, in case of failures.
-func (c *Cluster) CreateContainer(opts docker.CreateContainerOptions, nodes ...string) (string, *docker.Container, error) {
-	return c.CreateContainerSchedulerOpts(opts, nil, nodes...)
+func (c *Cluster) CreateContainer(opts docker.CreateContainerOptions, inactivityTimeout time.Duration, nodes ...string) (string, *docker.Container, error) {
+	return c.CreateContainerSchedulerOpts(opts, nil, inactivityTimeout, nodes...)
 }
 
 // Similar to CreateContainer but allows arbritary options to be passed to
 // the scheduler.
-func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions, nodes ...string) (string, *docker.Container, error) {
+func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOptions, schedulerOpts SchedulerOptions, inactivityTimeout time.Duration, nodes ...string) (string, *docker.Container, error) {
 	var (
 		addr      string
 		container *docker.Container
@@ -59,7 +60,7 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 			log.Errorf("Error in before create container hook in node %q: %s. Trying again in another node...", addr, err)
 		}
 		if err == nil {
-			container, err = c.createContainerInNode(opts, addr)
+			container, err = c.createContainerInNode(opts, inactivityTimeout, addr)
 			if err == nil {
 				c.handleNodeSuccess(addr)
 				break
@@ -92,11 +93,12 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 	return addr, container, err
 }
 
-func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, nodeAddress string) (*docker.Container, error) {
+func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, inactivityTimeout time.Duration, nodeAddress string) (*docker.Container, error) {
 	registryServer, _ := parseImageRegistry(opts.Config.Image)
 	if registryServer != "" {
 		err := c.PullImage(docker.PullImageOptions{
-			Repository: opts.Config.Image,
+			Repository:        opts.Config.Image,
+			InactivityTimeout: inactivityTimeout,
 		}, docker.AuthConfiguration{}, nodeAddress)
 		if err != nil {
 			return nil, err
@@ -315,9 +317,11 @@ func (c *Cluster) TopContainer(id string, psArgs string) (docker.TopResult, erro
 }
 
 func (c *Cluster) getNodeForContainer(container string) (node, error) {
-	return c.getNode(func(s Storage) (string, error) {
-		return s.RetrieveContainer(container)
-	})
+	addr, err := c.storage().RetrieveContainer(container)
+	if err != nil {
+		return node{}, err
+	}
+	return c.getNodeByAddr(addr)
 }
 
 func (c *Cluster) CreateExec(opts docker.CreateExecOptions) (*docker.Exec, error) {

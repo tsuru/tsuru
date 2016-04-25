@@ -264,7 +264,7 @@ func (c *Cluster) BuildImage(buildOptions docker.BuildImageOptions) error {
 		return err
 	}
 	if len(nodes) < 1 {
-		return errors.New("There is no docker node. Please list one in tsuru.conf or add one with `tsuru docker-node-add`.")
+		return errors.New("There is no docker node. Please list one in tsuru.conf or add one with `tsuru-admin docker-node-add`.")
 	}
 	nodeAddress := nodes[0].Address
 	node, err := c.getNodeByAddr(nodeAddress)

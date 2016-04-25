@@ -26,9 +26,9 @@ var (
 	errStorageMandatory = errors.New("Storage parameter is mandatory")
 	errHealerInProgress = errors.New("Healer already running")
 
-	pingClient       = clientWithTimeout(5*time.Second, 1*time.Minute, 0)
-	timeout10Client  = clientWithTimeout(10*time.Second, 5*time.Minute, -1)
-	persistentClient = clientWithTimeout(10*time.Second, 0, -1)
+	pingClient       = clientWithTimeout(5*time.Second, 1*time.Minute)
+	timeout10Client  = clientWithTimeout(10*time.Second, 5*time.Minute)
+	persistentClient = clientWithTimeout(10*time.Second, 0)
 	timeout10Dialer  = &net.Dialer{
 		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -454,24 +454,15 @@ func (c *Cluster) runOnNodes(fn nodeFunc, errNotFound error, wait bool, nodeAddr
 	}
 }
 
-func (c *Cluster) getNode(retrieveFn func(Storage) (string, error)) (node, error) {
-	var n node
-	storage := c.storage()
-	address, err := retrieveFn(storage)
-	if err != nil {
-		return n, err
-	}
-	return c.getNodeByAddr(address)
-}
-
-func clientWithTimeout(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int) *http.Client {
+func clientWithTimeout(dialTimeout time.Duration, fullTimeout time.Duration) *http.Client {
 	transport := http.Transport{
 		Dial: (&net.Dialer{
 			Timeout:   dialTimeout,
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		TLSHandshakeTimeout: dialTimeout,
-		MaxIdleConnsPerHost: maxIdle,
+		MaxIdleConnsPerHost: -1,
+		DisableKeepAlives:   true,
 	}
 	return &http.Client{
 		Transport: &transport,
@@ -482,12 +473,6 @@ func clientWithTimeout(dialTimeout time.Duration, fullTimeout time.Duration, max
 func (c *Cluster) StopDryMode() {
 	if c.dryServer != nil {
 		c.dryServer.Stop()
-		clients := []*http.Client{timeout10Client, persistentClient, pingClient}
-		for _, cli := range clients {
-			if trans, ok := cli.Transport.(*http.Transport); ok {
-				trans.CloseIdleConnections()
-			}
-		}
 	}
 }
 

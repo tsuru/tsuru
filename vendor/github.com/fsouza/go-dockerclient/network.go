@@ -28,6 +28,7 @@ type Network struct {
 	Containers map[string]Endpoint
 	Options    map[string]string
 	Internal   bool
+	EnableIPv6 bool `json:"EnableIPv6"`
 }
 
 // Endpoint contains network resources allocated and used for a container in a network
@@ -111,7 +112,9 @@ type CreateNetworkOptions struct {
 	CheckDuplicate bool                   `json:"CheckDuplicate"`
 	Driver         string                 `json:"Driver"`
 	IPAM           IPAMOptions            `json:"IPAM"`
-	Options        map[string]interface{} `json:"options"`
+	Options        map[string]interface{} `json:"Options"`
+	Internal       bool                   `json:"Internal"`
+	EnableIPv6     bool                   `json:"EnableIPv6"`
 }
 
 // IPAMOptions controls IP Address Management when creating a network
@@ -119,7 +122,7 @@ type CreateNetworkOptions struct {
 // See https://goo.gl/T8kRVH for more details.
 type IPAMOptions struct {
 	Driver string       `json:"Driver"`
-	Config []IPAMConfig `json:"IPAMConfig"`
+	Config []IPAMConfig `json:"Config"`
 }
 
 // IPAMConfig represents IPAM configurations
@@ -185,7 +188,8 @@ func (c *Client) RemoveNetwork(id string) error {
 	return nil
 }
 
-// NetworkConnectionOptions specify parameters to the ConnectNetwork and DisconnectNetwork function.
+// NetworkConnectionOptions specify parameters to the ConnectNetwork and
+// DisconnectNetwork function.
 //
 // See https://goo.gl/RV7BJU for more details.
 type NetworkConnectionOptions struct {
@@ -207,7 +211,7 @@ type EndpointConfig struct {
 	Aliases    []string
 }
 
-// EndpointIPAMCOnfig represents IPAM configurations for an
+// EndpointIPAMConfig represents IPAM configurations for an
 // endpoint
 //
 // See https://goo.gl/RV7BJU for more details.
@@ -216,7 +220,8 @@ type EndpointIPAMConfig struct {
 	IPv6Address string `json:",omitempty"`
 }
 
-// ConnectNetwork adds a container to a network or returns an error in case of failure.
+// ConnectNetwork adds a container to a network or returns an error in case of
+// failure.
 //
 // See https://goo.gl/6GugX3 for more details.
 func (c *Client) ConnectNetwork(id string, opts NetworkConnectionOptions) error {
@@ -231,7 +236,8 @@ func (c *Client) ConnectNetwork(id string, opts NetworkConnectionOptions) error 
 	return nil
 }
 
-// DisconnectNetwork removes a container from a network or returns an error in case of failure.
+// DisconnectNetwork removes a container from a network or returns an error in
+// case of failure.
 //
 // See https://goo.gl/6GugX3 for more details.
 func (c *Client) DisconnectNetwork(id string, opts NetworkConnectionOptions) error {
@@ -255,7 +261,8 @@ func (err *NoSuchNetwork) Error() string {
 	return fmt.Sprintf("No such network: %s", err.ID)
 }
 
-// NoSuchNetwork is the error returned when a given network or container does not exist.
+// NoSuchNetworkOrContainer is the error returned when a given network or
+// container does not exist.
 type NoSuchNetworkOrContainer struct {
 	NetworkID   string
 	ContainerID string
