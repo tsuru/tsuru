@@ -144,151 +144,130 @@
 			"revisionTime": "2016-03-04T22:48:11Z"
 		},
 		{
-			"checksumSHA1": "WedQQZfwJ5oVgFrptmrt+jyIpug=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient",
+			"checksumSHA1": "TMafsc6wnhBTWy8bwm8bnn5a7b4=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "7CvOHJK9x8GlFZmYe0nXMTz9teg=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "608Y3rj23jTnrZJjGaFRK+s5IcU=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/opts",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/opts",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "OECIN3MgL6Q/bup7ZbPYjAbPLZs=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "dEFpUEhnmCDWorKpavPHVTkijYk=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/fileutils",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/fileutils",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "gqNisQFLlzSB6GxBq4PkDbnNayg=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/homedir",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/homedir",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "B5n9LVGXOsgyLjgpG49/z33DQr8=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/idtools",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/idtools",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "Wufcejxg4ay719EwD4EJAh0HCdk=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/ioutils",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/ioutils",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "9XQOQ2MyLt5gfTENYwo0Iuxaeoo=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/longpath",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/longpath",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "xRNl3MgjAJmN84KE4MzmVyGoe9M=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/pools",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/pools",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "l63UQekgrt3jXEuq0rqsaLx5onI=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/promise",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/promise",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "E4MW4qF8yysAY8Hi9UqoLY9+7ew=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/stdcopy",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/stdcopy",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "/vUfR+BdfifZcbYHIsWEnd3sgpw=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/system",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/system",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "8KgdGTS+WOEtfwqxp2A0udV+lJU=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/docker/go-units",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/docker/go-units",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "67oB9ZCYGHG2V7KDtxF5DzGZNeI=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/gorilla/context",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/gorilla/context",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "HhHUiLf1FN/5z30lPGMYAYZrIts=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/gorilla/mux",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/gorilla/mux",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "FRtY4g9kxucTQMy1cSkBQfCVd1U=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/hashicorp/go-cleanhttp",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/hashicorp/go-cleanhttp",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "VvGdEczw0JVJjvfY1AVWV/8xx00=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/github.com/opencontainers/runc/libcontainer/user",
 			"path": "github.com/fsouza/go-dockerclient/external/github.com/opencontainers/runc/libcontainer/user",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "o9VcknDJbqkKjX+smSL9Edi9ctc=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/golang.org/x/net/context",
 			"path": "github.com/fsouza/go-dockerclient/external/golang.org/x/net/context",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"checksumSHA1": "hugdbffSP0G67FyJUhGvu9O0WmM=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/external/golang.org/x/sys/unix",
 			"path": "github.com/fsouza/go-dockerclient/external/golang.org/x/sys/unix",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
-			"checksumSHA1": "ZVnOlbeAPHvc4CfPP9H2jiYBZZ0=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/testing",
+			"checksumSHA1": "L+LhxM4nFclz+pbX+m57du8bJt4=",
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "03cbd2b15b2a68937f9c752aae8ee7dc95172f17",
-			"revisionTime": "2016-04-23T23:44:15Z"
+			"revision": "bc11e7a6ea80db24096c835f3b844ca41577e2c2",
+			"revisionTime": "2016-04-26T15:29:57Z"
 		},
 		{
 			"path": "github.com/garyburd/redigo/redis",

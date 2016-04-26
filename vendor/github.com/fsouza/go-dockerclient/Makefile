@@ -41,7 +41,7 @@ fmtcheck:
 pretest: lint vet fmtcheck
 
 gotest:
-	go test $(PKGS)
+	go test $(GO_TEST_FLAGS) $(PKGS)
 
 test: pretest gotest
 
