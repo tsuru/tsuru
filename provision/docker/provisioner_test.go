@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
@@ -318,6 +319,62 @@ func (s *S) TestDeploy(c *check.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: 10, InUse: 1})
+}
+
+func (s *S) TestDeployWithLimiterActive(c *check.C) {
+	config.Set("docker:max-simultaneous-actions-node", 1)
+	defer config.Unset("docker:max-simultaneous-actions-node")
+	var p dockerProvisioner
+	p.storage = &cluster.MapStorage{}
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	app.Provisioner = &p
+	p.cluster, err = cluster.New(nil, p.storage,
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
+	)
+	c.Assert(err, check.IsNil)
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
+	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+		Quota:    quota.Quota{Limit: 10, InUse: 10},
+	}
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	repository.Manager().CreateRepository(a.Name, nil)
+	p.Provision(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
+		Commit:       "123",
+		OutputStream: w,
+	})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	addedUnits, err := p.AddUnits(&a, 10, "web", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(addedUnits, check.HasLen, 10)
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 11)
+	hostAddr := net.URLToHost(s.server.URL())
+	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
+	err = p.Destroy(&a)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 }
 
 func (s *S) TestDeployQuotaExceeded(c *check.C) {
