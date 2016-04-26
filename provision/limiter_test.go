@@ -25,14 +25,14 @@ func init() {
 func (s *LimiterSuite) TestLocalLimiterAddDone(c *check.C) {
 	l := s.limiter
 	l.SetLimit(3)
-	l.Add("node1")
-	l.Add("node1")
-	l.Add("node1")
+	l.Start("node1")
+	l.Start("node1")
+	doneFunc := l.Start("node1")
 	c.Assert(l.Len("node1"), check.Equals, 3)
 	c.Assert(l.Len("node2"), check.Equals, 0)
 	done := make(chan bool)
 	go func() {
-		l.Add("node1")
+		l.Start("node1")
 		close(done)
 	}()
 	select {
@@ -40,9 +40,9 @@ func (s *LimiterSuite) TestLocalLimiterAddDone(c *check.C) {
 		c.Fatal("add should have blocked")
 	case <-time.After(100 * time.Millisecond):
 	}
-	l.Add("node2")
+	l.Start("node2")
 	c.Assert(l.Len("node2"), check.Equals, 1)
-	l.Done("node1")
+	doneFunc()
 	select {
 	case <-done:
 	case <-time.After(500 * time.Millisecond):
@@ -56,21 +56,23 @@ func (s *LimiterSuite) TestLocalLimiterAddDoneRace(c *check.C) {
 	l := s.limiter
 	l.SetLimit(100)
 	wg := sync.WaitGroup{}
+	doneCh := make(chan func(), 100)
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			l.Add("n1")
+			doneCh <- l.Start("n1")
 		}()
 	}
 	wg.Wait()
+	close(doneCh)
 	c.Assert(l.Len("n1"), check.Equals, 100)
-	for i := 0; i < 100; i++ {
+	for f := range doneCh {
 		wg.Add(1)
-		go func() {
+		go func(f func()) {
 			defer wg.Done()
-			l.Done("n1")
-		}()
+			f()
+		}(f)
 	}
 	wg.Wait()
 	c.Assert(l.Len("n1"), check.Equals, 0)
@@ -81,15 +83,16 @@ func (s *LimiterSuite) TestLocalLimiterAddDoneRace2(c *check.C) {
 	l := s.limiter
 	l.SetLimit(100)
 	wg := sync.WaitGroup{}
+	doneCh := make(chan func(), 100)
 	for i := 0; i < 100; i++ {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			l.Add("n1")
+			doneCh <- l.Start("n1")
 		}()
 		go func() {
 			defer wg.Done()
-			l.Done("n1")
+			(<-doneCh)()
 		}()
 	}
 	wg.Wait()
@@ -99,12 +102,13 @@ func (s *LimiterSuite) TestLocalLimiterAddDoneRace2(c *check.C) {
 func (s *LimiterSuite) TestLocalLimiterAddDoneZeroLimit(c *check.C) {
 	l := s.limiter
 	l.SetLimit(0)
+	var doneSlice []func()
 	for i := 0; i < 100; i++ {
-		l.Add("n1")
+		doneSlice = append(doneSlice, l.Start("n1"))
 	}
 	c.Assert(l.Len("n1"), check.Equals, 0)
 	for i := 0; i < 100; i++ {
-		l.Done("n1")
+		doneSlice[i]()
 	}
 	c.Assert(l.Len("n1"), check.Equals, 0)
 }

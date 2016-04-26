@@ -343,16 +343,16 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	}
 	addr, cont, err := cluster.CreateContainerSchedulerOpts(createOptions, schedOpts, net.StreamInactivityTimeout)
 	hostAddr := net.URLToHost(addr)
-	if schedOpts.LimiterAdded {
-		p.ActionLimiter().Done(hostAddr)
+	if schedOpts.LimiterDone != nil {
+		schedOpts.LimiterDone()
 	}
 	if err != nil {
 		return output, err
 	}
 	defer func() {
-		p.ActionLimiter().Add(hostAddr)
+		done := p.ActionLimiter().Start(hostAddr)
 		cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
-		p.ActionLimiter().Done(hostAddr)
+		done()
 	}()
 	attachOptions := docker.AttachToContainerOptions{
 		Container:    cont.ID,
@@ -367,9 +367,9 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	}
 	<-attachOptions.Success
 	close(attachOptions.Success)
-	p.ActionLimiter().Add(hostAddr)
+	done := p.ActionLimiter().Start(hostAddr)
 	err = cluster.StartContainer(cont.ID, nil)
-	p.ActionLimiter().Done(hostAddr)
+	done()
 	if err != nil {
 		return output, err
 	}

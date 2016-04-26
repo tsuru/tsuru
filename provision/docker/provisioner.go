@@ -498,20 +498,20 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	}
 	addr, cont, err := cluster.CreateContainerSchedulerOpts(options, schedOpts, net.StreamInactivityTimeout)
 	hostAddr := net.URLToHost(addr)
-	if schedOpts.LimiterAdded {
-		p.ActionLimiter().Done(hostAddr)
+	if schedOpts.LimiterDone != nil {
+		schedOpts.LimiterDone()
 	}
 	if err != nil {
 		return "", err
 	}
 	defer func() {
-		p.ActionLimiter().Add(hostAddr)
+		done := p.ActionLimiter().Start(hostAddr)
 		cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
-		p.ActionLimiter().Done(hostAddr)
+		done()
 	}()
-	p.ActionLimiter().Add(hostAddr)
+	done := p.ActionLimiter().Start(hostAddr)
 	err = cluster.StartContainer(cont.ID, nil)
-	p.ActionLimiter().Done(hostAddr)
+	done()
 	if err != nil {
 		return "", err
 	}
@@ -555,15 +555,15 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if err != nil {
 		return "", err
 	}
-	p.ActionLimiter().Add(hostAddr)
+	done = p.ActionLimiter().Start(hostAddr)
 	err = cluster.StopContainer(cont.ID, 10)
-	p.ActionLimiter().Done(hostAddr)
+	done()
 	if err != nil {
 		return "", err
 	}
-	p.ActionLimiter().Add(hostAddr)
+	done = p.ActionLimiter().Start(hostAddr)
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
-	p.ActionLimiter().Done(hostAddr)
+	done()
 	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)
 	if err != nil {
 		return "", err

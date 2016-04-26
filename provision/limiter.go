@@ -9,11 +9,11 @@ import (
 )
 
 var _ ActionLimiter = &LocalLimiter{}
+var noop = func() {}
 
 type ActionLimiter interface {
 	SetLimit(uint)
-	Add(action string)
-	Done(action string)
+	Start(action string) func()
 	Len(action string) int
 }
 
@@ -45,16 +45,13 @@ func (l *LocalLimiter) actionEntry(action string) chan struct{} {
 	return limitChan
 }
 
-func (l *LocalLimiter) Add(action string) {
+func (l *LocalLimiter) Start(action string) func() {
 	ch := l.actionEntry(action)
-	if ch != nil {
-		ch <- struct{}{}
+	if ch == nil {
+		return noop
 	}
-}
-
-func (l *LocalLimiter) Done(action string) {
-	ch := l.actionEntry(action)
-	if ch != nil {
+	ch <- struct{}{}
+	return func() {
 		<-ch
 	}
 }
