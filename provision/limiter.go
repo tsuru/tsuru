@@ -14,6 +14,7 @@ type ActionLimiter interface {
 	SetLimit(uint)
 	Add(action string)
 	Done(action string)
+	Len(action string) int
 }
 
 type LocalLimiter struct {
@@ -30,37 +31,34 @@ func (l *LocalLimiter) SetLimit(i uint) {
 	}
 }
 
-func (l *LocalLimiter) Add(action string) {
+func (l *LocalLimiter) actionEntry(action string) chan struct{} {
 	l.Lock()
 	if l.chMap == nil {
 		l.Unlock()
-		return
+		return nil
 	}
-	var limitChan chan struct{}
 	if l.chMap[action] == nil {
 		l.chMap[action] = make(chan struct{}, l.limit)
 	}
-	limitChan = l.chMap[action]
+	limitChan := l.chMap[action]
 	l.Unlock()
-	limitChan <- struct{}{}
+	return limitChan
+}
+
+func (l *LocalLimiter) Add(action string) {
+	ch := l.actionEntry(action)
+	if ch != nil {
+		ch <- struct{}{}
+	}
 }
 
 func (l *LocalLimiter) Done(action string) {
-	l.Lock()
-	var limitChan chan struct{}
-	if l.chMap == nil || l.chMap[action] == nil {
-		l.Unlock()
-		return
+	ch := l.actionEntry(action)
+	if ch != nil {
+		<-ch
 	}
-	limitChan = l.chMap[action]
-	l.Unlock()
-	<-limitChan
 }
 
-type NoopLimiter struct{}
-
-func (NoopLimiter) SetLimit(i uint) {}
-
-func (NoopLimiter) Add(action string) {}
-
-func (NoopLimiter) Done(action string) {}
+func (l *LocalLimiter) Len(action string) int {
+	return len(l.actionEntry(action))
+}
