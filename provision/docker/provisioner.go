@@ -207,7 +207,7 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container.Container) (*d
 	overridenProvisioner := &dockerProvisioner{
 		collectionName: "containers_dry_" + randomString(),
 		isDryMode:      true,
-		actionLimiter:  provision.NoopLimiter{},
+		actionLimiter:  &provision.LocalLimiter{},
 	}
 	containerIds := make([]string, len(ignoredContainers))
 	for i := range ignoredContainers {

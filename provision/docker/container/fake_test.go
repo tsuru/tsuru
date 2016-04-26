@@ -21,6 +21,7 @@ type fakeDockerProvisioner struct {
 	cluster    *cluster.Cluster
 	pushes     []push
 	pushErrors chan error
+	limiter    provision.LocalLimiter
 }
 
 func newFakeDockerProvisioner(servers ...string) (*fakeDockerProvisioner, error) {
@@ -69,5 +70,5 @@ func (p *fakeDockerProvisioner) PushImage(name, tag string) error {
 }
 
 func (p *fakeDockerProvisioner) ActionLimiter() provision.ActionLimiter {
-	return provision.NoopLimiter{}
+	return &p.limiter
 }

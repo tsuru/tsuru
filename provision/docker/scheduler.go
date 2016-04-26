@@ -57,7 +57,8 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 		return cluster.Node{}, &container.SchedulerError{Base: err}
 	}
 	if schedOpts.ActionLimiter != nil {
-		schedOpts.ActionLimiter.Add(node)
+		schedOpts.LimiterAdded = true
+		schedOpts.ActionLimiter.Add(net.URLToHost(node))
 	}
 	return cluster.Node{Address: node}, nil
 }

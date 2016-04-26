@@ -42,6 +42,7 @@ type SchedulerOpts struct {
 	AppName       string
 	ProcessName   string
 	ActionLimiter provision.ActionLimiter
+	LimiterAdded  bool
 }
 
 type SchedulerError struct {
@@ -169,16 +170,16 @@ func (c *Container) Create(args *CreateArgs) error {
 		ActionLimiter: args.Provisioner.ActionLimiter(),
 	}
 	addr, cont, err := args.Provisioner.Cluster().CreateContainerSchedulerOpts(opts, schedulerOpts, net.StreamInactivityTimeout, nodeList...)
+	hostAddr := net.URLToHost(addr)
+	if schedulerOpts.LimiterAdded {
+		args.Provisioner.ActionLimiter().Done(hostAddr)
+	}
 	if err != nil {
-		if _, isSchedErr := err.(*SchedulerError); !isSchedErr {
-			args.Provisioner.ActionLimiter().Done(addr)
-		}
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
 	}
-	args.Provisioner.ActionLimiter().Done(addr)
 	c.ID = cont.ID
-	c.HostAddr = net.URLToHost(addr)
+	c.HostAddr = hostAddr
 	return nil
 }
 
@@ -283,7 +284,9 @@ func (c *Container) Remove(p DockerProvisioner) error {
 	if err != nil {
 		log.Errorf("error on stop unit %s - %s", c.ID, err)
 	}
+	p.ActionLimiter().Add(c.HostAddr)
 	err = p.Cluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+	p.ActionLimiter().Done(c.HostAddr)
 	if err != nil {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
@@ -395,7 +398,9 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
 	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
+	p.ActionLimiter().Add(c.HostAddr)
 	image, err := p.Cluster().CommitContainer(opts)
+	p.ActionLimiter().Done(c.HostAddr)
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
 	}
@@ -430,7 +435,9 @@ func (c *Container) Sleep(p DockerProvisioner) error {
 	if c.Status != provision.StatusStarted.String() && c.Status != provision.StatusStarting.String() {
 		return fmt.Errorf("container %s is not starting or started", c.ID)
 	}
+	p.ActionLimiter().Add(c.HostAddr)
 	err := p.Cluster().StopContainer(c.ID, 10)
+	p.ActionLimiter().Done(c.HostAddr)
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
@@ -441,7 +448,9 @@ func (c *Container) Stop(p DockerProvisioner) error {
 	if c.Status == provision.StatusStopped.String() {
 		return nil
 	}
+	p.ActionLimiter().Add(c.HostAddr)
 	err := p.Cluster().StopContainer(c.ID, 10)
+	p.ActionLimiter().Done(c.HostAddr)
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
@@ -505,7 +514,9 @@ func (c *Container) Start(args *StartArgs) error {
 	case "tsuru":
 		err = c.startWithPortSearch(args.Provisioner, &hostConfig)
 	case "docker":
+		args.Provisioner.ActionLimiter().Add(c.HostAddr)
 		err = args.Provisioner.Cluster().StartContainer(c.ID, &hostConfig)
+		args.Provisioner.ActionLimiter().Done(c.HostAddr)
 	default:
 		return fmt.Errorf("invalid docker:port-allocator: %s", allocator)
 	}
@@ -546,7 +557,9 @@ func (c *Container) startWithPortSearch(p DockerProvisioner, hostConfig *docker.
 			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: portStr}},
 		}
 		randN := rand.Uint32()
+		p.ActionLimiter().Add(c.HostAddr)
 		err = p.Cluster().StartContainer(c.ID, hostConfig)
+		p.ActionLimiter().Done(c.HostAddr)
 		if err != nil {
 			if strings.Contains(err.Error(), "already in use") ||
 				strings.Contains(err.Error(), "already allocated") {
