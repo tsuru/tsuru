@@ -143,8 +143,13 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		shutdown.Register(autoScale)
 		go autoScale.run()
 	}
-	p.actionLimiter = &provision.LocalLimiter{}
-	actionLimit, _ := config.GetUint("docker:max-simultaneous-actions-node")
+	limitMode, _ := config.GetString("docker:limit:mode")
+	if limitMode == "global" {
+		p.actionLimiter = &provision.MongodbLimiter{}
+	} else {
+		p.actionLimiter = &provision.LocalLimiter{}
+	}
+	actionLimit, _ := config.GetUint("docker:limit:actions-per-host")
 	if actionLimit > 0 {
 		p.actionLimiter.SetLimit(actionLimit)
 	}

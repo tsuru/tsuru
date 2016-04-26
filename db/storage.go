@@ -212,3 +212,7 @@ func (s *LogStorage) LogsCollections() ([]*storage.Collection, error) {
 func (s *Storage) Roles() *storage.Collection {
 	return s.Collection("roles")
 }
+
+func (s *Storage) Limiter() *storage.Collection {
+	return s.Collection("limiter")
+}

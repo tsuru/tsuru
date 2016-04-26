@@ -322,8 +322,8 @@ func (s *S) TestDeploy(c *check.C) {
 }
 
 func (s *S) TestDeployWithLimiterActive(c *check.C) {
-	config.Set("docker:max-simultaneous-actions-node", 1)
-	defer config.Unset("docker:max-simultaneous-actions-node")
+	config.Set("docker:limit:actions-per-host", 1)
+	defer config.Unset("docker:limit:actions-per-host")
 	var p dockerProvisioner
 	p.storage = &cluster.MapStorage{}
 	err := p.Initialize()

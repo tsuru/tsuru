@@ -9,6 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"gopkg.in/check.v1"
 )
 
@@ -20,6 +23,19 @@ func init() {
 	check.Suite(&LimiterSuite{
 		limiter: &LocalLimiter{},
 	})
+	check.Suite(&LimiterSuite{
+		limiter: &MongodbLimiter{},
+	})
+}
+
+func (s *LimiterSuite) SetUpTest(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "provision_limiter_tests_s")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *LimiterSuite) TestLocalLimiterAddDone(c *check.C) {
@@ -40,6 +56,7 @@ func (s *LimiterSuite) TestLocalLimiterAddDone(c *check.C) {
 		c.Fatal("add should have blocked")
 	case <-time.After(100 * time.Millisecond):
 	}
+	c.Assert(l.Len("node1"), check.Equals, 3)
 	l.Start("node2")
 	c.Assert(l.Len("node2"), check.Equals, 1)
 	doneFunc()
