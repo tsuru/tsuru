@@ -291,10 +291,14 @@ func incrementDeploy(app *App) error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Apps().Update(
+	err = conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$inc": bson.M{"deploys": 1}},
 	)
+	if err == nil {
+		app.Deploys += 1
+	}
+	return err
 }
 
 func getImage(appName string, img string) (string, error) {

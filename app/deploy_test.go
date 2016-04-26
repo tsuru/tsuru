@@ -587,6 +587,7 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	incrementDeploy(&a)
+	c.Assert(a.Deploys, check.Equals, uint(1))
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
 }
