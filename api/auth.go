@@ -529,6 +529,13 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(apiUsers)
 }
 
+// title: user info
+// path: /users/info
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
 func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	user, err := t.User()
 	if err != nil {
