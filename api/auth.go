@@ -484,6 +484,7 @@ func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[s
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	userEmail := r.URL.Query().Get("userEmail")
 	roleName := r.URL.Query().Get("role")
+	contextValue := r.URL.Query().Get("context")
 	users, err := auth.ListUsers()
 	if err != nil {
 		return err
@@ -512,8 +513,15 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if roleName != "" {
 			for _, role := range usrData.Roles {
 				if role.Name == roleName {
-					apiUsers = append(apiUsers, *usrData)
-					break
+					println(role.Name, role.ContextValue)
+					if contextValue != "" && role.ContextValue == contextValue {
+						apiUsers = append(apiUsers, *usrData)
+						break
+					}
+					if contextValue == "" {
+						apiUsers = append(apiUsers, *usrData)
+						break
+					}
 				}
 			}
 		}

@@ -1476,6 +1476,38 @@ func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 	c.Assert(expectedUser.Email, check.Equals, receivedUser.Email)
 }
 
+func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team2.Name),
+	})
+	expectedUser, err := token.User()
+	c.Assert(err, check.IsNil)
+	userRoles := expectedUser.Roles
+	expectedRole := userRoles[1].Name
+	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.Unlimited}
+	_, err = nativeScheme.Create(otherUser)
+	c.Assert(err, check.IsNil)
+	otherUser.AddRole(expectedRole, s.team.Name)
+	url := fmt.Sprintf("/users?role=%s&context=%s", expectedRole, s.team2.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var users []apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.HasLen, 1)
+	receivedUser := users[0]
+	c.Assert(expectedUser.Email, check.Equals, receivedUser.Email)
+}
+
 func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
