@@ -16,15 +16,15 @@ import (
 )
 
 type LimiterSuite struct {
-	limiter ActionLimiter
+	limiter func() ActionLimiter
 }
 
 func init() {
 	check.Suite(&LimiterSuite{
-		limiter: &LocalLimiter{},
+		limiter: func() ActionLimiter { return &LocalLimiter{} },
 	})
 	check.Suite(&LimiterSuite{
-		limiter: &MongodbLimiter{},
+		limiter: func() ActionLimiter { return &MongodbLimiter{} },
 	})
 }
 
@@ -39,7 +39,7 @@ func (s *LimiterSuite) SetUpTest(c *check.C) {
 }
 
 func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
-	l := s.limiter
+	l := s.limiter()
 	l.SetLimit(3)
 	l.Start("node1")
 	l.Start("node1")
@@ -70,7 +70,7 @@ func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 
 func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
-	l := s.limiter
+	l := s.limiter()
 	l.SetLimit(100)
 	wg := sync.WaitGroup{}
 	doneCh := make(chan func(), 100)
@@ -97,7 +97,7 @@ func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 
 func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
-	l := s.limiter
+	l := s.limiter()
 	l.SetLimit(100)
 	wg := sync.WaitGroup{}
 	doneCh := make(chan func(), 100)
@@ -117,7 +117,7 @@ func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 }
 
 func (s *LimiterSuite) TestLimiterAddDoneZeroLimit(c *check.C) {
-	l := s.limiter
+	l := s.limiter()
 	l.SetLimit(0)
 	var doneSlice []func()
 	for i := 0; i < 100; i++ {

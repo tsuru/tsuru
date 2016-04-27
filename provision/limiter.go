@@ -91,11 +91,14 @@ func (l *MongodbLimiter) SetLimit(i uint) {
 
 func (l *MongodbLimiter) timeUpdater() {
 	var ids []bson.ObjectId
+	timeoutCh := time.After(l.updateInterval)
 	for {
 		select {
 		case id := <-l.idsCh:
 			ids = append(ids, id)
-		case <-time.After(l.updateInterval):
+			continue
+		case <-timeoutCh:
+			timeoutCh = time.After(l.updateInterval)
 		}
 		coll := l.collection()
 		if coll == nil {
