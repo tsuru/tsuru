@@ -91,15 +91,19 @@ func (l *MongodbLimiter) Initialize(i uint) {
 
 func (l *MongodbLimiter) timeUpdater() {
 	var ids []bson.ObjectId
-	timeoutCh := time.After(l.updateInterval)
+	var timeoutCh <-chan time.Time
 	for {
 		select {
 		case id := <-l.idsCh:
 			ids = append(ids, id)
+			timeoutCh = time.After(l.updateInterval)
 			continue
 		case <-timeoutCh:
-			timeoutCh = time.After(l.updateInterval)
 		}
+		if len(ids) == 0 {
+			continue
+		}
+		timeoutCh = time.After(l.updateInterval)
 		coll := l.collection()
 		if coll == nil {
 			continue
