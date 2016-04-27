@@ -3917,7 +3917,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(parts[1], check.Equals, `{"Message":"restarting app"}`)
 	c.Assert(parts[2], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
 	c.Assert(parts[3], check.Equals, "")
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	action := rectest.Action{
 		Action: "unbind-app",
 		User:   s.user.Email,
@@ -4005,7 +4005,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	c.Assert(parts[0], check.Equals, `{"Message":"---- Unsetting 1 environment variables ----\n"}`)
 	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
 	c.Assert(parts[2], check.Equals, "")
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	action := rectest.Action{
 		Action: "unbind-app",
 		User:   s.user.Email,
