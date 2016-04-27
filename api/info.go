@@ -9,6 +9,12 @@ import (
 	"net/http"
 )
 
+// title: api info
+// path: /info
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
 func info(w http.ResponseWriter, r *http.Request) error {
 	data := map[string]string{}
 	data["version"] = Version
