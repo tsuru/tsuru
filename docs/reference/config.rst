@@ -1000,6 +1000,26 @@ docker:auto-scale:scale-down-ratio
 Ratio used when scaling down. Must be greater than 1.0. See :doc:`node auto
 scaling </advanced_topics/node_scaling>` for more details. Defaults to 1.33.
 
+.. _docker_limit:
+
+docker:limit:actions-per-host
++++++++++++++++++++++++++++++
+
+The maximum number of simultaneous actions to run on a docker node. When the
+number of running actions is greater then the limit further actions will block
+until another action has finished. Setting this limit may help the stability of
+docker nodes with limited resources. If this value is set to ``0`` the limit is
+disabled. Default value is ``0``.
+
+docker:limit:mode
++++++++++++++++++
+
+The way tsuru will ensure ``docker:limit:actions-per-host`` limit is being
+respected. Possible values are ``local`` and ``global``. Defaults to ``local``.
+In ``local`` mode tsuru will only limit simultaneous actions from the current
+tsurud process. ``global`` mode uses MongoDB to ensure all tsurud servers using
+respects the same limit.
+
 .. _iaas_configuration:
 
 IaaS configuration

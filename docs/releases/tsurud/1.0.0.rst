@@ -148,6 +148,10 @@ General improvements
 * Add description flag to role-add command (--description/-d), allowing users to
   add a description for newly created roles.
 
+* It's now possible to limit the number of simultaneous docker commands running
+  on the same docker node. Check the :ref:`config reference <docker_limit>` for
+  more information.
+
 Backward incompatible changes (action needed)
 =============================================
 
