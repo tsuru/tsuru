@@ -280,40 +280,24 @@ func (c *listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 			machineMap[machine["Address"].(string)] = m.(map[string]interface{})
 		}
 	}
-	var nodes []interface{}
+	var nodes []map[string]interface{}
 	if result["nodes"] != nil {
-		nodes = result["nodes"].([]interface{})
+		nodes = c.filterNodes(result["nodes"].([]interface{}))
 	}
 	if c.simplified {
-		for _, n := range nodes {
-			node := n.(map[string]interface{})
+		for _, node := range nodes {
 			fmt.Fprintln(ctx.Stdout, node["Address"].(string))
 		}
 		return nil
 	}
 	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
-	for _, n := range nodes {
-		node := n.(map[string]interface{})
+	for _, node := range nodes {
 		addr := node["Address"].(string)
 		status := node["Status"].(string)
 		result := []string{}
 		metadataField, _ := node["Metadata"]
-		if c.filter != nil && metadataField == nil {
-			continue
-		}
 		if metadataField != nil {
 			metadata := metadataField.(map[string]interface{})
-			valid := true
-			for key, value := range c.filter {
-				metaVal, _ := metadata[key]
-				if metaVal != value {
-					valid = false
-					break
-				}
-			}
-			if !valid {
-				continue
-			}
 			for key, value := range metadata {
 				result = append(result, fmt.Sprintf("%s=%s", key, value.(string)))
 			}
@@ -329,6 +313,34 @@ func (c *listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())
 	return nil
+}
+
+func (c *listNodesInTheSchedulerCmd) filterNodes(nodes []interface{}) []map[string]interface{} {
+	filteredNodes := make([]map[string]interface{}, 0)
+	for _, n := range nodes {
+		node := n.(map[string]interface{})
+		if c.nodeMetadataMatchesFilters(node) {
+			filteredNodes = append(filteredNodes, node)
+		}
+	}
+	return filteredNodes
+}
+
+func (c *listNodesInTheSchedulerCmd) nodeMetadataMatchesFilters(node map[string]interface{}) bool {
+	metadataField, _ := node["Metadata"]
+	if c.filter != nil && metadataField == nil {
+		return false
+	}
+	if metadataField != nil {
+		metadata := metadataField.(map[string]interface{})
+		for key, value := range c.filter {
+			metaVal, _ := metadata[key]
+			if metaVal != value {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 type listAutoScaleHistoryCmd struct {

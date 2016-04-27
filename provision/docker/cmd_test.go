@@ -180,6 +180,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *check.C) {
 	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
 	"nodes": [
 		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
+		{"Address": "http://localhost2:8089", "Status": "disabled"},
 		{"Address": "http://localhost2:9090", "Status": "disabled", "Metadata": {"meta1": "foo"}}
 	]
 }`, Status: http.StatusOK},
@@ -230,6 +231,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFlagQ(c *check.C) {
 	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
 	"nodes": [
 		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
+		{"Address": "http://localhost1:8989", "Status": "disabled", "Metadata": {"meta2": "bar"}},
 		{"Address": "http://localhost2:9090", "Status": "ready"}
 	]
 }`, Status: http.StatusOK},
@@ -240,10 +242,10 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFlagQ(c *check.C) {
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := listNodesInTheSchedulerCmd{}
-	cmd.Flags().Parse(true, []string{"-q"})
+	cmd.Flags().Parse(true, []string{"-q", "-f", "meta2=bar"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	expected := "http://localhost1:8080\nhttp://localhost2:9090\n"
+	expected := "http://localhost1:8080\nhttp://localhost1:8989\n"
 	c.Assert(buf.String(), check.Equals, expected)
 }
 
