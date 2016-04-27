@@ -174,6 +174,7 @@ func (l *MongodbLimiter) Len(action string) int {
 	if coll == nil {
 		return 0
 	}
+	defer coll.Close()
 	var result struct {
 		Elements []interface{}
 	}
