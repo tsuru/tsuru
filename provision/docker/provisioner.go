@@ -151,7 +151,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	}
 	actionLimit, _ := config.GetUint("docker:limit:actions-per-host")
 	if actionLimit > 0 {
-		p.actionLimiter.SetLimit(actionLimit)
+		p.actionLimiter.Initialize(actionLimit)
 	}
 	return nil
 }

@@ -40,7 +40,7 @@ func (s *LimiterSuite) SetUpTest(c *check.C) {
 
 func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 	l := s.limiter()
-	l.SetLimit(3)
+	l.Initialize(3)
 	l.Start("node1")
 	l.Start("node1")
 	doneFunc := l.Start("node1")
@@ -71,7 +71,7 @@ func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	l := s.limiter()
-	l.SetLimit(100)
+	l.Initialize(100)
 	wg := sync.WaitGroup{}
 	doneCh := make(chan func(), 100)
 	for i := 0; i < 100; i++ {
@@ -98,7 +98,7 @@ func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	l := s.limiter()
-	l.SetLimit(100)
+	l.Initialize(100)
 	wg := sync.WaitGroup{}
 	doneCh := make(chan func(), 100)
 	for i := 0; i < 100; i++ {
@@ -118,7 +118,7 @@ func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 
 func (s *LimiterSuite) TestLimiterAddDoneZeroLimit(c *check.C) {
 	l := s.limiter()
-	l.SetLimit(0)
+	l.Initialize(0)
 	var doneSlice []func()
 	for i := 0; i < 100; i++ {
 		doneSlice = append(doneSlice, l.Start("n1"))
@@ -135,7 +135,7 @@ func (s *S) TestMongodbLimiterTimeout(c *check.C) {
 		updateInterval: time.Second,
 		maxStale:       200 * time.Millisecond,
 	}
-	l.SetLimit(1)
+	l.Initialize(1)
 	l.Start("n1")
 	done := make(chan bool)
 	go func() {
@@ -154,7 +154,7 @@ func (s *S) TestMongodbLimiterTimeoutUpdated(c *check.C) {
 		updateInterval: 100 * time.Millisecond,
 		maxStale:       300 * time.Millisecond,
 	}
-	l.SetLimit(1)
+	l.Initialize(1)
 	l.Start("n1")
 	done := make(chan bool)
 	go func() {

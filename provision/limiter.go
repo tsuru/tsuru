@@ -19,7 +19,7 @@ var _ ActionLimiter = &LocalLimiter{}
 var noop = func() {}
 
 type ActionLimiter interface {
-	SetLimit(uint)
+	Initialize(uint)
 	Start(action string) func()
 	Len(action string) int
 }
@@ -30,7 +30,7 @@ type LocalLimiter struct {
 	limit uint
 }
 
-func (l *LocalLimiter) SetLimit(i uint) {
+func (l *LocalLimiter) Initialize(i uint) {
 	l.limit = i
 	l.chMap = nil
 	if i != 0 {
@@ -74,7 +74,7 @@ type MongodbLimiter struct {
 	maxStale       time.Duration
 }
 
-func (l *MongodbLimiter) SetLimit(i uint) {
+func (l *MongodbLimiter) Initialize(i uint) {
 	l.limit = i
 	if l.limit == 0 {
 		return
