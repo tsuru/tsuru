@@ -38,7 +38,7 @@ func (s *LimiterSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *LimiterSuite) TestLocalLimiterAddDone(c *check.C) {
+func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 	l := s.limiter
 	l.SetLimit(3)
 	l.Start("node1")
@@ -68,7 +68,7 @@ func (s *LimiterSuite) TestLocalLimiterAddDone(c *check.C) {
 	c.Assert(l.Len("node1"), check.Equals, 3)
 }
 
-func (s *LimiterSuite) TestLocalLimiterAddDoneRace(c *check.C) {
+func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	l := s.limiter
 	l.SetLimit(100)
@@ -95,7 +95,7 @@ func (s *LimiterSuite) TestLocalLimiterAddDoneRace(c *check.C) {
 	c.Assert(l.Len("n1"), check.Equals, 0)
 }
 
-func (s *LimiterSuite) TestLocalLimiterAddDoneRace2(c *check.C) {
+func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	l := s.limiter
 	l.SetLimit(100)
@@ -116,7 +116,7 @@ func (s *LimiterSuite) TestLocalLimiterAddDoneRace2(c *check.C) {
 	c.Assert(l.Len("n1"), check.Equals, 0)
 }
 
-func (s *LimiterSuite) TestLocalLimiterAddDoneZeroLimit(c *check.C) {
+func (s *LimiterSuite) TestLimiterAddDoneZeroLimit(c *check.C) {
 	l := s.limiter
 	l.SetLimit(0)
 	var doneSlice []func()
@@ -128,4 +128,42 @@ func (s *LimiterSuite) TestLocalLimiterAddDoneZeroLimit(c *check.C) {
 		doneSlice[i]()
 	}
 	c.Assert(l.Len("n1"), check.Equals, 0)
+}
+
+func (s *S) TestMongodbLimiterTimeout(c *check.C) {
+	l := &MongodbLimiter{
+		updateInterval: time.Second,
+		maxStale:       200 * time.Millisecond,
+	}
+	l.SetLimit(1)
+	l.Start("n1")
+	done := make(chan bool)
+	go func() {
+		l.Start("n1")
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		c.Fatal("timeout after 2s")
+	}
+}
+
+func (s *S) TestMongodbLimiterTimeoutUpdated(c *check.C) {
+	l := &MongodbLimiter{
+		updateInterval: 100 * time.Millisecond,
+		maxStale:       300 * time.Millisecond,
+	}
+	l.SetLimit(1)
+	l.Start("n1")
+	done := make(chan bool)
+	go func() {
+		l.Start("n1")
+		close(done)
+	}()
+	select {
+	case <-done:
+		c.Fatal("add should have blocked")
+	case <-time.After(1 * time.Second):
+	}
 }

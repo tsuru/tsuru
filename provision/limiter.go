@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -67,11 +68,52 @@ func (l *LocalLimiter) Len(action string) int {
 }
 
 type MongodbLimiter struct {
-	limit uint
+	limit          uint
+	idsCh          chan bson.ObjectId
+	updateInterval time.Duration
+	maxStale       time.Duration
 }
 
 func (l *MongodbLimiter) SetLimit(i uint) {
 	l.limit = i
+	if l.limit == 0 {
+		return
+	}
+	l.idsCh = make(chan bson.ObjectId, 10)
+	if l.updateInterval == 0 {
+		l.updateInterval = 10 * time.Second
+	}
+	if l.maxStale == 0 {
+		l.maxStale = 30 * time.Second
+	}
+	go l.timeUpdater()
+}
+
+func (l *MongodbLimiter) timeUpdater() {
+	var ids []bson.ObjectId
+	for {
+		select {
+		case id := <-l.idsCh:
+			ids = append(ids, id)
+		case <-time.After(l.updateInterval):
+		}
+		coll := l.collection()
+		if coll == nil {
+			continue
+		}
+		for i := 0; i < len(ids); i++ {
+			err := coll.Update(bson.M{
+				"elements.id": ids[i],
+			}, bson.M{
+				"$set": bson.M{"elements.$.update": time.Now().UTC()},
+			})
+			if err == mgo.ErrNotFound {
+				ids = append(ids[:i], ids[i+1:]...)
+				i--
+			}
+		}
+		coll.Close()
+	}
 }
 
 func (l *MongodbLimiter) collection() *storage.Collection {
@@ -91,9 +133,18 @@ func (l *MongodbLimiter) Start(action string) func() {
 		return noop
 	}
 	defer coll.Close()
+	var pushedId bson.ObjectId
 	for {
-		_, err := coll.Upsert(bson.M{"_id": action, "count": bson.M{"$lt": l.limit}}, bson.M{"$inc": bson.M{"count": 1}})
+		coll.RemoveAll(bson.M{"elements.update": bson.M{"$lt": time.Now().Add(-l.maxStale).UTC()}})
+		pushedId = bson.NewObjectId()
+		_, err := coll.Upsert(bson.M{
+			"_id": action,
+			fmt.Sprintf("elements.%d", l.limit-1): bson.M{"$exists": false},
+		}, bson.M{
+			"$push": bson.M{"elements": bson.M{"id": pushedId, "update": time.Now().UTC()}},
+		})
 		if err == nil {
+			l.idsCh <- pushedId
 			break
 		}
 		if !mgo.IsDup(err) {
@@ -107,7 +158,7 @@ func (l *MongodbLimiter) Start(action string) func() {
 			return
 		}
 		defer doneColl.Close()
-		doneColl.Update(bson.M{"_id": action, "count": bson.M{"$gt": 0}}, bson.M{"$inc": bson.M{"count": -1}})
+		doneColl.Update(bson.M{"_id": action}, bson.M{"$pull": bson.M{"elements": bson.M{"id": pushedId}}})
 	}
 }
 
@@ -117,8 +168,8 @@ func (l *MongodbLimiter) Len(action string) int {
 		return 0
 	}
 	var result struct {
-		Count int
+		Elements []interface{}
 	}
 	coll.Find(bson.M{"_id": action}).One(&result)
-	return result.Count
+	return len(result.Elements)
 }
