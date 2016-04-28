@@ -289,6 +289,9 @@ func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) e
 	if err != nil {
 		return err
 	}
+	if data.Path == "" {
+		data.Path = "/"
+	}
 	poolProperties := galebClient.BackendPoolProperties{
 		HcPath:       data.Path,
 		HcStatusCode: fmt.Sprintf("%d", data.Status),
