@@ -130,6 +130,13 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) er
 	return nil
 }
 
+// title: template destroy
+// path: /iaas/templates/{template_name}
+// method: DELETE
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Not found
 func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) error {
 	templateName := r.URL.Query().Get(":template_name")
 	t, err := iaas.FindTemplate(templateName)
@@ -145,11 +152,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = iaas.DestroyTemplate(templateName)
-	if err != nil {
-		return err
-	}
-	return nil
+	return iaas.DestroyTemplate(templateName)
 }
 
 func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) error {
