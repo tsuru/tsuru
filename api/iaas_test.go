@@ -50,6 +50,7 @@ func (s *S) TestMachinesList(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var machines []iaas.Machine
 	err = json.NewDecoder(recorder.Body).Decode(&machines)
 	c.Assert(err, check.IsNil)
@@ -125,6 +126,7 @@ func (s *S) TestTemplateList(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var templates []iaas.Template
 	err = json.Unmarshal(recorder.Body.Bytes(), &templates)
 	c.Assert(err, check.IsNil)

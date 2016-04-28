@@ -15,6 +15,13 @@ import (
 	"gopkg.in/mgo.v2"
 )
 
+// title: machine list
+// path: /iaas/machines
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
 func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) error {
 	machines, err := iaas.ListMachines()
 	if err != nil {
@@ -37,11 +44,8 @@ func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) erro
 			i--
 		}
 	}
-	err = json.NewEncoder(w).Encode(machines)
-	if err != nil {
-		return err
-	}
-	return nil
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(machines)
 }
 
 func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) error {
@@ -65,6 +69,13 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) er
 	return m.Destroy()
 }
 
+// title: machine template list
+// path: /iaas/templates
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
 func templatesList(w http.ResponseWriter, r *http.Request, token auth.Token) error {
 	templates, err := iaas.ListTemplates()
 	if err != nil {
@@ -87,6 +98,7 @@ func templatesList(w http.ResponseWriter, r *http.Request, token auth.Token) err
 			i--
 		}
 	}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(templates)
 }
 
