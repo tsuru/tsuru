@@ -481,6 +481,13 @@ func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[s
 	}, nil
 }
 
+// title: user list
+// path: /users
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	userEmail := r.URL.Query().Get("userEmail")
 	roleName := r.URL.Query().Get("role")
@@ -526,6 +533,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(apiUsers)
 }
 

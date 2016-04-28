@@ -1418,6 +1418,7 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, check.IsNil)
