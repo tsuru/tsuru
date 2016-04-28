@@ -359,12 +359,19 @@ type schemeData struct {
 	Data auth.SchemeInfo `json:"data"`
 }
 
+// title: get auth scheme
+// path: /auth/scheme
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
 func authScheme(w http.ResponseWriter, r *http.Request) error {
 	info, err := app.AuthScheme.Info()
 	if err != nil {
 		return err
 	}
 	data := schemeData{Name: app.AuthScheme.Name(), Data: info}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(data)
 }
 

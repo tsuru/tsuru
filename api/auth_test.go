@@ -1234,10 +1234,13 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 	oldScheme := app.AuthScheme
 	defer func() { app.AuthScheme = oldScheme }()
 	app.AuthScheme = TestScheme{}
-	request, _ := http.NewRequest("GET", "/auth/scheme", nil)
-	recorder := httptest.NewRecorder()
-	err := authScheme(recorder, request)
+	request, err := http.NewRequest("GET", "/auth/scheme", nil)
 	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var parsed map[string]interface{}
 	err = json.NewDecoder(recorder.Body).Decode(&parsed)
 	c.Assert(err, check.IsNil)
