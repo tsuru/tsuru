@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/nu7hatch/gouuid"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -66,6 +68,22 @@ func flushingWriterMiddleware(w http.ResponseWriter, r *http.Request, next http.
 	}()
 	fw := io.FlushingWriter{ResponseWriter: w}
 	next(&fw, r)
+}
+
+func checkRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := r.Header.Get(requestIDHeader)
+	if requestID == "" {
+		unparsedID, err := uuid.NewV4()
+		if err != nil {
+			log.Errorf("unable to generate request id: %s", err)
+			next(w, r)
+		}
+		requestID = unparsedID.String()
+	}
+	r.Header.Set(requestIDHeader, requestID)
+	log.Debugf("Request sent with ID: %s", requestID)
+	next(w, r)
 }
 
 func setVersionHeadersMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
