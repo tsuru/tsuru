@@ -5,6 +5,7 @@
 package routertest
 
 import (
+	"fmt"
 	"net/url"
 	"sort"
 
@@ -468,5 +469,23 @@ func (s *RouterSuite) TestRemoveBackendWithoutRemoveRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{})
 	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *RouterSuite) TestSetHealthcheck(c *check.C) {
+	hcRouter, ok := s.Router.(router.CustomHealthcheckRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement CustomHealthcheckRouter", s.Router))
+	}
+	err := s.Router.AddBackend("mybackend")
+	c.Assert(err, check.IsNil)
+	hcData := router.HealthcheckData{
+		Path:   "/",
+		Status: 200,
+		Body:   "WORKING",
+	}
+	err = hcRouter.SetHealthcheck("mybackend", hcData)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend("mybackend")
 	c.Assert(err, check.IsNil)
 }

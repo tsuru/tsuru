@@ -57,6 +57,7 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/target", server.createTarget).Methods("POST")
 	r.HandleFunc("/api/pool", server.createPool).Methods("POST")
+	r.HandleFunc("/api/pool/{id}", server.updatePool).Methods("PATCH")
 	r.HandleFunc("/api/rule", server.createRule).Methods("POST")
 	r.HandleFunc("/api/virtualhost", server.createVirtualhost).Methods("POST")
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
@@ -182,6 +183,19 @@ func (s *fakeGalebServer) createPool(w http.ResponseWriter, r *http.Request) {
 	s.pools[strconv.Itoa(pool.ID)] = &pool
 	w.Header().Set("Location", pool.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *fakeGalebServer) updatePool(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	var pool galebClient.Pool
+	json.NewDecoder(r.Body).Decode(&pool)
+	existingPool, ok := s.pools[id].(*galebClient.Pool)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	existingPool.Properties = pool.Properties
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {

@@ -165,6 +165,27 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 	return resource, c.waitStatusOK(resource)
 }
 
+func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolProperties) error {
+	poolID, err := c.findItemByName("pool", poolName)
+	if err != nil {
+		return err
+	}
+	path := strings.TrimPrefix(poolID, c.ApiUrl)
+	var poolParam Pool
+	c.fillDefaultPoolValues(&poolParam)
+	poolParam.Name = poolName
+	poolParam.Properties = properties
+	rsp, err := c.doRequest("PATCH", path, poolParam)
+	if err != nil {
+		return err
+	}
+	if rsp.StatusCode != http.StatusNoContent {
+		responseData, _ := ioutil.ReadAll(rsp.Body)
+		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	}
+	return c.waitStatusOK(poolID)
+}
+
 func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, error) {
 	var params Target
 	c.fillDefaultTargetValues(&params)

@@ -89,8 +89,18 @@ type MessageRouter interface {
 	StartupMessage() (string, error)
 }
 
+type CustomHealthcheckRouter interface {
+	SetHealthcheck(name string, data HealthcheckData) error
+}
+
 type HealthChecker interface {
 	HealthCheck() error
+}
+
+type HealthcheckData struct {
+	Path   string
+	Status int
+	Body   string
 }
 
 type RouterError struct {
