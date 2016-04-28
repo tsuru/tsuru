@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strings"
 
+	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/iaas"
 	"gopkg.in/check.v1"
 )
@@ -155,12 +157,12 @@ func (s *S) TestTemplateCreate(c *check.C) {
 			{Name: "a", Value: "b"},
 		}),
 	}
-	bodyData, err := json.Marshal(data)
+	v, err := form.EncodeToValues(&data)
 	c.Assert(err, check.IsNil)
-	body := bytes.NewBuffer(bodyData)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/iaas/templates", body)
+	request, err := http.NewRequest("POST", "/iaas/templates", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -175,6 +177,17 @@ func (s *S) TestTemplateCreate(c *check.C) {
 		{Name: "x", Value: "y"},
 		{Name: "a", Value: "b"},
 	}))
+}
+
+func (s *S) TestTemplateCreateBadRequest(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/iaas/templates", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestTemplateDestroy(c *check.C) {

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
@@ -110,9 +111,23 @@ func templatesList(w http.ResponseWriter, r *http.Request, token auth.Token) err
 	return json.NewEncoder(w).Encode(templates)
 }
 
+// title: template create
+// path: /iaas/templates
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: Template created
+//   400: Invalid data
+//   401: Unauthorized
 func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	var paramTemplate iaas.Template
-	err := json.NewDecoder(r.Body).Decode(&paramTemplate)
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&paramTemplate, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
