@@ -48,6 +48,14 @@ func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) erro
 	return json.NewEncoder(w).Encode(machines)
 }
 
+// title: machine destroy
+// path: /iaas/machines/{machine_id}
+// method: DELETE
+// responses:
+//   200: OK
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Not found
 func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) error {
 	machineId := r.URL.Query().Get(":machine_id")
 	if machineId == "" {
