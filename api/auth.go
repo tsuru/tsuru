@@ -305,7 +305,14 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return err
 }
 
-// listKeys list user's keys
+// title: list keys
+// path: /users/keys
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   400: Invalid data
+//   401: Unauthorized
 func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -318,12 +325,10 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(keys)
 }
 
-// removeUser removes the user from the database and from repository server
-//
-// If the user is the only one in a team an error will be returned.
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {

@@ -895,6 +895,7 @@ func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	got := map[string]string{}
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
