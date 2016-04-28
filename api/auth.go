@@ -368,6 +368,14 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 	return json.NewEncoder(w).Encode(data)
 }
 
+// title: regenerate token
+// path: /users/api-key
+// method: POST
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: User not found
 func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -387,6 +395,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if err != nil {
 		return err
 	}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(apiKey)
 }
 
