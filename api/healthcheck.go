@@ -12,6 +12,12 @@ import (
 	"github.com/tsuru/tsuru/hc"
 )
 
+// title: healthcheck
+// path: /healthcheck
+// method: GET
+// responses:
+//   200: OK
+//   500: Internal server error
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("check") == "all" {
 		fullHealthcheck(w, r)
