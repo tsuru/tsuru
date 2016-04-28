@@ -33,13 +33,14 @@ func createHCRouter(name, prefix string) (router.Router, error) {
 }
 
 func newFakeRouter() fakeRouter {
-	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool), mutex: &sync.Mutex{}}
+	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool), healthcheck: make(map[string]router.HealthcheckData), mutex: &sync.Mutex{}}
 }
 
 type fakeRouter struct {
 	backends     map[string][]string
 	cnames       map[string]string
 	failuresByIp map[string]bool
+	healthcheck  map[string]router.HealthcheckData
 	mutex        *sync.Mutex
 }
 
@@ -53,6 +54,12 @@ func (r *fakeRouter) RemoveFailForIp(ip string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	delete(r.failuresByIp, ip)
+}
+
+func (r *fakeRouter) GetHealthcheck(name string) router.HealthcheckData {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return r.healthcheck[name]
 }
 
 func (r *fakeRouter) HasBackend(name string) bool {
@@ -283,6 +290,7 @@ func (r *fakeRouter) Reset() {
 	r.backends = make(map[string][]string)
 	r.failuresByIp = make(map[string]bool)
 	r.cnames = make(map[string]string)
+	r.healthcheck = make(map[string]router.HealthcheckData)
 }
 
 func (r *fakeRouter) Routes(name string) ([]*url.URL, error) {
@@ -318,4 +326,15 @@ func (r *hcRouter) SetErr(err error) {
 
 func (r *hcRouter) HealthCheck() error {
 	return r.err
+}
+
+func (r *fakeRouter) SetHealthcheck(name string, data router.HealthcheckData) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.healthcheck[backendName] = data
+	return nil
 }
