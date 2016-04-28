@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -453,6 +454,65 @@ var addNewRoutes = action.Action{
 		}
 	},
 	OnError: rollbackNotice,
+}
+
+var setRouterHealthcheck = action.Action{
+	Name:    "set-router-healthcheck",
+	OnError: rollbackNotice,
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.Previous.([]container.Container)
+		r, err := getRouterForApp(args.app)
+		if err != nil {
+			return nil, err
+		}
+		hcRouter, ok := r.(router.CustomHealthcheckRouter)
+		if !ok {
+			return newContainers, nil
+		}
+		yamlData, err := getImageTsuruYamlData(args.imageId)
+		if err != nil {
+			return nil, err
+		}
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		msg := "router default"
+		if yamlData.Healthcheck.Path != "" && yamlData.Healthcheck.Status != 0 {
+			msg = fmt.Sprintf("Path: %s, Status: %d", yamlData.Healthcheck.Path, yamlData.Healthcheck.Status)
+		}
+		fmt.Fprintf(writer, "\n---- Setting router healthcheck (%s) ----\n", msg)
+		err = hcRouter.SetHealthcheck(args.app.GetName(), router.HealthcheckData{
+			Path:   yamlData.Healthcheck.Path,
+			Status: yamlData.Healthcheck.Status,
+		})
+		return newContainers, err
+	},
+	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		r, err := getRouterForApp(args.app)
+		if err != nil {
+			log.Errorf("[set-router-healthcheck:Backward] Error getting router: %s", err.Error())
+			return
+		}
+		hcRouter, ok := r.(router.CustomHealthcheckRouter)
+		if !ok {
+			return
+		}
+		currentImageName, _ := appCurrentImageName(args.app.GetName())
+		yamlData, err := getImageTsuruYamlData(currentImageName)
+		if err != nil {
+			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err.Error())
+		}
+		err = hcRouter.SetHealthcheck(args.app.GetName(), router.HealthcheckData{
+			Path:   yamlData.Healthcheck.Path,
+			Status: yamlData.Healthcheck.Status,
+		})
+		if err != nil {
+			log.Errorf("[set-router-healthcheck:Backward] Error setting healthcheck: %s", err.Error())
+		}
+	},
 }
 
 var removeOldRoutes = action.Action{

@@ -72,6 +72,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 			&provisionAddUnitsToHost,
 			&bindAndHealthcheck,
 			&addNewRoutes,
+			&setRouterHealthcheck,
 			&updateAppImage,
 		)
 		err = pipeline.Execute(args)

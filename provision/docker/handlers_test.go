@@ -1502,6 +1502,8 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 		}
 		err = s.storage.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
+		err = s.p.Provision(appStruct)
+		c.Assert(err, check.IsNil)
 	}
 	values := url.Values{
 		"pool":                   []string{"POOL2"},
@@ -1518,7 +1520,7 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	responseParts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(responseParts, check.HasLen, 15)
+	c.Assert(responseParts, check.HasLen, 17)
 	c.Assert(responseParts[0], check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}")
 	c.Assert(responseParts[1], check.Equals, "{\"Message\":\"Restarting 2 applications: [app2, app3]\\n\"}")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
