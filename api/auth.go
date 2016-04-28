@@ -390,6 +390,14 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	return json.NewEncoder(w).Encode(apiKey)
 }
 
+// title: show token
+// path: /users/api-key
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: User not found
 func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -409,6 +417,7 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(apiKey)
 }
 
