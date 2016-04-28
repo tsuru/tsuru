@@ -170,9 +170,24 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) e
 	return iaas.DestroyTemplate(templateName)
 }
 
+// title: template update
+// path: /iaas/templates/{template_name}
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: OK
+//   400: Invalid data
+//   401: Unauthorized
+//	 404: Not found
 func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	var paramTemplate iaas.Template
-	err := json.NewDecoder(r.Body).Decode(&paramTemplate)
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&paramTemplate, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}

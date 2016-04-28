@@ -5,7 +5,6 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -234,12 +233,12 @@ func (s *S) TestTemplateUpdate(c *check.C) {
 			{Name: "z", Value: "9"},
 		}),
 	}
-	bodyData, err := json.Marshal(tplParam)
+	v, err := form.EncodeToValues(&tplParam)
 	c.Assert(err, check.IsNil)
-	body := bytes.NewBuffer(bodyData)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", body)
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -266,15 +265,26 @@ func (s *S) TestTemplateUpdateNotFound(c *check.C) {
 			{Name: "z", Value: "9"},
 		}),
 	}
-	bodyData, err := json.Marshal(tplParam)
+	v, err := form.EncodeToValues(&tplParam)
 	c.Assert(err, check.IsNil)
-	body := bytes.NewBuffer(bodyData)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", body)
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "template not found\n")
+}
+
+func (s *S) TestTemplateUpdateBadRequest(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
