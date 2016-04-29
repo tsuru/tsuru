@@ -78,7 +78,7 @@ func (s *S) TestSetRequestIDHeaderMiddleware(c *check.C) {
 	h, log := doHandler()
 	setRequestIDHeaderMiddleware(rec, req, h)
 	c.Assert(log.called, check.Equals, true)
-	reqID := req.Header.Get("Request-ID")
+	reqID := context.GetRequestID(req, "Request-ID")
 	c.Assert(reqID, check.Not(check.Equals), "")
 }
 
@@ -91,7 +91,7 @@ func (s *S) TestSetRequestIDHeaderAlreadySet(c *check.C) {
 	h, log := doHandler()
 	setRequestIDHeaderMiddleware(rec, req, h)
 	c.Assert(log.called, check.Equals, true)
-	reqID := req.Header.Get("Request-ID")
+	reqID := context.GetRequestID(req, "Request-ID")
 	c.Assert(reqID, check.Equals, "test")
 }
 

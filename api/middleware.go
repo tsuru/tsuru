@@ -81,7 +81,7 @@ func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next h
 		}
 		requestID = unparsedID.String()
 	}
-	r.Header.Set(requestIDHeader, requestID)
+	context.SetRequestID(r, requestIDHeader, requestID)
 	log.Debugf("Request sent with ID: %s", requestID)
 	next(w, r)
 }

@@ -87,3 +87,12 @@ func IsPreventUnlock(r *http.Request) bool {
 	}
 	return false
 }
+
+func SetRequestID(r *http.Request, requestIDHeader, requestID string) {
+	context.Set(r, requestIDHeader, requestID)
+}
+
+func GetRequestID(r *http.Request, requestIDHeader string) string {
+	requestID := context.Get(r, requestIDHeader)
+	return requestID.(string)
+}
