@@ -625,6 +625,42 @@ func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	c.Assert(result[1].HostAddr, check.DeepEquals, "http://node.company")
 }
 
+func (s *HandlersSuite) TestListContainersByAppHandlerNotAdminUser(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Insert(app.App{Name: "appbla", Platform: "python"})
+	var result []container.Container
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	coll := mainDockerProvisioner.Collection()
+	defer coll.Close()
+	err = coll.Insert(container.Container{ID: "blabla", AppName: "appbla", HostAddr: "http://node.company"})
+	c.Assert(err, check.IsNil)
+	defer coll.Remove(bson.M{"id": "blabla"})
+	err = coll.Insert(container.Container{ID: "bleble", AppName: "appbla", HostAddr: "http://node.company"})
+	c.Assert(err, check.IsNil)
+	defer coll.Remove(bson.M{"id": "bleble"})
+	req, err := http.NewRequest("GET", "/node/appbla/containers?:appname=appbla", nil)
+	rec := httptest.NewRecorder()
+	limitedUser := &auth.User{Email: "mylimited@groundcontrol.com", Password: "123456"}
+	_, err = nativeScheme.Create(limitedUser)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(limitedUser)
+	t := createTokenForUser(limitedUser, "team", string(permission.CtxTeam), "p3", c)
+	err = listContainersHandler(rec, req, t)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, check.IsNil)
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result[0].ID, check.DeepEquals, "blabla")
+	c.Assert(result[0].AppName, check.DeepEquals, "appbla")
+	c.Assert(result[0].HostAddr, check.DeepEquals, "http://node.company")
+	c.Assert(result[1].ID, check.DeepEquals, "bleble")
+	c.Assert(result[1].AppName, check.DeepEquals, "appbla")
+	c.Assert(result[1].HostAddr, check.DeepEquals, "http://node.company")
+}
+
 func (s *HandlersSuite) TestMoveContainersEmptyBodyHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	b := bytes.NewBufferString(``)

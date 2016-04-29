@@ -500,14 +500,9 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return json.NewEncoder(w).Encode(containerList)
 	}
 	appName := r.URL.Query().Get(":appname")
-	a, err := app.GetByName(appName)
+	_, err := app.GetByName(appName)
 	if err != nil {
 		return err
-	}
-	hasAccess := permission.Check(t, permission.PermNodeRead,
-		permission.Context(permission.CtxPool, a.Pool))
-	if !hasAccess {
-		return permission.ErrUnauthorized
 	}
 	containerList, err := mainDockerProvisioner.listContainersByApp(appName)
 	if err != nil {
