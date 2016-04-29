@@ -225,6 +225,13 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return nil
 }
 
+// title: deploy list
+// path: /deploys
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   204: No content
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	contexts := permission.ContextsForPermission(t, permission.PermAppReadDeploy)
 	if len(contexts) == 0 {
@@ -245,6 +252,7 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(deploys)
 }
 
