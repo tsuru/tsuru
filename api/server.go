@@ -263,7 +263,7 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(m)
 	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
 	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
-	n.Use(negroni.HandlerFunc(checkRequestIDHeaderMiddleware))
+	n.Use(negroni.HandlerFunc(setRequestIDHeaderMiddleware))
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))

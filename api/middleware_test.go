@@ -70,26 +70,26 @@ func (s *S) TestFlushingWriterMiddleware(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestCheckRequestIDHeaderMiddleware(c *check.C) {
+func (s *S) TestSetRequestIDHeaderMiddleware(c *check.C) {
 	config.Set("request-id-header", "Request-ID")
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	h, log := doHandler()
-	checkRequestIDHeaderMiddleware(rec, req, h)
+	setRequestIDHeaderMiddleware(rec, req, h)
 	c.Assert(log.called, check.Equals, true)
 	reqID := req.Header.Get("Request-ID")
 	c.Assert(reqID, check.Not(check.Equals), "")
 }
 
-func (s *S) TestCheckRequestIDHeaderAlreadySet(c *check.C) {
+func (s *S) TestSetRequestIDHeaderAlreadySet(c *check.C) {
 	config.Set("request-id-header", "Request-ID")
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Request-ID", "test")
 	h, log := doHandler()
-	checkRequestIDHeaderMiddleware(rec, req, h)
+	setRequestIDHeaderMiddleware(rec, req, h)
 	c.Assert(log.called, check.Equals, true)
 	reqID := req.Header.Get("Request-ID")
 	c.Assert(reqID, check.Equals, "test")

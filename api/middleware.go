@@ -70,7 +70,7 @@ func flushingWriterMiddleware(w http.ResponseWriter, r *http.Request, next http.
 	next(&fw, r)
 }
 
-func checkRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := r.Header.Get(requestIDHeader)
 	if requestID == "" {
