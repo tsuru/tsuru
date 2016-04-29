@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -121,4 +121,14 @@ func (s *S) TestGetApp(c *check.C) {
 	SetApp(r, s.app)
 	a = GetApp(r)
 	c.Assert(a, check.DeepEquals, s.app)
+}
+
+func (s *S) TestRequestID(c *check.C) {
+	r, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	id := GetRequestID(r, "Request-ID")
+	c.Assert(id, check.Equals, "")
+	SetRequestID(r, "Request-ID", "test")
+	id = GetRequestID(r, "Request-ID")
+	c.Assert(id, check.Equals, "test")
 }

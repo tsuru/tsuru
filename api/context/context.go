@@ -94,5 +94,8 @@ func SetRequestID(r *http.Request, requestIDHeader, requestID string) {
 
 func GetRequestID(r *http.Request, requestIDHeader string) string {
 	requestID := context.Get(r, requestIDHeader)
+	if requestID == nil {
+		return ""
+	}
 	return requestID.(string)
 }
