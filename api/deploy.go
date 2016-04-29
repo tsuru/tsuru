@@ -177,20 +177,30 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: rollback
+// path: /apps/{appname}/deploy/rollback
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: OK
+//   400: Invalid data
+//   403: Forbidden
+//   404: Not found
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
-	image := r.PostFormValue("image")
+	image := r.FormValue("image")
 	if image == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you cannot rollback without an image name",
 		}
 	}
-	origin := r.URL.Query().Get("origin")
+	origin := r.FormValue("origin")
 	if origin != "" {
 		if !app.ValidateOrigin(origin) {
 			return &errors.HTTP{
@@ -199,10 +209,6 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			}
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	canRollback := permission.Check(t, permission.PermAppDeployRollback,
 		append(permission.Contexts(permission.CtxTeam, instance.Teams),
 			permission.Context(permission.CtxApp, instance.Name),
@@ -212,6 +218,10 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !canRollback {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = app.Rollback(app.DeployOptions{
 		App:          instance,
 		OutputStream: writer,
