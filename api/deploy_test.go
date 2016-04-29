@@ -672,6 +672,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var result app.DeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
@@ -708,6 +709,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	lastDeploy.ID = d["_id"].(bson.ObjectId)
 	var result app.DeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)

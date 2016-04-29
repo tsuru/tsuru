@@ -248,6 +248,14 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(deploys)
 }
 
+// title: deploy info
+// path: /deploys/{deploy}
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Not found
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	depId := r.URL.Query().Get(":deploy")
 	deploy, err := app.GetDeploy(depId)
@@ -267,7 +275,6 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canGet {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 	}
-	var data interface{}
-	data = deploy
-	return json.NewEncoder(w).Encode(data)
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(deploy)
 }
