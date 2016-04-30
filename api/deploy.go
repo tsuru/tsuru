@@ -21,6 +21,15 @@ import (
 	"github.com/tsuru/tsuru/permission"
 )
 
+// title: app deploy
+// path: /apps/{appname}/deploy
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: OK
+//   400: Invalid data
+//   403: Forbidden
+//   404: Not found
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var file multipart.File
 	var fileSize int64
@@ -39,8 +48,8 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		file.Seek(0, os.SEEK_SET)
 	}
-	archiveURL := r.PostFormValue("archive-url")
-	image := r.PostFormValue("image")
+	archiveURL := r.FormValue("archive-url")
+	image := r.FormValue("image")
 	if image == "" && archiveURL == "" && file == nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -67,7 +76,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
 			return &errors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
 		}
-		userName = r.PostFormValue("user")
+		userName = r.FormValue("user")
 	} else {
 		commit = ""
 		userName = t.GetUserName()
