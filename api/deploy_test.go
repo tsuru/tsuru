@@ -973,9 +973,10 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	v := url.Values{}
 	v.Set("customdata", diff)
 	body := strings.NewReader(v.Encode())
-	url := fmt.Sprintf("/apps/%s/diff?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/diff", a.Name)
 	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)

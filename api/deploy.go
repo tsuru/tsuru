@@ -7,10 +7,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -138,22 +136,21 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 	}
 }
 
+// title: deploy diff
+// path: /apps/{appname}/diff
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: OK
+//   400: Invalid data
+//   403: Forbidden
+//   404: Not found
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer writer.Stop()
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		fmt.Fprint(w, err.Error())
-		return err
-	}
 	fmt.Fprint(w, "Saving the difference between the old and new code\n")
 	appName := r.URL.Query().Get(":appname")
-	val, err := url.ParseQuery(string(data))
-	if err != nil {
-		fmt.Fprint(w, err.Error())
-		return err
-	}
-	diff := val.Get("customdata")
+	diff := r.FormValue("customdata")
 	instance, err := app.GetByName(appName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
