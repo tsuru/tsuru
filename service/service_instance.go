@@ -302,7 +302,7 @@ func validateServiceInstanceName(service string, instance string) error {
 	return nil
 }
 
-func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User) error {
+func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User, requestID string) error {
 	err := validateServiceInstanceName(service.Name, instance.Name)
 	if err != nil {
 		return err
@@ -314,7 +314,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 	instance.Teams = []string{instance.TeamOwner}
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(*service, instance, user.Email)
+	return pipeline.Execute(*service, instance, user.Email, requestID)
 }
 
 func UpdateService(si *ServiceInstance) error {

@@ -362,7 +362,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name}
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	si, err := GetServiceInstance("mongodb", "instance")
@@ -390,7 +390,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 		err := s.conn.Services().Insert(&service)
 		c.Assert(err, check.IsNil)
 		defer s.conn.Services().RemoveId(service.Name)
-		err = CreateServiceInstance(instance, &service, s.user)
+		err = CreateServiceInstance(instance, &service, s.user, "")
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
@@ -402,7 +402,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(si.Name, check.Equals, "instance")
 	c.Assert(si.ServiceName, check.Equals, "mongodb3")
-	err = CreateServiceInstance(instance, &srv[0], s.user)
+	err = CreateServiceInstance(instance, &srv[0], s.user, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -422,7 +422,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: team.Name}
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	si, err := GetServiceInstance("mongodb", "instance")
@@ -447,7 +447,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", PlanName: "small"}
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.Equals, ErrTeamMandatory)
 }
 
@@ -461,10 +461,10 @@ func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *check.C) 
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", TeamOwner: s.team.Name}
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -478,7 +478,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance"}
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.NotNil)
 	count, err := s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).Count()
 	c.Assert(err, check.IsNil)
@@ -510,7 +510,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	defer s.conn.Services().RemoveId(srv.Name)
 	for _, t := range tests {
 		instance := ServiceInstance{Name: t.input, TeamOwner: s.team.Name}
-		err := CreateServiceInstance(instance, &srv, s.user)
+		err := CreateServiceInstance(instance, &srv, s.user, "")
 		c.Check(err, check.Equals, t.err)
 		defer s.conn.ServiceInstances().Remove(bson.M{"name": t.input})
 	}
@@ -528,7 +528,7 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name}
-	err = CreateServiceInstance(instance, &srv, s.user)
+	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	instance.Description = "desc"
