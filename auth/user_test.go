@@ -43,11 +43,11 @@ func (s *S) TestCreateUserWhenMongoDbIsDown(c *check.C) {
 	oldURL, _ := config.Get("database:url")
 	config.Unset("database:url")
 	defer config.Set("database:url", oldURL)
-	config.Set("database:url", "127.0.0.2:27017")
+	config.Set("database:url", "invalid")
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Failed to connect to MongoDB \"127.0.0.2:27017\" - no reachable servers.")
+	c.Assert(err.Error(), check.Equals, "Failed to connect to MongoDB \"invalid\" - no reachable servers.")
 }
 
 func (s *S) TestGetUserByEmail(c *check.C) {
