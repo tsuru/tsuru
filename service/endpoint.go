@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/log"
 )
@@ -44,6 +45,15 @@ func (c *Client) buildErrorMessage(err error, resp *http.Response) string {
 }
 
 func (c *Client) issueRequest(path, method string, params map[string][]string) (*http.Response, error) {
+	var requestID string
+	requestIDs, ok := params["requestID"]
+	if ok {
+		requestID = ""
+		if len(requestIDs) > 0 {
+			requestID = requestIDs[0]
+		}
+		delete(params, "requestID")
+	}
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
@@ -60,6 +70,10 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
+	requestIDHeader, err := config.GetString("request-id-header")
+	if err == nil && requestIDHeader != "" {
+		req.Header.Add(requestIDHeader, requestID)
+	}
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
 	return http.DefaultClient.Do(req)
@@ -75,13 +89,14 @@ func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
 	return json.Unmarshal(body, &v)
 }
 
-func (c *Client) Create(instance *ServiceInstance, user string) error {
+func (c *Client) Create(instance *ServiceInstance, user, requestID string) error {
 	var err error
 	var resp *http.Response
 	params := map[string][]string{
-		"name": {instance.Name},
-		"user": {user},
-		"team": {instance.TeamOwner},
+		"name":      {instance.Name},
+		"user":      {user},
+		"team":      {instance.TeamOwner},
+		"requestID": {requestID},
 	}
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
