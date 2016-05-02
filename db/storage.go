@@ -46,7 +46,7 @@ func healthCheck() error {
 	return conn.Apps().Database.Session.Ping()
 }
 
-func dbConfig(prefix string) (string, string) {
+func DbConfig(prefix string) (string, string) {
 	url, _ := config.GetString(fmt.Sprintf("database:%surl", prefix))
 	if url == "" {
 		url, _ = config.GetString("database:url")
@@ -73,7 +73,7 @@ func Conn() (*Storage, error) {
 		strg Storage
 		err  error
 	)
-	url, dbname := dbConfig("")
+	url, dbname := DbConfig("")
 	strg.Storage, err = storage.Open(url, dbname)
 	return &strg, err
 }
@@ -83,7 +83,7 @@ func LogConn() (*LogStorage, error) {
 		strg LogStorage
 		err  error
 	)
-	url, dbname := dbConfig("logdb-")
+	url, dbname := DbConfig("logdb-")
 	strg.Storage, err = storage.Open(url, dbname)
 	return &strg, err
 }

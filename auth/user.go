@@ -108,7 +108,8 @@ func GetUserByEmail(email string) (*User, error) {
 func (u *User) Create() error {
 	conn, err := db.Conn()
 	if err != nil {
-		return err
+		addr, _ := db.DbConfig("")
+		return stderrors.New(fmt.Sprintf("Failed to connect to MongoDB %q - %s.", addr, err.Error()))
 	}
 	defer conn.Close()
 	if u.Quota.Limit == 0 {
