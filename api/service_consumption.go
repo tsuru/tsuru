@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
@@ -68,7 +70,9 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	rec.Log(user.Email, "create-service-instance", fmt.Sprintf("%#v", instance))
-	err = service.CreateServiceInstance(instance, &srv, user)
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := context.GetRequestID(r, requestIDHeader)
+	err = service.CreateServiceInstance(instance, &srv, user, requestID)
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,
