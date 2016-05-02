@@ -40,7 +40,7 @@ func (s *S) TestCreateServiceInstanceForward(c *check.C) {
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "mysql"}
 	ctx := action.FWContext{
-		Params: []interface{}{srv, instance, "my@user"},
+		Params: []interface{}{srv, instance, "my@user", ""},
 	}
 	r, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, check.IsNil)
