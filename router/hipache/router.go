@@ -27,7 +27,7 @@ import (
 	"gopkg.in/redis.v3"
 )
 
-const routerName = "hipache"
+const routerType = "hipache"
 
 var (
 	redisClients    = map[string]tsuruRedis.Client{}
@@ -35,8 +35,10 @@ var (
 )
 
 func init() {
-	router.Register(routerName, createRouter)
+	router.Register(routerType, createRouter)
+	router.Register("planb", createRouter)
 	hc.AddChecker("Router Hipache", router.BuildHealthCheck("hipache"))
+	hc.AddChecker("Router Planb", router.BuildHealthCheck("planb"))
 }
 
 func createRouter(routerName, configPrefix string) (router.Router, error) {
@@ -99,7 +101,7 @@ func (r *hipacheRouter) AddBackend(name string) error {
 	if err != nil {
 		return &router.RouterError{Op: "add", Err: err}
 	}
-	return router.Store(name, name, routerName)
+	return router.Store(name, name, routerType)
 }
 
 func (r *hipacheRouter) RemoveBackend(name string) error {

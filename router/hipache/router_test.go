@@ -166,6 +166,15 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 }
 
+func (s *S) TestShouldBeRegisteredAsPlanb(c *check.C) {
+	config.Set("routers:myplanb:type", "planb")
+	defer config.Unset("routers:myplanb:type")
+	r, err := router.Get("myplanb")
+	c.Assert(err, check.IsNil)
+	_, ok := r.(*hipacheRouter)
+	c.Assert(ok, check.Equals, true)
+}
+
 func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 	config.Set("routers:inst1:type", "hipache")
 	config.Set("routers:inst2:type", "hipache")
