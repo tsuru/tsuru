@@ -578,13 +578,28 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: set node status
+// path: /node/status
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App or unit not found
 func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if t.GetAppName() != app.InternalAppName {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
 	}
-	defer r.Body.Close()
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	var hostInput provision.NodeStatusData
-	err := json.NewDecoder(r.Body).Decode(&hostInput)
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&hostInput, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
