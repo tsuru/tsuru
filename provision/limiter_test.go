@@ -54,7 +54,7 @@ func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 	select {
 	case <-done:
 		c.Fatal("add should have blocked")
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(200 * time.Millisecond):
 	}
 	c.Assert(l.Len("node1"), check.Equals, 3)
 	l.Start("node2")
@@ -62,7 +62,7 @@ func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 	doneFunc()
 	select {
 	case <-done:
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(5 * time.Second):
 		c.Fatal("timed out waiting for unblock")
 	}
 	c.Assert(l.Len("node1"), check.Equals, 3)
@@ -144,7 +144,7 @@ func (s *S) TestMongodbLimiterTimeout(c *check.C) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		c.Fatal("timeout after 2s")
 	}
 }
