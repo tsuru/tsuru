@@ -678,7 +678,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, false, &buf)
+	err = si.UnbindApp(a, false, &buf, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "remove instance")
 	c.Assert(reqs, check.HasLen, 5)
@@ -742,7 +742,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, true, &buf)
+	err = si.UnbindApp(a, true, &buf, "")
 	c.Assert(err, check.ErrorMatches, `Failed to unbind \("/resources/my-mysql/bind-app"\): my unbind app err`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -798,7 +798,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	var buf bytes.Buffer
-	err = si.UnbindApp(a, true, &buf)
+	err = si.UnbindApp(a, true, &buf, "")
 	c.Assert(err, check.ErrorMatches, `instance not found`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
@@ -958,7 +958,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			unbindErr := siDB.UnbindApp(app, false, &buf)
+			unbindErr := siDB.UnbindApp(app, false, &buf, "")
 			c.Assert(unbindErr, check.IsNil)
 		}(app)
 	}
