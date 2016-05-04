@@ -440,7 +440,7 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
-	err = client.UnbindUnit(&instance, a, units[0])
+	err = client.UnbindUnit(&instance, a, units[0], "")
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -463,7 +463,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
-	err = client.UnbindUnit(&instance, a, units[0])
+	err = client.UnbindUnit(&instance, a, units[0], "")
 	c.Assert(err, check.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
 	c.Assert(err.Error(), check.Equals, expected)
@@ -479,7 +479,7 @@ func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
-	err = client.UnbindUnit(&instance, a, units[0])
+	err = client.UnbindUnit(&instance, a, units[0], "")
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 

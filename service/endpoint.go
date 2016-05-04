@@ -212,13 +212,14 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 	return err
 }
 
-func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
 	var resp *http.Response
 	url := "/resources/" + instance.GetIdentifier() + "/bind"
 	params := map[string][]string{
 		"app-host":  {app.GetIp()},
 		"unit-host": {unit.GetIp()},
+		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil && resp.StatusCode > 299 {
