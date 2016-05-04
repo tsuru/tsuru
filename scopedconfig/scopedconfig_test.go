@@ -30,7 +30,7 @@ func Test(t *testing.T) {
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "provision_tests_s")
+	config.Set("database:name", "scopedconfig_tests_s")
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
