@@ -1664,19 +1664,21 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	var body bytes.Buffer
 	status := []string{"started", "error", "stopped"}
-	payload := make([]map[string]string, len(status)+2)
-	for i, st := range status {
-		payload[i] = map[string]string{"ID": units[i].ID, "Status": st}
+	var data struct{ Units []provision.UnitStatusData }
+	data.Units = []provision.UnitStatusData{
+		{ID: units[0].ID, Status: "started"},
+		{ID: units[1].ID, Status: "error"},
+		{ID: units[2].ID, Status: "stopped"},
+		{ID: "not-found1", Status: "error"},
+		{ID: "not-found2", Status: "started"},
 	}
-	payload[len(status)] = map[string]string{"ID": "not-found1", "Status": "error"}
-	payload[len(status)+1] = map[string]string{"ID": "not-found2", "Status": "started"}
-	err = json.NewEncoder(&body).Encode(payload)
+	v, err := form.EncodeToValues(&data)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/units/status", &body)
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", "/units/status", body)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -1715,20 +1717,6 @@ func (list updateList) Less(i, j int) bool {
 
 func (list updateList) Swap(i, j int) {
 	list[i], list[j] = list[j], list[i]
-}
-
-func (s *S) TestSetUnitsStatusInvalidBody(c *check.C) {
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
-	c.Assert(err, check.IsNil)
-	body := bytes.NewBufferString("{{{-")
-	request, err := http.NewRequest("POST", "/units/status", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestSetUnitsStatusNonInternalToken(c *check.C) {
