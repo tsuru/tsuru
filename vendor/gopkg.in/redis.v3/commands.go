@@ -4,6 +4,8 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"gopkg.in/redis.v3/internal"
 )
 
 func formatInt(i int64) string {
@@ -31,7 +33,7 @@ func usePrecise(dur time.Duration) bool {
 
 func formatMs(dur time.Duration) string {
 	if dur > 0 && dur < time.Millisecond {
-		Logger.Printf(
+		internal.Logf(
 			"specified duration is %s, but minimal supported value is %s",
 			dur, time.Millisecond,
 		)
@@ -41,7 +43,7 @@ func formatMs(dur time.Duration) string {
 
 func formatSec(dur time.Duration) string {
 	if dur > 0 && dur < time.Second {
-		Logger.Printf(
+		internal.Logf(
 			"specified duration is %s, but minimal supported value is %s",
 			dur, time.Second,
 		)
@@ -583,7 +585,7 @@ func (c *commandable) SetNX(key string, value interface{}, expiration time.Durat
 // Redis `SET key value [expiration] XX` command.
 //
 // Zero expiration means the key has no expiration time.
-func (c *Client) SetXX(key string, value interface{}, expiration time.Duration) *BoolCmd {
+func (c *commandable) SetXX(key string, value interface{}, expiration time.Duration) *BoolCmd {
 	var cmd *BoolCmd
 	if usePrecise(expiration) {
 		cmd = NewBoolCmd("SET", key, value, "PX", formatMs(expiration), "XX")
@@ -688,6 +690,21 @@ func (c *commandable) HMSet(key, field, value string, pairs ...string) *StatusCm
 	args[3] = value
 	for i, pair := range pairs {
 		args[4+i] = pair
+	}
+	cmd := NewStatusCmd(args...)
+	c.Process(cmd)
+	return cmd
+}
+
+func (c *commandable) HMSetMap(key string, fields map[string]string) *StatusCmd {
+	args := make([]interface{}, 2+len(fields)*2)
+	args[0] = "HMSET"
+	args[1] = key
+	i := 2
+	for k, v := range fields {
+		args[i] = k
+		args[i+1] = v
+		i += 2
 	}
 	cmd := NewStatusCmd(args...)
 	c.Process(cmd)
@@ -1282,7 +1299,7 @@ func (c *commandable) ZRevRangeByScore(key string, opt ZRangeByScore) *StringSli
 	return c.zRevRangeBy("ZREVRANGEBYSCORE", key, opt)
 }
 
-func (c commandable) ZRevRangeByLex(key string, opt ZRangeByScore) *StringSliceCmd {
+func (c *commandable) ZRevRangeByLex(key string, opt ZRangeByScore) *StringSliceCmd {
 	return c.zRevRangeBy("ZREVRANGEBYLEX", key, opt)
 }
 
@@ -1625,6 +1642,12 @@ func (c *commandable) DebugObject(key string) *StringCmd {
 }
 
 //------------------------------------------------------------------------------
+
+func (c *commandable) Publish(channel, message string) *IntCmd {
+	cmd := NewIntCmd("PUBLISH", channel, message)
+	c.Process(cmd)
+	return cmd
+}
 
 func (c *commandable) PubSubChannels(pattern string) *StringSliceCmd {
 	args := []interface{}{"PUBSUB", "CHANNELS"}

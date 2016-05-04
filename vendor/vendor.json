@@ -797,19 +797,37 @@
 			"revisionTime": "2015-12-07T00:15:13-02:00"
 		},
 		{
+			"checksumSHA1": "N6mkIMn6ROr6xh0z7v0TtUU4H+E=",
+			"origin": "github.com/tsuru/tsuru/vendor/gopkg.in/redis.v3",
 			"path": "gopkg.in/redis.v3",
-			"revision": "298fdec44579d427ee4c50483e5ccda1ebdcc204",
-			"revisionTime": "2016-02-06T12:27:35+02:00"
+			"revision": "5183f8dcde9737db7583dbfa9881800dba26e3fa",
+			"revisionTime": "2016-05-02T11:39:45Z"
 		},
 		{
+			"checksumSHA1": "b4Z72l8sq4xuWhR+nM5vbLQIv+o=",
+			"path": "gopkg.in/redis.v3/internal",
+			"revision": "5183f8dcde9737db7583dbfa9881800dba26e3fa",
+			"revisionTime": "2016-05-02T11:39:45Z"
+		},
+		{
+			"checksumSHA1": "tNI/mAuqqQqfYU4vuJghUroIts4=",
+			"origin": "github.com/tsuru/tsuru/vendor/gopkg.in/redis.v3/internal/consistenthash",
 			"path": "gopkg.in/redis.v3/internal/consistenthash",
-			"revision": "298fdec44579d427ee4c50483e5ccda1ebdcc204",
-			"revisionTime": "2016-02-06T12:27:35+02:00"
+			"revision": "5183f8dcde9737db7583dbfa9881800dba26e3fa",
+			"revisionTime": "2016-05-02T11:39:45Z"
 		},
 		{
+			"checksumSHA1": "JvqkSear94dc+NgofRqBAUmLcN0=",
+			"origin": "github.com/tsuru/tsuru/vendor/gopkg.in/redis.v3/internal/hashtag",
 			"path": "gopkg.in/redis.v3/internal/hashtag",
-			"revision": "298fdec44579d427ee4c50483e5ccda1ebdcc204",
-			"revisionTime": "2016-02-06T12:27:35+02:00"
+			"revision": "5183f8dcde9737db7583dbfa9881800dba26e3fa",
+			"revisionTime": "2016-05-02T11:39:45Z"
+		},
+		{
+			"checksumSHA1": "ROpD4/McQLnnxpPenjA0mEZfTL8=",
+			"path": "gopkg.in/redis.v3/internal/pool",
+			"revision": "5183f8dcde9737db7583dbfa9881800dba26e3fa",
+			"revisionTime": "2016-05-02T11:39:45Z"
 		},
 		{
 			"path": "gopkg.in/tylerb/graceful.v1",

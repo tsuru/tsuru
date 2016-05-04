@@ -25,6 +25,11 @@ func (err redisError) Error() string {
 	return err.s
 }
 
+func isInternalError(err error) bool {
+	_, ok := err.(redisError)
+	return ok
+}
+
 func isNetworkError(err error) bool {
 	if err == io.EOF {
 		return true
@@ -33,15 +38,17 @@ func isNetworkError(err error) bool {
 	return ok
 }
 
-func isBadConn(cn *conn, ei error) bool {
-	if cn.rd.Buffered() > 0 {
-		return true
-	}
-	if ei == nil {
+func isBadConn(err error, allowTimeout bool) bool {
+	if err == nil {
 		return false
 	}
-	if _, ok := ei.(redisError); ok {
+	if isInternalError(err) {
 		return false
+	}
+	if allowTimeout {
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			return false
+		}
 	}
 	return true
 }
@@ -51,27 +58,24 @@ func isMovedError(err error) (moved bool, ask bool, addr string) {
 		return
 	}
 
-	parts := strings.SplitN(err.Error(), " ", 3)
-	if len(parts) != 3 {
+	s := err.Error()
+	if strings.HasPrefix(s, "MOVED ") {
+		moved = true
+	} else if strings.HasPrefix(s, "ASK ") {
+		ask = true
+	} else {
 		return
 	}
 
-	switch parts[0] {
-	case "MOVED":
-		moved = true
-		addr = parts[2]
-	case "ASK":
-		ask = true
-		addr = parts[2]
+	ind := strings.LastIndexByte(s, ' ')
+	if ind == -1 {
+		return false, false, ""
 	}
-
+	addr = s[ind+1:]
 	return
 }
 
 // shouldRetry reports whether failed command should be retried.
 func shouldRetry(err error) bool {
-	if err == nil {
-		return false
-	}
 	return isNetworkError(err)
 }

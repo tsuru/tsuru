@@ -2,6 +2,7 @@ package redis
 
 import (
 	"gopkg.in/redis.v3/internal/hashtag"
+	"gopkg.in/redis.v3/internal/pool"
 )
 
 // ClusterPipeline is not thread-safe.
@@ -26,6 +27,16 @@ func (c *ClusterClient) Pipeline() *ClusterPipeline {
 	return pipe
 }
 
+func (c *ClusterClient) Pipelined(fn func(*ClusterPipeline) error) ([]Cmder, error) {
+	pipe := c.Pipeline()
+	if err := fn(pipe); err != nil {
+		return nil, err
+	}
+	cmds, err := pipe.Exec()
+	_ = pipe.Close()
+	return cmds, err
+}
+
 func (pipe *ClusterPipeline) process(cmd Cmder) {
 	pipe.cmds = append(pipe.cmds, cmd)
 }
@@ -33,7 +44,7 @@ func (pipe *ClusterPipeline) process(cmd Cmder) {
 // Discard resets the pipeline and discards queued commands.
 func (pipe *ClusterPipeline) Discard() error {
 	if pipe.closed {
-		return errClosed
+		return pool.ErrClosed
 	}
 	pipe.cmds = pipe.cmds[:0]
 	return nil
@@ -41,7 +52,7 @@ func (pipe *ClusterPipeline) Discard() error {
 
 func (pipe *ClusterPipeline) Exec() (cmds []Cmder, retErr error) {
 	if pipe.closed {
-		return nil, errClosed
+		return nil, pool.ErrClosed
 	}
 	if len(pipe.cmds) == 0 {
 		return []Cmder{}, nil
@@ -68,7 +79,7 @@ func (pipe *ClusterPipeline) Exec() (cmds []Cmder, retErr error) {
 				continue
 			}
 
-			cn, _, err := client.conn()
+			cn, err := client.conn()
 			if err != nil {
 				setCmdsErr(cmds, err)
 				retErr = err
@@ -79,7 +90,7 @@ func (pipe *ClusterPipeline) Exec() (cmds []Cmder, retErr error) {
 			if err != nil {
 				retErr = err
 			}
-			client.putConn(cn, err)
+			client.putConn(cn, err, false)
 		}
 
 		cmdsMap = failedCmds
@@ -96,9 +107,9 @@ func (pipe *ClusterPipeline) Close() error {
 }
 
 func (pipe *ClusterPipeline) execClusterCmds(
-	cn *conn, cmds []Cmder, failedCmds map[string][]Cmder,
+	cn *pool.Conn, cmds []Cmder, failedCmds map[string][]Cmder,
 ) (map[string][]Cmder, error) {
-	if err := cn.writeCmds(cmds...); err != nil {
+	if err := writeCmd(cn, cmds...); err != nil {
 		setCmdsErr(cmds, err)
 		return failedCmds, err
 	}

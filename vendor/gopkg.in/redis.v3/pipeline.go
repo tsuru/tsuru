@@ -3,6 +3,8 @@ package redis
 import (
 	"sync"
 	"sync/atomic"
+
+	"gopkg.in/redis.v3/internal/pool"
 )
 
 // Pipeline implements pipelining as described in
@@ -11,7 +13,7 @@ import (
 type Pipeline struct {
 	commandable
 
-	client *baseClient
+	client baseClient
 
 	mu   sync.Mutex // protects cmds
 	cmds []Cmder
@@ -60,7 +62,7 @@ func (pipe *Pipeline) Discard() error {
 	defer pipe.mu.Unlock()
 	pipe.mu.Lock()
 	if pipe.isClosed() {
-		return errClosed
+		return pool.ErrClosed
 	}
 	pipe.cmds = pipe.cmds[:0]
 	return nil
@@ -73,7 +75,7 @@ func (pipe *Pipeline) Discard() error {
 // command if any.
 func (pipe *Pipeline) Exec() (cmds []Cmder, retErr error) {
 	if pipe.isClosed() {
-		return nil, errClosed
+		return nil, pool.ErrClosed
 	}
 
 	defer pipe.mu.Unlock()
@@ -88,7 +90,7 @@ func (pipe *Pipeline) Exec() (cmds []Cmder, retErr error) {
 
 	failedCmds := cmds
 	for i := 0; i <= pipe.client.opt.MaxRetries; i++ {
-		cn, _, err := pipe.client.conn()
+		cn, err := pipe.client.conn()
 		if err != nil {
 			setCmdsErr(failedCmds, err)
 			return cmds, err
@@ -98,7 +100,7 @@ func (pipe *Pipeline) Exec() (cmds []Cmder, retErr error) {
 			resetCmds(failedCmds)
 		}
 		failedCmds, err = execCmds(cn, failedCmds)
-		pipe.client.putConn(cn, err)
+		pipe.client.putConn(cn, err, false)
 		if err != nil && retErr == nil {
 			retErr = err
 		}
@@ -110,8 +112,8 @@ func (pipe *Pipeline) Exec() (cmds []Cmder, retErr error) {
 	return cmds, retErr
 }
 
-func execCmds(cn *conn, cmds []Cmder) ([]Cmder, error) {
-	if err := cn.writeCmds(cmds...); err != nil {
+func execCmds(cn *pool.Conn, cmds []Cmder) ([]Cmder, error) {
+	if err := writeCmd(cn, cmds...); err != nil {
 		setCmdsErr(cmds, err)
 		return cmds, err
 	}
