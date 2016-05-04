@@ -671,3 +671,16 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert([]string{"b1", addr2.String()}, check.DeepEquals, backend2Routes)
 }
+
+func (s *S) TestAddRouteAfterCorruptedRedis(c *check.C) {
+	backend1 := "b1"
+	r := hipacheRouter{prefix: "hipache"}
+	err := r.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	redisConn, err := r.connect()
+	c.Assert(err, check.IsNil)
+	clearRedisKeys("frontend:*", redisConn, c)
+	addr1, _ := url.Parse("http://127.0.0.1")
+	err = r.AddRoute(backend1, addr1)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+}

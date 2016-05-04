@@ -493,10 +493,14 @@ func (r *hipacheRouter) Routes(name string) ([]*url.URL, error) {
 	if err != nil {
 		return nil, &router.RouterError{Op: "routes", Err: err}
 	}
-	routes, err := conn.LRange(frontend, 1, -1).Result()
+	routes, err := conn.LRange(frontend, 0, -1).Result()
 	if err != nil {
 		return nil, &router.RouterError{Op: "routes", Err: err}
 	}
+	if len(routes) == 0 {
+		return nil, router.ErrBackendNotFound
+	}
+	routes = routes[1:]
 	result := make([]*url.URL, len(routes))
 	for i, route := range routes {
 		result[i], err = url.Parse(route)
