@@ -16,6 +16,7 @@ package hipache
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
@@ -550,4 +551,29 @@ func (r *hipacheRouter) StartupMessage() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("hipache router %q with redis at %q.", domain, "TODO"), nil
+}
+
+func (r *hipacheRouter) SetHealthcheck(name string, data router.HealthcheckData) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	domain, err := config.GetString(r.prefix + ":domain")
+	if err != nil {
+		return &router.RouterError{Op: "setHealthcheck", Err: err}
+	}
+	conn, err := r.connect()
+	if err != nil {
+		return &router.RouterError{Op: "setHealthcheck", Err: err}
+	}
+	healthcheck := "healthcheck:" + backendName + "." + domain
+	err = conn.HMSetMap(healthcheck, map[string]string{
+		"path":   data.Path,
+		"body":   data.Body,
+		"status": strconv.Itoa(data.Status),
+	}).Err()
+	if err != nil {
+		return &router.RouterError{Op: "setHealthcheck", Err: err}
+	}
+	return nil
 }
