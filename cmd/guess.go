@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"regexp"
 
 	"github.com/tsuru/gnuflag"
@@ -48,14 +47,6 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	return matches[1], nil
 }
 
-// DirnameGuesser uses the directory name to guess the name of the app
-type DirnameGuesser struct{}
-
-func (g DirnameGuesser) GuessName(pathname string) (string, error) {
-	appName := path.Base(pathname)
-	return appName, nil
-}
-
 // MultiGuesser can use multiple guessers
 type MultiGuesser struct {
 	Guessers []AppGuesser
@@ -84,7 +75,7 @@ type GuessingCommand struct {
 
 func (cmd *GuessingCommand) guesser() AppGuesser {
 	if cmd.G == nil {
-		cmd.G = MultiGuesser{Guessers: []AppGuesser{GitGuesser{}, DirnameGuesser{}}}
+		cmd.G = MultiGuesser{Guessers: []AppGuesser{GitGuesser{}}}
 	}
 	return cmd.G
 }
