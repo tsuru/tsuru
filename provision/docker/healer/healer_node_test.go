@@ -58,6 +58,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
+	healer.Shutdown()
 	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -107,6 +108,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Second,
 	})
+	healer.Shutdown()
 	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -141,6 +143,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
+	healer.Shutdown()
 	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -185,6 +188,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Second,
 	})
+	healer.Shutdown()
 	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -237,6 +241,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
+	healer.Shutdown()
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -309,6 +314,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
+	healer.Shutdown()
 	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -355,11 +361,18 @@ func (s *S) TestHealerHandleError(c *check.C) {
 }
 
 func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
 	healer := NewNodeHealer(NodeHealerArgs{
+		Provisioner:           p,
 		DisabledTime:          20,
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
+	healer.Shutdown()
 	node := cluster.Node{Address: "addr", Metadata: map[string]string{
 		"Failures":    "2",
 		"LastSuccess": "something",
@@ -420,6 +433,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 		WaitTimeNewMachine:    time.Minute,
 		Provisioner:           p,
 	})
+	healer.Shutdown()
 	nodes[7].Metadata = map[string]string{
 		"Failures":    "2",
 		"LastSuccess": "something",
@@ -445,6 +459,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs: []string{"127.0.0.1"},
 		Checks: []provision.NodeCheckResult{
@@ -481,6 +496,7 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	for i := 0; i < 20; i++ {
 		data := provision.NodeStatusData{
 			Addrs: []string{"127.0.0.1"},
@@ -528,6 +544,7 @@ func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs: []string{"10.0.0.1"},
 		Checks: []provision.NodeCheckResult{
@@ -557,6 +574,7 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	conts := p.AllContainers()
 	c.Assert(conts, check.HasLen, 1)
 	data := provision.NodeStatusData{
@@ -622,6 +640,7 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousContainers(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Units: []provision.UnitStatusData{
 			{ID: conts[0].ID},
@@ -651,6 +670,7 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs: []string{"127.0.0.1", "localhost"},
 		Checks: []provision.NodeCheckResult{
@@ -671,6 +691,7 @@ func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	nodes, nodesMap, err := healer.findNodesForHealing()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
@@ -701,6 +722,7 @@ func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
 	c.Assert(err, check.IsNil)
@@ -724,6 +746,7 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
+	healer.Shutdown()
 	healer.started = time.Now().Add(-3 * time.Second)
 	data := provision.NodeStatusData{
 		Addrs:  []string{"127.0.0.1"},
@@ -754,7 +777,7 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 	healer := NewNodeHealer(NodeHealerArgs{
 		Provisioner: p,
 	})
-	healer.started = time.Now()
+	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs:  []string{"127.0.0.1"},
 		Checks: []provision.NodeCheckResult{},
@@ -807,6 +830,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 		Provisioner:        p,
 		WaitTimeNewMachine: time.Minute,
 	})
+	healer.Shutdown()
 	healer.started = time.Now().Add(-3 * time.Second)
 
 	data := provision.NodeStatusData{
@@ -855,7 +879,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	c.Assert(events[0].StartTime, check.Not(check.DeepEquals), time.Time{})
 	c.Assert(events[0].EndTime, check.Not(check.DeepEquals), time.Time{})
 	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Reason, check.Matches, `last update 1\.\d*?s ago, last success 1\.\d*?s ago`)
+	c.Assert(events[0].Reason, check.Matches, `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`)
 	extraObj := events[0].Extra.(bson.M)
 	c.Assert(extraObj["time"].(time.Time).IsZero(), check.Equals, false)
 	c.Assert(events[0].Successful, check.Equals, true)
@@ -895,6 +919,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
+
 	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)

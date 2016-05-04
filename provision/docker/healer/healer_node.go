@@ -72,9 +72,6 @@ func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
 		failuresBeforeHealing: args.FailuresBeforeHealing,
 		started:               time.Now().UTC(),
 	}
-	if healer.provisioner == nil {
-		return healer
-	}
 	healer.wg.Add(1)
 	go func() {
 		defer close(healer.quit)
