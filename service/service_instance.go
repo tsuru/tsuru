@@ -195,7 +195,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
-func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer, requestID string) error {
+func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io.Writer) error {
 	if si.FindApp(app.GetName()) == -1 {
 		return ErrAppNotBound
 	}
@@ -204,7 +204,6 @@ func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io
 		app:             app,
 		writer:          writer,
 		shouldRestart:   shouldRestart,
-		requestID:       requestID,
 	}
 	actions := []*action.Action{
 		&unbindUnits,
@@ -217,7 +216,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App, shouldRestart bool, writer io
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.
-func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit, requestID string) error {
+func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
 		return err
@@ -235,7 +234,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit, requestID st
 		}
 		return err
 	}
-	err = endpoint.UnbindUnit(si, app, unit, requestID)
+	err = endpoint.UnbindUnit(si, app, unit)
 	if err != nil {
 		rollbackErr := si.update(bson.M{"$addToSet": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
