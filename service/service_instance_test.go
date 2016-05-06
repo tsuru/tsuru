@@ -552,7 +552,7 @@ func (s *InstanceSuite) TestStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
-	status, err := si.Status()
+	status, err := si.Status("")
 	c.Assert(err, check.IsNil)
 	c.Assert(status, check.Equals, "up")
 }

@@ -246,12 +246,12 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 }
 
 // Status returns the service instance status.
-func (si *ServiceInstance) Status() (string, error) {
+func (si *ServiceInstance) Status(requestID string) (string, error) {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
 		return "", err
 	}
-	return endpoint.Status(si)
+	return endpoint.Status(si, requestID)
 }
 
 func (si *ServiceInstance) Grant(teamName string) error {

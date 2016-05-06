@@ -531,7 +531,7 @@ func (s *S) TestStatus(c *check.C) {
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	for _, t := range tests {
-		state, err := client.Status(&instance)
+		state, err := client.Status(&instance, "")
 		c.Check(err, check.IsNil)
 		c.Check(state, check.Equals, t.Expected)
 	}

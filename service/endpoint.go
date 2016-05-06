@@ -232,14 +232,17 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 	return err
 }
 
-func (c *Client) Status(instance *ServiceInstance) (string, error) {
+func (c *Client) Status(instance *ServiceInstance, requestID string) (string, error) {
 	log.Debugf("Attempting to call status of service instance %q at %q api", instance.Name, instance.ServiceName)
 	var (
 		resp *http.Response
 		err  error
 	)
 	url := "/resources/" + instance.GetIdentifier() + "/status"
-	if resp, err = c.issueRequest(url, "GET", nil); err == nil {
+	params := map[string][]string{
+		"requestID": {requestID},
+	}
+	if resp, err = c.issueRequest(url, "GET", params); err == nil {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case http.StatusOK:
