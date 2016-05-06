@@ -113,7 +113,10 @@ func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
