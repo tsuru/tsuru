@@ -320,7 +320,9 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	rec.Log(t.GetUserName(), "service-instance-status", serviceName, instanceName)
 	var b string
-	if b, err = serviceInstance.Status(); err != nil {
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := context.GetRequestID(r, requestIDHeader)
+	if b, err = serviceInstance.Status(requestID); err != nil {
 		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err)
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}

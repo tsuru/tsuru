@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -1100,7 +1101,12 @@ func makeRequestToStatusHandler(service string, instance string, c *check.C) (*h
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/resources/my_nosql/status" {
+			c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
+		}
 		w.WriteHeader(http.StatusNoContent)
 		w.Write([]byte(`Service instance "my_nosql" is up`))
 	}))
@@ -1114,6 +1120,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
 	recorder, request := makeRequestToStatusHandler("mongodb", "my_nosql", c)
+	context.SetRequestID(request, requestIDHeader, "test")
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Body.String(), check.Equals, "Service instance \"my_nosql\" is up")
