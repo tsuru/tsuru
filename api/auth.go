@@ -195,6 +195,14 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: team list
+// path: /teams
+// method: GET
+// produce: application/json
+// responses:
+//   200: List teams
+//   204: No content
+//   401: Unauthorized
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	rec.Log(t.GetUserName(), "list-teams")
 	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
@@ -232,18 +240,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")
-	b, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-	n, err := w.Write(b)
-	if err != nil {
-		return err
-	}
-	if n != len(b) {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
-	}
-	return nil
+	return json.NewEncoder(w).Encode(result)
 }
 
 // AddKeyToUser adds a key to a user.
