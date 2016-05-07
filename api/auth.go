@@ -148,6 +148,15 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	return managed.ResetPassword(u, token)
 }
 
+// title: team create
+// path: /teams
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: Team created
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Team already exists
 func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowed := permission.Check(t, permission.PermTeamCreate)
 	if !allowed {
