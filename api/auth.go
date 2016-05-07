@@ -172,6 +172,14 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: remove team
+// path: /teams/{name}
+// method: DELETE
+// responses:
+//   200: Team removed
+//   401: Unauthorized
+//   403: Forbidden
+//   404: Not found
 func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamDelete,
