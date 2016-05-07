@@ -569,7 +569,7 @@ func (s *S) TestPlans(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	result, err := client.Plans()
+	result, err := client.Plans("")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{
 		{Name: "ignite", Description: "some value"},

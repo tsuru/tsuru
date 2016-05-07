@@ -287,9 +287,12 @@ func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/plans
-func (c *Client) Plans() ([]Plan, error) {
+func (c *Client) Plans(requestID string) ([]Plan, error) {
 	url := "/resources/plans"
-	resp, err := c.issueRequest(url, "GET", nil)
+	params := map[string][]string{
+		"requestID": {requestID},
+	}
+	resp, err := c.issueRequest(url, "GET", params)
 	if err != nil || resp.StatusCode != 200 {
 		return nil, err
 	}
