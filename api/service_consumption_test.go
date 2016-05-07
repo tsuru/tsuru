@@ -1481,7 +1481,10 @@ func (s *ConsumptionSuite) TestGetServiceInstanceOrError(c *check.C) {
 }
 
 func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
 		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
 		w.Write([]byte(content))
 	}))
@@ -1494,6 +1497,7 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
+	request.Header.Set(requestIDHeader, "test")
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")

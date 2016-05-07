@@ -468,7 +468,9 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	rec.Log(t.GetUserName(), "service-plans", serviceName)
-	plans, err := service.GetPlansByServiceName(serviceName, "")
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := context.GetRequestID(r, requestIDHeader)
+	plans, err := service.GetPlansByServiceName(serviceName, requestID)
 	if err != nil {
 		return err
 	}
