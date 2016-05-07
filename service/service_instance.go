@@ -72,7 +72,7 @@ func (si *ServiceInstance) GetIdentifier() string {
 
 // MarshalJSON marshals the ServiceName in json format.
 func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
-	info, err := si.Info()
+	info, err := si.Info("")
 	if err != nil {
 		info = nil
 	}
@@ -89,12 +89,12 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&data)
 }
 
-func (si *ServiceInstance) Info() (map[string]string, error) {
+func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
 		return nil, errors.New("endpoint does not exists")
 	}
-	result, err := endpoint.Info(si)
+	result, err := endpoint.Info(si, requestID)
 	if err != nil {
 		return nil, err
 	}

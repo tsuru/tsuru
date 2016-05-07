@@ -543,7 +543,7 @@ func (s *S) TestInfo(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	result, err := client.Info(&instance)
+	result, err := client.Info(&instance, "")
 	c.Assert(err, check.IsNil)
 	expected := []map[string]string{
 		{"label": "some label", "value": "some value"},
@@ -559,7 +559,7 @@ func (s *S) TestInfoNotFound(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	result, err := client.Info(&instance)
+	result, err := client.Info(&instance, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.IsNil)
 }

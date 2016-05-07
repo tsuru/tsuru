@@ -268,10 +268,13 @@ func (c *Client) Status(instance *ServiceInstance, requestID string) (string, er
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/<name>
-func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
+func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
 	url := "/resources/" + instance.GetIdentifier()
-	resp, err := c.issueRequest(url, "GET", nil)
+	params := map[string][]string{
+		"requestID": {requestID},
+	}
+	resp, err := c.issueRequest(url, "GET", params)
 	if err != nil || resp.StatusCode != 200 {
 		return nil, err
 	}

@@ -234,7 +234,7 @@ func (s *InstanceSuite) TestAdditionalInfo(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
-	info, err := si.Info()
+	info, err := si.Info("")
 	c.Assert(err, check.IsNil)
 	expected := map[string]string{
 		"key":  "value",
