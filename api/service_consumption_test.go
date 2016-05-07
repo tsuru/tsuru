@@ -135,6 +135,7 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *check.C) {
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set(requestIDHeader, "test")
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
@@ -1207,6 +1208,8 @@ func makeRequestToInfoHandler(service, instance, token string, c *check.C) (*htt
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/resources/my_nosql" {
 			w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
@@ -1214,6 +1217,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 		if r.Method == "GET" && r.URL.Path == "/resources/plans" {
 			w.Write([]byte(`[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`))
 		}
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
 	}))
 	defer ts.Close()
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
@@ -1233,6 +1237,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
+	request.Header.Set(requestIDHeader, "test")
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")

@@ -369,11 +369,13 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return permission.ErrUnauthorized
 	}
 	rec.Log(t.GetUserName(), "service-instance-info", serviceName, instanceName)
-	info, err := serviceInstance.Info()
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := context.GetRequestID(r, requestIDHeader)
+	info, err := serviceInstance.Info(requestID)
 	if err != nil {
 		return err
 	}
-	plan, err := service.GetPlanByServiceNameAndPlanName(serviceName, serviceInstance.PlanName)
+	plan, err := service.GetPlanByServiceNameAndPlanName(serviceName, serviceInstance.PlanName, requestID)
 	if err != nil {
 		return err
 	}
@@ -466,7 +468,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	rec.Log(t.GetUserName(), "service-plans", serviceName)
-	plans, err := service.GetPlansByServiceName(serviceName)
+	plans, err := service.GetPlansByServiceName(serviceName, "")
 	if err != nil {
 		return err
 	}
