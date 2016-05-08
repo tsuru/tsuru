@@ -343,6 +343,13 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(keys)
 }
 
+// title: remove user
+// path: /users
+// method: DELETE
+// responses:
+//   200: User removed
+//   401: Unauthorized
+//   404: Not found
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
