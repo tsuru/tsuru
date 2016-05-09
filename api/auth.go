@@ -160,6 +160,15 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return nil
 }
 
+// title: reset password
+// path: /users/{email}/password
+// method: POST
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   403: Forbidden
+//   404: Not found
 func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
