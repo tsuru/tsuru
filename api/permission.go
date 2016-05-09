@@ -399,6 +399,13 @@ type permissionSchemeData struct {
 	Contexts []string
 }
 
+// title: list permissions
+// path: /permissions
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
