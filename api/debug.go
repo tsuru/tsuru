@@ -12,6 +12,11 @@ import (
 	"github.com/tsuru/tsuru/permission"
 )
 
+// title: dump goroutines
+// path: /debug/goroutines
+// method: GET
+// responses:
+//   200: Ok
 func dumpGoroutines(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermDebug) {
 		return permission.ErrUnauthorized
