@@ -97,9 +97,9 @@ func (s *Storage) Apps() *storage.Collection {
 }
 
 func (s *Storage) Deploys() *storage.Collection {
-	timestampIndex := mgo.Index{Key: []string{"-timestamp"}}
+	deployIndex := mgo.Index{Key: []string{"app", "-timestamp"}}
 	c := s.Collection("deploys")
-	c.EnsureIndex(timestampIndex)
+	c.EnsureIndex(deployIndex)
 	return c
 }
 
