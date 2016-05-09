@@ -392,6 +392,12 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(sInfo)
 }
 
+// title: service info
+// path: /services/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
 func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":name")
 	_, err := getService(serviceName)
