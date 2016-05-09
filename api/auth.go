@@ -113,6 +113,11 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 }
 
+// title: logout
+// path: /users/tokens
+// method: DELETE
+// responses:
+//   200: Ok
 func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return app.AuthScheme.Logout(t.GetValue())
 }
