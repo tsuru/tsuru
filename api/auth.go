@@ -44,6 +44,16 @@ func handleAuthError(err error) error {
 	}
 }
 
+// title: user create
+// path: /users
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   201: User created
+//   400: Invalid data
+//   401: Unauthorized
+//   403: Forbidden
+//   409: User already exists
 func createUser(w http.ResponseWriter, r *http.Request) error {
 	registrationEnabled, _ := config.GetBool("auth:user-registration")
 	if !registrationEnabled {
