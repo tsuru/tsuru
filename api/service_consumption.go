@@ -412,6 +412,13 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(instances)
 }
 
+// title: service doc
+// path: /services/{name}/doc
+// method: GET
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Not found
 func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":name")
 	rec.Log(t.GetUserName(), "service-doc", serviceName)
