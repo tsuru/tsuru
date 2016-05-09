@@ -12,6 +12,11 @@ import (
 	"github.com/tsuru/config"
 )
 
+// title: index
+// path: /
+// method: GET
+// responses:
+//   200: OK
 func index(w http.ResponseWriter, r *http.Request) error {
 	host, _ := config.GetString("host")
 	userCreate, _ := config.GetBool("auth:user-registration")
