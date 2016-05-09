@@ -479,6 +479,27 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 	c.Assert(emptyUser.Roles, check.HasLen, 1)
 }
 
+func (s *S) TestDissociateRoleNotFound(c *check.C) {
+	otherToken := customUserWithPermission(c, "user2")
+	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateDissociate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestDissociateRole(c *check.C) {
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)

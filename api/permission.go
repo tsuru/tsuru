@@ -365,6 +365,14 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: dissociate role from user
+// path: /roles/{name}/user/{email}
+// method: DELETE
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Role not found
 func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
