@@ -224,6 +224,11 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: service proxy
+// path: /services/proxy/service/{service}
+// responses:
+//   401: Unauthorized
+//   404: Service not found
 func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)

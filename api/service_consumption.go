@@ -491,6 +491,11 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(plans)
 }
 
+// title: service instance proxy
+// path: /services/{service}/proxy/{instance}
+// responses:
+//   401: Unauthorized
+//   404: Instance not found
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
