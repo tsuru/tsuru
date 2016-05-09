@@ -116,9 +116,12 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 	return errors.New(msg)
 }
 
-func (c *Client) Destroy(instance *ServiceInstance) error {
+func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", nil)
+	params := map[string][]string{
+		"requestID": {requestID},
+	}
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", params)
 	if err == nil && resp.StatusCode > 299 {
 		if resp.StatusCode == http.StatusNotFound {
 			return ErrInstanceNotFoundInAPI

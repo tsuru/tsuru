@@ -190,7 +190,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Destroy(&instance)
+	err := client.Destroy(&instance, "")
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -204,7 +204,7 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Destroy(&instance)
+	err := client.Destroy(&instance, "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
@@ -215,7 +215,7 @@ func (s *S) TestDestroyNotFound(c *check.C) {
 	}))
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Destroy(&instance)
+	err := client.Destroy(&instance, "")
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
