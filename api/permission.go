@@ -428,6 +428,14 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(permList)
 }
 
+// title: add default role
+// path: /role/default
+// method: POST
+// consme: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
 func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleDefaultCreate) {
 		return permission.ErrUnauthorized
