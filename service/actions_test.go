@@ -88,7 +88,7 @@ func (s *S) TestCreateServiceInstanceBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "mysql"}
-	ctx := action.BWContext{Params: []interface{}{srv, instance}}
+	ctx := action.BWContext{Params: []interface{}{srv, instance, "", "test"}}
 	createServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 }

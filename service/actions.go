@@ -64,7 +64,8 @@ var createServiceInstance = action.Action{
 		if !ok {
 			return
 		}
-		endpoint.Destroy(&instance)
+		requestID, ok := ctx.Params[3].(string)
+		endpoint.Destroy(&instance, requestID)
 	},
 	MinParams: 2,
 }

@@ -61,7 +61,7 @@ func (s *InstanceSuite) TearDownSuite(c *check.C) {
 func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
 	si := &ServiceInstance{Name: "MySQL"}
 	s.conn.ServiceInstances().Insert(&si)
-	DeleteInstance(si)
+	DeleteInstance(si, "")
 	query := bson.M{"name": si.Name}
 	qtd, err := s.conn.ServiceInstances().Find(query).Count()
 	c.Assert(err, check.IsNil)
@@ -330,7 +330,7 @@ func (s *InstanceSuite) TestDeleteInstance(c *check.C) {
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	err = DeleteInstance(&si)
+	err = DeleteInstance(&si, "")
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -346,7 +346,7 @@ func (s *InstanceSuite) TestDeleteInstanceWithApps(c *check.C) {
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	err = DeleteInstance(&si)
+	err = DeleteInstance(&si, "")
 	c.Assert(err, check.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 

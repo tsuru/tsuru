@@ -47,13 +47,13 @@ type ServiceInstance struct {
 }
 
 // DeleteInstance deletes the service instance from the database.
-func DeleteInstance(si *ServiceInstance) error {
+func DeleteInstance(si *ServiceInstance, requestID string) error {
 	if len(si.Apps) > 0 {
 		return ErrServiceInstanceBound
 	}
 	endpoint, err := si.Service().getClient("production")
 	if err == nil {
-		endpoint.Destroy(si)
+		endpoint.Destroy(si, requestID)
 	}
 	conn, err := db.Conn()
 	if err != nil {
