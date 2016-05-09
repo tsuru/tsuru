@@ -311,6 +311,12 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 func canUseRole(t auth.Token, roleName, contextValue string) error {
 	role, err := permission.FindRole(roleName)
 	if err != nil {
+		if err == permission.ErrRoleNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
 	userPerms, err := t.Permissions()
@@ -329,6 +335,15 @@ func canUseRole(t auth.Token, roleName, contextValue string) error {
 	return nil
 }
 
+// title: assign role to user
+// path: /roles/{name}/user
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Role not found
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized

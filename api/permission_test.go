@@ -396,6 +396,27 @@ func (s *S) TestAssignRole(c *check.C) {
 	c.Assert(emptyUser.Roles, check.HasLen, 1)
 }
 
+func (s *S) TestAssignRoleNotFound(c *check.C) {
+	emptyToken := customUserWithPermission(c, "user2")
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
+	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
