@@ -85,7 +85,7 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.m.ServeHTTP(recorder, request)
@@ -365,7 +365,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: se.Name}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&instance)
+	defer service.DeleteInstance(&instance, "")
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
 	s.m.ServeHTTP(recorder, request)
@@ -393,7 +393,7 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	reqAuth := "bearer " + s.token.GetValue()
@@ -487,7 +487,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	reqAuth := "bearer " + s.token.GetValue()

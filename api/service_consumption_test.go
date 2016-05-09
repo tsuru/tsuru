@@ -602,7 +602,10 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceNotFound(c *check.C) {
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -615,6 +618,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo", "foo-instance", c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set(requestIDHeader, "test")
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -1122,7 +1126,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *check.C) {
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	recorder, request := makeRequestToStatusHandler("mongodb", "my_nosql", c)
 	context.SetRequestID(request, requestIDHeader, "test")
 	err = serviceInstanceStatus(recorder, request, s.token)
@@ -1158,11 +1162,11 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusWithSameInstanceName(c *chec
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	si2 := service.ServiceInstance{Name: "my_nosql", ServiceName: srv2.Name, Teams: []string{s.team.Name}}
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si2)
+	defer service.DeleteInstance(&si2, "")
 	recorder, request := makeRequestToStatusHandler("mongodb2", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
@@ -1189,7 +1193,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbidden
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	recorder, request := makeRequestToStatusHandler("mongodb", "my_nosql", c)
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.NotNil)
@@ -1235,7 +1239,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
 	request.Header.Set(requestIDHeader, "test")
 	s.m.ServeHTTP(recorder, request)
@@ -1283,7 +1287,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -1322,7 +1326,7 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnForbiddenWh
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	recorder, request := makeRequestToInfoHandler("mongodb", "my_nosql", s.token.GetValue(), c)
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
@@ -1341,7 +1345,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 	}
 	err = si1.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si1)
+	defer service.DeleteInstance(&si1, "")
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
 		ServiceName: srv.Name,
@@ -1350,7 +1354,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 	}
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si2)
+	defer service.DeleteInstance(&si2, "")
 	request, err := http.NewRequest("GET", "/services/mongodb?:name=mongodb", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1382,7 +1386,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	}
 	err = si1.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si1)
+	defer service.DeleteInstance(&si1, "")
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
 		ServiceName: srv.Name,
@@ -1391,7 +1395,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	}
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si2)
+	defer service.DeleteInstance(&si2, "")
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1541,7 +1545,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	reqAuth := "bearer " + s.token.GetValue()
@@ -1571,7 +1575,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1596,7 +1600,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyError(c *check.C) {
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1621,7 +1625,7 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	si := service.ServiceInstance{Name: "si-test", ServiceName: "go", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	team := auth.Team{Name: "test"}
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
@@ -1661,11 +1665,11 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(c *c
 	si := service.ServiceInstance{Name: "si-test", ServiceName: se[0].Name, Teams: []string{s.team.Name}}
 	err := si.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si)
+	defer service.DeleteInstance(&si, "")
 	si2 := service.ServiceInstance{Name: "si-test", ServiceName: se[1].Name, Teams: []string{s.team.Name}}
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
-	defer service.DeleteInstance(&si2)
+	defer service.DeleteInstance(&si2, "")
 	team := auth.Team{Name: "test"}
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"name": team.Name})

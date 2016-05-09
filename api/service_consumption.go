@@ -183,7 +183,9 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			}
 		}
 	}
-	err = service.DeleteInstance(serviceInstance)
+	requestIDHeader, _ := config.GetString("request-id-header")
+	requestID := context.GetRequestID(r, requestIDHeader)
+	err = service.DeleteInstance(serviceInstance, requestID)
 	if err != nil {
 		var msg string
 		if err == service.ErrServiceInstanceBound {
