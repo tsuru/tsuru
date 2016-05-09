@@ -122,6 +122,16 @@ func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return app.AuthScheme.Logout(t.GetValue())
 }
 
+// title: change password
+// path: /users/password
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   403: Forbidden
+//   404: Not found
 func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
