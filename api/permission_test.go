@@ -296,6 +296,20 @@ func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
 	c.Assert(users, check.DeepEquals, []string{s.user.Email, user.Email})
 }
 
+func (s *S) TestRemovePermissionsRoleNotFound(c *check.C) {
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("DELETE", "/roles/test/permissions/app.update", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	r, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)

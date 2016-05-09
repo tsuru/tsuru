@@ -275,6 +275,13 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return err
 }
 
+// title: remove permission
+// path: /roles/{name}/permissions/{permission}
+// method: DELETE
+// responses:
+//   200: Permission removed
+//   401: Unauthorized
+//   404: Not found
 func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
@@ -283,6 +290,12 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	permName := r.URL.Query().Get(":permission")
 	role, err := permission.FindRole(roleName)
 	if err != nil {
+		if err == permission.ErrRoleNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
 	users, err := auth.ListUsersWithRole(roleName)
