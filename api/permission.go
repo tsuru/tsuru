@@ -502,6 +502,13 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return nil
 }
 
+// title: list default roles
+// path: /role/default
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleDefaultCreate) &&
 		!permission.Check(t, permission.PermRoleDefaultDelete) {
