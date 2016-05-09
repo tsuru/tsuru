@@ -305,11 +305,15 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(result)
 }
 
-// AddKeyToUser adds a key to a user.
-//
-// This function is just an http wrapper around addKeyToUser. The latter function
-// exists to be used in other places in the package without the http stuff (request and
-// response).
+// title: add key
+// path: /users/keys
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Key already exists
 func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	key := repository.Key{
 		Body: r.FormValue("key"),
@@ -337,11 +341,6 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
-// RemoveKeyFromUser removes a key from a user.
-//
-// This function is just an http wrapper around removeKeyFromUser. The latter function
-// exists to be used in other places in the package without the http stuff (request and
-// response).
 func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	key := repository.Key{
 		Name: r.URL.Query().Get(":key"),
