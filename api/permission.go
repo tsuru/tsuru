@@ -225,6 +225,15 @@ func runWithPermSync(users []auth.User, callback func() error) error {
 	return nil
 }
 
+// title: add permissions
+// path: /roles/{name}/permissions
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   409: Permission not allowed
 func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
