@@ -341,6 +341,14 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: remove key
+// path: /users/keys/{key}
+// method: DELETE
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Not found
 func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	key := repository.Key{
 		Name: r.URL.Query().Get(":key"),
