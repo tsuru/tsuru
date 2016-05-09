@@ -79,6 +79,17 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// title: login
+// path: /auth/login
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   403: Forbidden
+//   404: Not found
 func login(w http.ResponseWriter, r *http.Request) error {
 	params := map[string]string{
 		"email": r.URL.Query().Get(":email"),
