@@ -1279,6 +1279,7 @@ func (s *HandlersSuite) TestAutoScaleConfigHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(recorder.Body.String(), check.Equals, string(expected)+"\n")
 }
 

@@ -73,12 +73,20 @@ func init() {
 	api.RegisterHandler("/docker/logs", "POST", api.AuthorizationRequiredHandler(logsConfigSetHandler))
 }
 
+// title: get autoscale config
+// path: /docker/autoscale/config
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedGetConfig := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedGetConfig {
 		return permission.ErrUnauthorized
 	}
 	config := mainDockerProvisioner.initAutoScaleConfig()
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(config)
 }
 

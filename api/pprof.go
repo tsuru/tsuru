@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 )
 
-// title: profile handler
+// title: profile index handler
 // path: /debug/pprof
 // method: GET
 // responses:
