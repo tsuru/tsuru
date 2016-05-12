@@ -26,6 +26,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// title: profile cmdline handler
+// path: /debug/pprof/cmdline
+// method: GET
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func cmdlineHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermDebug) {
 		return permission.ErrUnauthorized
