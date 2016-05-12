@@ -1410,7 +1410,7 @@ func (s *HandlersSuite) TestAutoScaleDeleteRule(c *check.C) {
 	err := rule.update()
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("DELETE", "/docker/autoscale/rules/", nil)
+	request, err := http.NewRequest("DELETE", "/docker/autoscale/rules", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)

@@ -58,7 +58,7 @@ func init() {
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AuthorizationRequiredHandler(autoScaleRunHandler))
 	api.RegisterHandler("/docker/autoscale/rules", "GET", api.AuthorizationRequiredHandler(autoScaleListRules))
 	api.RegisterHandler("/docker/autoscale/rules", "POST", api.AuthorizationRequiredHandler(autoScaleSetRule))
-	api.RegisterHandler("/docker/autoscale/rules/", "DELETE", api.AuthorizationRequiredHandler(autoScaleDeleteRule))
+	api.RegisterHandler("/docker/autoscale/rules", "DELETE", api.AuthorizationRequiredHandler(autoScaleDeleteRule))
 	api.RegisterHandler("/docker/autoscale/rules/{id}", "DELETE", api.AuthorizationRequiredHandler(autoScaleDeleteRule))
 	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AuthorizationRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AuthorizationRequiredHandler(bsEnvSetHandler))
@@ -115,6 +115,13 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return rule.update()
 }
 
+// title: delete autoscale rule
+// path: /docker/autoscale/rules/{id}
+// method: DELETE
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: Not found
 func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedDeleteRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedDeleteRule {
