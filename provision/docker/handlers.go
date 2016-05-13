@@ -45,7 +45,7 @@ func init() {
 	api.RegisterHandler("/docker/node/{address:.*}/containers", "GET", api.AuthorizationRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/docker/node", "POST", api.AuthorizationRequiredHandler(addNodeHandler))
 	api.RegisterHandler("/docker/node", "PUT", api.AuthorizationRequiredHandler(updateNodeHandler))
-	api.RegisterHandler("/docker/node", "DELETE", api.AuthorizationRequiredHandler(removeNodeHandler))
+	api.RegisterHandler("/docker/node/{address:.*}", "DELETE", api.AuthorizationRequiredHandler(removeNodeHandler))
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AuthorizationRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/docker/containers/rebalance", "POST", api.AuthorizationRequiredHandler(rebalanceContainersHandler))
@@ -228,19 +228,24 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return nil
 }
 
-// removeNodeHandler calls scheduler.Unregister to unregistering a node into it.
+// title: remove node
+// path: /docker/node/{address}
+// method: DELETE
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: Not found
 func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	params, err := unmarshal(r.Body)
-	if err != nil {
-		return err
-	}
-	address, _ := params["address"]
+	address := r.URL.Query().Get(":address")
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
 	node, err := mainDockerProvisioner.Cluster().GetNode(address)
 	if err != nil {
-		return err
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: fmt.Sprintf("Node %s not found.", address),
+		}
 	}
 	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
 		permission.Context(permission.CtxPool, node.Metadata["pool"]),
@@ -248,7 +253,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !allowedNodeRemove {
 		return permission.ErrUnauthorized
 	}
-	removeIaaS, _ := strconv.ParseBool(params["remove_iaas"])
+	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
 	if removeIaaS {
 		allowedIaasRemove := permission.Check(t, permission.PermMachineDelete,
 			permission.Context(permission.CtxIaaS, node.Metadata["iaas"]),
@@ -277,7 +282,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		var m iaas.Machine
 		m, err = iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], net.URLToHost(address))
 		if err != nil && err != mgo.ErrNotFound {
-			return err
+			return nil
 		}
 		return m.Destroy()
 	}
