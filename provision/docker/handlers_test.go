@@ -1374,13 +1374,20 @@ func (s *HandlersSuite) TestAutoScaleListRulesWithDBConfig(c *check.C) {
 func (s *HandlersSuite) TestAutoScaleSetRule(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "maxmemory")
 	defer config.Unset("docker:scheduler:total-memory-metadata")
-	rule := autoScaleRule{MetadataFilter: "pool1", Enabled: true, ScaleDownRatio: 1.1, MaxMemoryRatio: 2.0}
-	data, err := json.Marshal(rule)
+	rule := autoScaleRule{
+		MetadataFilter: "pool1",
+		Enabled:        true,
+		ScaleDownRatio: 1.1,
+		MaxMemoryRatio: 2.0,
+	}
+	v, err := form.EncodeToValues(&rule)
 	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/autoscale/rules", bytes.NewBuffer(data))
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", "/docker/autoscale/rules", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -1394,11 +1401,13 @@ func (s *HandlersSuite) TestAutoScaleSetRule(c *check.C) {
 
 func (s *HandlersSuite) TestAutoScaleSetRuleInvalidRule(c *check.C) {
 	rule := autoScaleRule{MetadataFilter: "pool1", Enabled: true, ScaleDownRatio: 0.9, MaxMemoryRatio: 2.0}
-	data, err := json.Marshal(rule)
+	v, err := form.EncodeToValues(&rule)
 	c.Assert(err, check.IsNil)
+	body := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/autoscale/rules", bytes.NewBuffer(data))
+	request, err := http.NewRequest("POST", "/docker/autoscale/rules", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
@@ -1411,11 +1420,13 @@ func (s *HandlersSuite) TestAutoScaleSetRuleExisting(c *check.C) {
 	err := rule.update()
 	c.Assert(err, check.IsNil)
 	rule.MaxContainerCount = 9
-	data, err := json.Marshal(rule)
+	v, err := form.EncodeToValues(&rule)
 	c.Assert(err, check.IsNil)
+	body := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/autoscale/rules", bytes.NewBuffer(data))
+	request, err := http.NewRequest("POST", "/docker/autoscale/rules", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)

@@ -109,15 +109,29 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	return json.NewEncoder(w).Encode(&rules)
 }
 
+// title: autoscale set rule
+// path: /docker/autoscale/rules
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
 func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedSetRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedSetRule {
 		return permission.ErrUnauthorized
 	}
-	var rule autoScaleRule
-	err := json.NewDecoder(r.Body).Decode(&rule)
+	err := r.ParseForm()
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	var rule autoScaleRule
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&rule, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	return rule.update()
 }
