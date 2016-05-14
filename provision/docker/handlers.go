@@ -944,9 +944,16 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	return nil
 }
 
+// title: remove node container
+// path: /docker/nodecontainers/{name}
+// method: DELETE
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: Not found
 func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
-	poolName := r.FormValue("pool")
+	poolName := r.URL.Query().Get("pool")
 	if poolName == "" {
 		if !permission.Check(t, permission.PermNodecontainerDelete) {
 			return permission.ErrUnauthorized
