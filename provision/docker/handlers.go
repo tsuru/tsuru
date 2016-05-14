@@ -90,6 +90,13 @@ func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	return json.NewEncoder(w).Encode(config)
 }
 
+// title: autoscale rules list
+// path: /docker/autoscale/rules
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedListRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedListRule {
