@@ -805,6 +805,13 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return nil
 }
 
+// title: remove node container list
+// path: /docker/nodecontainers
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := listContextValues(t, permission.PermNodecontainerRead, true)
 	if err != nil {
