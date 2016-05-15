@@ -208,13 +208,26 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 	return response, err
 }
 
-// addNodeHandler can provide an machine and/or register a node address.
-// If register flag is true, it will just register a node.
-// It checks if node address is valid and accessible.
+// title: add node
+// path: /docker/node
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: Not found
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	params, err := unmarshal(r.Body)
+	err := r.ParseForm()
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	params := map[string]string{}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&params, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if templateName, ok := params["template"]; ok {
 		params, err = iaas.ExpandTemplate(templateName)
@@ -229,7 +242,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, pool)) {
 		return permission.ErrUnauthorized
 	}
-	isRegister, _ := strconv.ParseBool(r.URL.Query().Get("register"))
+	isRegister, _ := strconv.ParseBool(params["register"])
 	if !isRegister {
 		canCreateMachine := permission.Check(t, permission.PermMachineCreate,
 			permission.Context(permission.CtxIaaS, params["iaas"]))
@@ -237,6 +250,8 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			return permission.ErrUnauthorized
 		}
 	}
+	delete(params, "register")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
