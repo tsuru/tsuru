@@ -325,6 +325,13 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return nil
 }
 
+// title: list nodes
+// path: /docker/node
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   204: No content
 func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := listContextValues(t, permission.PermNodeRead, false)
 	if err != nil {
@@ -366,10 +373,15 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		}
 		machines = filteredMachines
 	}
+	if len(nodes) == 0 && len(machines) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
 	result := map[string]interface{}{
 		"nodes":    nodes,
 		"machines": machines,
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(result)
 }
 

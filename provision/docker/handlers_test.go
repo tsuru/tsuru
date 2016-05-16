@@ -596,6 +596,16 @@ func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
 	c.Assert(containerList, check.HasLen, 0)
 }
 
+func (s *HandlersSuite) TestListNodeHandlerNoContent(c *check.C) {
+	req, err := http.NewRequest("GET", "/docker/node", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	req.Header.Set("Authorization", s.token.GetValue())
+	m := api.RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	var result struct {
 		Nodes    []cluster.Node `json:"nodes"`
@@ -614,13 +624,14 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 		Metadata: map[string]string{"pool": "pool2", "foo": "bar"},
 	})
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/node/", nil)
+	req, err := http.NewRequest("GET", "/docker/node", nil)
 	rec := httptest.NewRecorder()
-	err = listNodesHandler(rec, req, s.token)
-	c.Assert(err, check.IsNil)
-	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, check.IsNil)
-	err = json.Unmarshal(body, &result)
+	req.Header.Set("Authorization", s.token.GetValue())
+	m := api.RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/json")
+	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Nodes[0].Address, check.Equals, "host1.com:2375")
 	c.Assert(result.Nodes[0].Metadata, check.DeepEquals, map[string]string{"pool": "pool1"})
