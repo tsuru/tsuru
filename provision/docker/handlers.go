@@ -385,13 +385,29 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return json.NewEncoder(w).Encode(result)
 }
 
+// title: update nodes
+// path: /docker/node
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Not found
 func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	params, err := unmarshal(r.Body)
+	err := r.ParseForm()
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	address, _ := params["address"]
-	if address == "" {
+	params := map[string]string{}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&params, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	address := params["address"]
+	if params["address"] == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
 	oldNode, err := mainDockerProvisioner.Cluster().GetNode(address)
@@ -419,18 +435,18 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	delete(params, "address")
 	node := cluster.Node{Address: address, Metadata: params}
-	disabled, _ := strconv.ParseBool(r.URL.Query().Get("disabled"))
-	enabled, _ := strconv.ParseBool(r.URL.Query().Get("enabled"))
-	if disabled && enabled {
+	disable, _ := strconv.ParseBool(params["disable"])
+	enable, _ := strconv.ParseBool(params["enable"])
+	if disable && enable {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "You can't make a node enable and disable at the same time.",
 		}
 	}
-	if disabled {
+	if disable {
 		node.CreationStatus = cluster.NodeCreationStatusDisabled
 	}
-	if enabled {
+	if enable {
 		node.CreationStatus = cluster.NodeCreationStatusCreated
 	}
 	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
