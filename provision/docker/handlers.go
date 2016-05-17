@@ -214,7 +214,7 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
+//   201: Ok
 //   401: Unauthorized
 //   404: Not found
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -261,6 +261,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			Error: fmt.Sprintf("%s\n\n%s", err, response["description"]),
 		})
 	}
+	w.WriteHeader(http.StatusCreated)
 	return nil
 }
 
