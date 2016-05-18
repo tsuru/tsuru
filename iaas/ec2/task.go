@@ -55,14 +55,19 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	var notifiedSuccess bool
 	t0 := time.Now()
 	for {
+		if time.Now().Sub(t0) > time.Duration(2*timeout)*time.Second {
+			job.Error(errors.New("hard timeout"))
+			break
+		}
 		log.Debugf("ec2: waiting for dnsname for instance %s", machineId)
 		input := ec2.DescribeInstancesInput{
 			InstanceIds: []*string{aws.String(machineId)},
 		}
 		resp, err := ec2Inst.DescribeInstances(&input)
 		if err != nil {
-			job.Error(err)
-			break
+			log.Debug("ec2: api error")
+			time.Sleep(1000 * time.Millisecond)
+			continue
 		}
 		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
 			job.Error(err)
@@ -80,10 +85,6 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 		}
 		if dnsName != "" {
 			notifiedSuccess, _ = job.Success(dnsName)
-			break
-		}
-		if time.Now().Sub(t0) > time.Duration(2*timeout)*time.Second {
-			job.Error(errors.New("hard timeout"))
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
