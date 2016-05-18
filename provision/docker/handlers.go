@@ -454,10 +454,27 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return err
 }
 
+// title: move container
+// path: /docker/container/{id}/move
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Not found
 func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	params, err := unmarshal(r.Body)
+	err := r.ParseForm()
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	params := map[string]string{}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&params, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	contId := r.URL.Query().Get(":id")
 	to := params["to"]
@@ -475,6 +492,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if !permission.Check(t, permission.PermNode, permContexts...) {
 		return permission.ErrUnauthorized
 	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
@@ -496,6 +514,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
+//   404: Not found
 func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {

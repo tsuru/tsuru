@@ -790,12 +790,15 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 	})
 }
 
-func (s *HandlersSuite) TestMoveContainerHandlerNotFound(c *check.C) {
+func (s *HandlersSuite) TestMoveContainerNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	mainDockerProvisioner.Cluster().Register(cluster.Node{Address: "http://127.0.0.1:2375"})
-	b := bytes.NewBufferString(`{"to": "127.0.0.1"}`)
+	v := url.Values{}
+	v.Set("to", "127.0.0.1")
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", "/docker/container/myid/move", b)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
