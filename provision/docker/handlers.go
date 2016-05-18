@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	stderror "errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
@@ -630,19 +628,6 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	return json.NewEncoder(w).Encode(containerList)
-}
-
-func unmarshal(body io.ReadCloser) (map[string]string, error) {
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return nil, err
-	}
-	params := map[string]string{}
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return nil, err
-	}
-	return params, nil
 }
 
 func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
