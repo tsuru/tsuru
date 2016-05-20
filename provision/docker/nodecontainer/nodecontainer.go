@@ -146,7 +146,14 @@ func LoadNodeContainer(pool string, name string) (*NodeContainerConfig, error) {
 }
 
 func LoadNodeContainersForPools(name string) (map[string]NodeContainerConfig, error) {
-	return LoadNodeContainersForPoolsMerge(name, false)
+	result, err := LoadNodeContainersForPoolsMerge(name, false)
+	if err != nil {
+		return result, err
+	}
+	if len(result) == 0 {
+		return nil, ErrNodeContainerNotFound
+	}
+	return result, nil
 }
 
 func LoadNodeContainersForPoolsMerge(name string, merge bool) (map[string]NodeContainerConfig, error) {

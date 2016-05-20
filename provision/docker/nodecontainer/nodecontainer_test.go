@@ -580,6 +580,11 @@ func (s *S) TestLoadNodeContainersForPools(c *check.C) {
 	})
 }
 
+func (s *S) TestLoadNodeContainersForPoolsNotFound(c *check.C) {
+	_, err := LoadNodeContainersForPools("notfound")
+	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
+}
+
 func (s *S) TestResetImage(c *check.C) {
 	err := AddNewContainer("", &NodeContainerConfig{
 		Name:        "c1",
