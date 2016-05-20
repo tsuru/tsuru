@@ -1128,6 +1128,16 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	return err
 }
 
+// title: node container upgrade
+// path: /docker/nodecontainers/{name}/upgrade
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invald data
+//   401: Unauthorized
+//   404: Not found
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
 	poolName := r.FormValue("pool")
@@ -1143,6 +1153,12 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	err := nodecontainer.ResetImage(poolName, name)
 	if err != nil {
+		if err == nodecontainer.ErrNodeContainerNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")

@@ -2419,3 +2419,13 @@ func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
 		}},
 	})
 }
+
+func (s *HandlersSuite) TestNodeContainerUpgradeNotFound(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
