@@ -38,6 +38,12 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// title: saml callback
+// path: /auth/saml
+// method: POST
+// responses:
+//   200: Ok
+//   400: Invalid data
 func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
 	if app.AuthScheme.Name() != "saml" {
 		return &errors.HTTP{
