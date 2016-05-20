@@ -966,6 +966,16 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	c.Assert(result[7].Message, check.Equals, "Containers successfully rebalanced!\n")
 }
 
+func (s *HandlersSuite) TestHealingHistoryNoContent(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/healing", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1, err := healer.NewHealingEvent(cluster.Node{Address: "addr1"})
 	c.Assert(err, check.IsNil)
@@ -981,6 +991,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body := recorder.Body.Bytes()
 	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
