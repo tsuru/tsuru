@@ -1045,6 +1045,15 @@ func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return json.NewEncoder(w).Encode(configMap)
 }
 
+// title: node container update
+// path: /docker/nodecontainers/{name}
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invald data
+//   401: Unauthorized
+//   404: Not found
 func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
