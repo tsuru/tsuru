@@ -662,6 +662,14 @@ func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return json.NewEncoder(w).Encode(history)
 }
 
+// title: list autoscale history
+// path: /docker/healing
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   204: No content
+//   401: Unauthorized
 func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermNodeAutoscale) {
 		return permission.ErrUnauthorized
@@ -672,6 +680,11 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	if err != nil {
 		return err
 	}
+	if len(history) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&history)
 }
 

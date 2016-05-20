@@ -1076,6 +1076,16 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	c.Assert(healings[1].FailingNode.Address, check.Equals, evt1.FailingNode.Address)
 }
 
+func (s *HandlersSuite) TestAutoScaleHistoryNoContent(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/autoscale", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	evt1, err := newAutoScaleEvent("poolx", nil)
 	c.Assert(err, check.IsNil)
@@ -1099,6 +1109,7 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body := recorder.Body.Bytes()
 	history := []autoScaleEvent{}
 	err = json.Unmarshal(body, &history)
