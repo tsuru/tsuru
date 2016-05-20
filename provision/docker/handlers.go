@@ -735,6 +735,13 @@ func listContextValues(t permission.Token, scheme *permission.PermissionScheme, 
 	return values, nil
 }
 
+// title: logs config
+// path: /docker/logs
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := listContextValues(t, permission.PermPoolUpdateLogs, true)
 	if err != nil {
@@ -744,6 +751,7 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	if len(pools) == 0 {
 		return json.NewEncoder(w).Encode(configEntries)
 	}
