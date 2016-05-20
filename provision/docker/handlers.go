@@ -1003,6 +1003,14 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	return nil
 }
 
+// title: node container info
+// path: /docker/nodecontainers/{name}
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: Not found
 func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := listContextValues(t, permission.PermNodecontainerRead, true)
 	if err != nil {
@@ -1011,6 +1019,12 @@ func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	name := r.URL.Query().Get(":name")
 	configMap, err := nodecontainer.LoadNodeContainersForPools(name)
 	if err != nil {
+		if err == nodecontainer.ErrNodeContainerNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
 	if pools != nil {
