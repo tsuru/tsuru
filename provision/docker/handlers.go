@@ -890,12 +890,15 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return healer.UpdateConfig(poolName, config)
 }
 
+// title: remove node healing
+// path: /docker/healing/node
+// method: DELETE
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
-	if err != nil {
-		return err
-	}
-	poolName := r.FormValue("pool")
+	poolName := r.URL.Query().Get("pool")
 	if poolName == "" {
 		if !permission.Check(t, permission.PermHealingUpdate) {
 			return permission.ErrUnauthorized
@@ -906,11 +909,11 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return permission.ErrUnauthorized
 		}
 	}
-	if len(r.Form["name"]) == 0 {
+	if len(r.URL.Query()["name"]) == 0 {
 		return healer.RemoveConfig(poolName, "")
 	}
-	for _, v := range r.Form["name"] {
-		err = healer.RemoveConfig(poolName, v)
+	for _, v := range r.URL.Query()["name"] {
+		err := healer.RemoveConfig(poolName, v)
 		if err != nil {
 			return err
 		}
