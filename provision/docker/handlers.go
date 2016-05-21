@@ -966,6 +966,14 @@ func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return json.NewEncoder(w).Encode(lst)
 }
 
+// title: node container create
+// path: /docker/nodecontainers
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invald data
+//   401: Unauthorized
 func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
