@@ -844,6 +844,13 @@ func tryRestartAppsByFilter(filter *app.Filter, writer *tsuruIo.SimpleJsonMessag
 	wg.Wait()
 }
 
+// title: node healing info
+// path: /docker/healing/node
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := listContextValues(t, permission.PermHealingRead, true)
 	if err != nil {
