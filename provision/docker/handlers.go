@@ -688,11 +688,18 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	return json.NewEncoder(w).Encode(&history)
 }
 
+// title: autoscale run
+// path: /docker/autoscale/run
+// method: POST
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermNodeAutoscale) {
 		return permission.ErrUnauthorized
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	w.WriteHeader(http.StatusOK)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()

@@ -1391,6 +1391,7 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	body := recorder.Body.String()
 	parts := strings.Split(body, "\n")
 	c.Assert(parts, check.DeepEquals, []string{
