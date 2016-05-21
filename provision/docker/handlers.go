@@ -888,6 +888,13 @@ func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(configMap)
 }
 
+// title: node healing update
+// path: /docker/healing/node
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   401: Unauthorized
 func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
