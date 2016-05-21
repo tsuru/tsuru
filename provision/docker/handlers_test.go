@@ -1621,6 +1621,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 		server.ServeHTTP(recorder, request)
 		c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
 		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	}
 	doReq(values1)
 	entries, err := container.LogLoadAll()

@@ -764,6 +764,15 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return json.NewEncoder(w).Encode(newMap)
 }
 
+// title: logs config set
+// path: /docker/logs
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
 func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
@@ -772,8 +781,8 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("unable to parse form values: %s", err),
 		}
 	}
-	pool := r.Form.Get("pool")
-	restart, _ := strconv.ParseBool(r.Form.Get("restart"))
+	pool := r.FormValue("pool")
+	restart, _ := strconv.ParseBool(r.FormValue("restart"))
 	delete(r.Form, "pool")
 	delete(r.Form, "restart")
 	var conf container.DockerLogConfig
@@ -798,6 +807,7 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
