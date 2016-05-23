@@ -32,7 +32,7 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 			method := req.Method == "POST"
 			address := req.FormValue("address") == "http://localhost:8080"
 			pool := req.FormValue("pool") == "poolTest"
-			return url && method && raw &&address && pool
+			return url && method && raw && address && pool
 		},
 	}
 	manager := cmd.Manager{}
@@ -57,7 +57,7 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 			method := req.Method == "POST"
 			address := req.FormValue("address") == "http://localhost:8080"
 			pool := req.FormValue("pool") == "poolTest"
-			return url && method && raw &&address && pool
+			return url && method && raw && address && pool
 		},
 	}
 	manager := cmd.Manager{}
@@ -73,10 +73,10 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			var result map[string]string
-			json.NewDecoder(req.Body).Decode(&result)
-			return req.URL.Path == "/1.0/docker/node" &&
-				result["address"] == "http://localhost:8080"
+			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node/http://localhost:8080")
+			raw := req.URL.RawQuery == "no-rebalance=false"
+			method := req.Method == "DELETE"
+			return url && method && raw
 		},
 	}
 	manager := cmd.Manager{}
@@ -94,11 +94,10 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			var result map[string]string
-			json.NewDecoder(req.Body).Decode(&result)
-			return req.URL.Path == "/1.0/docker/node" &&
-				result["remove_iaas"] == "true" &&
-				result["address"] == "http://localhost:8080"
+			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node/http://localhost:8080")
+			raw := req.URL.RawQuery == "no-rebalance=false&remove_iaas=true"
+			method := req.Method == "DELETE"
+			return url && method && raw
 		},
 	}
 	manager := cmd.Manager{}
@@ -129,11 +128,10 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithNoRebalanceCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			var result map[string]string
-			json.NewDecoder(req.Body).Decode(&result)
-			return req.URL.Path == "/1.0/docker/node" &&
-				req.URL.Query().Get("no-rebalance") == "true" &&
-				result["address"] == "http://localhost:8080"
+			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node/http://localhost:8080")
+			raw := req.URL.RawQuery == "no-rebalance=true"
+			method := req.Method == "DELETE"
+			return url && method && raw
 		},
 	}
 	manager := cmd.Manager{}

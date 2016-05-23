@@ -189,19 +189,16 @@ func (c *removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 	if !c.Confirm(ctx, fmt.Sprintf(msg+"?", ctx.Args[0])) {
 		return nil
 	}
-	params := map[string]string{"address": ctx.Args[0]}
+	v := url.Values{}
 	if c.destroy {
-		params["remove_iaas"] = "true"
+		v.Set("remove_iaas", "true")
 	}
-	b, err := json.Marshal(params)
+	v.Set("no-rebalance", strconv.FormatBool(c.noRebalance))
+	u, err := cmd.GetURL(fmt.Sprintf("/docker/node/%s?%s", ctx.Args[0], v.Encode()))
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?no-rebalance=%t", c.noRebalance))
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(b))
+	req, err := http.NewRequest("DELETE", u, nil)
 	if err != nil {
 		return err
 	}
