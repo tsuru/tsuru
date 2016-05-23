@@ -404,10 +404,14 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
 	}
-	imgData, err := p.Cluster().InspectImage(c.BuildingImage)
+	imgHistory, err := p.Cluster().ImageHistory(c.BuildingImage)
 	imgSize := ""
-	if err == nil {
-		imgSize = fmt.Sprintf("(%.02fMB)", float64(imgData.Size)/1024/1024)
+	if err == nil && len(imgHistory) > 0 {
+		fullSize := imgHistory[0].Size
+		if len(imgHistory) > 1 && strings.Contains(imgHistory[1].CreatedBy, "tail -f /dev/null") {
+			fullSize += imgHistory[1].Size
+		}
+		imgSize = fmt.Sprintf("(%.02fMB)", float64(fullSize)/1024/1024)
 	}
 	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
