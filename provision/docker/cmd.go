@@ -72,7 +72,8 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 			v.Set(keyValue[0], keyValue[1])
 		}
 	}
-	u, err := cmd.GetURL(fmt.Sprintf("/docker/node?register=%t", a.register))
+	v.Set("register", strconv.FormatBool(a.register))
+	u, err := cmd.GetURL("/docker/node")
 	if err != nil {
 		return err
 	}

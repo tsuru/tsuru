@@ -27,11 +27,11 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
-			raw := req.URL.RawQuery == "register=false"
 			method := req.Method == "POST"
 			address := req.FormValue("address") == "http://localhost:8080"
 			pool := req.FormValue("pool") == "poolTest"
-			return url && method && raw && address && pool
+			register := req.FormValue("register") == "false"
+			return url && method && register && address && pool
 		},
 	}
 	manager := cmd.Manager{}
@@ -52,11 +52,11 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: `{"error": "some err"}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
-			raw := req.URL.RawQuery == "register=false"
 			method := req.Method == "POST"
 			address := req.FormValue("address") == "http://localhost:8080"
 			pool := req.FormValue("pool") == "poolTest"
-			return url && method && raw && address && pool
+			register := req.FormValue("register") == "false"
+			return url && method && register && address && pool
 		},
 	}
 	manager := cmd.Manager{}
