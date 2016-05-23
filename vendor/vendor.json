@@ -352,30 +352,28 @@
 			"revisionTime": "2016-02-26T00:34:52-03:00"
 		},
 		{
-			"checksumSHA1": "43g0nkKCliYUUDyQAVglezYMtsc=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/tsuru/docker-cluster/cluster",
+			"checksumSHA1": "/FHIFjEPk0SgMauLBoFTS8l+gF4=",
 			"path": "github.com/tsuru/docker-cluster/cluster",
-			"revision": "df2927db4c9113fbde93ff96e95da7ce8df6e351",
-			"revisionTime": "2016-04-25T14:20:35Z"
+			"revision": "35697d957aa7a46671ba735b18540b182d8bf90b",
+			"revisionTime": "2016-05-23T14:32:52Z"
 		},
 		{
 			"checksumSHA1": "sTjUknyBzJ565jq4GD0bpHmSNIg=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/tsuru/docker-cluster/log",
 			"path": "github.com/tsuru/docker-cluster/log",
-			"revision": "df2927db4c9113fbde93ff96e95da7ce8df6e351",
-			"revisionTime": "2016-04-25T14:20:35Z"
+			"revision": "35697d957aa7a46671ba735b18540b182d8bf90b",
+			"revisionTime": "2016-05-23T14:32:52Z"
 		},
 		{
 			"checksumSHA1": "gGuKsKxE4abQRAsJzbYMl2DpgzA=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/tsuru/docker-cluster/storage",
 			"path": "github.com/tsuru/docker-cluster/storage",
-			"revision": "df2927db4c9113fbde93ff96e95da7ce8df6e351",
-			"revisionTime": "2016-04-25T14:20:35Z"
+			"revision": "35697d957aa7a46671ba735b18540b182d8bf90b",
+			"revisionTime": "2016-05-23T14:32:52Z"
 		},
 		{
+			"checksumSHA1": "che0MP2JCiqgpjWnyEYLlI+BTEY=",
 			"path": "github.com/tsuru/docker-cluster/storage/mongodb",
-			"revision": "b04d855dd21abbd1d9a30fada6af33257536957f",
-			"revisionTime": "2016-02-24T16:01:39-03:00"
+			"revision": "35697d957aa7a46671ba735b18540b182d8bf90b",
+			"revisionTime": "2016-05-23T14:32:52Z"
 		},
 		{
 			"path": "github.com/tsuru/gandalf/db",

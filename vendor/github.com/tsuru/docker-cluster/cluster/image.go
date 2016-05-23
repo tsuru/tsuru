@@ -210,6 +210,20 @@ func (c *Cluster) InspectImage(repo string) (*docker.Image, error) {
 	return dockerImg, wrapError(node, err)
 }
 
+// ImageHistory returns the history of a given image
+func (c *Cluster) ImageHistory(repo string) ([]docker.ImageHistory, error) {
+	img, err := c.storage().RetrieveImage(repo)
+	if err != nil {
+		return nil, err
+	}
+	node, err := c.getNodeByAddr(img.LastNode)
+	if err != nil {
+		return nil, err
+	}
+	imgHistory, err := node.ImageHistory(repo)
+	return imgHistory, wrapError(node, err)
+}
+
 // ListImages lists images existing in each cluster node
 func (c *Cluster) ListImages(opts docker.ListImagesOptions) ([]docker.APIImages, error) {
 	nodes, err := c.UnfilteredNodes()
