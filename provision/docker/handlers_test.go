@@ -695,6 +695,30 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	c.Assert(result[1].HostAddr, check.Equals, "node1.company")
 }
 
+func (s *HandlersSuite) TestListContainersByAppNotFound(c *check.C) {
+	req, err := http.NewRequest("GET", "/docker/node/apps/notfound/containers", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := api.RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *HandlersSuite) TestListContainersByAppNoContent(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Apps().Insert(app.App{Name: "appbla", Platform: "python"})
+	req, err := http.NewRequest("GET", "/docker/node/apps/appbla/containers", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := api.RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

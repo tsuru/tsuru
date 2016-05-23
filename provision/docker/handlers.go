@@ -653,15 +653,34 @@ func listContainersByNode(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return json.NewEncoder(w).Encode(containerList)
 }
 
+// title: list containers by app
+// path: "/docker/node/apps/{appname}/containers
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   204: No content
+//   401: Unauthorized
+//   404: Not found
 func listContainersByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
 	_, err := app.GetByName(appName)
 	if err != nil {
+		if err == app.ErrAppNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
 	containerList, err := mainDockerProvisioner.listContainersByApp(appName)
 	if err != nil {
 		return err
+	}
+	if len(containerList) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(containerList)
