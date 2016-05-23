@@ -828,7 +828,6 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
@@ -841,13 +840,14 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	b := bytes.NewBufferString("")
-	request, err := http.NewRequest("POST", "/docker/containers/rebalance", b)
+	request, err := http.NewRequest("POST", "/docker/containers/rebalance", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
@@ -893,11 +893,17 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 		bson.M{"$set": bson.M{"units": units}},
 	)
 	c.Assert(err, check.IsNil)
+	opts := rebalanceOptions{
+		MetadataFilter: map[string]string{"pool": "pool1"},
+	}
+	v, err := form.EncodeToValues(&opts)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	b := bytes.NewBufferString(`{"metadataFilter": {"pool": "pool1"}}`)
 	request, err := http.NewRequest("POST", "/docker/containers/rebalance", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -947,10 +953,14 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	b := bytes.NewBufferString(`{"dry": "true"}`)
+	opts := rebalanceOptions{Dry: true}
+	v, err := form.EncodeToValues(&opts)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", "/docker/containers/rebalance", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
