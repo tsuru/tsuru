@@ -72,17 +72,21 @@ func flushingWriterMiddleware(w http.ResponseWriter, r *http.Request, next http.
 
 func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	requestIDHeader, _ := config.GetString("request-id-header")
+	if requestIDHeader == "" {
+		next(w, r)
+		return
+	}
 	requestID := r.Header.Get(requestIDHeader)
 	if requestID == "" {
 		unparsedID, err := uuid.NewV4()
 		if err != nil {
 			log.Errorf("unable to generate request id: %s", err)
 			next(w, r)
+			return
 		}
 		requestID = unparsedID.String()
 	}
 	context.SetRequestID(r, requestIDHeader, requestID)
-	log.Debugf("Request sent with ID: %s", requestID)
 	next(w, r)
 }
 
@@ -231,5 +235,13 @@ func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, ne
 		statusCode = 200
 	}
 	nowFormatted := time.Now().Format(time.RFC3339Nano)
-	l.logger.Printf("%s %s %s %d in %0.6fms", nowFormatted, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond))
+	requestIDHeader, _ := config.GetString("request-id-header")
+	var requestID string
+	if requestIDHeader != "" {
+		requestID = context.GetRequestID(r, requestIDHeader)
+		if requestID != "" {
+			requestID = fmt.Sprintf(" [%s: %s]", requestIDHeader, requestID)
+		}
+	}
+	l.logger.Printf("%s %s %s %d in %0.6fms%s", nowFormatted, r.Method, r.URL.Path, statusCode, float64(duration)/float64(time.Millisecond), requestID)
 }

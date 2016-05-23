@@ -257,11 +257,11 @@ func RunServer(dry bool) http.Handler {
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
+	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
 	if !dry {
 		n.Use(newLoggerMiddleware())
 	}
 	n.UseHandler(m)
-	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
 	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
 	n.Use(negroni.HandlerFunc(setRequestIDHeaderMiddleware))
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))

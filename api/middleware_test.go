@@ -72,6 +72,7 @@ func (s *S) TestFlushingWriterMiddleware(c *check.C) {
 
 func (s *S) TestSetRequestIDHeaderMiddleware(c *check.C) {
 	config.Set("request-id-header", "Request-ID")
+	defer config.Unset("request-id-header")
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
@@ -84,6 +85,7 @@ func (s *S) TestSetRequestIDHeaderMiddleware(c *check.C) {
 
 func (s *S) TestSetRequestIDHeaderAlreadySet(c *check.C) {
 	config.Set("request-id-header", "Request-ID")
+	defer config.Unset("request-id-header")
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
@@ -93,6 +95,18 @@ func (s *S) TestSetRequestIDHeaderAlreadySet(c *check.C) {
 	c.Assert(log.called, check.Equals, true)
 	reqID := context.GetRequestID(req, "Request-ID")
 	c.Assert(reqID, check.Equals, "test")
+}
+
+func (s *S) TestSetRequestIDHeaderMiddlewareNoConfig(c *check.C) {
+	config.Unset("request-id-header")
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	h, log := doHandler()
+	setRequestIDHeaderMiddleware(rec, req, h)
+	c.Assert(log.called, check.Equals, true)
+	reqID := context.GetRequestID(req, "")
+	c.Assert(reqID, check.Equals, "")
 }
 
 func (s *S) TestSetVersionHeadersMiddleware(c *check.C) {
@@ -495,4 +509,24 @@ func (s *S) TestLoggerMiddlewareWithoutStatusCode(c *check.C) {
 	c.Assert(handlerLog.called, check.Equals, true)
 	timePart := time.Now().Format(time.RFC3339Nano)[:19]
 	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms`+"\n", timePart))
+}
+
+func (s *S) TestLoggerMiddlewareWithRequestID(c *check.C) {
+	config.Set("request-id-header", "Request-ID")
+	defer config.Unset("request-id-header")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/my/path", nil)
+	c.Assert(err, check.IsNil)
+	context.SetRequestID(request, "Request-ID", "my-rid")
+	h, handlerLog := doHandler()
+	handlerLog.sleep = 100 * time.Millisecond
+	handlerLog.response = http.StatusOK
+	var out bytes.Buffer
+	middle := loggerMiddleware{
+		logger: log.New(&out, "", 0),
+	}
+	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
+	c.Assert(handlerLog.called, check.Equals, true)
+	timePart := time.Now().Format(time.RFC3339Nano)[:19]
+	c.Assert(out.String(), check.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 1\d{2}\.\d+ms \[Request-ID: my-rid\]`+"\n", timePart))
 }
