@@ -39,8 +39,8 @@ import (
 
 func init() {
 	api.RegisterHandler("/docker/node", "GET", api.AuthorizationRequiredHandler(listNodesHandler))
-	api.RegisterHandler("/docker/node/apps/{appname}/containers", "GET", api.AuthorizationRequiredHandler(listContainersHandler))
-	api.RegisterHandler("/docker/node/{address:.*}/containers", "GET", api.AuthorizationRequiredHandler(listContainersHandler))
+	api.RegisterHandler("/docker/node/apps/{appname}/containers", "GET", api.AuthorizationRequiredHandler(listContainersByApp))
+	api.RegisterHandler("/docker/node/{address:.*}/containers", "GET", api.AuthorizationRequiredHandler(listContainersByNode))
 	api.RegisterHandler("/docker/node", "POST", api.AuthorizationRequiredHandler(addNodeHandler))
 	api.RegisterHandler("/docker/node", "PUT", api.AuthorizationRequiredHandler(updateNodeHandler))
 	api.RegisterHandler("/docker/node/{address:.*}", "DELETE", api.AuthorizationRequiredHandler(removeNodeHandler))
@@ -618,24 +618,26 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 	return nil
 }
 
-func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func listContainersByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
-	if address != "" {
-		node, err := mainDockerProvisioner.Cluster().GetNode(address)
-		if err != nil {
-			return err
-		}
-		hasAccess := permission.Check(t, permission.PermNodeRead,
-			permission.Context(permission.CtxPool, node.Metadata["pool"]))
-		if !hasAccess {
-			return permission.ErrUnauthorized
-		}
-		containerList, err := mainDockerProvisioner.listContainersByHost(net.URLToHost(address))
-		if err != nil {
-			return err
-		}
-		return json.NewEncoder(w).Encode(containerList)
+	node, err := mainDockerProvisioner.Cluster().GetNode(address)
+	if err != nil {
+		return err
 	}
+	hasAccess := permission.Check(t, permission.PermNodeRead,
+		permission.Context(permission.CtxPool, node.Metadata["pool"]))
+	if !hasAccess {
+		return permission.ErrUnauthorized
+	}
+	containerList, err := mainDockerProvisioner.listContainersByHost(net.URLToHost(address))
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(containerList)
+}
+
+func listContainersByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
 	_, err := app.GetByName(appName)
 	if err != nil {
@@ -645,6 +647,7 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(containerList)
 }
 
