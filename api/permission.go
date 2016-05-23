@@ -472,16 +472,19 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return nil
 }
 
+// title: remove default role
+// path: /role/default
+// method: DELETE
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
 func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermRoleDefaultDelete) {
 		return permission.ErrUnauthorized
 	}
-	err := r.ParseForm()
-	if err != nil {
-		return err
-	}
 	for evtName := range permission.RoleEventMap {
-		roles := r.Form[evtName]
+		roles := r.URL.Query()[evtName]
 		for _, roleName := range roles {
 			role, err := permission.FindRole(roleName)
 			if err != nil {
