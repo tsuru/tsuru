@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -64,25 +65,22 @@ Parameters with special meaning:
 }
 
 func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	jsonParams := map[string]string{}
+	v := url.Values{}
 	for _, param := range ctx.Args {
 		if strings.Contains(param, "=") {
 			keyValue := strings.SplitN(param, "=", 2)
-			jsonParams[keyValue[0]] = keyValue[1]
+			v.Set(keyValue[0], keyValue[1])
 		}
 	}
-	b, err := json.Marshal(jsonParams)
+	u, err := cmd.GetURL(fmt.Sprintf("/docker/node?register=%t", a.register))
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?register=%t", a.register))
+	req, err := http.NewRequest("POST", u, bytes.NewBufferString(v.Encode()))
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
-	if err != nil {
-		return err
-	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

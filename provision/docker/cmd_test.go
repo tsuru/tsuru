@@ -24,13 +24,15 @@ import (
 func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"pool=poolTest", "address=http://localhost:8080"}, Stdout: &buf}
-	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			body, _ := ioutil.ReadAll(req.Body)
-			c.Assert(string(body), check.DeepEquals, expectedBody)
-			return req.URL.Path == "/1.0/docker/node" && req.URL.RawQuery == "register=false"
+			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
+			raw := req.URL.RawQuery == "register=false"
+			method := req.Method == "POST"
+			address := req.FormValue("address") == "http://localhost:8080"
+			pool := req.FormValue("pool") == "poolTest"
+			return url && method && raw &&address && pool
 		},
 	}
 	manager := cmd.Manager{}
@@ -47,13 +49,15 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 		Args:   []string{"pool=poolTest", "address=http://localhost:8080"},
 		Stdout: &buf, Stderr: &buf,
 	}
-	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: `{"error": "some err"}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			body, _ := ioutil.ReadAll(req.Body)
-			c.Assert(string(body), check.DeepEquals, expectedBody)
-			return req.URL.Path == "/1.0/docker/node" && req.URL.RawQuery == "register=false"
+			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
+			raw := req.URL.RawQuery == "register=false"
+			method := req.Method == "POST"
+			address := req.FormValue("address") == "http://localhost:8080"
+			pool := req.FormValue("pool") == "poolTest"
+			return url && method && raw &&address && pool
 		},
 	}
 	manager := cmd.Manager{}
