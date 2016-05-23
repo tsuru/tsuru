@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -323,20 +322,16 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"http://localhost:1111", "x=y", "y=z"}, Stdout: &buf}
-	expectedBody := map[string]string{
-		"address": "http://localhost:1111",
-		"x":       "y",
-		"y":       "z",
-	}
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			body, _ := ioutil.ReadAll(req.Body)
-			var parsed map[string]string
-			err := json.Unmarshal(body, &parsed)
-			c.Assert(err, check.IsNil)
-			c.Assert(parsed, check.DeepEquals, expectedBody)
-			return req.URL.Path == "/1.0/docker/node" && req.Method == "PUT" && req.URL.Query().Get("disabled") == "false"
+			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
+			method := req.Method == "PUT"
+			address := req.FormValue("address") == "http://localhost:1111"
+			x := req.FormValue("x") == "y"
+			y := req.FormValue("y") == "z"
+			disabled := req.FormValue("disable") == "false"
+			return url && method && address && x && y && disabled
 		},
 	}
 	manager := cmd.Manager{}
@@ -353,7 +348,8 @@ func (s *S) TestUpdateNodeToDisableCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Query().Get("disabled") == "true"
+			disabled := req.FormValue("disable") == "true"
+			return disabled
 		},
 	}
 	manager := cmd.Manager{}
@@ -371,7 +367,8 @@ func (s *S) TestUpdateNodeToEnabledCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Query().Get("enabled") == "true"
+			enabled := req.FormValue("enable") == "true"
+			return enabled
 		},
 	}
 	manager := cmd.Manager{}
@@ -392,7 +389,9 @@ func (s *S) TestUpdateNodeToEnabledDisableCmdRun(c *check.C) {
 			Status:  http.StatusBadRequest,
 		},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Query().Get("enabled") == "true" && req.URL.Query().Get("disabled") == "true"
+			enabled := req.FormValue("enable") == "true"
+			disabled := req.FormValue("disable") == "true"
+			return enabled && disabled
 		},
 	}
 	manager := cmd.Manager{}
