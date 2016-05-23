@@ -618,11 +618,23 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 	return nil
 }
 
+// title: list containers by node
+// path: /docker/node/{address}/containers
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   204: No content
+//   401: Unauthorized
+//   404: Not found
 func listContainersByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
 	node, err := mainDockerProvisioner.Cluster().GetNode(address)
 	if err != nil {
-		return err
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: fmt.Sprintf("Node %s not found.", address),
+		}
 	}
 	hasAccess := permission.Check(t, permission.PermNodeRead,
 		permission.Context(permission.CtxPool, node.Metadata["pool"]))
@@ -632,6 +644,10 @@ func listContainersByNode(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	containerList, err := mainDockerProvisioner.listContainersByHost(net.URLToHost(address))
 	if err != nil {
 		return err
+	}
+	if len(containerList) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(containerList)

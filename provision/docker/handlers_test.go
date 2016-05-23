@@ -639,6 +639,30 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	c.Assert(result.Nodes[1].Metadata, check.DeepEquals, map[string]string{"pool": "pool2", "foo": "bar"})
 }
 
+func (s *HandlersSuite) TestListContainersByHostNotFound(c *check.C) {
+	req, err := http.NewRequest("GET", "/docker/node/http://notfound.com:4243/containers", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *HandlersSuite) TestListContainersByHostNoContent(c *check.C) {
+	var err error
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner.cluster.Register(cluster.Node{Address: "http://node1.company:4243"})
+	req, err := http.NewRequest("GET", "/docker/node/http://node1.company:4243/containers", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	server := api.RunServer(true)
+	server.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container.Container
 	var err error
