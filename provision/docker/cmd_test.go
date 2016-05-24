@@ -427,7 +427,7 @@ func (s *S) TestAutoScaleRunCmdRun(c *check.C) {
 
 func (s *S) TestAutoScaleInfoCmdRun(c *check.C) {
 	var calls int
-	config := `{"GroupByMetadata":"pool","Enabled":true}`
+	config := `{"Enabled":true}`
 	configTransport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: config, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
@@ -481,16 +481,14 @@ func (s *S) TestAutoScaleInfoCmdRun(c *check.C) {
 	var command autoScaleInfoCmd
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	expected := `Metadata filter: pool
-
-Rules:
-+--------------+---------------------+------------------+------------------+--------------------+---------+
-| Filter value | Max container count | Max memory ratio | Scale down ratio | Rebalance on scale | Enabled |
-+--------------+---------------------+------------------+------------------+--------------------+---------+
-| pool1        | 6                   | 1.2000           | 1.3300           | true               | true    |
-| pool2        | 13                  | 0.9000           | 1.3300           | false              | true    |
-| pool3        | 50                  | 1.2000           | 1.3300           | true               | false   |
-+--------------+---------------------+------------------+------------------+--------------------+---------+
+	expected := `Rules:
++-------+---------------------+------------------+------------------+--------------------+---------+
+| Pool  | Max container count | Max memory ratio | Scale down ratio | Rebalance on scale | Enabled |
++-------+---------------------+------------------+------------------+--------------------+---------+
+| pool1 | 6                   | 1.2000           | 1.3300           | true               | true    |
+| pool2 | 13                  | 0.9000           | 1.3300           | false              | true    |
+| pool3 | 50                  | 1.2000           | 1.3300           | true               | false   |
++-------+---------------------+------------------+------------------+--------------------+---------+
 `
 	c.Assert(buf.String(), check.Equals, expected)
 	c.Assert(calls, check.Equals, 2)
@@ -498,7 +496,7 @@ Rules:
 
 func (s *S) TestAutoScaleInfoCmdRunDisabled(c *check.C) {
 	var calls int
-	config := `{"GroupByMetadata":"pool","Enabled":false}`
+	config := `{"Enabled":false}`
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: config, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {

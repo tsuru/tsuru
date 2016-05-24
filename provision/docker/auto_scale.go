@@ -28,10 +28,13 @@ import (
 	"gopkg.in/mgo.v2"
 )
 
+const (
+	poolMetadataName = "pool"
+)
+
 var errAutoScaleRunning = errors.New("autoscale already running")
 
 type autoScaleConfig struct {
-	GroupByMetadata     string
 	WaitTimeNewMachine  time.Duration
 	RunInterval         time.Duration
 	TotalMemoryMetadata string
@@ -142,13 +145,9 @@ func (a *autoScaleConfig) runScaler() (retErr error) {
 	clusterMap := map[string][]*cluster.Node{}
 	for i := range nodes {
 		node := &nodes[i]
-		if a.GroupByMetadata == "" {
-			clusterMap[""] = append(clusterMap[""], node)
-			continue
-		}
-		groupMetadata := node.Metadata[a.GroupByMetadata]
+		groupMetadata := node.Metadata[poolMetadataName]
 		if groupMetadata == "" {
-			a.logDebug("skipped node %s, no metadata value for %s.", node.Address, a.GroupByMetadata)
+			a.logDebug("skipped node %s, no metadata value for %s.", node.Address, poolMetadataName)
 			continue
 		}
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)
@@ -194,7 +193,7 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 		retErr = fmt.Errorf("error getting scaler for %s: %s", groupMetadata, err)
 		return
 	}
-	event.logMsg("running scaler %T for %q: %q", scaler, a.GroupByMetadata, groupMetadata)
+	event.logMsg("running scaler %T for %q: %q", scaler, poolMetadataName, groupMetadata)
 	scalerResult, err := scaler.scale(groupMetadata, nodes)
 	if err != nil {
 		retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
@@ -242,16 +241,13 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 		}
 	}
 	if event.Action == "" {
-		event.logMsg("nothing to do for %q: %q", a.GroupByMetadata, groupMetadata)
+		event.logMsg("nothing to do for %q: %q", poolMetadataName, groupMetadata)
 	}
 	return
 }
 
 func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
-	var rebalanceFilter map[string]string
-	if a.GroupByMetadata != "" {
-		rebalanceFilter = map[string]string{a.GroupByMetadata: groupMetadata}
-	}
+	rebalanceFilter := map[string]string{poolMetadataName: groupMetadata}
 	if event.Action == "" {
 		// No action yet, check if we need rebalance
 		_, gap, err := a.provisioner.containerGapInNodes(nodes)

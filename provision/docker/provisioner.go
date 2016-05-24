@@ -163,11 +163,9 @@ func (p *dockerProvisioner) ActionLimiter() provision.ActionLimiter {
 func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 	enabled, _ := config.GetBool("docker:auto-scale:enabled")
 	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
-	GroupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
 	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
 	TotalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	return &autoScaleConfig{
-		GroupByMetadata:     GroupByMetadata,
 		TotalMemoryMetadata: TotalMemoryMetadata,
 		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
 		RunInterval:         time.Duration(runInterval) * time.Second,

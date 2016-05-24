@@ -524,10 +524,9 @@ func (c *autoScaleInfoCmd) getAutoScaleRules(client *cmd.Client) ([]autoScaleRul
 }
 
 func (c *autoScaleInfoCmd) render(context *cmd.Context, config *autoScaleConfig, rules []autoScaleRule) error {
-	fmt.Fprintf(context.Stdout, "Metadata filter: %s\n\n", config.GroupByMetadata)
 	var table cmd.Table
 	tableHeader := []string{
-		"Filter value",
+		"Pool",
 		"Max container count",
 		"Max memory ratio",
 		"Scale down ratio",
@@ -562,7 +561,7 @@ type autoScaleSetRuleCmd struct {
 func (c *autoScaleSetRuleCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-autoscale-rule-set",
-		Usage: "docker-autoscale-rule-set [-f/--filter-value metadata-filter-value] [-c/--max-container-count 0] [-m/--max-memory-ratio 0.9] [-d/--scale-down-ratio 1.33] [-r/--rebalance-on-scale false] [-e/--enabled true]",
+		Usage: "docker-autoscale-rule-set [-f/--filter-value <pool name>] [-c/--max-container-count 0] [-m/--max-memory-ratio 0.9] [-d/--scale-down-ratio 1.33] [-r/--rebalance-on-scale false] [-e/--enabled true]",
 		Desc:  "Creates or update an auto-scale rule. Using resources limitation (amount of container or memory usage).",
 	}
 }
@@ -600,8 +599,8 @@ func (c *autoScaleSetRuleCmd) Run(context *cmd.Context, client *cmd.Client) erro
 func (c *autoScaleSetRuleCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("autoscale-rule-set", gnuflag.ExitOnError)
-		c.fs.StringVar(&c.filterValue, "filter-value", "", "The value of the metadata filter matching the rule. This is the unique identifier of the rule.")
-		c.fs.StringVar(&c.filterValue, "f", "", "The value of the metadata filter matching the rule. This is the unique identifier of the rule.")
+		c.fs.StringVar(&c.filterValue, "filter-value", "", "The pool name matching the rule. This is the unique identifier of the rule.")
+		c.fs.StringVar(&c.filterValue, "f", "", "The pool name matching the rule. This is the unique identifier of the rule.")
 		c.fs.IntVar(&c.maxContainerCount, "max-container-count", 0, "The maximum amount of containers on every node. Might be zero, which means no maximum value. Whenever this value is reached, tsuru will trigger a new auto scale event.")
 		c.fs.IntVar(&c.maxContainerCount, "c", 0, "The maximum amount of containers on every node. Might be zero, which means no maximum value. Whenever this value is reached, tsuru will trigger a new auto scale event.")
 		c.fs.Float64Var(&c.maxMemoryRatio, "max-memory-ratio", .0, "The maximum memory usage per node. 0 means no limit, 1 means 100%. It is fine to use values greater than 1, which means that tsuru will overcommit memory in Docker nodes. Keep in mind that container count has higher precedence than memory ratio, so if --max-container-count is defined, the value of --max-memory-ratio will be ignored.")
