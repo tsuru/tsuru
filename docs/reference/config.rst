@@ -964,29 +964,28 @@ scaling up process. Defaults to 300 seconds (5 minutes).
 docker:auto-scale:group-by-metadata
 +++++++++++++++++++++++++++++++++++
 
-Name of the metadata present in nodes that will be used for grouping nodes into
-clusters. See :doc:`node auto scaling </advanced_topics/node_scaling>` for more
-details. Defaults to empty (all nodes belong the the same cluster).
+Deprecated. The ``pool`` is used to group nodes.
 
 docker:auto-scale:metadata-filter
 +++++++++++++++++++++++++++++++++
 
-Value of the metadata specified by `docker:auto-scale:group-by-metadata`. If
-this is set, tsuru will only run auto scale algorithms for nodes in the cluster
-defined by this value.
+The name of a pool where auto scale will be enabled. Leave unset to allow
+dynamically configuring with ``tsuru-admin docker-autoscale-rule-set``. 
 
 docker:auto-scale:max-container-count
 +++++++++++++++++++++++++++++++++++++
 
 Maximum number of containers per node, for count based scaling. See :doc:`node
-auto scaling </advanced_topics/node_scaling>` for more details.
+auto scaling </advanced_topics/node_scaling>` for more details. Leave unset to
+allow dynamically configuring with ``tsuru-admin docker-autoscale-rule-set``.
 
 docker:auto-scale:prevent-rebalance
 +++++++++++++++++++++++++++++++++++
 
 Prevent rebalancing from happening when adding new nodes, or if a rebalance is
 needed. See :doc:`node auto scaling </advanced_topics/node_scaling>` for more
-details.
+details. Leave unset to allow dynamically configuring with ``tsuru-admin
+docker-autoscale-rule-set``.
 
 docker:auto-scale:run-interval
 ++++++++++++++++++++++++++++++
@@ -999,6 +998,8 @@ docker:auto-scale:scale-down-ratio
 
 Ratio used when scaling down. Must be greater than 1.0. See :doc:`node auto
 scaling </advanced_topics/node_scaling>` for more details. Defaults to 1.33.
+Leave unset to allow dynamically configuring with ``tsuru-admin
+docker-autoscale-rule-set``.
 
 .. _docker_limit:
 

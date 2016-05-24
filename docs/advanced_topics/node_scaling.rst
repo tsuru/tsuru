@@ -8,10 +8,8 @@ Node Auto Scaling
 Node auto scaling can be enabled by setting `docker:auto-scale:enabled` to true.
 It will try to add, remove and rebalance docker nodes used by tsuru.
 
-Node scaling algorithms run in clusters of docker nodes, to specify how clusters
-will be formed you must tell tsuru how they should be grouped. This is done by
-setting `docker:auto-scale:group-by-metadata` configuration entry to the name of a
-metadata present in your nodes.
+Node scaling algorithms run in clusters of docker nodes, each cluster is based
+on the pool the node belongs to.
 
 There are two different scaling algorithms that will be used, depending on how
 tsuru is configured: count based scaling, and memory based scaling.
