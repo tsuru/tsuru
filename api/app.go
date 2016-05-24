@@ -611,39 +611,6 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(result)
 }
 
-// title: set unit status
-// path: /units/status
-// method: POST
-// consume: application/x-www-form-urlencoded
-// produce: application/json
-// responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App or unit not found
-func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if t.GetAppName() != app.InternalAppName {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
-	}
-	err := r.ParseForm()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	var data struct{ Units []provision.UnitStatusData }
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&data, r.Form)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	result, err := app.UpdateNodeStatus(provision.NodeStatusData{Units: data.Units})
-	if err != nil {
-		return err
-	}
-	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(result)
-}
-
 // title: grant access to app
 // path: /apps/{app}/teams/{team}
 // method: PUT
