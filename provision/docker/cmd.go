@@ -575,11 +575,11 @@ func (c *autoScaleSetRuleCmd) Run(context *cmd.Context, client *cmd.Client) erro
 		PreventRebalance:  !c.rebalanceOnScale,
 		Enabled:           c.enabled,
 	}
-	data, err := json.Marshal(rule)
+	val, err := form.EncodeToValues(rule)
 	if err != nil {
 		return err
 	}
-	body := bytes.NewBuffer(data)
+	body := strings.NewReader(val.Encode())
 	u, err := cmd.GetURL("/docker/autoscale/rules")
 	if err != nil {
 		return err
@@ -588,6 +588,7 @@ func (c *autoScaleSetRuleCmd) Run(context *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	_, err = client.Do(req)
 	if err != nil {
 		return err
