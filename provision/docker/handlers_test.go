@@ -756,7 +756,7 @@ func (s *HandlersSuite) TestListContainersByAppHandlerNotAdminUser(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	conn.Apps().Insert(app.App{Name: "appbla", Platform: "python"})
+	conn.Apps().Insert(app.App{Name: "appbla", Platform: "python", Pool: "mypool"})
 	var result []container.Container
 	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	coll := mainDockerProvisioner.Collection()
@@ -774,7 +774,7 @@ func (s *HandlersSuite) TestListContainersByAppHandlerNotAdminUser(c *check.C) {
 	_, err = nativeScheme.Create(limitedUser)
 	c.Assert(err, check.IsNil)
 	defer nativeScheme.Remove(limitedUser)
-	t := createTokenForUser(limitedUser, "team", string(permission.CtxTeam), "p3", c)
+	t := createTokenForUser(limitedUser, "node", string(permission.CtxPool), "mypool", c)
 	req.Header.Set("Authorization", t.GetValue())
 	m := api.RunServer(true)
 	m.ServeHTTP(rec, req)

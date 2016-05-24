@@ -664,7 +664,7 @@ func listContainersByNode(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   404: Not found
 func listContainersByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
-	_, err := app.GetByName(appName)
+	a, err := app.GetByName(appName)
 	if err != nil {
 		if err == app.ErrAppNotFound {
 			return &errors.HTTP{
@@ -673,6 +673,11 @@ func listContainersByApp(w http.ResponseWriter, r *http.Request, t auth.Token) e
 			}
 		}
 		return err
+	}
+	hasAccess := permission.Check(t, permission.PermNodeRead,
+		permission.Context(permission.CtxPool, a.GetPool()))
+	if !hasAccess {
+		return permission.ErrUnauthorized
 	}
 	containerList, err := mainDockerProvisioner.listContainersByApp(appName)
 	if err != nil {
