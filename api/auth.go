@@ -623,7 +623,6 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if roleName != "" {
 			for _, role := range usrData.Roles {
 				if role.Name == roleName {
-					println(role.Name, role.ContextValue)
 					if contextValue != "" && role.ContextValue == contextValue {
 						apiUsers = append(apiUsers, *usrData)
 						break
