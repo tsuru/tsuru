@@ -1638,6 +1638,15 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return nil
 }
 
+// title: register unit
+// path: /apps/{app}/units/register
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
 func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	a, err := app.GetByName(appName)
