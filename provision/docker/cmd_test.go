@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -521,8 +522,10 @@ func (s *S) TestAutoScaleSetRuleCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
 			var rule autoScaleRule
-			err := json.NewDecoder(req.Body).Decode(&rule)
+			err = form.DecodeValues(&rule, req.Form)
 			c.Assert(err, check.IsNil)
 			c.Assert(rule, check.DeepEquals, autoScaleRule{
 				MetadataFilter:    "pool1",
