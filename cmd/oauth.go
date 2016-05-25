@@ -5,12 +5,12 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/tsuru/tsuru/exec"
@@ -61,17 +61,14 @@ func port(schemeData map[string]string) string {
 
 func convertToken(code, redirectUrl string) (string, error) {
 	var token string
-	params := map[string]string{"code": code, "redirectUrl": redirectUrl}
+	v := url.Values{}
+	v.Set("code", code)
+	v.Set("redirectUrl", redirectUrl)
 	u, err := GetURL("/auth/login")
 	if err != nil {
 		return token, fmt.Errorf("Error in GetURL: %s", err.Error())
 	}
-	var buf bytes.Buffer
-	err = json.NewEncoder(&buf).Encode(params)
-	if err != nil {
-		return token, fmt.Errorf("Error encoding params %#v: %s", params, err.Error())
-	}
-	resp, err := http.Post(u, "application/json", &buf)
+	resp, err := http.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 	if err != nil {
 		return token, fmt.Errorf("Error during login post: %s", err.Error())
 	}
