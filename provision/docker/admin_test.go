@@ -28,17 +28,11 @@ func (s *S) TestMoveContainersRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, check.IsNil)
-			expected := map[string]string{
-				"from": "from",
-				"to":   "to",
-			}
-			result := map[string]string{}
-			err = json.Unmarshal(body, &result)
-			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/1.0/docker/containers/move" && req.Method == "POST"
+			path := req.URL.Path == "/1.0/docker/containers/move"
+			method := req.Method == "POST"
+			from := req.FormValue("from") == "from"
+			to := req.FormValue("to") == "to"
+			return path && method && from && to
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -62,16 +56,10 @@ func (s *S) TestMoveContainerRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, check.IsNil)
-			expected := map[string]string{
-				"to": "toHost",
-			}
-			result := map[string]string{}
-			err = json.Unmarshal(body, &result)
-			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/1.0/docker/container/contId/move" && req.Method == "POST"
+			path := req.URL.Path == "/1.0/docker/container/contId/move"
+			method := req.Method == "POST"
+			to := req.FormValue("to") == "toHost"
+			return path && method && to
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)

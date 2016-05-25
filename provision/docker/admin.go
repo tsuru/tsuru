@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
@@ -36,24 +37,18 @@ This command will go through the following steps:
 
 func (c *moveContainersCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	context.RawOutput()
-	url, err := cmd.GetURL("/docker/containers/move")
+	u, err := cmd.GetURL("/docker/containers/move")
 	if err != nil {
 		return err
 	}
-	params := map[string]string{
-		"from": context.Args[0],
-		"to":   context.Args[1],
-	}
-	b, err := json.Marshal(params)
+	v := url.Values{}
+	v.Set("from", context.Args[0])
+	v.Set("to", context.Args[1])
+	request, err := http.NewRequest("POST", u, bytes.NewBufferString(v.Encode()))
 	if err != nil {
 		return err
 	}
-	buffer := bytes.NewBuffer(b)
-	request, err := http.NewRequest("POST", url, buffer)
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := client.Do(request)
 	if err != nil {
 		return err
@@ -77,23 +72,17 @@ from its previous host.`,
 
 func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	context.RawOutput()
-	url, err := cmd.GetURL(fmt.Sprintf("/docker/container/%s/move", context.Args[0]))
+	u, err := cmd.GetURL(fmt.Sprintf("/docker/container/%s/move", context.Args[0]))
 	if err != nil {
 		return err
 	}
-	params := map[string]string{
-		"to": context.Args[1],
-	}
-	b, err := json.Marshal(params)
+	v := url.Values{}
+	v.Set("to", context.Args[1])
+	request, err := http.NewRequest("POST", u, bytes.NewBufferString(v.Encode()))
 	if err != nil {
 		return err
 	}
-	buffer := bytes.NewBuffer(b)
-	request, err := http.NewRequest("POST", url, buffer)
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := client.Do(request)
 	if err != nil {
 		return err
@@ -130,7 +119,7 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 	if !c.dry && !c.Confirm(context, "Are you sure you want to rebalance containers?") {
 		return nil
 	}
-	url, err := cmd.GetURL("/docker/containers/rebalance")
+	u, err := cmd.GetURL("/docker/containers/rebalance")
 	if err != nil {
 		return err
 	}
@@ -148,7 +137,7 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 		return err
 	}
 	buffer := bytes.NewBuffer(b)
-	request, err := http.NewRequest("POST", url, buffer)
+	request, err := http.NewRequest("POST", u, buffer)
 	if err != nil {
 		return err
 	}
