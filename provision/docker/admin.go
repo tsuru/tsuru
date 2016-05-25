@@ -6,11 +6,11 @@ package docker
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 
+	"github.com/cezarsa/form"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
 )
@@ -123,25 +123,24 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 	if err != nil {
 		return err
 	}
-	params := map[string]interface{}{
-		"dry": fmt.Sprintf("%t", c.dry),
+	opts := rebalanceOptions{
+		Dry: c.dry,
 	}
 	if len(c.metadataFilter) > 0 {
-		params["metadataFilter"] = c.metadataFilter
+		opts.MetadataFilter = c.metadataFilter
 	}
 	if len(c.appFilter) > 0 {
-		params["appFilter"] = c.appFilter
+		opts.AppFilter = c.appFilter
 	}
-	b, err := json.Marshal(params)
+	v, err := form.EncodeToValues(&opts)
 	if err != nil {
 		return err
 	}
-	buffer := bytes.NewBuffer(b)
-	request, err := http.NewRequest("POST", u, buffer)
+	request, err := http.NewRequest("POST", u, bytes.NewBufferString(v.Encode()))
 	if err != nil {
 		return err
 	}
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := client.Do(request)
 	if err != nil {
 		return err

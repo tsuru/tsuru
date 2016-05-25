@@ -7,9 +7,9 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
+	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -79,20 +79,22 @@ func (s *S) TestRebalanceContainersRun(c *check.C) {
 	}
 	msg, _ := json.Marshal(tsuruIo.SimpleJsonMessage{Message: "progress msg"})
 	result := string(msg)
-	expectedDry := "true"
+	expectedRebalance := rebalanceOptions{
+		Dry: true,
+	}
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			req.ParseForm()
+			var params rebalanceOptions
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err := dec.DecodeValues(&params, req.Form)
 			c.Assert(err, check.IsNil)
-			expected := map[string]string{
-				"dry": expectedDry,
-			}
-			result := map[string]string{}
-			err = json.Unmarshal(body, &result)
-			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/1.0/docker/containers/rebalance" && req.Method == "POST"
+			c.Assert(params, check.DeepEquals, expectedRebalance)
+			path := req.URL.Path == "/1.0/docker/containers/rebalance"
+			method := req.Method == "POST"
+			return path && method
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -104,7 +106,9 @@ func (s *S) TestRebalanceContainersRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := "progress msg"
 	c.Assert(stdout.String(), check.Equals, expected)
-	expectedDry = "false"
+	expectedRebalance = rebalanceOptions{
+		Dry: false,
+	}
 	cmd2 := rebalanceContainersCmd{}
 	cmd2.Flags().Parse(true, []string{"-y"})
 	err = cmd2.Run(&context, client)
@@ -119,22 +123,24 @@ func (s *S) TestRebalanceContainersRunWithFilters(c *check.C) {
 	}
 	msg, _ := json.Marshal(tsuruIo.SimpleJsonMessage{Message: "progress msg"})
 	result := string(msg)
+	expectedRebalance := rebalanceOptions{
+		Dry:            false,
+		MetadataFilter: map[string]string{"pool": "x", "a": "b"},
+		AppFilter:      []string{"x", "y"},
+	}
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			req.ParseForm()
+			var params rebalanceOptions
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err := dec.DecodeValues(&params, req.Form)
 			c.Assert(err, check.IsNil)
-			expected := map[string]interface{}{
-				"dry":            "false",
-				"metadataFilter": map[string]interface{}{"pool": "x", "a": "b"},
-				"appFilter":      []interface{}{"x", "y"},
-			}
-			var result map[string]interface{}
-			err = json.Unmarshal(body, &result)
-			c.Assert(err, check.IsNil)
-			c.Assert(result, check.DeepEquals, expected)
-			return req.URL.Path == "/1.0/docker/containers/rebalance" && req.Method == "POST"
+			c.Assert(params, check.DeepEquals, expectedRebalance)
+			path := req.URL.Path == "/1.0/docker/containers/rebalance"
+			method := req.Method == "POST"
+			return path && method
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -160,16 +166,16 @@ func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
+			req.ParseForm()
+			var params rebalanceOptions
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err := dec.DecodeValues(&params, req.Form)
 			c.Assert(err, check.IsNil)
-			expected := map[string]string{
-				"dry": "false",
-			}
-			result := map[string]string{}
-			err = json.Unmarshal(body, &result)
-			c.Assert(expected, check.DeepEquals, result)
-			return req.URL.Path == "/1.0/docker/containers/rebalance" && req.Method == "POST"
+			c.Assert(params.Dry, check.Equals, false)
+			path := req.URL.Path == "/1.0/docker/containers/rebalance"
+			method := req.Method == "POST"
+			return path && method
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
