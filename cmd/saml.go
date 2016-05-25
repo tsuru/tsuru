@@ -5,13 +5,13 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -88,18 +88,14 @@ func requestToken(schemeData map[string]string) (string, error) {
 	maxRetries := samlRequestTimeout(schemeData) - 7
 	time.Sleep(5 * time.Second)
 	id := samlRequestId(schemeData)
-	params := map[string]string{"request_id": id}
+	v := url.Values{}
+	v.Set("request_id", id)
 	for count := 0; count <= maxRetries; count += 2 {
 		u, err := GetURL("/auth/login")
 		if err != nil {
 			return "", fmt.Errorf("Error in GetURL: %s", err.Error())
 		}
-		var buf bytes.Buffer
-		err = json.NewEncoder(&buf).Encode(params)
-		if err != nil {
-			return "", fmt.Errorf("Error encoding params %#v: %s", params, err.Error())
-		}
-		resp, err := http.Post(u, "application/json", &buf)
+		resp, err := http.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 		if err != nil {
 			return "", fmt.Errorf("Error during login post: %s", err.Error())
 		}
