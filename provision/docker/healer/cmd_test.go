@@ -129,7 +129,7 @@ func (s *S) TestListHealingHistoryCmdRunEmpty(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: `[]`, Status: http.StatusOK},
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusNoContent},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/1.0/docker/healing"
 		},
