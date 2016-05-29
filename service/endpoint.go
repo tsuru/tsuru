@@ -278,7 +278,7 @@ func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string
 		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest(url, "GET", params)
-	if err != nil || resp.StatusCode != 200 {
+	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, err
 	}
 	result := []map[string]string{}
@@ -299,7 +299,7 @@ func (c *Client) Plans(requestID string) ([]Plan, error) {
 		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest(url, "GET", params)
-	if err != nil || resp.StatusCode != 200 {
+	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, err
 	}
 	result := []Plan{}
