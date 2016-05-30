@@ -543,7 +543,7 @@ func (s *S) TestAutoScaleSetRuleCmdRun(c *check.C) {
 	var manager cmd.Manager
 	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
 	var command autoScaleSetRuleCmd
-	flags := []string{"-f", "pool1", "-c", "10", "-m", "1.2342"}
+	flags := []string{"-f", "pool1", "-c", "10", "-m", "1.2342", "--enable"}
 	err := command.Flags().Parse(true, flags)
 	c.Assert(err, check.IsNil)
 	err = command.Run(&context, client)

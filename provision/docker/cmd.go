@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -549,31 +550,35 @@ func (c *autoScaleInfoCmd) render(context *cmd.Context, config *autoScaleConfig,
 }
 
 type autoScaleSetRuleCmd struct {
-	fs                *gnuflag.FlagSet
-	filterValue       string
-	maxContainerCount int
-	maxMemoryRatio    float64
-	scaleDownRatio    float64
-	rebalanceOnScale  bool
-	enabled           bool
+	fs                 *gnuflag.FlagSet
+	filterValue        string
+	maxContainerCount  int
+	maxMemoryRatio     float64
+	scaleDownRatio     float64
+	noRebalanceOnScale bool
+	enable             bool
+	disable            bool
 }
 
 func (c *autoScaleSetRuleCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-autoscale-rule-set",
-		Usage: "docker-autoscale-rule-set [-f/--filter-value <pool name>] [-c/--max-container-count 0] [-m/--max-memory-ratio 0.9] [-d/--scale-down-ratio 1.33] [-r/--rebalance-on-scale false] [-e/--enabled true]",
+		Usage: "docker-autoscale-rule-set [-f/--filter-value <pool name>] [-c/--max-container-count 0] [-m/--max-memory-ratio 0.9] [-d/--scale-down-ratio 1.33] [--no-rebalance-on-scale] [--enable] [--disable]",
 		Desc:  "Creates or update an auto-scale rule. Using resources limitation (amount of container or memory usage).",
 	}
 }
 
 func (c *autoScaleSetRuleCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	if (c.enable && c.disable) || (!c.enable && !c.disable) {
+		return errors.New("either --disable or --enable must be set")
+	}
 	rule := autoScaleRule{
 		MetadataFilter:    c.filterValue,
 		MaxContainerCount: c.maxContainerCount,
 		MaxMemoryRatio:    float32(c.maxMemoryRatio),
 		ScaleDownRatio:    float32(c.scaleDownRatio),
-		PreventRebalance:  !c.rebalanceOnScale,
-		Enabled:           c.enabled,
+		PreventRebalance:  c.noRebalanceOnScale,
+		Enabled:           c.enable,
 	}
 	val, err := form.EncodeToValues(rule)
 	if err != nil {
@@ -600,18 +605,24 @@ func (c *autoScaleSetRuleCmd) Run(context *cmd.Context, client *cmd.Client) erro
 func (c *autoScaleSetRuleCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("autoscale-rule-set", gnuflag.ExitOnError)
-		c.fs.StringVar(&c.filterValue, "filter-value", "", "The pool name matching the rule. This is the unique identifier of the rule.")
-		c.fs.StringVar(&c.filterValue, "f", "", "The pool name matching the rule. This is the unique identifier of the rule.")
-		c.fs.IntVar(&c.maxContainerCount, "max-container-count", 0, "The maximum amount of containers on every node. Might be zero, which means no maximum value. Whenever this value is reached, tsuru will trigger a new auto scale event.")
-		c.fs.IntVar(&c.maxContainerCount, "c", 0, "The maximum amount of containers on every node. Might be zero, which means no maximum value. Whenever this value is reached, tsuru will trigger a new auto scale event.")
-		c.fs.Float64Var(&c.maxMemoryRatio, "max-memory-ratio", .0, "The maximum memory usage per node. 0 means no limit, 1 means 100%. It is fine to use values greater than 1, which means that tsuru will overcommit memory in Docker nodes. Keep in mind that container count has higher precedence than memory ratio, so if --max-container-count is defined, the value of --max-memory-ratio will be ignored.")
-		c.fs.Float64Var(&c.maxMemoryRatio, "m", .0, "The maximum memory usage per node. 0 means no limit, 1 means 100%. It is fine to use values greater than 1, which means that tsuru will overcommit memory in Docker nodes. Keep in mind that container count has higher precedence than memory ratio, so if --max-container-count is defined, the value of --max-memory-ratio will be ignored.")
-		c.fs.Float64Var(&c.scaleDownRatio, "scale-down-ratio", 1.33, "The ratio for triggering an scale down event. The default value is 1.33, which mean that whenever it gets one third of the resource utilization (memory ratio or container count).")
-		c.fs.Float64Var(&c.scaleDownRatio, "d", 1.33, "The ratio for triggering an scale down event. The default value is 1.33, which mean that whenever it gets one third of the resource utilization (memory ratio or container count).")
-		c.fs.BoolVar(&c.rebalanceOnScale, "rebalance-on-scale", true, "A boolean flag indicating whether containers should be rebalanced after running an scale. The default behavior is to always rebalance the containers.")
-		c.fs.BoolVar(&c.rebalanceOnScale, "r", true, "A boolean flag indicating whether containers should be rebalanced after running an scale. The default behavior is to always rebalance the containers.")
-		c.fs.BoolVar(&c.enabled, "enabled", true, "A boolean flag indicating whether the rule should be enabled or disabled")
-		c.fs.BoolVar(&c.enabled, "e", true, "A boolean flag indicating whether the rule should be enabled or disabled")
+		msg := "The pool name matching the rule. This is the unique identifier of the rule."
+		c.fs.StringVar(&c.filterValue, "filter-value", "", msg)
+		c.fs.StringVar(&c.filterValue, "f", "", msg)
+		msg = "The maximum amount of containers on every node. Might be zero, which means no maximum value. Whenever this value is reached, tsuru will trigger a new auto scale event."
+		c.fs.IntVar(&c.maxContainerCount, "max-container-count", 0, msg)
+		c.fs.IntVar(&c.maxContainerCount, "c", 0, msg)
+		msg = "The maximum memory usage per node. 0 means no limit, 1 means 100%. It is fine to use values greater than 1, which means that tsuru will overcommit memory in Docker nodes. Keep in mind that container count has higher precedence than memory ratio, so if --max-container-count is defined, the value of --max-memory-ratio will be ignored."
+		c.fs.Float64Var(&c.maxMemoryRatio, "max-memory-ratio", .0, msg)
+		c.fs.Float64Var(&c.maxMemoryRatio, "m", .0, msg)
+		msg = "The ratio for triggering an scale down event. The default value is 1.33, which mean that whenever it gets one third of the resource utilization (memory ratio or container count)."
+		c.fs.Float64Var(&c.scaleDownRatio, "scale-down-ratio", 1.33, msg)
+		c.fs.Float64Var(&c.scaleDownRatio, "d", 1.33, msg)
+		msg = "A boolean flag indicating whether containers should NOT be rebalanced after running an scale. The default behavior is to always rebalance the containers."
+		c.fs.BoolVar(&c.noRebalanceOnScale, "no-rebalance-on-scale", false, msg)
+		msg = "A boolean flag indicating whether the rule should be enabled"
+		c.fs.BoolVar(&c.enable, "enable", false, msg)
+		msg = "A boolean flag indicating whether the rule should be disabled"
+		c.fs.BoolVar(&c.disable, "disable", false, msg)
 	}
 	return c.fs
 }
