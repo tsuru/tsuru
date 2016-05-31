@@ -817,9 +817,9 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 // Envs represents the configuration of an environment variable data
 // for the remote API
 type Envs struct {
-	Envs      []struct{ Name, Value string } `schema:"envs"`
-	NoRestart bool                           `schema:"noRestart"`
-	Private   bool                           `schema:"private"`
+	Envs      []struct{ Name, Value string }
+	NoRestart bool
+	Private   bool
 }
 
 // title: set envs
