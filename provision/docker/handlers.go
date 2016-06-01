@@ -94,6 +94,7 @@ func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) er
 // produce: application/json
 // responses:
 //   200: Ok
+//   204: No content
 //   401: Unauthorized
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedListRule := permission.Check(t, permission.PermNodeAutoscale)
@@ -103,6 +104,10 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	rules, err := listAutoScaleRules()
 	if err != nil {
 		return err
+	}
+	if len(rules) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 	return json.NewEncoder(w).Encode(&rules)
 }
