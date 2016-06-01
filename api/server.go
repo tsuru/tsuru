@@ -29,7 +29,7 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 )
 
-const Version = "1.0.0-rc6"
+const Version = "1.0.0-rc7"
 
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
