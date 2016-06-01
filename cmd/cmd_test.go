@@ -785,9 +785,34 @@ func (s *S) TestValidateVersion(c *check.C) {
 			support:  "0.8",
 			expected: true,
 		},
+		{
+			current:  "1.0-rc2",
+			support:  "1.0-rc1",
+			expected: true,
+		},
+		{
+			current:  "1.0-rc1",
+			support:  "1.0-rc1",
+			expected: true,
+		},
+		{
+			current:  "1.0-rc1",
+			support:  "1.0-rc2",
+			expected: false,
+		},
+		{
+			current:  "1.0-rc1",
+			support:  "1.0",
+			expected: false,
+		},
+		{
+			current:  "1.0",
+			support:  "1.0-rc1",
+			expected: true,
+		},
 	}
-	for _, cs := range cases {
-		c.Check(validateVersion(cs.support, cs.current), check.Equals, cs.expected)
+	for i, cs := range cases {
+		c.Check(validateVersion(cs.support, cs.current), check.Equals, cs.expected, check.Commentf("error on %d", i))
 	}
 }
 

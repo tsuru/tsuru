@@ -13,9 +13,9 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
+	goVersion "github.com/hashicorp/go-version"
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/errors"
@@ -503,39 +503,16 @@ func filesystem() fs.Fs {
 // validateVersion checks whether current version is greater or equal to
 // supported version.
 func validateVersion(supported, current string) bool {
-	var (
-		bigger bool
-		limit  int
-	)
-	if supported == "" || supported == current {
+	if supported == "" {
 		return true
 	}
-	partsSupported := strings.Split(supported, ".")
-	partsCurrent := strings.Split(current, ".")
-	if len(partsSupported) > len(partsCurrent) {
-		limit = len(partsCurrent)
-		bigger = true
-	} else {
-		limit = len(partsSupported)
-	}
-	for i := 0; i < limit; i++ {
-		current, err := strconv.Atoi(partsCurrent[i])
-		if err != nil {
-			return false
-		}
-		supported, err := strconv.Atoi(partsSupported[i])
-		if err != nil {
-			return false
-		}
-		if current < supported {
-			return false
-		}
-		if current > supported {
-			return true
-		}
-	}
-	if bigger {
+	vSupported, err := goVersion.NewVersion(supported)
+	if err != nil {
 		return false
 	}
-	return true
+	vCurrent, err := goVersion.NewVersion(current)
+	if err != nil {
+		return false
+	}
+	return vCurrent.Compare(vSupported) >= 0
 }
