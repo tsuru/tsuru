@@ -311,6 +311,12 @@
 			"revisionTime": "2016-02-26T13:51:49-08:00"
 		},
 		{
+			"checksumSHA1": "7SszP7WOpWqdrzRQujFhuqsPQYA=",
+			"path": "github.com/hashicorp/go-version",
+			"revision": "0181db47023708a38c2d20d2fe25a5fa034d5743",
+			"revisionTime": "2016-05-19T21:27:29Z"
+		},
+		{
 			"path": "github.com/howeyc/fsnotify",
 			"revision": "5102fde921d31f59c6e45d835aa01f0213aade0f",
 			"revisionTime": "2013-11-21T08:20:02-08:00"
