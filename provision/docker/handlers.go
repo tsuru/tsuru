@@ -107,7 +107,7 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	}
 	if len(rules) == 0 {
 		w.WriteHeader(http.StatusNoContent)
-		return
+		return nil
 	}
 	return json.NewEncoder(w).Encode(&rules)
 }
