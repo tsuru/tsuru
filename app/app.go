@@ -442,13 +442,25 @@ func (app *App) BindUnit(unit *provision.Unit) error {
 	if err != nil {
 		return err
 	}
-	for _, instance := range instances {
+	var i int
+	var instance service.ServiceInstance
+	for i, instance = range instances {
 		err = instance.BindUnit(app, unit)
 		if err != nil {
 			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.ID, instance.Name, err)
+			break
 		}
 	}
-	return nil
+	if err != nil {
+		for j := i - 1; j >= 0; j-- {
+			instance = instances[j]
+			rollbackErr := instance.UnbindUnit(app, unit)
+			if rollbackErr != nil {
+				log.Errorf("Error unbinding unit %s with the service instance %s during rollback: %s", unit.ID, instance.Name, rollbackErr)
+			}
+		}
+	}
+	return err
 }
 
 func (app *App) UnbindUnit(unit *provision.Unit) error {
