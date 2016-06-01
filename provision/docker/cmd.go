@@ -372,6 +372,10 @@ func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	}
 	defer resp.Body.Close()
 	var history []autoScaleEvent
+	if resp.StatusCode == 204 {
+		ctx.Stdout.Write([]byte("There is no auto scales yet."))
+		return nil
+	}
 	err = json.NewDecoder(resp.Body).Decode(&history)
 	if err != nil {
 		return err
