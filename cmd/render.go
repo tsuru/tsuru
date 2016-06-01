@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -101,11 +102,11 @@ func splitJoinEvery(str string, n int) string {
 	breakOnAny := os.Getenv("TSURU_BREAK_ANY") != ""
 	breakChars := []rune{' ', '.', ':', '='}
 	n -= 1
-	str = strings.TrimSpace(str)
+	str = strings.TrimRightFunc(str, unicode.IsSpace)
 	lines := strings.Split(str, "\n")
 	var parts [][]rune
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
+		line = strings.TrimRightFunc(line, unicode.IsSpace)
 		lineRunes := []rune(line)
 		strLen := len(lineRunes)
 		var start, end int
