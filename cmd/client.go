@@ -54,7 +54,7 @@ func (c *Client) detectClientError(err error) error {
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
-	if token, err := ReadToken(); err == nil {
+	if token, err := ReadToken(); err == nil && token != "" {
 		request.Header.Set("Authorization", "bearer "+token)
 	}
 	request.Close = true

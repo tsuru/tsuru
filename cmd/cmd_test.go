@@ -108,6 +108,8 @@ func (s *S) TestCustomLookup(c *check.C) {
 	}
 	var stdout, stderr bytes.Buffer
 	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	mngr.Run([]string{"custom"})
 	c.Assert(stdout.String(), check.Equals, "test")
 }
@@ -118,6 +120,8 @@ func (s *S) TestCustomLookupNotFound(c *check.C) {
 	}
 	var stdout, stderr bytes.Buffer
 	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	mngr.Register(&TestCommand{})
 	mngr.Run([]string{"foo"})
 	c.Assert(stdout.String(), check.Equals, "Running TestCommand")
@@ -290,6 +294,8 @@ Tsuru likes to manage targets
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	m := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	m.e = &exiter
 	_, exists := m.Commands["help"]
 	c.Assert(exists, check.Equals, true)
 }
@@ -479,6 +485,8 @@ Foo do anything or nothing.
 func (s *S) TestVersion(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	command := version{manager: mngr}
 	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
 	err := command.Run(&context, nil)
@@ -564,6 +572,8 @@ Foo do anything or nothing.
 `
 	var stdout, stderr bytes.Buffer
 	mngr := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	mngr.Register(&TestCommand{})
 	context := Context{[]string{"foo"}, mngr.stdout, mngr.stderr, mngr.stdin}
 	command := help{manager: mngr}
@@ -621,6 +631,8 @@ func (s *S) TestTargetListIsRegistered(c *check.C) {
 
 func (s *S) TestTargetTopicIsRegistered(c *check.C) {
 	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	expected := fmt.Sprintf(targetTopic, "tsuru")
 	c.Assert(mngr.topics["target"], check.Equals, expected)
 }

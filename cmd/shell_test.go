@@ -57,6 +57,8 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.IsNil)
@@ -93,6 +95,8 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.IsNil)
@@ -124,6 +128,8 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 		Stdin:  &buf,
 	}
 	mngr := NewManager("admin", "0.1", "admin-ver", &buf, &buf, nil, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	var command ShellToContainerCmd
 	err := command.Run(&context, client)
@@ -155,6 +161,8 @@ func (s *S) TestShellToContainerSessionExpired(c *check.C) {
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	var exiter recordingExiter
+	mngr.e = &exiter
 	client := NewClient(&http.Client{Transport: &transport}, &context, mngr)
 	err = command.Run(&context, client)
 	c.Assert(err, check.NotNil)
