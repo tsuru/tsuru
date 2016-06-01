@@ -202,16 +202,16 @@ func (c *SetNodeHealingConfigCmd) Info() *cmd.Info {
 }
 
 func (c *SetNodeHealingConfigCmd) Flags() *gnuflag.FlagSet {
+	msg := "The pool name to which the configuration will apply. If unset it'll be set as default for all pools."
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.StringVar(&c.pool, "p", "", msg)
+		c.fs.StringVar(&c.pool, "pool", "", msg)
+		c.fs.BoolVar(&c.enable, "enable", false, "Enable active node healing")
+		c.fs.BoolVar(&c.disable, "disable", false, "Disable active node healing")
+		c.fs.IntVar(&c.maxUnresponsive, "max-unresponsive", -1, "Number of seconds tsuru will wait for the node to notify it's alive")
+		c.fs.IntVar(&c.maxUnsuccessful, "max-unsuccessful", -1, "Number of seconds tsuru will wait for the node to run successul checks")
 	}
-	msg := "The pool name to which the configuration will apply. If unset it'll be set as default for all pools."
-	c.fs.StringVar(&c.pool, "p", "", msg)
-	c.fs.StringVar(&c.pool, "pool", "", msg)
-	c.fs.BoolVar(&c.enable, "enable", false, "Enable active node healing")
-	c.fs.BoolVar(&c.disable, "disable", false, "Disable active node healing")
-	c.fs.IntVar(&c.maxUnresponsive, "max-unresponsive", -1, "Number of seconds tsuru will wait for the node to notify it's alive")
-	c.fs.IntVar(&c.maxUnsuccessful, "max-unsuccessful", -1, "Number of seconds tsuru will wait for the node to run successul checks")
 	return c.fs
 }
 
@@ -276,13 +276,13 @@ default configuration.`,
 func (c *DeleteNodeHealingConfigCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = c.ConfirmationCommand.Flags()
+		msg := "The pool name from where the configuration will be removed. If unset it'll delete the default healing configuration."
+		c.fs.StringVar(&c.pool, "p", "", msg)
+		c.fs.StringVar(&c.pool, "pool", "", msg)
+		c.fs.BoolVar(&c.enabled, "enabled", false, "Remove the 'enabled' configuration option")
+		c.fs.BoolVar(&c.maxUnresponsive, "max-unresponsive", false, "Remove the 'max-unresponsive' configuration option")
+		c.fs.BoolVar(&c.maxUnsuccessful, "max-unsuccessful", false, "Remove the 'max-unsuccessful' configuration option")
 	}
-	msg := "The pool name from where the configuration will be removed. If unset it'll delete the default healing configuration."
-	c.fs.StringVar(&c.pool, "p", "", msg)
-	c.fs.StringVar(&c.pool, "pool", "", msg)
-	c.fs.BoolVar(&c.enabled, "enabled", false, "Remove the 'enabled' configuration option")
-	c.fs.BoolVar(&c.maxUnresponsive, "max-unresponsive", false, "Remove the 'max-unresponsive' configuration option")
-	c.fs.BoolVar(&c.maxUnsuccessful, "max-unsuccessful", false, "Remove the 'max-unsuccessful' configuration option")
 	return c.fs
 }
 
