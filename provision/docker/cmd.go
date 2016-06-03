@@ -192,7 +192,7 @@ func (c *removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 	}
 	v := url.Values{}
 	if c.destroy {
-		v.Set("remove_iaas", "true")
+		v.Set("remove-iaas", "true")
 	}
 	v.Set("no-rebalance", strconv.FormatBool(c.noRebalance))
 	u, err := cmd.GetURL(fmt.Sprintf("/docker/node/%s?%s", ctx.Args[0], v.Encode()))

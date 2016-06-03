@@ -95,7 +95,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *check.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node/http://localhost:8080")
-			raw := req.URL.RawQuery == "no-rebalance=false&remove_iaas=true"
+			raw := req.URL.RawQuery == "no-rebalance=false&remove-iaas=true"
 			method := req.Method == "DELETE"
 			return url && method && raw
 		},
