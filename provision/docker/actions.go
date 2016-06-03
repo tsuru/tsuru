@@ -478,15 +478,16 @@ var setRouterHealthcheck = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		msg := "router default"
-		if yamlData.Healthcheck.Path != "" && yamlData.Healthcheck.Status != 0 {
-			msg = fmt.Sprintf("Path: %s, Status: %d", yamlData.Healthcheck.Path, yamlData.Healthcheck.Status)
+		hcData := yamlData.Healthcheck.ToRouterHC()
+		msg := fmt.Sprintf("Path: %s", hcData.Path)
+		if hcData.Status != 0 {
+			msg = fmt.Sprintf("%s, Status: %d", msg, hcData.Status)
+		}
+		if hcData.Body != "" {
+			msg = fmt.Sprintf("%s, Body: %d", msg, hcData.Body)
 		}
 		fmt.Fprintf(writer, "\n---- Setting router healthcheck (%s) ----\n", msg)
-		err = hcRouter.SetHealthcheck(args.app.GetName(), router.HealthcheckData{
-			Path:   yamlData.Healthcheck.Path,
-			Status: yamlData.Healthcheck.Status,
-		})
+		err = hcRouter.SetHealthcheck(args.app.GetName(), hcData)
 		return newContainers, err
 	},
 	Backward: func(ctx action.BWContext) {
@@ -505,10 +506,8 @@ var setRouterHealthcheck = action.Action{
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err.Error())
 		}
-		err = hcRouter.SetHealthcheck(args.app.GetName(), router.HealthcheckData{
-			Path:   yamlData.Healthcheck.Path,
-			Status: yamlData.Healthcheck.Status,
-		})
+		hcData := yamlData.Healthcheck.ToRouterHC()
+		err = hcRouter.SetHealthcheck(args.app.GetName(), hcData)
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error setting healthcheck: %s", err.Error())
 		}

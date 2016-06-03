@@ -16,6 +16,7 @@ import (
 
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/router"
 )
 
 var (
@@ -452,7 +453,22 @@ type TsuruYamlHealthcheck struct {
 	Method          string
 	Status          int
 	Match           string
-	AllowedFailures int `json:"allowed_failures" bson:"allowed_failures"`
+	RouterBody      string
+	UseInRouter     bool `json:"use_in_router" bson:"use_in_router"`
+	AllowedFailures int  `json:"allowed_failures" bson:"allowed_failures"`
+}
+
+func (hc TsuruYamlHealthcheck) ToRouterHC() router.HealthcheckData {
+	if hc.UseInRouter {
+		return router.HealthcheckData{
+			Path:   hc.Path,
+			Status: hc.Status,
+			Body:   hc.RouterBody,
+		}
+	}
+	return router.HealthcheckData{
+		Path: "/",
+	}
 }
 
 type TsuruYamlData struct {

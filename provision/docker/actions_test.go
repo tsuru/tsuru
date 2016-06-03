@@ -423,9 +423,10 @@ func (s *S) TestSetRouterHealthcheckForward(c *check.C) {
 	imageName := "tsuru/app-" + app.GetName()
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
-			"path":   "/x/y",
-			"status": http.StatusCreated,
-			"match":  "ignored",
+			"path":          "/x/y",
+			"status":        http.StatusCreated,
+			"match":         "ignored",
+			"use_in_router": true,
 		},
 	}
 	err := saveImageCustomData(imageName, customData)
@@ -450,14 +451,44 @@ func (s *S) TestSetRouterHealthcheckForward(c *check.C) {
 	})
 }
 
-func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
+func (s *S) TestSetRouterHealthcheckForwardNoUseInRouter(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageName := "tsuru/img1"
+	imageName := "tsuru/app-" + app.GetName()
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
 			"status": http.StatusCreated,
 			"match":  "ignored",
+		},
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	args := changeUnitsPipelineArgs{
+		app:         app,
+		provisioner: s.p,
+		imageId:     imageName,
+	}
+	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
+	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
+	r, err := setRouterHealthcheck.Forward(context)
+	c.Assert(err, check.IsNil)
+	containers := r.([]container.Container)
+	c.Assert(containers, check.HasLen, 1)
+	hcData := routertest.FakeRouter.GetHealthcheck(app.GetName())
+	c.Assert(hcData, check.DeepEquals, router.HealthcheckData{Path: "/"})
+}
+
+func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	imageName := "tsuru/img1"
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":          "/x/y",
+			"status":        http.StatusCreated,
+			"match":         "ignored",
+			"use_in_router": true,
 		},
 	}
 	err := saveImageCustomData(imageName, customData)
@@ -481,7 +512,7 @@ func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
 	bwcontext := action.BWContext{Params: []interface{}{args}}
 	setRouterHealthcheck.Backward(bwcontext)
 	hcData = routertest.FakeRouter.GetHealthcheck(app.GetName())
-	c.Assert(hcData, check.DeepEquals, router.HealthcheckData{})
+	c.Assert(hcData, check.DeepEquals, router.HealthcheckData{Path: "/"})
 }
 
 func (s *S) TestRemoveOldRoutesName(c *check.C) {
