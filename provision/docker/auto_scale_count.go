@@ -39,8 +39,8 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scale
 		return nil, nil
 	}
 	nodesToAdd := -freeSlots / a.rule.MaxContainerCount
-	if nodesToAdd == 0 {
-		nodesToAdd = 1
+	if freeSlots%a.rule.MaxContainerCount != 0 {
+		nodesToAdd++
 	}
 	return &scalerResult{
 		toAdd:  nodesToAdd,

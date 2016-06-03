@@ -344,6 +344,47 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	c.Assert(containers3, check.HasLen, 2)
 }
 
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:        make(chan bool),
+		provisioner: s.p,
+	}
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 3)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -3, adding 2 nodes")
+	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	containers3, err := s.p.listContainersByHost(net.URLToHost(nodes[2].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers1, check.HasLen, 2)
+	c.Assert(containers2, check.HasLen, 2)
+	c.Assert(containers3, check.HasLen, 1)
+}
+
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
