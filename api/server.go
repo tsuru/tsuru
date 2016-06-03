@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/codegangsta/negroni"
@@ -277,6 +280,55 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
+		shutdownChan := make(chan bool)
+		shutdownTimeout, _ := config.GetInt("shutdown-timeout")
+		if shutdownTimeout == 0 {
+			shutdownTimeout = 10 * 60
+		}
+		idleTracker := newIdleTracker()
+		shutdown.Register(idleTracker)
+		shutdown.Register(&logTracker)
+		readTimeout, _ := config.GetInt("server:read-timeout")
+		writeTimeout, _ := config.GetInt("server:write-timeout")
+		listen, err := config.GetString("listen")
+		if err != nil {
+			fatal(err)
+		}
+		srv := &graceful.Server{
+			Timeout: time.Duration(shutdownTimeout) * time.Second,
+			Server: &http.Server{
+				ReadTimeout:  time.Duration(readTimeout) * time.Second,
+				WriteTimeout: time.Duration(writeTimeout) * time.Second,
+				Addr:         listen,
+				Handler:      n,
+			},
+			ConnState: func(conn net.Conn, state http.ConnState) {
+				idleTracker.trackConn(conn, state)
+			},
+			NoSignalHandling: true,
+			ShutdownInitiated: func() {
+				fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
+				handlers := shutdown.All()
+				wg := sync.WaitGroup{}
+				for _, h := range handlers {
+					wg.Add(1)
+					go func(h shutdown.Shutdownable) {
+						defer wg.Done()
+						fmt.Printf("running shutdown handler for %v...\n", h)
+						h.Shutdown()
+						fmt.Printf("running shutdown handler for %v. DONE.\n", h)
+					}(h)
+				}
+				wg.Wait()
+				close(shutdownChan)
+			},
+		}
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-sigChan
+			srv.Stop(srv.Timeout)
+		}()
 		var startupMessage string
 		routers, err := router.List()
 		if err != nil {
@@ -343,48 +395,6 @@ func RunServer(dry bool) http.Handler {
 			}
 		}
 		fmt.Println("    Components checked.")
-		listen, err := config.GetString("listen")
-		if err != nil {
-			fatal(err)
-		}
-		shutdownChan := make(chan bool)
-		shutdownTimeout, _ := config.GetInt("shutdown-timeout")
-		if shutdownTimeout == 0 {
-			shutdownTimeout = 10 * 60
-		}
-		idleTracker := newIdleTracker()
-		shutdown.Register(idleTracker)
-		shutdown.Register(&logTracker)
-		readTimeout, _ := config.GetInt("server:read-timeout")
-		writeTimeout, _ := config.GetInt("server:write-timeout")
-		srv := &graceful.Server{
-			Timeout: time.Duration(shutdownTimeout) * time.Second,
-			Server: &http.Server{
-				ReadTimeout:  time.Duration(readTimeout) * time.Second,
-				WriteTimeout: time.Duration(writeTimeout) * time.Second,
-				Addr:         listen,
-				Handler:      n,
-			},
-			ConnState: func(conn net.Conn, state http.ConnState) {
-				idleTracker.trackConn(conn, state)
-			},
-			ShutdownInitiated: func() {
-				fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
-				handlers := shutdown.All()
-				wg := sync.WaitGroup{}
-				for _, h := range handlers {
-					wg.Add(1)
-					go func(h shutdown.Shutdownable) {
-						defer wg.Done()
-						fmt.Printf("running shutdown handler for %v...\n", h)
-						h.Shutdown()
-						fmt.Printf("running shutdown handler for %v. DONE.\n", h)
-					}(h)
-				}
-				wg.Wait()
-				close(shutdownChan)
-			},
-		}
 		tls, _ := config.GetBool("use-tls")
 		if tls {
 			var (
