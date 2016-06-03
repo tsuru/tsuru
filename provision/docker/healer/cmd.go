@@ -92,10 +92,6 @@ func (c *ListHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 	}
 	defer resp.Body.Close()
 	var history []HealingEvent
-	if resp.StatusCode == http.StatusNoContent {
-		ctx.Stdout.Write("There is no healings yet.")
-		return nil
-	}
 	if resp.StatusCode == http.StatusOK {
 		err = json.NewDecoder(resp.Body).Decode(&history)
 		if err != nil {
