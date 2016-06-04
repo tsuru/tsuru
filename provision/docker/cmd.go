@@ -104,9 +104,9 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 }
 
 type updateNodeToSchedulerCmd struct {
-	fs       *gnuflag.FlagSet
-	disabled bool
-	enabled  bool
+	fs      *gnuflag.FlagSet
+	disable bool
+	enable  bool
 }
 
 func (updateNodeToSchedulerCmd) Info() *cmd.Info {
@@ -125,8 +125,8 @@ scheduler won't consider it when selecting a node to receive containers.`,
 func (a *updateNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if a.fs == nil {
 		a.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
-		a.fs.BoolVar(&a.disabled, "disable", false, "Disable node in scheduler.")
-		a.fs.BoolVar(&a.enabled, "enable", false, "Enable node in scheduler.")
+		a.fs.BoolVar(&a.disable, "disable", false, "Disable node in scheduler.")
+		a.fs.BoolVar(&a.enable, "enable", false, "Enable node in scheduler.")
 	}
 	return a.fs
 }
@@ -134,8 +134,8 @@ func (a *updateNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	opts := updateNodeOptions{
 		Address:  ctx.Args[0],
-		Disable:  a.disabled,
-		Enable:   a.enabled,
+		Disable:  a.disable,
+		Enable:   a.enable,
 		Metadata: map[string]string{},
 	}
 	for _, param := range ctx.Args[1:] {
