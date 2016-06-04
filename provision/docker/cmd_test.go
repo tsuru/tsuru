@@ -328,10 +328,17 @@ func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
 			method := req.Method == "PUT"
-			address := req.FormValue("address") == "http://localhost:1111"
-			x := req.FormValue("x") == "y"
-			y := req.FormValue("y") == "z"
-			disabled := req.FormValue("disable") == "false"
+			var params updateNodeOptions
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err = dec.DecodeValues(&params, req.Form)
+			c.Assert(err, check.IsNil)
+			address := params.Address == "http://localhost:1111"
+			x := params.Metadata["x"] == "y"
+			y := params.Metadata["y"] == "z"
+			disabled := params.Disable == false
 			return url && method && address && x && y && disabled
 		},
 	}
@@ -349,8 +356,14 @@ func (s *S) TestUpdateNodeToDisableCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			disabled := req.FormValue("disable") == "true"
-			return disabled
+			var params updateNodeOptions
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err = dec.DecodeValues(&params, req.Form)
+			c.Assert(err, check.IsNil)
+			return params.Disable
 		},
 	}
 	manager := cmd.Manager{}
@@ -368,8 +381,14 @@ func (s *S) TestUpdateNodeToEnabledCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			enabled := req.FormValue("enable") == "true"
-			return enabled
+			var params updateNodeOptions
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err = dec.DecodeValues(&params, req.Form)
+			c.Assert(err, check.IsNil)
+			return params.Enable
 		},
 	}
 	manager := cmd.Manager{}

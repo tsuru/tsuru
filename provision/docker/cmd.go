@@ -132,17 +132,23 @@ func (a *updateNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 }
 
 func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	v := url.Values{}
+	opts := updateNodeOptions{
+		Address:  ctx.Args[0],
+		Disable:  a.disabled,
+		Enable:   a.enabled,
+		Metadata: map[string]string{},
+	}
 	for _, param := range ctx.Args[1:] {
 		if strings.Contains(param, "=") {
 			keyValue := strings.SplitN(param, "=", 2)
-			v.Set(keyValue[0], keyValue[1])
+			opts.Metadata[keyValue[0]] = keyValue[1]
 		}
 	}
-	v.Set("address", ctx.Args[0])
-	v.Set("disable", strconv.FormatBool(a.disabled))
-	v.Set("enable", strconv.FormatBool(a.enabled))
 	u, err := cmd.GetURL("/docker/node")
+	if err != nil {
+		return err
+	}
+	v, err := form.EncodeToValues(&opts)
 	if err != nil {
 		return err
 	}
