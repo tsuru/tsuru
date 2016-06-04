@@ -389,6 +389,13 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return json.NewEncoder(w).Encode(result)
 }
 
+type updateNodeOptions struct {
+	Address  string
+	Metadata map[string]string
+	Enable   bool
+	Disable  bool
+}
+
 // title: update nodes
 // path: /docker/node
 // method: PUT
@@ -403,18 +410,17 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	params := map[string]string{}
+	var params updateNodeOptions
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	address := params["address"]
-	if params["address"] == "" {
+	if params.Address == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
-	oldNode, err := mainDockerProvisioner.Cluster().GetNode(address)
+	oldNode, err := mainDockerProvisioner.Cluster().GetNode(params.Address)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
@@ -428,7 +434,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !allowedOldPool {
 		return permission.ErrUnauthorized
 	}
-	newPool, ok := params["pool"]
+	newPool, ok := params.Metadata["pool"]
 	if ok {
 		allowedNewPool := permission.Check(t, permission.PermNodeUpdate,
 			permission.Context(permission.CtxPool, newPool),
@@ -437,20 +443,17 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return permission.ErrUnauthorized
 		}
 	}
-	delete(params, "address")
-	node := cluster.Node{Address: address, Metadata: params}
-	disable, _ := strconv.ParseBool(params["disable"])
-	enable, _ := strconv.ParseBool(params["enable"])
-	if disable && enable {
+	node := cluster.Node{Address: params.Address, Metadata: params.Metadata}
+	if params.Disable && params.Enable {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "You can't make a node enable and disable at the same time.",
 		}
 	}
-	if disable {
+	if params.Disable {
 		node.CreationStatus = cluster.NodeCreationStatusDisabled
 	}
-	if enable {
+	if params.Enable {
 		node.CreationStatus = cluster.NodeCreationStatusCreated
 	}
 	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)

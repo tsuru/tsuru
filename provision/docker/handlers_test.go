@@ -1199,14 +1199,20 @@ func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", "localhost:1999")
-	v.Set("m1", "")
-	v.Set("m2", "v9")
-	v.Set("m3", "v8")
+	params := updateNodeOptions{
+		Address: "localhost:1999",
+		Enable:  true,
+		Metadata: map[string]string{
+			"m1": "",
+			"m2": "v9",
+			"m3": "v8",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/docker/node", b)
+	request, err := http.NewRequest("PUT", "/1.0/docker/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -1257,11 +1263,16 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", "127.0.0.2:1999")
-	v.Set("m1", "")
-	v.Set("m2", "v9")
-	v.Set("m3", "v8")
+	params := updateNodeOptions{
+		Address: "127.0.0.2:1999",
+		Metadata: map[string]string{
+			"m1": "",
+			"m2": "v9",
+			"m3": "v8",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/docker/node", b)
@@ -1287,9 +1298,12 @@ func (s *HandlersSuite) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", "localhost:1999")
-	v.Set("disable", "true")
+	params := updateNodeOptions{
+		Address: "localhost:1999",
+		Disable: true,
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/docker/node", b)
@@ -1312,9 +1326,11 @@ func (s *HandlersSuite) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", "localhost:1999")
-	v.Set("enable", "true")
+	params := updateNodeOptions{
+		Address: "localhost:1999",
+		Enable:  true,
+	}
+	v, err := form.EncodeToValues(&params)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/docker/node", b)
@@ -1337,8 +1353,9 @@ func (s *HandlersSuite) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	jsonBody := `{"address": "localhost:1999"}`
-	b := bytes.NewBufferString(jsonBody)
+	params := updateNodeOptions{Address: "localhost:1999"}
+	v, err := form.EncodeToValues(&params)
+	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/docker/node?enabled=true&disabled=true", b)
 	c.Assert(err, check.IsNil)
@@ -1355,9 +1372,12 @@ func (s *HandlersSuite) TestUpdateNodeHandlerEnableCanMoveContainers(c *check.C)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", "localhost:2375")
-	v.Set("enable", "true")
+	params := updateNodeOptions{
+		Address: "localhost:2375",
+		Enable:  true,
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/docker/node", b)
@@ -1401,9 +1421,12 @@ func (s *HandlersSuite) TestUpdateNodeHandlerDisableCannotMoveContainers(c *chec
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", "localhost:2375")
-	v.Set("disable", "true")
+	params := updateNodeOptions{
+		Address: "localhost:2375",
+		Disable: true,
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/docker/node", b)
