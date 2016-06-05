@@ -301,7 +301,7 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 	isSuccess := true
 	for _, c := range nodeData.Checks {
 		isSuccess = c.Successful
-		if isSuccess == false {
+		if !isSuccess {
 			break
 		}
 	}

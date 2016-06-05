@@ -352,7 +352,7 @@ func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 			address := params.Address == "http://localhost:1111"
 			x := params.Metadata["x"] == "y"
 			y := params.Metadata["y"] == "z"
-			disabled := params.Disable == false
+			disabled := !params.Disable
 			return url && method && address && x && y && disabled
 		},
 	}
