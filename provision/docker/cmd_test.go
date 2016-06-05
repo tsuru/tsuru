@@ -27,11 +27,18 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
+			var params addNodeOptions
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err = dec.DecodeValues(&params, req.Form)
+			c.Assert(err, check.IsNil)
 			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
 			method := req.Method == "POST"
-			address := req.FormValue("address") == "http://localhost:8080"
-			pool := req.FormValue("pool") == "poolTest"
-			register := req.FormValue("register") == "false"
+			address := params.Metadata["address"] == "http://localhost:8080"
+			pool := params.Metadata["pool"] == "poolTest"
+			register := !params.Register
 			return url && method && register && address && pool
 		},
 	}
@@ -52,11 +59,18 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: `{"error": "some err"}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
+			var params addNodeOptions
+			dec := form.NewDecoder(nil)
+			dec.IgnoreUnknownKeys(true)
+			err = dec.DecodeValues(&params, req.Form)
+			c.Assert(err, check.IsNil)
 			url := strings.HasSuffix(req.URL.Path, "/1.0/docker/node")
 			method := req.Method == "POST"
-			address := req.FormValue("address") == "http://localhost:8080"
-			pool := req.FormValue("pool") == "poolTest"
-			register := req.FormValue("register") == "false"
+			address := params.Metadata["address"] == "http://localhost:8080"
+			pool := params.Metadata["pool"] == "poolTest"
+			register := !params.Register
 			return url && method && register && address && pool
 		},
 	}

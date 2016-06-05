@@ -66,14 +66,20 @@ Parameters with special meaning:
 }
 
 func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	v := url.Values{}
+	opts := addNodeOptions{
+		Register: a.register,
+		Metadata: map[string]string{},
+	}
 	for _, param := range ctx.Args {
 		if strings.Contains(param, "=") {
 			keyValue := strings.SplitN(param, "=", 2)
-			v.Set(keyValue[0], keyValue[1])
+			opts.Metadata[keyValue[0]] = keyValue[1]
 		}
 	}
-	v.Set("register", strconv.FormatBool(a.register))
+	v, err := form.EncodeToValues(&opts)
+	if err != nil {
+		return err
+	}
 	u, err := cmd.GetURL("/docker/node")
 	if err != nil {
 		return err
