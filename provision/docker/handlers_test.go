@@ -187,11 +187,16 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("address", server.URL())
-	v.Set("pool", "pool1")
-	v.Set("register", "true")
-	req, err := http.NewRequest("POST", "/docker/node", strings.NewReader(v.Encode()))
+	params := addNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"address": server.URL(),
+			"pool":    "pool1",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("POST", "/1.0/docker/node", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -220,10 +225,15 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("pool", "pool1")
-	v.Set("id", "test1")
-	v.Set("register", "false")
+	params := addNodeOptions{
+		Register: false,
+		Metadata: map[string]string{
+			"id":   "test1",
+			"pool": "pool1",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	req, err := http.NewRequest("POST", "/docker/node", b)
 	c.Assert(err, check.IsNil)
@@ -267,11 +277,16 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
-	v := url.Values{}
-	v.Set("pool", "pool1")
-	v.Set("id", "test1")
-	v.Set("iaas", "another-test-iaas")
-	v.Set("register", "false")
+	params := addNodeOptions{
+		Register: false,
+		Metadata: map[string]string{
+			"pool": "pool1",
+			"id":   "test1",
+			"iaas": "another-test-iaas",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
 	c.Assert(err, check.IsNil)
@@ -303,10 +318,15 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
 	defer provision.RemovePool("pool1")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
-	v := url.Values{}
-	v.Set("address", server.URL())
-	v.Set("pool", "pool1")
-	v.Set("register", "true")
+	params := addNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"pool":    "pool1",
+			"address": server.URL(),
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	req, err := http.NewRequest("POST", "/docker/node", b)
 	c.Assert(err, check.IsNil)
@@ -330,9 +350,14 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
 func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
-	v := url.Values{}
-	v.Set("register", "true")
-	v.Set("pool", "pool1")
+	params := addNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"pool": "pool1",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	req, err := http.NewRequest("POST", "/docker/node", b)
 	c.Assert(err, check.IsNil)
@@ -351,10 +376,15 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
-	v := url.Values{}
-	v.Set("address", "/invalid")
-	v.Set("pool", "pool1")
-	v.Set("register", "true")
+	params := addNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"address": "/invalid",
+			"pool":    "pool1",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	req, err := http.NewRequest("POST", "/docker/node", b)
 	c.Assert(err, check.IsNil)
@@ -368,10 +398,15 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result["Error"], check.Equals, "Invalid address url: host cannot be empty\n\n")
-	v = url.Values{}
-	v.Set("address", "xxx://abc/invalid")
-	v.Set("pool", "pool1")
-	v.Set("register", "true")
+	params = addNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"address": "xxx://abc/invalid",
+			"pool":    "pool1",
+		},
+	}
+	v, err = form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
 	b = strings.NewReader(v.Encode())
 	req, err = http.NewRequest("POST", "/docker/node", b)
 	c.Assert(err, check.IsNil)

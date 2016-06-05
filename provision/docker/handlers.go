@@ -211,6 +211,11 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 	return response, err
 }
 
+type addNodeOptions struct {
+	Metadata map[string]string
+	Register bool
+}
+
 // title: add node
 // path: /docker/node
 // method: POST
@@ -225,40 +230,39 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	params := map[string]string{}
+	var params addNodeOptions
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	if templateName, ok := params["template"]; ok {
-		params, err = iaas.ExpandTemplate(templateName)
+	if templateName, ok := params.Metadata["template"]; ok {
+		params.Metadata, err = iaas.ExpandTemplate(templateName)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 	}
-	pool := params["pool"]
+	pool := params.Metadata["pool"]
 	if pool == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
 	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, pool)) {
 		return permission.ErrUnauthorized
 	}
-	isRegister, _ := strconv.ParseBool(params["register"])
+	isRegister := params.Register
 	if !isRegister {
 		canCreateMachine := permission.Check(t, permission.PermMachineCreate,
-			permission.Context(permission.CtxIaaS, params["iaas"]))
+			permission.Context(permission.CtxIaaS, params.Metadata["iaas"]))
 		if !canCreateMachine {
 			return permission.ErrUnauthorized
 		}
 	}
-	delete(params, "register")
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	response, err := mainDockerProvisioner.addNodeForParams(params, isRegister)
+	response, err := mainDockerProvisioner.addNodeForParams(params.Metadata, isRegister)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{
 			Error: fmt.Sprintf("%s\n\n%s", err, response["description"]),
