@@ -622,7 +622,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -664,7 +664,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -724,7 +724,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -773,7 +773,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=myplan", "description="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=myplan", "description=", "pool="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -813,7 +813,50 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=my app description"},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=my app description", "pool="},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestCreateAppWithPool(c *check.C) {
+	err := s.conn.Pools().Insert(bson.M{"_id": "mypool1", "public": true})
+	c.Assert(err, check.IsNil)
+	appName := "someapp"
+	data, err := url.QueryUnescape("name=someapp&platform=zend&pool=mypool1")
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	repoURL := "git@" + repositorytest.ServerHost + ":" + appName + ".git"
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(obtained, check.DeepEquals, expected)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": appName}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(gotApp.Pool, check.Equals, "mypool1")
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	u, _ := token.User()
+	action := rectest.Action{
+		Action: "create-app",
+		User:   u.Email,
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool=mypool1"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -960,7 +1003,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=platDis", "plan=", "description="},
+		Extra:  []interface{}{"app=someapp", "platform=platDis", "plan=", "description=", "pool="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(a.Name)

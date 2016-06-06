@@ -254,6 +254,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Plan:        app.Plan{Name: r.FormValue("plan")},
 		Name:        r.FormValue("name"),
 		Description: r.FormValue("description"),
+		Pool:        r.FormValue("pool"),
 	}
 	var err error
 	if a.TeamOwner == "" {
@@ -283,7 +284,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
 		}
 	}
-	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name, "description="+a.Description)
+	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name, "description="+a.Description, "pool="+a.Pool)
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
