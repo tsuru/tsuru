@@ -79,6 +79,7 @@ Here is how you can configure a health check in your yaml file:
       status: 200
       match: .*OKAY.*
       allowed_failures: 0
+      use_in_router: false
 
 * ``healthcheck:path``: Which path to call in your application. This path will be
   called for each unit. It is the only mandatory field, if it's not set your
@@ -94,3 +95,7 @@ Here is how you can configure a health check in your yaml file:
   ``\n`` (``s`` flag).
 * ``healthcheck:allowed_failures``: The number of allowed failures before that the
   health check consider the application as unhealthy. Defaults to 0.
+
+* ``healthcheck:use_in_router``: Whether this health check path should also be
+  registered in the router. Please, ensure that the check is consistent to
+  prevent units being disabled by the router. Defaults to false.
