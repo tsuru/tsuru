@@ -379,8 +379,11 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 	return err
 }
 
-func (p *dockerProvisioner) Rollback(app provision.App, imageId string, w io.Writer) (string, error) {
-	return imageId, p.deploy(app, imageId, w)
+func (p *dockerProvisioner) Rollback(a provision.App, imageId string, w io.Writer) (string, error) {
+	if _, err := app.GetImage(a.GetName(), imageId); err != nil {
+		return "", stderr.New(fmt.Sprintf("Image %q %q", imageId, err.Error()))
+	}
+	return imageId, p.deploy(a, imageId, w)
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {

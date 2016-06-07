@@ -1818,6 +1818,14 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasRoute(app1.GetName(), addr2.String()), check.Equals, true)
 }
 
+func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
+	a := provisiontest.NewFakeApp("otherapp", "python", 1)
+	_, err := s.p.Rollback(a, "inexist", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Image \"inexist\" \"not found\"")
+
+}
+
 func (s *S) TestProvisionerStart(c *check.C) {
 	err := s.storage.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
