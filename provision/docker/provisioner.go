@@ -899,7 +899,6 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
 	cont, err := p.GetContainer(unit.ID)
-
 	if _, ok := err.(*provision.UnitNotFoundError); ok && unit.Name != "" {
 		cont, err = p.GetContainerByName(unit.Name)
 	}
@@ -908,6 +907,9 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	}
 	if cont.Status == provision.StatusBuilding.String() || cont.Status == provision.StatusAsleep.String() {
 		return nil
+	}
+	if status == provision.StatusStopped && cont.Status != provision.StatusStopped.String() {
+		status = provision.StatusError
 	}
 	if unit.AppName != "" && cont.AppName != unit.AppName {
 		return stderr.New("wrong app name")
