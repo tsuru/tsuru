@@ -316,6 +316,7 @@ func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(alocPorts, check.HasLen, len(conts))
 	for _, cont := range conts {
+		c.Assert(cont, check.NotNil)
 		dockerContainer, err := client.InspectContainer(cont.ID)
 		c.Assert(err, check.IsNil)
 		c.Assert(dockerContainer.State.Running, check.Equals, true)
