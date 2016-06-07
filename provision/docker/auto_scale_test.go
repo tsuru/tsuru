@@ -674,9 +674,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
-	defer config.Unset("docker:scheduler:max-used-memory")
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	defer config.Unset("docker:scheduler:total-memory-metadata")
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 9}},
 		app:         s.appInstance,
@@ -692,19 +690,20 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	nodes, err := s.p.cluster.Nodes()
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 3)
-	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Nodes, check.HasLen, 2)
 	c.Assert(evts[0].Reason, check.Equals, "can't add 4194304 bytes to an existing node, adding 2 nodes")
+	c.Assert(evts[0].Log, check.Matches, `(?s).*new machine created: .*? - started!.*new machine created: .*? - started!.*`)
+	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 3)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
