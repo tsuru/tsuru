@@ -111,6 +111,9 @@ func (s *AutoScaleSuite) TearDownTest(c *check.C) {
 	s.node3.Stop()
 	s.testRepoRollback()
 	config.Unset("docker:auto-scale:max-container-count")
+	config.Unset("docker:auto-scale:prevent-rebalance")
+	config.Unset("docker:auto-scale:metadata-filter")
+	config.Unset("docker:auto-scale:scale-down-ratio")
 }
 
 func (s *AutoScaleSuite) TearDownSuite(c *check.C) {
