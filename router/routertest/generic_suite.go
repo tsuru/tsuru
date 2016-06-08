@@ -365,6 +365,34 @@ func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *RouterSuite) TestCNames(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host2.com", name)
+	c.Assert(err, check.IsNil)
+	cnames, err := s.Router.CNames(name)
+	url1, err := url.Parse("my.host.com")
+	c.Assert(err, check.IsNil)
+	url2, err := url.Parse("my.host2.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(err, check.IsNil)
+	expected := []*url.URL{url1, url2}
+	c.Assert(cnames, check.DeepEquals, expected)
+	err = s.Router.UnsetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.UnsetCName("my.host.com", name)
+	c.Assert(err, check.Equals, router.ErrCNameNotFound)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *RouterSuite) TestSetUnsetCName(c *check.C) {
 	name := "backend1"
 	err := s.Router.AddBackend(name)
