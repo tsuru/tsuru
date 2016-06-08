@@ -47,6 +47,48 @@ func (s *ExternalSuite) TearDownSuite(c *check.C) {
 	conn.Apps().Database.DropDatabase()
 }
 
+func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
+	backend1 := "bx1"
+	backend2 := "bx2"
+	r, err := router.Get("fake")
+	c.Assert(err, check.IsNil)
+	err = r.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://127.0.0.1")
+	c.Assert(err, check.IsNil)
+	r.AddRoute(backend1, addr1)
+	err = r.SetCName("cname.com", backend1)
+	c.Assert(err, check.IsNil)
+	err = r.AddBackend(backend2)
+	c.Assert(err, check.IsNil)
+	addr2, err := url.Parse("http://10.10.10.10")
+	c.Assert(err, check.IsNil)
+	r.AddRoute(backend2, addr2)
+	err = router.Swap(r, backend1, backend2, true)
+	c.Assert(err, check.IsNil)
+	routes1, err := r.Routes(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes1, check.DeepEquals, []*url.URL{addr1})
+	routes2, err := r.Routes(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes2, check.DeepEquals, []*url.URL{addr2})
+	name1, err := router.Retrieve(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(name1, check.Equals, backend1)
+	name2, err := router.Retrieve(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(name2, check.Equals, backend2)
+	cnames, err := r.CNames(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(cnames, check.HasLen, 0)
+	u, err := url.Parse("cname.com")
+	c.Assert(err, check.IsNil)
+	expected := []*url.URL{u}
+	cnames, err = r.CNames(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(expected, check.DeepEquals, cnames)
+}
+
 func (s *ExternalSuite) TestSwap(c *check.C) {
 	backend1 := "b1"
 	backend2 := "b2"
@@ -58,7 +100,7 @@ func (s *ExternalSuite) TestSwap(c *check.C) {
 	r.AddBackend(backend2)
 	addr2, _ := url.Parse("http://10.10.10.10")
 	r.AddRoute(backend2, addr2)
-	err = router.Swap(r, backend1, backend2)
+	err = router.Swap(r, backend1, backend2, false)
 	c.Assert(err, check.IsNil)
 	routes1, err := r.Routes(backend1)
 	c.Assert(err, check.IsNil)
@@ -97,8 +139,8 @@ func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
 	err = r2.AddRoute(backend2, addr2)
 	c.Assert(err, check.IsNil)
 	defer r2.RemoveRoute(backend2, addr2)
-	err = router.Swap(r1, backend1, backend2)
+	err = router.Swap(r1, backend1, backend2, false)
 	c.Assert(err, check.ErrorMatches, `swap is only allowed between routers of the same kind. "bb1" uses "fake", "bb2" uses "hipache"`)
-	err = router.Swap(r2, backend1, backend2)
+	err = router.Swap(r2, backend1, backend2, false)
 	c.Assert(err, check.ErrorMatches, `swap is only allowed between routers of the same kind. "bb1" uses "fake", "bb2" uses "hipache"`)
 }

@@ -556,8 +556,8 @@ func (r *hipacheRouter) removeElements(name string, addresses []string) error {
 	return nil
 }
 
-func (r *hipacheRouter) Swap(backend1, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+func (r *hipacheRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *hipacheRouter) StartupMessage() (string, error) {

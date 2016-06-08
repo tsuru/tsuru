@@ -216,8 +216,8 @@ func (r *galebRouter) Addr(name string) (string, error) {
 	return r.virtualHostName(backendName), nil
 }
 
-func (r *galebRouter) Swap(backend1, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+func (r *galebRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *galebRouter) Routes(name string) ([]*url.URL, error) {

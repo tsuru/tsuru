@@ -80,7 +80,7 @@ type Router interface {
 	CNames(name string) ([]*url.URL, error)
 
 	// Swap change the router between two backends.
-	Swap(string, string) error
+	Swap(backend1, backend2 string, cnameOnly bool) error
 
 	// Routes returns a list of routes of a backend.
 	Routes(name string) ([]*url.URL, error)
@@ -196,19 +196,25 @@ func swapBackendName(backend1, backend2 string) error {
 	return coll.Update(bson.M{"app": backend2}, update)
 }
 
-func Swap(r Router, backend1, backend2 string) error {
-	data1, err := retrieveRouterData(backend1)
+func swapCnames(r Router, backend1, backend2 string) error {
+	cnames, err := r.CNames(backend1)
 	if err != nil {
 		return err
 	}
-	data2, err := retrieveRouterData(backend2)
-	if err != nil {
-		return err
+	for _, cname := range cnames {
+		err = r.UnsetCName(cname.String(), backend1)
+		if err != nil {
+			return err
+		}
+		err = r.SetCName(cname.String(), backend2)
+		if err != nil {
+			return err
+		}
 	}
-	if data1["kind"] != data2["kind"] {
-		return fmt.Errorf("swap is only allowed between routers of the same kind. %q uses %q, %q uses %q",
-			backend1, data1["kind"], backend2, data2["kind"])
-	}
+	return nil
+}
+
+func swapBackends(r Router, backend1, backend2 string) error {
 	routes1, err := r.Routes(backend1)
 	if err != nil {
 		return err
@@ -234,6 +240,26 @@ func Swap(r Router, backend1, backend2 string) error {
 		return err
 	}
 	return swapBackendName(backend1, backend2)
+
+}
+
+func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
+	data1, err := retrieveRouterData(backend1)
+	if err != nil {
+		return err
+	}
+	data2, err := retrieveRouterData(backend2)
+	if err != nil {
+		return err
+	}
+	if data1["kind"] != data2["kind"] {
+		return fmt.Errorf("swap is only allowed between routers of the same kind. %q uses %q, %q uses %q",
+			backend1, data1["kind"], backend2, data2["kind"])
+	}
+	if cnameOnly {
+		return swapCnames(r, backend1, backend2)
+	}
+	return swapBackends(r, backend1, backend2)
 }
 
 type PlanRouter struct {
