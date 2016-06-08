@@ -172,7 +172,30 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 }
 
 func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
-	return nil, nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	rule := r.ruleName(backendName)
+	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
+	if err != nil {
+		return nil, err
+	}
+	urls := []*url.URL{}
+	address, err := r.Addr(name)
+	if err != nil {
+		return nil, err
+	}
+	for _, vhost := range virtualhosts {
+		if vhost.Name != address {
+			u, vErr := url.Parse(vhost.Name)
+			if vErr != nil {
+				return nil, vErr
+			}
+			urls = append(urls, u)
+		}
+	}
+	return urls, nil
 }
 
 func (r *galebRouter) SetCName(cname, name string) error {
