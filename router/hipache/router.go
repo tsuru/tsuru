@@ -345,7 +345,18 @@ func (r *hipacheRouter) HealthCheck() error {
 }
 
 func (r *hipacheRouter) CNames(name string) ([]*url.URL, error) {
-	return nil, nil
+	cnames, err := r.getCNames(name)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*url.URL, len(cnames))
+	for i, cname := range cnames {
+		result[i], err = url.Parse(cname)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (r *hipacheRouter) getCNames(name string) ([]string, error) {
