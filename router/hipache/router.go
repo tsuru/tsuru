@@ -344,6 +344,10 @@ func (r *hipacheRouter) HealthCheck() error {
 	return nil
 }
 
+func (r *hipacheRouter) CNames(name string) ([]*url.URL, error) {
+	return nil, nil
+}
+
 func (r *hipacheRouter) getCNames(name string) ([]string, error) {
 	conn, err := r.connect()
 	if err != nil {

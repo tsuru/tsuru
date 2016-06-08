@@ -171,6 +171,10 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return r.client.RemoveBackendsByIDs(ids)
 }
 
+func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
+	return nil, nil
+}
+
 func (r *galebRouter) SetCName(cname, name string) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {

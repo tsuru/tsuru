@@ -69,6 +69,10 @@ func (r *fakeRouter) HasBackend(name string) bool {
 	return ok
 }
 
+func (r *fakeRouter) CNames(name string) ([]*url.URL, error) {
+	return nil, nil
+}
+
 func (r *fakeRouter) HasCName(name string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

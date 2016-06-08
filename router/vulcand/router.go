@@ -238,6 +238,10 @@ func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
+func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
+	return nil, nil
+}
+
 func (r *vulcandRouter) SetCName(cname, name string) error {
 	usedName, err := router.Retrieve(name)
 	if err != nil {

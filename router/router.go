@@ -77,6 +77,7 @@ type Router interface {
 	SetCName(cname, name string) error
 	UnsetCName(cname, name string) error
 	Addr(name string) (string, error)
+	CNames(name string) ([]*url.URL, error)
 
 	// Swap change the router between two backends.
 	Swap(string, string) error
