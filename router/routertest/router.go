@@ -70,7 +70,20 @@ func (r *fakeRouter) HasBackend(name string) bool {
 }
 
 func (r *fakeRouter) CNames(name string) ([]*url.URL, error) {
-	return nil, nil
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	result := []*url.URL{}
+	for cname, backendName := range r.cnames {
+		if backendName != name {
+			continue
+		}
+		u, err := url.Parse(cname)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, u)
+	}
+	return result, nil
 }
 
 func (r *fakeRouter) HasCName(name string) bool {
