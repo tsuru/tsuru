@@ -74,14 +74,13 @@ func (r *fakeRouter) CNames(name string) ([]*url.URL, error) {
 	defer r.mutex.Unlock()
 	result := []*url.URL{}
 	for cname, backendName := range r.cnames {
-		if backendName != name {
-			continue
+		if backendName == name {
+			u, err := url.Parse(cname)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, u)
 		}
-		u, err := url.Parse(cname)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, u)
 	}
 	return result, nil
 }
