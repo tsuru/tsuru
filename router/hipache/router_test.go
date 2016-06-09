@@ -660,7 +660,7 @@ func (s *S) TestSwap(c *check.C) {
 	defer router.RemoveBackend(backend2)
 	router.AddRoute(backend2, addr2)
 	defer router.RemoveRoute(backend2, addr2)
-	err := router.Swap(backend1, backend2)
+	err := router.Swap(backend1, backend2, false)
 	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
 	c.Assert(err, check.IsNil)

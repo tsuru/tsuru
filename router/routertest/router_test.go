@@ -218,7 +218,7 @@ func (s *S) TestSwap(c *check.C) {
 	retrieved2, err := router.Retrieve(backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrieved2, check.Equals, backend2)
-	err = r.Swap(backend1, backend2)
+	err = r.Swap(backend1, backend2, false)
 	c.Assert(err, check.IsNil)
 	routes, err := r.Routes(backend2)
 	c.Assert(err, check.IsNil)

@@ -8,6 +8,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
@@ -239,7 +240,27 @@ func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 }
 
 func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
-	return nil, nil
+	fes, err := r.client.GetFrontends()
+	if err != nil {
+		return nil, err
+	}
+	backendName := r.backendName(name)
+	address, err := r.Addr(name)
+	if err != nil {
+		return nil, err
+	}
+	address = r.backendName(address)
+	urls := []*url.URL{}
+	for _, f := range fes {
+		u, fErr := url.Parse(strings.Replace(f.Id, "tsuru_", "", 1))
+		if fErr != nil {
+			return nil, fErr
+		}
+		if f.BackendId == backendName && f.Id != address {
+			urls = append(urls, u)
+		}
+	}
+	return urls, nil
 }
 
 func (r *vulcandRouter) SetCName(cname, name string) error {
