@@ -1838,7 +1838,7 @@ func (s *S) TestSwap(c *check.C) {
 	routertest.FakeRouter.AddRoute(app1.GetName(), addr1)
 	routertest.FakeRouter.AddBackend(app2.GetName())
 	routertest.FakeRouter.AddRoute(app2.GetName(), addr2)
-	err := s.p.Swap(app1, app2)
+	err := s.p.Swap(app1, app2, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app1.GetName()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasBackend(app2.GetName()), check.Equals, true)

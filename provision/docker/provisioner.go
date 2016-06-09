@@ -366,12 +366,12 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
+func (p *dockerProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
 	r, err := getRouterForApp(app1)
 	if err != nil {
 		return err
 	}
-	err = r.Swap(app1.GetName(), app2.GetName())
+	err = r.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 	if err != nil {
 		routesRebuildOrEnqueue(app1.GetName())
 		routesRebuildOrEnqueue(app2.GetName())
