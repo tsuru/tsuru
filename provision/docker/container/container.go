@@ -111,7 +111,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	if !args.Deploy {
 		imageData, inspectErr := args.Provisioner.Cluster().InspectImage(args.ImageID)
 		if inspectErr != nil {
-			return err
+			return inspectErr
 		}
 		if len(imageData.Config.ExposedPorts) > 1 {
 			return errors.New("Too many ports. You should especify which one you want to.")
@@ -123,7 +123,7 @@ func (c *Container) Create(args *CreateArgs) error {
 			port, portErr := getPort()
 			if portErr != nil {
 				log.Errorf("error on getting port for container %s - %s", c.AppName, port)
-				return err
+				return portErr
 			}
 			c.ExposedPort = port + "/tcp"
 		}
