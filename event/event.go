@@ -2,12 +2,14 @@ package event
 
 import (
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -19,6 +21,7 @@ var (
 		addCh:    make(chan *EventTarget),
 		removeCh: make(chan *EventTarget),
 		stopCh:   make(chan struct{}),
+		once:     &sync.Once{},
 	}
 )
 
@@ -76,10 +79,13 @@ type eventData struct {
 	Running         bool
 	LockUpdateTime  time.Time
 	Error           string
+	Log             string `bson:",omitempty"`
 }
 
 type Event struct {
 	eventData
+	logBuffer safe.Buffer
+	logWriter io.Writer
 }
 
 func (e *Event) String() string {
@@ -120,7 +126,7 @@ func NewEventCustomData(target EventTarget, kind, owner string, customData inter
 	defer conn.Close()
 	coll := conn.Events()
 	now := time.Now().UTC()
-	evt := Event{eventData{
+	evt := Event{eventData: eventData{
 		ID:              eventId{target: target},
 		Target:          target,
 		StartTime:       now,
@@ -162,6 +168,19 @@ func (e *Event) DoneCustomData(evtErr error, customData interface{}) error {
 	return e.done(evtErr, customData, false)
 }
 
+func (e *Event) SetLogWriter(w io.Writer) {
+	e.logWriter = w
+}
+
+func (e *Event) Logf(format string, params ...interface{}) {
+	log.Debugf(fmt.Sprintf("%s(%s)[%s] %s", e.Target.Name, e.Target.Value, e.Kind, format), params...)
+	format += "\n"
+	if e.logWriter != nil {
+		fmt.Fprintf(e.logWriter, format, params...)
+	}
+	fmt.Fprintf(&e.logBuffer, format, params...)
+}
+
 func (e *Event) done(evtErr error, customData interface{}, abort bool) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -179,6 +198,7 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) error {
 	e.EndTime = time.Now().UTC()
 	e.EndCustomData = customData
 	e.Running = false
+	e.Log = e.logBuffer.String()
 	defer coll.RemoveId(e.ID)
 	e.ID = eventId{objId: bson.NewObjectId()}
 	return coll.Insert(e.eventData)
@@ -188,7 +208,7 @@ type lockUpdater struct {
 	addCh    chan *EventTarget
 	removeCh chan *EventTarget
 	stopCh   chan struct{}
-	once     sync.Once
+	once     *sync.Once
 }
 
 func (l *lockUpdater) start() {
@@ -197,7 +217,7 @@ func (l *lockUpdater) start() {
 
 func (l *lockUpdater) stop() {
 	l.stopCh <- struct{}{}
-	l.once = sync.Once{}
+	l.once = &sync.Once{}
 }
 
 func (l *lockUpdater) spin() {

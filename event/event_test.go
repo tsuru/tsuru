@@ -1,6 +1,7 @@
 package event
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ func (s *S) TestNewEventDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
-	expected := &Event{eventData{
+	expected := &Event{eventData: eventData{
 		ID:             eventId{target: EventTarget{Name: "app", Value: "myapp"}},
 		Target:         EventTarget{Name: "app", Value: "myapp"},
 		Kind:           "env-set",
@@ -76,7 +77,7 @@ func (s *S) TestNewEventCustomDataDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
-	expected := &Event{eventData{
+	expected := &Event{eventData: eventData{
 		ID:              eventId{target: EventTarget{Name: "app", Value: "myapp"}},
 		Target:          EventTarget{Name: "app", Value: "myapp"},
 		Kind:            "env-set",
@@ -191,7 +192,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	expected := &Event{eventData{
+	expected := &Event{eventData: eventData{
 		ID:             eventId{objId: evts[0].ID.objId},
 		Target:         EventTarget{Name: "app", Value: "myapp"},
 		Kind:           "env-set",
@@ -202,4 +203,31 @@ func (s *S) TestEventDoneError(c *check.C) {
 		Error:          "myerr",
 	}}
 	c.Assert(evts, check.DeepEquals, []Event{*expected})
+}
+
+func (s *S) TestEventLogf(c *check.C) {
+	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	c.Assert(err, check.IsNil)
+	evt.Logf("%s %d", "hey", 42)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	evts, err := AllEvents()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Log, check.Equals, "hey 42\n")
+}
+
+func (s *S) TestEventLogfWithWriter(c *check.C) {
+	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	c.Assert(err, check.IsNil)
+	buf := bytes.Buffer{}
+	evt.SetLogWriter(&buf)
+	evt.Logf("%s %d", "hey", 42)
+	c.Assert(buf.String(), check.Equals, "hey 42\n")
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	evts, err := AllEvents()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Log, check.Equals, "hey 42\n")
 }
