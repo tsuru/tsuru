@@ -216,3 +216,12 @@ func (s *Storage) Roles() *storage.Collection {
 func (s *Storage) Limiter() *storage.Collection {
 	return s.Collection("limiter")
 }
+
+func (s *Storage) Events() *storage.Collection {
+	ownerIndex := mgo.Index{Key: []string{"owner"}}
+	kindIndex := mgo.Index{Key: []string{"kind"}}
+	c := s.Collection("events")
+	c.EnsureIndex(ownerIndex)
+	c.EnsureIndex(kindIndex)
+	return c
+}
