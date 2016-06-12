@@ -410,12 +410,12 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	cmd := "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"
 	output, _ := p.runCommandInContainer(imageId, cmd, app)
 	procfile := getProcessesFromProcfile(output.String())
+	imageInspect, err := cluster.InspectImage(imageId)
+	if err != nil {
+		return "", err
+	}
 	if len(procfile) == 0 {
 		fmt.Fprintln(w, "  ---> Procfile not found, trying to get entrypoint")
-		imageInspect, inspectErr := cluster.InspectImage(imageId)
-		if inspectErr != nil {
-			return "", inspectErr
-		}
 		if len(imageInspect.Config.Entrypoint) == 0 {
 			return "", ErrEntrypointOrProcfileNotFound
 		}
@@ -454,6 +454,12 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 		return "", err
 	}
 	imageData := createImageMetadata(newImage, procfile)
+	if len(imageInspect.Config.ExposedPorts) > 1 {
+		return "", stderr.New("Too many ports. You should especify which one you want to.")
+	}
+	for k := range imageInspect.Config.ExposedPorts {
+		imageData.CustomData["exposedPort"] = string(k)
+	}
 	err = saveImageCustomData(newImage, imageData.CustomData)
 	if err != nil {
 		return "", err
@@ -604,7 +610,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
+		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId, imageData.ExposedPort)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
 		if err = setQuota(a, toAdd); err != nil {
@@ -781,7 +787,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 		m                 sync.Mutex
 	)
 	err := runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
-		c, startErr := args.provisioner.start(c, a, imageId, w, destinationHost...)
+		c, startErr := args.provisioner.start(c, a, imageId, w, args.exposedPort, destinationHost...)
 		if startErr != nil {
 			return startErr
 		}
@@ -819,7 +825,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return nil, err
 	}
-	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId)
+	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, "ble")
 	routesRebuildOrEnqueue(a.GetName())
 	if err != nil {
 		return nil, err

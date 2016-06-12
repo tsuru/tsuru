@@ -412,3 +412,15 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(web5, check.Equals, "")
 }
+
+func (s *S) TestSavePortInImageCustomData(c *check.C) {
+	img1 := "tsuru/app-myapp:v1"
+	customData1 := map[string]interface{}{
+		"exposedPort": "3434",
+	}
+	err := saveImageCustomData(img1, customData1)
+	c.Assert(err, check.IsNil)
+	imageMetaData, err := getImageCustomData(img1)
+	c.Check(err, check.IsNil)
+	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
+}

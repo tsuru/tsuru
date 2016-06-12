@@ -240,7 +240,7 @@ func (s *S) TestStart(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, &buf)
+	cont, err := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, &buf, "")
 	c.Assert(err, check.IsNil)
 	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
@@ -262,7 +262,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err = s.p.start(cont, app, imageId, &buf)
+	cont, err = s.p.start(cont, app, imageId, &buf, "")
 	c.Assert(err, check.IsNil)
 	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
@@ -306,7 +306,7 @@ func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard)
+			cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard, "")
 			c.Assert(startErr, check.IsNil)
 			conts[i] = cont
 		}(i)
@@ -354,7 +354,7 @@ func (s *S) TestStartTsuruAllocatorSequentialStress(c *check.C) {
 	imageId, err := appCurrentImageName(app.GetName())
 	conts := make([]*container.Container, 5)
 	for i := 0; i < 5; i++ {
-		cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard)
+		cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard, "")
 		c.Assert(startErr, check.IsNil)
 		conts[i] = cont
 	}

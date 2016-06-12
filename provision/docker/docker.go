@@ -104,7 +104,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	return buildingImage, nil
 }
 
-func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container.Container, error) {
+func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageId string, w io.Writer, exposedPort string, destinationHosts ...string) (*container.Container, error) {
 	commands, processName, err := runLeanContainerCmds(oldContainer.ProcessName, imageId, app)
 	if err != nil {
 		return nil, err
@@ -137,6 +137,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		commands:         commands,
 		destinationHosts: destinationHosts,
 		provisioner:      p,
+		exposedPort:      exposedPort,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
