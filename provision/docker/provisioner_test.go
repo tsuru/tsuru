@@ -926,6 +926,18 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 		"3000/tcp": {{HostIP: "", HostPort: ""}},
 	}
 	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
+	err = a.RemoveUnits(1, "", w)
+	c.Assert(err, check.IsNil)
+	units, err = a.Units()
+	c.Assert(units, check.HasLen, 0)
+	err = a.AddUnits(1, "", w)
+	c.Assert(err, check.IsNil)
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	dockerContainer, err = dcli.InspectContainer(units[0].GetID())
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
 }
 
 func (s *S) TestImageDeploy(c *check.C) {

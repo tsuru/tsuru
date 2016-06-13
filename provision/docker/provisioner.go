@@ -825,7 +825,11 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return nil, err
 	}
-	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, "ble")
+	imageData, err := getImageCustomData(imageId)
+	if err != nil {
+		return nil, err
+	}
+	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
 	routesRebuildOrEnqueue(a.GetName())
 	if err != nil {
 		return nil, err
