@@ -263,6 +263,8 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) error {
 	}
 	if evtErr != nil {
 		e.Error = evtErr.Error()
+	} else if e.CancelInfo.Canceled {
+		e.Error = "canceled by user request"
 	}
 	e.EndTime = time.Now().UTC()
 	e.EndCustomData = customData
