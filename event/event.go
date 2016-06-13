@@ -208,14 +208,18 @@ func (e *Event) TryCancel(reason, owner string) error {
 	}
 	defer conn.Close()
 	coll := conn.Events()
-	info := cancelInfo{
-		Owner:     owner,
-		Reason:    reason,
-		StartTime: time.Now().UTC(),
-		Asked:     true,
+	change := mgo.Change{
+		Update: bson.M{"$set": bson.M{
+			"cancelinfo": cancelInfo{
+				Owner:     owner,
+				Reason:    reason,
+				StartTime: time.Now().UTC(),
+				Asked:     true,
+			},
+		}},
+		ReturnNew: true,
 	}
-	e.CancelInfo = info
-	err = coll.UpdateId(e.ID, bson.M{"$set": bson.M{"cancelinfo": info}})
+	_, err = coll.FindId(e.ID).Apply(change, &e.eventData)
 	if err == mgo.ErrNotFound {
 		return ErrEventNotFound
 	}
@@ -232,10 +236,14 @@ func (e *Event) AckCancel() error {
 	}
 	defer conn.Close()
 	coll := conn.Events()
-	err = coll.Update(bson.M{"_id": e.ID, "cancelinfo.asked": true}, bson.M{"$set": bson.M{
-		"cancelinfo.acktime":  time.Now().UTC(),
-		"cancelinfo.canceled": true,
-	}})
+	change := mgo.Change{
+		Update: bson.M{"$set": bson.M{
+			"cancelinfo.acktime":  time.Now().UTC(),
+			"cancelinfo.canceled": true,
+		}},
+		ReturnNew: true,
+	}
+	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": true}).Apply(change, &e.eventData)
 	if err == mgo.ErrNotFound {
 		return ErrEventNotFound
 	}

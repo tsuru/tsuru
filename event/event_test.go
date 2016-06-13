@@ -239,8 +239,16 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 func (s *S) TestEventCancel(c *check.C) {
 	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com", Cancelable: true})
 	c.Assert(err, check.IsNil)
+	oldEvt := *evt
 	err = evt.TryCancel("because I want", "admin@admin.com")
 	c.Assert(err, check.IsNil)
+	c.Assert(evt.CancelInfo.StartTime.IsZero(), check.Equals, false)
+	evt.CancelInfo.StartTime = time.Time{}
+	c.Assert(evt.CancelInfo, check.DeepEquals, cancelInfo{
+		Reason: "because I want",
+		Owner:  "admin@admin.com",
+		Asked:  true,
+	})
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
@@ -251,8 +259,18 @@ func (s *S) TestEventCancel(c *check.C) {
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	err = evt.AckCancel()
+	err = oldEvt.AckCancel()
 	c.Assert(err, check.IsNil)
+	c.Assert(oldEvt.CancelInfo.StartTime.IsZero(), check.Equals, false)
+	c.Assert(oldEvt.CancelInfo.AckTime.IsZero(), check.Equals, false)
+	oldEvt.CancelInfo.StartTime = time.Time{}
+	oldEvt.CancelInfo.AckTime = time.Time{}
+	c.Assert(oldEvt.CancelInfo, check.DeepEquals, cancelInfo{
+		Reason:   "because I want",
+		Owner:    "admin@admin.com",
+		Asked:    true,
+		Canceled: true,
+	})
 	evts, err = All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
