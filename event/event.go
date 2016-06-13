@@ -276,14 +276,21 @@ func (e *Event) AckCancel() error {
 	return err
 }
 
-func (e *Event) done(evtErr error, customData interface{}, abort bool) error {
+func (e *Event) done(evtErr error, customData interface{}, abort bool) (err error) {
+	// Done will be usually called in a defer block ignoring errors. This is
+	// why we log error messages here.
+	defer func() {
+		if err != nil {
+			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
+		}
+	}()
+	updater.removeCh <- &e.Target
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	coll := conn.Events()
-	updater.removeCh <- &e.Target
 	if abort {
 		return coll.RemoveId(e.ID)
 	}
@@ -331,7 +338,7 @@ func (l *lockUpdater) spin() {
 		}
 		conn, err := db.Conn()
 		if err != nil {
-			log.Errorf("[event lock update] error getting db conn: %s", err)
+			log.Errorf("[events] [lock update] error getting db conn: %s", err)
 			continue
 		}
 		coll := conn.Events()
@@ -343,7 +350,7 @@ func (l *lockUpdater) spin() {
 		}
 		err = coll.Update(bson.M{"_id": bson.M{"$in": slice}}, bson.M{"$set": bson.M{"lockupdatetime": time.Now().UTC()}})
 		if err != nil {
-			log.Errorf("[event lock update] error updating: %s", err)
+			log.Errorf("[events] [lock update] error updating: %s", err)
 		}
 		conn.Close()
 	}

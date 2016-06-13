@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/log"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,12 +24,9 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *check.C) {
+func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_events_tests")
-}
-
-func (s *S) SetUpTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -352,4 +350,16 @@ func (s *S) TestEventNewValidation(c *check.C) {
 	c.Assert(err, check.Equals, ErrNoKind)
 	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "kind"})
 	c.Assert(err, check.Equals, ErrNoOwner)
+}
+
+func (s *S) TestEventDoneLogError(c *check.C) {
+	logBuf := bytes.NewBuffer(nil)
+	log.SetLogger(log.NewWriterLogger(logBuf, false))
+	defer log.SetLogger(nil)
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
+	c.Assert(err, check.IsNil)
+	config.Set("database:url", "127.0.0.1:99999")
+	err = evt.Done(nil)
+	c.Assert(err, check.ErrorMatches, "no reachable servers")
+	c.Assert(logBuf.String(), check.Matches, `(?s).*\[events\] error marking event as done - .*: no reachable servers.*`)
 }
