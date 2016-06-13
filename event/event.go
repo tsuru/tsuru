@@ -31,7 +31,17 @@ var (
 
 	ErrNotCancelable = errors.New("event is not cancelable")
 	ErrEventNotFound = errors.New("event not found")
+	ErrNoTarget      = ErrValidation("event target is mandatory")
+	ErrNoKind        = ErrValidation("event kind is mandatory")
+	ErrNoOwner       = ErrValidation("event owner is mandatory")
+	ErrNoOpts        = ErrValidation("event opts is mandatory")
 )
+
+type ErrValidation string
+
+func (err ErrValidation) Error() string {
+	return string(err)
+}
 
 type ErrEventLocked struct{ event *Event }
 
@@ -43,6 +53,10 @@ type Target struct{ Name, Value string }
 
 func (id Target) GetBSON() (interface{}, error) {
 	return bson.D{{"name", id.Name}, {"value", id.Value}}, nil
+}
+
+func (id Target) IsValid() bool {
+	return id.Name != "" && id.Value != ""
 }
 
 type eventId struct {
@@ -135,6 +149,18 @@ func All() ([]Event, error) {
 
 func New(opts *Opts) (*Event, error) {
 	updater.start()
+	if opts == nil {
+		return nil, ErrNoOpts
+	}
+	if !opts.Target.IsValid() {
+		return nil, ErrNoTarget
+	}
+	if opts.Kind == "" {
+		return nil, ErrNoKind
+	}
+	if opts.Owner == "" {
+		return nil, ErrNoOwner
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

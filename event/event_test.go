@@ -342,3 +342,14 @@ func (s *S) TestEventCancelDoneCustomError(c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Error, check.Equals, "my err")
 }
+
+func (s *S) TestEventNewValidation(c *check.C) {
+	_, err := New(nil)
+	c.Assert(err, check.Equals, ErrNoOpts)
+	_, err = New(&Opts{Kind: "kind", Owner: "owner"})
+	c.Assert(err, check.Equals, ErrNoTarget)
+	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Owner: "owner"})
+	c.Assert(err, check.Equals, ErrNoKind)
+	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "kind"})
+	c.Assert(err, check.Equals, ErrNoOwner)
+}
