@@ -33,6 +33,7 @@ func (s *RouterSuite) SetUpTest(c *check.C) {
 	if s.SetUpTestFunc != nil {
 		s.SetUpTestFunc(c)
 	}
+	c.Logf("generic router test for %T", s.Router)
 }
 
 func (s *RouterSuite) TearDownSuite(c *check.C) {
@@ -384,6 +385,7 @@ func (s *RouterSuite) TestCNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(err, check.IsNil)
 	expected := []*url.URL{url1, url2}
+	sort.Sort(URLList(cnames))
 	c.Assert(cnames, check.DeepEquals, expected)
 	err = s.Router.UnsetCName("my.host.com", name)
 	c.Assert(err, check.IsNil)
