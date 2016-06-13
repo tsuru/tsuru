@@ -121,9 +121,6 @@ func (c *Container) Create(args *CreateArgs) error {
 		exposedPorts = map[docker.Port]struct{}{
 			docker.Port(c.ExposedPort): {},
 		}
-		exposedPorts = map[docker.Port]struct{}{
-			docker.Port(c.ExposedPort): {},
-		}
 	}
 	var user string
 	if args.Building {
