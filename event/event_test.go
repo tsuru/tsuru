@@ -36,14 +36,14 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestNewEventDone(c *check.C) {
-	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+func (s *S) TestNewDone(c *check.C) {
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventId{target: EventTarget{Name: "app", Value: "myapp"}},
-		Target:         EventTarget{Name: "app", Value: "myapp"},
+		ID:             eventId{target: Target{Name: "app", Value: "myapp"}},
+		Target:         Target{Name: "app", Value: "myapp"},
 		Kind:           "env-set",
 		Owner:          "me@me.com",
 		Running:        true,
@@ -51,7 +51,7 @@ func (s *S) TestNewEventDone(c *check.C) {
 		LockUpdateTime: evt.LockUpdateTime,
 	}}
 	c.Assert(evt, check.DeepEquals, expected)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -61,7 +61,7 @@ func (s *S) TestNewEventDone(c *check.C) {
 	c.Assert(evts, check.DeepEquals, []Event{*expected})
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evts, err = AllEvents()
+	evts, err = All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -75,15 +75,15 @@ func (s *S) TestNewEventDone(c *check.C) {
 	c.Assert(evts, check.DeepEquals, []Event{*expected})
 }
 
-func (s *S) TestNewEventCustomDataDone(c *check.C) {
+func (s *S) TestNewCustomDataDone(c *check.C) {
 	customData := struct{ A string }{A: "value"}
-	evt, err := NewEventCustomData(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com", customData)
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com", CustomData: customData})
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:              eventId{target: EventTarget{Name: "app", Value: "myapp"}},
-		Target:          EventTarget{Name: "app", Value: "myapp"},
+		ID:              eventId{target: Target{Name: "app", Value: "myapp"}},
+		Target:          Target{Name: "app", Value: "myapp"},
 		Kind:            "env-set",
 		Owner:           "me@me.com",
 		Running:         true,
@@ -95,7 +95,7 @@ func (s *S) TestNewEventCustomDataDone(c *check.C) {
 	customData = struct{ A string }{A: "other"}
 	err = evt.DoneCustomData(nil, customData)
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -111,26 +111,26 @@ func (s *S) TestNewEventCustomDataDone(c *check.C) {
 	c.Assert(evts, check.DeepEquals, []Event{*expected})
 }
 
-func (s *S) TestNewEventLocks(c *check.C) {
-	_, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+func (s *S) TestNewLocks(c *check.C) {
+	_, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
-	_, err = NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-unset", "other@other.com")
+	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-unset", Owner: "other@other.com"})
 	c.Assert(err, check.ErrorMatches, `event locked: app\(myapp\) running "env-set" start by me@me.com at .+`)
 }
 
-func (s *S) TestNewEventLockExpired(c *check.C) {
+func (s *S) TestNewLockExpired(c *check.C) {
 	oldLockExpire := lockExpireTimeout
 	lockExpireTimeout = time.Millisecond
 	defer func() {
 		lockExpireTimeout = oldLockExpire
 	}()
-	_, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	_, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
 	updater.stop()
 	time.Sleep(100 * time.Millisecond)
-	_, err = NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-unset", "other@other.com")
+	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-unset", Owner: "other@other.com"})
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	c.Assert(evts[0].Kind, check.Equals, "env-set")
@@ -148,14 +148,14 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 	defer func() {
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t0 := evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = AllEvents()
+	evts, err = All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t1 := evts[0].LockUpdateTime
@@ -163,12 +163,12 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	time.Sleep(100 * time.Millisecond)
-	evts, err = AllEvents()
+	evts, err = All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t0 = evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = AllEvents()
+	evts, err = All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t1 = evts[0].LockUpdateTime
@@ -176,21 +176,21 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 }
 
 func (s *S) TestEventAbort(c *check.C) {
-	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
 	err = evt.Abort()
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
 
 func (s *S) TestEventDoneError(c *check.C) {
-	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(errors.New("myerr"))
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -198,7 +198,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
 		ID:             eventId{objId: evts[0].ID.objId},
-		Target:         EventTarget{Name: "app", Value: "myapp"},
+		Target:         Target{Name: "app", Value: "myapp"},
 		Kind:           "env-set",
 		Owner:          "me@me.com",
 		StartTime:      evts[0].StartTime,
@@ -210,19 +210,19 @@ func (s *S) TestEventDoneError(c *check.C) {
 }
 
 func (s *S) TestEventLogf(c *check.C) {
-	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
 	evt.Logf("%s %d", "hey", 42)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Log, check.Equals, "hey 42\n")
 }
 
 func (s *S) TestEventLogfWithWriter(c *check.C) {
-	evt, err := NewEvent(EventTarget{Name: "app", Value: "myapp"}, "env-set", "me@me.com")
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
 	c.Assert(err, check.IsNil)
 	buf := bytes.Buffer{}
 	evt.SetLogWriter(&buf)
@@ -230,7 +230,7 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "hey 42\n")
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evts, err := AllEvents()
+	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Log, check.Equals, "hey 42\n")

@@ -22,8 +22,8 @@ var (
 	lockUpdateInterval = 30 * time.Second
 	lockExpireTimeout  = 5 * time.Minute
 	updater            = lockUpdater{
-		addCh:    make(chan *EventTarget),
-		removeCh: make(chan *EventTarget),
+		addCh:    make(chan *Target),
+		removeCh: make(chan *Target),
 		stopCh:   make(chan struct{}),
 		once:     &sync.Once{},
 	}
@@ -35,20 +35,14 @@ func (err ErrEventLocked) Error() string {
 	return fmt.Sprintf("event locked: %v", err.event)
 }
 
-type EventTarget struct{ Name, Value string }
+type Target struct{ Name, Value string }
 
-func (id EventTarget) GetBSON() (interface{}, error) {
+func (id Target) GetBSON() (interface{}, error) {
 	return bson.D{{"name", id.Name}, {"value", id.Value}}, nil
 }
 
-func EventTargetFactory(name string) func(string) EventTarget {
-	return func(value string) EventTarget {
-		return EventTarget{Name: name, Value: value}
-	}
-}
-
 type eventId struct {
-	target EventTarget
+	target Target
 	objId  bson.ObjectId
 }
 
@@ -74,7 +68,7 @@ type eventData struct {
 	ID              eventId `bson:"_id"`
 	StartTime       time.Time
 	EndTime         time.Time   `bson:",omitempty"`
-	Target          EventTarget `bson:",omitempty"`
+	Target          Target      `bson:",omitempty"`
 	StartCustomData interface{} `bson:",omitempty"`
 	EndCustomData   interface{} `bson:",omitempty"`
 	Kind            string
@@ -92,6 +86,14 @@ type Event struct {
 	logWriter io.Writer
 }
 
+type Opts struct {
+	Target     Target
+	Kind       string
+	Owner      string
+	Cancelable bool
+	CustomData interface{}
+}
+
 func (e *Event) String() string {
 	return fmt.Sprintf("%s(%s) running %q start by %s at %s",
 		e.Target.Name,
@@ -102,7 +104,7 @@ func (e *Event) String() string {
 	)
 }
 
-func AllEvents() ([]Event, error) {
+func All() ([]Event, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -117,11 +119,7 @@ func AllEvents() ([]Event, error) {
 	return evts, err
 }
 
-func NewEvent(target EventTarget, kind, owner string) (*Event, error) {
-	return NewEventCustomData(target, kind, owner, nil)
-}
-
-func NewEventCustomData(target EventTarget, kind, owner string, customData interface{}) (*Event, error) {
+func New(opts *Opts) (*Event, error) {
 	updater.start()
 	conn, err := db.Conn()
 	if err != nil {
@@ -131,20 +129,21 @@ func NewEventCustomData(target EventTarget, kind, owner string, customData inter
 	coll := conn.Events()
 	now := time.Now().UTC()
 	evt := Event{eventData: eventData{
-		ID:              eventId{target: target},
-		Target:          target,
+		ID:              eventId{target: opts.Target},
+		Target:          opts.Target,
 		StartTime:       now,
-		Kind:            kind,
-		Owner:           owner,
-		StartCustomData: customData,
+		Kind:            opts.Kind,
+		Owner:           opts.Owner,
+		StartCustomData: opts.CustomData,
 		LockUpdateTime:  now,
 		Running:         true,
+		Cancelable:      opts.Cancelable,
 	}}
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
 		if err == nil {
-			updater.addCh <- &target
+			updater.addCh <- &opts.Target
 			return &evt, nil
 		}
 		if mgo.IsDup(err) {
@@ -209,8 +208,8 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) error {
 }
 
 type lockUpdater struct {
-	addCh    chan *EventTarget
-	removeCh chan *EventTarget
+	addCh    chan *Target
+	removeCh chan *Target
 	stopCh   chan struct{}
 	once     *sync.Once
 }
@@ -225,7 +224,7 @@ func (l *lockUpdater) stop() {
 }
 
 func (l *lockUpdater) spin() {
-	set := map[EventTarget]struct{}{}
+	set := map[Target]struct{}{}
 	for {
 		select {
 		case added := <-l.addCh:
