@@ -5,6 +5,7 @@
 package event
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -27,6 +28,9 @@ var (
 		stopCh:   make(chan struct{}),
 		once:     &sync.Once{},
 	}
+
+	ErrNotCancelable = errors.New("event is not cancelable")
+	ErrEventNotFound = errors.New("event not found")
 )
 
 type ErrEventLocked struct{ event *Event }
@@ -78,6 +82,16 @@ type eventData struct {
 	LockUpdateTime  time.Time
 	Error           string
 	Log             string `bson:",omitempty"`
+	CancelInfo      cancelInfo
+}
+
+type cancelInfo struct {
+	Owner     string
+	StartTime time.Time
+	AckTime   time.Time
+	Reason    string
+	Asked     bool
+	Canceled  bool
 }
 
 type Event struct {
@@ -182,6 +196,50 @@ func (e *Event) Logf(format string, params ...interface{}) {
 		fmt.Fprintf(e.logWriter, format, params...)
 	}
 	fmt.Fprintf(&e.logBuffer, format, params...)
+}
+
+func (e *Event) TryCancel(reason, owner string) error {
+	if !e.Cancelable || !e.Running {
+		return ErrNotCancelable
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	info := cancelInfo{
+		Owner:     owner,
+		Reason:    reason,
+		StartTime: time.Now().UTC(),
+		Asked:     true,
+	}
+	e.CancelInfo = info
+	err = coll.UpdateId(e.ID, bson.M{"$set": bson.M{"cancelinfo": info}})
+	if err == mgo.ErrNotFound {
+		return ErrEventNotFound
+	}
+	return err
+}
+
+func (e *Event) AckCancel() error {
+	if !e.Cancelable || !e.Running {
+		return ErrNotCancelable
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	err = coll.Update(bson.M{"_id": e.ID, "cancelinfo.asked": true}, bson.M{"$set": bson.M{
+		"cancelinfo.acktime":  time.Now().UTC(),
+		"cancelinfo.canceled": true,
+	}})
+	if err == mgo.ErrNotFound {
+		return ErrEventNotFound
+	}
+	return err
 }
 
 func (e *Event) done(evtErr error, customData interface{}, abort bool) error {

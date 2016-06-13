@@ -235,3 +235,62 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Log, check.Equals, "hey 42\n")
 }
+
+func (s *S) TestEventCancel(c *check.C) {
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com", Cancelable: true})
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("because I want", "admin@admin.com")
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
+		Reason: "because I want",
+		Owner:  "admin@admin.com",
+		Asked:  true,
+	})
+	err = evt.AckCancel()
+	c.Assert(err, check.IsNil)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].CancelInfo.AckTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	evts[0].CancelInfo.AckTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
+		Reason:   "because I want",
+		Owner:    "admin@admin.com",
+		Asked:    true,
+		Canceled: true,
+	})
+}
+
+func (s *S) TestEventCancelError(c *check.C) {
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com"})
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("yes", "admin@admin.com")
+	c.Assert(err, check.Equals, ErrNotCancelable)
+	err = evt.AckCancel()
+	c.Assert(err, check.Equals, ErrNotCancelable)
+}
+
+func (s *S) TestEventCancelNotAsked(c *check.C) {
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com", Cancelable: true})
+	c.Assert(err, check.IsNil)
+	err = evt.AckCancel()
+	c.Assert(err, check.Equals, ErrEventNotFound)
+}
+
+func (s *S) TestEventCancelNotRunning(c *check.C) {
+	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: "env-set", Owner: "me@me.com", Cancelable: true})
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	err = evt.TryCancel("yes", "admin@admin.com")
+	c.Assert(err, check.Equals, ErrNotCancelable)
+	err = evt.AckCancel()
+	c.Assert(err, check.Equals, ErrNotCancelable)
+}
