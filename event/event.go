@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -116,7 +117,7 @@ type Event struct {
 
 type Opts struct {
 	Target     Target
-	Kind       string
+	Kind       *permission.PermissionScheme
 	Owner      string
 	Cancelable bool
 	CustomData interface{}
@@ -155,7 +156,7 @@ func New(opts *Opts) (*Event, error) {
 	if !opts.Target.IsValid() {
 		return nil, ErrNoTarget
 	}
-	if opts.Kind == "" {
+	if opts.Kind == nil {
 		return nil, ErrNoKind
 	}
 	if opts.Owner == "" {
@@ -172,7 +173,7 @@ func New(opts *Opts) (*Event, error) {
 		ID:              eventId{target: opts.Target},
 		Target:          opts.Target,
 		StartTime:       now,
-		Kind:            opts.Kind,
+		Kind:            opts.Kind.FullName(),
 		Owner:           opts.Owner,
 		StartCustomData: opts.CustomData,
 		LockUpdateTime:  now,
