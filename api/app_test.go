@@ -2166,12 +2166,6 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		}
 	}
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	action := rectest.Action{
-		Action: "get-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "envs=[]"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestGetEnv(c *check.C) {
@@ -2205,12 +2199,6 @@ func (s *S) TestGetEnv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	action := rectest.Action{
-		Action: "get-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestGetEnvMultipleVariables(c *check.C) {
@@ -2243,12 +2231,6 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "get-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestGetEnvAppDoesNotExist(c *check.C) {
@@ -3298,12 +3280,6 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
-	action := rectest.Action{
-		Action: "app-log",
-		User:   token.GetUserName(),
-		Extra:  []interface{}{"app=" + a.Name, "lines=10"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectBySource(c *check.C) {
@@ -3330,12 +3306,6 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "mars log")
 	c.Assert(logs[0].Source, check.Equals, "mars")
-	action := rectest.Action{
-		Action: "app-log",
-		User:   token.GetUserName(),
-		Extra:  []interface{}{"app=" + a.Name, "lines=10", "source=mars"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectByUnit(c *check.C) {
@@ -3363,12 +3333,6 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	c.Assert(logs[0].Message, check.Equals, "earth log")
 	c.Assert(logs[0].Source, check.Equals, "earth")
 	c.Assert(logs[0].Unit, check.Equals, "caliban")
-	action := rectest.Action{
-		Action: "app-log",
-		User:   token.GetUserName(),
-		Extra:  []interface{}{"app=" + a.Name, "lines=10", "unit=caliban"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {

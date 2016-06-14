@@ -251,7 +251,6 @@ func readableServices(t auth.Token) ([]service.Service, error) {
 //   401: Unauthorized
 func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get("app")
-	rec.Log(t.GetUserName(), "list-service-instances", "app="+appName)
 	instances, err := readableInstances(t, appName, "")
 	if err != nil {
 		return err
@@ -320,7 +319,6 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "service-instance-status", serviceName, instanceName)
 	var b string
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := context.GetRequestID(r, requestIDHeader)
@@ -370,7 +368,6 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "service-instance-info", serviceName, instanceName)
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := context.GetRequestID(r, requestIDHeader)
 	info, err := serviceInstance.Info(requestID)
@@ -406,7 +403,6 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(t.GetUserName(), "service-info", serviceName)
 	instances, err := readableInstances(t, "", serviceName)
 	if err != nil {
 		return err
@@ -423,7 +419,6 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Not found
 func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	serviceName := r.URL.Query().Get(":name")
-	rec.Log(t.GetUserName(), "service-doc", serviceName)
 	s, err := getService(serviceName)
 	if err != nil {
 		return err
@@ -482,7 +477,6 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
-	rec.Log(t.GetUserName(), "service-plans", serviceName)
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := context.GetRequestID(r, requestIDHeader)
 	plans, err := service.GetPlansByServiceName(serviceName, requestID)

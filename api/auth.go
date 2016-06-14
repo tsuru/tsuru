@@ -266,7 +266,6 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   204: No content
 //   401: Unauthorized
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	rec.Log(t.GetUserName(), "list-teams")
 	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permission.CtxTeam)
 	teams, err := auth.ListTeams()
 	if err != nil {

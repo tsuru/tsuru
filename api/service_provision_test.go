@@ -98,8 +98,6 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 	}
 	c.Assert(services, check.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	action := rectest.Action{Action: "list-services", User: s.user.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestServiceListEmptyList(c *check.C) {

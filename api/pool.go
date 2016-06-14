@@ -13,7 +13,6 @@ import (
 	terrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/rec"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -27,11 +26,6 @@ import (
 //   401: Unauthorized
 //   404: User not found
 func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	rec.Log(u.Email, "pool-list")
 	teams := []string{}
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
 	for _, c := range contexts {

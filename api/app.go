@@ -771,18 +771,11 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		variables = envs
 	}
 	appName := r.URL.Query().Get(":app")
-	var u *auth.User
-	var err error
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
 	}
 	if !t.IsAppToken() {
-		u, err = t.User()
-		if err != nil {
-			return err
-		}
-		rec.Log(u.Email, "get-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
 		allowed := permission.Check(t, permission.PermAppReadEnv,
 			append(permission.Contexts(permission.CtxTeam, a.Teams),
 				permission.Context(permission.CtxApp, a.Name),
@@ -1062,10 +1055,6 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	source := r.URL.Query().Get("source")
 	unit := r.URL.Query().Get("unit")
 	follow := r.URL.Query().Get("follow")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
 	extra := []interface{}{
 		"app=" + appName,
@@ -1080,7 +1069,6 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if unit != "" {
 		extra = append(extra, "unit="+unit)
 	}
-	rec.Log(u.Email, "app-log", extra...)
 	filterLog := app.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1669,10 +1657,6 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: App not found
 func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -1686,7 +1670,6 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "app-metric-envs", "app="+r.URL.Query().Get(":app"))
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(a.MetricEnvs())
 }

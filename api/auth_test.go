@@ -606,11 +606,6 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserHasAccess(c *check.C) {
 	c.Assert(m[0]["permissions"], check.DeepEquals, []interface{}{
 		"app.create",
 	})
-	action := rectest.Action{
-		Action: "list-teams",
-		User:   token.GetUserName(),
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
@@ -636,11 +631,6 @@ func (s *AuthSuite) TestListTeamsListsShowOnlyParents(c *check.C) {
 	c.Assert(m[0]["permissions"], check.DeepEquals, []interface{}{
 		"app",
 	})
-	action := rectest.Action{
-		Action: "list-teams",
-		User:   token.GetUserName(),
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
@@ -659,11 +649,6 @@ func (s *AuthSuite) TestListTeamsWithAllPoweredUser(c *check.C) {
 	names := []string{m[0]["name"].(string), m[1]["name"].(string)}
 	sort.Strings(names)
 	c.Assert(names, check.DeepEquals, []string{s.team.Name, s.team2.Name})
-	action := rectest.Action{
-		Action: "list-teams",
-		User:   s.user.Email,
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {

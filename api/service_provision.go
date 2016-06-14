@@ -38,7 +38,6 @@ func serviceValidate(s service.Service) error {
 //   204: No content
 //   401: Unauthorized
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	rec.Log(t.GetUserName(), "list-services")
 	teams := []string{}
 	serviceNames := []string{}
 	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)

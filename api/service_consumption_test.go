@@ -977,8 +977,6 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *check.C) {
 	}
 	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
-	action := rectest.Action{Action: "list-service-instances", User: s.user.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *check.C) {
@@ -1020,8 +1018,6 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *check.C) {
 	}
 	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
-	action := rectest.Action{Action: "list-service-instances", User: s.user.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *check.C) {
@@ -1132,12 +1128,6 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *check.C) {
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Body.String(), check.Equals, "Service instance \"my_nosql\" is up")
-	action := rectest.Action{
-		Action: "service-instance-status",
-		User:   s.user.Email,
-		Extra:  []interface{}{srv.Name, "my_nosql"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusWithSameInstanceName(c *check.C) {
@@ -1171,12 +1161,6 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusWithSameInstanceName(c *chec
 	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Body.String(), check.Equals, "Service instance \"my_nosql\" is down")
-	action := rectest.Action{
-		Action: "service-instance-status",
-		User:   s.user.Email,
-		Extra:  []interface{}{srv2.Name, "my_nosql"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *check.C) {
@@ -1261,12 +1245,6 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandler(c *check.C) {
 		Description:     si.Description,
 	}
 	c.Assert(instances, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "service-instance-info",
-		User:   s.user.Email,
-		Extra:  []interface{}{"mongodb", "my_nosql"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c *check.C) {
@@ -1304,12 +1282,6 @@ func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomInfo(c
 		Description:     si.Description,
 	}
 	c.Assert(instances, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "service-instance-info",
-		User:   s.user.Email,
-		Extra:  []interface{}{"mongodb", "my_nosql"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceInfoHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *check.C) {
@@ -1365,12 +1337,6 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []service.ServiceInstance{si1, si2}
 	c.Assert(instances, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "service-info",
-		User:   s.user.Email,
-		Extra:  []interface{}{"mongodb"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *check.C) {
@@ -1443,12 +1409,6 @@ Collnosql is a really really cool nosql`
 	err = serviceDoc(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Body.String(), check.Equals, doc)
-	action := rectest.Action{
-		Action: "service-doc",
-		User:   s.user.Email,
-		Extra:  []interface{}{"coolnosql"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *check.C) {
@@ -1513,12 +1473,6 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
 		{Name: "small", Description: "not space left for you"},
 	}
 	c.Assert(plans, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "service-plans",
-		User:   s.user.Email,
-		Extra:  []interface{}{"mysqlplan"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 type closeNotifierResponseRecorder struct {

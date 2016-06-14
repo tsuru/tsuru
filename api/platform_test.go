@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/rec/rectest"
 	"gopkg.in/check.v1"
 )
 
@@ -314,10 +313,6 @@ func (s *PlatformSuite) TestPlatformList(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, platforms)
-	u, err := token.User()
-	c.Assert(err, check.IsNil)
-	action := rectest.Action{Action: "platform-list", User: u.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
@@ -347,10 +342,6 @@ func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, platforms)
-	u, err := token.User()
-	c.Assert(err, check.IsNil)
-	action := rectest.Action{Action: "platform-list", User: u.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
@@ -384,10 +375,6 @@ func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, expectedPlatforms)
-	u, err := token.User()
-	c.Assert(err, check.IsNil)
-	action := rectest.Action{Action: "platform-list", User: u.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *PlatformSuite) TestPlatformListNoContent(c *check.C) {
