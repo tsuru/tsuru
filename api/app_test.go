@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event/eventtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -71,8 +72,6 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"platform=zend"}}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
@@ -107,9 +106,6 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	queryString := fmt.Sprintf("teamowner=%s", s.team.Name)
-	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByOwner(c *check.C) {
@@ -149,9 +145,6 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	queryString := fmt.Sprintf("owner=%s", u.Email)
-	action := rectest.Action{Action: "app-list", User: u.Email, Extra: []interface{}{queryString}}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByLockState(c *check.C) {
@@ -191,8 +184,6 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"locked=true"}}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByPool(c *check.C) {
@@ -232,9 +223,6 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
-	queryString := fmt.Sprintf("pool=%s", opts[1].Name)
-	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
@@ -384,8 +372,6 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
 	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
-	action := rectest.Action{Action: "app-list", User: s.user.Email}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
@@ -455,12 +441,16 @@ func (s *S) TestDelete(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	action := rectest.Action{
-		Action: "app-delete",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + myApp.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(myApp.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.delete",
+		StartCustomData: map[string]interface{}{
+			"name":      myApp.Name,
+			"teamowner": myApp.TeamOwner,
+			"framework": myApp.Platform,
+		},
+	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(myApp.Name)
 	c.Assert(err, check.NotNil)
 }
@@ -537,12 +527,6 @@ func (s *S) TestAppInfo(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(myApp["name"], check.Equals, expectedApp.Name)
 	c.Assert(myApp["repository"], check.Equals, "git@"+repositorytest.ServerHost+":"+expectedApp.Name+".git")
-	action := rectest.Action{
-		Action: "app-info",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + expectedApp.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *check.C) {
@@ -618,13 +602,12 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam"},
+	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
 }
@@ -660,13 +643,12 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam"},
+	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
 }
@@ -720,13 +702,12 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{t1.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "team1"},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
@@ -769,13 +750,12 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(gotApp.Plan, check.DeepEquals, expectedPlan)
-	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=myplan", "description=", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam", "plan._id": "myplan"},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppWithDescription(c *check.C) {
@@ -809,13 +789,12 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=my app description", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam", "description": "my app description"},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppWithPool(c *check.C) {
@@ -852,13 +831,12 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(gotApp.Pool, check.Equals, "mypool1")
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=", "description=", "pool=mypool1"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam", "pool": "mypool1"},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
@@ -908,6 +886,13 @@ func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "Quota exceeded\n")
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam"},
+		ErrorMatches:    `Quota exceeded`,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppInvalidName(c *check.C) {
@@ -926,8 +911,15 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	msg := "Invalid app name, your app should have at most 63 " +
 		"characters, containing only lower case letters, numbers " +
-		"or dashes, starting with a letter.\n"
-	c.Assert(recorder.Body.String(), check.Equals, msg)
+		"or dashes, starting with a letter."
+	c.Assert(recorder.Body.String(), check.Equals, msg+"\n")
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("123myapp"),
+		Owner:           token.GetUserName(),
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "123myapp", "framework": "zend", "teamowner": "tsuruteam"},
+		ErrorMatches:    msg,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestCreateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
@@ -1000,12 +992,12 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	u, _ := token.User()
-	action := rectest.Action{
-		Action: "create-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=someapp", "platform=platDis", "plan=", "description=", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("someapp"),
+		Owner:           u.Email,
+		Kind:            "app.create",
+		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "platDis", "teamowner": "tsuruteam"},
+	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
 }

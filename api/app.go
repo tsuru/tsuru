@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
@@ -31,6 +32,10 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func appTarget(appName string) event.Target {
+	return event.Target{Name: "app", Value: appName}
+}
 
 func getAppFromContext(name string, r *http.Request) (app.App, error) {
 	var err error
@@ -62,10 +67,6 @@ func getApp(name string) (*app.App, error) {
 //   401: Unauthorized
 //   404: Not found
 func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -79,7 +80,11 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "app-delete", "app="+a.Name)
+	evt, err := event.New(&event.Opts{Target: appTarget(a.Name), Kind: permission.PermAppDelete, Owner: t.GetUserName(), CustomData: a})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
@@ -145,10 +150,6 @@ contextsLoop:
 //   204: No content
 //   401: Unauthorized
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
 	if name := r.URL.Query().Get("name"); name != "" {
@@ -180,7 +181,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		extra = append(extra, fmt.Sprintf("status=%s", strings.Join(status, ",")))
 		filter.Statuses = status
 	}
-	rec.Log(u.Email, "app-list", extra...)
 	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
@@ -214,10 +214,6 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -231,7 +227,6 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "app-info", "app="+a.Name)
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&a)
 }
@@ -247,7 +242,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   403: Quota exceeded
 //   409: App already exists
-func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	a := app.App{
 		TeamOwner:   r.FormValue("teamOwner"),
 		Platform:    r.FormValue("platform"),
@@ -256,7 +251,6 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Description: r.FormValue("description"),
 		Pool:        r.FormValue("pool"),
 	}
-	var err error
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
 		if err != nil {
@@ -284,7 +278,11 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
 		}
 	}
-	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name, "description="+a.Description, "pool="+a.Pool)
+	evt, err := event.New(&event.Opts{Target: appTarget(a.Name), Kind: permission.PermAppCreate, Owner: t.GetUserName(), CustomData: a})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
