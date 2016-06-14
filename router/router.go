@@ -197,16 +197,30 @@ func swapBackendName(backend1, backend2 string) error {
 }
 
 func swapCnames(r Router, backend1, backend2 string) error {
-	cnames, err := r.CNames(backend1)
+	cnames1, err := r.CNames(backend1)
 	if err != nil {
 		return err
 	}
-	for _, cname := range cnames {
+	cnames2, err := r.CNames(backend2)
+	if err != nil {
+		return err
+	}
+	for _, cname := range cnames1 {
 		err = r.UnsetCName(cname.String(), backend1)
 		if err != nil {
 			return err
 		}
 		err = r.SetCName(cname.String(), backend2)
+		if err != nil {
+			return err
+		}
+	}
+	for _, cname := range cnames2 {
+		err = r.UnsetCName(cname.String(), backend2)
+		if err != nil {
+			return err
+		}
+		err = r.SetCName(cname.String(), backend1)
 		if err != nil {
 			return err
 		}

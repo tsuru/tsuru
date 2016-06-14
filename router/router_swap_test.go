@@ -87,6 +87,17 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 	cnames, err = r.CNames(backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(expected, check.DeepEquals, cnames)
+	err = router.Swap(r, backend1, backend2, true)
+	c.Assert(err, check.IsNil)
+	cnames, err = r.CNames(backend1)
+	c.Assert(err, check.IsNil)
+	u, err = url.Parse("cname.com")
+	c.Assert(err, check.IsNil)
+	expected = []*url.URL{u}
+	c.Assert(expected, check.DeepEquals, cnames)
+	cnames, err = r.CNames(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(cnames, check.HasLen, 0)
 }
 
 func (s *ExternalSuite) TestSwap(c *check.C) {
