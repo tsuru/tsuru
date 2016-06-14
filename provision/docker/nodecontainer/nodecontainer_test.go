@@ -122,6 +122,22 @@ func (s *S) TestUpdateContainer(c *check.C) {
 	)
 }
 
+func (s *S) TestUpdateContainerMergeEnvs(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{
+		Image: "img1",
+		Env:   []string{"A=1", "B=2"},
+	}})
+	c.Assert(err, check.IsNil)
+	err = UpdateContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{
+		Env: []string{"B=3", "C=4"},
+	}})
+	c.Assert(err, check.IsNil)
+	entry, err := LoadNodeContainer("", "x")
+	c.Assert(err, check.IsNil)
+	sort.Strings(entry.Config.Env)
+	c.Assert(entry.Config.Env, check.DeepEquals, []string{"A=1", "B=3", "C=4"})
+}
+
 func (s *S) TestUpdateContainerInvalid(c *check.C) {
 	err := UpdateContainer("", &NodeContainerConfig{})
 	c.Assert(err, check.ErrorMatches, "node container config name cannot be empty")
