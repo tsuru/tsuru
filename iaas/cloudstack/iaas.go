@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/queue"
 )
 
@@ -96,7 +97,7 @@ func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interfa
 	if err != nil {
 		return err
 	}
-	client := http.DefaultClient
+	client := net.Dial5Full300ClientNoKeepAlive
 	resp, err := client.Get(url)
 	if err != nil {
 		return err

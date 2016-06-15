@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 )
 
 var (
@@ -77,7 +78,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	}
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
-	return http.DefaultClient.Do(req)
+	return net.Dial5Full300ClientNoKeepAlive.Do(req)
 }
 
 func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
