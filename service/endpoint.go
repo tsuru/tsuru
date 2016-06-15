@@ -149,6 +149,10 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		"app-host": {app.GetIp()},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	}
