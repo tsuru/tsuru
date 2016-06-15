@@ -100,13 +100,13 @@ func UpdateContainer(pool string, c *NodeContainerConfig) error {
 }
 
 func removeDuplicateEnvs(c *NodeContainerConfig, oldConf *scopedconfig.ScopedConfig, pool string) error {
-	var config NodeContainerConfig
-	err := oldConf.Load(pool, &config)
+	var oldPoolConf map[string]NodeContainerConfig
+	err := oldConf.LoadPoolsMerge([]string{pool}, &oldPoolConf, false, false)
 	if err != nil {
 		return err
 	}
 	envMap := map[string]string{}
-	allEnvs := append(config.Config.Env, c.Config.Env...)
+	allEnvs := append(oldPoolConf[pool].Config.Env, c.Config.Env...)
 	for i := len(allEnvs) - 1; i >= 0; i-- {
 		name := strings.Split(allEnvs[i], "=")[0]
 		if _, ok := envMap[name]; !ok {
