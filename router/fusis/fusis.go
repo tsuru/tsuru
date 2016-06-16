@@ -5,23 +5,22 @@
 package fusis
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
-	"strings"
 
+	fusisApi "github.com/luizbafilho/fusis/api"
+	fusisTypes "github.com/luizbafilho/fusis/api/types"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 )
 
 const routerType = "fusis"
+
+var slugReplace = regexp.MustCompile(`[^\w\d]+`)
 
 type fusisRouter struct {
 	apiUrl    string
@@ -29,7 +28,7 @@ type fusisRouter struct {
 	port      uint16
 	scheduler string
 	mode      string
-	debug     bool
+	client    *fusisApi.Client
 }
 
 func init() {
@@ -41,87 +40,54 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		return nil, err
 	}
+	client := fusisApi.NewClient(apiUrl)
+	client.HttpClient = tsuruNet.Dial5Full60ClientNoKeepAlive
 	r := &fusisRouter{
 		apiUrl:    apiUrl,
+		client:    client,
 		proto:     "tcp",
 		port:      80,
 		scheduler: "rr",
 		mode:      "nat",
-		debug:     true,
 	}
 	return r, nil
 }
 
-func (r *fusisRouter) doRequest(method, path string, params interface{}) (*http.Response, error) {
-	buf := bytes.Buffer{}
-	if params != nil {
-		err := json.NewEncoder(&buf).Encode(params)
-		if err != nil {
-			return nil, err
-		}
-	}
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(r.apiUrl, "/"), strings.TrimLeft(path, "/"))
-	var bodyData string
-	if r.debug {
-		bodyData = buf.String()
-	}
-	req, err := http.NewRequest(method, url, &buf)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rsp, err := tsuruNet.Dial5Full60Client.Do(req)
-	if r.debug {
-		var code int
-		if err == nil {
-			code = rsp.StatusCode
-		}
-		log.Debugf("[fusis router] request %s %s %s: %d", method, url, bodyData, code)
-	}
-	return rsp, err
-}
-
 func (r *fusisRouter) AddBackend(name string) error {
-	rsp, err := r.doRequest("POST", "/services", map[string]interface{}{
-		"Name":      name,
-		"Port":      r.port,
-		"Protocol":  r.proto,
-		"Scheduler": r.scheduler,
-	})
+	srv := fusisTypes.Service{
+		Name:      name,
+		Port:      r.port,
+		Protocol:  r.proto,
+		Scheduler: r.scheduler,
+	}
+	_, err := r.client.CreateService(srv)
 	if err != nil {
-		return err
-	}
-	defer rsp.Body.Close()
-	data, _ := ioutil.ReadAll(rsp.Body)
-	if rsp.StatusCode == 422 {
-		// TODO: differentiate from other errors
-		if r.debug {
-			log.Debugf("[fusis router] conflict response %d: %s", rsp.StatusCode, string(data))
+		if err == fusisTypes.ErrServiceAlreadyExists {
+			return router.ErrBackendExists
 		}
-		return router.ErrBackendExists
-	}
-	if rsp.StatusCode != http.StatusOK {
-		return fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
+		return err
 	}
 	return router.Store(name, name, routerType)
 }
+
 func (r *fusisRouter) RemoveBackend(name string) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
 	}
-	rsp, err := r.doRequest("DELETE", "/services/"+backendName, nil)
-	if err != nil {
-		return err
+	if backendName != name {
+		return router.ErrBackendSwapped
 	}
-	if rsp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(rsp.Body)
-		return fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
+	err = r.client.DeleteService(backendName)
+	if err == fusisTypes.ErrServiceNotFound {
+		return router.ErrBackendNotFound
 	}
-	return nil
+	return err
 }
+
 func (r *fusisRouter) routeName(name string, address *url.URL) string {
-	return fmt.Sprintf("%s_%s", name, address.String())
+	addr := slugReplace.ReplaceAllString(address.Host, "_")
+	return fmt.Sprintf("%s_%s", name, addr)
 }
 
 func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
@@ -135,102 +101,103 @@ func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
 		port = "80"
 	}
 	portInt, _ := strconv.ParseUint(port, 10, 16)
-	data := map[string]interface{}{
-		"Name":       r.routeName(backendName, address),
-		"Host":       host,
-		"Port":       portInt,
-		"Mode":       r.mode,
-		"service_id": backendName,
+	dst := fusisTypes.Destination{
+		Name:      r.routeName(backendName, address),
+		Host:      host,
+		Port:      uint16(portInt),
+		Mode:      r.mode,
+		ServiceId: backendName,
 	}
-	rsp, err := r.doRequest("POST", fmt.Sprintf("/services/%s/destinations", backendName), data)
-	if err != nil {
-		return err
+	_, err = r.client.AddDestination(dst)
+	if err == fusisTypes.ErrDestinationAlreadyExists {
+		return router.ErrRouteExists
 	}
-	if rsp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(rsp.Body)
-		return fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
-	}
-	return nil
+	return err
 }
+
 func (r *fusisRouter) AddRoutes(name string, addresses []*url.URL) error {
+	added := make([]*url.URL, 0, len(addresses))
+	var err error
 	for _, addr := range addresses {
 		err := r.AddRoute(name, addr)
-		if err != nil {
-			return err
+		if err == router.ErrRouteExists {
+			err = nil
+			continue
 		}
+		if err != nil {
+			break
+		}
+		added = append(added, addr)
+	}
+	if err != nil {
+		for _, addr := range added {
+			r.RemoveRoute(name, addr)
+		}
+		return err
 	}
 	return nil
 }
+
 func (r *fusisRouter) RemoveRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
 	}
-	rsp, err := r.doRequest("DELETE", fmt.Sprintf("/services/%s/destinations/%s", backendName, r.routeName(backendName, address)), nil)
-	if err != nil {
-		return err
+	err = r.client.DeleteDestination(backendName, r.routeName(backendName, address))
+	if err == fusisTypes.ErrDestinationNotFound {
+		return router.ErrRouteNotFound
 	}
-	if rsp.StatusCode != http.StatusOK {
-		data, _ := ioutil.ReadAll(rsp.Body)
-		return fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
-	}
-	return nil
+	return err
 }
+
 func (r *fusisRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+	removed := make([]*url.URL, 0, len(addresses))
+	var err error
 	for _, addr := range addresses {
 		err := r.RemoveRoute(name, addr)
-		if err != nil {
-			return err
+		if err == router.ErrRouteNotFound {
+			err = nil
+			continue
 		}
+		if err != nil {
+			break
+		}
+		removed = append(removed, addr)
+	}
+	if err != nil {
+		for _, addr := range removed {
+			r.AddRoute(name, addr)
+		}
+		return err
 	}
 	return nil
 }
+
 func (r *fusisRouter) SetCName(cname, name string) error {
 	return nil
 }
+
 func (r *fusisRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 
-type Service struct {
-	Name         string
-	Host         string
-	Port         uint16
-	Destinations []Destination
+func (r *fusisRouter) CNames(name string) ([]*url.URL, error) {
+	return nil, nil
 }
 
-type Destination struct {
-	Name      string
-	Host      string
-	Port      uint16
-	Weight    int32
-	Mode      string
-	ServiceId string `json:"service_id"`
-}
-
-func (r *fusisRouter) findService(name string) (*Service, error) {
+func (r *fusisRouter) findService(name string) (*fusisTypes.Service, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
 	}
-	rsp, err := r.doRequest("GET", "/services/"+backendName, nil)
+	srv, err := r.client.GetService(backendName)
 	if err != nil {
+		if err == fusisTypes.ErrServiceNotFound {
+			return nil, router.ErrBackendNotFound
+		}
 		return nil, err
 	}
-	defer rsp.Body.Close()
-	data, _ := ioutil.ReadAll(rsp.Body)
-	if r.debug {
-		log.Debugf("[fusis router] GET /service/%s: %s", backendName, data)
-	}
-	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("invalid response %d: %s", rsp.StatusCode, string(data))
-	}
-	var service Service
-	err = json.Unmarshal(data, &service)
-	if err != nil {
-		return nil, fmt.Errorf("unable unmarshal %q: %s", string(data), err)
-	}
-	return &service, nil
+	return srv, nil
 }
 
 func (r *fusisRouter) Addr(name string) (string, error) {
@@ -240,9 +207,11 @@ func (r *fusisRouter) Addr(name string) (string, error) {
 	}
 	return fmt.Sprintf("%s:%d", srv.Host, srv.Port), nil
 }
-func (r *fusisRouter) Swap(backend1 string, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+
+func (r *fusisRouter) Swap(backend1 string, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
+
 func (r *fusisRouter) Routes(name string) ([]*url.URL, error) {
 	srv, err := r.findService(name)
 	if err != nil {
@@ -251,7 +220,10 @@ func (r *fusisRouter) Routes(name string) ([]*url.URL, error) {
 	result := make([]*url.URL, len(srv.Destinations))
 	for i, d := range srv.Destinations {
 		var err error
-		result[i], err = url.Parse(fmt.Sprintf("http://%s:%d", d.Host, d.Port))
+		result[i] = &url.URL{
+			Scheme: srv.Protocol,
+			Host:   fmt.Sprintf("%s:%d", d.Host, d.Port),
+		}
 		if err != nil {
 			return nil, err
 		}
