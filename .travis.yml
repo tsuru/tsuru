@@ -35,6 +35,9 @@ script:
   - go get golang.org/x/net/http2/...
   - ./check-handlers.sh
   - make check-api-doc
+  - CGO_ENABLED=0 go build ./cmd/tsurud/
+after_success:
+  - send_to_docker_hub.sh
 notifications:
   email:
     on_success: change
