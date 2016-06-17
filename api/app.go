@@ -1275,6 +1275,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // title: app restart
 // path: /apps/{app}/restart
 // method: POST
+// consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
@@ -1316,6 +1317,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: app sleep
 // path: /apps/{app}/sleep
 // method: POST
+// consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
@@ -1500,6 +1502,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: app start
 // path: /apps/{app}/start
 // method: POST
+// consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
@@ -1541,6 +1544,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: app stop
 // path: /apps/{app}/stop
 // method: POST
+// consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
