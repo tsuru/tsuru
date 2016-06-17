@@ -34,6 +34,7 @@ script:
   - make deadcode
   - go get golang.org/x/net/http2/...
   - ./check-handlers.sh
+  - make check-api-doc
 notifications:
   email:
     on_success: change
