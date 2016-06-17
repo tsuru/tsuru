@@ -58,7 +58,7 @@ _install_api_doc:
 	@go get $(GO_EXTRAFLAGS) github.com/tsuru/tsuru-api-docs
 
 api-doc: _install_api_doc
-	@tsuru-api-docs | grep -v missing
+	@tsuru-api-docs | grep -v missing > docs/handlers.yml
 
 check-api-doc: _install_api_doc
 	@exit $(tsuru-api-docs | grep missing | wc -l)
