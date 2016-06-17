@@ -1281,7 +1281,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	process := r.URL.Query().Get("process")
+	process := r.FormValue("process")
 	u, err := t.User()
 	if err != nil {
 		return err
