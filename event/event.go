@@ -26,7 +26,6 @@ var (
 	updater            = lockUpdater{
 		addCh:    make(chan *Target),
 		removeCh: make(chan *Target),
-		stopCh:   make(chan struct{}),
 		once:     &sync.Once{},
 	}
 
@@ -317,11 +316,18 @@ type lockUpdater struct {
 }
 
 func (l *lockUpdater) start() {
-	l.once.Do(func() { go l.spin() })
+	l.once.Do(func() {
+		l.stopCh = make(chan struct{})
+		go l.spin()
+	})
 }
 
 func (l *lockUpdater) stop() {
+	if l.stopCh == nil {
+		return
+	}
 	l.stopCh <- struct{}{}
+	l.stopCh = nil
 	l.once = &sync.Once{}
 }
 

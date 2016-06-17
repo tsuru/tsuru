@@ -145,6 +145,7 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 	oldUpdateInterval := lockUpdateInterval
 	lockUpdateInterval = time.Millisecond
 	defer func() {
+		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
 	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: "me@me.com"})
