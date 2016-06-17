@@ -1323,7 +1323,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	process := r.URL.Query().Get("process")
+	process := r.FormValue("process")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -1333,7 +1333,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	proxy := r.URL.Query().Get("proxy")
+	proxy := r.FormValue("proxy")
 	if proxy == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty proxy URL"}
 	}
@@ -1356,7 +1356,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Sleep(w, process, proxyURL)
+	err = a.Sleep(writer, process, proxyURL)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
@@ -1506,7 +1506,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	process := r.URL.Query().Get("process")
+	process := r.FormValue("process")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -1530,7 +1530,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Start(w, process)
+	err = a.Start(writer, process)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
@@ -1547,7 +1547,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	process := r.URL.Query().Get("process")
+	process := r.FormValue("process")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -1571,7 +1571,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Stop(w, process)
+	err = a.Stop(writer, process)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
