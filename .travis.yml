@@ -9,6 +9,7 @@ env:
   global:
     - GOARCH=amd64
     - GO15VENDOREXPERIMENT=1
+    - GO_FOR_RELEASE=1.6.2
 addons:
   apt:
     packages:
