@@ -151,7 +151,8 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
 	if err != nil {
-		return nil, err
+		log.Errorf(`Failed to bind app %q to service instance "%s/%s": %s`, app.GetName(), instance.ServiceName, instance.Name, err)
+		return nil, fmt.Errorf("%s api is down.", instance.Name)
 	}
 	defer resp.Body.Close()
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
