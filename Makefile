@@ -54,7 +54,10 @@ race:
 	go test $(GO_EXTRAFLAGS) -race -i ./...
 	go test $(GO_EXTRAFLAGS) -race ./...
 
-doc:
+doc-deps:
+	@pip install -r requirements.txt
+
+doc: doc-deps
 	@cd docs && make html SPHINXOPTS="-N -W"
 
 docs: doc
