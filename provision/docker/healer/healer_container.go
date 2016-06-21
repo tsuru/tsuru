@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -91,14 +92,6 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		cont.SetStatus(h.provisioner, provision.StatusStarted, true)
 		return nil
 	}
-	healingCounter, err := healingCountFor("container", cont.ID, consecutiveHealingsTimeframe)
-	if err != nil {
-		return fmt.Errorf("Containers healing: couldn't verify number of previous healings for %q: %s", cont.ID, err.Error())
-	}
-	if healingCounter > consecutiveHealingsLimitInTimeframe {
-		return fmt.Errorf("Containers healing: number of healings for container %q in the last %d minutes exceeds limit of %d: %d",
-			cont.ID, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
-	}
 	locked := h.locker.Lock(cont.AppName)
 	if !locked {
 		return fmt.Errorf("Containers healing: unable to heal %q couldn't lock app %s", cont.ID, cont.AppName)
@@ -113,7 +106,11 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		return fmt.Errorf("Containers healing: unable to heal %q couldn't verify it still exists: %s", cont.ID, err)
 	}
 	log.Errorf("Initiating healing process for container %q, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
-	evt, err := NewHealingEvent(cont)
+	evt, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Name: "container", Value: cont.ID},
+		InternalKind: "healer",
+		CustomData:   cont,
+	})
 	if err != nil {
 		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
 	}
@@ -121,7 +118,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	if healErr != nil {
 		healErr = fmt.Errorf("Error healing container %q: %s", cont.ID, healErr.Error())
 	}
-	err = evt.Update(newCont, healErr)
+	err = evt.DoneCustomData(healErr, newCont)
 	if err != nil {
 		log.Errorf("Error trying to update containers healing event: %s", err.Error())
 	}

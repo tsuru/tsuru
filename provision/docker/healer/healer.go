@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
@@ -44,6 +45,21 @@ var (
 
 	errHealingInProgress = errors.New("healing already in progress")
 )
+
+func init() {
+	event.SetThrottling(event.ThrottlingSpec{
+		TargetName: "container",
+		KindName:   "healer",
+		Time:       consecutiveHealingsTimeframe,
+		Max:        consecutiveHealingsLimitInTimeframe,
+	})
+	event.SetThrottling(event.ThrottlingSpec{
+		TargetName: "node",
+		KindName:   "healer",
+		Time:       consecutiveHealingsTimeframe,
+		Max:        consecutiveHealingsLimitInTimeframe,
+	})
+}
 
 func healingCollection() (*storage.Collection, error) {
 	name, _ := config.GetString("docker:healing:events_collection")

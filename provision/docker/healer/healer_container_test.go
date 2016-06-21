@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -101,20 +103,18 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 			provision.StatusAsleep.String(),
 		}},
 	}})
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "container-healing")
-	c.Assert(events[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
-	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "127.0.0.1")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       bson.M{"$ne": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerCreatedContainer(c *check.C) {
@@ -152,20 +152,18 @@ func (s *S) TestRunContainerHealerCreatedContainer(c *check.C) {
 	}
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, expected)
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "container-healing")
-	c.Assert(events[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
-	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "127.0.0.1")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       bson.M{"$ne": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerCreatedContainerNoProcess(c *check.C) {
@@ -193,12 +191,9 @@ func (s *S) TestRunContainerHealerCreatedContainerNoProcess(c *check.C) {
 	healer.runContainerHealerOnce()
 	movings := p.Movings()
 	c.Assert(movings, check.IsNil)
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	n, err := healingColl.Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerShutdown(c *check.C) {
@@ -252,6 +247,18 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	}
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       bson.M{"$ne": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
@@ -302,20 +309,18 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
 
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "container-healing")
-	c.Assert(events[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
-	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "127.0.0.1")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       bson.M{"$ne": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
@@ -355,20 +360,18 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	}
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "container-healing")
-	c.Assert(events[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
-	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "127.0.0.1")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       bson.M{"$ne": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerRemovedFromDB(c *check.C) {
@@ -423,14 +426,9 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 		Locker:              dockertest.NewFakeLocker(),
 	})
 	healer.runContainerHealerOnce()
-
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C) {
@@ -459,14 +457,9 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 		Locker:              dockertest.NewFakeLocker(),
 	})
 	healer.runContainerHealerOnce()
-
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunContainerHealerWithError(c *check.C) {
@@ -515,48 +508,56 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(hosts[0], check.Equals, net.URLToHost(node1.URL()))
 	c.Assert(hosts[1], check.Equals, net.URLToHost(node1.URL()))
 
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "container-healing")
-	c.Assert(events[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(events[0].Error, check.Matches, "(?s).*Error trying to heal containers.*")
-	c.Assert(events[0].Successful, check.Equals, false)
-	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
-	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		ErrorMatches: `.*Error trying to heal containers.*`,
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "",
+		},
+	}, eventtest.HasEvent)
 }
 
-func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
-	conts := []container.Container{
-		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
-		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
-	}
-	for i := 0; i < len(conts)-1; i++ {
-		evt, err := NewHealingEvent(conts[i])
-		c.Assert(err, check.IsNil)
-		err = evt.Update(conts[i+1], nil)
-		c.Assert(err, check.IsNil)
-	}
-	toMoveCont := conts[7]
-	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	p, err := dockertest.NewFakeDockerProvisioner()
+func (s *S) TestRunContainerHealerThrottled(c *check.C) {
+	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
+	node1 := p.Servers()[0]
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	_, err = p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 2},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+
+	containers := p.AllContainers()
+	c.Assert(containers, check.HasLen, 2)
+	c.Assert(containers[0].HostAddr, check.Equals, net.URLToHost(node1.URL()))
+	c.Assert(containers[1].HostAddr, check.Equals, net.URLToHost(node1.URL()))
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
+	toMoveCont := containers[1]
+	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-5 * time.Minute)
+	for i := 0; i < 3; i++ {
+		evt, err := event.NewInternal(&event.Opts{
+			Target:       event.Target{Name: "container", Value: toMoveCont.ID},
+			InternalKind: "healer",
+			CustomData:   toMoveCont,
+		})
+		c.Assert(err, check.IsNil)
+		err = evt.DoneCustomData(nil, nil)
+		c.Assert(err, check.IsNil)
+	}
 	healer := NewContainerHealer(ContainerHealerArgs{Provisioner: p, Locker: dockertest.NewFakeLocker()})
 	err = healer.healContainerIfNeeded(toMoveCont)
-	c.Assert(err, check.ErrorMatches, "Containers healing: number of healings for container \"cont8\" in the last 30 minutes exceeds limit of 3: 7")
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 7)
+	c.Assert(err, check.ErrorMatches, "Error trying to insert container healing event, healing aborted: event throttled, limit for healer on container \".*?\" is 3 every 30m0s")
 }
 
 func (s *S) TestListUnresponsiveContainers(c *check.C) {
