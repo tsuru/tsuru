@@ -8,11 +8,11 @@ tsr 0.3.0 release notes
 
 Welcome to tsr 0.3.0!
 
-These release notes cover the `new features`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from tsuru 0.2.x or older
-versions.
+These release notes cover the :ref:`new-features` and
+:ref:`backwards-incompatible-changes` you'll want to be aware of when upgrading
+from tsuru 0.2.x or older versions.
 
-.. _`new features`: `What's new in tsr 0.3.0`_
+.. _new-features:
 
 What's new in tsr 0.3.0
 =======================
@@ -57,6 +57,8 @@ Other improvements and bugfixes
     * Api handler that returns information about all deploys.
     * Refactored quota backend.
     * New lisp platform. Thanks to Nick Ricketts.
+
+.. backwards-incompatible-changes:
 
 Backwards incompatible changes
 ==============================
