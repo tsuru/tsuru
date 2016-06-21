@@ -17,8 +17,8 @@ type EventDesc struct {
 	Target          event.Target
 	Kind            string
 	Owner           string
-	StartCustomData map[string]interface{}
-	EndCustomData   map[string]interface{}
+	StartCustomData interface{}
+	EndCustomData   interface{}
 	LogMatches      string
 	ErrorMatches    string
 }
@@ -51,13 +51,19 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 		"running": false,
 	}
 	if evt.StartCustomData != nil {
-		for k, v := range evt.StartCustomData {
-			query["startcustomdata."+k] = v
-		}
-	}
-	if evt.EndCustomData != nil {
-		for k, v := range evt.EndCustomData {
-			query["endcustomdata."+k] = v
+		switch data := evt.StartCustomData.(type) {
+		case map[string]interface{}:
+			for k, v := range data {
+				query["startcustomdata."+k] = v
+			}
+		case []map[string]interface{}:
+			queryPart := []bson.M{}
+			for _, el := range data {
+				queryPart = append(queryPart, bson.M{
+					"startcustomdata": bson.M{"$elemMatch": el},
+				})
+			}
+			query["$and"] = queryPart
 		}
 	}
 	if evt.LogMatches != "" {

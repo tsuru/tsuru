@@ -27,12 +27,10 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
@@ -603,10 +601,13 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam"},
+		Target: appTarget(a.Name),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": a.Name},
+			{"name": "platform", "value": "zend"},
+		},
 	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
@@ -644,10 +645,13 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam"},
+		Target: appTarget("someapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": a.Name},
+			{"name": "platform", "value": "zend"},
+		},
 	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
@@ -703,10 +707,14 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{t1.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "team1"},
+		Target: appTarget("someapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": a.Name},
+			{"name": "platform", "value": "zend"},
+			{"name": "teamOwner", "value": "team1"},
+		},
 	}, eventtest.HasEvent)
 }
 
@@ -751,10 +759,14 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(gotApp.Plan, check.DeepEquals, expectedPlan)
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam", "plan._id": "myplan"},
+		Target: appTarget("someapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": a.Name},
+			{"name": "platform", "value": "zend"},
+			{"name": "plan", "value": "myplan"},
+		},
 	}, eventtest.HasEvent)
 }
 
@@ -790,10 +802,14 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam", "description": "my app description"},
+		Target: appTarget("someapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": a.Name},
+			{"name": "platform", "value": "zend"},
+			{"name": "description", "value": "my app description"},
+		},
 	}, eventtest.HasEvent)
 }
 
@@ -832,10 +848,14 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	c.Assert(gotApp.Pool, check.Equals, "mypool1")
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam", "pool": "mypool1"},
+		Target: appTarget("someapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": appName},
+			{"name": "platform", "value": "zend"},
+			{"name": "pool", "value": "mypool1"},
+		},
 	}, eventtest.HasEvent)
 }
 
@@ -887,11 +907,14 @@ func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "Quota exceeded\n")
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "zend", "teamowner": "tsuruteam"},
-		ErrorMatches:    `Quota exceeded`,
+		Target: appTarget("someapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "someapp"},
+			{"name": "platform", "value": "zend"},
+		},
+		ErrorMatches: `Quota exceeded`,
 	}, eventtest.HasEvent)
 }
 
@@ -914,11 +937,14 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 		"or dashes, starting with a letter."
 	c.Assert(recorder.Body.String(), check.Equals, msg+"\n")
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("123myapp"),
-		Owner:           token.GetUserName(),
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "123myapp", "framework": "zend", "teamowner": "tsuruteam"},
-		ErrorMatches:    msg,
+		Target: appTarget("123myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "123myapp"},
+			{"name": "platform", "value": "zend"},
+		},
+		ErrorMatches: msg,
 	}, eventtest.HasEvent)
 }
 
@@ -993,10 +1019,13 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
 	u, _ := token.User()
 	c.Assert(eventtest.EventDesc{
-		Target:          appTarget("someapp"),
-		Owner:           u.Email,
-		Kind:            "app.create",
-		StartCustomData: map[string]interface{}{"name": "someapp", "framework": "platDis", "teamowner": "tsuruteam"},
+		Target: appTarget("someapp"),
+		Owner:  u.Email,
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "someapp"},
+			{"name": "platform", "value": "platDis"},
+		},
 	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1045,13 +1074,15 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Description, check.DeepEquals, "my app description")
-	u, err := token.User()
-	action := rectest.Action{
-		Action: "update-app",
-		User:   u.Email,
-		Extra:  []interface{}{"app=myapp", "description=my app description", "pool="},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+			{"name": "description", "value": "my app description"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
@@ -1160,11 +1191,8 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Check(recorder.Code, check.Equals, http.StatusOK)
-	var message tsuruIo.SimpleJsonMessage
-	err = json.NewDecoder(recorder.Body).Decode(&message)
-	c.Assert(err, check.IsNil)
-	c.Assert(message.Error, check.DeepEquals, app.ErrPlanNotFound.Error())
+	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Check(recorder.Body.String(), check.Equals, app.ErrPlanNotFound.Error()+"\n")
 }
 
 func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
@@ -1291,7 +1319,7 @@ func (s *S) TestAddUnits(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("units=3&process=web")
-	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -1304,12 +1332,12 @@ func (s *S) TestAddUnits(c *check.C) {
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
-	action := rectest.Action{
-		Action: "add-units",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=armorandsword", "units=3"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("armorandsword"),
+		Owner:           s.token.GetUserName(),
+		Kind:            "app.update.unit.add",
+		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
+	}, eventtest.HasEvent)
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"added 3 units"}`+"\n")
 }
 
@@ -1379,13 +1407,13 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmited(c *check.C) {
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
-	action := rectest.Action{
-		Action: "add-units",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=armorandsword", "units=3"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"added 3 units"}`+"\n")
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("armorandsword"),
+		Owner:           s.token.GetUserName(),
+		Kind:            "app.update.unit.add",
+		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": ""}, {"name": ":app", "value": "armorandsword"}},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *check.C) {
@@ -1411,13 +1439,21 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	body := strings.NewReader("units=3&process=web")
-	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = addUnits(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"","Error":"Quota exceeded. Available: 2. Requested: 3."}`+"\n")
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, `Quota exceeded. Available: 2. Requested: 3.`+"\n")
+	c.Assert(eventtest.EventDesc{
+		Target:          appTarget("armorandsword"),
+		Owner:           s.token.GetUserName(),
+		Kind:            "app.update.unit.add",
+		StartCustomData: []map[string]interface{}{{"name": "units", "value": "3"}, {"name": "process", "value": "web"}, {"name": ":app", "value": "armorandsword"}},
+		ErrorMatches:    `Quota exceeded. Available: 2. Requested: 3.`,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
@@ -1425,7 +1461,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=web", nil)
+	request, err := http.NewRequest("DELETE", "/apps/velha/units?units=2&process=web", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -1439,12 +1475,16 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
-	action := rectest.Action{
-		Action: "remove-units",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=velha", "units=2"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("velha"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.unit.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": "units", "value": "2"},
+			{"name": "process", "value": "web"},
+			{"name": ":app", "value": "velha"},
+		},
+	}, eventtest.HasEvent)
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"removing 2 units"}`+"\n")
 }
 
@@ -1507,12 +1547,16 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
-	action := rectest.Action{
-		Action: "remove-units",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=velha", "units=2"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("velha"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.unit.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": "units", "value": "2"},
+			{"name": "process", "value": ""},
+			{"name": ":app", "value": "velha"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *check.C) {
@@ -1724,12 +1768,15 @@ func (s *S) TestAddTeamToTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Teams, check.HasLen, 2)
 	c.Assert(app.Teams[1], check.Equals, s.team.Name)
-	action := rectest.Action{
-		Action: "grant-app-access",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "team=" + s.team.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.grant",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":team", "value": s.team.Name},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *check.C) {
@@ -1789,6 +1836,16 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 	handler := RunServer(true)
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.grant",
+		ErrorMatches: "team already have access to this app",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":team", "value": s.team.Name},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
@@ -1836,12 +1893,15 @@ func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(app.Teams, check.HasLen, 1)
 	c.Assert(app.Teams[0], check.Equals, "abcd")
-	action := rectest.Action{
-		Action: "revoke-app-access",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "team=" + s.team.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.revoke",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":team", "value": s.team.Name},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *check.C) {
@@ -1924,6 +1984,16 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned\n")
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.revoke",
+		ErrorMatches: "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":team", "value": s.team.Name},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) {
@@ -2015,12 +2085,16 @@ func (s *S) TestRunOnce(c *check.C) {
 	expected += " ls"
 	cmds := s.provisioner.GetCmds(expected, &a)
 	c.Assert(cmds, check.HasLen, 1)
-	action := rectest.Action{
-		Action: "run-command",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "command=ls"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.run",
+		StartCustomData: []map[string]interface{}{
+			{"name": "command", "value": "ls"},
+			{"name": "once", "value": "true"},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRun(c *check.C) {
@@ -2044,12 +2118,15 @@ func (s *S) TestRun(c *check.C) {
 	expected += " ls"
 	cmds := s.provisioner.GetCmds(expected, &a)
 	c.Assert(cmds, check.HasLen, 1)
-	action := rectest.Action{
-		Action: "run-command",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "command=ls"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.run",
+		StartCustomData: []map[string]interface{}{
+			{"name": "command", "value": "ls"},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
@@ -2070,6 +2147,16 @@ func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 	expected := `{"Message":"failure output"}` + "\n" +
 		`{"Message":"","Error":"something went wrong"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.run",
+		ErrorMatches: "something went wrong",
+		StartCustomData: []map[string]interface{}{
+			{"name": "command", "value": "ls"},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRunReturnsBadRequestIfTheCommandIsMissing(c *check.C) {
@@ -2328,18 +2415,21 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	envs := map[string]string{
-		"DATABASE_HOST": "localhost",
-	}
-	action := rectest.Action{
-		Action: "set-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
 `)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *check.C) {
@@ -2370,18 +2460,21 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	envs := map[string]string{
-		"DATABASE_HOST": "localhost",
-	}
-	action := rectest.Action{
-		Action: "set-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs, "private=true"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
 `)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(c *check.C) {
@@ -2430,18 +2523,21 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "127.0.0.1", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	envs := map[string]string{
-		"DATABASE_HOST": "127.0.0.1",
-	}
-	action := rectest.Action{
-		Action: "set-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs, "private=true"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
 `)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *check.C) {
@@ -2475,16 +2571,20 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expectedHost)
 	c.Assert(app.Env["DATABASE_USER"], check.DeepEquals, expectedUser)
-	envs := map[string]string{
-		"DATABASE_HOST": "localhost",
-		"DATABASE_USER": "root",
-	}
-	action := rectest.Action{
-		Action: "set-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "Envs.1.Name", "value": "DATABASE_USER"},
+			{"name": "Envs.1.Value", "value": "root"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) {
@@ -2523,6 +2623,18 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	app, err := app.GetByName("losers")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, original)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "http://foo.com:8080"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
@@ -2553,21 +2665,24 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	envs := map[string]string{
-		"DATABASE_HOST": "localhost",
-	}
-	action := rectest.Action{
-		Action: "set-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
 `)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": "true"},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
-func (s *S) TestSetEnMissingFormBody(c *check.C) {
+func (s *S) TestSetEnvMissingFormBody(c *check.C) {
 	a := app.App{Name: "rock", Platform: "zend"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -2670,15 +2785,19 @@ func (s *S) TestUnsetEnv(c *check.C) {
 	app, err := app.GetByName("swift")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "unset-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Unsetting 1 environment variables ----\n"}
 `)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.unset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "env", "value": "DATABASE_HOST"},
+			{"name": "noRestart", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnsetEnvNoRestart(c *check.C) {
@@ -2709,15 +2828,19 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 	app, err := app.GetByName("swift")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "unset-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Unsetting 1 environment variables ----\n"}
 `)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.unset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "env", "value": "DATABASE_HOST"},
+			{"name": "noRestart", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
@@ -2753,12 +2876,16 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 		},
 	}
 	c.Assert(app.Env, check.DeepEquals, expected)
-	action := rectest.Action{
-		Action: "unset-env",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.unset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "env", "value": []string{"DATABASE_HOST", "DATABASE_USER"}},
+			{"name": "noRestart", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
@@ -2870,12 +2997,15 @@ func (s *S) TestAddCName(c *check.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"leper.secretcompany.com", "blog.tsuru.com"})
-	action := rectest.Action{
-		Action: "add-cname",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "cname=leper.secretcompany.com, blog.tsuru.com"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.cname.add",
+		StartCustomData: []map[string]interface{}{
+			{"name": "cname", "value": []interface{}{"leper.secretcompany.com", "blog.tsuru.com"}},
+			{"name": ":app", "value": "leper"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
@@ -2895,12 +3025,15 @@ func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"*.leper.secretcompany.com"})
-	action := rectest.Action{
-		Action: "add-cname",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "cname=*.leper.secretcompany.com"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.cname.add",
+		StartCustomData: []map[string]interface{}{
+			{"name": "cname", "value": "*.leper.secretcompany.com"},
+			{"name": ":app", "value": "leper"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
@@ -2918,6 +3051,16 @@ func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.cname.add",
+		ErrorMatches: "Invalid cname",
+		StartCustomData: []map[string]interface{}{
+			{"name": "cname", "value": "_leper.secretcompany.com"},
+			{"name": ":app", "value": "leper"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsEmpty(c *check.C) {
@@ -2933,6 +3076,16 @@ func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsEmpty(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.cname.add",
+		ErrorMatches: "Invalid cname",
+		StartCustomData: []map[string]interface{}{
+			{"name": "cname", "value": ""},
+			{"name": ":app", "value": "leper"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissing(c *check.C) {
@@ -3008,12 +3161,15 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{})
-	action := rectest.Action{
-		Action: "remove-cname",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "cnames=foo.bar.com"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(app.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.cname.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": "cname", "value": "foo.bar.com"},
+			{"name": ":app", "value": "leper"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
@@ -3039,12 +3195,15 @@ func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{})
-	action := rectest.Action{
-		Action: "remove-cname",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name, "cnames=foo.bar.com, bar.com"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(app.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.cname.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": "cname", "value": []interface{}{"foo.bar.com", "bar.com"}},
+			{"name": ":app", "value": "leper"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemoveCNameUnknownApp(c *check.C) {
@@ -3446,9 +3605,20 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"","Error":"my-mysql api is down."}`+"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, `my-mysql api is down.`+"\n")
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.bind",
+		ErrorMatches: `my-mysql api is down\.`,
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "noRestart", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestBindHandler(c *check.C) {
@@ -3509,12 +3679,17 @@ func (s *S) TestBindHandler(c *check.C) {
 	c.Assert(parts[6], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
 	c.Assert(parts[7], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	action := rectest.Action{
-		Action: "bind-app",
-		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.bind",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "noRestart", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
@@ -3566,12 +3741,17 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	c.Assert(parts[0], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
 	c.Assert(parts[1], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	action := rectest.Action{
-		Action: "bind-app",
-		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.bind",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "noRestart", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
@@ -3736,16 +3916,20 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
 	c.Assert(parts[6], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	action := rectest.Action{
-		Action: "bind-app",
-		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name, "service_name": instance.ServiceName}).One(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Apps, check.DeepEquals, []string{})
-
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.bind",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance2.Name},
+			{"name": ":service", "value": instance2.ServiceName},
+			{"name": "noRestart", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnbindHandler(c *check.C) {
@@ -3829,12 +4013,17 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(parts[2], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
 	c.Assert(parts[3], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	action := rectest.Action{
-		Action: "unbind-app",
-		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.unbind",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "noRestart", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnbindNoRestartFlag(c *check.C) {
@@ -3917,12 +4106,17 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	c.Assert(parts[1], check.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
 	c.Assert(parts[2], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	action := rectest.Action{
-		Action: "unbind-app",
-		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.unbind",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "noRestart", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
@@ -4099,12 +4293,14 @@ func (s *S) TestRestartHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"---- Restarting the app \\\"stress\\\" ----\\n\"}\n{\"Message\":\"restarting app\"}\n")
-	action := rectest.Action{
-		Action: "restart",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.restart",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
@@ -4133,12 +4329,15 @@ func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
 	c.Assert(restarts, check.Equals, 1)
 	restarts = s.provisioner.Restarts(&a, "worker")
 	c.Assert(restarts, check.Equals, 0)
-	action := rectest.Action{
-		Action: "restart",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.restart",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "process", "value": "web"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
@@ -4195,12 +4394,15 @@ func (s *S) TestSleepHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Putting the app \\\"stress\\\" to sleep\\n\"}\n")
-	action := rectest.Action{
-		Action: "sleep",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.sleep",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "proxy", "value": "http://example.com"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSleepHandlerReturns400IfTheProxyIsNotSet(c *check.C) {
@@ -4348,8 +4550,6 @@ func (s *S) TestSwap(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	action := rectest.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1=app1", "app2=app2"}}
-	c.Assert(action, rectest.IsRecorded)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
@@ -4357,6 +4557,26 @@ func (s *S) TestSwap(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(app1.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.swap",
+		StartCustomData: []map[string]interface{}{
+			{"name": "app1", "value": app1.Name},
+			{"name": "app2", "value": app2.Name},
+			{"name": "cnameOnly", "value": "false"},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(app2.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.swap",
+		StartCustomData: []map[string]interface{}{
+			{"name": "app1", "value": app1.Name},
+			{"name": "app2", "value": app2.Name},
+			{"name": "cnameOnly", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSwapCnameOnly(c *check.C) {
@@ -4375,8 +4595,6 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	action := rectest.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1=app1", "app2=app2"}}
-	c.Assert(action, rectest.IsRecorded)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
@@ -4384,6 +4602,26 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Lock, check.Equals, app.AppLock{})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(app1.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.swap",
+		StartCustomData: []map[string]interface{}{
+			{"name": "app1", "value": app1.Name},
+			{"name": "app2", "value": app2.Name},
+			{"name": "cnameOnly", "value": "true"},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(app2.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.swap",
+		StartCustomData: []map[string]interface{}{
+			{"name": "app1", "value": app1.Name},
+			{"name": "app2", "value": app2.Name},
+			{"name": "cnameOnly", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSwapApp1Locked(c *check.C) {
@@ -4451,6 +4689,28 @@ func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
 	c.Assert(recorder.Body.String(), check.Equals, "platforms don't match\n")
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(app1.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.swap",
+		ErrorMatches: "platforms don't match",
+		StartCustomData: []map[string]interface{}{
+			{"name": "app1", "value": app1.Name},
+			{"name": "app2", "value": app2.Name},
+			{"name": "cnameOnly", "value": "false"},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target:       appTarget(app2.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.swap",
+		ErrorMatches: "platforms don't match",
+		StartCustomData: []map[string]interface{}{
+			{"name": "app1", "value": app1.Name},
+			{"name": "app2", "value": app2.Name},
+			{"name": "cnameOnly", "value": "false"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSwapIncompatibleUnits(c *check.C) {
@@ -4530,12 +4790,15 @@ func (s *S) TestStartHandler(c *check.C) {
 	c.Assert(starts, check.Equals, 1)
 	starts = s.provisioner.Starts(&a, "worker")
 	c.Assert(starts, check.Equals, 0)
-	action := rectest.Action{
-		Action: "start",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.start",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "process", "value": "web"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestStopHandler(c *check.C) {
@@ -4558,12 +4821,15 @@ func (s *S) TestStopHandler(c *check.C) {
 	c.Assert(stops, check.Equals, 1)
 	stops = s.provisioner.Stops(&a, "worker")
 	c.Assert(stops, check.Equals, 0)
-	action := rectest.Action{
-		Action: "stop",
-		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.stop",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "process", "value": "web"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestForceDeleteLock(c *check.C) {

@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
@@ -66,7 +65,7 @@ func getApp(name string) (*app.App, error) {
 //   200: App removed
 //   401: Unauthorized
 //   404: Not found
-func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -80,7 +79,12 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{Target: appTarget(a.Name), Kind: permission.PermAppDelete, Owner: t.GetUserName(), CustomData: a})
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(a.Name),
+		Kind:       permission.PermAppDelete,
+		Owner:      t.GetUserName(),
+		CustomData: a,
+	})
 	if err != nil {
 		return err
 	}
@@ -91,7 +95,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	err = app.Delete(&a, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
 	}
 	return nil
 }
@@ -278,7 +282,12 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
 		}
 	}
-	evt, err := event.New(&event.Opts{Target: appTarget(a.Name), Kind: permission.PermAppCreate, Owner: t.GetUserName(), CustomData: a})
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(a.Name),
+		Kind:       permission.PermAppCreate,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
 	if err != nil {
 		return err
 	}
@@ -339,7 +348,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //   200: App updated
 //   401: Unauthorized
 //   404: Not found
-func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	updateData := app.App{
 		TeamOwner:   r.FormValue("teamOwner"),
 		Plan:        app.Plan{Name: r.FormValue("plan")},
@@ -351,24 +360,25 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if updateData.Description == "" && updateData.Plan.Name == "" && updateData.Pool == "" && updateData.TeamOwner == "" {
+	var wantedPerms []*permission.PermissionScheme
+	if updateData.Description != "" {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateDescription)
+	}
+	if updateData.Plan.Name != "" {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)
+	}
+	if updateData.Pool != "" {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdatePool)
+	}
+	if updateData.TeamOwner != "" {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateTeamowner)
+	}
+	if len(wantedPerms) == 0 {
 		msg := "Neither the description, plan, pool or team owner were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	if updateData.Description != "" {
-		allowed := permission.Check(t, permission.PermAppUpdateDescription,
-			append(permission.Contexts(permission.CtxTeam, a.Teams),
-				permission.Context(permission.CtxApp, a.Name),
-				permission.Context(permission.CtxPool, a.Pool),
-			)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
-
-	}
-	if updateData.Plan.Name != "" {
-		allowed := permission.Check(t, permission.PermAppUpdatePlan,
+	for _, perm := range wantedPerms {
+		allowed := permission.Check(t, perm,
 			append(permission.Contexts(permission.CtxTeam, a.Teams),
 				permission.Context(permission.CtxApp, a.Name),
 				permission.Context(permission.CtxPool, a.Pool),
@@ -378,45 +388,24 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return permission.ErrUnauthorized
 		}
 	}
-	if updateData.Pool != "" {
-		allowed := permission.Check(t, permission.PermAppUpdatePool,
-			append(permission.Contexts(permission.CtxTeam, a.Teams),
-				permission.Context(permission.CtxApp, a.Name),
-				permission.Context(permission.CtxPool, a.Pool),
-			)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
-	}
-	if updateData.TeamOwner != "" {
-		allowed := permission.Check(t, permission.PermAppUpdateTeamowner,
-			append(permission.Contexts(permission.CtxTeam, a.Teams),
-				permission.Context(permission.CtxApp, a.Name),
-				permission.Context(permission.CtxPool, a.Pool),
-			)...,
-		)
-		if !allowed {
-			return &errors.HTTP{
-				Code:    http.StatusForbidden,
-				Message: permission.ErrUnauthorized.Error(),
-			}
-		}
-	}
-	u, err := t.User()
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdate,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
 	if err != nil {
 		return err
 	}
+	defer func() { evt.Done(err) }()
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Update(updateData, writer)
 	if err == app.ErrPlanNotFound {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return err
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	rec.Log(u.Email, "update-app", "app="+appName, "description="+updateData.Description, "pool="+updateData.Pool)
 	return err
 }
 
@@ -448,17 +437,13 @@ func numberOfUnits(r *http.Request) (uint, error) {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
 	}
 	processName := r.FormValue("process")
 	appName := r.URL.Query().Get(":app")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -472,15 +457,23 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "add-units", "app="+appName, fmt.Sprintf("units=%d", n))
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateUnitAdd,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.AddUnits(n, processName, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	return nil
 }
@@ -494,12 +487,8 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	n, err := numberOfUnits(r)
-	if err != nil {
-		return err
-	}
-	u, err := t.User()
 	if err != nil {
 		return err
 	}
@@ -518,15 +507,23 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateUnitRemove,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.RemoveUnits(uint(n), processName, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	return nil
 }
@@ -618,11 +615,8 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: App or team not found
 //   409: Grant already exists
-func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
+func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
 	team := new(auth.Team)
@@ -639,7 +633,16 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "grant-app-access", "app="+appName, "team="+teamName)
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateGrant,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -664,14 +667,10 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //   401: Unauthorized
 //   403: Forbidden
 //   404: App or team not found
-func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
+func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	rec.Log(u.Email, "revoke-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -686,6 +685,16 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateRevoke,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -719,15 +728,11 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //   200: Ok
 //   401: Unauthorized
 //   404: App not found
-func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the command to run"
 	command := r.FormValue("command")
 	if len(command) < 1 {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	u, err := t.User()
-	if err != nil {
-		return err
 	}
 	appName := r.URL.Query().Get(":app")
 	once := r.FormValue("once")
@@ -744,15 +749,23 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "run-command", "app="+appName, "command="+command)
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppRun,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Run(command, writer, once == "true")
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	return nil
 }
@@ -824,8 +837,8 @@ type Envs struct {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -840,11 +853,6 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		msg := "You must provide the list of environment variables"
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	extra := fmt.Sprintf("private=%t", e.Private)
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -859,13 +867,22 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	envs := map[string]string{}
 	variables := []bind.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
 		variables = append(variables, bind.EnvVar{Name: v.Name, Value: v.Value, Public: !e.Private})
 	}
-	rec.Log(u.Email, "set-env", "app="+appName, envs, extra)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -877,8 +894,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			ShouldRestart: !e.NoRestart,
 		}, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	return nil
 }
@@ -892,22 +908,18 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the list of environment variables."
-	if r.URL.Query().Get("env") == "" {
+	if r.FormValue("env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	var variables []string
-	if envs, ok := r.URL.Query()["env"]; ok {
+	if envs, ok := r.Form["env"]; ok {
 		variables = envs
 	} else {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":app")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -921,12 +933,21 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "unset-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateEnvUnset,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
+	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
 	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: variables,
@@ -934,8 +955,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			ShouldRestart: !noRestart,
 		}, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	return nil
 }
@@ -949,8 +969,8 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
@@ -960,12 +980,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "add-cname", "app="+appName, "cname="+strings.Join(cnames, ", "))
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -979,6 +994,16 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateCnameAdd,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	if err = a.AddCName(cnames...); err == nil {
 		return nil
 	}
@@ -996,15 +1021,12 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	cnames := r.URL.Query()["cname"]
+func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	cnames := r.Form["cname"]
 	if len(cnames) == 0 {
 		msg := "You must provide the cname."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	u, err := t.User()
-	if err != nil {
-		return err
 	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1020,7 +1042,16 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "remove-cname", "app="+appName, "cnames="+strings.Join(cnames, ", "))
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateCnameRemove,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	if err = a.RemoveCName(cnames...); err == nil {
 		return nil
 	}
@@ -1158,7 +1189,7 @@ func getServiceInstance(serviceName, instanceName, appName string) (*service.Ser
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	instanceName := r.URL.Query().Get(":instance")
 	appName := r.URL.Query().Get(":app")
 	serviceName := r.URL.Query().Get(":service")
@@ -1184,15 +1215,23 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "bind-app", "instance="+instanceName, "app="+appName)
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateBind,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = instance.BindApp(a, !noRestart, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	fmt.Fprintf(writer, "\nInstance %q is now bound to the app %q.\n", instanceName, appName)
 	envs := a.InstanceEnv(instanceName)
@@ -1215,14 +1254,10 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
-	noRestart, _ := strconv.ParseBool(r.URL.Query().Get("noRestart"))
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
+	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
 	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
 	if err != nil {
 		return err
@@ -1244,15 +1279,23 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "unbind-app", "instance="+instanceName, "app="+appName)
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateUnbind,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = instance.UnbindApp(a, !noRestart, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return nil
+		return err
 	}
 	fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", instanceName, appName)
 	return nil
@@ -1269,10 +1312,6 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	process := r.FormValue("process")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1287,14 +1326,22 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "restart", "app="+appName)
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateRestart,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Restart(process, writer)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
 	}
 	return nil
@@ -1312,10 +1359,6 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	process := r.FormValue("process")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1339,14 +1382,22 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "sleep", "app="+appName)
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateSleep,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Sleep(writer, process, proxyURL)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
 	}
 	return nil
@@ -1407,11 +1458,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: App not found
 //   409: App locked
 //   412: Number of units or platform don't match
-func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
+func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	app1Name := r.FormValue("app1")
 	app2Name := r.FormValue("app2")
 	forceSwap := r.FormValue("force")
@@ -1458,6 +1505,25 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed1 || !allowed2 {
 		return permission.ErrUnauthorized
 	}
+	evt1, err := event.New(&event.Opts{
+		Target:     appTarget(app1Name),
+		Kind:       permission.PermAppUpdateSwap,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	evt2, err := event.New(&event.Opts{
+		Target:     appTarget(app2Name),
+		Kind:       permission.PermAppUpdateSwap,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt1.Done(err); evt2.Done(err) }()
 	// compare apps by platform type and number of units
 	if forceSwap == "false" {
 		if app1.Platform != app2.Platform {
@@ -1481,7 +1547,6 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
-	rec.Log(u.Email, "swap", "app1="+app1Name, "app2="+app2Name)
 	return app.Swap(app1, app2, cnameOnly)
 }
 
@@ -1496,12 +1561,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	process := r.FormValue("process")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "start", "app="+appName)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -1515,13 +1575,22 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateStart,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Start(writer, process)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
 	}
 	return nil
@@ -1538,12 +1607,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	process := r.FormValue("process")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "stop", "app="+appName)
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -1557,13 +1621,22 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateStop,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Stop(writer, process)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
 	}
 	return nil
@@ -1682,11 +1755,7 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Ok
 //   401: Unauthorized
 //   404: App not found
-func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
+func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -1700,11 +1769,32 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(u.Email, "app-rebuild-routes", "app="+r.URL.Query().Get(":app"))
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(a.Name),
+		Kind:       permission.PermAppAdminRoutes,
+		Owner:      t.GetUserName(),
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/json")
 	result, err := a.RebuildRoutes()
 	if err != nil {
 		return err
 	}
 	return json.NewEncoder(w).Encode(&result)
+}
+
+func formToEvents(form url.Values) []map[string]interface{} {
+	ret := make([]map[string]interface{}, 0, len(form))
+	for k, v := range form {
+		var val interface{} = v
+		if len(v) == 1 {
+			val = v[0]
+		}
+		ret = append(ret, map[string]interface{}{"name": k, "value": val})
+	}
+	return ret
 }
