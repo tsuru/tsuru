@@ -29,6 +29,7 @@ var (
 		removeCh: make(chan *Target),
 		once:     &sync.Once{},
 	}
+	throttlingInfo = map[string]ThrottlingSpec{}
 
 	ErrNotCancelable  = errors.New("event is not cancelable")
 	ErrEventNotFound  = errors.New("event not found")
@@ -47,6 +48,19 @@ var (
 	KindTypePermission = kindType("permission")
 	KindTypeInternal   = kindType("internal")
 )
+
+type ErrThrottled struct {
+	Spec   *ThrottlingSpec
+	Target Target
+}
+
+func (err ErrThrottled) Error() string {
+	var extra string
+	if err.Spec.KindName != "" {
+		extra = fmt.Sprintf(" %s on", err.Spec.KindName)
+	}
+	return fmt.Sprintf("event throttled, limit for%s %s %q is %d every %v", extra, err.Target.Name, err.Target.Value, err.Spec.Max, err.Spec.Time)
+}
 
 type ErrValidation string
 
@@ -139,6 +153,32 @@ func (o owner) String() string {
 
 func (k kind) String() string {
 	return k.Name
+}
+
+type ThrottlingSpec struct {
+	TargetName string
+	KindName   string
+	Max        int
+	Time       time.Duration
+}
+
+func SetThrottling(spec ThrottlingSpec) {
+	key := spec.TargetName
+	if spec.KindName != "" {
+		key = fmt.Sprintf("%s_%s", spec.TargetName, spec.KindName)
+	}
+	throttlingInfo[key] = spec
+}
+
+func getThrottling(t *Target, k *kind) *ThrottlingSpec {
+	key := fmt.Sprintf("%s_%s", t.Name, k.Name)
+	if s, ok := throttlingInfo[key]; ok {
+		return &s
+	}
+	if s, ok := throttlingInfo[t.Name]; ok {
+		return &s
+	}
+	return nil
 }
 
 type Event struct {
@@ -245,6 +285,24 @@ func newEvt(opts *Opts) (*Event, error) {
 	}
 	defer conn.Close()
 	coll := conn.Events()
+	tSpec := getThrottling(&opts.Target, &k)
+	if tSpec != nil && tSpec.Max > 0 && tSpec.Time > 0 {
+		query := bson.M{
+			"target.name":  opts.Target.Name,
+			"target.value": opts.Target.Value,
+			"starttime":    bson.M{"$gt": time.Now().UTC().Add(-tSpec.Time)},
+		}
+		if tSpec.KindName != "" {
+			query["kind.name"] = tSpec.KindName
+		}
+		c, err := coll.Find(query).Count()
+		if err != nil {
+			return nil, err
+		}
+		if c >= tSpec.Max {
+			return nil, ErrThrottled{Spec: tSpec, Target: opts.Target}
+		}
+	}
 	now := time.Now().UTC()
 	evt := Event{eventData: eventData{
 		ID:              eventId{target: opts.Target},
