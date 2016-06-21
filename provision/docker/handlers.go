@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	stderror "errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -259,16 +260,13 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		}
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
+	w.WriteHeader(http.StatusCreated)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	response, err := mainDockerProvisioner.addNodeForParams(params.Metadata, isRegister)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{
-			Error: fmt.Sprintf("%s\n\n%s", err, response["description"]),
-		})
+		return fmt.Errorf("%s\n\n%s", err, response["description"])
 	}
-	w.WriteHeader(http.StatusCreated)
 	return nil
 }
 
@@ -897,19 +895,18 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		if pool != "" {
 			filter.Pools = []string{pool}
 		}
-		tryRestartAppsByFilter(filter, writer)
+		return tryRestartAppsByFilter(filter, writer)
 	}
 	return nil
 }
 
-func tryRestartAppsByFilter(filter *app.Filter, writer *tsuruIo.SimpleJsonMessageEncoderWriter) {
+func tryRestartAppsByFilter(filter *app.Filter, writer io.Writer) error {
 	apps, err := app.List(filter)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-		return
+		return err
 	}
 	if len(apps) == 0 {
-		return
+		return nil
 	}
 	appNames := make([]string, len(apps))
 	for i, a := range apps {
@@ -932,6 +929,7 @@ func tryRestartAppsByFilter(filter *app.Filter, writer *tsuruIo.SimpleJsonMessag
 		}(i)
 	}
 	wg.Wait()
+	return nil
 }
 
 // title: node healing info
@@ -1279,7 +1277,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = nodecontainer.RecreateNamedContainers(mainDockerProvisioner, writer, name)
 	if err != nil {
-		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
 	}
 	return nil
 }

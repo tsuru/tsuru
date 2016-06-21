@@ -366,7 +366,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	rec := httptest.NewRecorder()
 	m := api.RunServer(true)
 	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
@@ -393,7 +393,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	rec := httptest.NewRecorder()
 	m := api.RunServer(true)
 	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
@@ -414,7 +414,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	req.Header.Set("Authorization", s.token.GetValue())
 	rec = httptest.NewRecorder()
 	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result["Error"], check.Equals, "Invalid address url: scheme must be http[s]\n\n")
