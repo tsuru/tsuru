@@ -5,6 +5,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	stdLog "log"
 	"net/http"
@@ -107,7 +108,14 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		}
 		flushing, ok := w.(*io.FlushingWriter)
 		if ok && flushing.Wrote() {
-			fmt.Fprintln(w, err)
+			if w.Header().Get("Content-Type") == "application/x-json-stream" {
+				data, marshalErr := json.Marshal(io.SimpleJsonMessage{Error: err.Error()})
+				if marshalErr == nil {
+					w.Write(append(data, "\n"...))
+				}
+			} else {
+				fmt.Fprintln(w, err)
+			}
 		} else {
 			http.Error(w, err.Error(), code)
 		}
