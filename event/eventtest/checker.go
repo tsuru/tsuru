@@ -45,10 +45,10 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	}
 	defer conn.Close()
 	query := map[string]interface{}{
-		"target":  evt.Target,
-		"kind":    evt.Kind,
-		"owner":   evt.Owner,
-		"running": false,
+		"target":     evt.Target,
+		"kind.name":  evt.Kind,
+		"owner.name": evt.Owner,
+		"running":    false,
 	}
 	if evt.StartCustomData != nil {
 		switch data := evt.StartCustomData.(type) {

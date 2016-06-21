@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
@@ -29,12 +30,22 @@ var (
 		once:     &sync.Once{},
 	}
 
-	ErrNotCancelable = errors.New("event is not cancelable")
-	ErrEventNotFound = errors.New("event not found")
-	ErrNoTarget      = ErrValidation("event target is mandatory")
-	ErrNoKind        = ErrValidation("event kind is mandatory")
-	ErrNoOwner       = ErrValidation("event owner is mandatory")
-	ErrNoOpts        = ErrValidation("event opts is mandatory")
+	ErrNotCancelable  = errors.New("event is not cancelable")
+	ErrEventNotFound  = errors.New("event not found")
+	ErrNoTarget       = ErrValidation("event target is mandatory")
+	ErrNoKind         = ErrValidation("event kind is mandatory")
+	ErrNoOwner        = ErrValidation("event owner is mandatory")
+	ErrNoOpts         = ErrValidation("event opts is mandatory")
+	ErrNoInternalKind = ErrValidation("event internal kind is mandatory")
+	ErrInvalidOwner   = ErrValidation("event owner must not be set on internal events")
+	ErrInvalidKind    = ErrValidation("event kind must not be set on internal events")
+
+	OwnerTypeUser     = ownerType("user")
+	OwnerTypeApp      = ownerType("app")
+	OwnerTypeInternal = ownerType("internal")
+
+	KindTypePermission = kindType("permission")
+	KindTypeInternal   = kindType("internal")
 )
 
 type ErrValidation string
@@ -89,8 +100,8 @@ type eventData struct {
 	Target          Target      `bson:",omitempty"`
 	StartCustomData interface{} `bson:",omitempty"`
 	EndCustomData   interface{} `bson:",omitempty"`
-	Kind            string
-	Owner           string
+	Kind            kind
+	Owner           owner
 	Cancelable      bool
 	Running         bool
 	LockUpdateTime  time.Time
@@ -108,6 +119,28 @@ type cancelInfo struct {
 	Canceled  bool
 }
 
+type ownerType string
+
+type kindType string
+
+type owner struct {
+	Type ownerType
+	Name string
+}
+
+type kind struct {
+	Type kindType
+	Name string
+}
+
+func (o owner) String() string {
+	return fmt.Sprintf("%s %s", o.Type, o.Name)
+}
+
+func (k kind) String() string {
+	return k.Name
+}
+
 type Event struct {
 	eventData
 	logBuffer safe.Buffer
@@ -115,11 +148,12 @@ type Event struct {
 }
 
 type Opts struct {
-	Target     Target
-	Kind       *permission.PermissionScheme
-	Owner      string
-	Cancelable bool
-	CustomData interface{}
+	Target       Target
+	Kind         *permission.PermissionScheme
+	InternalKind string
+	Owner        auth.Token
+	Cancelable   bool
+	CustomData   interface{}
 }
 
 func (e *Event) String() string {
@@ -148,6 +182,35 @@ func All() ([]Event, error) {
 }
 
 func New(opts *Opts) (*Event, error) {
+	if opts == nil {
+		return nil, ErrNoOpts
+	}
+	if opts.Owner == nil {
+		return nil, ErrNoOwner
+	}
+	if opts.Kind == nil {
+		return nil, ErrNoKind
+	}
+	return newEvt(opts)
+}
+
+func NewInternal(opts *Opts) (*Event, error) {
+	if opts == nil {
+		return nil, ErrNoOpts
+	}
+	if opts.Owner != nil {
+		return nil, ErrInvalidOwner
+	}
+	if opts.Kind != nil {
+		return nil, ErrInvalidKind
+	}
+	if opts.InternalKind == "" {
+		return nil, ErrNoInternalKind
+	}
+	return newEvt(opts)
+}
+
+func newEvt(opts *Opts) (*Event, error) {
 	updater.start()
 	if opts == nil {
 		return nil, ErrNoOpts
@@ -155,11 +218,26 @@ func New(opts *Opts) (*Event, error) {
 	if !opts.Target.IsValid() {
 		return nil, ErrNoTarget
 	}
+	var k kind
 	if opts.Kind == nil {
-		return nil, ErrNoKind
+		if opts.InternalKind == "" {
+			return nil, ErrNoKind
+		}
+		k.Type = KindTypeInternal
+		k.Name = opts.InternalKind
+	} else {
+		k.Type = KindTypePermission
+		k.Name = opts.Kind.FullName()
 	}
-	if opts.Owner == "" {
-		return nil, ErrNoOwner
+	var o owner
+	if opts.Owner == nil {
+		o.Type = OwnerTypeInternal
+	} else if opts.Owner.IsAppToken() {
+		o.Type = OwnerTypeApp
+		o.Name = opts.Owner.GetAppName()
+	} else {
+		o.Type = OwnerTypeUser
+		o.Name = opts.Owner.GetUserName()
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -172,8 +250,8 @@ func New(opts *Opts) (*Event, error) {
 		ID:              eventId{target: opts.Target},
 		Target:          opts.Target,
 		StartTime:       now,
-		Kind:            opts.Kind.FullName(),
-		Owner:           opts.Owner,
+		Kind:            k,
+		Owner:           o,
 		StartCustomData: opts.CustomData,
 		LockUpdateTime:  now,
 		Running:         true,
