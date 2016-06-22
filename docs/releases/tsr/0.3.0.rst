@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,11 @@ tsr 0.3.0 release notes
 
 Welcome to tsr 0.3.0!
 
-These release notes cover the :ref:`new-features` and
-:ref:`backwards-incompatible-changes` you'll want to be aware of when upgrading
+These release notes cover the :ref:`new features <new-0.3.0>` and
+:ref:`backwards incompatible changes <backwards-0.3.0>` you'll want to be aware of when upgrading
 from tsuru 0.2.x or older versions.
 
-.. _new-features:
+.. _new-0.3.0:
 
 What's new in tsr 0.3.0
 =======================
@@ -58,7 +58,7 @@ Other improvements and bugfixes
     * Refactored quota backend.
     * New lisp platform. Thanks to Nick Ricketts.
 
-.. backwards-incompatible-changes:
+.. _backwards-0.3.0:
 
 Backwards incompatible changes
 ==============================

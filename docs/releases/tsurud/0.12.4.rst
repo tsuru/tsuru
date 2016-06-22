@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,8 +8,11 @@ tsurud 0.12.4 release notes
 
 Welcome to tsurud 0.12.4!
 
-tsurud 0.12.4 includes `bug fixes`_  and some `improvements`_ on error
-reporting and in the way tsuru handlers application logs.
+tsurud 0.12.4 includes :ref:`bug fixes <bug-0.12.4>`  and some
+:ref:`improvements <improvements-0.12.4>` on error reporting and in the way
+tsuru handlers application logs.
+
+.. _improvements-0.12.4:
 
 Improvements
 ============
@@ -27,6 +30,8 @@ Improvements
 * Report status in the API when relaunching bs containers, preventing
   connection aborts when upgrading the version of bs (issue `#1268
   <https://github.com/tsuru/tsuru/issues/1268>`_)
+
+.. _bug-0.12.4:
 
 Bug fixes
 =========

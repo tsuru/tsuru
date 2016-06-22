@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,12 @@ tsr 0.5.1 release notes
 
 Welcome to tsr 0.5.1!
 
-These release notes cover the `new features`_, `bug fixes`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from tsr 0.5.0 or older
-versions.
+These release notes cover the :ref:`new features <new-0.5.1>`,
+:ref:`bug fixes <bug-0.5.1>` and
+:ref:`backwards incompatible changes <backwards-0.5.1>` you'll want to be aware
+of when upgrading from tsr 0.5.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.5.1`_
+.. _new-0.5.1:
 
 What's new in tsr 0.5.1
 =======================
@@ -25,10 +26,14 @@ What's new in tsr 0.5.1
   broken containers and fix their configuration within the router, and in the
   database
 
+.. _bug-0.5.1:
+
 Bug fixes
 =========
 
 * Do not lock application on ``tsuru run``
+
+.. _backwards-0.5.1:
 
 Backwards incompatible changes
 ==============================

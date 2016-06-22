@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,7 +8,7 @@ tsurud 0.12.2 release notes
 
 Welcome to tsurud 0.12.2!
 
-tsurud 0.12.2 includes `bug fixes`_ related to application environment
+tsurud 0.12.2 includes bug fixes related to application environment
 variables.
 
 Bug fixes

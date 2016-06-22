@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,12 +8,12 @@ tsr 0.9.1 release notes
 
 Welcome to tsr 0.9.1!
 
-These release notes cover the `bug fixes`_, `general improvements`_ and
-`changes in the API`_ you'll want to be aware of when upgrading from tsr 0.9.0
-or older versions.
+These release notes cover the :ref:`bug fixes <bug-0.9.1>`,
+:ref:`general improvements <general-0.9.1>` and
+:ref:`changes in the API <api-0.9.1>` you'll want to be aware of when upgrading
+from tsr 0.9.0 or older versions.
 
-.. _`general improvements`: `Other improvements in tsr 0.9.1`_
-.. _`changes in the API`: `API changes`_
+.. _bug-0.9.1:
 
 Bug fixes
 =========
@@ -23,6 +23,8 @@ Bug fixes
 * auto scale honors the min and max units when scaling
 * ``app-run`` ignore build containers (issue `#987
   <https://github.com/tsuru/tsuru/issues/987>`_).
+
+.. _general-0.9.1:
 
 Other improvements in tsr 0.9.1
 ===============================
@@ -55,6 +57,8 @@ Other improvements in tsr 0.9.1
                                +-------+     SetUnitStatus   | |
                                | Error | +-------------------+ |
                                +-------+ <---------------------+
+
+.. _api-0.9.1:
 
 API changes
 ===========

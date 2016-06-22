@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,9 @@ tsr 0.3.4 release notes
 
 Welcome to tsr 0.3.4!
 
-These release notes cover the `new features`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from tsr 0.3.3 or older
-versions.
+These release notes cover the 0.3.4 :ref:`new features <new-0.3.4>`.
 
-.. _`new features`: `What's new in tsr 0.3.4`_
+.. _new-0.3.4:
 
 What's new in tsr 0.3.4
 =======================
@@ -27,8 +25,3 @@ Bugfixes
 
     * Swap address and cname on apps when running swap
     * Always pull the image before creating the container
-
-Backwards incompatible changes
-==============================
-
-tsr 0.3.4 does not introduce any incompatible changes.

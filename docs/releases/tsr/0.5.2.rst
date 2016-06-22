@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,11 @@ tsr 0.5.2 release notes
 
 Welcome to tsr 0.5.2!
 
-These release notes cover the `new features`_ and `bug fixes`_ you'll want to
-be aware of when upgrading from tsr 0.5.1 or older
-versions.
+These release notes cover the :ref:`new features <new-0.5.2>` and
+:ref:`bug fixes <bug-0.5.2>` you'll want to be aware of when upgrading from
+tsr 0.5.1 or older versions.
 
-.. _`new features`: `What's new in tsr 0.5.2`_
+.. _new-0.5.2:
 
 What's new in tsr 0.5.2
 =======================
@@ -25,6 +25,8 @@ Improvements
   can be sent only to the proper nodes (`docker-cluster #22
   <https://github.com/tsuru/docker-cluster/issues/22>`_).
 * improve error handling on OAuth authentication
+
+.. _bug-0.5.2:
 
 Bug fixes
 =========

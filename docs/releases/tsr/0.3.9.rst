@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,11 @@ tsr 0.3.9 release notes
 
 Welcome to tsr 0.3.9!
 
-These release notes cover the `new features`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from tsr 0.3.8 or older
-versions.
+These release notes cover the :ref:`new features <new-0.3.9>` and
+:ref:`backwards incompatible changes <backwards-0.3.9>` you'll want to be aware
+of when upgrading from tsr 0.3.8 or older versions.
 
-.. _`new features`: `What's new in tsr 0.3.9`_
+.. _new-0.3.9:
 
 What's new in tsr 0.3.9
 =======================
@@ -22,6 +22,8 @@ API
 
     * Login expose `is_admin` info.
     * Changed get environs output data.
+
+.. _backwards-0.3.9:
 
 Backwards incompatible changes
 ==============================
