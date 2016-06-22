@@ -980,7 +980,11 @@ func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
 	if err != nil {
 		return err
 	}
-	err = r.SetCName(cname, app.GetName())
+	cnameRouter, ok := r.(router.CNameRouter)
+	if !ok {
+		return fmt.Errorf("router %T does not allow cnames", r)
+	}
+	err = cnameRouter.SetCName(cname, app.GetName())
 	if err != nil {
 		routesRebuildOrEnqueue(app.GetName())
 	}
@@ -992,7 +996,11 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 	if err != nil {
 		return err
 	}
-	err = r.UnsetCName(cname, app.GetName())
+	cnameRouter, ok := r.(router.CNameRouter)
+	if !ok {
+		return fmt.Errorf("router %T does not allow cnames", r)
+	}
+	err = cnameRouter.UnsetCName(cname, app.GetName())
 	if err != nil {
 		routesRebuildOrEnqueue(app.GetName())
 	}

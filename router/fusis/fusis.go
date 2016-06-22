@@ -173,18 +173,6 @@ func (r *fusisRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
-func (r *fusisRouter) SetCName(cname, name string) error {
-	return nil
-}
-
-func (r *fusisRouter) UnsetCName(cname, name string) error {
-	return nil
-}
-
-func (r *fusisRouter) CNames(name string) ([]*url.URL, error) {
-	return nil, nil
-}
-
 func (r *fusisRouter) findService(name string) (*fusisTypes.Service, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {

@@ -1579,10 +1579,12 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 		}
 		app.Ip = newAddr
 	}
-	for _, cname := range app.CName {
-		err = r.SetCName(cname, app.Name)
-		if err != nil && err != router.ErrCNameExists {
-			return nil, err
+	if cnameRouter, ok := r.(router.CNameRouter); ok {
+		for _, cname := range app.CName {
+			err = cnameRouter.SetCName(cname, app.Name)
+			if err != nil && err != router.ErrCNameExists {
+				return nil, err
+			}
 		}
 	}
 	oldRoutes, err := r.Routes(app.GetName())

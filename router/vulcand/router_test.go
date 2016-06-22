@@ -292,7 +292,9 @@ func (s *S) TestSetCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
-	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	cnameRouter, ok := vRouter.(router.CNameRouter)
+	c.Assert(ok, check.Equals, true)
+	err = cnameRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
 	appFrontend, err := s.engine.GetFrontend(engine.FrontendKey{
 		Id: "tsuru_myapp.vulcand.example.com",
@@ -318,9 +320,11 @@ func (s *S) TestSetCNameDuplicate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
-	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	cnameRouter, ok := vRouter.(router.CNameRouter)
+	c.Assert(ok, check.Equals, true)
+	err = cnameRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	err = cnameRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.Equals, router.ErrCNameExists)
 }
 
@@ -335,12 +339,14 @@ func (s *S) TestUnsetCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
-	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	cnameRouter, ok := vRouter.(router.CNameRouter)
+	c.Assert(ok, check.Equals, true)
+	err = cnameRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 2)
-	vRouter.UnsetCName("myapp.cname.example.com", "myapp")
+	cnameRouter.UnsetCName("myapp.cname.example.com", "myapp")
 	frontends, err = s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 1)
@@ -353,7 +359,9 @@ func (s *S) TestUnsetCNameNotExist(c *check.C) {
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 0)
-	err = vRouter.UnsetCName("myapp.cname.example.com", "myapp")
+	cnameRouter, ok := vRouter.(router.CNameRouter)
+	c.Assert(ok, check.Equals, true)
+	err = cnameRouter.UnsetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.Equals, router.ErrCNameNotFound)
 }
 

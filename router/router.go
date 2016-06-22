@@ -74,16 +74,20 @@ type Router interface {
 	AddRoutes(name string, address []*url.URL) error
 	RemoveRoute(name string, address *url.URL) error
 	RemoveRoutes(name string, addresses []*url.URL) error
-	SetCName(cname, name string) error
-	UnsetCName(cname, name string) error
 	Addr(name string) (string, error)
-	CNames(name string) ([]*url.URL, error)
 
 	// Swap change the router between two backends.
 	Swap(backend1, backend2 string, cnameOnly bool) error
 
 	// Routes returns a list of routes of a backend.
 	Routes(name string) ([]*url.URL, error)
+}
+
+type CNameRouter interface {
+	Router
+	SetCName(cname, name string) error
+	UnsetCName(cname, name string) error
+	CNames(name string) ([]*url.URL, error)
 }
 
 type MessageRouter interface {
@@ -197,30 +201,34 @@ func swapBackendName(backend1, backend2 string) error {
 }
 
 func swapCnames(r Router, backend1, backend2 string) error {
-	cnames1, err := r.CNames(backend1)
+	cnameRouter, ok := r.(CNameRouter)
+	if !ok {
+		return nil
+	}
+	cnames1, err := cnameRouter.CNames(backend1)
 	if err != nil {
 		return err
 	}
-	cnames2, err := r.CNames(backend2)
+	cnames2, err := cnameRouter.CNames(backend2)
 	if err != nil {
 		return err
 	}
 	for _, cname := range cnames1 {
-		err = r.UnsetCName(cname.String(), backend1)
+		err = cnameRouter.UnsetCName(cname.String(), backend1)
 		if err != nil {
 			return err
 		}
-		err = r.SetCName(cname.String(), backend2)
+		err = cnameRouter.SetCName(cname.String(), backend2)
 		if err != nil {
 			return err
 		}
 	}
 	for _, cname := range cnames2 {
-		err = r.UnsetCName(cname.String(), backend2)
+		err = cnameRouter.UnsetCName(cname.String(), backend2)
 		if err != nil {
 			return err
 		}
-		err = r.SetCName(cname.String(), backend1)
+		err = cnameRouter.SetCName(cname.String(), backend1)
 		if err != nil {
 			return err
 		}
