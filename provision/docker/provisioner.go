@@ -285,6 +285,9 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 		log.Fatalf("Failed to get router: %s", err)
 		return err
 	}
+	if optsRouter, ok := r.(router.OptsRouter); ok {
+		return optsRouter.AddBackendOpts(app.GetName(), app.GetRouterOpts())
+	}
 	return r.AddBackend(app.GetName())
 }
 

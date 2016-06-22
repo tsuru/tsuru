@@ -102,6 +102,10 @@ type HealthChecker interface {
 	HealthCheck() error
 }
 
+type OptsRouter interface {
+	AddBackendOpts(name string, opts map[string]string) error
+}
+
 type HealthcheckData struct {
 	Path   string
 	Status int

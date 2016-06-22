@@ -222,6 +222,16 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(&a)
 }
 
+type inputApp struct {
+	TeamOwner   string
+	Platform    string
+	Plan        string
+	Name        string
+	Description string
+	Pool        string
+	RouterOpts  map[string]string
+}
+
 // title: app create
 // path: /apps
 // method: POST
@@ -234,13 +244,23 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Quota exceeded
 //   409: App already exists
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	var ia inputApp
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	dec.DecodeValues(&ia, r.Form)
 	a := app.App{
-		TeamOwner:   r.FormValue("teamOwner"),
-		Platform:    r.FormValue("platform"),
-		Plan:        app.Plan{Name: r.FormValue("plan")},
-		Name:        r.FormValue("name"),
-		Description: r.FormValue("description"),
-		Pool:        r.FormValue("pool"),
+		TeamOwner:   ia.TeamOwner,
+		Platform:    ia.Platform,
+		Plan:        app.Plan{Name: ia.Plan},
+		Name:        ia.Name,
+		Description: ia.Description,
+		Pool:        ia.Pool,
+		RouterOpts:  ia.RouterOpts,
 	}
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)

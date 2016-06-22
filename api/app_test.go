@@ -859,6 +859,38 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
+	a := app.App{Name: "someapp"}
+	data, err := url.QueryUnescape("name=someapp&platform=zend&routeropts.opt1=val1&routeropts.opt2=val2")
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(obtained, check.DeepEquals, expected)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.RouterOpts, check.DeepEquals, map[string]string{"opt1": "val1", "opt2": "val2"})
+}
+
 func (s *S) TestCreateAppTwoTeams(c *check.C) {
 	team := auth.Team{Name: "tsurutwo"}
 	err := s.conn.Teams().Insert(team)

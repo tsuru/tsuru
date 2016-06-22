@@ -82,6 +82,10 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	return &app
 }
 
+func (a *FakeApp) GetRouterOpts() map[string]string {
+	return nil
+}
+
 func (a *FakeApp) GetMemory() int64 {
 	return a.Memory
 }

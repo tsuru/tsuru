@@ -205,6 +205,8 @@ type App interface {
 	GetIp() string
 
 	GetLock() AppLock
+
+	GetRouterOpts() map[string]string
 }
 
 type AppLock interface {

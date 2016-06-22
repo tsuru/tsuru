@@ -40,6 +40,14 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		return nil, err
 	}
+	scheduler, err := config.GetString(configPrefix + ":scheduler")
+	if err != nil {
+		scheduler = "rr"
+	}
+	mode, err := config.GetString(configPrefix + ":mode")
+	if err != nil {
+		mode = "nat"
+	}
 	client := fusisApi.NewClient(apiUrl)
 	client.HttpClient = tsuruNet.Dial5Full60ClientNoKeepAlive
 	r := &fusisRouter{
@@ -47,17 +55,17 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 		client:    client,
 		proto:     "tcp",
 		port:      80,
-		scheduler: "rr",
-		mode:      "nat",
+		scheduler: scheduler,
+		mode:      mode,
 	}
 	return r, nil
 }
 
-func (r *fusisRouter) AddBackend(name string) error {
+func (r *fusisRouter) addBackend(name string, proto string, port uint16) error {
 	srv := fusisTypes.Service{
 		Name:      name,
-		Port:      r.port,
-		Protocol:  r.proto,
+		Port:      port,
+		Protocol:  proto,
 		Scheduler: r.scheduler,
 	}
 	_, err := r.client.CreateService(srv)
@@ -68,6 +76,29 @@ func (r *fusisRouter) AddBackend(name string) error {
 		return err
 	}
 	return router.Store(name, name, routerType)
+}
+
+func (r *fusisRouter) AddBackend(name string) error {
+	return r.addBackend(name, r.proto, r.port)
+}
+
+func (r *fusisRouter) AddBackendOpts(name string, opts map[string]string) error {
+	if opts == nil {
+		return r.AddBackend(name)
+	}
+	proto := opts["proto"]
+	if proto == "" {
+		proto = r.proto
+	}
+	port := r.port
+	portStr := opts["port"]
+	if portStr != "" {
+		portInt, _ := strconv.ParseUint(portStr, 10, 16)
+		if portInt != 0 {
+			port = uint16(portInt)
+		}
+	}
+	return r.addBackend(name, proto, port)
 }
 
 func (r *fusisRouter) RemoveBackend(name string) error {

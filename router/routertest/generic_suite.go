@@ -102,6 +102,27 @@ func (s *RouterSuite) TestRouteAddBackendAndRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *RouterSuite) TestRouteAddBackendOptsAndRoute(c *check.C) {
+	optsRouter, ok := s.Router.(router.OptsRouter)
+	if !ok {
+		c.Skip(fmt.Sprintf("%T does not implement OptsRouter", s.Router))
+	}
+	name := "backend1"
+	err := optsRouter.AddBackendOpts(name, map[string]string{})
+	c.Assert(err, check.IsNil)
+	err = optsRouter.AddBackendOpts(name, nil)
+	c.Assert(err, check.Equals, router.ErrBackendExists)
+	addr, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr)
+	c.Assert(err, check.IsNil)
+	routes, err := s.Router.Routes(name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, HostEquals, []*url.URL{addr})
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
 	err := s.Router.AddBackend(testBackend1)
 	c.Assert(err, check.IsNil)
