@@ -183,8 +183,16 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, extra int
 		if err == clusterStorage.ErrNoSuchNode {
 			return nil
 		}
-		evtErr = fmt.Errorf("unable to check if not still exists: %s", err)
+		evtErr = fmt.Errorf("unable to check if node still exists: %s", err)
 		return evtErr
+	}
+	shouldHeal, err := h.shouldHealNode(node)
+	if err != nil {
+		evtErr = fmt.Errorf("unable to check if node should be healed: %s", err)
+		return evtErr
+	}
+	if !shouldHeal {
+		return nil
 	}
 	healingCounter, err := healingCountFor("node", node.Address, consecutiveHealingsTimeframe)
 	if err != nil {
@@ -383,6 +391,32 @@ func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, config NodeHealer
 		"_id": bson.M{"$in": nodeAddresses},
 		"$or": orParts,
 	}, nil
+}
+
+func (h *NodeHealer) shouldHealNode(node *cluster.Node) (bool, error) {
+	conf := healerConfig()
+	var configEntry NodeHealerConfig
+	err := conf.Load(node.Metadata["pool"], &configEntry)
+	if err != nil {
+		return false, err
+	}
+	queryPart, err := h.queryPartForConfig([]*cluster.Node{node}, configEntry)
+	if err != nil {
+		return false, err
+	}
+	if queryPart == nil {
+		return false, nil
+	}
+	coll, err := nodeDataCollection()
+	if err != nil {
+		return false, fmt.Errorf("unable to get node data collection: %s", err)
+	}
+	defer coll.Close()
+	count, err := coll.Find(queryPart).Count()
+	if err != nil {
+		return false, fmt.Errorf("unable to find nodes to heal: %s", err)
+	}
+	return count > 0, nil
 }
 
 func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluster.Node, error) {
