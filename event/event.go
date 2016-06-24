@@ -206,19 +206,93 @@ func (e *Event) String() string {
 	)
 }
 
+type Filter struct {
+	Target    Target
+	KindType  kindType
+	KindName  string
+	OwnerType ownerType
+	OwnerName string
+	Since     time.Time
+	Until     time.Time
+	Running   *bool
+
+	Limit int
+	Sort  string
+}
+
+func (f *Filter) toQuery() bson.M {
+	query := bson.M{}
+	if f.Target.Name != "" {
+		query["target.name"] = f.Target.Name
+	}
+	if f.Target.Value != "" {
+		query["target.value"] = f.Target.Value
+	}
+	if f.KindType != "" {
+		query["kind.type"] = f.KindType
+	}
+	if f.KindName != "" {
+		query["kind.name"] = f.KindName
+	}
+	if f.OwnerType != "" {
+		query["owner.type"] = f.OwnerType
+	}
+	if f.OwnerName != "" {
+		query["owner.name"] = f.OwnerName
+	}
+	var timeParts []bson.M
+	if !f.Since.IsZero() {
+		timeParts = append(timeParts, bson.M{"starttime": bson.M{"$gte": f.Since}})
+	}
+	if !f.Until.IsZero() {
+		timeParts = append(timeParts, bson.M{"starttime": bson.M{"$lte": f.Until}})
+	}
+	if len(timeParts) != 0 {
+		query["$and"] = timeParts
+	}
+	if f.Running != nil {
+		query["running"] = *f.Running
+	}
+	return query
+}
+
 func All() ([]Event, error) {
+	return List(nil)
+}
+
+func List(filter *Filter) ([]Event, error) {
+	limit := 100
+	var query bson.M
+	sort := "-starttime"
+	if filter != nil {
+		if filter.Limit != 0 {
+			limit = filter.Limit
+		}
+		if filter.Sort != "" {
+			sort = filter.Sort
+		}
+		query = filter.toQuery()
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
+	coll := conn.Events()
+	find := coll.Find(query).Sort(sort)
+	if limit > 0 {
+		find = find.Limit(limit)
+	}
 	var allData []eventData
-	err = conn.Events().Find(nil).Sort("-_id").All(&allData)
+	err = find.All(&allData)
+	if err != nil {
+		return nil, err
+	}
 	evts := make([]Event, len(allData))
 	for i := range evts {
 		evts[i].eventData = allData[i]
 	}
-	return evts, err
+	return evts, nil
 }
 
 func New(opts *Opts) (*Event, error) {
