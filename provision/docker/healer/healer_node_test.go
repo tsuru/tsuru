@@ -15,6 +15,8 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
 	tsurunet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -353,22 +355,19 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "localhost")
-
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "node-healing")
-	c.Assert(events[0].StartTime, check.Not(check.DeepEquals), time.Time{})
-	c.Assert(events[0].EndTime, check.Not(check.DeepEquals), time.Time{})
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Reason, check.Equals, "2 consecutive failures")
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingNode.Address, check.Equals, fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL())))
-	c.Assert(events[0].CreatedNode.Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL())))
+	failingAddr := fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL()))
+	createdAddr := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL()))
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "node", Value: failingAddr},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"reason":   "2 consecutive failures",
+			"node._id": failingAddr,
+		},
+		EndCustomData: map[string]interface{}{
+			"_id": createdAddr,
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
@@ -390,13 +389,9 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	}}
 	waitTime := healer.HandleError(&node)
 	c.Assert(waitTime, check.Equals, time.Duration(20))
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 	node = cluster.Node{Address: "addr", Metadata: map[string]string{
 		"Failures":    "0",
 		"LastSuccess": "something",
@@ -404,61 +399,90 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	}}
 	waitTime = healer.HandleError(&node)
 	c.Assert(waitTime, check.Equals, time.Duration(20))
-	healingColl, err = healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 	node = cluster.Node{Address: "addr", Metadata: map[string]string{
 		"Failures": "2",
 		"iaas":     "invalid",
 	}}
 	waitTime = healer.HandleError(&node)
 	c.Assert(waitTime, check.Equals, time.Duration(20))
-	healingColl, err = healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 }
 
-func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *check.C) {
-	nodes := []cluster.Node{
-		{Address: "addr1"}, {Address: "addr2"}, {Address: "addr3"}, {Address: "addr4"},
-		{Address: "addr5"}, {Address: "addr6"}, {Address: "addr7"}, {Address: "addr8"},
-	}
-	for i := 0; i < len(nodes)-1; i++ {
-		evt, err := NewHealingEvent(nodes[i])
-		c.Assert(err, check.IsNil)
-		err = evt.Update(nodes[i+1], nil)
-		c.Assert(err, check.IsNil)
-	}
-	p, err := s.newFakeDockerProvisioner("addr7")
+func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
+	factory, iaasInst := dockertest.NewHealerIaaSConstructorWithInst("127.0.0.1")
+	iaas.RegisterIaasProvider("my-healer-iaas", factory)
+	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaas.RegisterIaasProvider("my-healer-iaas", dockertest.NewHealerIaaSConstructor("127.0.0.1", nil))
+	iaasInst.Addr = "localhost"
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	config.Set("iaas:node-protocol", "http")
+	config.Set("iaas:node-port", dockertest.URLPort(node2.URL()))
+	defer config.Unset("iaas:node-protocol")
+	defer config.Unset("iaas:node-port")
+	p, err := s.newFakeDockerProvisioner(node1.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	_, err = p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 1},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+
 	healer := NewNodeHealer(NodeHealerArgs{
-		DisabledTime:          20,
+		Provisioner:           p,
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
-		Provisioner:           p,
 	})
 	healer.Shutdown()
-	nodes[7].Metadata = map[string]string{
-		"Failures":    "2",
-		"LastSuccess": "something",
-		"iaas":        "my-healer-iaas",
+	healer.started = time.Now().Add(-3 * time.Second)
+	conf := healerConfig()
+	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
+	c.Assert(err, check.IsNil)
+	data := provision.NodeStatusData{
+		Addrs:  []string{"127.0.0.1"},
+		Checks: []provision.NodeCheckResult{},
 	}
-	waitTime := healer.HandleError(&nodes[7])
-	c.Assert(waitTime, check.Equals, time.Duration(20))
-	healingColl, err := healingCollection()
+	err = healer.UpdateNodeData(data)
 	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
+	time.Sleep(1200 * time.Millisecond)
+	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 7)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(dockertest.URLPort(nodes[0].Address), check.Equals, dockertest.URLPort(node1.URL()))
+	c.Assert(tsurunet.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "127.0.0.1")
+
+	nodes[0].Metadata["iaas"] = "my-healer-iaas"
+
+	for i := 0; i < 3; i++ {
+		evt, err := event.NewInternal(&event.Opts{
+			Target:       event.Target{Name: "node", Value: nodes[0].Address},
+			InternalKind: "healer",
+		})
+		c.Assert(err, check.IsNil)
+		err = evt.Done(nil)
+		c.Assert(err, check.IsNil)
+	}
+
+	err = healer.tryHealingNode(&nodes[0], "myreason", nil)
+	c.Assert(err, check.ErrorMatches, "Error trying to insert nodee healing event, healing aborted: event throttled, limit for healer on node \".*?\" is 3 every 5m0s")
 }
 
 func (s *S) TestHealerUpdateNodeData(c *check.C) {
@@ -879,23 +903,20 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "localhost")
 
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "node-healing")
-	c.Assert(events[0].StartTime, check.Not(check.DeepEquals), time.Time{})
-	c.Assert(events[0].EndTime, check.Not(check.DeepEquals), time.Time{})
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Reason, check.Matches, `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`)
-	extraObj := events[0].Extra.(bson.M)
-	c.Assert(extraObj["time"].(time.Time).IsZero(), check.Equals, false)
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingNode.Address, check.Equals, fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL())))
-	c.Assert(events[0].CreatedNode.Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL())))
+	failingAddr := fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL()))
+	createdAddr := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL()))
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "node", Value: failingAddr},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"reason":         bson.M{"$regex": `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`},
+			"lastCheck.time": bson.M{"$exists": true},
+			"node._id":       failingAddr,
+		},
+		EndCustomData: map[string]interface{}{
+			"_id": createdAddr,
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
@@ -956,7 +977,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			healErr := healer.tryHealingNode(&nodes[0], "something", "extra")
+			healErr := healer.tryHealingNode(&nodes[0], "something", nil)
 			c.Assert(healErr, check.IsNil)
 		}()
 	}
@@ -970,22 +991,19 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "localhost")
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 1)
-	c.Assert(events[0].Action, check.Equals, "node-healing")
-	c.Assert(events[0].StartTime, check.Not(check.DeepEquals), time.Time{})
-	c.Assert(events[0].EndTime, check.Not(check.DeepEquals), time.Time{})
-	c.Assert(events[0].Error, check.Equals, "")
-	c.Assert(events[0].Reason, check.Equals, "something")
-	c.Assert(events[0].Extra, check.Equals, "extra")
-	c.Assert(events[0].Successful, check.Equals, true)
-	c.Assert(events[0].FailingNode.Address, check.Equals, fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL())))
-	c.Assert(events[0].CreatedNode.Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL())))
+	failingAddr := fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL()))
+	createdAddr := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL()))
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "node", Value: failingAddr},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"reason":   "something",
+			"node._id": failingAddr,
+		},
+		EndCustomData: map[string]interface{}{
+			"_id": createdAddr,
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestTryHealingNodeDoubleCheck(c *check.C) {
@@ -1024,7 +1042,7 @@ func (s *S) TestTryHealingNodeDoubleCheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
-	healErr := healer.tryHealingNode(&nodes[0], "something", "extra")
+	healErr := healer.tryHealingNode(&nodes[0], "something", nil)
 	c.Assert(healErr, check.IsNil)
 	nodes, err = p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -1035,13 +1053,9 @@ func (s *S) TestTryHealingNodeDoubleCheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "127.0.0.1")
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	var events []HealingEvent
-	err = healingColl.Find(nil).All(&events)
-	c.Assert(err, check.IsNil)
-	c.Assert(events, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUpdateConfigIgnoresEmpty(c *check.C) {

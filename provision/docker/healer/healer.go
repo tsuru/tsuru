@@ -38,7 +38,7 @@ type HealingEvent struct {
 }
 
 var (
-	consecutiveHealingsTimeframe        = 30 * time.Minute
+	consecutiveHealingsTimeframe        = 5 * time.Minute
 	consecutiveHealingsLimitInTimeframe = 3
 	lockUpdateInterval                  = 30 * time.Second
 	lockExpireTimeout                   = 5 * time.Minute
@@ -200,38 +200,4 @@ func ListHealingHistory(filter string) ([]HealingEvent, error) {
 		return nil, err
 	}
 	return history, nil
-}
-
-func healingCountFor(action string, failingId string, duration time.Duration) (int, error) {
-	coll, err := healingCollection()
-	if err != nil {
-		return 0, err
-	}
-	defer coll.Close()
-	minStartTime := time.Now().UTC().Add(-duration)
-	query := bson.M{"action": action + "-healing", "starttime": bson.M{"$gte": minStartTime}}
-	maxCount := 10
-	count := 0
-	for count < maxCount {
-		if action == "node" {
-			query["creatednode._id"] = failingId
-		} else {
-			query["createdcontainer.id"] = failingId
-		}
-		var parent HealingEvent
-		err = coll.Find(query).One(&parent)
-		if err != nil {
-			if err == mgo.ErrNotFound {
-				break
-			}
-			return 0, err
-		}
-		if action == "node" {
-			failingId = parent.FailingNode.Address
-		} else {
-			failingId = parent.FailingContainer.ID
-		}
-		count += 1
-	}
-	return count, nil
 }

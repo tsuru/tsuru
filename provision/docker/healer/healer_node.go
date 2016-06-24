@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -152,28 +153,37 @@ func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	return createdNode, nil
 }
 
-func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, extra interface{}) error {
+func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, lastCheck *nodeChecks) error {
 	_, hasIaas := node.Metadata["iaas"]
 	if !hasIaas {
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address, reason)
 		return nil
 	}
-	evt, err := NewHealingEventWithReason(*node, reason, extra)
+	evt, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Name: "node", Value: node.Address},
+		InternalKind: "healer",
+		CustomData: map[string]interface{}{
+			"node":      *node,
+			"reason":    reason,
+			"lastCheck": lastCheck,
+		},
+	})
 	if err != nil {
-		if err == errHealingInProgress {
+		if _, ok := err.(event.ErrEventLocked); ok {
 			// Healing in progress.
 			return nil
 		}
-		return fmt.Errorf("error trying to insert healing event: %s", err.Error())
+		return fmt.Errorf("Error trying to insert nodee healing event, healing aborted: %s", err.Error())
 	}
 	var createdNode cluster.Node
 	var evtErr error
 	defer func() {
-		var created interface{}
-		if createdNode.Address != "" {
-			created = createdNode
+		var updateErr error
+		if createdNode.Address == "" {
+			updateErr = evt.Abort()
+		} else {
+			updateErr = evt.DoneCustomData(evtErr, createdNode)
 		}
-		updateErr := evt.Update(created, evtErr)
 		if updateErr != nil {
 			log.Errorf("error trying to update healing event: %s", updateErr.Error())
 		}
@@ -192,16 +202,6 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, extra int
 		return evtErr
 	}
 	if !shouldHeal {
-		return nil
-	}
-	healingCounter, err := healingCountFor("node", node.Address, consecutiveHealingsTimeframe)
-	if err != nil {
-		evtErr = fmt.Errorf("couldn't verify number of previous healings for %s: %s", node.Address, err)
-		return evtErr
-	}
-	if healingCounter > consecutiveHealingsLimitInTimeframe {
-		log.Debugf("number of healings for node %s in the last %d minutes exceeds limit of %d: %d",
-			node.Address, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
 		return nil
 	}
 	log.Errorf("initiating healing process for node %q due to: %s", node.Address, reason)
@@ -490,7 +490,7 @@ func (h *NodeHealer) runActiveHealing() {
 		sinceSuccess := time.Since(n.LastSuccess)
 		err = h.tryHealingNode(nodesAddrMap[n.Address],
 			fmt.Sprintf("last update %v ago, last success %v ago", sinceUpdate, sinceSuccess),
-			n.Checks[len(n.Checks)-1],
+			&n.Checks[len(n.Checks)-1],
 		)
 		if err != nil {
 			log.Errorf("[node healer active] %s", err)
