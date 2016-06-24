@@ -29,44 +29,39 @@ func (s *S) TestListHealingHistoryCmdInfo(c *check.C) {
 var healingJsonData = `[{
 	"StartTime": "2014-10-23T08:00:00.000Z",
 	"EndTime": "2014-10-23T08:30:00.000Z",
-	"Successful": true,
-	"Action": "node-healing",
-	"FailingNode": {"Address": "addr1"},
-	"CreatedNode": {"Address": "addr2"},
+	"Target": {"Name": "node"},
+	"StartCustomData": {"node": {"Address": "addr1"} },
+	"EndCustomData": {"Address": "addr2"},
 	"Error": ""
 },
 {
 	"StartTime": "2014-10-23T10:00:00.000Z",
 	"EndTime": "2014-10-23T10:30:00.000Z",
-	"Successful": false,
-	"Action": "node-healing",
-	"FailingNode": {"Address": "addr1"},
-	"CreatedNode": {"Address": "addr2"},
-	"Error": ""
+	"Target": {"Name": "node"},
+	"StartCustomData": {"node": {"Address": "addr1"} },
+	"EndCustomData": {"Address": "addr2"},
+	"Error": "xx"
 },
 {
 	"StartTime": "2014-10-23T06:00:00.000Z",
 	"EndTime": "2014-10-23T06:30:00.000Z",
-	"Successful": true,
-	"Action": "container-healing",
-	"FailingContainer": {"ID": "123456789012"},
-	"CreatedContainer": {"ID": "923456789012"},
+	"Target": {"Name": "container"},
+	"StartCustomData": {"ID": "123456789012"},
+	"EndCustomData": {"ID": "923456789012"},
 	"Error": ""
 },
 {
 	"StartTime": "2014-10-23T08:00:00.000Z",
 	"EndTime": "2014-10-23T08:30:00.000Z",
-	"Successful": false,
-	"Action": "container-healing",
-	"FailingContainer": {"ID": "123456789012"},
+	"Target": {"Name": "container"},
+	"StartCustomData": {"ID": "123456789012"},
 	"Error": "err1"
 },
 {
 	"StartTime": "2014-10-23T02:00:00.000Z",
 	"EndTime": "2014-10-23T02:30:00.000Z",
-	"Successful": false,
-	"Action": "container-healing",
-	"FailingContainer": {"ID": "123456789012"},
+	"Target": {"Name": "container"},
+	"StartCustomData": {"ID": "123456789012"},
 	"Error": "err1"
 }]`
 
@@ -109,7 +104,7 @@ func (s *S) TestListHealingHistoryCmdRun(c *check.C) {
 +-----------------+-----------------+---------+---------+---------+-------+
 | %s | %s | true    | addr1   | addr2   |       |
 +-----------------+-----------------+---------+---------+---------+-------+
-| %s | %s | false   | addr1   | addr2   |       |
+| %s | %s | false   | addr1   | addr2   | xx    |
 +-----------------+-----------------+---------+---------+---------+-------+
 Container:
 +-----------------+-----------------+---------+------------+------------+-------+
@@ -172,7 +167,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *check.C) {
 +-----------------+-----------------+---------+---------+---------+-------+
 | %s | %s | true    | addr1   | addr2   |       |
 +-----------------+-----------------+---------+---------+---------+-------+
-| %s | %s | false   | addr1   | addr2   |       |
+| %s | %s | false   | addr1   | addr2   | xx    |
 +-----------------+-----------------+---------+---------+---------+-------+
 `, startTStr08, endTStr08, startTStr10, endTStr10)
 	c.Assert(buf.String(), check.Equals, expected)

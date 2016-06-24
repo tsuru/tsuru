@@ -15,8 +15,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
 type ListHealingHistoryCmd struct {
@@ -33,33 +36,34 @@ func (c *ListHealingHistoryCmd) Info() *cmd.Info {
 	}
 }
 
-func renderHistoryTable(history []HealingEvent, filter string, ctx *cmd.Context) {
+func renderHistoryTable(history []event.Event, filter string, ctx *cmd.Context) {
 	fmt.Fprintln(ctx.Stdout, strings.ToUpper(filter[:1])+filter[1:]+":")
 	headers := cmd.Row([]string{"Start", "Finish", "Success", "Failing", "Created", "Error"})
 	t := cmd.Table{Headers: headers}
 	for i := range history {
 		event := history[i]
-		if event.Action != filter+"-healing" {
+		data := make([]string, 2)
+		if event.Target.Name != filter {
 			continue
 		}
-		data := make([]string, 2)
 		if filter == "node" {
-			data[0] = event.FailingNode.Address
-			data[1] = event.CreatedNode.Address
+			var customData1 struct{ Node cluster.Node }
+			var customData2 cluster.Node
+			event.StartData(&customData1)
+			event.EndData(&customData2)
+			data[0] = customData1.Node.Address
+			data[1] = customData2.Address
 		} else {
-			data[0] = event.FailingContainer.ID
-			data[1] = event.CreatedContainer.ID
-			if len(data[0]) > 10 {
-				data[0] = data[0][:10]
-			}
-			if len(data[1]) > 10 {
-				data[1] = data[1][:10]
-			}
+			var cont1, cont2 container.Container
+			event.StartData(&cont1)
+			event.EndData(&cont2)
+			data[0] = cont1.ShortID()
+			data[1] = cont2.ShortID()
 		}
 		t.AddRow(cmd.Row([]string{
 			event.StartTime.Local().Format(time.Stamp),
 			event.EndTime.Local().Format(time.Stamp),
-			fmt.Sprintf("%t", event.Successful),
+			fmt.Sprintf("%t", event.Error == ""),
 			data[0],
 			data[1],
 			event.Error,
@@ -90,7 +94,7 @@ func (c *ListHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 		return err
 	}
 	defer resp.Body.Close()
-	var history []HealingEvent
+	var history []event.Event
 	if resp.StatusCode == http.StatusOK {
 		err = json.NewDecoder(resp.Body).Decode(&history)
 		if err != nil {
