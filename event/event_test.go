@@ -54,7 +54,7 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventId{target: Target{Name: "app", Value: "myapp"}},
+		ID:             eventId{Target: Target{Name: "app", Value: "myapp"}},
 		Target:         Target{Name: "app", Value: "myapp"},
 		Kind:           kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
@@ -83,7 +83,7 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
-	expected.ID = eventId{objId: evts[0].ID.objId}
+	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
 	c.Assert(evts, check.DeepEquals, []Event{*expected})
 }
 
@@ -94,7 +94,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:              eventId{target: Target{Name: "app", Value: "myapp"}},
+		ID:              eventId{Target: Target{Name: "app", Value: "myapp"}},
 		Target:          Target{Name: "app", Value: "myapp"},
 		Kind:            kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:           owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
@@ -117,7 +117,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
-	expected.ID = eventId{objId: evts[0].ID.objId}
+	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
 	expected.StartCustomData = bson.M{"a": "value"}
 	expected.EndCustomData = bson.M{"a": "other"}
 	c.Assert(evts, check.DeepEquals, []Event{*expected})
@@ -210,7 +210,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventId{objId: evts[0].ID.objId},
+		ID:             eventId{ObjId: evts[0].ID.ObjId},
 		Target:         Target{Name: "app", Value: "myapp"},
 		Kind:           kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
@@ -433,104 +433,4 @@ func (s *S) TestListFilterEmpty(c *check.C) {
 	evts, err := List(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-}
-
-func (s *S) TestListFilterMany(c *check.C) {
-	var allEvts []Event
-	var create = func(opts *Opts) {
-		evt, err := New(opts)
-		c.Assert(err, check.IsNil)
-		allEvts = append(allEvts, *evt)
-	}
-	var createi = func(opts *Opts) {
-		evt, err := NewInternal(opts)
-		c.Assert(err, check.IsNil)
-		allEvts = append(allEvts, *evt)
-	}
-	var checkFilters = func(f *Filter, expected interface{}) {
-		evts, err := List(f)
-		c.Assert(err, check.IsNil)
-		c.Assert(evts, EvtEquals, expected)
-	}
-	create(&Opts{
-		Target: Target{Name: "app", Value: "myapp"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
-	})
-	time.Sleep(100 * time.Millisecond)
-	t0 := time.Now().UTC()
-	create(&Opts{
-		Target: Target{Name: "app", Value: "myapp2"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
-	})
-	time.Sleep(100 * time.Millisecond)
-	create(&Opts{
-		Target: Target{Name: "app2", Value: "myapp"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
-	})
-	t1 := time.Now().UTC()
-	time.Sleep(100 * time.Millisecond)
-	createi(&Opts{
-		Target:       Target{Name: "node", Value: "http://10.0.1.1"},
-		InternalKind: "healer",
-	})
-	createi(&Opts{
-		Target:       Target{Name: "node", Value: "http://10.0.1.2"},
-		InternalKind: "healer",
-	})
-	allEvts[len(allEvts)-1].Done(nil)
-	checkFilters(&Filter{Sort: "_id"}, allEvts)
-	checkFilters(&Filter{Running: boolPtr(false)}, allEvts[len(allEvts)-1])
-	checkFilters(&Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-1])
-	checkFilters(&Filter{Target: Target{Name: "app"}, Sort: "_id"}, []Event{allEvts[0], allEvts[1]})
-	checkFilters(&Filter{Target: Target{Name: "app", Value: "myapp"}}, allEvts[0])
-	checkFilters(&Filter{KindType: KindTypeInternal, Sort: "_id"}, allEvts[3:])
-	checkFilters(&Filter{KindType: KindTypePermission, Sort: "_id"}, allEvts[:3])
-	checkFilters(&Filter{KindType: KindTypePermission, KindName: "kind"}, nil)
-	checkFilters(&Filter{KindType: KindTypeInternal, KindName: "healer", Sort: "_id"}, allEvts[3:])
-	checkFilters(&Filter{OwnerType: OwnerTypeUser, Sort: "_id"}, allEvts[:3])
-	checkFilters(&Filter{OwnerType: OwnerTypeInternal, Sort: "_id"}, allEvts[3:])
-	checkFilters(&Filter{OwnerType: OwnerTypeUser, OwnerName: s.token.GetUserName(), Sort: "_id"}, allEvts[:3])
-	checkFilters(&Filter{Since: t0, Sort: "_id"}, allEvts[1:])
-	checkFilters(&Filter{Until: t0, Sort: "_id"}, allEvts[:2])
-	checkFilters(&Filter{Since: t0, Until: t1, Sort: "_id"}, allEvts[1:3])
-	checkFilters(&Filter{Limit: 2, Sort: "_id"}, allEvts[:2])
-	checkFilters(&Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-1])
-}
-
-func boolPtr(b bool) *bool {
-	return &b
-}
-
-type evtEqualsChecker struct {
-	check.CheckerInfo
-}
-
-func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, string) {
-	evts := make([][]Event, len(params))
-	for i := range evts {
-		switch e := params[i].(type) {
-		case Event:
-			evts[i] = []Event{e}
-		case *Event:
-			evts[i] = []Event{*e}
-		case []Event:
-			evts[i] = e
-		default:
-			evts[i] = []Event{}
-		}
-		for j := range evts[i] {
-			e := &evts[i][j]
-			e.StartTime = time.Time{}
-			e.EndTime = time.Time{}
-			e.LockUpdateTime = time.Time{}
-		}
-	}
-	return check.DeepEquals.Check([]interface{}{evts[0], evts[1]}, names)
-}
-
-var EvtEquals check.Checker = &evtEqualsChecker{
-	check.CheckerInfo{Name: "EvtEquals", Params: []string{"obtained", "expected"}},
 }

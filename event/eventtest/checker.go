@@ -6,6 +6,7 @@ package eventtest
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -108,3 +109,34 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 }
 
 var HasEvent check.Checker = hasEventChecker{}
+
+type evtEqualsChecker struct {
+	check.CheckerInfo
+}
+
+func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, string) {
+	evts := make([][]event.Event, len(params))
+	for i := range evts {
+		switch e := params[i].(type) {
+		case event.Event:
+			evts[i] = []event.Event{e}
+		case *event.Event:
+			evts[i] = []event.Event{*e}
+		case []event.Event:
+			evts[i] = e
+		default:
+			evts[i] = []event.Event{}
+		}
+		for j := range evts[i] {
+			e := &evts[i][j]
+			e.StartTime = time.Time{}
+			e.EndTime = time.Time{}
+			e.LockUpdateTime = time.Time{}
+		}
+	}
+	return check.DeepEquals.Check([]interface{}{evts[0], evts[1]}, names)
+}
+
+var EvtEquals check.Checker = &evtEqualsChecker{
+	check.CheckerInfo{Name: "EvtEquals", Params: []string{"obtained", "expected"}},
+}

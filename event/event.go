@@ -5,6 +5,7 @@
 package event
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -85,23 +86,23 @@ func (id Target) IsValid() bool {
 }
 
 type eventId struct {
-	target Target
-	objId  bson.ObjectId
+	Target Target
+	ObjId  bson.ObjectId
 }
 
 func (id *eventId) SetBSON(raw bson.Raw) error {
-	err := raw.Unmarshal(&id.target)
+	err := raw.Unmarshal(&id.Target)
 	if err != nil {
-		return raw.Unmarshal(&id.objId)
+		return raw.Unmarshal(&id.ObjId)
 	}
 	return nil
 }
 
 func (id eventId) GetBSON() (interface{}, error) {
-	if len(id.objId) != 0 {
-		return id.objId, nil
+	if len(id.ObjId) != 0 {
+		return id.ObjId, nil
 	}
-	return id.target.GetBSON()
+	return id.Target.GetBSON()
 }
 
 // This private type allow us to export the main Event struct without allowing
@@ -380,7 +381,7 @@ func newEvt(opts *Opts) (*Event, error) {
 	}
 	now := time.Now().UTC()
 	evt := Event{eventData: eventData{
-		ID:              eventId{target: opts.Target},
+		ID:              eventId{Target: opts.Target},
 		Target:          opts.Target,
 		StartTime:       now,
 		Kind:            k,
@@ -487,6 +488,22 @@ func (e *Event) AckCancel() error {
 	return err
 }
 
+func (e *Event) StartData(value interface{}) error {
+	data, err := json.Marshal(e.StartCustomData)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, value)
+}
+
+func (e *Event) EndData(value interface{}) error {
+	data, err := json.Marshal(e.EndCustomData)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, value)
+}
+
 func (e *Event) done(evtErr error, customData interface{}, abort bool) (err error) {
 	// Done will be usually called in a defer block ignoring errors. This is
 	// why we log error messages here.
@@ -515,7 +532,7 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	e.Running = false
 	e.Log = e.logBuffer.String()
 	defer coll.RemoveId(e.ID)
-	e.ID = eventId{objId: bson.NewObjectId()}
+	e.ID = eventId{ObjId: bson.NewObjectId()}
 	return coll.Insert(e.eventData)
 }
 
