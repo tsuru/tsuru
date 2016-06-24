@@ -295,7 +295,8 @@ func newEvt(opts *Opts) (*Event, error) {
 		if tSpec.KindName != "" {
 			query["kind.name"] = tSpec.KindName
 		}
-		c, err := coll.Find(query).Count()
+		var c int
+		c, err = coll.Find(query).Count()
 		if err != nil {
 			return nil, err
 		}

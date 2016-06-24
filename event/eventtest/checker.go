@@ -66,7 +66,8 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	}
 	defer conn.Close()
 	if evt.IsEmpty {
-		n, err := conn.Events().Find(nil).Count()
+		var n int
+		n, err = conn.Events().Find(nil).Count()
 		if err != nil {
 			return false, err.Error()
 		}

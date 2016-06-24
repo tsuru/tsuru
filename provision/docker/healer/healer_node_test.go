@@ -472,7 +472,8 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 
 	for i := 0; i < 3; i++ {
-		evt, err := event.NewInternal(&event.Opts{
+		var evt *event.Event
+		evt, err = event.NewInternal(&event.Opts{
 			Target:       event.Target{Name: "node", Value: nodes[0].Address},
 			InternalKind: "healer",
 		})

@@ -546,7 +546,8 @@ func (s *S) TestRunContainerHealerThrottled(c *check.C) {
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-5 * time.Minute)
 	for i := 0; i < 3; i++ {
-		evt, err := event.NewInternal(&event.Opts{
+		var evt *event.Event
+		evt, err = event.NewInternal(&event.Opts{
 			Target:       event.Target{Name: "container", Value: toMoveCont.ID},
 			InternalKind: "healer",
 			CustomData:   toMoveCont,
