@@ -8,13 +8,12 @@ tsr 0.11.0 release notes
 
 Welcome to tsr 0.11.0!
 
-These release notes cover the :ref:`new_features`, `bug fixes`_,
-:ref:`other-improvements` and `backward incompatible changes`_ you'll want
-to be aware of when upgrading from tsr 0.10.0 or older versions.
+These release notes cover the :ref:`new features <new-0.11.0>`,
+:ref:`bug fixes <bug-0.11.0>`, :ref:`other improvements <other-0.11.0>`
+and :ref:`backward incompatible changes <backwards-0.11.0>` you'll want to be
+aware of when upgrading from tsr 0.10.0 or older versions.
 
-.. _`backward incompatible changes`: `Backward incompatible changes (action needed)`_
-
-.. _new-features:
+.. _new-0.11.0:
 
 Main new features
 =================
@@ -24,18 +23,20 @@ Main new features
   the case, when creating a new application, users will be able to choose which
   pool they want to use to deploy it.
 
-  To support these features some client commands have changed, mainly ``tsuru app-create``
-  support a ``--pool <poolname>`` parameter.
+  To support these features some client commands have changed,
+  mainly ``tsuru app-create`` support a ``--pool <poolname>`` parameter.
 
-  Some action is needed to migrate old pool configuration to this new format. See
-  `backward incompatible changes`_ section for more details. `#1013
-  <https://github.com/tsuru/tsuru/issues/1013>`_
+  Some action is needed to migrate old pool configuration to this new format.
+  See :ref:`backward incompatible changes <backwards-0.11.0>` section for more
+  details. `#1013 <https://github.com/tsuru/tsuru/issues/1013>`_
 
 * Node auto scaling. It's now possible to enable automatic scaling of docker
   nodes, this will add or remove nodes according to rules specified in your
   tsuru.conf file. See :doc:`node auto scaling </advanced_topics/node_scaling>`
   topic and :ref:`config reference <config_docker_auto_scale>` for more details.
   `#1110 <https://github.com/tsuru/tsuru/issues/1110>`_
+
+.. _bug-0.11.0:
 
 Bug fixes
 =========
@@ -75,7 +76,7 @@ Bug fixes
   instances. With this old bug, units could end-up being bound twice with a
   service instance.
 
-.. _other-improvements:
+.. _other-0.11.0:
 
 Other improvements
 ==================
@@ -168,6 +169,8 @@ Other improvements
       </installing/api>` page (thanks Samuel Roze).
     - fix wording and spelling in the :doc:`Gandalf install </installing/gandalf>` page
       (thanks Martin Jackson).
+
+.. _backwards-0.11.0:
 
 Backward incompatible changes (action needed)
 =============================================
