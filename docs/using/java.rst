@@ -13,7 +13,7 @@ This document is a hands-on guide to deploying a simple Java application on
 tsuru. The example application is a simple mvn generated archetype, in order to
 generate it, just run:
 
-.. highlight: bash
+.. highlight:: bash
 
 ::
 
@@ -197,7 +197,7 @@ The "Repository" line contains what we need: the remote repository. Now we can
 simply push the application code, using Git push:
 
 
-.. highlight:: bash
+.. highlight:: console
 
 ::
 
