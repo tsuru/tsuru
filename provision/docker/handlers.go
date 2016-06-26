@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cezarsa/form"
+	"github.com/ajg/form"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api"

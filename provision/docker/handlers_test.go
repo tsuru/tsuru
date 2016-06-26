@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cezarsa/form"
+	"github.com/ajg/form"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
