@@ -20,15 +20,12 @@ import (
 func addLogs(ws *websocket.Conn) {
 	var err error
 	defer func() {
-		data := map[string]interface{}{}
+		msg := &errMsg{}
 		if err != nil {
-			data["error"] = err.Error()
+			msg.Error = err.Error()
 			log.Error(err.Error())
-		} else {
-			data["error"] = nil
 		}
-		msg, _ := json.Marshal(data)
-		ws.Write(msg)
+		websocket.JSON.Send(ws, msg)
 		ws.Close()
 	}()
 	req := ws.Request()
@@ -68,4 +65,8 @@ func scanLogs(stream io.Reader) error {
 	}
 	dispatcher.Stop()
 	return nil
+}
+
+type errMsg struct {
+	Error string `json:"error"`
 }
