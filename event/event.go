@@ -116,7 +116,7 @@ type eventData struct {
 	StartCustomData interface{} `bson:",omitempty"`
 	EndCustomData   interface{} `bson:",omitempty"`
 	Kind            kind
-	Owner           owner
+	Owner           Owner
 	Cancelable      bool
 	Running         bool
 	LockUpdateTime  time.Time
@@ -138,7 +138,7 @@ type ownerType string
 
 type kindType string
 
-type owner struct {
+type Owner struct {
 	Type ownerType
 	Name string
 }
@@ -148,7 +148,7 @@ type kind struct {
 	Name string
 }
 
-func (o owner) String() string {
+func (o Owner) String() string {
 	return fmt.Sprintf("%s %s", o.Type, o.Name)
 }
 
@@ -193,6 +193,7 @@ type Opts struct {
 	Kind         *permission.PermissionScheme
 	InternalKind string
 	Owner        auth.Token
+	RawOwner     Owner
 	Cancelable   bool
 	CustomData   interface{}
 }
@@ -300,7 +301,7 @@ func New(opts *Opts) (*Event, error) {
 	if opts == nil {
 		return nil, ErrNoOpts
 	}
-	if opts.Owner == nil {
+	if opts.Owner == nil && opts.RawOwner.Name == "" && opts.RawOwner.Type == "" {
 		return nil, ErrNoOwner
 	}
 	if opts.Kind == nil {
@@ -344,9 +345,13 @@ func newEvt(opts *Opts) (*Event, error) {
 		k.Type = KindTypePermission
 		k.Name = opts.Kind.FullName()
 	}
-	var o owner
+	var o Owner
 	if opts.Owner == nil {
-		o.Type = OwnerTypeInternal
+		if opts.RawOwner.Name != "" && opts.RawOwner.Type != "" {
+			o = opts.RawOwner
+		} else {
+			o.Type = OwnerTypeInternal
+		}
 	} else if opts.Owner.IsAppToken() {
 		o.Type = OwnerTypeApp
 		o.Name = opts.Owner.GetAppName()

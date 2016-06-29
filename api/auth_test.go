@@ -25,11 +25,11 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -122,11 +122,11 @@ func (s *AuthSuite) TestCreateUser(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
-	action := rectest.Action{
-		Action: "create-user",
-		User:   "nobody@globo.com",
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget("nobody@globo.com"),
+		Owner:  "nobody@globo.com",
+		Kind:   "user.create",
+	}, eventtest.HasEvent)
 	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
 }
 
@@ -308,11 +308,11 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
-	action := rectest.Action{
-		Action: "login",
-		User:   u.Email,
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget("nobody@globo.com"),
+		Owner:  "nobody@globo.com",
+		Kind:   "user.log.in",
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestLoginPasswordMissing(c *check.C) {
@@ -415,12 +415,14 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	err = conn.Teams().Find(bson.M{"_id": "timeredbull"}).One(t)
 	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, check.IsNil)
-	action := rectest.Action{
-		Action: "create-team",
-		User:   s.user.Email,
-		Extra:  []interface{}{"timeredbull"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: teamTarget("timeredbull"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "team.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "timeredbull"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
@@ -469,12 +471,14 @@ func (s *AuthSuite) TestRemoveTeam(c *check.C) {
 	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{
-		Action: "remove-team",
-		User:   s.user.Email,
-		Extra:  []interface{}{team.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: teamTarget("painofsalvation"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "team.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "painofsalvation"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
@@ -494,12 +498,14 @@ func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
 	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{
-		Action: "remove-team",
-		User:   s.user.Email,
-		Extra:  []interface{}{team.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: teamTarget("thegathering"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "team.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "thegathering"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *check.C) {
@@ -688,12 +694,15 @@ func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	s.user, err = auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
-	action := rectest.Action{
-		Action: "add-key",
-		User:   s.user.Email,
-		Extra:  []interface{}{"the-key", "my-key"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(s.token.GetUserName()),
+		Owner:  s.token.GetUserName(),
+		Kind:   "user.update.key.add",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "the-key"},
+			{"name": "key", "value": "my-key"},
+		},
+	}, eventtest.HasEvent)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-key"}})
@@ -829,12 +838,14 @@ func (s *AuthSuite) TestRemoveKey(c *check.C) {
 	recorder = httptest.NewRecorder()
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	action := rectest.Action{
-		Action: "remove-key",
-		User:   s.user.Email,
-		Extra:  []interface{}{"the-key"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(s.token.GetUserName()),
+		Owner:  s.token.GetUserName(),
+		Kind:   "user.update.key.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":key", "value": "the-key"},
+		},
+	}, eventtest.HasEvent)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
@@ -925,8 +936,11 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{Action: "remove-user", User: u.Email}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(token.GetUserName()),
+		Owner:  token.GetUserName(),
+		Kind:   "user.delete",
+	}, eventtest.HasEvent)
 	users := repositorytest.Users()
 	sort.Strings(users)
 	c.Assert(users, check.DeepEquals, []string{s.user.Email})
@@ -950,8 +964,14 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{Action: "remove-user", User: u.Email}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(u.Email),
+		Owner:  token.GetUserName(),
+		Kind:   "user.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": "user", "value": u.Email},
+		},
+	}, eventtest.HasEvent)
 	users := repositorytest.Users()
 	sort.Strings(users)
 	c.Assert(users, check.DeepEquals, []string{s.user.Email})
@@ -974,8 +994,14 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{Action: "remove-user", User: u.Email}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(u.Email),
+		Owner:  s.token.GetUserName(),
+		Kind:   "user.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": "user", "value": u.Email},
+		},
+	}, eventtest.HasEvent)
 	users := repositorytest.Users()
 	sort.Strings(users)
 	c.Assert(users, check.DeepEquals, []string{s.user.Email})
@@ -1019,11 +1045,11 @@ func (s *AuthSuite) TestChangePassword(c *check.C) {
 	otherUser, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Password, check.Not(check.Equals), oldPassword)
-	action := rectest.Action{
-		Action: "change-password",
-		User:   u.Email,
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(token.GetUserName()),
+		Owner:  token.GetUserName(),
+		Kind:   "user.update.password",
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.C) {
@@ -1126,11 +1152,14 @@ func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
 	u, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Password, check.Equals, oldPassword)
-	action := rectest.Action{
-		Action: "reset-password-gen-token",
-		User:   s.user.Email,
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(s.token.GetUserName()),
+		Owner:  s.token.GetUserName(),
+		Kind:   "user.update.reset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":email", "value": s.token.GetUserName()},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestResetPasswordUserNotFound(c *check.C) {
@@ -1179,11 +1208,15 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 	u2, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u2.Password, check.Not(check.Equals), oldPassword)
-	action := rectest.Action{
-		Action: "reset-password",
-		User:   user.Email,
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(user.Email),
+		Owner:  user.Email,
+		Kind:   "user.update.reset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":email", "value": user.Email},
+			{"name": "token", "value": t["_id"]},
+		},
+	}, eventtest.HasEvent)
 }
 
 type TestScheme native.NativeScheme

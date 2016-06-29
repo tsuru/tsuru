@@ -13,9 +13,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
 )
 
@@ -44,6 +44,14 @@ func handleAuthError(err error) error {
 	}
 }
 
+func userTarget(u string) event.Target {
+	return event.Target{Name: "user", Value: u}
+}
+
+func teamTarget(u string) event.Target {
+	return event.Target{Name: "team", Value: u}
+}
+
 // title: user create
 // path: /users
 // method: POST
@@ -54,7 +62,7 @@ func handleAuthError(err error) error {
 //   401: Unauthorized
 //   403: Forbidden
 //   409: User already exists
-func createUser(w http.ResponseWriter, r *http.Request) error {
+func createUser(w http.ResponseWriter, r *http.Request) (err error) {
 	registrationEnabled, _ := config.GetBool("auth:user-registration")
 	if !registrationEnabled {
 		token := r.Header.Get("Authorization")
@@ -66,15 +74,27 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 			return createDisabledErr
 		}
 	}
-	u := auth.User{
-		Email:    r.FormValue("email"),
-		Password: r.FormValue("password"),
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	delete(r.Form, "password")
+	evt, err := event.New(&event.Opts{
+		Target:     userTarget(email),
+		Kind:       permission.PermUserCreate,
+		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
 	}
-	_, err := app.AuthScheme.Create(&u)
+	defer func() { evt.Done(err) }()
+	u := auth.User{
+		Email:    email,
+		Password: password,
+	}
+	_, err = app.AuthScheme.Create(&u)
 	if err != nil {
 		return handleAuthError(err)
 	}
-	rec.Log(u.Email, "create-user")
 	w.WriteHeader(http.StatusCreated)
 	return nil
 }
@@ -90,26 +110,31 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 //   401: Unauthorized
 //   403: Forbidden
 //   404: Not found
-func login(w http.ResponseWriter, r *http.Request) error {
+func login(w http.ResponseWriter, r *http.Request) (err error) {
 	params := map[string]string{
 		"email": r.URL.Query().Get(":email"),
 	}
-	err := r.ParseForm()
+	err = r.ParseForm()
 	if err != nil {
 		return err
 	}
 	for key := range r.Form {
 		params[key] = r.FormValue(key)
 	}
+	email := params["email"]
+	evt, err := event.New(&event.Opts{
+		Target:   userTarget(email),
+		Kind:     permission.PermUserLogIn,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: email},
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	token, err := app.AuthScheme.Login(params)
 	if err != nil {
 		return handleAuthError(err)
 	}
-	u, err := token.User()
-	if err != nil {
-		return err
-	}
-	rec.Log(u.Email, "login")
 	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 }
 
@@ -118,7 +143,16 @@ func login(w http.ResponseWriter, r *http.Request) error {
 // method: DELETE
 // responses:
 //   200: Ok
-func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	evt, err := event.New(&event.Opts{
+		Target: userTarget(t.GetUserName()),
+		Kind:   permission.PermUserLogOut,
+		Owner:  t,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	return app.AuthScheme.Logout(t.GetValue())
 }
 
@@ -132,11 +166,20 @@ func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   403: Forbidden
 //   404: Not found
-func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
 	}
+	evt, err := event.New(&event.Opts{
+		Target: userTarget(t.GetUserName()),
+		Kind:   permission.PermUserUpdatePassword,
+		Owner:  t,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	oldPassword := r.FormValue("old")
 	newPassword := r.FormValue("new")
 	confirmPassword := r.FormValue("confirm")
@@ -152,11 +195,10 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			Message: "New password and password confirmation didn't match.",
 		}
 	}
-	err := managed.ChangePassword(t, oldPassword, newPassword)
+	err = managed.ChangePassword(t, oldPassword, newPassword)
 	if err != nil {
 		return handleAuthError(err)
 	}
-	rec.Log(t.GetUserName(), "change-password")
 	return nil
 }
 
@@ -169,13 +211,24 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //   401: Unauthorized
 //   403: Forbidden
 //   404: Not found
-func resetPassword(w http.ResponseWriter, r *http.Request) error {
+func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
 	}
+	r.ParseForm()
 	email := r.URL.Query().Get(":email")
-	token := r.URL.Query().Get("token")
+	token := r.FormValue("token")
+	evt, err := event.New(&event.Opts{
+		Target:     userTarget(email),
+		Kind:       permission.PermUserUpdateReset,
+		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
@@ -186,10 +239,8 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if token == "" {
-		rec.Log(email, "reset-password-gen-token")
 		return managed.StartPasswordReset(u)
 	}
-	rec.Log(email, "reset-password")
 	return managed.ResetPassword(u, token)
 }
 
@@ -202,17 +253,29 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Team already exists
-func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowed := permission.Check(t, permission.PermTeamCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	name := r.FormValue("name")
+	if name == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: auth.ErrInvalidTeamName.Error()}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     teamTarget(name),
+		Kind:       permission.PermTeamCreate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "create-team", name)
 	err = auth.CreateTeam(name, u)
 	switch err {
 	case auth.ErrInvalidTeamName:
@@ -234,7 +297,8 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   403: Forbidden
 //   404: Not found
-func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamDelete,
 		permission.Context(permission.CtxTeam, name),
@@ -242,8 +306,17 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
-	rec.Log(t.GetUserName(), "remove-team", name)
-	err := auth.RemoveTeam(name)
+	evt, err := event.New(&event.Opts{
+		Target:     teamTarget(name),
+		Kind:       permission.PermTeamDelete,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = auth.RemoveTeam(name)
 	if err != nil {
 		if _, ok := err.(*auth.ErrTeamStillUsed); ok {
 			msg := fmt.Sprintf("This team cannot be removed because there are still references to it:\n%s", err)
@@ -313,7 +386,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Key already exists
-func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	key := repository.Key{
 		Body: r.FormValue("key"),
 		Name: r.FormValue("name"),
@@ -322,6 +395,16 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if r.FormValue("force") == "true" {
 		force = true
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     userTarget(t.GetUserName()),
+		Kind:       permission.PermUserUpdateKeyAdd,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	if key.Body == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key content"}
 	}
@@ -329,7 +412,6 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "add-key", key.Name, key.Body)
 	err = u.AddKey(key, force)
 	if err == auth.ErrKeyDisabled || err == repository.ErrUserNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -348,18 +430,28 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Not found
-func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	key := repository.Key{
 		Name: r.URL.Query().Get(":key"),
 	}
 	if key.Name == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Either the content or the name of the key must be provided"}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     userTarget(t.GetUserName()),
+		Kind:       permission.PermUserUpdateKeyRemove,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "remove-key", key.Name)
 	err = u.RemoveKey(key)
 	if err == auth.ErrKeyDisabled {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -401,7 +493,8 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: User removed
 //   401: Unauthorized
 //   404: Not found
-func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -416,6 +509,16 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     userTarget(u.Email),
+		Kind:       permission.PermUserDelete,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	appNames, err := deployableApps(u, make(map[string]*permission.Role))
 	if err != nil {
 		return err
@@ -424,7 +527,6 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	for _, name := range appNames {
 		manager.RevokeAccess(name, u.Email)
 	}
-	rec.Log(u.Email, "remove-user")
 	if err := manager.RemoveUser(u.Email); err != nil {
 		log.Errorf("Failed to remove user from repository manager: %s", err)
 	}
