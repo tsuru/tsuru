@@ -53,7 +53,7 @@ func (s *S) TestNewHealingEventExpired(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(events, check.HasLen, 2)
 	c.Assert(events[0].ID, check.Not(check.Equals), "cont1")
-	c.Assert(events[0].Error, check.Matches, `healing event expired, no update for \d+\.\d+ms`)
+	c.Assert(events[0].Error, check.Matches, `healing event expired, no update for \d+\.\d+.*`)
 	c.Assert(events[1].ID, check.Equals, "cont1")
 }
 
