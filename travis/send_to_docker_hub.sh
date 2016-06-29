@@ -2,7 +2,7 @@
 
 DOCKER_TAG="latest"
 
-if [ -n "${DOCKER_TAG}" ] && [ "${TRAVIS_GO_VERSION}" = "${GO_FOR_RELEASE}" ]; then
+if [ -n "${DOCKER_TAG}" ] && [ "${TRAVIS_GO_VERSION}" = "${GO_FOR_RELEASE}" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then
 	cat > ~/.dockercfg <<EOF
 {
   "https://index.docker.io/v1/": {
