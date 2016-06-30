@@ -38,6 +38,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:user", s.user)
 	config.Set("docker:repository-namespace", "tsuru")
+	config.Set("routers:fake:type", "fakeType")
 }
 
 func (s *S) SetUpTest(c *check.C) {

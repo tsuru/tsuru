@@ -119,6 +119,14 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory+app.Swap)
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
 	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Labels, check.DeepEquals, map[string]string{
+		"tsuru.container":    "true",
+		"tsuru.router.name":  "fake",
+		"tsuru.router.type":  "fakeType",
+		"tsuru.app.name":     "app-name",
+		"tsuru.app.platform": "brainfuck",
+		"tsuru.process.name": "myprocess1",
+	})
 	c.Assert(container.Config.Env, check.DeepEquals, []string{
 		"A=myenva",
 		"ABCD=other env",
