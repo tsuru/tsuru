@@ -38,6 +38,30 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 	c.Assert(`unknown router: "unknown".`, check.Equals, err.Error())
 }
 
+func (s *S) TestRegisterAndType(c *check.C) {
+	config.Set("routers:mine:type", "myrouter")
+	defer config.Unset("routers:mine:type")
+	rType, prefix, err := Type("mine")
+	c.Assert(err, check.IsNil)
+	c.Assert(rType, check.Equals, "myrouter")
+	c.Assert(prefix, check.Equals, "routers:mine")
+	_, err = Get("unknown-router")
+	c.Assert(err, check.ErrorMatches, `config key 'routers:unknown-router:type' not found`)
+}
+
+func (s *S) TestRegisterAndTypeSpecialCase(c *check.C) {
+	rType, prefix, err := Type("hipache")
+	c.Assert(err, check.IsNil)
+	c.Assert(rType, check.Equals, "hipache")
+	c.Assert(prefix, check.Equals, "hipache")
+	config.Set("routers:hipache:type", "htype")
+	defer config.Unset("routers:hipache:type")
+	rType, prefix, err = Type("hipache")
+	c.Assert(err, check.IsNil)
+	c.Assert(rType, check.Equals, "htype")
+	c.Assert(prefix, check.Equals, "routers:hipache")
+}
+
 func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	var names []string
 	var prefixes []string

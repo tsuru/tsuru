@@ -41,18 +41,25 @@ func Register(name string, r routerFactory) {
 	routers[name] = r
 }
 
-// Get gets the named router from the registry.
-func Get(name string) (Router, error) {
+func Type(name string) (string, string, error) {
 	prefix := "routers:" + name
 	routerType, err := config.GetString(prefix + ":type")
 	if err != nil {
 		msg := fmt.Sprintf("config key '%s:type' not found", prefix)
 		if name != "hipache" {
-			return nil, errors.New(msg)
+			return "", "", errors.New(msg)
 		}
 		log.Errorf("WARNING: %s, fallback to top level '%s:*' router config", msg, name)
-		routerType = name
-		prefix = name
+		return name, name, nil
+	}
+	return routerType, prefix, nil
+}
+
+// Get gets the named router from the registry.
+func Get(name string) (Router, error) {
+	routerType, prefix, err := Type(name)
+	if err != nil {
+		return nil, err
 	}
 	factory, ok := routers[routerType]
 	if !ok {
