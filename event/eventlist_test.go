@@ -67,6 +67,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 		Kind:   permission.PermAppUpdateEnvSet,
 		Owner:  s.token,
 	})
+	t05 := time.Now().UTC()
 	time.Sleep(100 * time.Millisecond)
 	create(&event.Opts{
 		Target: event.Target{Name: "app2", Value: "myapp"},
@@ -97,7 +98,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{OwnerType: event.OwnerTypeInternal, Sort: "_id"}, allEvts[3:])
 	checkFilters(&event.Filter{OwnerType: event.OwnerTypeUser, OwnerName: s.token.GetUserName(), Sort: "_id"}, allEvts[:3])
 	checkFilters(&event.Filter{Since: t0, Sort: "_id"}, allEvts[1:])
-	checkFilters(&event.Filter{Until: t0, Sort: "_id"}, allEvts[:2])
+	checkFilters(&event.Filter{Until: t05, Sort: "_id"}, allEvts[:2])
 	checkFilters(&event.Filter{Since: t0, Until: t1, Sort: "_id"}, allEvts[1:3])
 	checkFilters(&event.Filter{Limit: 2, Sort: "_id"}, allEvts[:2])
 	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-1])
