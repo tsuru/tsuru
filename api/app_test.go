@@ -1891,6 +1891,7 @@ func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
 	c.Assert(app.Teams, check.HasLen, 1)
 	c.Assert(app.Teams[0], check.Equals, "abcd")
 	c.Assert(eventtest.EventDesc{

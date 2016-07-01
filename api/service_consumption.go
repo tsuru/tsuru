@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -160,7 +161,8 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return nil
 	}
 	rec.Log(t.GetUserName(), "remove-service-instance", serviceName, instanceName)
-	if unbindAll == "true" {
+	unbindAllBool, _ := strconv.ParseBool(unbindAll)
+	if unbindAllBool {
 		if len(serviceInstance.Apps) > 0 {
 			for _, appName := range serviceInstance.Apps {
 				_, app, instErr := getServiceInstance(serviceInstance.ServiceName, serviceInstance.Name, appName)
@@ -328,6 +330,9 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	b = fmt.Sprintf(`Service instance "%s" is %s`, instanceName, b)
 	n, err := w.Write([]byte(b))
+	if err != nil {
+		return err
+	}
 	if n != len(b) {
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
 	}

@@ -639,6 +639,7 @@ func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	defer s.logConn.Logs(a.Name).DropCollection()
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)

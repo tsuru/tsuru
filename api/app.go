@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cezarsa/form"
@@ -154,35 +153,27 @@ contextsLoop:
 //   204: No content
 //   401: Unauthorized
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
 	if name := r.URL.Query().Get("name"); name != "" {
-		extra = append(extra, fmt.Sprintf("name=%s", name))
 		filter.NameMatches = name
 	}
 	if platform := r.URL.Query().Get("platform"); platform != "" {
-		extra = append(extra, fmt.Sprintf("platform=%s", platform))
 		filter.Platform = platform
 	}
 	if teamOwner := r.URL.Query().Get("teamOwner"); teamOwner != "" {
-		extra = append(extra, fmt.Sprintf("teamowner=%s", teamOwner))
 		filter.TeamOwner = teamOwner
 	}
 	if owner := r.URL.Query().Get("owner"); owner != "" {
-		extra = append(extra, fmt.Sprintf("owner=%s", owner))
 		filter.UserOwner = owner
 	}
 	if pool := r.URL.Query().Get("pool"); pool != "" {
-		extra = append(extra, fmt.Sprintf("pool=%s", pool))
 		filter.Pool = pool
 	}
 	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	if locked {
-		extra = append(extra, fmt.Sprintf("locked=%v", locked))
 		filter.Locked = true
 	}
 	if status, ok := r.URL.Query()["status"]; ok {
-		extra = append(extra, fmt.Sprintf("status=%s", strings.Join(status, ",")))
 		filter.Statuses = status
 	}
 	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
@@ -763,7 +754,8 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Run(command, writer, once == "true")
+	onceBool, _ := strconv.ParseBool(once)
+	err = a.Run(command, writer, onceBool)
 	if err != nil {
 		return err
 	}
@@ -970,15 +962,14 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   401: Unauthorized
 //   404: App not found
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	cNameMsg := "You must provide the cname."
 	err = r.ParseForm()
 	if err != nil {
-		msg := "You must provide the cname."
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: cNameMsg}
 	}
 	cnames := r.Form["cname"]
 	if len(cnames) == 0 {
-		msg := "You must provide the cname."
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: cNameMsg}
 	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1087,19 +1078,6 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	unit := r.URL.Query().Get("unit")
 	follow := r.URL.Query().Get("follow")
 	appName := r.URL.Query().Get(":app")
-	extra := []interface{}{
-		"app=" + appName,
-		fmt.Sprintf("lines=%d", lines),
-	}
-	if source != "" {
-		extra = append(extra, "source="+source)
-	}
-	if follow == "1" {
-		extra = append(extra, "follow=1")
-	}
-	if unit != "" {
-		extra = append(extra, "unit="+unit)
-	}
 	filterLog := app.Applog{Source: source, Unit: unit}
 	a, err := getAppFromContext(appName, r)
 	if err != nil {

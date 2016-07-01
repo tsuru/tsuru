@@ -475,6 +475,7 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 	emptyUser, err := emptyToken.User()
 	c.Assert(err, check.IsNil)
 	users, err := repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
 	c.Assert(users, check.DeepEquals, []string{s.user.Email, emptyToken.GetUserName()})
 	c.Assert(emptyUser.Roles, check.HasLen, 1)
 }
@@ -599,6 +600,7 @@ func (s *S) TestDissociateRoleCheckGandalf(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Roles, check.HasLen, 0)
 	users, err := repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
 	c.Assert(users, check.DeepEquals, []string{s.user.Email})
 }
 

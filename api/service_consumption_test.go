@@ -1071,6 +1071,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 			Teams:       []string{s.team.Name},
 		}
 		err = instance.Create()
+		c.Assert(err, check.IsNil)
 	}
 	srv := service.Service{Name: "oracle", Teams: []string{s.team.Name}}
 	err := srv.Create()
@@ -1502,6 +1503,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	defer service.DeleteInstance(&si, "")
 	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
 	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
