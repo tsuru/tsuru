@@ -17,8 +17,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"golang.org/x/crypto/bcrypt"
@@ -140,12 +140,17 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 	c.Assert(rService.Password, check.Equals, "xxxx")
 	c.Assert(rService.Username, check.Equals, "test")
 	c.Assert(rService.OwnerTeams, check.DeepEquals, []string{s.team.Name})
-	action := rectest.Action{
-		Action: "create-service",
-		User:   s.user.Email,
-		Extra:  []interface{}{"some_service", "someservice.com"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("some_service"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "team", "value": "tsuruteam"},
+			{"name": "username", "value": "test"},
+			{"name": "endpoint", "value": "someservice.com"},
+			{"name": "id", "value": "some_service"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestServiceCreateNameExists(c *check.C) {
@@ -258,12 +263,15 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	c.Assert(service.Endpoint["production"], check.Equals, "mysqlapi.com")
 	c.Assert(service.Password, check.Equals, "yyyy")
 	c.Assert(service.Username, check.Equals, "mysqltest")
-	action := rectest.Action{
-		Action: "update-service",
-		User:   s.user.Email,
-		Extra:  []interface{}{service.Name, "mysqlapi.com"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("mysqlapi"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "username", "value": "mysqltest"},
+			{"name": "endpoint", "value": "mysqlapi.com"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutPassword(c *check.C) {
@@ -329,12 +337,14 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 	count, err := s.conn.Services().Find(query).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
-	action := rectest.Action{
-		Action: "delete-service",
-		User:   s.user.Email,
-		Extra:  []interface{}{se.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("Mysql"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "Mysql"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *check.C) {
@@ -408,6 +418,15 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("foo"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.update.proxy",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":service", "value": "foo"},
+			{"name": "callback", "value": "/mypath"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestServiceProxyNoContent(c *check.C) {
@@ -514,12 +533,15 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	err = se.Get()
 	c.Assert(err, check.IsNil)
 	c.Assert(*t, HasAccessTo, se)
-	action := rectest.Action{
-		Action: "grant-service-access",
-		User:   s.user.Email,
-		Extra:  []interface{}{"service=" + se.Name, "team=" + t.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("my_service"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.update.grant-access",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":service", "value": "my_service"},
+			{"name": ":team", "value": t.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
@@ -576,12 +598,15 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	err = se.Get()
 	c.Assert(err, check.IsNil)
 	c.Assert(*s.team, check.Not(HasAccessTo), se)
-	action := rectest.Action{
-		Action: "revoke-service-access",
-		User:   s.user.Email,
-		Extra:  []interface{}{"service=" + se.Name, "team=" + s.team.Name},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("my_service"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.update.revoke-access",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":service", "value": "my_service"},
+			{"name": ":team", "value": s.team.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *check.C) {
@@ -666,12 +691,15 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 	err := s.conn.Services().Find(query).One(&serv)
 	c.Assert(err, check.IsNil)
 	c.Assert(serv.Doc, check.Equals, "doc")
-	action := rectest.Action{
-		Action: "service-add-doc",
-		User:   s.user.Email,
-		Extra:  []interface{}{"some_service", "doc"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("some_service"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.update.doc",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "some_service"},
+			{"name": "doc", "value": "doc"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ProvisionSuite) TestAddDocUserHasNoAccess(c *check.C) {

@@ -11,10 +11,14 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
 )
+
+func serviceTarget(name string) event.Target {
+	return event.Target{Name: "service", Value: name}
+}
 
 func serviceValidate(s service.Service) error {
 	if s.Name == "" {
@@ -96,7 +100,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Service already exists
-func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	s := service.Service{
 		Name:     r.FormValue("id"),
 		Username: r.FormValue("username"),
@@ -105,7 +109,6 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	team := r.FormValue("team")
 	if team == "" {
-		var err error
 		team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
 		if err == permission.ErrTooManyTeams {
 			return &errors.HTTP{
@@ -118,7 +121,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	s.OwnerTeams = []string{team}
-	err := serviceValidate(s)
+	err = serviceValidate(s)
 	if err != nil {
 		return err
 	}
@@ -128,7 +131,17 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "create-service", s.Name, s.Endpoint["production"])
+	delete(r.Form, "password")
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceCreate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	err = s.Create()
 	if err != nil {
 		httpError := http.StatusInternalServerError
@@ -152,14 +165,14 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   403: Forbidden (team is not the owner)
 //   404: Service not found
-func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	d := service.Service{
 		Username: r.FormValue("username"),
 		Endpoint: map[string]string{"production": r.FormValue("endpoint")},
 		Password: r.FormValue("password"),
 		Name:     r.URL.Query().Get(":name"),
 	}
-	err := serviceValidate(d)
+	err = serviceValidate(d)
 	if err != nil {
 		return err
 	}
@@ -175,7 +188,17 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "update-service", d.Name, d.Endpoint["production"])
+	delete(r.Form, "password")
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceUpdate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
@@ -193,7 +216,8 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   403: Forbidden (team is not the owner or service with instances)
 //   404: Service not found
-func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	s, err := getService(r.URL.Query().Get(":name"))
 	if err != nil {
 		return err
@@ -206,7 +230,16 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "delete-service", r.URL.Query().Get(":name"))
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceDelete,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	instances, err := service.GetServiceInstancesByServices([]service.Service{s})
 	if err != nil {
 		return err
@@ -229,7 +262,8 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // responses:
 //   401: Unauthorized
 //   404: Service not found
-func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -243,6 +277,16 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceUpdateProxy,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	path := r.URL.Query().Get("callback")
 	return service.Proxy(&s, path, w, r)
 }
@@ -256,7 +300,8 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Service not found
 //   409: Team already has access to this service
-func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -278,7 +323,16 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		}
 		return err
 	}
-	rec.Log(t.GetUserName(), "grant-service-access", "service="+serviceName, "team="+teamName)
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceUpdateGrantAccess,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	err = s.GrantAccess(team)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -295,7 +349,8 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) er
 //   401: Unauthorized
 //   404: Service not found
 //   409: Team does not has access to this service
-func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -321,7 +376,16 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	rec.Log(t.GetUserName(), "revoke-service-access", "service="+serviceName, "team="+teamName)
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceUpdateRevokeAccess,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	err = s.RevokeAccess(team)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -337,7 +401,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //   200: Documentation updated
 //   401: Unauthorized
 //   403: Forbidden (team is not the owner or service with instances)
-func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	serviceName := r.URL.Query().Get(":name")
 	s, err := getService(serviceName)
 	if err != nil {
@@ -352,7 +416,16 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	s.Doc = r.FormValue("doc")
-	rec.Log(t.GetUserName(), "service-add-doc", serviceName, s.Doc)
+	evt, err := event.New(&event.Opts{
+		Target:     serviceTarget(s.Name),
+		Kind:       permission.PermServiceUpdateDoc,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	return s.Update()
 }
 
