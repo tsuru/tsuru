@@ -178,7 +178,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) e
 //   200: OK
 //   400: Invalid data
 //   401: Unauthorized
-//	 404: Not found
+//   404: Not found
 func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
