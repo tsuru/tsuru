@@ -21,11 +21,11 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
@@ -318,6 +318,16 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Name, check.Equals, "brainSQL")
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("mysql", "brainSQL"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "brainSQL"},
+			{"name": ":service", "value": "mysql"},
+			{"name": "owner", "value": s.team.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerNoPermission(c *check.C) {
@@ -367,6 +377,17 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICa
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(eventtest.EventDesc{
+		Target:       serviceInstanceTarget("mysqlerror", "brainSQL"),
+		Owner:        s.token.GetUserName(),
+		Kind:         "service-instance.create",
+		ErrorMatches: `.*Failed to create the instance brainSQL.*`,
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "brainSQL"},
+			{"name": ":service", "value": "mysqlerror"},
+			{"name": "owner", "value": s.team.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
@@ -464,6 +485,14 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescriptio
 	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
 	c.Assert(instance.Description, check.DeepEquals, "changed")
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("mysql", "brainSQL"),
+		Owner:  token.GetUserName(),
+		Kind:   "service-instance.update.description",
+		StartCustomData: []map[string]interface{}{
+			{"name": "description", "value": "changed"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(c *check.C) {
@@ -629,12 +658,15 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
-	action := rectest.Action{
-		Action: "remove-service-instance",
-		User:   s.user.Email,
-		Extra:  []interface{}{"foo", "foo-instance"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("foo", "foo-instance"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":service", "value": "foo"},
+			{"name": ":instance", "value": "foo-instance"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check.C) {
@@ -725,10 +757,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Error, check.Equals, permission.ErrUnauthorized.Error())
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *check.C) {
@@ -745,9 +774,16 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 3)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Error, check.Equals, "This service instance is bound to at least one app. Unbind them before removing it")
+	err = json.Unmarshal([]byte(parts[0]), &msg)
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.DeepEquals, io.SimpleJsonMessage{Message: "foo-bar"})
+	err = json.Unmarshal([]byte(parts[1]), &msg)
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.DeepEquals, io.SimpleJsonMessage{Error: "This service instance is bound to at least one app. Unbind them before removing it"})
+	c.Assert(parts[2], check.Equals, "")
 }
 
 func makeRequestToRemoveInstanceHandlerWithUnbind(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -849,10 +885,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	recorder, request := makeRequestToRemoveInstanceHandlerWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Error, check.Equals, service.ErrServiceInstanceBound.Error())
+	c.Assert(err, check.Equals, service.ErrServiceInstanceBound)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbindAllListAllApp(c *check.C) {
@@ -901,12 +934,14 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	recorder, request := makeRequestToRemoveInstanceHandlerWithNoUnbind("mysqlremove", "my-mysql", c)
 	err = removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.Equals, service.ErrServiceInstanceBound)
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 2)
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Error, check.Equals, service.ErrServiceInstanceBound.Error())
-	expectedMsg := "app,app2"
-	c.Assert(msg.Message, check.Equals, expectedMsg)
+	err = json.Unmarshal([]byte(parts[0]), &msg)
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.DeepEquals, io.SimpleJsonMessage{Message: "app,app2"})
+	c.Assert(parts[1], check.Equals, "")
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check.C) {
@@ -1517,6 +1552,14 @@ func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("foo", "foo-instance"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.update.proxy",
+		StartCustomData: []map[string]interface{}{
+			{"name": "callback", "value": "/mypath"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceProxyNoContent(c *check.C) {
@@ -1592,6 +1635,14 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = serviceInstanceGrantTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("go", "si-test"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.update.grant",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":team", "value": "test"},
+		},
+	}, eventtest.HasEvent)
 	sinst, err := service.GetServiceInstance(si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
@@ -1602,6 +1653,14 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	sinst, err = service.GetServiceInstance(si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("go", "si-test"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.update.revoke",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":team", "value": "test"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *ConsumptionSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(c *check.C) {

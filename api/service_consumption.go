@@ -16,11 +16,15 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
 )
+
+func serviceInstanceTarget(name, instance string) event.Target {
+	return event.Target{Name: "service-instance", Value: fmt.Sprintf("%s_%s", name, instance)}
+}
 
 // title: service instance create
 // path: /services/{service}/instances
@@ -31,7 +35,7 @@ import (
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Service already exists
-func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	serviceName := r.URL.Query().Get(":service")
 	user, err := t.User()
 	if err != nil {
@@ -70,7 +74,16 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			return permission.ErrUnauthorized
 		}
 	}
-	rec.Log(user.Email, "create-service-instance", fmt.Sprintf("%#v", instance))
+	evt, err := event.New(&event.Opts{
+		Target:     serviceInstanceTarget(serviceName, instance.Name),
+		Kind:       permission.PermServiceInstanceCreate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := context.GetRequestID(r, requestIDHeader)
 	err = service.CreateServiceInstance(instance, &srv, user, requestID)
@@ -101,7 +114,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Service instance not found
-func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
@@ -121,11 +134,16 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	user, err := t.User()
+	evt, err := event.New(&event.Opts{
+		Target:     serviceInstanceTarget(serviceName, instanceName),
+		Kind:       permission.PermServiceInstanceUpdateDescription,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
 	if err != nil {
 		return err
 	}
-	rec.Log(user.Email, "update-service-instance", "description="+description)
+	defer func() { evt.Done(err) }()
 	si.Description = description
 	return service.UpdateService(si)
 }
@@ -138,7 +156,8 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   200: Service removed
 //   401: Unauthorized
 //   404: Service instance not found
-func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
@@ -157,31 +176,36 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		)...,
 	)
 	if !allowed {
-		writer.Encode(io.SimpleJsonMessage{Error: permission.ErrUnauthorized.Error()})
-		return nil
+		return permission.ErrUnauthorized
 	}
-	rec.Log(t.GetUserName(), "remove-service-instance", serviceName, instanceName)
+	evt, err := event.New(&event.Opts{
+		Target:     serviceInstanceTarget(serviceName, instanceName),
+		Kind:       permission.PermServiceInstanceDelete,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
 	if unbindAllBool {
 		if len(serviceInstance.Apps) > 0 {
 			for _, appName := range serviceInstance.Apps {
 				_, app, instErr := getServiceInstance(serviceInstance.ServiceName, serviceInstance.Name, appName)
 				if instErr != nil {
-					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
-					return nil
+					return instErr
 				}
 				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
 				instErr = serviceInstance.UnbindApp(app, true, writer)
 				if instErr != nil {
-					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
-					return nil
+					return instErr
 				}
 				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
 			}
 			serviceInstance, err = getServiceInstanceOrError(serviceName, instanceName)
 			if err != nil {
-				writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
-				return nil
+				return err
 			}
 		}
 	}
@@ -189,12 +213,10 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	requestID := context.GetRequestID(r, requestIDHeader)
 	err = service.DeleteInstance(serviceInstance, requestID)
 	if err != nil {
-		var msg string
 		if err == service.ErrServiceInstanceBound {
-			msg = strings.Join(serviceInstance.Apps, ",")
+			writer.Write([]byte(strings.Join(serviceInstance.Apps, ",")))
 		}
-		writer.Encode(io.SimpleJsonMessage{Message: msg, Error: err.Error()})
-		return nil
+		return err
 	}
 	writer.Write([]byte("service instance successfuly removed"))
 	return nil
@@ -498,7 +520,8 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // responses:
 //   401: Unauthorized
 //   404: Instance not found
-func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
@@ -515,7 +538,16 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return permission.ErrUnauthorized
 	}
 	path := r.URL.Query().Get("callback")
-	rec.Log(t.GetUserName(), "service-instance-proxy", serviceName, instanceName, path)
+	evt, err := event.New(&event.Opts{
+		Target:     serviceInstanceTarget(serviceName, instanceName),
+		Kind:       permission.PermServiceInstanceUpdateProxy,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	return service.Proxy(serviceInstance.Service(), path, w, r)
 }
 
@@ -527,7 +559,8 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   200: Access granted
 //   401: Unauthorized
 //   404: Service instance not found
-func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
@@ -543,8 +576,17 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     serviceInstanceTarget(serviceName, instanceName),
+		Kind:       permission.PermServiceInstanceUpdateGrant,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	teamName := r.URL.Query().Get(":team")
-	rec.Log(t.GetUserName(), "service-grant-team", serviceName, instanceName, teamName)
 	return serviceInstance.Grant(teamName)
 }
 
@@ -555,7 +597,8 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 //   200: Access revoked
 //   401: Unauthorized
 //   404: Service instance not found
-func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
@@ -571,7 +614,16 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     serviceInstanceTarget(serviceName, instanceName),
+		Kind:       permission.PermServiceInstanceUpdateRevoke,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	teamName := r.URL.Query().Get(":team")
-	rec.Log(t.GetUserName(), "service-revoke-team", serviceName, instanceName, teamName)
 	return serviceInstance.Revoke(teamName)
 }
