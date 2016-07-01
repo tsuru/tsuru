@@ -189,9 +189,9 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 	defer coll.Close()
 	var c container.Container
 	query := bson.M{
-		"id":          bson.M{"$nin": s.ignoredContainers},
-		"appname":     appName,
-		"hostaddr":    net.URLToHost(host),
+		"id":       bson.M{"$nin": s.ignoredContainers},
+		"appname":  appName,
+		"hostaddr": net.URLToHost(host),
 	}
 	if process == "" {
 		query["$or"] = []bson.M{{"processname": bson.M{"$exists": false}}, {"processname": ""}}
@@ -200,7 +200,7 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 	}
 	err := coll.Find(query).Select(bson.M{"id": 1}).One(&c)
 	if err == mgo.ErrNotFound {
-		 return "", &errContainerNotFound{AppName: appName, ProcessName: process, HostAddr: net.URLToHost(host)}
+		return "", &errContainerNotFound{AppName: appName, ProcessName: process, HostAddr: net.URLToHost(host)}
 	}
 	return c.ID, err
 }
