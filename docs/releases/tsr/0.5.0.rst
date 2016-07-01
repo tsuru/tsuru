@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,11 @@ tsr 0.5.0 release notes
 
 Welcome to tsr 0.5.0!
 
-These release notes cover the `new features`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from tsr 0.4.0 or older
-versions.
+These release notes cover the :ref:`new features <new-0.5.0>` and
+:ref:`backwards incompatible changes <backwards-0.5.0>` you'll want to be aware
+of when upgrading from tsr 0.4.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.5.0`_
+.. _new-0.5.0:
 
 What's new in tsr 0.5.0
 =======================
@@ -76,6 +76,8 @@ Platforms
 * :ref:`deployment hooks <yaml_deployment_hooks>` support for static and PHP applications (`#607
   <https://github.com/tsuru/tsuru/issues/607>`_)
 * new platform: buildpack (used for buildpack support)
+
+.. _backwards-0.5.0:
 
 Backwards incompatible changes
 ==============================

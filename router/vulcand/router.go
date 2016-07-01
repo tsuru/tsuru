@@ -8,6 +8,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
@@ -238,6 +239,30 @@ func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
+func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
+	fes, err := r.client.GetFrontends()
+	if err != nil {
+		return nil, err
+	}
+	backendName := r.backendName(name)
+	address, err := r.Addr(name)
+	if err != nil {
+		return nil, err
+	}
+	address = r.backendName(address)
+	urls := []*url.URL{}
+	for _, f := range fes {
+		u, fErr := url.Parse(strings.Replace(f.Id, "tsuru_", "", 1))
+		if fErr != nil {
+			return nil, fErr
+		}
+		if f.BackendId == backendName && f.Id != address {
+			urls = append(urls, u)
+		}
+	}
+	return urls, nil
+}
+
 func (r *vulcandRouter) SetCName(cname, name string) error {
 	usedName, err := router.Retrieve(name)
 	if err != nil {
@@ -292,8 +317,8 @@ func (r *vulcandRouter) Addr(name string) (string, error) {
 	return frontendHostname, nil
 }
 
-func (r *vulcandRouter) Swap(backend1, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+func (r *vulcandRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *vulcandRouter) Routes(name string) ([]*url.URL, error) {

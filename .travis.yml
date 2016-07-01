@@ -1,5 +1,6 @@
 language: go
-sudo: false
+sudo: required
+install: true
 go:
   - 1.5.4
   - 1.6.2
@@ -8,21 +9,36 @@ env:
   global:
     - GOARCH=amd64
     - GO15VENDOREXPERIMENT=1
+    - GO_FOR_RELEASE=1.6.2
 addons:
   apt:
     packages:
       - rsyslog
       - xmlsec1
-install: true
 before_script:
   - rsyslogd &
   - sleep 1
+before_install:
+  - sleep 15
+  - sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+  - sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0
+  - sudo ifconfig
+  - sudo sysctl -a | grep ipv6.conf
+  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+  - sudo apt-get -qq update
+  - sudo apt-get install -y mongodb-org
+  - service mongod status
 script:
   - make test
   - ./check-fmt.sh
   - make deadcode
   - go get golang.org/x/net/http2/...
   - ./check-handlers.sh
+  - make check-api-doc
+  - CGO_ENABLED=0 go build ./cmd/tsurud/
+after_success:
+  - travis/send_to_docker_hub.sh
 notifications:
   email:
     on_success: change
@@ -30,8 +46,9 @@ notifications:
   slack:
     secure: QJe4k18ACRUP4CDo245vBFu1hpVlcR3JPWjT7NL/vAE/Y5KDn5pNXIREPYIx9F/f8lvjF2RrQxjApeUujRh1PPt2Q53JulvaDCfM5a5SYnk5yoqu3ynlfqU4AOTDa6kzoJ3K4M9X8JhMpOtr3+IOPbwV88FjPvwviZN4p0L/0wc=
 services:
-  - mongodb
   - redis
+  - docker
+  - mongodb
 matrix:
   allow_failures:
     - go: tip

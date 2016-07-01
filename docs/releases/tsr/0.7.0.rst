@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,12 +8,13 @@ tsr 0.7.0 release notes
 
 Welcome to tsr 0.7.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_ and `general improvements`_ you'll want to be aware of
-when upgrading from tsr 0.6.0 or older versions.
+These release notes cover the :ref:`new features <new-0.7.0>`,
+:ref:`bug fixes <bug-0.7.0>`,
+:ref:`backward incompatible changes <backwards-0.7.0>` and
+:ref:`general improvements <general-0.7.0>` you'll want to be aware of when
+upgrading from tsr 0.6.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.7.0`_
-.. _`general improvements`: `Other improvements in tsr 0.7.0`_
+.. _new-0.7.0:
 
 What's new in tsr 0.7.0
 =======================
@@ -55,6 +56,8 @@ What's new in tsr 0.7.0
   is passing before switching the router to the newly created units. See
   :ref:`health check docs <yaml_healthcheck>` for more details.
 
+.. _bug-0.7.0:
+
 Bug fixes
 =========
 
@@ -65,6 +68,8 @@ Bug fixes
 - PlatformAdd: returns better error when an platform is added but theres no node
   to build the platform image (issue `#906
   <https://github.com/tsuru/tsuru/issues/906>`_).
+
+.. _general-0.7.0:
 
 Other improvements in tsr 0.7.0
 ===============================
@@ -79,6 +84,8 @@ Other improvements in tsr 0.7.0
 - API: Handler that returns information about the deploy has implemented. Its
   included the diff attribute that returns the difference between the last
   commit and the preceding it.
+
+.. _backwards-0.7.0:
 
 Backward incompatible changes
 =============================

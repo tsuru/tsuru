@@ -171,6 +171,33 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return r.client.RemoveBackendsByIDs(ids)
 }
 
+func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	rule := r.ruleName(backendName)
+	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
+	if err != nil {
+		return nil, err
+	}
+	urls := []*url.URL{}
+	address, err := r.Addr(name)
+	if err != nil {
+		return nil, err
+	}
+	for _, vhost := range virtualhosts {
+		if vhost.Name != address {
+			u, vErr := url.Parse(vhost.Name)
+			if vErr != nil {
+				return nil, vErr
+			}
+			urls = append(urls, u)
+		}
+	}
+	return urls, nil
+}
+
 func (r *galebRouter) SetCName(cname, name string) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
@@ -212,8 +239,8 @@ func (r *galebRouter) Addr(name string) (string, error) {
 	return r.virtualHostName(backendName), nil
 }
 
-func (r *galebRouter) Swap(backend1, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+func (r *galebRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *galebRouter) Routes(name string) ([]*url.URL, error) {

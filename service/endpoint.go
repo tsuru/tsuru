@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/net"
 )
 
 var (
@@ -38,6 +39,7 @@ func (c *Client) buildErrorMessage(err error, resp *http.Response) string {
 		return err.Error()
 	}
 	if resp != nil {
+		defer resp.Body.Close()
 		b, _ := ioutil.ReadAll(resp.Body)
 		return string(b)
 	}
@@ -76,7 +78,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	}
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
-	return http.DefaultClient.Do(req)
+	return net.Dial5Full300ClientNoKeepAlive.Do(req)
 }
 
 func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
@@ -105,8 +107,12 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 		params["description"] = []string{instance.Description}
 	}
 	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
-	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
-		return nil
+	resp, err = c.issueRequest("/resources", "POST", params)
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode < 300 {
+			return nil
+		}
 	}
 	if resp.StatusCode == http.StatusConflict {
 		return ErrInstanceAlreadyExistsInAPI
@@ -122,13 +128,16 @@ func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
 		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", params)
-	if err == nil && resp.StatusCode > 299 {
-		if resp.StatusCode == http.StatusNotFound {
-			return ErrInstanceNotFoundInAPI
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode > 299 {
+			if resp.StatusCode == http.StatusNotFound {
+				return ErrInstanceNotFoundInAPI
+			}
+			msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
+			log.Error(msg)
+			return errors.New(msg)
 		}
-		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
-		log.Error(msg)
-		return errors.New(msg)
 	}
 	return err
 }
@@ -141,6 +150,11 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		"app-host": {app.GetIp()},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
+	if err != nil {
+		log.Errorf(`Failed to bind app %q to service instance "%s/%s": %s`, app.GetName(), instance.ServiceName, instance.Name, err)
+		return nil, fmt.Errorf("%s api is down.", instance.Name)
+	}
+	defer resp.Body.Close()
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	}
@@ -148,6 +162,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		log.Errorf(`Failed to bind app %q to service instance "%s/%s": %s`, app.GetName(), instance.ServiceName, instance.Name, err)
 		return nil, fmt.Errorf("%s api is down.", instance.Name)
 	}
+	defer resp.Body.Close()
 	if err == nil && resp.StatusCode < 300 {
 		var result map[string]string
 		err = c.jsonFromResponse(resp, &result)
@@ -182,6 +197,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		}
 		return err
 	}
+	defer resp.Body.Close()
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
 		return ErrInstanceNotReady
@@ -204,13 +220,16 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 		"app-host": {app.GetIp()},
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
-	if err == nil && resp.StatusCode > 299 {
-		if resp.StatusCode == http.StatusNotFound {
-			return ErrInstanceNotFoundInAPI
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode > 299 {
+			if resp.StatusCode == http.StatusNotFound {
+				return ErrInstanceNotFoundInAPI
+			}
+			msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
+			log.Error(msg)
+			return errors.New(msg)
 		}
-		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
-		log.Error(msg)
-		return errors.New(msg)
 	}
 	return err
 }
@@ -224,13 +243,16 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 		"unit-host": {unit.GetIp()},
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
-	if err == nil && resp.StatusCode > 299 {
-		if resp.StatusCode == http.StatusNotFound {
-			return ErrInstanceNotFoundInAPI
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode > 299 {
+			if resp.StatusCode == http.StatusNotFound {
+				return ErrInstanceNotFoundInAPI
+			}
+			msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
+			log.Error(msg)
+			return errors.New(msg)
 		}
-		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
-		log.Error(msg)
-		return errors.New(msg)
 	}
 	return err
 }
@@ -278,8 +300,12 @@ func (c *Client) Info(instance *ServiceInstance, requestID string) ([]map[string
 		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest(url, "GET", params)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil
 	}
 	result := []map[string]string{}
 	err = c.jsonFromResponse(resp, &result)
@@ -299,8 +325,12 @@ func (c *Client) Plans(requestID string) ([]Plan, error) {
 		"requestID": {requestID},
 	}
 	resp, err := c.issueRequest(url, "GET", params)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil
 	}
 	result := []Plan{}
 	err = c.jsonFromResponse(resp, &result)

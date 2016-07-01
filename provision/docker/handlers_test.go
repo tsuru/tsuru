@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cezarsa/form"
+	"github.com/ajg/form"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -2368,6 +2368,14 @@ func (s *HandlersSuite) TestNodeContainerUpdate(c *check.C) {
 		c.Assert(recorder.Code, check.Equals, http.StatusOK)
 		var configEntries map[string]nodecontainer.NodeContainerConfig
 		json.Unmarshal(recorder.Body.Bytes(), &configEntries)
+		if len(pool) > 0 {
+			for _, p := range pool {
+				sort.Strings(configEntries[p].Config.Env)
+				sort.Strings(expected[p].Config.Env)
+			}
+		}
+		sort.Strings(configEntries[""].Config.Env)
+		sort.Strings(expected[""].Config.Env)
 		c.Assert(configEntries, check.DeepEquals, expected)
 	}
 	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}})

@@ -69,6 +69,22 @@ func (r *fakeRouter) HasBackend(name string) bool {
 	return ok
 }
 
+func (r *fakeRouter) CNames(name string) ([]*url.URL, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	result := []*url.URL{}
+	for cname, backendName := range r.cnames {
+		if backendName == name {
+			u, err := url.Parse(cname)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, u)
+		}
+	}
+	return result, nil
+}
+
 func (r *fakeRouter) HasCName(name string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -311,8 +327,8 @@ func (r *fakeRouter) Routes(name string) ([]*url.URL, error) {
 	return result, nil
 }
 
-func (r *fakeRouter) Swap(backend1, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+func (r *fakeRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 type hcRouter struct {

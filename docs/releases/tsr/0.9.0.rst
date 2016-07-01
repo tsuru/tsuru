@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,13 +8,14 @@ tsr 0.9.0 release notes
 
 Welcome to tsr 0.9.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_, `general improvements`_ and `changes in the API`_
-you'll want to be aware of when upgrading from tsr 0.8.0 or older versions.
+These release notes cover the :ref:`new features <new-0.9.0>`,
+:ref:`bug fixes <bug-0.9.0>`,
+:ref:`backward incompatible changes <backwards-0.9.0>`,
+:ref:`general improvements <general-0.9.0>` and
+:ref:`changes in the API <api-0.9.0>` you'll want to be aware of when upgrading
+from tsr 0.8.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.9.0`_
-.. _`general improvements`: `Other improvements in tsr 0.9.0`_
-.. _`changes in the API`: `API changes`_
+.. _new-0.9.0:
 
 What's new in tsr 0.9.0
 =======================
@@ -39,12 +40,16 @@ What's new in tsr 0.9.0
   metric system to know when scale.
   To enable auto scale you should add the ``autoscale: true`` in then ``tsuru.conf``.
 
+.. _bug-0.9.0:
+
 Bug fixes
 =========
 
 * app: SetEnvs not return error in apps with no units (issue `#954
   <https://github.com/tsuru/tsuru/issues/954>`_).
 * iaas/ec2: fixed panic after machine creation timeout.
+
+.. _general-0.9.0:
 
 Other improvements in tsr 0.9.0
 ===============================
@@ -55,6 +60,8 @@ Other improvements in tsr 0.9.0
 * A new debug route is available in the API: ``/debug/goroutines``. It can only be
   hit with admin credentials and will dump a trace of each running goroutine.
 
+.. _backwards-0.9.0:
+
 Backward incompatible changes
 =============================
 
@@ -62,6 +69,8 @@ Backward incompatible changes
   process in two steps: binding/unbinding the application and binding/unbinding
   the units. The old flow is now deprecated (issue `#982
   <https://github.com/tsuru/tsuru/issues/982>`_).
+
+.. _api-0.9.0:
 
 API changes
 ===========

@@ -495,6 +495,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 // title: service instance proxy
 // path: /services/{service}/proxy/{instance}
+// method: "*"
 // responses:
 //   401: Unauthorized
 //   404: Instance not found

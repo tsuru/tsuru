@@ -344,6 +344,21 @@ func (r *hipacheRouter) HealthCheck() error {
 	return nil
 }
 
+func (r *hipacheRouter) CNames(name string) ([]*url.URL, error) {
+	cnames, err := r.getCNames(name)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*url.URL, len(cnames))
+	for i, cname := range cnames {
+		result[i], err = url.Parse(cname)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
 func (r *hipacheRouter) getCNames(name string) ([]string, error) {
 	conn, err := r.connect()
 	if err != nil {
@@ -541,8 +556,8 @@ func (r *hipacheRouter) removeElements(name string, addresses []string) error {
 	return nil
 }
 
-func (r *hipacheRouter) Swap(backend1, backend2 string) error {
-	return router.Swap(r, backend1, backend2)
+func (r *hipacheRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
 func (r *hipacheRouter) StartupMessage() (string, error) {

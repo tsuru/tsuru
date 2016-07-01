@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,14 +8,15 @@ tsr 0.10.0 release notes
 
 Welcome to tsr 0.10.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_ (specially the requirement on Gandalf and Docker
-versions), `general improvements`_ and `changes in the API`_ you'll want to be
-aware of when upgrading from tsr 0.9.0 or older versions.
+These release notes cover the :ref:`new features <new-0.10.0>`,
+:ref:`bug fixes <bug-0.10.0>`,
+:ref:`backward incompatible changes <backwards-0.10.0>` (specially the
+requirement on Gandalf and Docker versions),
+:ref:`general improvements <general-0.10.0>` and
+:ref:`changes in the API <api-0.10.0>` you'll want to be aware of when
+upgrading from tsr 0.9.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.10.0`_
-.. _`general improvements`: `Other improvements in tsr 0.10.0`_
-.. _`changes in the API`: `API changes`_
+.. _new-0.10.0:
 
 What's new in tsr 0.10.0
 ========================
@@ -73,6 +74,8 @@ What's new in tsr 0.10.0
   (Apache or nginx), including the support for configuring the virtual host
   (thanks Samuel ROZE).
 
+.. _bug-0.10.0:
+
 Bug fixes
 =========
 
@@ -88,6 +91,8 @@ Bug fixes
 
 * Bring back restart:after hooks, running them from the API after success in
   the healthcheck.
+
+.. _general-0.10.0:
 
 Other improvements in tsr 0.10.0
 ================================
@@ -154,6 +159,8 @@ Other improvements in tsr 0.10.0
 
 * Add instructions for :doc:`upgrading Docker </managing/upgrading-docker>` in the management documentation.
 
+.. _backwards-0.10.0:
+
 Backward incompatible changes
 =============================
 
@@ -179,6 +186,8 @@ Backward incompatible changes
   <https://github.com/tsuru/tsuru-unit-agent>`_. Starting at tsuru-server
   0.10.0, every platform image must have tsuru-unit-agent installed, and ready
   to run.
+
+.. _api-0.10.0:
 
 API changes
 ===========

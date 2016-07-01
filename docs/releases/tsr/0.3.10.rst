@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,11 +8,9 @@ tsr 0.3.10 release notes
 
 Welcome to tsr 0.3.10!
 
-These release notes cover the `new features`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from tsr 0.3.9 or older
-versions.
+These release notes cover the 0.3.10 :ref:`new features <new-0.3.10>`.
 
-.. _`new features`: `What's new in tsr 0.3.10`_
+.. _new-0.3.10:
 
 What's new in tsr 0.3.10
 ========================
@@ -30,8 +28,3 @@ Docker provisioner
     * Improve debug logs for SSH (issue `#665
       <https://github.com/tsuru/tsuru/issues/665>`_)
     * Fix URL for listing containers by app
-
-Backwards incompatible changes
-==============================
-
-tsr 0.3.10 did not introduce any incompatible changes.

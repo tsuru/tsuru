@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cezarsa/form"
+	"github.com/ajg/form"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -4142,6 +4142,41 @@ func (s *S) TestRestartHandler(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"---- Restarting the app \\\"stress\\\" ----\\n\"}\n{\"Message\":\"restarting app\"}\n")
+	action := rectest.Action{
+		Action: "restart",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{
+		Name:      "stress",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/restart", a.Name)
+	body := strings.NewReader("process=web")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"---- Restarting process \\\"web\\\" ----\\n\"}\n{\"Message\":\"restarting app\"}\n")
+	restarts := s.provisioner.Restarts(&a, "web")
+	c.Assert(restarts, check.Equals, 1)
+	restarts = s.provisioner.Restarts(&a, "worker")
+	c.Assert(restarts, check.Equals, 0)
 	action := rectest.Action{
 		Action: "restart",
 		User:   s.user.Email,
@@ -4192,15 +4227,18 @@ func (s *S) TestSleepHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/sleep?proxy=%s", a.Name, "http://example.com")
-	request, err := http.NewRequest("POST", url, nil)
+	url := fmt.Sprintf("/apps/%s/sleep", a.Name)
+	body := strings.NewReader("proxy=http://example.com")
+	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Putting the app \\\"stress\\\" to sleep\\n\"}\n")
 	action := rectest.Action{
 		Action: "sleep",
 		User:   s.user.Email,
@@ -4520,14 +4558,18 @@ func (s *S) TestStartHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/start?process=web", a.Name)
-	request, err := http.NewRequest("POST", url, nil)
+	url := fmt.Sprintf("/apps/%s/start", a.Name)
+	body := strings.NewReader("process=web")
+	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Starting the process \\\"web\\\"\\n\"}\n")
 	starts := s.provisioner.Starts(&a, "web")
 	c.Assert(starts, check.Equals, 1)
 	starts = s.provisioner.Starts(&a, "worker")
@@ -4544,15 +4586,18 @@ func (s *S) TestStopHandler(c *check.C) {
 	a := app.App{Name: "stress", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/stop?process=web", a.Name)
-	request, err := http.NewRequest("POST", url, nil)
+	url := fmt.Sprintf("/apps/%s/stop", a.Name)
+	body := strings.NewReader("process=web")
+	request, err := http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Stopping the process \\\"web\\\"\\n\"}\n")
 	stops := s.provisioner.Stops(&a, "web")
 	c.Assert(stops, check.Equals, 1)
 	stops = s.provisioner.Stops(&a, "worker")

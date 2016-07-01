@@ -219,6 +219,15 @@ func (s *S) TestDestroyNotFound(c *check.C) {
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
+func (s *S) TestBindAppEndpointDown(c *check.C) {
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
+	_, err := client.BindApp(&instance, a)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, ".* api is down.")
+}
+
 func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)

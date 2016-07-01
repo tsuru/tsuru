@@ -8,9 +8,12 @@ tsurud 1.0.0 release notes
 
 Welcome to tsurud 1.0.0!
 
-These release notes cover the `new features`, `bug fixes`, `general
-improvements` and `backward incompatible changes` you'll want to be aware of
-when upgrading from tsurud 0.13.x or older versions.
+These release notes cover the :ref:`new features <new-1.0.0>`,
+:ref:`bug fixes <bug-1.0.0>`, :ref:`general improvements <general-1.0.0>` and
+:ref:`backward incompatible changes <backwards-1.0.0>` you'll want to be aware
+of when upgrading from tsurud 0.13.x or older versions.
+
+.. _new-1.0.0:
 
 Main new features
 =================
@@ -31,6 +34,8 @@ Main new features
 * API versioning. Now all API calls to tsuru may include a version prefix in the
   format ``/1.0/<request path>``. Further changes to the API will be versioned
   accordingly.
+
+.. _bug-1.0.0:
 
 Bug fixes
 =========
@@ -55,6 +60,7 @@ Bug fixes
 * Users are now dissociated from roles on role remove. Previously removing a
   role still being used would cause errors when checking permissions.
 
+.. _general-1.0.0:
 
 General improvements
 ====================
@@ -151,6 +157,8 @@ General improvements
 * It's now possible to limit the number of simultaneous docker commands running
   on the same docker node. Check the :ref:`config reference <docker_limit>` for
   more information.
+
+.. _backwards-1.0.0:
 
 Backward incompatible changes (action needed)
 =============================================

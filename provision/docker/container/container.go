@@ -6,7 +6,6 @@ package container
 
 import (
 	"crypto"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -108,29 +107,17 @@ type CreateArgs struct {
 
 func (c *Container) Create(args *CreateArgs) error {
 	var err error
+	securityOpts, _ := config.GetList("docker:security-opts")
+	var exposedPorts map[docker.Port]struct{}
 	if !args.Deploy {
-		imageData, inspectErr := args.Provisioner.Cluster().InspectImage(args.ImageID)
-		if inspectErr != nil {
-			return err
-		}
-		if len(imageData.Config.ExposedPorts) > 1 {
-			return errors.New("Too many ports. You should especify which one you want to.")
-		}
-		for k := range imageData.Config.ExposedPorts {
-			c.ExposedPort = string(k)
-		}
 		if c.ExposedPort == "" {
 			port, portErr := getPort()
 			if portErr != nil {
 				log.Errorf("error on getting port for container %s - %s", c.AppName, port)
-				return err
+				return portErr
 			}
 			c.ExposedPort = port + "/tcp"
 		}
-	}
-	securityOpts, _ := config.GetList("docker:security-opts")
-	var exposedPorts map[docker.Port]struct{}
-	if !args.Deploy {
 		exposedPorts = map[docker.Port]struct{}{
 			docker.Port(c.ExposedPort): {},
 		}

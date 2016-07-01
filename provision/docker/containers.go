@@ -119,7 +119,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container.Container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId, exposedPort string) ([]container.Container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -129,6 +129,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		writer:      w,
 		imageId:     imageId,
 		provisioner: p,
+		exposedPort: exposedPort,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,

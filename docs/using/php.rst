@@ -111,7 +111,7 @@ use. You can always get it using the command `app-info`:
 The Git remote will be used to deploy your application using Git. You can just
 push to tsuru remote and your project will be deployed:
 
-.. highlight:: bash
+.. highlight:: console
 
 ::
 

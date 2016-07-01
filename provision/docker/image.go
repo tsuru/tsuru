@@ -124,9 +124,10 @@ func imageCustomDataColl() (*dbStorage.Collection, error) {
 }
 
 type ImageMetadata struct {
-	Name       string `bson:"_id"`
-	CustomData map[string]interface{}
-	Processes  map[string]string
+	Name        string `bson:"_id"`
+	CustomData  map[string]interface{}
+	Processes   map[string]string
+	ExposedPort string
 }
 
 func saveImageCustomData(imageName string, customData map[string]interface{}) error {
@@ -157,6 +158,9 @@ func saveImageCustomData(imageName string, customData map[string]interface{}) er
 		Name:       imageName,
 		CustomData: customData,
 		Processes:  processes,
+	}
+	if exposedPort, ok := customData["exposedPort"]; ok {
+		data.ExposedPort = exposedPort.(string)
 	}
 	return coll.Insert(data)
 }

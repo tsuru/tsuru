@@ -84,6 +84,7 @@ func UpdateContainer(pool string, c *NodeContainerConfig) error {
 		return ErrNodeContainerNoName
 	}
 	conf := configFor(c.Name)
+	conf.SliceAdd = false
 	hasEntry, err := conf.HasEntry(pool)
 	if err != nil {
 		return err
@@ -91,7 +92,33 @@ func UpdateContainer(pool string, c *NodeContainerConfig) error {
 	if !hasEntry {
 		return ErrNodeContainerNotFound
 	}
+	err = removeDuplicateEnvs(c, conf, pool)
+	if err != nil {
+		return err
+	}
 	return conf.SaveMerge(pool, c)
+}
+
+func removeDuplicateEnvs(c *NodeContainerConfig, oldConf *scopedconfig.ScopedConfig, pool string) error {
+	var oldPoolConf map[string]NodeContainerConfig
+	err := oldConf.LoadPoolsMerge([]string{pool}, &oldPoolConf, false, false)
+	if err != nil {
+		return err
+	}
+	envMap := map[string]string{}
+	allEnvs := append(oldPoolConf[pool].Config.Env, c.Config.Env...)
+	for i := len(allEnvs) - 1; i >= 0; i-- {
+		name := strings.Split(allEnvs[i], "=")[0]
+		if _, ok := envMap[name]; !ok {
+			envMap[name] = allEnvs[i]
+		}
+	}
+	allEnvs = allEnvs[:0]
+	for _, env := range envMap {
+		allEnvs = append(allEnvs, env)
+	}
+	c.Config.Env = allEnvs
+	return nil
 }
 
 func RemoveContainer(pool string, name string) error {

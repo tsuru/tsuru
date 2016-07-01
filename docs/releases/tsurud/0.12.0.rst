@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,13 +8,12 @@ tsurud 0.12.0 release notes
 
 Welcome to tsurud 0.12.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `general
-improvements`_ and `backward incompatible changes`_ you'll want to be aware of
-when upgrading from tsr 0.11.2 or older versions.
+These release notes cover the :ref:`new features <new-0.12.0>`,
+:ref:`bug fixes <bug-0.12.0>`, :ref:`general improvements <general-0.12.0>`
+and :ref:`backward incompatible changes <backwards-0.12.0>` you'll want to be
+aware of when upgrading from tsr 0.11.2 or older versions.
 
-.. _`new features`: `Main new features`_
-.. _`general improvements`: `Other improvements`_
-.. _`backward incompatible changes`: `Backward incompatible changes (action needed)`_
+.. _new-0.12.0:
 
 Main new features
 =================
@@ -88,6 +87,8 @@ Main new features
 
   This is related to issue `#1072 <https://github.com/tsuru/tsuru/issues/1072>`_.
 
+.. _bug-0.12.0:
+
 Bug fixes
 =========
 
@@ -116,6 +117,8 @@ Bug fixes
 
 * Fix error message on app-create when pool doesn't exist. `#1257
   <https://github.com/tsuru/tsuru/issues/1257>`_
+
+.. _general-0.12.0:
 
 Other improvements
 ==================
@@ -185,6 +188,8 @@ Other improvements
       Souza)
     - typo and broken link fixes and structural improvements across all the
       documentation (thanks Dan Hilton).
+
+.. _backwards-0.12.0:
 
 Backward incompatible changes (action needed)
 =============================================

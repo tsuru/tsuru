@@ -32,6 +32,7 @@ type runContainerActionsArgs struct {
 	isDeploy         bool
 	buildingImage    string
 	provisioner      *dockerProvisioner
+	exposedPort      string
 }
 
 type containersToAdd struct {
@@ -48,6 +49,7 @@ type changeUnitsPipelineArgs struct {
 	imageId     string
 	provisioner *dockerProvisioner
 	appDestroy  bool
+	exposedPort string
 }
 
 type callbackFunc func(*container.Container, chan *container.Container) error
@@ -122,6 +124,7 @@ var insertEmptyContainerInDB = action.Action{
 			Status:        provision.StatusCreated.String(),
 			Image:         args.imageID,
 			BuildingImage: args.buildingImage,
+			ExposedPort:   args.exposedPort,
 		}
 		coll := args.provisioner.Collection()
 		defer coll.Close()

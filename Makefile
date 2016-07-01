@@ -54,7 +54,19 @@ race:
 	go test $(GO_EXTRAFLAGS) -race -i ./...
 	go test $(GO_EXTRAFLAGS) -race ./...
 
-doc:
+_install_api_doc:
+	@go get $(GO_EXTRAFLAGS) github.com/tsuru/tsuru-api-docs
+
+api-doc: _install_api_doc
+	@tsuru-api-docs | grep -v missing > docs/handlers.yml
+
+check-api-doc: _install_api_doc
+	@exit $(tsuru-api-docs | grep missing | wc -l)
+
+doc-deps:
+	@pip install -r requirements.txt
+
+doc: doc-deps
 	@cd docs && make html SPHINXOPTS="-N -W"
 
 docs: doc

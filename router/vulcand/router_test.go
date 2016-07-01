@@ -394,7 +394,7 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = vRouter.AddRoute("myapp2", u2)
 	c.Assert(err, check.IsNil)
-	err = vRouter.Swap("myapp1", "myapp2")
+	err = vRouter.Swap("myapp1", "myapp2", false)
 	c.Assert(err, check.IsNil)
 	servers1, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp1"})
 	c.Assert(err, check.IsNil)

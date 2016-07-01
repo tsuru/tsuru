@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,13 +8,14 @@ tsr 0.8.0 release notes
 
 Welcome to tsr 0.8.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_, `general improvements`_ and `changes in the API`_
-you'll want to be aware of when upgrading from tsr 0.7.0 or older versions.
+These release notes cover the :ref:`new features <new-0.8.0>`,
+:ref:`bug fixes <bug-0.8.0>`,
+:ref:`backward incompatible changes <backwards-0.8.0>`,
+:ref:`general improvements <general-0.8.0>` and
+:ref:`changes in the API <api-0.8.0>` you'll want to be aware of when upgrading
+from tsr 0.7.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.8.0`_
-.. _`general improvements`: `Other improvements in tsr 0.8.0`_
-.. _`changes in the API`: `API changes`_
+.. _new-0.8.0:
 
 What's new in tsr 0.8.0
 =======================
@@ -38,6 +39,7 @@ What's new in tsr 0.8.0
   allowing a multi-region CloudStack or EC2 setup, for example. For more
   details, check the :ref:`Custom IaaS documentation <config_custom_iaas>`.
 
+.. _bug-0.8.0:
 
 Bug fixes
 =========
@@ -49,6 +51,8 @@ Bug fixes
   <https://github.com/tsuru/tsuru/issues/936>`_).
 - Fix parameter mismatch between bind and unbind calls in service API (issue
   `#794 <https://github.com/tsuru/tsuru/issues/794>`_).
+
+.. _general-0.8.0:
 
 Other improvements in tsr 0.8.0
 ===============================
@@ -64,6 +68,8 @@ Other improvements in tsr 0.8.0
   application is created. Other teams may be added in the future, using
   app-grant (issue `#871 <https://github.com/tsuru/tsuru/issues/871>`_)
 
+.. _backwards-0.8.0:
+
 Backward incompatible changes
 =============================
 
@@ -77,6 +83,8 @@ The following config settings have been deprecated:
 
 You should now create plans specifying the limits for memory, swap and cpu share.
 See `tsuru-admin plan-create <http://tsuru-admin.readthedocs.org/en/latest/#plan-create>`_ for more details.
+
+.. _api-0.8.0:
 
 API changes
 ===========

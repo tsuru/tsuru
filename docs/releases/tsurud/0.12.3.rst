@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,8 +8,10 @@ tsurud 0.12.3 release notes
 
 Welcome to tsurud 0.12.3!
 
-tsurud 0.12.3 includes `bug fixes`_  and some `improvements`_ on unstable
-network environments.
+tsurud 0.12.3 includes :ref:`bug fixes <bug-0.12.3>` and some
+:ref:`improvements <improvements-0.12.3>` on unstable network environments.
+
+.. _improvements-0.12.3:
 
 Improvements
 ============
@@ -37,6 +39,8 @@ Improvements
 * Add a service level proxy so service APIs can have management plugins. This
   proxy endpoint checks the permission of the user as an admin of the service.
   The other proxy endpoint checks the user permission in the service instance.
+
+.. _bug-0.12.3:
 
 Bug fixes
 =========

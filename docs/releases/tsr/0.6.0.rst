@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,12 +8,11 @@ tsr 0.6.0 release notes
 
 Welcome to tsr 0.6.0!
 
-These release notes cover the `new features`_, `bug fixes`_ and `general
-improvements`_ you'll want to be aware of when upgrading from tsr 0.5.0 or
-older versions.
+These release notes cover the :ref:`new features <new-0.6.0>`,
+:ref:`bug fixes <bug-0.6.0>` and :ref:`general improvements <general-0.6.0>`
+you'll want to be aware of when upgrading from tsr 0.5.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.6.0`_
-.. _`general improvements`: `Other improvements`_
+.. _new-0.6.0:
 
 What's new in tsr 0.6.0
 =======================
@@ -46,6 +45,8 @@ What's new in tsr 0.6.0
   adding the new ones (related to the issue `#511
   <https://github.com/tsuru/tsuru/issues/511>`_). It makes the process more
   stable and resilient.
+
+.. _bug-0.6.0:
 
 Bug fixes
 =========
@@ -83,6 +84,8 @@ Breaking changes
 * all code related to beanstalkd has been removed, it isn't possible to use it
   anymore, users that were still using beanstalkd need to change the
   configuration of the API server to use redis instead
+
+.. _general-0.6.0:
 
 Other improvements
 ==================

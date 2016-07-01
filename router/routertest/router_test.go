@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2016 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -218,7 +218,7 @@ func (s *S) TestSwap(c *check.C) {
 	retrieved2, err := router.Retrieve(backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrieved2, check.Equals, backend2)
-	err = r.Swap(backend1, backend2)
+	err = r.Swap(backend1, backend2, false)
 	c.Assert(err, check.IsNil)
 	routes, err := r.Routes(backend2)
 	c.Assert(err, check.IsNil)

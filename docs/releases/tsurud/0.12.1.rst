@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,10 +8,11 @@ tsurud 0.12.1 release notes
 
 Welcome to tsurud 0.12.1!
 
-tsurud 0.12.1 includes `bug fixes`_ and `improvements`_ in the management of the
+tsurud 0.12.1 includes :ref:`bug fixes <bug-0.12.1>` and
+:ref:`improvements <improvements-0.12.1>` in the management of the
 `tsuru host agent (bs) <https://github.com/tsuru/bs>`_.
 
-.. _`improvements`: `General improvements`_
+.. _improvements-0.12.1:
 
 General improvements
 ====================
@@ -28,6 +29,8 @@ General improvements
 * Use "tsuru/bs:v1" as the default bs image. It's possible to use "tsuru/bs" to
   get the old behavior back, or even "tsuru/bs:latest" to seat on the bleeding
   edge of bs.
+
+.. _bug-0.12.1:
 
 Bug fixes
 =========

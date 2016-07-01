@@ -94,6 +94,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 		Type:        app.GetPlatform(),
 		Status:      "created",
 		ProcessName: "myprocess1",
+		ExposedPort: "8888/tcp",
 	}
 	err := cont.Create(&CreateArgs{
 		App:         app,
@@ -128,7 +129,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	})
 }
 
-func (s *S) TestContainerCreateAllocatesPortExposedInImage(c *check.C) {
+func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
 	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
@@ -144,8 +145,6 @@ func (s *S) TestContainerCreateAllocatesPortExposedInImage(c *check.C) {
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
-	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
-	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
@@ -156,12 +155,13 @@ func (s *S) TestContainerCreateAllocatesPortExposedInImage(c *check.C) {
 		Type:        app.GetPlatform(),
 		Status:      "created",
 		ProcessName: "myprocess1",
+		ExposedPort: "3000/tcp",
 	}
 	err := cont.Create(&CreateArgs{
 		App:         app,
-		ImageID:     img,
 		Commands:    []string{"docker", "run"},
 		Provisioner: s.p,
+		ImageID:     img,
 	})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(&cont)
@@ -169,45 +169,6 @@ func (s *S) TestContainerCreateAllocatesPortExposedInImage(c *check.C) {
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Config.ExposedPorts, check.DeepEquals, map[docker.Port]struct{}{"3000/tcp": {}})
-}
-
-func (s *S) TestContainerCreateDontAllocatesPortToImageWithMoreThanOnePortExposed(c *check.C) {
-	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := docker.Image{
-			Config: &docker.Config{
-				ExposedPorts: map[docker.Port]struct{}{"3000/tcp": {}, "80/tcp": {}},
-			},
-		}
-		j, _ := json.Marshal(response)
-		w.Write(j)
-	}))
-	config.Set("host", "my.cool.tsuru.addr:8080")
-	defer config.Unset("host")
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
-	app.Memory = 15
-	app.Swap = 15
-	app.CpuShare = 50
-	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
-	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
-	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	img := "tsuru/brainfuck:latest"
-	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
-		Name:        "myName",
-		AppName:     app.GetName(),
-		Type:        app.GetPlatform(),
-		Status:      "created",
-		ProcessName: "myprocess1",
-	}
-	err := cont.Create(&CreateArgs{
-		App:         app,
-		ImageID:     img,
-		Commands:    []string{"docker", "run"},
-		Provisioner: s.p,
-	})
-	c.Assert(err, check.NotNil)
-	defer s.removeTestContainer(&cont)
 }
 
 func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
@@ -248,41 +209,6 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Config.SecurityOpts, check.DeepEquals, []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
-}
-
-func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
-	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := docker.Image{
-			Config: &docker.Config{
-				ExposedPorts: map[docker.Port]struct{}{},
-			},
-		}
-		j, _ := json.Marshal(response)
-		w.Write(j)
-	}))
-	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
-	app.Memory = 15
-	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	img := "tsuru/brainfuck:latest"
-	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
-		Name:    "myName",
-		AppName: app.GetName(),
-		Type:    app.GetPlatform(),
-		Status:  "created",
-	}
-	err := cont.Create(&CreateArgs{
-		App:         app,
-		ImageID:     img,
-		Commands:    []string{"docker", "run"},
-		Provisioner: s.p,
-	})
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(&cont)
-	info, err := cont.NetworkInfo(s.p)
-	c.Assert(err, check.IsNil)
-	c.Assert(info.HTTPHostPort, check.Not(check.Equals), "")
 }
 
 func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {

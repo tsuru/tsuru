@@ -501,8 +501,8 @@ func (p *FakeProvisioner) Reset() {
 	}
 }
 
-func (p *FakeProvisioner) Swap(app1, app2 provision.App) error {
-	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName())
+func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
+	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 }
 
 func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
