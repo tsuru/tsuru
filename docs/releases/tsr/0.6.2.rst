@@ -8,7 +8,7 @@ tsr 0.6.2 release notes
 
 Welcome to tsr 0.6.2!
 
-These release notes cover the 0.6.2 :ref:`bug fixes <bug-0.6.2>`.
+These release notes cover the 0.6.2 bug fixes.
 
 Bug fixes
 =========

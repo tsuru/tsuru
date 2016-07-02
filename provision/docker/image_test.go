@@ -231,6 +231,17 @@ func (s *S) TestAppCurrentImageName(c *check.C) {
 	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
 }
 
+func (s *S) TestAppCurrentImageNameWithWrongDeploy(c *check.C) {
+	coll, err := appImagesColl()
+	c.Assert(err, check.IsNil)
+	_, err = coll.UpsertId("myapp", bson.M{"count": 1})
+	defer coll.RemoveId("myapp")
+	c.Assert(err, check.IsNil)
+	img, err := appCurrentImageName("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, "tsuru/app-myapp")
+}
+
 func (s *S) TestListAppImages(c *check.C) {
 	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)

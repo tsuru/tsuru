@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -726,6 +727,16 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := app.DeployData{
+		App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "tsuru/app-otherapp:v1", CanRollback: true,
+	}
+	err = conn.Deploys().Insert(deploys)
+	c.Assert(err, check.IsNil)
+	defer conn.Deploys().RemoveAll(nil)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -2009,6 +2020,14 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasBackend(app2.GetName()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(app2.GetName(), addr1.String()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(app1.GetName(), addr2.String()), check.Equals, true)
+}
+
+func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
+	a := provisiontest.NewFakeApp("otherapp", "python", 1)
+	_, err := s.p.Rollback(a, "inexist", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Image \"inexist\" \"not found\"")
+
 }
 
 func (s *S) TestProvisionerStart(c *check.C) {

@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -8,13 +8,12 @@ tsurud 0.13.0 release notes
 
 Welcome to tsurud 0.13.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `general
-improvements`_ and `backward incompatible changes`_ you'll want to be aware of
-when upgrading from tsurud 0.12.x or older versions.
+These release notes cover the :ref:`new features <new-0.13.0>`,
+:ref:`bug fixes <bug-0.13.0>`, :ref:`general improvements <general-0.13.0>`
+and :ref:`backward incompatible changes <backwards-0.13.0>` you'll want to be
+aware of when upgrading from tsurud 0.12.x or older versions.
 
-.. _`new features`: `Main new features`_
-.. _`general improvements`: `Other improvements`_
-.. _`backward incompatible changes`: `Backward incompatible changes (action needed)`_
+.. _new-0.13.0:
 
 Main new features
 =================
@@ -56,6 +55,8 @@ Main new features
   <https://github.com/tsuru/tsuru/issues/781>`_ and `#1252
   <https://github.com/tsuru/tsuru/issues/1252>`_).
 
+.. _bug-0.13.0:
+
 Bug fixes
 =========
 
@@ -81,6 +82,8 @@ Bug fixes
 
 * Service info now displays the plan associated to each service instance if it
   exists (issue `#1142 <https://github.com/tsuru/tsuru/issues/1142>`_).
+
+.. _general-0.13.0:
 
 Other improvements
 ==================
@@ -133,6 +136,8 @@ Other improvements
   The differences is generated ignoring the patterns listed in .gitignore file.
   Obs. The .gitignore file must be in the root directory application
   (issue `#1315 <https://github.com/tsuru/tsuru/issues/1315>`_).
+
+.. _backwards-0.13.0:
 
 Backward incompatible changes (action needed)
 =============================================

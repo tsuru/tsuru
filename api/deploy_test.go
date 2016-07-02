@@ -836,7 +836,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
@@ -871,7 +871,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) {

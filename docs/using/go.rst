@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -108,7 +108,7 @@ use. You can always get it using the command `app-info`:
 The git remote will be used to deploy your application using git. You can just
 push to tsuru remote and your project will be deployed:
 
-.. highlight:: bash
+.. highlight:: console
 
 ::
 

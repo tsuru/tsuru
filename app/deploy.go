@@ -301,14 +301,16 @@ func incrementDeploy(app *App) error {
 	return err
 }
 
-func getImage(appName string, img string) (string, error) {
+func GetImage(appName, img string) (string, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", err
 	}
 	defer conn.Close()
 	var deploy DeployData
-	query := bson.M{"app": appName, "image": bson.M{"$regex": ".*:" + img + "$"}}
+	qApp := bson.M{"app": appName}
+	qImage := bson.M{"$or": []bson.M{{"image": img}, {"image": bson.M{"$regex": ".*:" + img + "$"}}}}
+	query := bson.M{"$and": []bson.M{qApp, qImage}}
 	if err := conn.Deploys().Find(query).One(&deploy); err != nil {
 		return "", err
 	}
@@ -317,12 +319,11 @@ func getImage(appName string, img string) (string, error) {
 
 func Rollback(opts DeployOptions) error {
 	if !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
-		img, err := getImage(opts.App.Name, opts.Image)
-		// err is not handled here because it is handled by Deploy
+		img, err := GetImage(opts.App.Name, opts.Image)
 		if err == nil {
 			opts.Image = img
 		}
-		opts.Rollback = true
 	}
+	opts.Rollback = true
 	return Deploy(opts)
 }

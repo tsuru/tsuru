@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -173,14 +174,24 @@ func (s *segregatedScheduler) GetRemovableContainer(appName string, process stri
 	return s.chooseContainerToRemove(nodes, appName, process)
 }
 
+type errContainerNotFound struct {
+	AppName     string
+	HostAddr    string
+	ProcessName string
+}
+
+func (m *errContainerNotFound) Error() string {
+	return fmt.Sprintf("Container of app %q with process %q was not found in server %q", m.AppName, m.ProcessName, m.HostAddr)
+}
+
 func (s *segregatedScheduler) getContainerFromHost(host string, appName, process string) (string, error) {
 	coll := s.provisioner.Collection()
 	defer coll.Close()
 	var c container.Container
 	query := bson.M{
-		"hostaddr": net.URLToHost(host),
-		"appname":  appName,
 		"id":       bson.M{"$nin": s.ignoredContainers},
+		"appname":  appName,
+		"hostaddr": net.URLToHost(host),
 	}
 	if process == "" {
 		query["$or"] = []bson.M{{"processname": bson.M{"$exists": false}}, {"processname": ""}}
@@ -188,6 +199,9 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 		query["processname"] = process
 	}
 	err := coll.Find(query).Select(bson.M{"id": 1}).One(&c)
+	if err == mgo.ErrNotFound {
+		return "", &errContainerNotFound{AppName: appName, ProcessName: process, HostAddr: net.URLToHost(host)}
+	}
 	return c.ID, err
 }
 

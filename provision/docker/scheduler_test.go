@@ -771,11 +771,10 @@ func (s *S) TestGetContainerFromHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(id, check.Equals, "pre1")
 	_, err = scheduler.getContainerFromHost("server2", "coolapp9", "some")
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `Container of app "coolapp9" with process "some" was not found in server "server2"`)
 	_, err = scheduler.getContainerFromHost("server1", "coolapp9", "other")
-	c.Assert(err, check.NotNil)
-	_, err = scheduler.getContainerFromHost("server1", "coolapp8", "some")
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `Container of app "coolapp9" with process "other" was not found in server "server1"`)
+
 }
 
 func (s *S) TestGetContainerFromHostEmptyProcess(c *check.C) {

@@ -729,7 +729,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Image:        "registry.tsuru.globoi.com/tsuru/app-example:v2",
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Equals, "Image deploy called")
+	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
 }
 
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
@@ -817,9 +817,12 @@ func (s *S) TestGetImageName(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
-	img, err := getImage("otherapp", "v2")
+	img, err := GetImage("otherapp", "v2")
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, deploys[0].Image)
+	img, err = GetImage("otherapp", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, deploys[1].Image)
 }
 
 func (s *S) TestGetImageNameInexistDeploy(c *check.C) {
@@ -844,7 +847,10 @@ func (s *S) TestGetImageNameInexistDeploy(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
-	_, err := getImage("otherapp", "v3")
+	_, err := GetImage("otherapp", "v3")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "not found")
+	_, err = GetImage("otherapp", "regiv3ry.tsuru.globoi.com/tsuru/app-example:v5")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not found")
 }
