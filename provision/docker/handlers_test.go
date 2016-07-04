@@ -469,6 +469,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 }
 
@@ -1351,6 +1352,7 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "No such node in storage\n")
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"m1": "v1",

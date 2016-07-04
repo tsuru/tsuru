@@ -190,6 +190,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	cont = r.(container.Container)
 	defer cont.Remove(s.p)
 	cc, err = dcli.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
 	c.Assert(cc.Config.User, check.Equals, "")
 }
 

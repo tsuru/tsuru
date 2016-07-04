@@ -61,6 +61,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(containers, check.HasLen, 0)
 	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
@@ -164,6 +165,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(containers, check.HasLen, 1)
 	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 2)
 	c.Assert(serviceMethods, check.HasLen, 2)
@@ -416,8 +418,10 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	err = p.rebalanceContainers(buf, false)
 	c.Assert(err, check.IsNil)
 	c1, err = p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.HasLen, 1)
 	c2, err := p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
 	c.Assert(c2, check.HasLen, 1)
 }
 
