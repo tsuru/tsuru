@@ -234,6 +234,7 @@ func (s *S) TestAppCurrentImageName(c *check.C) {
 func (s *S) TestAppCurrentImageNameWithWrongDeploy(c *check.C) {
 	coll, err := appImagesColl()
 	c.Assert(err, check.IsNil)
+	defer coll.Close()
 	_, err = coll.UpsertId("myapp", bson.M{"count": 1})
 	defer coll.RemoveId("myapp")
 	c.Assert(err, check.IsNil)

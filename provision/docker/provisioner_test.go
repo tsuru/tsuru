@@ -790,6 +790,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	defer s.p.Destroy(&a)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := app.DeployData{
