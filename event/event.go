@@ -115,6 +115,7 @@ type eventData struct {
 	Target          Target      `bson:",omitempty"`
 	StartCustomData interface{} `bson:",omitempty"`
 	EndCustomData   interface{} `bson:",omitempty"`
+	OtherCustomData interface{} `bson:",omitempty"`
 	Kind            kind
 	Owner           Owner
 	Cancelable      bool
@@ -256,6 +257,28 @@ func (f *Filter) toQuery() bson.M {
 		query["running"] = *f.Running
 	}
 	return query
+}
+
+func GetRunning(target Target, kind string) (*Event, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	var evt Event
+	err = coll.Find(bson.M{
+		"_id":       eventId{Target: target},
+		"kind.name": kind,
+		"running":   true,
+	}).One(&evt.eventData)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, ErrEventNotFound
+		}
+		return nil, err
+	}
+	return &evt, nil
 }
 
 func All() ([]Event, error) {
@@ -432,6 +455,22 @@ func (e *Event) SetLogWriter(w io.Writer) {
 	e.logWriter = w
 }
 
+func (e *Event) GetLogWriter() io.Writer {
+	return &e.logBuffer
+}
+
+func (e *Event) SetOtherCustomData(data interface{}) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	return coll.UpdateId(e.ID, bson.M{
+		"othercustomdata": data,
+	})
+}
+
 func (e *Event) Logf(format string, params ...interface{}) {
 	log.Debugf(fmt.Sprintf("%s(%s)[%s] %s", e.Target.Name, e.Target.Value, e.Kind, format), params...)
 	format += "\n"
@@ -536,6 +575,11 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	e.EndCustomData = customData
 	e.Running = false
 	e.Log = e.logBuffer.String()
+	var dbEvt Event
+	err = coll.FindId(e.ID).One(&dbEvt.eventData)
+	if err == nil {
+		e.OtherCustomData = dbEvt.OtherCustomData
+	}
 	defer coll.RemoveId(e.ID)
 	e.ID = eventId{ObjId: bson.NewObjectId()}
 	return coll.Insert(e.eventData)

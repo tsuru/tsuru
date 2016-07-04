@@ -434,3 +434,25 @@ func (s *S) TestListFilterEmpty(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
+
+func (s *S) TestEventOtherCustomData(c *check.C) {
+	evt, err := New(&Opts{
+		Target:     Target{Name: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		CustomData: "x",
+	})
+	c.Assert(err, check.IsNil)
+	getEvt, err := GetRunning(Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	c.Assert(err, check.IsNil)
+	err = getEvt.SetOtherCustomData("y")
+	c.Assert(err, check.IsNil)
+	err = evt.DoneCustomData(nil, "z")
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartCustomData, check.Equals, "x")
+	c.Assert(evts[0].EndCustomData, check.Equals, "z")
+	c.Assert(evts[0].OtherCustomData, check.Equals, "y")
+}
