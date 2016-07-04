@@ -62,7 +62,7 @@ func teamTarget(u string) event.Target {
 //   401: Unauthorized
 //   403: Forbidden
 //   409: User already exists
-func createUser(w http.ResponseWriter, r *http.Request) (err error) {
+func createUser(w http.ResponseWriter, r *http.Request) error {
 	registrationEnabled, _ := config.GetBool("auth:user-registration")
 	if !registrationEnabled {
 		token := r.Header.Get("Authorization")
