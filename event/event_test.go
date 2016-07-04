@@ -436,7 +436,7 @@ func (s *S) TestListFilterEmpty(c *check.C) {
 }
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
-	evt, err := New(&Opts{
+	_, err := New(&Opts{
 		Target:     Target{Name: "app", Value: "myapp"},
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      s.token,
@@ -447,12 +447,10 @@ func (s *S) TestEventOtherCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = getEvt.SetOtherCustomData("y")
 	c.Assert(err, check.IsNil)
-	err = evt.DoneCustomData(nil, "z")
-	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Owner, check.DeepEquals, Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()})
 	c.Assert(evts[0].StartCustomData, check.Equals, "x")
-	c.Assert(evts[0].EndCustomData, check.Equals, "z")
 	c.Assert(evts[0].OtherCustomData, check.Equals, "y")
 }

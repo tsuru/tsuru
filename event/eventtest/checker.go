@@ -20,6 +20,7 @@ type EventDesc struct {
 	Owner           string
 	StartCustomData interface{}
 	EndCustomData   interface{}
+	OtherCustomData interface{}
 	LogMatches      string
 	ErrorMatches    string
 	IsEmpty         bool
@@ -85,6 +86,7 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	}
 	queryPartCustom(query, "startcustomdata", evt.StartCustomData)
 	queryPartCustom(query, "endcustomdata", evt.EndCustomData)
+	queryPartCustom(query, "othercustomdata", evt.OtherCustomData)
 	if evt.LogMatches != "" {
 		query["log"] = bson.M{"$regex": evt.LogMatches}
 	}

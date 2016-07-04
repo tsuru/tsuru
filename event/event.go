@@ -487,7 +487,7 @@ func (e *Event) SetOtherCustomData(data interface{}) error {
 	defer conn.Close()
 	coll := conn.Events()
 	return coll.UpdateId(e.ID, bson.M{
-		"othercustomdata": data,
+		"$set": bson.M{"othercustomdata": data},
 	})
 }
 
