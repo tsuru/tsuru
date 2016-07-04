@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -248,45 +249,6 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 	c.Assert(lastDeploy, check.IsNil)
 }
 
-func (s *S) TestDeploySaveDataAndDiff(c *check.C) {
-	a := App{Name: "someApp"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	opts := DeployOptions{
-		App:    &a,
-		Image:  "myimage",
-		Commit: "",
-	}
-	err = saveDeployData(&opts, "diff", "", time.Second, nil)
-	c.Assert(err, check.IsNil)
-	deploys, err := ListDeploys(nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	result, err := GetDeploy(deploys[0].ID.Hex())
-	c.Assert(err, check.IsNil)
-	c.Assert(result.Image, check.Equals, "diff")
-	c.Assert(result.Log, check.Equals, "")
-	c.Assert(result.Diff, check.DeepEquals, "")
-	err = SaveDiffData("testDiff", a.Name)
-	c.Assert(err, check.IsNil)
-	deploys, err = ListDeploys(nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	result, err = GetDeploy(deploys[0].ID.Hex())
-	c.Assert(err, check.IsNil)
-	c.Assert(result.Image, check.Equals, "diff")
-	c.Assert(result.Log, check.Equals, "")
-	c.Assert(result.Diff, check.DeepEquals, "testDiff")
-	err = saveDeployData(&opts, "myid", "mylog", time.Second, nil)
-	c.Assert(err, check.IsNil)
-	deploys, err = ListDeploys(nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	result, err = GetDeploy(deploys[0].ID.Hex())
-	c.Assert(err, check.IsNil)
-	c.Assert(result.Image, check.Equals, "myid")
-	c.Assert(result.Log, check.Equals, "mylog")
-	c.Assert(result.Diff, check.DeepEquals, "testDiff")
-}
-
 func (s *S) TestDeployApp(c *check.C) {
 	a := App{
 		Name:     "someApp",
@@ -300,11 +262,18 @@ func (s *S) TestDeployApp(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
@@ -325,11 +294,18 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
@@ -352,11 +328,18 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -377,28 +360,23 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		Image:        "myimage",
 		Commit:       commit,
 		OutputStream: writer,
 		User:         "someone@themoon",
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	var result map[string]interface{}
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result["app"], check.Equals, a.Name)
-	now := time.Now()
-	diff := now.Sub(result["timestamp"].(time.Time))
-	c.Assert(diff < 60*time.Second, check.Equals, true)
-	c.Assert(result["duration"], check.Not(check.Equals), 0)
-	c.Assert(result["commit"], check.Equals, commit)
-	c.Assert(result["image"], check.Equals, "myimage")
-	c.Assert(result["log"], check.Equals, "Image deploy called")
-	c.Assert(result["user"], check.Equals, "someone@themoon")
-	c.Assert(result["origin"], check.Equals, "git")
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
@@ -414,25 +392,22 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		Image:        "some-image",
 		Origin:       "rollback",
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	var result map[string]interface{}
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result["app"], check.Equals, a.Name)
-	now := time.Now()
-	diff := now.Sub(result["timestamp"].(time.Time))
-	c.Assert(diff < 60*time.Second, check.Equals, true)
-	c.Assert(result["duration"], check.Not(check.Equals), 0)
-	c.Assert(result["image"], check.Equals, "some-image")
-	c.Assert(result["log"], check.Equals, "Image deploy called")
-	c.Assert(result["origin"], check.Equals, "rollback")
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
@@ -448,25 +423,22 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
 		Origin:       "app-deploy",
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	var result map[string]interface{}
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result["app"], check.Equals, a.Name)
-	now := time.Now()
-	diff := now.Sub(result["timestamp"].(time.Time))
-	c.Assert(diff < 60*time.Second, check.Equals, true)
-	c.Assert(result["duration"], check.Not(check.Equals), 0)
-	c.Assert(result["image"], check.Equals, "app-image")
-	c.Assert(result["log"], check.Equals, "Upload deploy called")
-	c.Assert(result["origin"], check.Equals, "app-deploy")
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
@@ -482,25 +454,22 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
 		Origin:       "drag-and-drop",
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	var result map[string]interface{}
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result["app"], check.Equals, a.Name)
-	now := time.Now()
-	diff := now.Sub(result["timestamp"].(time.Time))
-	c.Assert(diff < 60*time.Second, check.Equals, true)
-	c.Assert(result["duration"], check.Not(check.Equals), 0)
-	c.Assert(result["image"], check.Equals, "app-image")
-	c.Assert(result["log"], check.Equals, "Upload deploy called")
-	c.Assert(result["origin"], check.Equals, "drag-and-drop")
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
@@ -521,17 +490,20 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	provisioner.Provision(&a)
 	defer provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
+		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
-	var result map[string]interface{}
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result["app"], check.Equals, a.Name)
-	c.Assert(result["error"], check.NotNil)
 }
 
 func (s *S) TestValidateOrigin(c *check.C) {
@@ -564,17 +536,19 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
 	}
-	err = Deploy(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestIncrementDeploy(c *check.C) {
@@ -668,37 +642,6 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	c.Assert(logs, check.Equals, "Image deploy called")
 }
 
-func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
-	a := App{Name: "someApp"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	opts := DeployOptions{
-		App:    &a,
-		Image:  "myimage",
-		Commit: "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
-	}
-	err = saveDeployData(&opts, "myid", "mylog", time.Second, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 1)
-	c.Assert(result[0].Image, check.Equals, "myid")
-	err = markDeploysAsRemoved(a.Name)
-	c.Assert(err, check.IsNil)
-	result, err = ListDeploys(nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 0)
-	var allDeploys []DeployData
-	err = s.conn.Deploys().Find(nil).All(&allDeploys)
-	c.Assert(err, check.IsNil)
-	c.Assert(allDeploys, check.HasLen, 1)
-	c.Assert(allDeploys[0].Image, check.Equals, "myid")
-	c.Assert(allDeploys[0].RemoveDate.IsZero(), check.Equals, false)
-}
-
 func (s *S) TestRollbackWithNameImage(c *check.C) {
 	a := App{
 		Name:     "otherapp",
@@ -723,10 +666,18 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Rollback(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		Image:        "registry.tsuru.globoi.com/tsuru/app-example:v2",
+		Rollback:     true,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
@@ -756,10 +707,18 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Rollback(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		Image:        "v2",
+		Rollback:     true,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
@@ -789,10 +748,18 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = Rollback(DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		Image:        "v20",
+		Rollback:     true,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 }
@@ -886,6 +853,7 @@ func (s *S) TestDeployKind(c *check.C) {
 		},
 	}
 	for _, t := range tests {
-		c.Check(t.input.Kind(), check.Equals, t.expected)
+		c.Check(t.input.GetKind(), check.Equals, t.expected)
+		c.Check(t.input.Kind, check.Equals, t.expected)
 	}
 }

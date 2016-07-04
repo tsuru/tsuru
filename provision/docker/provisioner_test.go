@@ -27,7 +27,9 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
@@ -305,11 +307,18 @@ func (s *S) TestDeploy(c *check.C) {
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -355,11 +364,18 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -413,11 +429,18 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -467,11 +490,18 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
 	compErr, ok := err.(*errors.CompositeError)
@@ -511,11 +541,18 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -527,11 +564,12 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
-	err = app.Deploy(app.DeployOptions{
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -573,11 +611,18 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Commit:       "123",
 		OutputStream: w,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
+		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -617,11 +662,18 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -633,11 +685,12 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
-	err = app.Deploy(app.DeployOptions{
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -650,11 +703,12 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	sort.Strings(got)
 	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v2", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
-	err = app.Deploy(app.DeployOptions{
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
@@ -699,11 +753,18 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		File:         ioutil.NopCloser(buf),
 		FileSize:     int64(buf.Len()),
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -738,11 +799,18 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Deploys().RemoveAll(nil)
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        "tsuru/app-otherapp:v1",
 		Rollback:     true,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -777,11 +845,18 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        "tsuru/app-otherapp:v1",
 		Rollback:     true,
+		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
 	units, err := a.Units()
@@ -853,10 +928,17 @@ func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        imageName,
+		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
 }
@@ -920,10 +1002,17 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        imageName,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -1009,10 +1098,17 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        imageName,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
@@ -1080,10 +1176,17 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	dataColl.RemoveId(imageName)
 	defer dataColl.Close()
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        imageName,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	appCurrentImage, err := appCurrentImageName(a.GetName())
@@ -1151,10 +1254,17 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
 		Image:        imageName,
+		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrEntrypointOrProcfileNotFound)
@@ -1208,11 +1318,18 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	}
 	err = saveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
 	c.Assert(err, check.IsNil)
-	err = app.Deploy(app.DeployOptions{
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: a.Name},
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
 		Commit:       "123",
 		OutputStream: w,
+		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(&a)

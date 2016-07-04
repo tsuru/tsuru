@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -430,9 +431,9 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		logErr("Unable to remove app from db", err)
 	}
-	err = markDeploysAsRemoved(appName)
+	err = event.MarkAsRemoved(event.Target{Name: "app", Value: appName})
 	if err != nil {
-		logErr("Unable to mark old deploys as removed", err)
+		logErr("Unable to mark old events as removed", err)
 	}
 	return nil
 }

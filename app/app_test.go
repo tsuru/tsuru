@@ -22,6 +22,8 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -94,7 +96,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
-func (s *S) TestDeleteWithDeploys(c *check.C) {
+func (s *S) TestDeleteWithEvents(c *check.C) {
 	a := App{
 		Name:      "ritual",
 		Platform:  "python",
@@ -104,20 +106,28 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
+	_, err = event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppUpdateEnvSet,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
+	evt2, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: "other"},
+		Kind:     permission.PermAppUpdateEnvSet,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
+	c.Assert(err, check.IsNil)
 	err = s.conn.Deploys().Insert(DeployData{App: a.Name, Timestamp: time.Now()})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	Delete(app, nil)
-	err = tsurutest.WaitCondition(1e9, func() bool {
-		var deploys []DeployData
-		dbErr := s.conn.Deploys().Find(bson.M{"app": app.Name}).All(&deploys)
-		if dbErr != nil {
-			c.Log(dbErr)
-			return false
-		}
-		return len(deploys) == 1 && !deploys[0].RemoveDate.IsZero()
-	})
+	evts, err := event.List(&event.Filter{})
 	c.Assert(err, check.IsNil)
+	c.Assert(evts, eventtest.EvtEquals, evt2)
+	evts, err = event.List(&event.Filter{IncludeRemoved: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")

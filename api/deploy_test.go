@@ -21,6 +21,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -103,8 +105,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -116,6 +117,27 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "archive-url",
+			"archiveurl": "http://something.tar.gz",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Archive deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
@@ -123,8 +145,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag-and-drop", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?origin=drag-and-drop", a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	file, err := writer.CreateFormFile("file", "archive.tar.gz")
@@ -141,9 +162,27 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Body.String(), check.Equals, "Upload deploy called\nOK\n")
-	var result app.DeployData
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result.Origin, check.Equals, "drag-and-drop")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   12,
+			"kind":       "upload",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "drag-and-drop",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Upload deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
@@ -151,7 +190,6 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s&origin=drag", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -169,8 +207,6 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/deploy?origin=app-deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/otherapp"))
 	c.Assert(err, check.IsNil)
@@ -181,9 +217,27 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Image deploy called\nOK\n")
-	var result app.DeployData
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result.Origin, check.Equals, "image")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "image",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "127.0.0.1:5000/tsuru/otherapp",
+			"origin":     "image",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "127.0.0.1:5000/tsuru/otherapp",
+		},
+		LogMatches: `Image deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
@@ -196,7 +250,6 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -208,6 +261,27 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "archive-url",
+			"archiveurl": "http://something.tar.gz",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Archive deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
@@ -221,8 +295,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	file, err := writer.CreateFormFile("file", "archive.tar.gz")
@@ -240,6 +313,27 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Upload deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   12,
+			"kind":       "upload",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Upload deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
@@ -254,8 +348,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -267,9 +360,27 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
-	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(deploys, check.Equals, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  "fulano",
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "123",
+			"filesize":   0,
+			"kind":       "git",
+			"archiveurl": "http://something.tar.gz",
+			"user":       "fulano",
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Archive deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
@@ -282,8 +393,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -295,9 +405,27 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
-	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(deploys, check.Equals, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "archive-url",
+			"archiveurl": "http://something.tar.gz",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Archive deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
@@ -305,8 +433,6 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/otherapp"))
 	c.Assert(err, check.IsNil)
@@ -317,6 +443,27 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Image deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "image",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "127.0.0.1:5000/tsuru/otherapp",
+			"origin":     "image",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "127.0.0.1:5000/tsuru/otherapp",
+		},
+		LogMatches: `Image deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
@@ -324,7 +471,6 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
@@ -336,12 +482,6 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
-	var result map[string]interface{}
-	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
-	c.Assert(result["app"], check.Equals, a.Name)
-	now := time.Now()
-	diff := now.Sub(result["timestamp"].(time.Time))
-	c.Assert(diff < 60*time.Second, check.Equals, true)
 }
 
 func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check.C) {
@@ -361,14 +501,12 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	user := &auth.User{Email: "someone@tsuru.io", Password: "123456"}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	defer nativeScheme.Remove(user)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	adminUser, _ := s.token.User()
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, adminUser)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -386,11 +524,9 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 	app1 := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app1, nil)
 	app2 := app.App{Name: "superapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app2, nil)
 	token, err := nativeScheme.AppLogin(app2.Name)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", app1.Name, app2.Name)
@@ -417,7 +553,6 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	user, _ := s.token.User()
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -437,8 +572,6 @@ func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -497,7 +630,6 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	var result []app.DeployData
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, check.IsNil)
@@ -508,7 +640,6 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.conn.Deploys().Insert(app.DeployData{App: "ge", Timestamp: timestamp.Add(time.Second), Duration: duration})
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
@@ -528,11 +659,9 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	app1 := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app1, nil)
 	app2 := app.App{Name: "ge", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app2, nil)
 	var result []app.DeployData
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, check.IsNil)
@@ -543,7 +672,6 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.conn.Deploys().Insert(app.DeployData{App: "ge", Timestamp: timestamp.Add(time.Second), Duration: duration})
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
@@ -566,8 +694,6 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
@@ -578,7 +704,6 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -600,8 +725,6 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
@@ -612,7 +735,6 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -635,8 +757,6 @@ func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	a := app.App{Name: "myblog", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	c.Assert(err, check.IsNil)
@@ -651,7 +771,6 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
@@ -661,7 +780,6 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -692,7 +810,6 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
@@ -702,7 +819,6 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"}
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -729,16 +845,13 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	user = &auth.User{Email: "user@user.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	defer user.Delete()
 	team := &auth.Team{Name: "team"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -750,7 +863,6 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -781,14 +893,12 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	defer user.Delete()
 	team := &auth.Team{Name: "team"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -800,7 +910,6 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(nil)
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -821,7 +930,6 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
 	v := url.Values{}
 	v.Set("origin", "rollback")
 	v.Set("image", "my-image-123:v1")
@@ -837,6 +945,26 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "rollback",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "my-image-123:v1",
+			"origin":     "rollback",
+			"build":      false,
+			"rollback":   true,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "my-image-123:v1",
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
@@ -872,6 +1000,26 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "rollback",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
+			"origin":     "rollback",
+			"build":      false,
+			"rollback":   true,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) {
@@ -879,8 +1027,6 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
@@ -907,6 +1053,27 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "rollback",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "v1",
+			"origin":     "rollback",
+			"build":      false,
+			"rollback":   true,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
+		},
+		LogMatches: `Rollback deploy called`,
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
@@ -914,13 +1081,9 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
 	b := app.App{Name: "otherapp2", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&b, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&b, nil)
-	defer s.logConn.Logs(b.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
@@ -931,8 +1094,8 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 		err = s.conn.Deploys().Insert(deploy)
 		c.Assert(err, check.IsNil)
 	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	v := url.Values{}
+	v.Set("origin", "rollback")
 	v.Set("image", "v3")
 	u := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
@@ -946,6 +1109,26 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "rollback",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "v3",
+			"origin":     "rollback",
+			"build":      false,
+			"rollback":   true,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "v3",
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
@@ -969,8 +1152,6 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.conn.Deploys().Remove(bson.M{"app": a.Name})
 	v := url.Values{}
 	v.Set("customdata", diff)
 	body := strings.NewReader(v.Encode())
@@ -979,16 +1160,24 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	evt, err := event.New(&event.Opts{
+		Target: appTarget(a.Name),
+		Kind:   permission.PermAppDeploy,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Saving the difference between the old and new code\n")
-	var deploy []app.DeployData
-	err = s.conn.Deploys().Find(bson.M{"app": a.Name}).All(&deploy)
+	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(deploy, check.HasLen, 1)
-	c.Assert(deploy[0].Diff, check.Equals, diff)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+	}, eventtest.HasEvent)
 }
 
 func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
@@ -1013,14 +1202,11 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 	user1 := &auth.User{Email: "someone@tsuru.io", Password: "user123"}
 	_, err := nativeScheme.Create(user1)
 	c.Assert(err, check.IsNil)
-	defer nativeScheme.Remove(user1)
 	token, err := nativeScheme.Login(map[string]string{"email": user1.Email, "password": "user123"})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.conn.Deploys().Remove(bson.M{"app": a.Name})
 	v := url.Values{}
 	v.Set("customdata", diff)
 	body := strings.NewReader(v.Encode())
