@@ -124,6 +124,7 @@ type eventData struct {
 	Error           string
 	Log             string `bson:",omitempty"`
 	CancelInfo      cancelInfo
+	RemoveDate      time.Time `bson:",omitempty"`
 }
 
 type cancelInfo struct {
@@ -210,14 +211,15 @@ func (e *Event) String() string {
 }
 
 type Filter struct {
-	Target    Target
-	KindType  kindType
-	KindName  string
-	OwnerType ownerType
-	OwnerName string
-	Since     time.Time
-	Until     time.Time
-	Running   *bool
+	Target         Target
+	KindType       kindType
+	KindName       string
+	OwnerType      ownerType
+	OwnerName      string
+	Since          time.Time
+	Until          time.Time
+	Running        *bool
+	IncludeRemoved bool
 
 	Limit int
 	Sort  string
@@ -255,6 +257,9 @@ func (f *Filter) toQuery() bson.M {
 	}
 	if f.Running != nil {
 		query["running"] = *f.Running
+	}
+	if !f.IncludeRemoved {
+		query["removedate"] = bson.M{"$exists": false}
 	}
 	return query
 }
@@ -318,6 +323,21 @@ func List(filter *Filter) ([]Event, error) {
 		evts[i].eventData = allData[i]
 	}
 	return evts, nil
+}
+
+func MarkAsRemoved(target Target) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	now := time.Now().UTC()
+	_, err = coll.UpdateAll(bson.M{
+		"target":     target,
+		"removedate": bson.M{"$exists": false},
+	}, bson.M{"$set": bson.M{"removedate": now}})
+	return err
 }
 
 func New(opts *Opts) (*Event, error) {

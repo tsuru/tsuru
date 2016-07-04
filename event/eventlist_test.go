@@ -84,24 +84,32 @@ func (s *S) TestListFilterMany(c *check.C) {
 		Target:       event.Target{Name: "node", Value: "http://10.0.1.2"},
 		InternalKind: "healer",
 	})
-	allEvts[len(allEvts)-1].Done(nil)
-	checkFilters(&event.Filter{Sort: "_id"}, allEvts)
-	checkFilters(&event.Filter{Running: boolPtr(false)}, allEvts[len(allEvts)-1])
-	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-1])
+	createi(&event.Opts{
+		Target:       event.Target{Name: "nodex", Value: "http://10.0.1.3"},
+		InternalKind: "healer",
+	})
+	err := event.MarkAsRemoved(event.Target{Name: "nodex", Value: "http://10.0.1.3"})
+	c.Assert(err, check.IsNil)
+	allEvts[len(allEvts)-2].Done(nil)
+	checkFilters(&event.Filter{Sort: "_id"}, allEvts[:len(allEvts)-1])
+	checkFilters(&event.Filter{Running: boolPtr(false)}, allEvts[len(allEvts)-2])
+	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-2])
 	checkFilters(&event.Filter{Target: event.Target{Name: "app"}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[1]})
 	checkFilters(&event.Filter{Target: event.Target{Name: "app", Value: "myapp"}}, allEvts[0])
-	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:])
+	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, Sort: "_id"}, allEvts[:3])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, KindName: "kind"}, nil)
-	checkFilters(&event.Filter{KindType: event.KindTypeInternal, KindName: "healer", Sort: "_id"}, allEvts[3:])
+	checkFilters(&event.Filter{KindType: event.KindTypeInternal, KindName: "healer", Sort: "_id"}, allEvts[3:len(allEvts)-1])
 	checkFilters(&event.Filter{OwnerType: event.OwnerTypeUser, Sort: "_id"}, allEvts[:3])
-	checkFilters(&event.Filter{OwnerType: event.OwnerTypeInternal, Sort: "_id"}, allEvts[3:])
+	checkFilters(&event.Filter{OwnerType: event.OwnerTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
 	checkFilters(&event.Filter{OwnerType: event.OwnerTypeUser, OwnerName: s.token.GetUserName(), Sort: "_id"}, allEvts[:3])
-	checkFilters(&event.Filter{Since: t0, Sort: "_id"}, allEvts[1:])
+	checkFilters(&event.Filter{Since: t0, Sort: "_id"}, allEvts[1:len(allEvts)-1])
 	checkFilters(&event.Filter{Until: t05, Sort: "_id"}, allEvts[:2])
 	checkFilters(&event.Filter{Since: t0, Until: t1, Sort: "_id"}, allEvts[1:3])
 	checkFilters(&event.Filter{Limit: 2, Sort: "_id"}, allEvts[:2])
-	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-1])
+	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-2])
+	checkFilters(&event.Filter{Target: event.Target{Name: "nodex"}}, allEvts[:0])
+	checkFilters(&event.Filter{Target: event.Target{Name: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
 }
 
 func boolPtr(b bool) *bool {
