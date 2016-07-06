@@ -143,16 +143,6 @@ func (s *S) TestApps(c *check.C) {
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
-func (s *S) TestDeploys(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	deploys := strg.Deploys()
-	deploysc := strg.Collection("deploys")
-	c.Assert(deploys, check.DeepEquals, deploysc)
-	c.Assert(deploys, HasIndex, []string{"app", "-timestamp"})
-}
-
 func (s *S) TestPlatforms(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)

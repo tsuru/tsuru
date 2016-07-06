@@ -96,13 +96,6 @@ func (s *Storage) Apps() *storage.Collection {
 	return c
 }
 
-func (s *Storage) Deploys() *storage.Collection {
-	deployIndex := mgo.Index{Key: []string{"app", "-timestamp"}}
-	c := s.Collection("deploys")
-	c.EnsureIndex(deployIndex)
-	return c
-}
-
 // Platforms returns the platforms collection from MongoDB.
 func (s *Storage) Platforms() *storage.Collection {
 	return s.Collection("platforms")

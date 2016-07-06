@@ -615,6 +615,30 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 	}
 }
 
+func insertDeploysAsEvents(data []app.DeployData, c *check.C) []*event.Event {
+	evts := make([]*event.Event, len(data))
+	for i, d := range data {
+		evt, err := event.New(&event.Opts{
+			Target:   event.Target{Name: "app", Value: d.App},
+			Kind:     permission.PermAppDeploy,
+			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
+			CustomData: app.DeployOptions{
+				Commit: d.Commit,
+				Origin: d.Origin,
+			},
+		})
+		evt.StartTime = d.Timestamp
+		c.Assert(err, check.IsNil)
+		evt.Logf(d.Log)
+		err = evt.SetOtherCustomData(map[string]string{"diff": d.Diff})
+		c.Assert(err, check.IsNil)
+		err = evt.DoneCustomData(nil, map[string]string{"image": d.Image})
+		c.Assert(err, check.IsNil)
+		evts[i] = evt
+	}
+	return evts
+}
+
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	user := &auth.User{Email: "nonadmin@nonadmin.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
@@ -635,11 +659,10 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	err = s.conn.Deploys().Insert(app.DeployData{App: "g1", Timestamp: timestamp.Add(time.Minute), Duration: duration})
-	c.Assert(err, check.IsNil)
-	err = s.conn.Deploys().Insert(app.DeployData{App: "ge", Timestamp: timestamp.Add(time.Second), Duration: duration})
-	c.Assert(err, check.IsNil)
+	insertDeploysAsEvents([]app.DeployData{
+		{App: "g1", Timestamp: timestamp.Add(time.Minute)},
+		{App: "ge", Timestamp: timestamp.Add(time.Second)},
+	}, c)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
@@ -651,7 +674,6 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	c.Assert(result[0].ID, check.NotNil)
 	c.Assert(result[0].App, check.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.Add(time.Minute).In(time.UTC))
-	c.Assert(result[0].Duration, check.DeepEquals, duration)
 }
 
 func (s *DeploySuite) TestDeployList(c *check.C) {
@@ -667,11 +689,11 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	err = s.conn.Deploys().Insert(app.DeployData{App: "g1", Timestamp: timestamp.Add(time.Minute), Duration: duration})
-	c.Assert(err, check.IsNil)
-	err = s.conn.Deploys().Insert(app.DeployData{App: "ge", Timestamp: timestamp.Add(time.Second), Duration: duration})
-	c.Assert(err, check.IsNil)
+	deps := []app.DeployData{
+		{App: "g1", Timestamp: timestamp.Add(time.Minute)},
+		{App: "ge", Timestamp: timestamp.Add(time.Second)},
+	}
+	insertDeploysAsEvents(deps, c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
@@ -683,10 +705,8 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	c.Assert(result[0].ID, check.NotNil)
 	c.Assert(result[0].App, check.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.Add(time.Minute).In(time.UTC))
-	c.Assert(result[0].Duration, check.DeepEquals, duration)
 	c.Assert(result[1].App, check.Equals, "ge")
 	c.Assert(result[1].Timestamp.In(time.UTC), check.DeepEquals, timestamp.Add(time.Second).In(time.UTC))
-	c.Assert(result[1].Duration, check.DeepEquals, duration)
 }
 
 func (s *DeploySuite) TestDeployListByApp(c *check.C) {
@@ -695,15 +715,11 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
-		{App: "myblog", Timestamp: timestamp, Duration: duration},
-		{App: "yourblog", Timestamp: timestamp, Duration: duration},
+		{App: "myblog", Timestamp: timestamp},
+		{App: "yourblog", Timestamp: timestamp},
 	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
+	insertDeploysAsEvents(deploys, c)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -717,7 +733,6 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].App, check.Equals, "myblog")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.In(time.UTC))
-	c.Assert(result[0].Duration, check.DeepEquals, duration)
 }
 
 func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
@@ -726,15 +741,11 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
-		{App: "myblog", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "yourblog", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+		{App: "myblog", Timestamp: timestamp, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "yourblog", Timestamp: timestamp, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
+	insertDeploysAsEvents(deploys, c)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -749,7 +760,6 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 	c.Assert(result[0].Image, check.Equals, "v2")
 	c.Assert(result[0].App, check.Equals, "myblog")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.In(time.UTC))
-	c.Assert(result[0].Duration, check.DeepEquals, duration)
 }
 
 func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
@@ -773,18 +783,13 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
-	duration := time.Duration(10e9)
-	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
-	err = s.conn.Deploys().Insert(previousDeploy)
-	c.Assert(err, check.IsNil)
-	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
-	err = s.conn.Deploys().Insert(lastDeploy)
-	c.Assert(err, check.IsNil)
-	var d map[string]interface{}
-	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
-	c.Assert(err, check.IsNil)
-	lastDeployId := d["_id"].(bson.ObjectId).Hex()
-	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	depData := []app.DeployData{
+		{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""},
+		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""},
+	}
+	lastDeploy := depData[1]
+	evts := insertDeploysAsEvents(depData, c)
+	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	token := customUserWithPermission(c, "myadmin", permission.Permission{
@@ -799,9 +804,11 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	var result app.DeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	lastDeploy.ID = d["_id"].(bson.ObjectId)
+	lastDeploy.ID = evts[1].UniqueID
 	result.Timestamp = lastDeploy.Timestamp
 	result.RemoveDate = lastDeploy.RemoveDate
+	result.Duration = 0
+	result.Log = ""
 	c.Assert(result, check.DeepEquals, lastDeploy)
 }
 
@@ -812,18 +819,13 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
-	duration := time.Duration(10e9)
-	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"}
-	err = s.conn.Deploys().Insert(previousDeploy)
-	c.Assert(err, check.IsNil)
-	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"}
-	err = s.conn.Deploys().Insert(lastDeploy)
-	c.Assert(err, check.IsNil)
-	var d map[string]interface{}
-	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
-	c.Assert(err, check.IsNil)
-	lastDeployId := d["_id"].(bson.ObjectId).Hex()
-	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	depData := []app.DeployData{
+		{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"},
+		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"},
+	}
+	lastDeploy := depData[1]
+	evts := insertDeploysAsEvents(depData, c)
+	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -831,12 +833,14 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	lastDeploy.ID = d["_id"].(bson.ObjectId)
+	lastDeploy.ID = evts[1].UniqueID
 	var result app.DeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	result.Timestamp = lastDeploy.Timestamp
 	result.RemoveDate = lastDeploy.RemoveDate
+	result.Duration = 0
+	result.Log = ""
 	c.Assert(result, check.DeepEquals, lastDeploy)
 }
 
@@ -856,18 +860,12 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
-	duration := time.Duration(10e9)
-	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
-	err = s.conn.Deploys().Insert(previousDeploy)
-	c.Assert(err, check.IsNil)
-	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
-	err = s.conn.Deploys().Insert(lastDeploy)
-	c.Assert(err, check.IsNil)
-	var d map[string]interface{}
-	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
-	c.Assert(err, check.IsNil)
-	lastDeployId := d["_id"].(bson.ObjectId).Hex()
-	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	depData := []app.DeployData{
+		{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"},
+		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"},
+	}
+	evts := insertDeploysAsEvents(depData, c)
+	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -903,18 +901,12 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
-	duration := time.Duration(10e9)
-	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
-	err = s.conn.Deploys().Insert(previousDeploy)
-	c.Assert(err, check.IsNil)
-	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
-	err = s.conn.Deploys().Insert(lastDeploy)
-	c.Assert(err, check.IsNil)
-	var d map[string]interface{}
-	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
-	c.Assert(err, check.IsNil)
-	lastDeployId := d["_id"].(bson.ObjectId).Hex()
-	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	depData := []app.DeployData{
+		{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"},
+		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"},
+	}
+	evts := insertDeploysAsEvents(depData, c)
+	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -972,19 +964,6 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a, nil)
-	defer s.logConn.Logs(a.Name).DropCollection()
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []app.DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	v := url.Values{}
 	v.Set("origin", "rollback")
 	v.Set("image", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1")
@@ -1027,17 +1006,9 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []app.DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
+	s.provisioner.SetValidImagesForApp("otherapp", []string{
+		"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
+	})
 	v := url.Values{}
 	v.Set("origin", "rollback")
 	v.Set("image", "v1")
@@ -1084,16 +1055,6 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	b := app.App{Name: "otherapp2", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&b, user)
 	c.Assert(err, check.IsNil)
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []app.DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "regiv3ry.tsuru.globoi.com/tsuru/app-example:v1", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
 	v := url.Values{}
 	v.Set("origin", "rollback")
 	v.Set("image", "v3")

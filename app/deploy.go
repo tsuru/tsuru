@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,6 +30,8 @@ const (
 	DeployUpload      DeployKind = "upload"
 	DeployUploadBuild DeployKind = "uploadbuild"
 )
+
+var reImageVersion = regexp.MustCompile("v[0-9]+$")
 
 type DeployData struct {
 	ID          bson.ObjectId `bson:"_id,omitempty"`
@@ -45,6 +49,19 @@ type DeployData struct {
 	Diff        string
 }
 
+func findValidImages(apps ...string) (set, error) {
+	validImages := set{}
+	for _, appName := range apps {
+		var imgs []string
+		imgs, err := Provisioner.ValidAppImages(appName)
+		if err != nil {
+			return nil, err
+		}
+		validImages.Add(imgs...)
+	}
+	return validImages, nil
+}
+
 // ListDeploys returns the list of deploy that match a given filter.
 func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	conn, err := db.Conn()
@@ -60,64 +77,76 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	for i, a := range appsList {
 		apps[i] = a.GetName()
 	}
-	var list []DeployData
-	f := bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}
-	s := bson.M{
-		"app":         1,
-		"timestamp":   1,
-		"duration":    1,
-		"commit":      1,
-		"error":       1,
-		"image":       1,
-		"user":        1,
-		"origin":      1,
-		"canrollback": 1,
-		"removedate":  1,
-	}
-	query := conn.Deploys().Find(f).Select(s).Sort("-timestamp")
-	if skip != 0 {
-		query = query.Skip(skip)
-	}
-	if limit != 0 {
-		query = query.Limit(limit)
-	}
-	if err = query.All(&list); err != nil {
-		return nil, err
-	}
-	validImages := set{}
-	for _, appName := range apps {
-		var imgs []string
-		imgs, err = Provisioner.ValidAppImages(appName)
-		if err != nil {
-			return nil, err
-		}
-		validImages.Add(imgs...)
-	}
-	for i := range list {
-		list[i].CanRollback = validImages.Includes(list[i].Image)
-		r := regexp.MustCompile("v[0-9]+$")
-		if list[i].Image != "" && r.MatchString(list[i].Image) {
-			parts := r.FindAllStringSubmatch(list[i].Image, -1)
-			list[i].Image = parts[0][0]
-		}
-	}
-	return list, err
-}
-
-func GetDeploy(id string) (*DeployData, error) {
-	var dep DeployData
-	conn, err := db.Conn()
+	evts, err := event.List(&event.Filter{
+		Target:   event.Target{Name: "app"},
+		Raw:      bson.M{"target.value": bson.M{"$in": apps}},
+		KindName: permission.PermAppDeploy.FullName(),
+		KindType: event.KindTypePermission,
+		Limit:    limit,
+		Skip:     skip,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	validImages, err := findValidImages(apps...)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]DeployData, len(evts))
+	for i := range evts {
+		list[i] = *eventToDeployData(&evts[i], validImages, false)
+	}
+	return list, nil
+}
+
+func GetDeploy(id string) (*DeployData, error) {
 	if !bson.IsObjectIdHex(id) {
 		return nil, fmt.Errorf("id parameter is not ObjectId: %s", id)
 	}
-	if err := conn.Deploys().FindId(bson.ObjectIdHex(id)).One(&dep); err != nil {
+	objID := bson.ObjectIdHex(id)
+	evt, err := event.GetByID(objID)
+	if err != nil {
 		return nil, err
 	}
-	return &dep, nil
+	return eventToDeployData(evt, nil, true), nil
+}
+
+func eventToDeployData(evt *event.Event, validImages set, full bool) *DeployData {
+	data := &DeployData{
+		ID:        evt.UniqueID,
+		App:       evt.Target.Value,
+		Timestamp: evt.StartTime,
+		Duration:  evt.EndTime.Sub(evt.StartTime),
+		Error:     evt.Error,
+		User:      evt.Owner.Name,
+	}
+	var startOpts DeployOptions
+	err := evt.StartData(&startOpts)
+	if err == nil {
+		data.Commit = startOpts.Commit
+		data.Origin = startOpts.Origin
+	}
+	if full {
+		data.Log = evt.Log
+		var otherData map[string]string
+		err = evt.OtherData(&otherData)
+		if err == nil {
+			data.Diff = otherData["diff"]
+		}
+	}
+	var endData map[string]string
+	err = evt.EndData(&endData)
+	if err == nil {
+		data.Image = endData["image"]
+		if validImages != nil {
+			data.CanRollback = validImages.Includes(data.Image)
+			if reImageVersion.MatchString(data.Image) {
+				parts := reImageVersion.FindAllStringSubmatch(data.Image, -1)
+				data.Image = parts[0][0]
+			}
+		}
+	}
+	return data
 }
 
 type DeployOptions struct {
@@ -166,9 +195,14 @@ func Deploy(opts DeployOptions) (string, error) {
 		return "", fmt.Errorf("missing event in deploy opts")
 	}
 	if opts.Rollback && !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
-		img, err := GetImage(opts.App.Name, opts.Image)
+		validImages, err := findValidImages(opts.App.Name)
 		if err == nil {
-			opts.Image = img
+			for img := range validImages {
+				if strings.HasSuffix(img, opts.Image) {
+					opts.Image = img
+					break
+				}
+			}
 		}
 	}
 	logWriter := LogWriter{App: opts.App}
@@ -233,20 +267,4 @@ func incrementDeploy(app *App) error {
 		app.Deploys += 1
 	}
 	return err
-}
-
-func GetImage(appName, img string) (string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	var deploy DeployData
-	qApp := bson.M{"app": appName}
-	qImage := bson.M{"$or": []bson.M{{"image": img}, {"image": bson.M{"$regex": ".*:" + img + "$"}}}}
-	query := bson.M{"$and": []bson.M{qApp, qImage}}
-	if err := conn.Deploys().Find(query).One(&deploy); err != nil {
-		return "", err
-	}
-	return deploy.Image, nil
 }

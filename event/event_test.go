@@ -55,6 +55,7 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
 		ID:             eventId{Target: Target{Name: "app", Value: "myapp"}},
+		UniqueID:       evt.UniqueID,
 		Target:         Target{Name: "app", Value: "myapp"},
 		Kind:           kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
@@ -95,6 +96,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
 		ID:              eventId{Target: Target{Name: "app", Value: "myapp"}},
+		UniqueID:        evt.UniqueID,
 		Target:          Target{Name: "app", Value: "myapp"},
 		Kind:            kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:           Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
@@ -211,6 +213,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
 		ID:             eventId{ObjId: evts[0].ID.ObjId},
+		UniqueID:       evts[0].UniqueID,
 		Target:         Target{Name: "app", Value: "myapp"},
 		Kind:           kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},

@@ -118,9 +118,6 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.conn.Deploys().Insert(DeployData{App: a.Name, Timestamp: time.Now()})
-	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	Delete(app, nil)
 	evts, err := event.List(&event.Filter{})
 	c.Assert(err, check.IsNil)

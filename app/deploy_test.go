@@ -21,24 +21,41 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
+	evts := make([]*event.Event, len(data))
+	for i, d := range data {
+		evt, err := event.New(&event.Opts{
+			Target:   event.Target{Name: "app", Value: d.App},
+			Kind:     permission.PermAppDeploy,
+			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
+			CustomData: DeployOptions{
+				Commit: d.Commit,
+			},
+		})
+		evt.StartTime = d.Timestamp
+		c.Assert(err, check.IsNil)
+		evt.Logf(d.Log)
+		err = evt.SetOtherCustomData(map[string]string{"diff": d.Diff})
+		c.Assert(err, check.IsNil)
+		err = evt.DoneCustomData(nil, map[string]string{"image": d.Image})
+		c.Assert(err, check.IsNil)
+		evts[i] = evt
+	}
+	return evts
+}
+
 func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
 	a := App{Name: "g1"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff"},
 		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff"},
 	}
-	err = s.conn.Deploys().Insert(&insert[0])
-	c.Assert(err, check.IsNil)
-	err = s.conn.Deploys().Insert(&insert[0])
-	c.Assert(err, check.IsNil)
-	s.conn.Deploys().Insert(&insert)
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	insertDeploysAsEvents(insert, c)
 	deploys, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
+	c.Assert(deploys, check.HasLen, 2)
 	data, err := json.Marshal(&deploys)
 	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(data, &deploys)
@@ -58,23 +75,17 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 }
 
 func (s *S) TestListAppDeploys(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
 	a := App{Name: "g1"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff"},
 		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff"},
 	}
-	err = s.conn.Deploys().Insert(&insert[0])
-	c.Assert(err, check.IsNil)
-	err = s.conn.Deploys().Insert(&insert[0])
-	c.Assert(err, check.IsNil)
-	s.conn.Deploys().Insert(&insert)
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	insertDeploysAsEvents(insert, c)
 	deploys, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
+	c.Assert(deploys, check.HasLen, 2)
 	expected := []DeployData{insert[1], insert[0]}
 	for i := 0; i < 2; i++ {
 		c.Assert(deploys[i].App, check.Equals, expected[i].App)
@@ -90,29 +101,25 @@ func (s *S) TestListAppDeploys(c *check.C) {
 }
 
 func (s *S) TestListAppDeploysWithImage(c *check.C) {
-	s.conn.Deploys().RemoveAll(nil)
 	a := App{Name: "g1"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	insert := []interface{}{
-		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "registry.tsuru.globoi.com/tsuru/app-example:v2"},
-		DeployData{App: "g1", Timestamp: time.Now(), Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1"},
+	insert := []DeployData{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "registry.somewhere/tsuru/app-example:v2"},
+		{App: "g1", Timestamp: time.Now(), Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1"},
 	}
-	expectedDeploy := []interface{}{
-		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "v2"},
-		DeployData{App: "g1", Timestamp: time.Now(), Image: "v1"},
+	expectedDeploy := []DeployData{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "v2"},
+		{App: "g1", Timestamp: time.Now(), Image: "v1"},
 	}
-	s.conn.Deploys().Insert(insert...)
-	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	expected := []DeployData{expectedDeploy[1].(DeployData), expectedDeploy[0].(DeployData)}
+	insertDeploysAsEvents(insert, c)
+	expected := []DeployData{expectedDeploy[1], expectedDeploy[0]}
 	deploys, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
+	c.Assert(deploys, check.HasLen, 2)
+	normalizeTS(deploys)
+	normalizeTS(expected)
 	for i := 0; i < 2; i++ {
-		ts := expected[i].Timestamp
-		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-		ts = deploys[i].Timestamp
-		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
 		expected[i].ID = deploys[i].ID
 	}
 	c.Assert(deploys, check.DeepEquals, expected)
@@ -129,7 +136,6 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{
 		Name:     "ge",
 		Platform: "zend",
@@ -137,14 +143,12 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	insert := []interface{}{
-		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		DeployData{App: "ge", Timestamp: time.Now(), Image: "app-image"},
+	insert := []DeployData{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		{App: "ge", Timestamp: time.Now(), Image: "app-image"},
 	}
-	s.conn.Deploys().Insert(insert...)
-	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
+	insertDeploysAsEvents(insert, c)
+	expected := []DeployData{insert[1], insert[0]}
 	expected[0].CanRollback = true
 	normalizeTS(expected)
 	f := &Filter{}
@@ -162,9 +166,9 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 }
 
 func normalizeTS(deploys []DeployData) {
-	for i := 0; i < len(deploys); i++ {
-		ts := deploys[i].Timestamp
-		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+	for i := range deploys {
+		deploys[i].Timestamp = time.Unix(deploys[i].Timestamp.Unix(), 0)
+		deploys[i].Duration = 0
 		deploys[i].ID = "-ignored-"
 	}
 }
@@ -174,11 +178,8 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
-	defer user.Delete()
 	team := &auth.Team{Name: "team"}
-	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Teams().Remove(team)
 	a := App{
 		Name:     "app1",
 		Platform: "zend",
@@ -186,28 +187,19 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.conn.Deploys().RemoveAll(nil)
-	insert := []interface{}{
-		DeployData{App: "app1", Commit: "v1", Timestamp: time.Now().Add(-30 * time.Second)},
-		DeployData{App: "app1", Commit: "v2", Timestamp: time.Now().Add(-20 * time.Second)},
-		DeployData{App: "app1", Commit: "v3", Timestamp: time.Now().Add(-10 * time.Second)},
-		DeployData{App: "app1", Commit: "v4", Timestamp: time.Now()},
+	insert := []DeployData{
+		{App: "app1", Commit: "v1", Timestamp: time.Now().Add(-30 * time.Second)},
+		{App: "app1", Commit: "v2", Timestamp: time.Now().Add(-20 * time.Second)},
+		{App: "app1", Commit: "v3", Timestamp: time.Now().Add(-10 * time.Second)},
+		{App: "app1", Commit: "v4", Timestamp: time.Now()},
 	}
-	s.conn.Deploys().Insert(insert...)
-	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []DeployData{insert[2].(DeployData), insert[1].(DeployData)}
+	insertDeploysAsEvents(insert, c)
+	expected := []DeployData{insert[2], insert[1]}
 	deploys, err := ListDeploys(nil, 1, 2)
 	c.Assert(err, check.IsNil)
 	c.Assert(deploys, check.HasLen, 2)
-	for i := 0; i < len(deploys); i++ {
-		ts := expected[i].Timestamp
-		newTs := time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-		expected[i].Timestamp = newTs
-		ts = deploys[i].Timestamp
-		deploys[i].Timestamp = newTs
-		expected[i].ID = deploys[i].ID
-	}
+	normalizeTS(deploys)
+	normalizeTS(expected)
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
@@ -218,19 +210,13 @@ func (s *S) TestGetDeploy(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.conn.Deploys().RemoveAll(nil)
-	newDeploy := DeployData{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
-	err = s.conn.Deploys().Insert(&newDeploy)
+	newDeploy := DeployData{App: "g1", Timestamp: time.Now()}
+	evts := insertDeploysAsEvents([]DeployData{newDeploy}, c)
+	lastDeploy, err := GetDeploy(evts[0].UniqueID.Hex())
 	c.Assert(err, check.IsNil)
-	defer s.conn.Deploys().Remove(bson.M{"name": newDeploy.App})
-	lastDeploy, err := GetDeploy(newDeploy.ID.Hex())
-	c.Assert(err, check.IsNil)
-	ts := lastDeploy.Timestamp
-	lastDeploy.Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-	ts = newDeploy.Timestamp
-	newDeploy.Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
-	c.Assert(lastDeploy.ID, check.Equals, newDeploy.ID)
+	lastDeploy.Timestamp = time.Unix(lastDeploy.Timestamp.Unix(), 0)
+	newDeploy.Timestamp = time.Unix(newDeploy.Timestamp.Unix(), 0)
+	c.Assert(lastDeploy.ID, check.Equals, evts[0].UniqueID)
 	c.Assert(lastDeploy.App, check.Equals, newDeploy.App)
 	c.Assert(lastDeploy.Timestamp, check.Equals, newDeploy.Timestamp)
 }
@@ -238,7 +224,7 @@ func (s *S) TestGetDeploy(c *check.C) {
 func (s *S) TestGetDeployNotFound(c *check.C) {
 	idTest := bson.NewObjectId()
 	deploy, err := GetDeploy(idTest.Hex())
-	c.Assert(err.Error(), check.Equals, "not found")
+	c.Assert(err, check.Equals, event.ErrEventNotFound)
 	c.Assert(deploy, check.IsNil)
 }
 
@@ -258,9 +244,7 @@ func (s *S) TestDeployApp(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -290,9 +274,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -324,9 +306,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -355,9 +335,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
 	evt, err := event.New(&event.Opts{
@@ -388,9 +366,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -419,9 +395,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -450,9 +424,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -486,9 +458,7 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	provisioner.Provision(&a)
-	defer provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -524,9 +494,7 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	writer := &bytes.Buffer{}
 	err = a.Sleep(writer, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
@@ -559,7 +527,6 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	incrementDeploy(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -574,9 +541,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, Image: "myimage"}
 	_, err = deployToProvisioner(&opts, writer)
@@ -593,9 +558,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
 	_, err = deployToProvisioner(&opts, writer)
@@ -612,9 +575,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, File: ioutil.NopCloser(bytes.NewBuffer([]byte("my file")))}
 	_, err = deployToProvisioner(&opts, writer)
@@ -631,9 +592,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, Image: "my-image-x"}
 	_, err = deployToProvisioner(&opts, writer)
@@ -651,20 +610,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -672,15 +618,16 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = Deploy(DeployOptions{
+	imgID, err := Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		Image:        "registry.tsuru.globoi.com/tsuru/app-example:v2",
+		Image:        "registry.somewhere/tsuru/app-example:v2",
 		Rollback:     true,
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
+	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
 }
 
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
@@ -692,20 +639,9 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	s.provisioner.SetValidImagesForApp("otherapp", []string{"registry.somewhere/tsuru/app-example:v1", "registry.somewhere/tsuru/app-example:v2"})
+	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -713,7 +649,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = Deploy(DeployOptions{
+	imgID, err := Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		Image:        "v2",
@@ -722,6 +658,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
+	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
 }
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
@@ -733,20 +670,9 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
 	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	s.provisioner.SetValidImagesForApp("otherapp", []string{"registry.somewhere/tsuru/app-example:v1", "registry.somewhere/tsuru/app-example:v2"})
+	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Name: "app", Value: a.Name},
@@ -754,7 +680,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = Deploy(DeployOptions{
+	imgID, err := Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
 		Image:        "v20",
@@ -762,64 +688,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestGetImageName(c *check.C) {
-	a := App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err = s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
-	img, err := GetImage("otherapp", "v2")
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, deploys[0].Image)
-	img, err = GetImage("otherapp", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1")
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, deploys[1].Image)
-}
-
-func (s *S) TestGetImageNameInexistDeploy(c *check.C) {
-	apps := []App{
-		{Name: "otherapp", Platform: "zend", Teams: []string{s.team.Name}},
-		{Name: "otherapp2", Platform: "zend", Teams: []string{s.team.Name}},
-	}
-	for _, a := range apps {
-		err := s.conn.Apps().Insert(a)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Apps().RemoveAll(nil)
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := []DeployData{
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "regiv3ry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
-		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
-		{App: "otherapp2", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v3", CanRollback: true},
-	}
-	for _, deploy := range deploys {
-		err := s.conn.Deploys().Insert(deploy)
-		c.Assert(err, check.IsNil)
-	}
-	defer s.conn.Deploys().RemoveAll(nil)
-	_, err := GetImage("otherapp", "v3")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "not found")
-	_, err = GetImage("otherapp", "regiv3ry.tsuru.globoi.com/tsuru/app-example:v5")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "not found")
+	c.Assert(imgID, check.Equals, "v20")
 }
 
 func (s *S) TestDeployKind(c *check.C) {

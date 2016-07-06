@@ -791,14 +791,6 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	duration := time.Since(timestamp)
-	deploys := app.DeployData{
-		App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "tsuru/app-otherapp:v1", CanRollback: true,
-	}
-	err = conn.Deploys().Insert(deploys)
-	c.Assert(err, check.IsNil)
-	defer conn.Deploys().RemoveAll(nil)
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target: event.Target{Name: "app", Value: a.Name},
@@ -2144,7 +2136,7 @@ func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
 	a := provisiontest.NewFakeApp("otherapp", "python", 1)
 	_, err := s.p.Rollback(a, "inexist", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Image \"inexist\" \"not found\"")
+	c.Assert(err.Error(), check.Equals, "Image \"inexist\" not found in app")
 
 }
 

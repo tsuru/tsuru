@@ -116,6 +116,31 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{Target: event.Target{Name: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
 }
 
+func (s *S) TestGetByID(c *check.C) {
+	evt, err := event.New(&event.Opts{Target: event.Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	c.Assert(err, check.IsNil)
+	otherEvt, err := event.GetByID(evt.UniqueID)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt, eventtest.EvtEquals, otherEvt)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	otherEvt, err = event.GetByID(evt.UniqueID)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt, eventtest.EvtEquals, otherEvt)
+}
+
+func (s *S) TestGetRunning(c *check.C) {
+	evt, err := event.New(&event.Opts{Target: event.Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	c.Assert(err, check.IsNil)
+	getEvt, err := event.GetRunning(event.Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	c.Assert(err, check.IsNil)
+	c.Assert(evt, eventtest.EvtEquals, getEvt)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	_, err = event.GetRunning(event.Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	c.Assert(err, check.Equals, event.ErrEventNotFound)
+}
+
 func boolPtr(b bool) *bool {
 	return &b
 }

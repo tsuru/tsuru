@@ -26,7 +26,7 @@ func (s *S) TestListHealingHistory(c *check.C) {
 		InternalKind: "healer",
 	})
 	c.Assert(err, check.IsNil)
-	err = evt1.Done(nil)
+	err = evt2.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err := ListHealingHistory("")
 	c.Assert(err, check.IsNil)

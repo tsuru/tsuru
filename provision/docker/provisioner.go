@@ -380,8 +380,19 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error
 }
 
 func (p *dockerProvisioner) Rollback(a provision.App, imageId string, w io.Writer) (string, error) {
-	if _, err := app.GetImage(a.GetName(), imageId); err != nil {
-		return "", stderr.New(fmt.Sprintf("Image %q %q", imageId, err.Error()))
+	validImgs, err := p.ValidAppImages(a.GetName())
+	if err != nil {
+		return "", err
+	}
+	valid := false
+	for _, img := range validImgs {
+		if img == imageId {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return "", fmt.Errorf("Image %q not found in app", imageId)
 	}
 	return imageId, p.deploy(a, imageId, w)
 }

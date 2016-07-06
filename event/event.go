@@ -110,6 +110,7 @@ func (id eventId) GetBSON() (interface{}, error) {
 // serializing).
 type eventData struct {
 	ID              eventId `bson:"_id"`
+	UniqueID        bson.ObjectId
 	StartTime       time.Time
 	EndTime         time.Time   `bson:",omitempty"`
 	Target          Target      `bson:",omitempty"`
@@ -220,8 +221,10 @@ type Filter struct {
 	Until          time.Time
 	Running        *bool
 	IncludeRemoved bool
+	Raw            bson.M
 
 	Limit int
+	Skip  int
 	Sort  string
 }
 
@@ -261,6 +264,11 @@ func (f *Filter) toQuery() bson.M {
 	if !f.IncludeRemoved {
 		query["removedate"] = bson.M{"$exists": false}
 	}
+	if f.Raw != nil {
+		for k, v := range f.Raw {
+			query[k] = v
+		}
+	}
 	return query
 }
 
@@ -286,12 +294,33 @@ func GetRunning(target Target, kind string) (*Event, error) {
 	return &evt, nil
 }
 
+func GetByID(id bson.ObjectId) (*Event, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	var evt Event
+	err = coll.Find(bson.M{
+		"uniqueid": id,
+	}).One(&evt.eventData)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, ErrEventNotFound
+		}
+		return nil, err
+	}
+	return &evt, nil
+}
+
 func All() ([]Event, error) {
 	return List(nil)
 }
 
 func List(filter *Filter) ([]Event, error) {
 	limit := 100
+	skip := 0
 	var query bson.M
 	sort := "-starttime"
 	if filter != nil {
@@ -300,6 +329,9 @@ func List(filter *Filter) ([]Event, error) {
 		}
 		if filter.Sort != "" {
 			sort = filter.Sort
+		}
+		if filter.Skip > 0 {
+			skip = filter.Skip
 		}
 		query = filter.toQuery()
 	}
@@ -312,6 +344,9 @@ func List(filter *Filter) ([]Event, error) {
 	find := coll.Find(query).Sort(sort)
 	if limit > 0 {
 		find = find.Limit(limit)
+	}
+	if skip > 0 {
+		find = find.Skip(skip)
 	}
 	var allData []eventData
 	err = find.All(&allData)
@@ -430,6 +465,7 @@ func newEvt(opts *Opts) (*Event, error) {
 	now := time.Now().UTC()
 	evt := Event{eventData: eventData{
 		ID:              eventId{Target: opts.Target},
+		UniqueID:        bson.NewObjectId(),
 		Target:          opts.Target,
 		StartTime:       now,
 		Kind:            k,
@@ -568,6 +604,14 @@ func (e *Event) EndData(value interface{}) error {
 	return json.Unmarshal(data, value)
 }
 
+func (e *Event) OtherData(value interface{}) error {
+	data, err := json.Marshal(e.OtherCustomData)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, value)
+}
+
 func (e *Event) done(evtErr error, customData interface{}, abort bool) (err error) {
 	// Done will be usually called in a defer block ignoring errors. This is
 	// why we log error messages here.
@@ -601,7 +645,7 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		e.OtherCustomData = dbEvt.OtherCustomData
 	}
 	defer coll.RemoveId(e.ID)
-	e.ID = eventId{ObjId: bson.NewObjectId()}
+	e.ID = eventId{ObjId: e.UniqueID}
 	return coll.Insert(e.eventData)
 }
 

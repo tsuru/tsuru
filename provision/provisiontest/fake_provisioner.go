@@ -345,14 +345,15 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	cmds     []Cmd
-	cmdMut   sync.Mutex
-	outputs  chan []byte
-	failures chan failure
-	apps     map[string]provisionedApp
-	mut      sync.RWMutex
-	shells   map[string][]provision.ShellOptions
-	shellMut sync.Mutex
+	cmds      []Cmd
+	cmdMut    sync.Mutex
+	outputs   chan []byte
+	failures  chan failure
+	apps      map[string]provisionedApp
+	mut       sync.RWMutex
+	shells    map[string][]provision.ShellOptions
+	shellMut  sync.Mutex
+	validImgs map[string][]string
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -1048,9 +1049,19 @@ func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
 	return nil
 }
 
+func (p *FakeProvisioner) SetValidImagesForApp(appName string, imgs []string) {
+	if p.validImgs == nil {
+		p.validImgs = map[string][]string{}
+	}
+	p.validImgs[appName] = imgs
+}
+
 func (p *FakeProvisioner) ValidAppImages(appName string) ([]string, error) {
 	if err := p.getError("ValidAppImages"); err != nil {
 		return nil, err
+	}
+	if p.validImgs != nil && p.validImgs[appName] != nil {
+		return p.validImgs[appName], nil
 	}
 	return []string{"app-image-old", "app-image"}, nil
 }
