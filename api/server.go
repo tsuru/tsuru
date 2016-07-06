@@ -165,6 +165,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/deploys", AuthorizationRequiredHandler(deploysList))
 	m.Add("1.0", "Get", "/deploys/{deploy}", AuthorizationRequiredHandler(deployInfo))
 
+	m.Add("1.1", "Get", "/events", AuthorizationRequiredHandler(eventList))
+
 	m.Add("1.0", "Get", "/platforms", AuthorizationRequiredHandler(platformList))
 	m.Add("1.0", "Post", "/platforms", AuthorizationRequiredHandler(platformAdd))
 	m.Add("1.0", "Put", "/platforms/{name}", AuthorizationRequiredHandler(platformUpdate))
