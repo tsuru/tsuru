@@ -20,7 +20,12 @@ import (
 //   200: OK
 //   204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	events, err := event.List(&event.Filter{})
+	filter := &event.Filter{}
+	target := r.URL.Query().Get("target")
+	if target != "" {
+		filter.Target = event.Target{Name: target}
+	}
+	events, err := event.List(filter)
 	if err != nil {
 		return err
 	}
