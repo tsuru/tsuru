@@ -22,8 +22,7 @@ import (
 //   204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	filter := &event.Filter{}
-	target := r.URL.Query().Get("target")
-	if target != "" {
+	if target := r.URL.Query().Get("target"); target != "" {
 		filter.Target = event.Target{Name: target}
 	}
 	if running, err := strconv.ParseBool(r.URL.Query().Get("running")); err == nil {
