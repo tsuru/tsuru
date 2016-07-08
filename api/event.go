@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event"
@@ -24,6 +25,9 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	target := r.URL.Query().Get("target")
 	if target != "" {
 		filter.Target = event.Target{Name: target}
+	}
+	if running, err := strconv.ParseBool(r.URL.Query().Get("running")); err == nil {
+		filter.Running = &running
 	}
 	events, err := event.List(filter)
 	if err != nil {
