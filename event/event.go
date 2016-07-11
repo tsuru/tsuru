@@ -697,7 +697,7 @@ func (l *lockUpdater) spin() {
 			i++
 		}
 		err = coll.Update(bson.M{"_id": bson.M{"$in": slice}}, bson.M{"$set": bson.M{"lockupdatetime": time.Now().UTC()}})
-		if err != nil {
+		if err != nil && err != mgo.ErrNotFound {
 			log.Errorf("[events] [lock update] error updating: %s", err)
 		}
 		conn.Close()
