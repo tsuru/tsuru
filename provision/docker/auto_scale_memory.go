@@ -101,12 +101,12 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scal
 	}
 	chosenNodes, err := a.chooseNodeForRemoval(maxPlanMemory, groupMetadata, nodes)
 	if err != nil {
-		return nil, fmt.Errorf("unable to choose node for removal: %s", err)
+		return nil, err
 	}
 	if chosenNodes != nil {
 		return &scalerResult{
-			toRemove: chosenNodes,
-			reason:   fmt.Sprintf("containers can be distributed in only %d nodes", len(nodes)-len(chosenNodes)),
+			ToRemove: chosenNodes,
+			Reason:   fmt.Sprintf("containers can be distributed in only %d nodes", len(nodes)-len(chosenNodes)),
 		}, nil
 	}
 	memoryData, err := a.nodesMemoryData(nodes)
@@ -128,14 +128,14 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scal
 		}
 	}
 	if canFitMax {
-		return nil, nil
+		return &scalerResult{}, nil
 	}
 	nodesToAdd := int((totalReserved + maxPlanMemory) / totalMem)
 	if nodesToAdd == 0 {
-		return nil, nil
+		return &scalerResult{}, nil
 	}
 	return &scalerResult{
-		toAdd:  nodesToAdd,
-		reason: fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory),
+		ToAdd:  nodesToAdd,
+		Reason: fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory),
 	}, nil
 }

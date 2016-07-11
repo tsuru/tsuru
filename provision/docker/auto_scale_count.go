@@ -18,7 +18,7 @@ type countScaler struct {
 func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scalerResult, error) {
 	totalCount, _, err := a.provisioner.containerGapInNodes(nodes)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't find containers from nodes: %s", err)
+		return nil, err
 	}
 	freeSlots := (len(nodes) * a.rule.MaxContainerCount) - totalCount
 	reasonMsg := fmt.Sprintf("number of free slots is %d", freeSlots)
@@ -28,22 +28,22 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scale
 		chosenNodes := chooseNodeForRemoval(nodes, toRemoveCount)
 		if len(chosenNodes) == 0 {
 			a.logDebug("would remove any node but can't due to metadata restrictions")
-			return nil, nil
+			return &scalerResult{}, nil
 		}
 		return &scalerResult{
-			toRemove: chosenNodes,
-			reason:   reasonMsg,
+			ToRemove: chosenNodes,
+			Reason:   reasonMsg,
 		}, nil
 	}
 	if freeSlots >= 0 {
-		return nil, nil
+		return &scalerResult{}, nil
 	}
 	nodesToAdd := -freeSlots / a.rule.MaxContainerCount
 	if freeSlots%a.rule.MaxContainerCount != 0 {
 		nodesToAdd++
 	}
 	return &scalerResult{
-		toAdd:  nodesToAdd,
-		reason: reasonMsg,
+		ToAdd:  nodesToAdd,
+		Reason: reasonMsg,
 	}, nil
 }

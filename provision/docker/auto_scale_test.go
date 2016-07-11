@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -18,12 +16,15 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type AutoScaleSuite struct {
@@ -139,24 +140,19 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -2, adding 1 nodes")
-	c.Assert(evts[0].Nodes, check.HasLen, 1)
-	c.Assert(evts[0].Nodes[0].Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL())))
-	c.Assert(evts[0].Nodes[0].Metadata["pool"], check.Equals, "pool1")
-	logParts := strings.Split(evts[0].Log, "\n")
-	c.Assert(logParts, check.HasLen, 15)
-	c.Assert(logParts[0], check.Matches, `.*running scaler.*countScaler.*pool1.*`)
-	c.Assert(logParts[2], check.Matches, `.*new machine created.*`)
-	c.Assert(logParts[5], check.Matches, `.*Rebalancing 4 units.*`)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -2",
+			"nodes": bson.M{"$elemMatch": bson.M{
+				"_id": fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL())),
+			}},
+		},
+		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*Rebalancing 4 units.*`,
+	}, eventtest.HasEvent)
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -169,7 +165,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
-	evts, err = listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	containers1Again, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
@@ -202,15 +198,19 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": false,
+			"result.reason":      "number of free slots is -2",
+			"nodes": bson.M{"$elemMatch": bson.M{
+				"_id": fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL())),
+			}},
+		},
+		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*`,
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -221,7 +221,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
-	evts, err = listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	containers1Again, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
@@ -250,15 +250,19 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -2",
+			"nodes": bson.M{"$elemMatch": bson.M{
+				"_id": fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL())),
+			}},
+		},
+		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*`,
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -277,7 +281,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	evts, err := listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
@@ -300,10 +304,21 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].Nodes, check.HasLen, 1)
+	nodeMatch := bson.M{"$elemMatch": bson.M{
+		"_id": fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(s.node1.URL())),
+	}}
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       0,
+			"result.torebalance": false,
+			"result.reason":      "number of free slots is 4",
+			"result.toremove":    nodeMatch,
+			"nodes":              nodeMatch,
+		},
+		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*running event "remove".*pool1.*`,
+	}, eventtest.HasEvent)
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
@@ -325,17 +340,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	c.Assert(nodes, check.HasLen, 3)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -4, adding 2 nodes")
-	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       2,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -4",
+			"nodes":              bson.M{"$size": 2},
+		},
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -366,17 +380,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check
 	c.Assert(nodes, check.HasLen, 3)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -3, adding 2 nodes")
-	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       2,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -3",
+			"nodes":              bson.M{"$size": 2},
+		},
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -406,17 +419,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -1, adding 1 nodes")
-	c.Assert(evts[0].Nodes, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -1",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -452,17 +464,17 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Nodes, check.HasLen, 1)
-	c.Assert(evts[0].Log, check.Matches, `(?s).*not all required nodes were created: error running bs task: API error.*`)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       2,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -4",
+			"nodes":              bson.M{"$size": 1},
+		},
+		LogMatches: `(?s).*not all required nodes were created: error running bs task: API error.*`,
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -492,15 +504,15 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "rebalance")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       0,
+			"result.torebalance": true,
+			"result.reason":      "gap is 4, after rebalance gap will be 0",
+		},
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -541,7 +553,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, originalNodes[0].Address)
-	evts, err := listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
@@ -557,7 +569,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	evts, err = listAutoScaleEvents(0, 0)
+	evts, err = event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 	config.Set("docker:auto-scale:metadata-filter", "pool1")
@@ -565,7 +577,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
-	evts, err = listAutoScaleEvents(0, 0)
+	evts, err = event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 }
@@ -596,15 +608,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunStress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -2",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -635,16 +648,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "can't add 4194304 bytes to an existing node, adding 1 nodes")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "can't add 4194304 bytes to an existing node",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -657,7 +670,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
-	evts, err = listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	containers1Again, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
@@ -687,18 +700,17 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "can't add 4194304 bytes to an existing node, adding 2 nodes")
-	c.Assert(evts[0].Log, check.Matches, `(?s).*new machine created: .*? - started!.*new machine created: .*? - started!.*`)
-	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       2,
+			"result.torebalance": true,
+			"result.reason":      "can't add 4194304 bytes to an existing node",
+			"nodes":              bson.M{"$size": 2},
+		},
+		LogMatches: `(?s).*new machine created: .*? - started!.*new machine created: .*? - started!.*`,
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
@@ -719,7 +731,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
-	evts, err = listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	containers1Again, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
@@ -759,10 +771,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].Nodes, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toremove":    bson.M{"$size": 1},
+			"result.torebalance": false,
+			"result.reason":      "containers can be distributed in only 1 nodes",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
@@ -787,15 +805,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) 
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "can't add 4194304 bytes to an existing node",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	containers2, err := s.p.listContainersByHost(net.URLToHost(nodes[1].Address))
@@ -829,14 +848,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 		provisioner: s.p,
 	}
 	a.runOnce()
-	c.Assert(s.S.logBuf, check.Matches, `(?s).*\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659.*`)
+	c.Assert(s.S.logBuf, check.Matches, `(?s).*error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659.*`)
+	c.Assert(eventtest.EventDesc{
+		Target:       event.Target{Name: "pool", Value: "pool1"},
+		Kind:         "autoscale",
+		ErrorMatches: `error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659`,
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, originalNodes[0].Address)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 0)
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
@@ -870,16 +891,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "remove")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "number of free slots is 6, removing 1 nodes")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toremove":    bson.M{"$size": 1},
+			"result.torebalance": false,
+			"result.reason":      "number of free slots is 6",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -932,17 +953,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "remove")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Nodes, check.HasLen, 2)
-	c.Assert(evts[0].Reason, check.Equals, "number of free slots is 12, removing 2 nodes")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toremove":    bson.M{"$size": 2},
+			"result.torebalance": false,
+			"result.reason":      "number of free slots is 12",
+			"nodes":              bson.M{"$size": 2},
+		},
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -986,16 +1006,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "remove")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Reason, check.Equals, "containers can be distributed in only 1 nodes, removing 1 nodes")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toremove":    bson.M{"$size": 1},
+			"result.torebalance": false,
+			"result.reason":      "containers can be distributed in only 1 nodes",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1052,17 +1072,16 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
-	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
-	c.Assert(evts[0].Action, check.Equals, "remove")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Nodes, check.HasLen, 2)
-	c.Assert(evts[0].Reason, check.Equals, "containers can be distributed in only 1 nodes, removing 2 nodes")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toremove":    bson.M{"$size": 2},
+			"result.torebalance": false,
+			"result.reason":      "containers can be distributed in only 1 nodes",
+			"nodes":              bson.M{"$size": 2},
+		},
+	}, eventtest.HasEvent)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1114,7 +1133,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *chec
 		provisioner: s.p,
 	}
 	a.runOnce()
-	evts, err := listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 	nodes, err := s.p.cluster.Nodes()
@@ -1137,12 +1156,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunLockedApp(c *check.C) {
 		done:        make(chan bool),
 		provisioner: s.p,
 	}
+	s.S.logBuf.Reset()
 	a.runOnce()
-	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*\[node autoscale\].*unable to lock app myapp, aborting.*`)
+	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	evts, err := listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
@@ -1168,11 +1188,11 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) 
 		provisioner: s.p,
 	}
 	a.runOnce()
-	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*\[node autoscale\].*unable to lock app myapp, aborting.*`)
+	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	evts, err := listAutoScaleEvents(0, 0)
+	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
@@ -1260,26 +1280,26 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	nodes, err := s.p.cluster.UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 4)
-	evts, err := listAutoScaleEvents(0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 2)
-	c.Assert(evts[0].Action, check.Equals, "add")
-	c.Assert(evts[0].Successful, check.Equals, true)
-	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Nodes, check.HasLen, 1)
-	c.Assert(evts[1].Action, check.Equals, "add")
-	c.Assert(evts[1].Successful, check.Equals, true)
-	c.Assert(evts[1].Error, check.Equals, "")
-	c.Assert(evts[1].Nodes, check.HasLen, 1)
-	metadataValues := []string{evts[0].MetadataValue, evts[1].MetadataValue}
-	sort.Strings(metadataValues)
-	c.Assert(metadataValues, check.DeepEquals, []string{"pool1", "pool2"})
-	reasons := []string{evts[0].Reason, evts[1].Reason}
-	sort.Strings(reasons)
-	c.Assert(reasons, check.DeepEquals, []string{
-		"can't add 4194304 bytes to an existing node, adding 1 nodes",
-		"number of free slots is -2, adding 1 nodes",
-	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool2"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "can't add 4194304 bytes to an existing node",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Name: "pool", Value: "pool1"},
+		Kind:   "autoscale",
+		EndCustomData: map[string]interface{}{
+			"result.toadd":       1,
+			"result.torebalance": true,
+			"result.reason":      "number of free slots is -2",
+			"nodes":              bson.M{"$size": 1},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
