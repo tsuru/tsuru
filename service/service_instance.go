@@ -155,10 +155,10 @@ func (si *ServiceInstance) BindApp(app bind.App, shouldRestart bool, writer io.W
 		shouldRestart:   shouldRestart,
 	}
 	actions := []*action.Action{
-		&bindAppDBAction,
-		&bindAppEndpointAction,
-		&setBoundEnvsAction,
-		&bindUnitsAction,
+		bindAppDBAction,
+		bindAppEndpointAction,
+		setBoundEnvsAction,
+		bindUnitsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(&args)

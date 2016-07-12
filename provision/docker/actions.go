@@ -487,7 +487,7 @@ var setRouterHealthcheck = action.Action{
 			msg = fmt.Sprintf("%s, Status: %d", msg, hcData.Status)
 		}
 		if hcData.Body != "" {
-			msg = fmt.Sprintf("%s, Body: %d", msg, hcData.Body)
+			msg = fmt.Sprintf("%s, Body: %s", msg, hcData.Body)
 		}
 		fmt.Fprintf(writer, "\n---- Setting router healthcheck (%s) ----\n", msg)
 		err = hcRouter.SetHealthcheck(args.app.GetName(), hcData)

@@ -70,8 +70,8 @@ func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
 		return nil, err
 	}
 	asEvts := make([]autoScaleEvent, len(evts))
-	for i, evt := range evts {
-		asEvts[i], err = toAutoScaleEvent(&evt)
+	for i := range evts {
+		asEvts[i], err = toAutoScaleEvent(&evts[i])
 		if err != nil {
 			return nil, err
 		}

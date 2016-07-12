@@ -112,7 +112,7 @@ type bindPipelineArgs struct {
 	shouldRestart   bool
 }
 
-var bindAppDBAction = action.Action{
+var bindAppDBAction = &action.Action{
 	Name: "bind-app-db",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
@@ -144,7 +144,7 @@ var bindAppDBAction = action.Action{
 	MinParams: 1,
 }
 
-var bindAppEndpointAction = action.Action{
+var bindAppEndpointAction = &action.Action{
 	Name: "bind-app-endpoint",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
@@ -172,7 +172,7 @@ var bindAppEndpointAction = action.Action{
 	MinParams: 1,
 }
 
-var setBoundEnvsAction = action.Action{
+var setBoundEnvsAction = &action.Action{
 	Name: "set-bound-envs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
@@ -205,7 +205,7 @@ var setBoundEnvsAction = action.Action{
 	},
 }
 
-var bindUnitsAction = action.Action{
+var bindUnitsAction = &action.Action{
 	Name: "bind-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)

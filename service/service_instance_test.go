@@ -101,26 +101,26 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	}()
 	var calls []string
 	var params []interface{}
-	bindAppDBAction = action.Action{
+	bindAppDBAction = &action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
 			calls = append(calls, "bindAppDBAction")
 			params = ctx.Params
 			return nil, nil
 		},
 	}
-	bindAppEndpointAction = action.Action{
+	bindAppEndpointAction = &action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
 			calls = append(calls, "bindAppEndpointAction")
 			return nil, nil
 		},
 	}
-	setBoundEnvsAction = action.Action{
+	setBoundEnvsAction = &action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
 			calls = append(calls, "setBoundEnvsAction")
 			return nil, nil
 		},
 	}
-	bindUnitsAction = action.Action{
+	bindUnitsAction = &action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
 			calls = append(calls, "bindUnitsAction")
 			return nil, nil
