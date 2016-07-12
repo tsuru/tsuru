@@ -137,7 +137,6 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 }
 
 func (s *S) TestShellToContainerSessionExpired(c *check.C) {
-	var called bool
 	var stdout, stderr, stdin bytes.Buffer
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	context := Context{
@@ -152,7 +151,6 @@ func (s *S) TestShellToContainerSessionExpired(c *check.C) {
 			Status:  http.StatusUnauthorized,
 		},
 		CondFunc: func(req *http.Request) bool {
-			called = true
 			return req.Method == "GET" && req.URL.Path == "/1.0/apps/myapp"
 		},
 	}

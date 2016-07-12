@@ -181,6 +181,7 @@ func (s *S) TestUpdateService(c *check.C) {
 	err = service.Update()
 	c.Assert(err, check.IsNil)
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
+	c.Assert(err, check.IsNil)
 	c.Assert(service.Doc, check.Equals, "doc")
 }
 

@@ -296,6 +296,9 @@ func validateServiceInstanceName(service string, instance string) error {
 	defer conn.Close()
 	query := bson.M{"name": instance, "service_name": service}
 	length, err := conn.ServiceInstances().Find(query).Count()
+	if err != nil {
+		return err
+	}
 	if length > 0 {
 		return ErrInstanceNameAlreadyExists
 	}

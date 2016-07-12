@@ -277,6 +277,7 @@ func (s *GandalfSuite) TestRevokeAccess(c *check.C) {
 	err = manager.GrantAccess("myrepo", "otheruser")
 	c.Assert(err, check.IsNil)
 	err = manager.RevokeAccess("myrepo", "myuser")
+	c.Assert(err, check.IsNil)
 	grants := s.server.Grants()
 	expected := map[string][]string{"myrepo": {"user1", "otheruser"}}
 	c.Assert(grants, check.DeepEquals, expected)

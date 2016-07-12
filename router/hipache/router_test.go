@@ -242,6 +242,7 @@ func (s *S) TestAddRouteWithoutAssemblingFrontend(c *check.C) {
 	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
 	routes, err := conn.LRange("test.com", 0, -1).Result()
+	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []string{"10.10.10.10"})
 }
 

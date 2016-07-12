@@ -52,6 +52,7 @@ func (s *S) TestLoadConfigExpireDaysNotInteger(c *check.C) {
 	config.Set("auth:token-expire-days", "abacaxi")
 	defer config.Set("auth:token-expire-days", oldValue)
 	err = loadConfig()
+	c.Assert(err, check.IsNil)
 	c.Assert(tokenExpire, check.Equals, defaultExpiration)
 }
 

@@ -34,6 +34,7 @@ func (s *S) TestTeamAllowedApps(c *check.C) {
 		s.conn.Teams().RemoveId(team.Name)
 	}()
 	alwdApps, err := team.AllowedApps()
+	c.Assert(err, check.IsNil)
 	c.Assert(alwdApps, check.DeepEquals, []string{a2.Name})
 }
 

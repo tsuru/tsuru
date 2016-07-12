@@ -39,6 +39,7 @@ func (s *S) TestListRoles(c *check.C) {
 	err = coll.UpdateId(r.Name, r)
 	c.Assert(err, check.IsNil)
 	roles, err = ListRoles()
+	c.Assert(err, check.IsNil)
 	expected = []Role{{Name: "test", ContextType: "app", Events: []string{}, SchemeNames: []string{
 		"app.deploy", "app.update",
 	}}}
