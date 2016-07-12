@@ -119,13 +119,13 @@ type eventData struct {
 	OtherCustomData interface{} `bson:",omitempty"`
 	Kind            kind
 	Owner           Owner
-	Cancelable      bool
-	Running         bool
 	LockUpdateTime  time.Time
 	Error           string
-	Log             string `bson:",omitempty"`
-	CancelInfo      cancelInfo
+	Log             string    `bson:",omitempty"`
 	RemoveDate      time.Time `bson:",omitempty"`
+	CancelInfo      cancelInfo
+	Cancelable      bool
+	Running         bool
 }
 
 type cancelInfo struct {

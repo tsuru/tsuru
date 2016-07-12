@@ -13,8 +13,8 @@ type fileInfo struct {
 	name    string
 	size    int64
 	mode    os.FileMode
-	modTime time.Time
 	isDir   bool
+	modTime time.Time
 	sys     interface{}
 }
 

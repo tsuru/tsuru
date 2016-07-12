@@ -98,10 +98,10 @@ type CreateArgs struct {
 	ImageID          string
 	Commands         []string
 	App              provision.App
-	Deploy           bool
 	Provisioner      DockerProvisioner
 	DestinationHosts []string
 	ProcessName      string
+	Deploy           bool
 	Building         bool
 }
 
