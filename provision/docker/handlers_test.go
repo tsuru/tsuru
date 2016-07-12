@@ -1217,21 +1217,27 @@ func (s *HandlersSuite) TestAutoScaleHistoryNoContent(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
-	evt1, err := newAutoScaleEvent("poolx", nil)
+	evt1, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Name: poolMetadataName, Value: "poolx"},
+		InternalKind: autoScaleEventKind,
+	})
 	c.Assert(err, check.IsNil)
-	err = evt1.update("add", "reason 1")
+	evt1.Logf("my evt1")
+	err = evt1.DoneCustomData(nil, evtCustomData{
+		Result: &scalerResult{ToAdd: 1, Reason: "r1"},
+	})
 	c.Assert(err, check.IsNil)
-	err = evt1.finish(nil)
-	c.Assert(err, check.IsNil)
-	evt1.logMsg("my evt1")
 	time.Sleep(100 * time.Millisecond)
-	evt2, err := newAutoScaleEvent("pooly", nil)
+	evt2, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Name: poolMetadataName, Value: "pooly"},
+		InternalKind: autoScaleEventKind,
+	})
 	c.Assert(err, check.IsNil)
-	err = evt2.update("rebalance", "reason 2")
+	evt2.Logf("my evt2")
+	err = evt2.DoneCustomData(nil, evtCustomData{
+		Result: &scalerResult{ToRebalance: true, Reason: "r2"},
+	})
 	c.Assert(err, check.IsNil)
-	err = evt2.finish(errors.New("my error"))
-	c.Assert(err, check.IsNil)
-	evt2.logMsg("my evt2")
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/autoscale", nil)
 	c.Assert(err, check.IsNil)
@@ -1247,14 +1253,14 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(history, check.HasLen, 2)
 	c.Assert(evt1.StartTime.Sub(history[1].StartTime) < time.Second, check.Equals, true)
 	c.Assert(evt2.StartTime.Sub(history[0].StartTime) < time.Second, check.Equals, true)
-	c.Assert(evt1.MetadataValue, check.Equals, history[1].MetadataValue)
-	c.Assert(evt2.MetadataValue, check.Equals, history[0].MetadataValue)
-	c.Assert(evt1.Action, check.Equals, history[1].Action)
-	c.Assert(evt2.Action, check.Equals, history[0].Action)
-	c.Assert(evt1.Reason, check.Equals, history[1].Reason)
-	c.Assert(evt2.Reason, check.Equals, history[0].Reason)
-	c.Assert(evt1.Log, check.Equals, history[1].Log)
-	c.Assert(evt2.Log, check.Equals, history[0].Log)
+	c.Assert(history[1].MetadataValue, check.Equals, "poolx")
+	c.Assert(history[0].MetadataValue, check.Equals, "pooly")
+	c.Assert(history[1].Action, check.Equals, "add")
+	c.Assert(history[0].Action, check.Equals, "rebalance")
+	c.Assert(history[1].Reason, check.Equals, "r1")
+	c.Assert(history[0].Reason, check.Equals, "r2")
+	c.Assert(history[1].Log, check.Equals, "my evt1\n")
+	c.Assert(history[0].Log, check.Equals, "my evt2\n")
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {

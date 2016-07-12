@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -30,11 +29,8 @@ import (
 )
 
 const (
-	poolMetadataName = "pool"
-)
-
-var (
-	errAutoScaleRunning = errors.New("autoscale already running")
+	poolMetadataName   = "pool"
+	autoScaleEventKind = "autoscale"
 )
 
 type errAppNotLocked struct {
@@ -178,10 +174,16 @@ func (a *autoScaleConfig) runScaler() (retErr error) {
 	return
 }
 
+type evtCustomData struct {
+	Result *scalerResult
+	Nodes  []cluster.Node
+	Rule   *autoScaleRule
+}
+
 func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: poolMetadataName, Value: pool},
-		InternalKind: "autoscale",
+		InternalKind: autoScaleEventKind,
 	})
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {
@@ -204,10 +206,10 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 			evt.Logf("nothing to do for %q: %q", poolMetadataName, pool)
 			evt.Abort()
 		} else {
-			evt.DoneCustomData(retErr, map[string]interface{}{
-				"result": sResult,
-				"nodes":  evtNodes,
-				"rule":   rule,
+			evt.DoneCustomData(retErr, evtCustomData{
+				Result: sResult,
+				Nodes:  evtNodes,
+				Rule:   rule,
 			})
 		}
 	}()
@@ -243,7 +245,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 		return
 	}
 	if sResult.ToAdd > 0 {
-		evt.Logf("running event %q for %q: %#v", scaleActionAdd, pool, sResult)
+		evt.Logf("running event \"add\" for %q: %#v", pool, sResult)
 		evtNodes, err = a.addMultipleNodes(evt, nodes, sResult.ToAdd)
 		if err != nil {
 			if len(evtNodes) == 0 {
@@ -253,7 +255,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 			evt.Logf("not all required nodes were created: %s", err)
 		}
 	} else if len(sResult.ToRemove) > 0 {
-		evt.Logf("running event %q for %q: %#v", scaleActionRemove, pool, sResult)
+		evt.Logf("running event \"remove\" for %q: %#v", pool, sResult)
 		evtNodes = sResult.ToRemove
 		err = a.removeMultipleNodes(evt, sResult.ToRemove)
 		if err != nil {

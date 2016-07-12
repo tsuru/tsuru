@@ -5,18 +5,10 @@
 package docker
 
 import (
-	"fmt"
-	"io"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/safe"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/tsuru/tsuru/event"
 )
 
 const (
@@ -37,114 +29,52 @@ type autoScaleEvent struct {
 	Node          cluster.Node `bson:",omitempty"`
 	Log           string       `bson:",omitempty"`
 	Nodes         []cluster.Node
-	logBuffer     safe.Buffer
-	writer        io.Writer
 }
 
-func autoScaleCollection() (*storage.Collection, error) {
-	conn, err := db.Conn()
+func toAutoScaleEvent(evt *event.Event) (autoScaleEvent, error) {
+	var data evtCustomData
+	err := evt.EndData(&data)
 	if err != nil {
-		return nil, err
+		return autoScaleEvent{}, err
 	}
-	name, err := config.GetString("docker:collection")
-	if err != nil {
-		return nil, err
+	autoScaleEvt := autoScaleEvent{
+		ID:            evt.UniqueID,
+		MetadataValue: evt.Target.Value,
+		Nodes:         data.Nodes,
+		StartTime:     evt.StartTime,
+		EndTime:       evt.EndTime,
+		Successful:    evt.Error == "",
+		Error:         evt.Error,
+		Log:           evt.Log,
 	}
-	return conn.Collection(fmt.Sprintf("%s_auto_scale", name)), nil
-}
-
-func newAutoScaleEvent(metadataValue string, writer io.Writer) (*autoScaleEvent, error) {
-	// Use metadataValue as ID to ensure only one auto scale process runs for
-	// each metadataValue. (*autoScaleEvent).finish() will generate a new
-	// unique ID and remove this initial record.
-	evt := autoScaleEvent{
-		ID:            metadataValue,
-		StartTime:     time.Now().UTC(),
-		MetadataValue: metadataValue,
-		writer:        writer,
+	if data.Result != nil {
+		if data.Result.ToAdd > 0 {
+			autoScaleEvt.Action = scaleActionAdd
+		} else if len(data.Result.ToRemove) > 0 {
+			autoScaleEvt.Action = scaleActionRemove
+		} else if data.Result.ToRebalance {
+			autoScaleEvt.Action = scaleActionRebalance
+		}
+		autoScaleEvt.Reason = data.Result.Reason
 	}
-	coll, err := autoScaleCollection()
-	if err != nil {
-		return nil, err
-	}
-	defer coll.Close()
-	err = coll.Insert(evt)
-	if mgo.IsDup(err) {
-		return nil, errAutoScaleRunning
-	}
-	return &evt, err
-}
-
-func (evt *autoScaleEvent) updateNodes(nodes []cluster.Node) {
-	evt.Nodes = nodes
-}
-
-func (evt *autoScaleEvent) logMsg(msg string, params ...interface{}) {
-	log.Debugf(fmt.Sprintf("[node autoscale] %s", msg), params...)
-	msg += "\n"
-	if evt.writer != nil {
-		fmt.Fprintf(evt.writer, msg, params...)
-	}
-	fmt.Fprintf(&evt.logBuffer, msg, params...)
-}
-
-func (evt *autoScaleEvent) update(action, reason string) error {
-	evt.Action = action
-	evt.Reason = reason
-	coll, err := autoScaleCollection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	return coll.UpdateId(evt.ID, evt)
-}
-
-func (evt *autoScaleEvent) finish(errParam error) error {
-	if errParam != nil {
-		evt.Error = errParam.Error()
-		evt.logMsg(evt.Error)
-	}
-	coll, err := autoScaleCollection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	if evt.Action == "" {
-		return coll.RemoveId(evt.ID)
-	}
-	evt.Log = evt.logBuffer.String()
-	evt.Successful = errParam == nil
-	evt.EndTime = time.Now().UTC()
-	defer coll.RemoveId(evt.ID)
-	evt.ID = bson.NewObjectId()
-	return coll.Insert(evt)
+	return autoScaleEvt, nil
 }
 
 func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
-	coll, err := autoScaleCollection()
+	evts, err := event.List(&event.Filter{
+		Skip:     skip,
+		Limit:    limit,
+		KindName: autoScaleEventKind,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer coll.Close()
-	query := coll.Find(nil).Sort("-starttime")
-	if skip != 0 {
-		query = query.Skip(skip)
-	}
-	if limit != 0 {
-		query = query.Limit(limit)
-	}
-	var list []autoScaleEvent
-	err = query.All(&list)
-	if err != nil {
-		return nil, err
-	}
-	for i := range list {
-		if len(list[i].Nodes) == 0 {
-			node := list[i].Node
-			if node.Address != "" {
-				list[i].Nodes = []cluster.Node{node}
-			}
+	asEvts := make([]autoScaleEvent, len(evts))
+	for i, evt := range evts {
+		asEvts[i], err = toAutoScaleEvent(&evt)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return list, nil
+	return asEvts, nil
 }
