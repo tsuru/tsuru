@@ -18,7 +18,6 @@ type S struct {
 	service *Service
 	team    *auth.Team
 	user    *auth.User
-	tmpdir  string
 }
 
 var _ = check.Suite(&S{})

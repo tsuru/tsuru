@@ -15,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
-	"time"
 
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/safe"
@@ -33,7 +32,6 @@ type FakeFile struct {
 	name    string
 	r       *safe.BytesReader
 	f       *os.File
-	modTime time.Time
 	dir     bool
 }
 

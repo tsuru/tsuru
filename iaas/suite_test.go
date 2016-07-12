@@ -39,8 +39,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 type TestIaaS struct {
-	someField string
-	cmds      []string
+	cmds []string
 }
 
 func (i *TestIaaS) DeleteMachine(m *Machine) error {

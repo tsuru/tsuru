@@ -27,7 +27,6 @@ type S struct {
 	user    *User
 	team    *Team
 	server  *authtest.SMTPServer
-	gitRoot string
 	gitHost string
 	gitPort string
 	gitProt string

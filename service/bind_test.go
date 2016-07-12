@@ -24,10 +24,9 @@ import (
 )
 
 type BindSuite struct {
-	conn   *db.Storage
-	user   auth.User
-	team   auth.Team
-	tmpdir string
+	conn *db.Storage
+	user auth.User
+	team auth.Team
 }
 
 var _ = check.Suite(&BindSuite{})

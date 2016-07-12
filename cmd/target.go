@@ -324,7 +324,7 @@ func (t *targetList) Run(ctx *Context, client *Client) error {
 	if current, err := ReadTarget(); err == nil {
 		slice.setCurrent(current)
 	}
-	fmt.Fprintf(ctx.Stdout, "%s\n", slice)
+	fmt.Fprintf(ctx.Stdout, "%v\n", slice)
 	return nil
 }
 

@@ -20,7 +20,6 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn   *db.Storage
-	hashed string
 	user   *auth.User
 	team   *auth.Team
 	server *authtest.SMTPServer

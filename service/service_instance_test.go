@@ -28,11 +28,9 @@ import (
 )
 
 type InstanceSuite struct {
-	conn            *db.Storage
-	service         *Service
-	serviceInstance *ServiceInstance
-	team            *auth.Team
-	user            *auth.User
+	conn *db.Storage
+	team *auth.Team
+	user *auth.User
 }
 
 var _ = check.Suite(&InstanceSuite{})

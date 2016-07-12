@@ -14,11 +14,7 @@ import (
 
 func Test(t *testing.T) { check.TestingT(t) }
 
-type S struct {
-	stdin        *os.File
-	recover      []string
-	recoverToken []string
-}
+type S struct{}
 
 var _ = check.Suite(&S{})
 var manager *Manager
