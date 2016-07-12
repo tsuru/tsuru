@@ -25,7 +25,7 @@ func ClearAllCollectionsExcept(db *mgo.Database, toKeep []string) error {
 	}
 	for _, collName := range colls {
 		var coll *mgo.Collection
-		if strings.Index(collName, "system.") != -1 {
+		if strings.Contains(collName, "system.") {
 			continue
 		}
 		for i := range toKeep {
