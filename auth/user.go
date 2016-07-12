@@ -198,11 +198,7 @@ func (u *User) ListKeys() (map[string]string, error) {
 }
 
 func (u *User) createOnRepositoryManager() error {
-	err := repository.Manager().CreateUser(u.Email)
-	if err != nil {
-		return err
-	}
-	return nil
+	return repository.Manager().CreateUser(u.Email)
 }
 
 func (u *User) ShowAPIKey() (string, error) {

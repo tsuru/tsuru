@@ -55,7 +55,7 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	var notifiedSuccess bool
 	t0 := time.Now()
 	for {
-		if time.Now().Sub(t0) > time.Duration(2*timeout)*time.Second {
+		if time.Since(t0) > time.Duration(2*timeout)*time.Second {
 			job.Error(errors.New("hard timeout"))
 			break
 		}

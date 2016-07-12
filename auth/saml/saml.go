@@ -154,7 +154,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	if req.Authed == false {
+	if !req.Authed {
 		return nil, ErrRequestWaitingForCredentials
 	}
 	user, err := auth.GetUserByEmail(req.Email)

@@ -202,10 +202,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
-	if err = s.Update(); err != nil {
-		return err
-	}
-	return nil
+	return s.Update()
 }
 
 // title: service delete
@@ -249,11 +246,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		msg += "Please remove these instances before removing the service."
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = s.Delete()
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.Delete()
 }
 
 // title: service proxy

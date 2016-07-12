@@ -88,11 +88,7 @@ var insertServiceInstance = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		err = conn.ServiceInstances().Insert(&instance)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		return nil, conn.ServiceInstances().Insert(&instance)
 	},
 	Backward: func(ctx action.BWContext) {
 		instance, ok := ctx.Params[1].(ServiceInstance)
@@ -320,11 +316,7 @@ var unbindAppDB = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
-		err := args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
-		if err != nil {
-			return nil, err
-		}
-		return nil, err
+		return nil, args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)

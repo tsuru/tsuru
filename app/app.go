@@ -1152,11 +1152,7 @@ func (app *App) AddCName(cnames ...string) error {
 		&saveCNames,
 		&updateApp,
 	}
-	err := action.NewPipeline(actions...).Execute(app, cnames)
-	if err != nil {
-		return err
-	}
-	return nil
+	return action.NewPipeline(actions...).Execute(app, cnames)
 }
 
 func (app *App) RemoveCName(cnames ...string) error {
@@ -1166,11 +1162,7 @@ func (app *App) RemoveCName(cnames ...string) error {
 		&removeCNameFromDatabase,
 		&removeCNameFromApp,
 	}
-	err := action.NewPipeline(actions...).Execute(app, cnames)
-	if err != nil {
-		return err
-	}
-	return nil
+	return action.NewPipeline(actions...).Execute(app, cnames)
 }
 
 func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
@@ -1517,10 +1509,7 @@ func (app *App) Start(w io.Writer, process string) error {
 		return err
 	}
 	_, err = app.RebuildRoutes()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (app *App) SetUpdatePlatform(check bool) error {

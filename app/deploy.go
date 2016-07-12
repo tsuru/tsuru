@@ -218,7 +218,7 @@ func Deploy(opts DeployOptions) (string, error) {
 	if err != nil {
 		log.Errorf("WARNING: couldn't increment deploy count, deploy opts: %#v", opts)
 	}
-	if opts.App.UpdatePlatform == true {
+	if opts.App.UpdatePlatform {
 		opts.App.SetUpdatePlatform(false)
 	}
 	return imageId, nil

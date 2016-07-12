@@ -166,9 +166,7 @@ func (p *FakeDockerProvisioner) AllContainers() []container.Container {
 	defer p.containersMut.Unlock()
 	var result []container.Container
 	for _, containers := range p.containers {
-		for _, container := range containers {
-			result = append(result, container)
-		}
+		result = append(result, containers...)
 	}
 	return result
 }

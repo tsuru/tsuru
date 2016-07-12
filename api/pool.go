@@ -43,7 +43,7 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		filter := bson.M{"default": false, "public": false}
 		query = append(query, filter)
 	}
-	if teams != nil && len(teams) > 0 {
+	if len(teams) > 0 {
 		filter := bson.M{
 			"default": false,
 			"public":  false,

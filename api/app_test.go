@@ -3997,7 +3997,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	ch := make(chan bool)
 	go func() {
 		t := time.Tick(1)
-		for _ = <-t; atomic.LoadInt32(&called) == 0; _ = <-t {
+		for <-t; atomic.LoadInt32(&called) == 0; <-t {
 		}
 		ch <- true
 	}()
@@ -4091,7 +4091,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	ch := make(chan bool)
 	go func() {
 		t := time.Tick(1)
-		for _ = <-t; atomic.LoadInt32(&called) == 0; _ = <-t {
+		for <-t; atomic.LoadInt32(&called) == 0; <-t {
 		}
 		ch <- true
 	}()

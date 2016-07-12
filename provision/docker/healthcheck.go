@@ -89,7 +89,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 			fmt.Fprintf(w, " ---> healthcheck successful(%s)\n", cont.ShortID())
 			return nil
 		}
-		if time.Now().Sub(startedTime) > time.Duration(maxWaitTime) {
+		if time.Since(startedTime) > time.Duration(maxWaitTime) {
 			return lastError
 		}
 		fmt.Fprintf(w, " ---> %s. Trying again in %s\n", lastError.Error(), sleepTime)

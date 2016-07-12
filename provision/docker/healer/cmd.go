@@ -225,10 +225,10 @@ func (c *SetNodeHealingConfigCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	v := url.Values{}
 	v.Set("pool", c.pool)
 	if c.maxUnresponsive >= 0 {
-		v.Set("MaxUnresponsiveTime", strconv.FormatInt(int64(c.maxUnresponsive), 10))
+		v.Set("MaxUnresponsiveTime", strconv.Itoa(c.maxUnresponsive))
 	}
 	if c.maxUnsuccessful >= 0 {
-		v.Set("MaxTimeSinceSuccess", strconv.FormatInt(int64(c.maxUnsuccessful), 10))
+		v.Set("MaxTimeSinceSuccess", strconv.Itoa(c.maxUnsuccessful))
 	}
 	if c.enable {
 		v.Set("Enabled", strconv.FormatBool(true))

@@ -928,7 +928,7 @@ func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
 		desc := "your age"
-		if c.multi == true {
+		if c.multi {
 			desc = "velvet darkness\nthey fear"
 		}
 		c.fs.IntVar(&c.age, "age", 0, desc)

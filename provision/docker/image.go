@@ -31,7 +31,7 @@ type appImages struct {
 	Count   int
 }
 
-var procfileRegex = regexp.MustCompile("^([A-Za-z0-9_-]+):\\s*(.+)$")
+var procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
 var errNoImagesAvailable = errors.New("no images available for app")
 
 func MigrateImages() error {

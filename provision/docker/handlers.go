@@ -1275,9 +1275,5 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = nodecontainer.RecreateNamedContainers(mainDockerProvisioner, writer, name)
-	if err != nil {
-		return err
-	}
-	return nil
+	return nodecontainer.RecreateNamedContainers(mainDockerProvisioner, writer, name)
 }

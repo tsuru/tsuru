@@ -92,11 +92,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	err = app.Delete(&a, writer)
-	if err != nil {
-		return err
-	}
-	return nil
+	return app.Delete(&a, writer)
 }
 
 // miniApp is a minimal representation of the app, created to make appList
@@ -462,11 +458,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.AddUnits(n, processName, writer)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.AddUnits(n, processName, writer)
 }
 
 // title: remove units
@@ -512,11 +504,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.RemoveUnits(n, processName, writer)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.RemoveUnits(n, processName, writer)
 }
 
 // title: set unit status
@@ -755,11 +743,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	onceBool, _ := strconv.ParseBool(once)
-	err = a.Run(command, writer, onceBool)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Run(command, writer, onceBool)
 }
 
 // title: get envs
@@ -879,16 +863,13 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.SetEnvs(
+	return a.SetEnvs(
 		bind.SetEnvApp{
 			Envs:          variables,
 			PublicOnly:    true,
 			ShouldRestart: !e.NoRestart,
-		}, writer)
-	if err != nil {
-		return err
-	}
-	return nil
+		}, writer,
+	)
 }
 
 // title: unset envs
@@ -940,16 +921,13 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	noRestart, _ := strconv.ParseBool(r.FormValue("noRestart"))
-	err = a.UnsetEnvs(
+	return a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: variables,
 			PublicOnly:    true,
 			ShouldRestart: !noRestart,
-		}, writer)
-	if err != nil {
-		return err
-	}
-	return nil
+		}, writer,
+	)
 }
 
 // title: set cname
@@ -1288,7 +1266,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   200: Ok
 //   401: Unauthorized
 //   404: App not found
-func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	process := r.FormValue("process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1318,11 +1296,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Restart(process, writer)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Restart(process, writer)
 }
 
 // title: app sleep
@@ -1335,7 +1309,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	process := r.FormValue("process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1374,11 +1348,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Sleep(writer, process, proxyURL)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Sleep(writer, process, proxyURL)
 }
 
 // title: app log
@@ -1537,7 +1507,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   200: Ok
 //   401: Unauthorized
 //   404: App not found
-func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	process := r.FormValue("process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1567,11 +1537,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Start(writer, process)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Start(writer, process)
 }
 
 // title: app stop
@@ -1583,7 +1549,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Ok
 //   401: Unauthorized
 //   404: App not found
-func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	process := r.FormValue("process")
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -1613,11 +1579,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.Stop(writer, process)
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Stop(writer, process)
 }
 
 // title: app unlock

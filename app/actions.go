@@ -744,10 +744,6 @@ var removeCNameFromApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		err = conn.Apps().Find(bson.M{"name": app.Name}).One(app)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		return nil, conn.Apps().Find(bson.M{"name": app.Name}).One(app)
 	},
 }

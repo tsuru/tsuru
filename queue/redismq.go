@@ -30,11 +30,7 @@ func (r *redisPubSub) Pub(msg []byte) error {
 }
 
 func (r *redisPubSub) UnSub() error {
-	err := r.psc.Close()
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.psc.Close()
 }
 
 func (r *redisPubSub) Sub() (<-chan []byte, error) {
