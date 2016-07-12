@@ -6,6 +6,8 @@ BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = cmd/tsurud/*.go
 
+LINTER_ARGS = -j 8 --vendor --enable=misspell --enable=gofmt --enable=goimports --disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --deadline=10m --tests
+
 .PHONY: all check-path test race docs
 
 all: check-path test
@@ -45,10 +47,14 @@ deadcode: _install_deadcode
 
 deadc0de: deadcode
 
-lint: deadcode
-	./check-fmt.sh
+lint: metalint
 	misc/check-license.sh
 	misc/check-contributors.sh
+
+metalint:
+	go get -u github.com/alecthomas/gometalinter
+	gometalinter --install --update
+	go list ./... | grep -v vendor/ | sed -e 's;github.com/tsuru/tsuru/;;' | xargs gometalinter $(LINTER_ARGS)
 
 race:
 	go test $(GO_EXTRAFLAGS) -race -i ./...
