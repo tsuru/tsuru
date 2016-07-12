@@ -1618,6 +1618,32 @@ func (s *AuthSuite) TestUserInfo(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 }
 
+func (s *AuthSuite) TestUserInfoWithoutRoles(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	token := userWithPermission(c)
+	u, err := token.User()
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/users/info", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	expected := apiUser{
+		Email: u.Email,
+		Roles: []rolePermissionData{},
+	}
+	var got apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	sort.Sort(rolePermList(got.Permissions))
+	sort.Sort(rolePermList(got.Roles))
+	c.Assert(got, check.DeepEquals, expected)
+}
+
 type rolePermList []rolePermissionData
 
 func (l rolePermList) Len() int      { return len(l) }

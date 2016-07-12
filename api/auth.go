@@ -675,7 +675,7 @@ func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[s
 			allGlobal = false
 		}
 	}
-	if len(roleData) == 0 || (!includeAll && allGlobal) {
+	if !includeAll && allGlobal {
 		return nil, nil
 	}
 	return &apiUser{
