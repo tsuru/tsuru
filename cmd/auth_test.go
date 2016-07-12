@@ -31,7 +31,7 @@ func (s *S) TestNativeLogin(c *check.C) {
 	}()
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
-	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
+	context := Context{[]string{"foo@foo.com"}, globalManager.stdout, globalManager.stderr, reader}
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{
 			Message: `{"token": "sometoken", "is_admin": true}`,
@@ -44,11 +44,11 @@ func (s *S) TestNativeLogin(c *check.C) {
 			return contentType && password && url
 		},
 	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	token, err := ReadToken()
 	c.Assert(err, check.IsNil)
 	c.Assert(token, check.Equals, "sometoken")
@@ -63,7 +63,7 @@ func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 	}()
 	expected := "Email: Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico@tsuru.io\nchico\n")
-	context := Context{[]string{}, manager.stdout, manager.stderr, reader}
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, reader}
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{
 			Message: `{"token": "sometoken", "is_admin": true}`,
@@ -73,11 +73,11 @@ func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 			return r.URL.Path == "/1.0/users/chico@tsuru.io/tokens"
 		},
 	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	token, err := ReadToken()
 	c.Assert(err, check.IsNil)
 	c.Assert(token, check.Equals, "sometoken")
@@ -95,17 +95,17 @@ func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
 	}()
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
-	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token":"anothertoken"}`, Status: http.StatusOK}}, nil, manager)
+	context := Context{[]string{"foo@foo.com"}, globalManager.stdout, globalManager.stderr, reader}
+	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token":"anothertoken"}`, Status: http.StatusOK}}, nil, globalManager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *check.C) {
 	nativeScheme()
-	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, strings.NewReader("\n")}
+	context := Context{[]string{"foo@foo.com"}, globalManager.stdout, globalManager.stderr, strings.NewReader("\n")}
 	command := login{}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
@@ -122,7 +122,7 @@ func (s *S) TestLogout(c *check.C) {
 	writeToken("mytoken")
 	os.Setenv("TSURU_TARGET", "localhost:8080")
 	expected := "Successfully logged out!\n"
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := logout{}
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{
@@ -135,10 +135,10 @@ func (s *S) TestLogout(c *check.C) {
 				req.Header.Get("Authorization") == "bearer mytoken"
 		},
 	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru", "token")), check.Equals, true)
 	c.Assert(called, check.Equals, true)
 }
@@ -150,7 +150,7 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := logout{}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
@@ -165,13 +165,13 @@ func (s *S) TestLogoutNoTarget(c *check.C) {
 	}()
 	writeToken("mytoken")
 	expected := "Successfully logged out!\n"
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := logout{}
 	transport := cmdtest.Transport{Message: "", Status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru", "token")), check.Equals, true)
 }
 
@@ -282,7 +282,7 @@ func (s *S) TestGetUser(c *check.C) {
 			return req.Method == "GET" && req.URL.Path == "/1.0/users/info"
 		},
 	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
 	expected := &APIUser{
 		Email: "myuser@company.com",
 	}
@@ -300,7 +300,7 @@ Roles:
 Permissions:
 	a(y q)
 `
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := userInfo{}
 	transport := cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{
@@ -318,10 +318,10 @@ Permissions:
 			return req.Method == "GET" && req.URL.Path == "/1.0/users/info"
 		},
 	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	c.Assert(called, check.Equals, true)
 }
 

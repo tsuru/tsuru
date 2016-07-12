@@ -17,13 +17,13 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct{}
 
 var _ = check.Suite(&S{})
-var manager *Manager
+var globalManager *Manager
 
 func (s *S) SetUpTest(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	manager = NewManager("glb", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	globalManager = NewManager("glb", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter
-	manager.e = &exiter
+	globalManager.e = &exiter
 	os.Setenv("TSURU_TARGET", "http://localhost")
 	os.Setenv("TSURU_TOKEN", "abc123")
 	if env := os.Getenv("TERM"); env == "" {

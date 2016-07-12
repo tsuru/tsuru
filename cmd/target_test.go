@@ -229,7 +229,7 @@ func (s *S) TestTargetAddRun(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := &Context{[]string{"default", "http://tsuru.google.com"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"default", "http://tsuru.google.com"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	targetAdd := &targetAdd{}
 	err := targetAdd.Run(context, nil)
 	c.Assert(err, check.IsNil)
@@ -242,7 +242,7 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := &Context{[]string{"default http://tsuru.google.com"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"default http://tsuru.google.com"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	targetAdd := &targetAdd{}
 	err := targetAdd.Run(context, nil)
 	c.Assert(err, check.NotNil)
@@ -256,7 +256,7 @@ func (s *S) TestTargetAddWithSet(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := &Context{[]string{"default", "http://tsuru.google.com"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"default", "http://tsuru.google.com"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	targetAdd := &targetAdd{}
 	targetAdd.Flags().Parse(true, []string{"-s"})
 	err := targetAdd.Run(context, nil)
@@ -388,7 +388,7 @@ other	http://other.tsuru.io`
 * first (http://tsuru.io)
   other (http://other.tsuru.io)` + "\n"
 	target := &targetList{}
-	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{""}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	err := target.Run(context, nil)
 	c.Assert(err, check.IsNil)
 	got := context.Stdout.(*bytes.Buffer).String()
@@ -448,7 +448,7 @@ func (s *S) TestTargetRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.HasLen, len(expectedBefore))
 	targetRemove := &targetRemove{}
-	context := &Context{[]string{"first"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"first"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	err = targetRemove.Run(context, nil)
 	c.Assert(err, check.IsNil)
 	got, err = getTargets()
@@ -474,7 +474,7 @@ func (s *S) TestTargetRemoveCurrentTarget(c *check.C) {
 		fsystem = nil
 	}()
 	targetRemove := &targetRemove{}
-	context := &Context{[]string{"default"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"default"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	err := targetRemove.Run(context, nil)
 	c.Assert(err, check.IsNil)
 	_, err = ReadTarget()
@@ -501,7 +501,7 @@ func (s *S) TestTargetSetRun(c *check.C) {
 		fsystem = nil
 	}()
 	targetSet := &targetSet{}
-	context := &Context{[]string{"default"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"default"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	err := targetSet.Run(context, nil)
 	c.Assert(err, check.IsNil)
 	got := context.Stdout.(*bytes.Buffer).String()
@@ -515,7 +515,7 @@ func (s *S) TestTargetSetRunUnknowTarget(c *check.C) {
 		fsystem = nil
 	}()
 	targetSet := &targetSet{}
-	context := &Context{[]string{"doesnotexist"}, manager.stdout, manager.stderr, manager.stdin}
+	context := &Context{[]string{"doesnotexist"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	err := targetSet.Run(context, nil)
 	c.Assert(err, check.ErrorMatches, "Target not found")
 }

@@ -536,8 +536,8 @@ func (s *S) TestDoubleProvision(c *check.C) {
 
 func (s *S) TestRestart(c *check.C) {
 	conn, err := db.Conn()
-	defer conn.Close()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	a := NewFakeApp("kid-gloves", "rush", 1)
 	nApp := app.App{
 		Name: a.name,

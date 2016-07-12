@@ -20,16 +20,16 @@ import (
 func (s *S) TestDeprecatedCommand(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	cmd := TestCommand{}
-	manager.RegisterDeprecated(&cmd, "bar")
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"bar"})
+	globalManager.RegisterDeprecated(&cmd, "bar")
+	globalManager.stdout = &stdout
+	globalManager.stderr = &stderr
+	globalManager.Run([]string{"bar"})
 	c.Assert(stdout.String(), check.Equals, "Running TestCommand")
 	warnMessage := `WARNING: "bar" has been deprecated, please use "foo" instead.` + "\n\n"
 	c.Assert(stderr.String(), check.Equals, warnMessage)
 	stdout.Reset()
 	stderr.Reset()
-	manager.Run([]string{"foo"})
+	globalManager.Run([]string{"foo"})
 	c.Assert(stdout.String(), check.Equals, "Running TestCommand")
 	c.Assert(stderr.String(), check.Equals, "")
 }
@@ -37,40 +37,40 @@ func (s *S) TestDeprecatedCommand(c *check.C) {
 func (s *S) TestDeprecatedCommandFlags(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	cmd := CommandWithFlags{}
-	manager.RegisterDeprecated(&cmd, "bar")
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"bar", "--age", "10"})
+	globalManager.RegisterDeprecated(&cmd, "bar")
+	globalManager.stdout = &stdout
+	globalManager.stderr = &stderr
+	globalManager.Run([]string{"bar", "--age", "10"})
 	warnMessage := `WARNING: "bar" has been deprecated, please use "with-flags" instead.` + "\n\n"
 	c.Assert(stderr.String(), check.Equals, warnMessage)
 	c.Assert(cmd.age, check.Equals, 10)
 }
 
 func (s *S) TestRegister(c *check.C) {
-	manager.Register(&TestCommand{})
-	badCall := func() { manager.Register(&TestCommand{}) }
+	globalManager.Register(&TestCommand{})
+	badCall := func() { globalManager.Register(&TestCommand{}) }
 	c.Assert(badCall, check.PanicMatches, "command already registered: foo")
 }
 
 func (s *S) TestRegisterDeprecated(c *check.C) {
 	originalCmd := &TestCommand{}
-	manager.RegisterDeprecated(originalCmd, "bar")
-	badCall := func() { manager.Register(originalCmd) }
+	globalManager.RegisterDeprecated(originalCmd, "bar")
+	badCall := func() { globalManager.Register(originalCmd) }
 	c.Assert(badCall, check.PanicMatches, "command already registered: foo")
-	cmd, ok := manager.Commands["bar"].(*DeprecatedCommand)
+	cmd, ok := globalManager.Commands["bar"].(*DeprecatedCommand)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(cmd.Command, check.Equals, originalCmd)
-	c.Assert(manager.Commands["foo"], check.Equals, originalCmd)
+	c.Assert(globalManager.Commands["foo"], check.Equals, originalCmd)
 }
 
 func (s *S) TestRegisterRemoved(c *check.C) {
-	manager.RegisterRemoved("spoon", "There is no spoon.")
-	_, ok := manager.Commands["spoon"].(*RemovedCommand)
+	globalManager.RegisterRemoved("spoon", "There is no spoon.")
+	_, ok := globalManager.Commands["spoon"].(*RemovedCommand)
 	c.Assert(ok, check.Equals, true)
 	var stdout, stderr bytes.Buffer
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"spoon"})
+	globalManager.stdout = &stdout
+	globalManager.stderr = &stderr
+	globalManager.Run([]string{"spoon"})
 	c.Assert(stdout.String(), check.Matches, "(?s).*This command was removed. There is no spoon.*")
 }
 
@@ -128,34 +128,34 @@ func (s *S) TestCustomLookupNotFound(c *check.C) {
 }
 
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *check.C) {
-	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
-	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: You are wrong\n")
+	globalManager.Register(&ErrorCommand{msg: "You are wrong\n"})
+	globalManager.Run([]string{"error"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: You are wrong\n")
 }
 
 func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *check.C) {
-	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
-	manager.Run([]string{"error"})
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	globalManager.Register(&ErrorCommand{msg: "You are wrong\n"})
+	globalManager.Run([]string{"error"})
+	c.Assert(globalManager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *check.C) {
-	manager.Register(&ErrorCommand{msg: "You are wrong"})
-	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: You are wrong\n")
+	globalManager.Register(&ErrorCommand{msg: "You are wrong"})
+	globalManager.Run([]string{"error"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: You are wrong\n")
 }
 
 func (s *S) TestManagerRunShouldNotWriteErrorOnStderrWhenErrAbortIsTriggered(c *check.C) {
-	manager.Register(&ErrorCommand{msg: "abort"})
-	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, "")
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	globalManager.Register(&ErrorCommand{msg: "abort"})
+	globalManager.Run([]string{"error"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, "")
+	c.Assert(globalManager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestManagerRunWithHTTPUnauthorizedError(c *check.C) {
-	manager.Register(&UnauthorizedErrorCommand{})
-	manager.Run([]string{"unauthorized-error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`+"\n")
+	globalManager.Register(&UnauthorizedErrorCommand{})
+	globalManager.Run([]string{"unauthorized-error"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`+"\n")
 }
 
 func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginRegistered(c *check.C) {
@@ -166,11 +166,11 @@ Calling the "login" command...
 	expectedStdout := `logged in!
 worked nicely!
 `
-	manager.Register(&FailAndWorkCommand{})
-	manager.Register(&SuccessLoginCommand{})
-	manager.Run([]string{"fail-and-work"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
+	globalManager.Register(&FailAndWorkCommand{})
+	globalManager.Register(&SuccessLoginCommand{})
+	globalManager.Run([]string{"fail-and-work"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
 }
 
 func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginFailure(c *check.C) {
@@ -178,57 +178,57 @@ func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginFailure(c *check.C) {
 Calling the "login" command...
 Error: You're not authenticated or your session has expired. Please use "login" command for authentication.
 `
-	manager.Register(&FailAndWorkCommand{})
-	manager.Register(&UnauthorizedLoginErrorCommand{})
-	manager.Run([]string{"fail-and-work"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&FailAndWorkCommand{})
+	globalManager.Register(&UnauthorizedLoginErrorCommand{})
+	globalManager.Run([]string{"fail-and-work"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestManagerRunLoginWithHTTPUnauthorizedError(c *check.C) {
-	manager.Register(&UnauthorizedLoginErrorCommand{})
-	manager.Run([]string{"login"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: unauthorized\n")
+	globalManager.Register(&UnauthorizedLoginErrorCommand{})
+	globalManager.Run([]string{"login"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: unauthorized\n")
 }
 
 func (s *S) TestManagerRunWithFlags(c *check.C) {
 	cmd := &CommandWithFlags{}
-	manager.Register(cmd)
-	manager.Run([]string{"with-flags", "--age", "10"})
+	globalManager.Register(cmd)
+	globalManager.Run([]string{"with-flags", "--age", "10"})
 	c.Assert(cmd.fs.Parsed(), check.Equals, true)
 	c.Assert(cmd.age, check.Equals, 10)
 }
 
 func (s *S) TestManagerRunWithFlagsAndArgs(c *check.C) {
 	cmd := &CommandWithFlags{minArgs: 2}
-	manager.Register(cmd)
-	manager.Run([]string{"with-flags", "something", "--age", "20", "otherthing"})
+	globalManager.Register(cmd)
+	globalManager.Run([]string{"with-flags", "something", "--age", "20", "otherthing"})
 	c.Assert(cmd.args, check.DeepEquals, []string{"something", "otherthing"})
 }
 
 func (s *S) TestManagerRunWithInvalidValueForFlag(c *check.C) {
 	var exiter recordingExiter
-	old := manager.e
-	manager.e = &exiter
+	old := globalManager.e
+	globalManager.e = &exiter
 	defer func() {
-		manager.e = old
+		globalManager.e = old
 	}()
 	cmd := &CommandWithFlags{}
-	manager.Register(cmd)
-	manager.Run([]string{"with-flags", "--age", "tsuru"})
+	globalManager.Register(cmd)
+	globalManager.Run([]string{"with-flags", "--age", "tsuru"})
 	c.Assert(cmd.fs.Parsed(), check.Equals, true)
 	c.Assert(exiter.value(), check.Equals, 1)
 }
 
 func (s *S) TestRun(c *check.C) {
-	manager.Register(&TestCommand{})
-	manager.Run([]string{"foo"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, "Running TestCommand")
+	globalManager.Register(&TestCommand{})
+	globalManager.Run([]string{"foo"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, "Running TestCommand")
 }
 
 func (s *S) TestRunCommandThatDoesNotExist(c *check.C) {
-	manager.Run([]string{"bar"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, `glb: "bar" is not a glb command. See "glb help".`+"\n")
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	globalManager.Run([]string{"bar"})
+	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, `glb: "bar" is not a glb command. See "glb help".`+"\n")
+	c.Assert(globalManager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestHelp(c *check.C) {
@@ -242,12 +242,12 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	manager.RegisterDeprecated(&login{}, "login")
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
-	command := help{manager: manager}
+	globalManager.RegisterDeprecated(&login{}, "login")
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	command := help{manager: globalManager}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpWithTopics(c *check.C) {
@@ -267,13 +267,13 @@ Available topics:
 
 Use glb help <topicname> to get more information about a topic.
 `
-	manager.Register(&login{})
-	manager.RegisterTopic("target", "something")
-	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
-	command := help{manager: manager}
+	globalManager.Register(&login{})
+	globalManager.RegisterTopic("target", "something")
+	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	command := help{manager: globalManager}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpFromTopic(c *check.C) {
@@ -283,12 +283,12 @@ Targets
 
 Tsuru likes to manage targets
 `
-	manager.RegisterTopic("target", "Targets\n\nTsuru likes to manage targets\n")
-	context := Context{[]string{"target"}, manager.stdout, manager.stderr, manager.stdin}
-	command := help{manager: manager}
+	globalManager.RegisterTopic("target", "Targets\n\nTsuru likes to manage targets\n")
+	context := Context{[]string{"target"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	command := help{manager: globalManager}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *check.C) {
@@ -301,8 +301,8 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *check.C) {
 }
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *check.C) {
-	command := help{manager: manager}
-	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr, manager.stdin}
+	command := help{manager: globalManager}
+	context := Context{[]string{"user-create"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `^command "user-create" does not exist.$`)
@@ -319,8 +319,8 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	manager.Run([]string{})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Run([]string{})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestDashDashHelp(c *check.C) {
@@ -334,8 +334,8 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	manager.Run([]string{"--help"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Run([]string{"--help"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestRunCommandWithDashHelp(c *check.C) {
@@ -346,9 +346,9 @@ Usage: glb foo
 Foo do anything or nothing.
 
 `
-	manager.Register(&TestCommand{})
-	manager.Run([]string{"foo", "--help"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&TestCommand{})
+	globalManager.Run([]string{"foo", "--help"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestRunCommandWithDashH(c *check.C) {
@@ -359,9 +359,9 @@ Usage: glb foo
 Foo do anything or nothing.
 
 `
-	manager.Register(&TestCommand{})
-	manager.Run([]string{"foo", "-h"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&TestCommand{})
+	globalManager.Run([]string{"foo", "-h"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpShouldReturnHelpForACmd(c *check.C) {
@@ -372,9 +372,9 @@ Usage: glb foo
 Foo do anything or nothing.
 
 `
-	manager.Register(&TestCommand{})
-	manager.Run([]string{"help", "foo"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&TestCommand{})
+	globalManager.Run([]string{"help", "foo"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestDashDashHelpShouldReturnHelpForACmd(c *check.C) {
@@ -385,23 +385,23 @@ Usage: glb foo
 Foo do anything or nothing.
 
 `
-	manager.Register(&TestCommand{})
-	manager.Run([]string{"--help", "foo"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&TestCommand{})
+	globalManager.Run([]string{"--help", "foo"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestDuplicateHelpFlag(c *check.C) {
 	expected := "help called? true"
-	manager.Register(&HelpCommandWithFlags{})
-	manager.Run([]string{"hflags", "--help"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&HelpCommandWithFlags{})
+	globalManager.Run([]string{"hflags", "--help"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestDuplicateHFlag(c *check.C) {
 	expected := "help called? true"
-	manager.Register(&HelpCommandWithFlags{})
-	manager.Run([]string{"hflags", "-h"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&HelpCommandWithFlags{})
+	globalManager.Run([]string{"hflags", "-h"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpFlaggedCommand(c *check.C) {
@@ -417,9 +417,9 @@ Flags:
       your age
   
 `
-	manager.Register(&CommandWithFlags{})
-	manager.Run([]string{"help", "with-flags"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&CommandWithFlags{})
+	globalManager.Run([]string{"help", "with-flags"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpFlaggedMultilineCommand(c *check.C) {
@@ -436,9 +436,9 @@ Flags:
       they fear
   
 `
-	manager.Register(&CommandWithFlags{multi: true})
-	manager.Run([]string{"help", "with-flags"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Register(&CommandWithFlags{multi: true})
+	globalManager.Run([]string{"help", "with-flags"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpDeprecatedCmd(c *check.C) {
@@ -451,15 +451,15 @@ Foo do anything or nothing.
 `
 	expectedStderr := `WARNING: "bar" is deprecated. Showing help for "foo" instead.` + "\n\n"
 	var stdout, stderr bytes.Buffer
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.RegisterDeprecated(&TestCommand{}, "bar")
-	manager.Run([]string{"help", "bar"})
+	globalManager.stdout = &stdout
+	globalManager.stderr = &stderr
+	globalManager.RegisterDeprecated(&TestCommand{}, "bar")
+	globalManager.Run([]string{"help", "bar"})
 	c.Assert(stdout.String(), check.Equals, expectedStdout)
 	c.Assert(stderr.String(), check.Equals, expectedStderr)
 	stdout.Reset()
 	stderr.Reset()
-	manager.Run([]string{"help", "foo"})
+	globalManager.Run([]string{"help", "foo"})
 	c.Assert(stdout.String(), check.Equals, expectedStdout)
 	c.Assert(stderr.String(), check.Equals, "")
 }
@@ -475,10 +475,10 @@ Foo do anything or nothing.
 
 `
 	var output bytes.Buffer
-	manager.stdout = &output
-	manager.stderr = &output
-	manager.RegisterDeprecated(&TestCommand{}, "bar")
-	manager.Run([]string{"help", "bar"})
+	globalManager.stdout = &output
+	globalManager.stderr = &output
+	globalManager.RegisterDeprecated(&TestCommand{}, "bar")
+	globalManager.Run([]string{"help", "bar"})
 	c.Assert(output.String(), check.Equals, expected)
 }
 
@@ -496,8 +496,8 @@ func (s *S) TestVersion(c *check.C) {
 
 func (s *S) TestDashDashVersion(c *check.C) {
 	expected := "glb version 1.0.\n"
-	manager.Run([]string{"--version"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	globalManager.Run([]string{"--version"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestVersionInfo(c *check.C) {
@@ -538,10 +538,10 @@ some desc
 Minimum # of arguments: 1
 Maximum # of arguments: 2
 `
-	manager.Register(&ArgCmd{})
-	manager.Run([]string{"arg"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	globalManager.Register(&ArgCmd{})
+	globalManager.Run([]string{"arg"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestRunWithTooManyArguments(c *check.C) {
@@ -556,10 +556,10 @@ some desc
 Minimum # of arguments: 1
 Maximum # of arguments: 2
 `
-	manager.Register(&ArgCmd{})
-	manager.Run([]string{"arg", "param1", "param2", "param3"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-	c.Assert(manager.e.(*recordingExiter).value(), check.Equals, 1)
+	globalManager.Register(&ArgCmd{})
+	globalManager.Run([]string{"arg", "param1", "param2", "param3"})
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(globalManager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *check.C) {

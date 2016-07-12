@@ -112,6 +112,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	_, err = wsConn.Write([]byte(bodyStr))
 	c.Assert(err, check.IsNil)
 	timeout := time.After(5 * time.Second)
+loop:
 	for {
 		var (
 			logs1 []app.Applog
@@ -127,7 +128,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 		select {
 		case <-timeout:
 			c.Fatal("timeout waiting for logs")
-			break
+			break loop
 		default:
 		}
 	}

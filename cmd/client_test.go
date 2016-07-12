@@ -28,7 +28,7 @@ func (s *S) TestShouldSetCloseToTrue(c *check.C) {
 	context := Context{
 		Stdout: &buf,
 	}
-	client := NewClient(&http.Client{Transport: &transport}, &context, manager)
+	client := NewClient(&http.Client{Transport: &transport}, &context, globalManager)
 	client.Verbosity = 2
 	client.Do(request)
 	c.Assert(request.Close, check.Equals, true)
@@ -52,7 +52,7 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *check.C) {
 	client := NewClient(
 		&http.Client{Transport: &cmdtest.Transport{Message: "You can't do this", Status: http.StatusForbidden}},
 		&context,
-		manager)
+		globalManager)
 	client.Verbosity = 2
 	response, err := client.Do(request)
 	c.Assert(response, check.NotNil)
@@ -89,7 +89,7 @@ func (s *S) TestShouldReturnStatusMessageOnErrorWhenBodyIsEmpty(c *check.C) {
 			},
 		},
 		&context,
-		manager)
+		globalManager)
 	client.Verbosity = 2
 	response, err := client.Do(request)
 	c.Assert(response, check.NotNil)
@@ -123,7 +123,7 @@ func (s *S) TestShouldHandleUnauthorizedErrorSpecially(c *check.C) {
 	client := NewClient(
 		&http.Client{Transport: &cmdtest.Transport{Message: "You can't do this", Status: http.StatusUnauthorized}},
 		&context,
-		manager)
+		globalManager)
 	response, err := client.Do(request)
 	c.Assert(response, check.NotNil)
 	c.Assert(err, check.Equals, errUnauthorized)
@@ -142,7 +142,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
 	context := Context{
 		Stdout: &buf,
 	}
-	client := NewClient(&http.Client{}, &context, manager)
+	client := NewClient(&http.Client{}, &context, globalManager)
 	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, check.NotNil)
@@ -168,7 +168,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	context := Context{
 		Stdout: &buf,
 	}
-	client := NewClient(&http.Client{Transport: &trans}, &context, manager)
+	client := NewClient(&http.Client{Transport: &trans}, &context, globalManager)
 	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, check.IsNil)
@@ -195,7 +195,7 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *c
 	context := Context{
 		Stdout: &buf,
 	}
-	client := NewClient(&http.Client{Transport: &trans}, &context, manager)
+	client := NewClient(&http.Client{Transport: &trans}, &context, globalManager)
 	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, check.IsNil)

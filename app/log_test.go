@@ -17,8 +17,8 @@ import (
 func (s *S) TestNewLogListener(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
-	defer l.Close()
 	c.Assert(err, check.IsNil)
+	defer l.Close()
 	c.Assert(l.q, check.NotNil)
 	c.Assert(l.c, check.NotNil)
 	notify("myapp", []interface{}{Applog{Message: "123"}})
@@ -191,6 +191,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	}
 	dispatcher.Send(&logMsg)
 	timeout := time.After(5 * time.Second)
+loop:
 	for {
 		logs, logsErr := app.LastLogs(1, Applog{})
 		c.Assert(logsErr, check.IsNil)
@@ -200,7 +201,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 		select {
 		case <-timeout:
 			c.Fatal("timeout waiting for logs")
-			break
+			break loop
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -240,6 +241,7 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 	}
 	<-dbOk
 	timeout := time.After(10 * time.Second)
+loop:
 	for {
 		logs, logsErr := app.LastLogs(10, Applog{})
 		c.Assert(logsErr, check.IsNil)
@@ -249,7 +251,7 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 		select {
 		case <-timeout:
 			c.Fatalf("timeout waiting for all logs, last count: %d", len(logs))
-			break
+			break loop
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
