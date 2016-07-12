@@ -50,7 +50,6 @@ type S struct {
 	sshUser        string
 	server         *dtesting.DockerServer
 	extraServer    *dtesting.DockerServer
-	targetRecover  []string
 	storage        *db.Storage
 	oldProvisioner provision.Provisioner
 	p              *dockerProvisioner

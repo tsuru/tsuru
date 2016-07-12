@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"runtime"
 	"sort"
 	"sync"
@@ -32,8 +31,6 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-var execResizeRegexp = regexp.MustCompile(`^.*/exec/(.*)/resize$`)
 
 type newContainerOpts struct {
 	AppName         string
