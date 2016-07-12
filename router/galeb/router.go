@@ -7,6 +7,7 @@ package galeb
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
@@ -49,6 +50,10 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	balancePolicy, _ := config.GetString(configPrefix + ":balance-policy")
 	ruleType, _ := config.GetString(configPrefix + ":rule-type")
 	debug, _ := config.GetBool(configPrefix + ":debug")
+	waitTimeoutSec, err := config.GetInt(configPrefix + ":wait-timeout")
+	if err != nil {
+		waitTimeoutSec = 10 * 60
+	}
 	client := galebClient.GalebClient{
 		ApiUrl:        apiUrl,
 		Username:      username,
@@ -59,6 +64,7 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 		Project:       project,
 		BalancePolicy: balancePolicy,
 		RuleType:      ruleType,
+		WaitTimeout:   time.Duration(waitTimeoutSec) * time.Second,
 		Debug:         debug,
 	}
 	r := galebRouter{

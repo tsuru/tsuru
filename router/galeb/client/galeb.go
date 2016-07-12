@@ -36,6 +36,7 @@ type GalebClient struct {
 	Project       string
 	BalancePolicy string
 	RuleType      string
+	WaitTimeout   time.Duration
 	Debug         bool
 }
 
@@ -479,10 +480,13 @@ func (c *GalebClient) fetchPathStatus(path string) (string, error) {
 
 func (c *GalebClient) waitStatusOK(resourceURI string) error {
 	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
-	maxWaitTime := 30 * time.Second
-	timeout := time.After(maxWaitTime)
+	var timeout <-chan time.Time
+	if c.WaitTimeout != 0 {
+		timeout = time.After(c.WaitTimeout)
+	}
 	var status string
 	var err error
+loop:
 	for {
 		status, err = c.fetchPathStatus(path)
 		if err != nil || (status != STATUS_PENDING && status != STATUS_SYNCHRONIZING) {
@@ -490,8 +494,8 @@ func (c *GalebClient) waitStatusOK(resourceURI string) error {
 		}
 		select {
 		case <-timeout:
-			err = fmt.Errorf("GET %s: timeout after %v waiting for status change from PENDING", path, maxWaitTime)
-			break
+			err = fmt.Errorf("GET %s: timeout after %v waiting for status change from %s", path, c.WaitTimeout, status)
+			break loop
 		default:
 			time.Sleep(500 * time.Millisecond)
 		}

@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/tsuru/tsuru/api/apitest"
 	"gopkg.in/check.v1"
@@ -42,6 +43,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Project:       "proj1",
 		BalancePolicy: "balance1",
 		RuleType:      "ruletype1",
+		WaitTimeout:   100 * time.Millisecond,
 	}
 }
 
@@ -488,4 +490,27 @@ func (s *S) TestHealthcheck(c *check.C) {
 		"/api/healthcheck",
 	})
 	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
+}
+
+func (s *S) TestGalebAddBackendPoolPendingTimeout(c *check.C) {
+	s.handler.ConditionalContent["/api/target/3"] = []string{
+		"200", `{"_status": "PENDING"}`,
+	}
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/3", s.client.ApiUrl))
+	s.handler.RspCode = http.StatusCreated
+	expected := Target{
+		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
+		Project:            "proj1",
+		Environment:        "env1",
+	}
+	fullId, err := s.client.AddBackendPool("myname")
+	c.Assert(err, check.ErrorMatches, `GET /target/3: timeout after [0-9]+ms waiting for status change from PENDING`)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET", "GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/pool", "/api/target/3", "/api/target/3"})
+	var parsedParams Target
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, check.IsNil)
+	c.Assert(parsedParams, check.DeepEquals, expected)
+	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/target/3", s.client.ApiUrl))
 }
