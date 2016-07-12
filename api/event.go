@@ -28,6 +28,9 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if running, err := strconv.ParseBool(r.URL.Query().Get("running")); err == nil {
 		filter.Running = &running
 	}
+	if kindName := r.URL.Query().Get("kindName"); kindName != "" {
+		filter.KindName = kindName
+	}
 	events, err := event.List(filter)
 	if err != nil {
 		return err
