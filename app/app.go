@@ -46,7 +46,7 @@ var (
 
 const (
 	// InternalAppName is a reserved name used for token generation. For
-	// backward compatibilty and historical purpose, the value remained
+	// backward compatibility and historical purpose, the value remained
 	// "tsr" when the name of the daemon changed to "tsurud".
 	InternalAppName = "tsr"
 

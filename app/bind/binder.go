@@ -32,13 +32,13 @@ type App interface {
 	// GetUnits returns the app units.
 	GetUnits() ([]Unit, error)
 
-	// InstanceEnv returns the app enviroment variables.
+	// InstanceEnv returns the app environment variables.
 	InstanceEnv(string) map[string]EnvVar
 
-	// SetEnvs adds enviroment variables in the app.
+	// SetEnvs adds environment variables in the app.
 	SetEnvs(setEnvs SetEnvApp, w io.Writer) error
 
-	// UnsetEnvs removes the given enviroment variables from the app.
+	// UnsetEnvs removes the given environment variables from the app.
 	UnsetEnvs(unsetEnvs UnsetEnvApp, w io.Writer) error
 
 	// AddInstance adds an instance to the application.

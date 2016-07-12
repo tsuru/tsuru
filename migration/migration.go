@@ -34,7 +34,7 @@ var ErrMigrationMandatory = errors.New("migration is mandatory")
 var ErrMigrationAlreadyExecuted = errors.New("migration already executed")
 
 // ErrCannotForceMandatory is the error returned by Run when the force
-// paramter is supplied without the name of a migration to run.
+// parameter is supplied without the name of a migration to run.
 var ErrCannotForceMandatory = errors.New("mandatory migrations can only run once")
 
 // MigrateFunc represents a migration function, that can be registered with the
