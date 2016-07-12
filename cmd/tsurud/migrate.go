@@ -23,6 +23,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	nativeSchemeName       = "native"
+	defaultProvisionerName = "docker"
+)
+
 func init() {
 	err := migration.Register("migrate-docker-images", migrateImages)
 	if err != nil {
@@ -53,7 +58,7 @@ func init() {
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
 	if provisioner == "" {
-		provisioner = "docker"
+		provisioner = defaultProvisionerName
 	}
 	return provisioner, err
 }
@@ -124,7 +129,7 @@ func (c *migrateCmd) Flags() *gnuflag.FlagSet {
 
 func migrateImages() error {
 	provisioner, _ := getProvisioner()
-	if provisioner == "docker" {
+	if provisioner == defaultProvisionerName {
 		p, err := provision.Get(provisioner)
 		if err != nil {
 			return err
@@ -295,7 +300,7 @@ func migrateRoles() error {
 func migrateBSEnvs() error {
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
-		scheme = "native"
+		scheme = nativeSchemeName
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {

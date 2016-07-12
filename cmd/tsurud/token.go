@@ -23,7 +23,7 @@ func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	context.RawOutput()
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
-		scheme = "native"
+		scheme = nativeSchemeName
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {
@@ -39,7 +39,7 @@ func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		fmt.Fprintln(context.Stdout, "Root user successfully updated.")
 	}
 	var confirm, password string
-	if scheme == "native" {
+	if scheme == nativeSchemeName {
 		fmt.Fprint(context.Stdout, "Password: ")
 		password, err = cmd.PasswordFromReader(context.Stdin)
 		if err != nil {
@@ -102,7 +102,7 @@ type tokenCmd struct{}
 func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
-		scheme = "native"
+		scheme = nativeSchemeName
 	}
 	app.AuthScheme, err = auth.GetScheme(scheme)
 	if err != nil {

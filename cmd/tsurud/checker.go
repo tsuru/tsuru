@@ -32,7 +32,7 @@ func checkGandalf() error {
 
 // Check provisioner configs
 func checkProvisioner() error {
-	if value, _ := config.Get("provisioner"); value == "docker" || value == "" {
+	if value, _ := config.Get("provisioner"); value == defaultProvisionerName || value == "" {
 		return checkDocker()
 	}
 	return nil

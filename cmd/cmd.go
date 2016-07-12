@@ -31,6 +31,10 @@ var (
 	ErrLookup = stderrors.New("lookup error - command not found")
 )
 
+const (
+	loginCmdName = "login"
+)
+
 type exiter interface {
 	Exit(int)
 }
@@ -231,8 +235,7 @@ func (m *Manager) Run(args []string) {
 	client := NewClient(net.Dial5FullUnlimitedClient, context, m)
 	client.Verbosity = verbosity
 	err = command.Run(context, client)
-	if err == errUnauthorized && name != "login" {
-		loginCmdName := "login"
+	if err == errUnauthorized && name != loginCmdName {
 		if cmd, ok := m.Commands[loginCmdName]; ok {
 			fmt.Fprintln(m.stderr, "Error: you're not authenticated or your session has expired.")
 			fmt.Fprintf(m.stderr, "Calling the %q command...\n", loginCmdName)
@@ -246,8 +249,8 @@ func (m *Manager) Run(args []string) {
 	if err != nil {
 		errorMsg := err.Error()
 		httpErr, ok := err.(*errors.HTTP)
-		if ok && httpErr.Code == http.StatusUnauthorized && name != "login" {
-			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
+		if ok && httpErr.Code == http.StatusUnauthorized && name != loginCmdName {
+			errorMsg = fmt.Sprintf(`You're not authenticated or your session has expired. Please use %q command for authentication.`, loginCmdName)
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
