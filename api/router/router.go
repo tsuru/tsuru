@@ -39,7 +39,7 @@ func (r *DelayedRouter) registerVars(req *http.Request, vars map[string]string) 
 	for key, value := range vars {
 		values[":"+key] = []string{value}
 	}
-	req.URL.RawQuery = url.Values(values).Encode() + "&" + req.URL.RawQuery
+	req.URL.RawQuery = values.Encode() + "&" + req.URL.RawQuery
 }
 
 func (r *DelayedRouter) addRoute(version, path string, h http.Handler, methods ...string) *mux.Route {

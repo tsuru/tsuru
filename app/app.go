@@ -806,7 +806,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 	envs := make(map[string]bind.EnvVar)
 	for k, env := range app.Env {
 		if env.InstanceName == name {
-			envs[k] = bind.EnvVar(env)
+			envs[k] = env
 		}
 	}
 	return envs

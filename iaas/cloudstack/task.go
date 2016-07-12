@@ -62,8 +62,8 @@ func (t *machineCreate) Run(job monsterqueue.Job) {
 			if strings.Contains(tag, ":") {
 				parts := strings.SplitN(tag, ":", 2)
 				cloudTags = append(cloudTags, &cloudstackTag{
-					Key:   string(parts[0]),
-					Value: string(parts[1]),
+					Key:   parts[0],
+					Value: parts[1],
 				})
 			}
 		}

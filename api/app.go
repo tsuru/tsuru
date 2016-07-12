@@ -512,7 +512,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err = a.RemoveUnits(uint(n), processName, writer)
+	err = a.RemoveUnits(n, processName, writer)
 	if err != nil {
 		return err
 	}
