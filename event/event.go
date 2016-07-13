@@ -117,7 +117,7 @@ type eventData struct {
 	StartCustomData interface{} `bson:",omitempty"`
 	EndCustomData   interface{} `bson:",omitempty"`
 	OtherCustomData interface{} `bson:",omitempty"`
-	Kind            kind
+	Kind            Kind
 	Owner           Owner
 	LockUpdateTime  time.Time
 	Error           string
@@ -146,7 +146,7 @@ type Owner struct {
 	Name string
 }
 
-type kind struct {
+type Kind struct {
 	Type kindType
 	Name string
 }
@@ -155,7 +155,7 @@ func (o Owner) String() string {
 	return fmt.Sprintf("%s %s", o.Type, o.Name)
 }
 
-func (k kind) String() string {
+func (k Kind) String() string {
 	return k.Name
 }
 
@@ -174,7 +174,7 @@ func SetThrottling(spec ThrottlingSpec) {
 	throttlingInfo[key] = spec
 }
 
-func getThrottling(t *Target, k *kind) *ThrottlingSpec {
+func getThrottling(t *Target, k *Kind) *ThrottlingSpec {
 	key := fmt.Sprintf("%s_%s", t.Name, k.Name)
 	if s, ok := throttlingInfo[key]; ok {
 		return &s
@@ -270,6 +270,21 @@ func (f *Filter) toQuery() bson.M {
 		}
 	}
 	return query
+}
+
+func GetKinds() ([]Kind, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	var kinds []Kind
+	err = coll.Find(nil).Distinct("kind", &kinds)
+	if err != nil {
+		return nil, err
+	}
+	return kinds, nil
 }
 
 func GetRunning(target Target, kind string) (*Event, error) {
@@ -412,7 +427,7 @@ func newEvt(opts *Opts) (*Event, error) {
 	if !opts.Target.IsValid() {
 		return nil, ErrNoTarget
 	}
-	var k kind
+	var k Kind
 	if opts.Kind == nil {
 		if opts.InternalKind == "" {
 			return nil, ErrNoKind

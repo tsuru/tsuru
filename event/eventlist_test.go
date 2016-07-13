@@ -144,3 +144,19 @@ func (s *S) TestGetRunning(c *check.C) {
 func boolPtr(b bool) *bool {
 	return &b
 }
+
+func (s *S) TestGetKinds(c *check.C) {
+	_, err := event.New(&event.Opts{
+		Target: event.Target{Name: "app", Value: "myapp"},
+		Kind:   permission.PermAppUpdateEnvSet,
+		Owner:  s.token,
+	})
+	c.Assert(err, check.IsNil)
+	kinds, err := event.GetKinds()
+	c.Assert(err, check.IsNil)
+	c.Assert(kinds, check.HasLen, 1)
+	expected := []event.Kind{
+		event.Kind{Type: "permission", Name: "app.update.env.set"},
+	}
+	c.Assert(kinds, check.DeepEquals, expected)
+}
