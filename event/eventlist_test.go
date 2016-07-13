@@ -156,7 +156,7 @@ func (s *S) TestGetKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(kinds, check.HasLen, 1)
 	expected := []event.Kind{
-		event.Kind{Type: "permission", Name: "app.update.env.set"},
+		{Type: "permission", Name: "app.update.env.set"},
 	}
 	c.Assert(kinds, check.DeepEquals, expected)
 }
