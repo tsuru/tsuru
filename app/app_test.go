@@ -3904,6 +3904,37 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	c.Assert(app.Ip, check.Equals, addr)
 }
 
+func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
+		routertest.FakeRouter.RemoveRoute(a.Name, u.Address)
+		routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "tcp", Host: u.Address.Host})
+	}
+	changes, err := a.RebuildRoutes()
+	c.Assert(err, check.IsNil)
+	c.Assert(changes.Added, check.IsNil)
+	c.Assert(changes.Removed, check.IsNil)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 3)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.Host), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.Host), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.Host), check.Equals, true)
+	app, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	addr, err := routertest.FakeRouter.Addr(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Ip, check.Equals, addr)
+}
+
 type URLList []*url.URL
 
 func (l URLList) Len() int           { return len(l) }

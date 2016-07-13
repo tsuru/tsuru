@@ -1606,12 +1606,12 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 		return nil, err
 	}
 	for _, unit := range units {
-		expectedMap[unit.Address.String()] = unit.Address
+		expectedMap[unit.Address.Host] = unit.Address
 	}
 	var toRemove []*url.URL
 	for _, url := range oldRoutes {
-		if _, isPresent := expectedMap[url.String()]; isPresent {
-			delete(expectedMap, url.String())
+		if _, isPresent := expectedMap[url.Host]; isPresent {
+			delete(expectedMap, url.Host)
 		} else {
 			toRemove = append(toRemove, url)
 		}
