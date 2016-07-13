@@ -6,7 +6,11 @@ BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = cmd/tsurud/*.go
 
-LINTER_ARGS = -j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --deadline=10m --tests
+LINTER_ARGS = \
+	-j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
+	--linter 'unused:unused {path}:^(?P<path>[^\s][^\r\n:]+?\.go):(?P<line>\d+):(?P<col>\d+):\s*(?P<message>.*)$$$'' \
+	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer \
+	--deadline=10m --tests
 
 .PHONY: all check-path test race docs
 
@@ -39,14 +43,6 @@ _tsurud_dry:
 
 test: _go_test _tsurud_dry
 
-_install_deadcode:
-	go get $(GO_EXTRAFLAGS) github.com/remyoudompheng/go-misc/deadcode
-
-deadcode: _install_deadcode
-	@go list ./... | sed -e 's;github.com/tsuru/tsuru/;;' | grep -v vendor/ | xargs deadcode
-
-deadc0de: deadcode
-
 lint: metalint
 	misc/check-license.sh
 	misc/check-contributors.sh
@@ -54,6 +50,7 @@ lint: metalint
 metalint:
 	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
 		go get -u github.com/alecthomas/gometalinter; \
+		go get -u honnef.co/go/unused/cmd/unused; \
 		gometalinter --install --update; \
 		go install ./...; \
 		go list ./... | grep -v vendor/ | sed -e "s;^;$$GOPATH/src/;" | xargs gometalinter $(LINTER_ARGS); \
