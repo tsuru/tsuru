@@ -42,3 +42,23 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(events)
 }
+
+// title: kind list
+// path: /events/kinds
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   204: No content
+func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	kinds, err := event.GetKinds()
+	if err != nil {
+		return err
+	}
+	if len(kinds) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(kinds)
+}
