@@ -7,6 +7,7 @@ package galeb
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/tsuru/config"
@@ -116,6 +117,7 @@ func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 	if err != nil {
 		return err
 	}
+	address.Scheme = router.HttpScheme
 	_, err = r.client.AddBackend(address, r.poolName(backendName))
 	if err == galebClient.ErrItemAlreadyExists {
 		return router.ErrRouteExists
@@ -127,6 +129,9 @@ func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
+	}
+	for _, a := range addresses {
+		a.Scheme = router.HttpScheme
 	}
 	return r.client.AddBackends(addresses, r.poolName(backendName))
 }
@@ -142,7 +147,7 @@ func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 	}
 	var id string
 	for _, target := range targets {
-		if target.Name == address.String() {
+		if strings.HasSuffix(target.Name, address.Host) {
 			id = target.FullId()
 		}
 	}
@@ -159,7 +164,7 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	}
 	addressMap := map[string]struct{}{}
 	for _, addr := range addresses {
-		addressMap[addr.String()] = struct{}{}
+		addressMap[addr.Host] = struct{}{}
 	}
 	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
 	if err != nil {
@@ -167,7 +172,11 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	}
 	var ids []string
 	for _, target := range targets {
-		if _, ok := addressMap[target.Name]; ok {
+		parsedAddr, err := url.Parse(target.Name)
+		if err != nil {
+			return err
+		}
+		if _, ok := addressMap[parsedAddr.Host]; ok {
 			ids = append(ids, target.FullId())
 		}
 	}

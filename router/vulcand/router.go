@@ -160,7 +160,7 @@ func (r *vulcandRouter) AddRoute(name string, address *url.URL) error {
 		return err
 	}
 	serverKey := engine.ServerKey{
-		Id:         r.serverName(address.String()),
+		Id:         r.serverName(address.Host),
 		BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
 	}
 	if found, _ := r.client.GetServer(serverKey); found != nil {
@@ -184,7 +184,7 @@ func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) error {
 	}
 	for _, addr := range addresses {
 		serverKey := engine.ServerKey{
-			Id:         r.serverName(addr.String()),
+			Id:         r.serverName(addr.Host),
 			BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
 		}
 		server, err := engine.NewServer(serverKey.Id, addr.String())
@@ -205,7 +205,7 @@ func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) error {
 		return err
 	}
 	serverKey := engine.ServerKey{
-		Id:         r.serverName(address.String()),
+		Id:         r.serverName(address.Host),
 		BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
 	}
 	err = r.client.DeleteServer(serverKey)
@@ -225,7 +225,7 @@ func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	}
 	for _, addr := range addresses {
 		serverKey := engine.ServerKey{
-			Id:         r.serverName(addr.String()),
+			Id:         r.serverName(addr.Host),
 			BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
 		}
 		err = r.client.DeleteServer(serverKey)

@@ -155,6 +155,7 @@ func (r *hipacheRouter) AddRoute(name string, address *url.URL) error {
 	if err != nil {
 		return err
 	}
+	address.Scheme = "http"
 	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		log.Errorf("error on getting hipache domain in add route for %s - %s", backendName, address)
@@ -208,8 +209,9 @@ func (r *hipacheRouter) AddRoutes(name string, addresses []*url.URL) error {
 	toAdd := make([]string, 0, len(addresses))
 addresses:
 	for _, addr := range addresses {
+		addr.Scheme = router.HttpScheme
 		for _, r := range routes {
-			if r.String() == addr.String() {
+			if r.Host == addr.Host {
 				continue addresses
 			}
 		}
@@ -272,6 +274,7 @@ func (r *hipacheRouter) RemoveRoute(name string, address *url.URL) error {
 		return &router.RouterError{Op: "remove", Err: err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
+	address.Scheme = router.HttpScheme
 	count, err := r.removeElement(frontend, address.String())
 	if err != nil {
 		return err
@@ -306,6 +309,7 @@ func (r *hipacheRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	}
 	toRemove := make([]string, len(addresses))
 	for i := range addresses {
+		addresses[i].Scheme = router.HttpScheme
 		toRemove[i] = addresses[i].String()
 	}
 	frontend := "frontend:" + backendName + "." + domain

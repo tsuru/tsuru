@@ -149,6 +149,23 @@ func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
+func (s *RouterSuite) TestRouteRemoveRouteOtherScheme(c *check.C) {
+	err := s.Router.AddBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(testBackend1, addr1)
+	c.Assert(err, check.IsNil)
+	addr1Tcp, err := url.Parse("tcp://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveRoute(testBackend1, addr1Tcp)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveRoute(testBackend1, addr1Tcp)
+	c.Assert(err, check.Equals, router.ErrRouteNotFound)
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *RouterSuite) TestRouteRemoveUnknownRoute(c *check.C) {
 	err := s.Router.AddBackend(testBackend1)
 	c.Assert(err, check.IsNil)
@@ -178,6 +195,10 @@ func (s *RouterSuite) TestRouteAddDupRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoute(testBackend1, addr1)
 	c.Assert(err, check.Equals, router.ErrRouteExists)
+	addr1Tcp, err := url.Parse("tcp://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(testBackend1, addr1Tcp)
+	c.Assert(err, check.Equals, router.ErrRouteExists)
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
 }
@@ -193,7 +214,7 @@ type URLList []*url.URL
 
 func (l URLList) Len() int           { return len(l) }
 func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l URLList) Less(i, j int) bool { return l[i].String() < l[j].String() }
+func (l URLList) Less(i, j int) bool { return l[i].Host < l[j].Host }
 
 func (s *RouterSuite) TestRouteAddRoutes(c *check.C) {
 	err := s.Router.AddBackend(testBackend1)
@@ -221,7 +242,9 @@ func (s *RouterSuite) TestRouteAddRoutesIgnoreRepeated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addr2, err := url.Parse("http://10.10.10.11:8080")
 	c.Assert(err, check.IsNil)
-	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1, addr2})
+	addr3, err := url.Parse("tcp://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoutes(testBackend1, []*url.URL{addr1, addr2, addr3})
 	c.Assert(err, check.IsNil)
 	routes, err := s.Router.Routes(testBackend1)
 	c.Assert(err, check.IsNil)
@@ -268,7 +291,9 @@ func (s *RouterSuite) TestRouteRemoveRoutesIgnoreNonExisting(c *check.C) {
 	c.Assert(routes, HostEquals, []*url.URL{addr1, addr2})
 	addr3, err := url.Parse("http://10.10.10.12:8080")
 	c.Assert(err, check.IsNil)
-	err = s.Router.RemoveRoutes(testBackend1, []*url.URL{addr1, addr3, addr2})
+	addr1Tcp, err := url.Parse("tcp://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveRoutes(testBackend1, []*url.URL{addr1Tcp, addr3, addr2})
 	c.Assert(err, check.IsNil)
 	routes, err = s.Router.Routes(testBackend1)
 	c.Assert(err, check.IsNil)

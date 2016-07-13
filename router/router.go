@@ -34,6 +34,8 @@ var (
 	ErrCNameNotAllowed = errors.New("CName as router subdomain not allowed")
 )
 
+const HttpScheme = "http"
+
 var routers = make(map[string]routerFactory)
 
 // Register registers a new router.
