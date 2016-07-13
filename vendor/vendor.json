@@ -14,6 +14,13 @@
 			"revisionTime": "2016-04-29T22:15:17Z"
 		},
 		{
+			"checksumSHA1": "8wY0Od/oZMtYxA/sUC2J/OTw2j8=",
+			"origin": "github.com/luizbafilho/fusis/vendor/github.com/asaskevich/govalidator",
+			"path": "github.com/asaskevich/govalidator",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "999b1591218c36d5050d1ba7266eba956e65965f",
 			"revisionTime": "2015-12-08T12:45:36-08:00"
@@ -276,6 +283,27 @@
 			"revisionTime": "2014-07-14T14:50:19-07:00"
 		},
 		{
+			"checksumSHA1": "6tnH76EgqJ23VLqf9QREtnyvPZ8=",
+			"origin": "github.com/luizbafilho/fusis/vendor/github.com/gin-gonic/gin",
+			"path": "github.com/gin-gonic/gin",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
+			"checksumSHA1": "K1Mer2VJBxUkYdE896+WZLOz6A8=",
+			"origin": "github.com/luizbafilho/fusis/vendor/github.com/gin-gonic/gin/binding",
+			"path": "github.com/gin-gonic/gin/binding",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
+			"checksumSHA1": "Aymn5jKrmjk/CYi6EqPEFK4st6Y=",
+			"origin": "github.com/luizbafilho/fusis/vendor/github.com/gin-gonic/gin/render",
+			"path": "github.com/gin-gonic/gin/render",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
 			"origin": "github.com/aws/aws-sdk-go/vendor/github.com/go-ini/ini",
 			"path": "github.com/go-ini/ini",
 			"revision": "999b1591218c36d5050d1ba7266eba956e65965f",
@@ -332,6 +360,31 @@
 			"path": "github.com/kardianos/osext",
 			"revision": "10da29423eb9a6269092eebdc2be32209612d9d2",
 			"revisionTime": "2015-11-24T09:03:42-08:00"
+		},
+		{
+			"checksumSHA1": "gysU1muo7UXwANQW7zch9fTtA+g=",
+			"path": "github.com/luizbafilho/fusis/api",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
+			"checksumSHA1": "AjEThWb+FqCz2ObEOMTsPAd3vBU=",
+			"path": "github.com/luizbafilho/fusis/api/testing",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
+			"checksumSHA1": "dp6Ojtm66PCTHvKMPvipprRNazY=",
+			"path": "github.com/luizbafilho/fusis/api/types",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
+			"checksumSHA1": "b0T0Hzd+zYk+OCDTFMps+jwa/nY=",
+			"origin": "github.com/luizbafilho/fusis/vendor/github.com/manucorporat/sse",
+			"path": "github.com/manucorporat/sse",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
 		},
 		{
 			"path": "github.com/nu7hatch/gouuid",
@@ -780,6 +833,13 @@
 			"path": "gopkg.in/check.v1",
 			"revision": "64131543e7896d5bcc6bd5a76287eb75ea96c673",
 			"revisionTime": "2014-10-24T11:38:53-02:00"
+		},
+		{
+			"checksumSHA1": "M6YXIII+gGY/qUSzJB7AXyHkboM=",
+			"origin": "github.com/luizbafilho/fusis/vendor/gopkg.in/go-playground/validator.v8",
+			"path": "gopkg.in/go-playground/validator.v8",
+			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
+			"revisionTime": "2016-07-12T00:16:01Z"
 		},
 		{
 			"path": "gopkg.in/mgo.v2",
