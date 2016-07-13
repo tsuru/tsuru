@@ -367,12 +367,6 @@ func (s *S) TestStartTsuruAllocatorSequentialStress(c *check.C) {
 	}
 }
 
-type NodeList []cluster.Node
-
-func (a NodeList) Len() int           { return len(a) }
-func (a NodeList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a NodeList) Less(i, j int) bool { return a[i].Address < a[j].Address }
-
 func (s *S) TestProvisionerGetCluster(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")

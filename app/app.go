@@ -1126,21 +1126,6 @@ func (app *App) unsetEnvsToApp(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 	return Provisioner.Restart(app, "", w)
 }
 
-type rollbackFunc func(provision.App, string) error
-
-func (app *App) rollbackCNames(r rollbackFunc, cnames []string, mongoCommand string) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	for _, c := range cnames {
-		r(app, c)
-		conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{mongoCommand: bson.M{"cname": c}},
-		)
-	}
-
-}
-
 // AddCName adds a CName to app. It updates the attribute,
 // calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change

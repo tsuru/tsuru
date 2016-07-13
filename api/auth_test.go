@@ -8,11 +8,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
 	"sort"
 	"strings"
 	"time"
@@ -102,13 +99,6 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = conn.Teams().Insert(s.team2)
 	c.Assert(err, check.IsNil)
-}
-
-func (s *AuthSuite) getTestData(p ...string) io.ReadCloser {
-	p = append([]string{}, ".", "testdata")
-	fp := path.Join(p...)
-	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
-	return f
 }
 
 func (s *AuthSuite) TestCreateUser(c *check.C) {

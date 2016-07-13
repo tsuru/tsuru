@@ -5,9 +5,6 @@
 package auth
 
 import (
-	"io"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -79,11 +76,4 @@ func (s *S) TearDownTest(c *check.C) {
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)
 	config.Set("git:protocol", s.gitProt)
-}
-
-func (s *S) getTestData(path ...string) io.ReadCloser {
-	path = append([]string{}, ".", "testdata")
-	p := filepath.Join(path...)
-	f, _ := os.OpenFile(p, os.O_RDONLY, 0)
-	return f
 }

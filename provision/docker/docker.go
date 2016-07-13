@@ -37,14 +37,6 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return storage, nil
 }
 
-func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
-	node, err := p.getNodeByHost(host)
-	if err != nil {
-		return "", err
-	}
-	return node.Address, nil
-}
-
 func (p *dockerProvisioner) getNodeByHost(host string) (cluster.Node, error) {
 	nodes, err := p.Cluster().Nodes()
 	if err != nil {

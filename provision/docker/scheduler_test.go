@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -23,15 +22,6 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
-
-func checkContainerInContainerSlices(c container.Container, cList []container.Container) error {
-	for _, cont := range cList {
-		if cont.ID == c.ID {
-			return nil
-		}
-	}
-	return errors.New("container is not in list")
-}
 
 func (s *S) TestSchedulerSchedule(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}

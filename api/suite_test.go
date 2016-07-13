@@ -5,9 +5,6 @@
 package api
 
 import (
-	"io"
-	"os"
-	"path"
 	"testing"
 
 	"github.com/gorilla/context"
@@ -132,13 +129,6 @@ func (s *S) TestDownSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer logConn.Close()
 	logConn.Logs("myapp").Database.DropDatabase()
-}
-
-func (s *S) getTestData(p ...string) io.ReadCloser {
-	p = append([]string{}, ".", "testdata")
-	fp := path.Join(p...)
-	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
-	return f
 }
 
 func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {

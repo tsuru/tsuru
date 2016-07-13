@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"strings"
 	"sync"
 
@@ -254,24 +253,6 @@ func (p *dockerProvisioner) moveContainersFromHosts(fromHosts []string, toHost s
 	}
 	fmt.Fprintf(writer, "Moving %d units...\n", len(allContainers))
 	return p.moveContainerList(allContainers, toHost, writer)
-}
-
-type hostWithContainers struct {
-	HostAddr   string `bson:"_id"`
-	Count      int
-	Containers []container.Container
-}
-
-func minCountHost(hosts []hostWithContainers) *hostWithContainers {
-	var minCountHost *hostWithContainers
-	minCount := math.MaxInt32
-	for i, dest := range hosts {
-		if dest.Count < minCount {
-			minCount = dest.Count
-			minCountHost = &hosts[i]
-		}
-	}
-	return minCountHost
 }
 
 func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFilter []string, metadataFilter map[string]string, dryRun bool) (*dockerProvisioner, error) {

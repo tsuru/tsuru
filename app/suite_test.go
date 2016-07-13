@@ -7,11 +7,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -27,9 +22,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -157,27 +150,4 @@ func (s *S) SetUpTest(c *check.C) {
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	factory.Reset()
-}
-
-func (s *S) getTestData(p ...string) io.ReadCloser {
-	p = append([]string{}, ".", "testdata")
-	fp := path.Join(p...)
-	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
-	return f
-}
-
-func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {
-	ts := httptest.NewServer(fn)
-	ret := func() {
-		ts.Close()
-		s.conn.Services().Remove(bson.M{"_id": "mysql"})
-		s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	}
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srvc.Create()
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, Apps: []string{appName}}
-	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	return ret
 }

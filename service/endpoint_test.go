@@ -20,14 +20,6 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type FakeUnit struct {
-	ip string
-}
-
-func (a *FakeUnit) GetIp() string {
-	return a.ip
-}
-
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
