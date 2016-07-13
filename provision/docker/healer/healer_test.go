@@ -30,5 +30,5 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evts, err := ListHealingHistory("")
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, eventtest.EvtEquals, []event.Event{*evt2, *evt1})
+	c.Assert(evts, eventtest.EvtEquals, []*event.Event{evt2, evt1})
 }

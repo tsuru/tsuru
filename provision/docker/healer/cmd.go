@@ -41,7 +41,7 @@ func renderHistoryTable(history []event.Event, filter string, ctx *cmd.Context) 
 	headers := cmd.Row([]string{"Start", "Finish", "Success", "Failing", "Created", "Error"})
 	t := cmd.Table{Headers: headers}
 	for i := range history {
-		event := history[i]
+		event := &history[i]
 		data := make([]string, 2)
 		if event.Target.Name != filter {
 			continue

@@ -70,7 +70,7 @@ func (s *S) TestGandalfSyncCmdIsRegistered(c *check.C) {
 
 func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *check.C) {
 	fp := provisiontest.NewFakeProvisioner()
-	p := CommandableProvisioner{FakeProvisioner: *fp}
+	p := CommandableProvisioner{FakeProvisioner: fp}
 	provision.Register("comm", &p)
 	manager := buildManager()
 	fake, ok := manager.Commands["fake"]

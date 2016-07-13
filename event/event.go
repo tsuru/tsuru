@@ -78,7 +78,7 @@ func (err ErrEventLocked) Error() string {
 type Target struct{ Name, Value string }
 
 func (id Target) GetBSON() (interface{}, error) {
-	return bson.D{{"name", id.Name}, {"value", id.Value}}, nil
+	return bson.D{{Name: "name", Value: id.Name}, {Name: "value", Value: id.Value}}, nil
 }
 
 func (id Target) IsValid() bool {

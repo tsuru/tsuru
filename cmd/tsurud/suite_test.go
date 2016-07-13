@@ -40,7 +40,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 type CommandableProvisioner struct {
-	provisiontest.FakeProvisioner
+	*provisiontest.FakeProvisioner
 	cmd *FakeCommand
 }
 

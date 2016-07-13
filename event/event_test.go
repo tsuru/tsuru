@@ -71,7 +71,7 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
-	c.Assert(evts, check.DeepEquals, []Event{*expected})
+	c.Assert(&evts[0], check.DeepEquals, expected)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err = All()
@@ -85,7 +85,7 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
 	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
-	c.Assert(evts, check.DeepEquals, []Event{*expected})
+	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestNewCustomDataDone(c *check.C) {
@@ -122,7 +122,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
 	expected.StartCustomData = bson.M{"a": "value"}
 	expected.EndCustomData = bson.M{"a": "other"}
-	c.Assert(evts, check.DeepEquals, []Event{*expected})
+	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestNewLocks(c *check.C) {
@@ -222,7 +222,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 		EndTime:        evts[0].EndTime,
 		Error:          "myerr",
 	}}
-	c.Assert(evts, check.DeepEquals, []Event{*expected})
+	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
 func (s *S) TestEventLogf(c *check.C) {
@@ -255,17 +255,19 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 func (s *S) TestEventCancel(c *check.C) {
 	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
-	oldEvt := *evt
-	err = evt.TryCancel("because I want", "admin@admin.com")
+	evts, err := All()
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.CancelInfo.StartTime.IsZero(), check.Equals, false)
-	evt.CancelInfo.StartTime = time.Time{}
-	c.Assert(evt.CancelInfo, check.DeepEquals, cancelInfo{
+	c.Assert(evts, check.HasLen, 1)
+	err = evts[0].TryCancel("because I want", "admin@admin.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
 		Reason: "because I want",
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	evts, err := All()
+	evts, err = All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -275,13 +277,13 @@ func (s *S) TestEventCancel(c *check.C) {
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	err = oldEvt.AckCancel()
+	err = evt.AckCancel()
 	c.Assert(err, check.IsNil)
-	c.Assert(oldEvt.CancelInfo.StartTime.IsZero(), check.Equals, false)
-	c.Assert(oldEvt.CancelInfo.AckTime.IsZero(), check.Equals, false)
-	oldEvt.CancelInfo.StartTime = time.Time{}
-	oldEvt.CancelInfo.AckTime = time.Time{}
-	c.Assert(oldEvt.CancelInfo, check.DeepEquals, cancelInfo{
+	c.Assert(evt.CancelInfo.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evt.CancelInfo.AckTime.IsZero(), check.Equals, false)
+	evt.CancelInfo.StartTime = time.Time{}
+	evt.CancelInfo.AckTime = time.Time{}
+	c.Assert(evt.CancelInfo, check.DeepEquals, cancelInfo{
 		Reason:   "because I want",
 		Owner:    "admin@admin.com",
 		Asked:    true,

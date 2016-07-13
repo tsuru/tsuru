@@ -117,20 +117,24 @@ type evtEqualsChecker struct {
 }
 
 func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, string) {
-	evts := make([][]event.Event, len(params))
+	evts := make([][]*event.Event, len(params))
 	for i := range evts {
 		switch e := params[i].(type) {
 		case event.Event:
-			evts[i] = []event.Event{e}
+			evts[i] = []*event.Event{&e}
 		case *event.Event:
-			evts[i] = []event.Event{*e}
+			evts[i] = []*event.Event{e}
 		case []event.Event:
+			for j := range e {
+				evts[i] = append(evts[i], &e[j])
+			}
+		case []*event.Event:
 			evts[i] = e
 		default:
-			evts[i] = []event.Event{}
+			evts[i] = nil
 		}
 		for j := range evts[i] {
-			e := &evts[i][j]
+			e := evts[i][j]
 			e.StartTime = time.Time{}
 			e.EndTime = time.Time{}
 			e.LockUpdateTime = time.Time{}
