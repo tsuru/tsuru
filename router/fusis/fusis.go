@@ -150,7 +150,7 @@ func (r *fusisRouter) AddRoutes(name string, addresses []*url.URL) error {
 	added := make([]*url.URL, 0, len(addresses))
 	var err error
 	for _, addr := range addresses {
-		err := r.AddRoute(name, addr)
+		err = r.AddRoute(name, addr)
 		if err == router.ErrRouteExists {
 			err = nil
 			continue
@@ -185,7 +185,7 @@ func (r *fusisRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	removed := make([]*url.URL, 0, len(addresses))
 	var err error
 	for _, addr := range addresses {
-		err := r.RemoveRoute(name, addr)
+		err = r.RemoveRoute(name, addr)
 		if err == router.ErrRouteNotFound {
 			err = nil
 			continue
