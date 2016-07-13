@@ -30,10 +30,10 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y mongodb-org
   - service mongod status
+  - go env && pwd
 script:
   - make test
-  - ./check-fmt.sh
-  - make deadcode
+  - make metalint
   - go get golang.org/x/net/http2/...
   - ./check-handlers.sh
   - make check-api-doc

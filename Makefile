@@ -54,7 +54,8 @@ lint: metalint
 metalint:
 	go get -u github.com/alecthomas/gometalinter
 	gometalinter --install --update
-	go list ./... | grep -v vendor/ | sed -e 's;github.com/tsuru/tsuru/;;' | xargs gometalinter $(LINTER_ARGS)
+	go install ./...
+	go list ./... | grep -v vendor/ | sed -e "s;^;$$GOPATH/src/;" | xargs gometalinter $(LINTER_ARGS)
 
 race:
 	go test $(GO_EXTRAFLAGS) -race -i ./...
