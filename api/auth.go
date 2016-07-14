@@ -121,20 +121,19 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 	for key := range r.Form {
 		params[key] = r.FormValue(key)
 	}
-	email := params["email"]
+	token, err := app.AuthScheme.Login(params)
+	if err != nil {
+		return handleAuthError(err)
+	}
 	evt, err := event.New(&event.Opts{
-		Target:   userTarget(email),
+		Target:   userTarget(token.GetUserName()),
 		Kind:     permission.PermUserLogIn,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: email},
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: token.GetUserName()},
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	token, err := app.AuthScheme.Login(params)
-	if err != nil {
-		return handleAuthError(err)
-	}
 	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 }
 
