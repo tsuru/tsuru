@@ -83,9 +83,7 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 	cnames, err := cnameRouter.CNames(backend1)
 	c.Assert(err, check.IsNil)
 	c.Assert(cnames, check.HasLen, 0)
-	u, err := url.Parse("cname.com")
-	c.Assert(err, check.IsNil)
-	expected := []*url.URL{u}
+	expected := []*url.URL{{Host: "cname.com"}}
 	cnames, err = cnameRouter.CNames(backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(expected, check.DeepEquals, cnames)
@@ -93,9 +91,6 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cnames, err = cnameRouter.CNames(backend1)
 	c.Assert(err, check.IsNil)
-	u, err = url.Parse("cname.com")
-	c.Assert(err, check.IsNil)
-	expected = []*url.URL{u}
 	c.Assert(expected, check.DeepEquals, cnames)
 	cnames, err = cnameRouter.CNames(backend2)
 	c.Assert(err, check.IsNil)

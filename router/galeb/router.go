@@ -203,11 +203,7 @@ func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
 	}
 	for _, vhost := range virtualhosts {
 		if vhost.Name != address {
-			u, vErr := url.Parse(vhost.Name)
-			if vErr != nil {
-				return nil, vErr
-			}
-			urls = append(urls, u)
+			urls = append(urls, &url.URL{Host: vhost.Name})
 		}
 	}
 	return urls, nil

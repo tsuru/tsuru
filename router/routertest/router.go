@@ -83,11 +83,7 @@ func (r *fakeRouter) CNames(name string) ([]*url.URL, error) {
 	result := []*url.URL{}
 	for cname, backendName := range r.cnames {
 		if backendName == name {
-			u, err := url.Parse(cname)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, u)
+			result = append(result, &url.URL{Host: cname})
 		}
 	}
 	return result, nil

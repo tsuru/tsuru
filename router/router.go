@@ -227,21 +227,21 @@ func swapCnames(r Router, backend1, backend2 string) error {
 		return err
 	}
 	for _, cname := range cnames1 {
-		err = cnameRouter.UnsetCName(cname.String(), backend1)
+		err = cnameRouter.UnsetCName(cname.Host, backend1)
 		if err != nil {
 			return err
 		}
-		err = cnameRouter.SetCName(cname.String(), backend2)
+		err = cnameRouter.SetCName(cname.Host, backend2)
 		if err != nil {
 			return err
 		}
 	}
 	for _, cname := range cnames2 {
-		err = cnameRouter.UnsetCName(cname.String(), backend2)
+		err = cnameRouter.UnsetCName(cname.Host, backend2)
 		if err != nil {
 			return err
 		}
-		err = cnameRouter.SetCName(cname.String(), backend1)
+		err = cnameRouter.SetCName(cname.Host, backend1)
 		if err != nil {
 			return err
 		}

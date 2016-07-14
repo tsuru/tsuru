@@ -460,14 +460,14 @@ func (s *RouterSuite) TestCNames(c *check.C) {
 	err = cnameRouter.SetCName("my.host2.com", testBackend1)
 	c.Assert(err, check.IsNil)
 	cnames, err := cnameRouter.CNames(testBackend1)
-	url1, err := url.Parse("my.host.com")
 	c.Assert(err, check.IsNil)
-	url2, err := url.Parse("my.host2.com")
+	url1 := &url.URL{Host: "my.host.com"}
 	c.Assert(err, check.IsNil)
+	url2 := &url.URL{Host: "my.host2.com"}
 	c.Assert(err, check.IsNil)
 	expected := []*url.URL{url1, url2}
 	sort.Sort(URLList(cnames))
-	c.Assert(cnames, check.DeepEquals, expected)
+	c.Assert(cnames, HostEquals, expected)
 	err = cnameRouter.UnsetCName("my.host.com", testBackend1)
 	c.Assert(err, check.IsNil)
 	err = cnameRouter.UnsetCName("my.host.com", testBackend1)

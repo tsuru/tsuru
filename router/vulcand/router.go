@@ -252,12 +252,9 @@ func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
 	address = r.backendName(address)
 	urls := []*url.URL{}
 	for _, f := range fes {
-		u, fErr := url.Parse(strings.Replace(f.Id, "tsuru_", "", 1))
-		if fErr != nil {
-			return nil, fErr
-		}
+		host := strings.Replace(f.Id, "tsuru_", "", 1)
 		if f.BackendId == backendName && f.Id != address {
-			urls = append(urls, u)
+			urls = append(urls, &url.URL{Host: host})
 		}
 	}
 	return urls, nil

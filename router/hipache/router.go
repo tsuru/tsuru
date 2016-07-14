@@ -355,10 +355,7 @@ func (r *hipacheRouter) CNames(name string) ([]*url.URL, error) {
 	}
 	result := make([]*url.URL, len(cnames))
 	for i, cname := range cnames {
-		result[i], err = url.Parse(cname)
-		if err != nil {
-			return nil, err
-		}
+		result[i] = &url.URL{Host: cname}
 	}
 	return result, nil
 }
