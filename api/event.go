@@ -14,7 +14,7 @@ import (
 )
 
 // title: event list
-// path: /event
+// path: /events
 // method: GET
 // produce: application/json
 // responses:
