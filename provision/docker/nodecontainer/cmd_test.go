@@ -127,6 +127,9 @@ func (s *S) TestNodeContainerUpdateRun(c *check.C) {
 		CondFunc: func(req *http.Request) bool {
 			err := req.ParseForm()
 			c.Assert(err, check.IsNil)
+			_, isSet := req.Form["config.cmd"]
+			c.Assert(isSet, check.Equals, false)
+			c.Assert(req.FormValue("config.cmd.0"), check.Equals, "echo")
 			c.Assert(req.FormValue("config.image"), check.Equals, "img2")
 			c.Assert(req.FormValue("hostconfig.binds.0"), check.Equals, "/a:/b")
 			c.Assert(req.FormValue("hostconfig.binds.1"), check.Equals, "/c:/d")
@@ -140,7 +143,7 @@ func (s *S) TestNodeContainerUpdateRun(c *check.C) {
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	command := NodeContainerUpdate{}
-	command.Flags().Parse(true, []string{"--image", "img1", "-p", "80:8080", "-v", "/a:/b", "-v", "/c:/d", "-r", "Config.image=img2", "--log-opt", "a=b"})
+	command.Flags().Parse(true, []string{"--image", "img1", "-p", "80:8080", "-v", "/a:/b", "-v", "/c:/d", "-r", "Config.image=img2", "-r", "config.cmd.0=echo", "--log-opt", "a=b"})
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Node container successfully updated.\n")
