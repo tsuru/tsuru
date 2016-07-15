@@ -278,3 +278,19 @@ func (m gandalfManager) Diff(name, from, to string) (string, error) {
 	}
 	return client.GetDiff(name, from, to)
 }
+
+func (m gandalfManager) CommitMessages(repository, ref string, limit int) ([]string, error) {
+	client, err := m.client()
+	if err != nil {
+		return nil, err
+	}
+	log, err := client.GetLog(repository, ref, "", limit)
+	if err != nil {
+		return nil, err
+	}
+	msgs := make([]string, len(log.Commits))
+	for i := range log.Commits {
+		msgs[i] = log.Commits[i].Subject
+	}
+	return msgs, nil
+}

@@ -232,6 +232,15 @@ func (m *fakeManager) Diff(repositoryName, from, to string) (string, error) {
 	return Diff, nil
 }
 
+func (m *fakeManager) CommitMessages(repositoryName, ref string, limit int) ([]string, error) {
+	m.grantsLock.Lock()
+	defer m.grantsLock.Unlock()
+	if _, ok := m.grants[repositoryName]; !ok {
+		return nil, repository.ErrRepositoryNotFound
+	}
+	return []string{"msg1", "msg2"}, nil
+}
+
 // Reset resets the internal state of the fake manager.
 func Reset() {
 	manager.grantsLock.Lock()

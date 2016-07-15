@@ -51,6 +51,8 @@ type RepositoryManager interface {
 	GetRepository(name string) (Repository, error)
 
 	Diff(repositoryName, fromVersion, toVersion string) (string, error)
+
+	CommitMessages(repository, ref string, limit int) ([]string, error)
 }
 
 // KeyRepositoryManager is a RepositoryManager that is able to manage public

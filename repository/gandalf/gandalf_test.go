@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/gandalftest"
+	gandalfRepo "github.com/tsuru/gandalf/repository"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -381,6 +382,23 @@ func (s *GandalfSuite) TestDiff(c *check.C) {
 	diff, err := manager.Diff("myrepo", "10", "11")
 	c.Assert(err, check.IsNil)
 	c.Assert(diff, check.Equals, "some diff")
+}
+
+func (s *GandalfSuite) TestCommitMessages(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("user1")
+	c.Assert(err, check.IsNil)
+	err = manager.CreateRepository("myrepo", []string{"user1"})
+	c.Assert(err, check.IsNil)
+	s.server.PrepareLogs("myrepo", gandalfRepo.GitHistory{
+		Commits: []gandalfRepo.GitLog{
+			{Subject: "my subject1"},
+			{Subject: "my subject2"},
+		},
+	})
+	msgs, err := manager.CommitMessages("myrepo", "x", 2)
+	c.Assert(err, check.IsNil)
+	c.Assert(msgs, check.DeepEquals, []string{"my subject1", "my subject2"})
 }
 
 const (

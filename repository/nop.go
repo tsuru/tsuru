@@ -41,3 +41,7 @@ func (nopManager) GetRepository(name string) (Repository, error) {
 func (nopManager) Diff(repositoryName, from, to string) (string, error) {
 	return "", nil
 }
+
+func (nopManager) CommitMessages(repository, ref string, limit int) ([]string, error) {
+	return nil, nil
+}
