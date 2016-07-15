@@ -6,6 +6,7 @@ package eventtest
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -101,13 +102,28 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	}
 	if n == 0 {
 		all, _ := event.All()
-		msg := fmt.Sprintf("Event not found. Existing events in DB: %#v", all)
+		msg := fmt.Sprintf("Event not found. Existing events in DB: %s", debugEvts(all))
 		return false, msg
 	}
 	if n > 1 {
 		return false, "Multiple events match query"
 	}
 	return true, ""
+}
+
+func debugEvts(evts []event.Event) string {
+	var msgs []string
+	for _, evt := range evts {
+		var sData, oData, eData interface{}
+		evt.StartData(&sData)
+		evt.OtherData(&oData)
+		evt.EndData(&eData)
+		evt.StartCustomData = bson.Raw{}
+		evt.OtherCustomData = bson.Raw{}
+		evt.EndCustomData = bson.Raw{}
+		msgs = append(msgs, fmt.Sprintf("%#v\nstartData: %#v\notherData: %#v\nendData: %#v", evt, sData, oData, eData))
+	}
+	return strings.Join(msgs, "\n****\n")
 }
 
 var HasEvent check.Checker = hasEventChecker{}
