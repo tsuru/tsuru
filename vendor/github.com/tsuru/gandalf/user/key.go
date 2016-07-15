@@ -290,7 +290,8 @@ func ListKeys(uName string) (KeyList, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	if n, err := conn.User().FindId(uName).Count(); err != nil || n != 1 {
+	n, err := conn.User().FindId(uName).Count()
+	if err != nil || n != 1 {
 		return nil, ErrUserNotFound
 	}
 	var keys []Key

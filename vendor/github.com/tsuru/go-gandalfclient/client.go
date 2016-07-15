@@ -12,8 +12,13 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
+
+var GitTimeFormat = "Mon Jan _2 15:04:05 2006 -0700"
 
 type Client struct {
 	Endpoint string
@@ -32,6 +37,44 @@ type repository struct {
 type user struct {
 	Name string            `json:"name"`
 	Keys map[string]string `json:"keys"`
+}
+
+type Author struct {
+	Name  string
+	Email string
+	Date  GitTime
+}
+
+type Commit struct {
+	Ref       string
+	Author    Author
+	Committer Author
+	Subject   string
+	CreatedAt GitTime
+	Parent    []string
+}
+
+type GitTime time.Time
+
+func (c *GitTime) UnmarshalJSON(raw []byte) error {
+	strRaw := string(raw)
+	if strRaw == `""` || strRaw == "null" {
+		return nil
+	}
+	t, err := time.Parse(`"`+GitTimeFormat+`"`, strRaw)
+	if err != nil {
+		t, err = time.Parse(`"`+time.RFC3339+`"`, strRaw)
+		if err != nil {
+			return err
+		}
+	}
+	*c = GitTime(t)
+	return nil
+}
+
+type Log struct {
+	Commits []Commit
+	Next    string
 }
 
 type HTTPError struct {
@@ -228,6 +271,25 @@ func (c *Client) GetDiff(repo, previousCommit, lastCommit string) (string, error
 		return "", fmt.Errorf("Caught error getting repository metadata: %s", err.Error())
 	}
 	return string(diffOutput), nil
+}
+
+func (c *Client) GetLog(repo, ref, path string, total int) (Log, error) {
+	v := url.Values{}
+	v.Set("ref", ref)
+	if path != "" {
+		v.Set("path", path)
+	}
+	if total > 0 {
+		v.Set("total", strconv.Itoa(total))
+	}
+	u := fmt.Sprintf("/repository/%s/logs?%s", repo, v.Encode())
+	var ret Log
+	output, err := c.get(u)
+	if err != nil {
+		return ret, fmt.Errorf("Caught error getting repository log: %s", err.Error())
+	}
+	err = json.Unmarshal(output, &ret)
+	return ret, err
 }
 
 //GetHealthCheck gets healthcheck request output in Gandalf server.

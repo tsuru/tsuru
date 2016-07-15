@@ -21,13 +21,14 @@ import (
 )
 
 type Repository struct {
-	Name          string      `json:"name"`
-	Users         []string    `json:"users"`
-	ReadOnlyUsers []string    `json:"readonlyusers"`
-	ReadOnlyURL   string      `json:"git_url"`
-	ReadWriteURL  string      `json:"ssh_url"`
-	IsPublic      bool        `json:"ispublic"`
-	Diffs         chan string `json:"-"`
+	Name          string                `json:"name"`
+	Users         []string              `json:"users"`
+	ReadOnlyUsers []string              `json:"readonlyusers"`
+	ReadOnlyURL   string                `json:"git_url"`
+	ReadWriteURL  string                `json:"ssh_url"`
+	IsPublic      bool                  `json:"ispublic"`
+	Diffs         chan string           `json:"-"`
+	History       repository.GitHistory `json:"-"`
 }
 
 type testUser struct {
@@ -184,6 +185,17 @@ func (s *GandalfServer) PrepareDiff(repository, content string) {
 	}
 }
 
+// PrepareDiff prepares a diff for the given repository and writes it to the
+// next getDiff call in the server.
+func (s *GandalfServer) PrepareLogs(repository string, log repository.GitHistory) {
+	if repo, index := s.findRepository(repository); index > -1 {
+		s.repoLock.Lock()
+		repo.History = log
+		s.repos[index] = repo
+		s.repoLock.Unlock()
+	}
+}
+
 // Reset resets all internal information of the server, like keys, repositories, users and prepared failures.
 func (s *GandalfServer) Reset() {
 	s.usersLock.Lock()
@@ -215,6 +227,7 @@ func (s *GandalfServer) buildMuxer() {
 	s.muxer.Post("/repository", http.HandlerFunc(s.createRepository))
 	s.muxer.Get("/repository/{name}/diff/commits", http.HandlerFunc(s.getDiff))
 	s.muxer.Delete("/repository/{name}", http.HandlerFunc(s.removeRepository))
+	s.muxer.Get("/repository/{name}/logs", http.HandlerFunc(s.getLogs))
 	s.muxer.Get("/repository/{name}", http.HandlerFunc(s.getRepository))
 	s.muxer.Get("/healthcheck", http.HandlerFunc(s.healthcheck))
 }
@@ -315,6 +328,23 @@ func (s *GandalfServer) getRepository(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (s *GandalfServer) getLogs(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get(":name")
+	repo, index := s.findRepository(name)
+	if index < 0 {
+		http.Error(w, repository.ErrRepositoryNotFound.Error(), http.StatusNotFound)
+		return
+	}
+	s.repoLock.Lock()
+	defer s.repoLock.Unlock()
+	b, err := json.Marshal(repo.History)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(b)
 }
 
 func (s *GandalfServer) getDiff(w http.ResponseWriter, r *http.Request) {

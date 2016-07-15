@@ -39,7 +39,8 @@ func New(name string, keys map[string]string) (*User, error) {
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, err
+		addr, _ := db.DbConfig()
+		return nil, errors.New(fmt.Sprintf("Failed to connect to MongoDB of Gandalf %q - %s.", addr, err.Error()))
 	}
 	defer conn.Close()
 	if err := conn.User().Insert(&u); err != nil {

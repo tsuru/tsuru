@@ -147,7 +147,7 @@ func New(name string, users, readOnlyUsers []string, isPublic bool) (*Repository
 	}
 	barePath := barePath(name)
 	if barePath != "" && isPublic {
-		if f, err := fs.Filesystem().Create(barePath + "/git-daemon-export-ok"); err == nil {
+		if f, createErr := fs.Filesystem().Create(barePath + "/git-daemon-export-ok"); createErr == nil {
 			f.Close()
 		}
 	}
@@ -240,7 +240,8 @@ func (r *Repository) ReadWriteURL() string {
 	}
 	remote := uid + "@%s:%s.git"
 	if useSSH, _ := config.GetBool("git:ssh:use"); useSSH {
-		port, err := config.GetString("git:ssh:port")
+		var port string
+		port, err = config.GetString("git:ssh:port")
 		if err == nil {
 			remote = "ssh://" + uid + "@%s:" + port + "/%s.git"
 		} else {

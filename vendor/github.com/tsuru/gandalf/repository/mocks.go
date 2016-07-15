@@ -222,13 +222,13 @@ func CreateTestRepository(tmpPath, repo, file, content string, folders ...string
 		return cleanup, err
 	}
 	for _, folder := range folders {
-		folderPath, err := CreateFolder(tmpPath, repo, folder)
-		if err != nil {
-			return cleanup, err
+		folderPath, createErr := CreateFolder(tmpPath, repo, folder)
+		if createErr != nil {
+			return cleanup, createErr
 		}
-		err = CreateFile(folderPath, file, content)
-		if err != nil {
-			return cleanup, err
+		createErr = CreateFile(folderPath, file, content)
+		if createErr != nil {
+			return cleanup, createErr
 		}
 	}
 	err = MakeCommit(testPath, content)
