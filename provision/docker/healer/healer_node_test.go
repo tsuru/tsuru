@@ -911,7 +911,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":         bson.M{"$regex": `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`},
-			"lastCheck.time": bson.M{"$exists": true},
+			"lastcheck.time": bson.M{"$exists": true},
 			"node._id":       failingAddr,
 		},
 		EndCustomData: map[string]interface{}{

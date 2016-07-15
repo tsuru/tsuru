@@ -1079,7 +1079,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: "node", Value: "addr1"},
 		InternalKind: "healer",
-		CustomData:   cluster.Node{Address: "addr1"},
+		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
 	})
 	c.Assert(err, check.IsNil)
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
@@ -1087,7 +1087,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt2, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: "node", Value: "addr3"},
 		InternalKind: "healer",
-		CustomData:   cluster.Node{Address: "addr3"},
+		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
@@ -1106,28 +1106,34 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body := recorder.Body.Bytes()
-	var healings []event.Event
+	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 3)
 	c.Assert(healings[2].StartTime.UTC().Format(time.Stamp), check.Equals, evt1.StartTime.UTC().Format(time.Stamp))
 	c.Assert(healings[2].EndTime.UTC().Format(time.Stamp), check.Equals, evt1.EndTime.UTC().Format(time.Stamp))
-	c.Assert(healings[2].Target.Name, check.Equals, "node")
-	c.Assert(healings[2].Target.Value, check.Equals, "addr1")
+	c.Assert(healings[2].FailingNode.Address, check.Equals, "addr1")
+	c.Assert(healings[2].CreatedNode.Address, check.Equals, "addr2")
 	c.Assert(healings[2].Error, check.Equals, "")
-	c.Assert(healings[1].Target.Name, check.Equals, "node")
-	c.Assert(healings[1].Target.Value, check.Equals, "addr3")
+	c.Assert(healings[2].Successful, check.Equals, true)
+	c.Assert(healings[2].Action, check.Equals, "node-healing")
+	c.Assert(healings[1].FailingNode.Address, check.Equals, "addr3")
+	c.Assert(healings[1].CreatedNode.Address, check.Equals, "")
 	c.Assert(healings[1].Error, check.Equals, "some error")
-	c.Assert(healings[0].Target.Name, check.Equals, "container")
-	c.Assert(healings[0].Target.Value, check.Equals, "1234")
+	c.Assert(healings[1].Successful, check.Equals, false)
+	c.Assert(healings[1].Action, check.Equals, "node-healing")
+	c.Assert(healings[0].FailingContainer.ID, check.Equals, "1234")
+	c.Assert(healings[0].CreatedContainer.ID, check.Equals, "9876")
+	c.Assert(healings[0].Successful, check.Equals, true)
 	c.Assert(healings[0].Error, check.Equals, "")
+	c.Assert(healings[0].Action, check.Equals, "container-healing")
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: "node", Value: "addr1"},
 		InternalKind: "healer",
-		CustomData:   cluster.Node{Address: "addr1"},
+		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
 	})
 	c.Assert(err, check.IsNil)
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
@@ -1135,7 +1141,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt2, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: "node", Value: "addr3"},
 		InternalKind: "healer",
-		CustomData:   cluster.Node{Address: "addr3"},
+		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
@@ -1153,20 +1159,22 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	var healings []event.Event
+	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 1)
-	c.Assert(healings[0].Target.Name, check.Equals, "container")
-	c.Assert(healings[0].Target.Value, check.Equals, "1234")
+	c.Assert(healings[0].FailingContainer.ID, check.Equals, "1234")
+	c.Assert(healings[0].CreatedContainer.ID, check.Equals, "9876")
+	c.Assert(healings[0].Successful, check.Equals, true)
 	c.Assert(healings[0].Error, check.Equals, "")
+	c.Assert(healings[0].Action, check.Equals, "container-healing")
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: "node", Value: "addr1"},
 		InternalKind: "healer",
-		CustomData:   cluster.Node{Address: "addr1"},
+		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
 	})
 	c.Assert(err, check.IsNil)
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
@@ -1174,7 +1182,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	evt2, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Name: "node", Value: "addr3"},
 		InternalKind: "healer",
-		CustomData:   cluster.Node{Address: "addr3"},
+		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
@@ -1192,18 +1200,16 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	var healings []event.Event
+	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 2)
-	c.Assert(healings[1].StartTime.UTC().Format(time.Stamp), check.Equals, evt1.StartTime.UTC().Format(time.Stamp))
-	c.Assert(healings[1].EndTime.UTC().Format(time.Stamp), check.Equals, evt1.EndTime.UTC().Format(time.Stamp))
-	c.Assert(healings[1].Target.Name, check.Equals, "node")
-	c.Assert(healings[1].Target.Value, check.Equals, "addr1")
-	c.Assert(healings[1].Error, check.Equals, "")
-	c.Assert(healings[0].Target.Name, check.Equals, "node")
-	c.Assert(healings[0].Target.Value, check.Equals, "addr3")
-	c.Assert(healings[0].Error, check.Equals, "some error")
+	c.Assert(healings[0].Action, check.Equals, "node-healing")
+	c.Assert(healings[0].ID, check.Equals, evt2.UniqueID.Hex())
+	c.Assert(healings[0].FailingNode.Address, check.Equals, "addr3")
+	c.Assert(healings[1].Action, check.Equals, "node-healing")
+	c.Assert(healings[1].ID, check.Equals, evt1.UniqueID.Hex())
+	c.Assert(healings[1].FailingNode.Address, check.Equals, "addr1")
 }
 
 func (s *HandlersSuite) TestAutoScaleHistoryNoContent(c *check.C) {

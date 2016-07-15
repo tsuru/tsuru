@@ -64,6 +64,12 @@ type nodeStatusData struct {
 	LastUpdate  time.Time
 }
 
+type nodeHealerCustomData struct {
+	Node      *cluster.Node
+	Reason    string
+	LastCheck *nodeChecks
+}
+
 func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
 	healer := &NodeHealer{
 		quit:                  make(chan bool),
@@ -160,12 +166,12 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, lastCheck
 		return nil
 	}
 	evt, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Name: "node", Value: node.Address},
+		Target:       event.Target{Name: nodeTargetName, Value: node.Address},
 		InternalKind: "healer",
-		CustomData: map[string]interface{}{
-			"node":      *node,
-			"reason":    reason,
-			"lastCheck": lastCheck,
+		CustomData: nodeHealerCustomData{
+			Node:      node,
+			Reason:    reason,
+			LastCheck: lastCheck,
 		},
 	})
 	if err != nil {

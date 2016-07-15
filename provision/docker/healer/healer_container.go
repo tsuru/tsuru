@@ -107,7 +107,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	}
 	log.Errorf("Initiating healing process for container %q, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
 	evt, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Name: "container", Value: cont.ID},
+		Target:       event.Target{Name: containerTargetName, Value: cont.ID},
 		InternalKind: "healer",
 		CustomData:   cont,
 	})

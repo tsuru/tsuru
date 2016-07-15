@@ -30,5 +30,22 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evts, err := ListHealingHistory("")
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, eventtest.EvtEquals, []*event.Event{evt2, evt1})
+	c.Assert(evts, eventtest.EvtEquals, []HealingEvent{
+		{
+			ID:         evt2.UniqueID,
+			StartTime:  evt2.StartTime,
+			EndTime:    evt2.EndTime,
+			Action:     "container-healing",
+			Successful: true,
+			Error:      "",
+		},
+		{
+			ID:         evt1.UniqueID,
+			StartTime:  evt1.StartTime,
+			EndTime:    evt1.EndTime,
+			Action:     "node-healing",
+			Successful: true,
+			Error:      "",
+		},
+	})
 }
