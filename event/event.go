@@ -419,10 +419,6 @@ func NewInternal(opts *Opts) (*Event, error) {
 	return newEvt(opts)
 }
 
-type rawBSONWrapper struct {
-	Item interface{}
-}
-
 func makeBSONRaw(in interface{}) (bson.Raw, error) {
 	if in == nil {
 		return bson.Raw{}, nil
