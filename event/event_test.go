@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -94,6 +93,10 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
+	var resultData struct{ A string }
+	err = evt.StartData(&resultData)
+	c.Assert(err, check.IsNil)
+	c.Assert(resultData, check.DeepEquals, customData)
 	expected := &Event{eventData: eventData{
 		ID:              eventId{Target: Target{Name: "app", Value: "myapp"}},
 		UniqueID:        evt.UniqueID,
@@ -103,7 +106,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 		Running:         true,
 		StartTime:       evt.StartTime,
 		LockUpdateTime:  evt.LockUpdateTime,
-		StartCustomData: customData,
+		StartCustomData: evt.StartCustomData,
 	}}
 	c.Assert(evt, check.DeepEquals, expected)
 	customData = struct{ A string }{A: "other"}
@@ -115,13 +118,18 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	err = evts[0].StartData(&resultData)
+	c.Assert(err, check.IsNil)
+	c.Assert(resultData, check.DeepEquals, struct{ A string }{A: "value"})
+	err = evts[0].EndData(&resultData)
+	c.Assert(err, check.IsNil)
+	c.Assert(resultData, check.DeepEquals, struct{ A string }{A: "other"})
 	evts[0].EndTime = time.Time{}
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
 	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
-	expected.StartCustomData = bson.M{"a": "value"}
-	expected.EndCustomData = bson.M{"a": "other"}
+	expected.EndCustomData = evts[0].EndCustomData
 	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
@@ -445,17 +453,22 @@ func (s *S) TestEventOtherCustomData(c *check.C) {
 		Target:     Target{Name: "app", Value: "myapp"},
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      s.token,
-		CustomData: "x",
+		CustomData: map[string]string{"x": "y"},
 	})
 	c.Assert(err, check.IsNil)
 	getEvt, err := GetRunning(Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.IsNil)
-	err = getEvt.SetOtherCustomData("y")
+	err = getEvt.SetOtherCustomData(map[string]string{"z": "h"})
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Owner, check.DeepEquals, Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()})
-	c.Assert(evts[0].StartCustomData, check.Equals, "x")
-	c.Assert(evts[0].OtherCustomData, check.Equals, "y")
+	var data map[string]string
+	err = evts[0].StartData(&data)
+	c.Assert(err, check.IsNil)
+	c.Assert(data, check.DeepEquals, map[string]string{"x": "y"})
+	err = evts[0].OtherData(&data)
+	c.Assert(err, check.IsNil)
+	c.Assert(data, check.DeepEquals, map[string]string{"z": "h"})
 }

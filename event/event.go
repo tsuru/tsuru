@@ -5,10 +5,10 @@
 package event
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 	"time"
 
@@ -112,11 +112,11 @@ type eventData struct {
 	ID              eventId `bson:"_id"`
 	UniqueID        bson.ObjectId
 	StartTime       time.Time
-	EndTime         time.Time   `bson:",omitempty"`
-	Target          Target      `bson:",omitempty"`
-	StartCustomData interface{} `bson:",omitempty"`
-	EndCustomData   interface{} `bson:",omitempty"`
-	OtherCustomData interface{} `bson:",omitempty"`
+	EndTime         time.Time `bson:",omitempty"`
+	Target          Target    `bson:",omitempty"`
+	StartCustomData bson.Raw  `bson:",omitempty"`
+	EndCustomData   bson.Raw  `bson:",omitempty"`
+	OtherCustomData bson.Raw  `bson:",omitempty"`
 	Kind            Kind
 	Owner           Owner
 	LockUpdateTime  time.Time
@@ -419,6 +419,37 @@ func NewInternal(opts *Opts) (*Event, error) {
 	return newEvt(opts)
 }
 
+type rawBSONWrapper struct {
+	Item interface{}
+}
+
+func makeBSONRaw(in interface{}) (bson.Raw, error) {
+	if in == nil {
+		return bson.Raw{}, nil
+	}
+	var kind byte
+	v := reflect.ValueOf(in)
+	switch v.Kind() {
+	case reflect.Map, reflect.Struct:
+		kind = 3 // BSON "Document" kind
+	case reflect.Array, reflect.Slice:
+		kind = 4 // BSON "Array" kind
+	default:
+		return bson.Raw{}, fmt.Errorf("cannot use type %T as event custom data", in)
+	}
+	data, err := bson.Marshal(in)
+	if err != nil {
+		return bson.Raw{}, err
+	}
+	if len(data) == 0 {
+		return bson.Raw{}, fmt.Errorf("invalid empty bson object for object %#v", in)
+	}
+	return bson.Raw{
+		Kind: kind,
+		Data: data,
+	}, nil
+}
+
 func newEvt(opts *Opts) (*Event, error) {
 	updater.start()
 	if opts == nil {
@@ -478,6 +509,10 @@ func newEvt(opts *Opts) (*Event, error) {
 		}
 	}
 	now := time.Now().UTC()
+	raw, err := makeBSONRaw(opts.CustomData)
+	if err != nil {
+		return nil, err
+	}
 	evt := Event{eventData: eventData{
 		ID:              eventId{Target: opts.Target},
 		UniqueID:        bson.NewObjectId(),
@@ -485,7 +520,7 @@ func newEvt(opts *Opts) (*Event, error) {
 		StartTime:       now,
 		Kind:            k,
 		Owner:           o,
-		StartCustomData: opts.CustomData,
+		StartCustomData: raw,
 		LockUpdateTime:  now,
 		Running:         true,
 		Cancelable:      opts.Cancelable,
@@ -604,27 +639,24 @@ func (e *Event) AckCancel() error {
 }
 
 func (e *Event) StartData(value interface{}) error {
-	data, err := json.Marshal(e.StartCustomData)
-	if err != nil {
-		return err
+	if e.StartCustomData.Kind == 0 {
+		return nil
 	}
-	return json.Unmarshal(data, value)
+	return e.StartCustomData.Unmarshal(value)
 }
 
 func (e *Event) EndData(value interface{}) error {
-	data, err := json.Marshal(e.EndCustomData)
-	if err != nil {
-		return err
+	if e.EndCustomData.Kind == 0 {
+		return nil
 	}
-	return json.Unmarshal(data, value)
+	return e.EndCustomData.Unmarshal(value)
 }
 
 func (e *Event) OtherData(value interface{}) error {
-	data, err := json.Marshal(e.OtherCustomData)
-	if err != nil {
-		return err
+	if e.OtherCustomData.Kind == 0 {
+		return nil
 	}
-	return json.Unmarshal(data, value)
+	return e.OtherCustomData.Unmarshal(value)
 }
 
 func (e *Event) done(evtErr error, customData interface{}, abort bool) (err error) {
@@ -651,7 +683,10 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		e.Error = "canceled by user request"
 	}
 	e.EndTime = time.Now().UTC()
-	e.EndCustomData = customData
+	e.EndCustomData, err = makeBSONRaw(customData)
+	if err != nil {
+		return err
+	}
 	e.Running = false
 	e.Log = e.logBuffer.String()
 	var dbEvt Event
