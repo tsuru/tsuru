@@ -113,7 +113,8 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 
 func debugEvts(evts []event.Event) string {
 	var msgs []string
-	for _, evt := range evts {
+	for i := 0; i < len(evts); i++ {
+		evt := evts[i]
 		var sData, oData, eData interface{}
 		evt.StartData(&sData)
 		evt.OtherData(&oData)
