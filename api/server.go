@@ -167,6 +167,7 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("1.1", "Get", "/events", AuthorizationRequiredHandler(eventList))
 	m.Add("1.1", "Get", "/events/kinds", AuthorizationRequiredHandler(kindList))
+	m.Add("1.1", "Get", "/events/{uuid}", AuthorizationRequiredHandler(eventInfo))
 
 	m.Add("1.0", "Get", "/platforms", AuthorizationRequiredHandler(platformList))
 	m.Add("1.0", "Post", "/platforms", AuthorizationRequiredHandler(platformAdd))

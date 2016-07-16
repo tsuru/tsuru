@@ -6,11 +6,14 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // title: event list
@@ -61,4 +64,27 @@ func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(kinds)
+}
+
+// title: event info
+// path: /events/{uuid}
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   400: Invalid uuid
+//   404: Not found
+func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	uuid := r.URL.Query().Get(":uuid")
+	if !bson.IsObjectIdHex(uuid) {
+		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+	objID := bson.ObjectIdHex(uuid)
+	e, err := event.GetByID(objID)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(e)
 }
