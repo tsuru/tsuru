@@ -39,6 +39,7 @@ github.com/tsuru/tsuru/api.listUsers
 github.com/tsuru/tsuru/api.removeKeyFromUser
 github.com/tsuru/tsuru/api.setNodeStatus
 github.com/tsuru/tsuru/api.eventList
+github.com/tsuru/tsuru/api.eventInfo
 github.com/tsuru/tsuru/api.kindList
 github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.listNodesHandler
