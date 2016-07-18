@@ -99,7 +99,8 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	message := r.FormValue("message")
 	if commit != "" && message == "" {
-		messages, err := repository.Manager().CommitMessages(instance.Name, commit, 1)
+		var messages []string
+		messages, err = repository.Manager().CommitMessages(instance.Name, commit, 1)
 		if err != nil {
 			return err
 		}
