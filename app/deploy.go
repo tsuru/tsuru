@@ -163,6 +163,7 @@ type DeployOptions struct {
 	Build        bool
 	Event        *event.Event `bson:"-"`
 	Kind         DeployKind
+	Message      string
 }
 
 func (o *DeployOptions) GetKind() (kind DeployKind) {

@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/repository"
 )
 
 // title: app deploy
@@ -56,7 +57,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			Message: "you must specify either the archive-url, a image url or upload a file.",
 		}
 	}
-	commit := r.PostFormValue("commit")
+	commit := r.FormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	origin := r.FormValue("origin")
@@ -96,6 +97,16 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			}
 		}
 	}
+	message := r.FormValue("message")
+	if commit != "" && message == "" {
+		messages, err := repository.Manager().CommitMessages(instance.Name, commit, 1)
+		if err != nil {
+			return err
+		}
+		if len(messages) > 0 {
+			message = messages[0]
+		}
+	}
 	opts := app.DeployOptions{
 		App:        instance,
 		Commit:     commit,
@@ -106,6 +117,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Image:      image,
 		Origin:     origin,
 		Build:      build,
+		Message:    message,
 	}
 	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {

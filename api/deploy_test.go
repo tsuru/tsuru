@@ -375,6 +375,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 			"origin":     "",
 			"build":      false,
 			"rollback":   false,
+			"message":    "msg1",
 		},
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
@@ -420,6 +421,54 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 			"origin":     "",
 			"build":      false,
 			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+		LogMatches: `Archive deploy called`,
+	}, eventtest.HasEvent)
+}
+
+func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	user, _ := s.token.User()
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Plan:      app.Plan{Router: "fake"},
+	}
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&message=and when he falleth"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "archive-url",
+			"archiveurl": "http://something.tar.gz",
+			"user":       token.GetUserName(),
+			"image":      "",
+			"origin":     "",
+			"build":      false,
+			"rollback":   false,
+			"message":    "and when he falleth",
 		},
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
