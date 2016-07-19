@@ -342,5 +342,8 @@ func (l rowSlice) Swap(i, j int) {
 }
 
 func Colorfy(msg string, fontcolor string, background string, effect string) string {
+	if os.Getenv("TSURU_DISABLE_COLORS") != "" {
+		return msg
+	}
 	return fmt.Sprintf(pattern, fontEffects[effect], fontColors[fontcolor], fontColors[background]+bgFactor, msg)
 }
