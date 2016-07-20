@@ -125,15 +125,6 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 	if err != nil {
 		return handleAuthError(err)
 	}
-	evt, err := event.New(&event.Opts{
-		Target:   userTarget(token.GetUserName()),
-		Kind:     permission.PermUserLogIn,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: token.GetUserName()},
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
 	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 }
 
@@ -143,15 +134,6 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 // responses:
 //   200: Ok
 func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	evt, err := event.New(&event.Opts{
-		Target: userTarget(t.GetUserName()),
-		Kind:   permission.PermUserLogOut,
-		Owner:  t,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
 	return app.AuthScheme.Logout(t.GetValue())
 }
 
