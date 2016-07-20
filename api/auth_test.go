@@ -298,7 +298,7 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
-
+}
 
 func (s *AuthSuite) TestLoginPasswordMissing(c *check.C) {
 	b := strings.NewReader("")
