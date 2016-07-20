@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router"
@@ -510,7 +511,7 @@ func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 }
 
-func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
+func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
 	if err := p.getError("ArchiveDeploy"); err != nil {
 		return "", err
 	}
@@ -520,13 +521,13 @@ func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w 
 	if !ok {
 		return "", errNotProvisioned
 	}
-	w.Write([]byte("Archive deploy called"))
+	evt.Write([]byte("Archive deploy called"))
 	pApp.lastArchive = archiveURL
 	p.apps[app.GetName()] = pApp
 	return "app-image", nil
 }
 
-func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fileSize int64, build bool, w io.Writer) (string, error) {
+func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
 	if err := p.getError("UploadDeploy"); err != nil {
 		return "", err
 	}
@@ -536,13 +537,13 @@ func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fi
 	if !ok {
 		return "", errNotProvisioned
 	}
-	w.Write([]byte("Upload deploy called"))
+	evt.Write([]byte("Upload deploy called"))
 	pApp.lastFile = file
 	p.apps[app.GetName()] = pApp
 	return "app-image", nil
 }
 
-func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, w io.Writer) (string, error) {
+func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, evt *event.Event) (string, error) {
 	if err := p.getError("ImageDeploy"); err != nil {
 		return "", err
 	}
@@ -553,12 +554,12 @@ func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, w io.Writer
 		return "", errNotProvisioned
 	}
 	pApp.image = img
-	w.Write([]byte("Image deploy called"))
+	evt.Write([]byte("Image deploy called"))
 	p.apps[app.GetName()] = pApp
 	return img, nil
 }
 
-func (p *FakeProvisioner) Rollback(app provision.App, img string, w io.Writer) (string, error) {
+func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Event) (string, error) {
 	if err := p.getError("ImageDeploy"); err != nil {
 		return "", err
 	}
@@ -568,7 +569,7 @@ func (p *FakeProvisioner) Rollback(app provision.App, img string, w io.Writer) (
 	if !ok {
 		return "", errNotProvisioned
 	}
-	w.Write([]byte("Rollback deploy called"))
+	evt.Write([]byte("Rollback deploy called"))
 	p.apps[app.GetName()] = pApp
 	return img, nil
 }

@@ -7,6 +7,7 @@ package event
 import (
 	"bytes"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -471,4 +472,37 @@ func (s *S) TestEventOtherCustomData(c *check.C) {
 	err = evts[0].OtherData(&data)
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, map[string]string{"z": "h"})
+}
+
+func (s *S) TestEventAsWriter(c *check.C) {
+	evt, err := New(&Opts{
+		Target:     Target{Name: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		CustomData: map[string]string{"x": "y"},
+	})
+	c.Assert(err, check.IsNil)
+	var writer io.Writer = evt
+	n, err := writer.Write([]byte("hey"))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 3)
+	c.Assert(evt.logBuffer.String(), check.Equals, "hey")
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "hey")
+	evt2, err := New(&Opts{
+		Target:     Target{Name: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		CustomData: map[string]string{"x": "y"},
+	})
+	c.Assert(err, check.IsNil)
+	var otherWriter bytes.Buffer
+	evt2.SetLogWriter(&otherWriter)
+	evt2.Write([]byte("hey2"))
+	c.Assert(evt2.logBuffer.String(), check.Equals, "hey2")
+	c.Assert(otherWriter.String(), check.Equals, "hey2")
+	err = evt2.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt2.Log, check.Equals, "hey2")
 }

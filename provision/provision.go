@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router"
 )
@@ -240,19 +241,19 @@ type ShellOptions struct {
 
 // ArchiveDeployer is a provisioner that can deploy archives.
 type ArchiveDeployer interface {
-	ArchiveDeploy(app App, archiveURL string, w io.Writer) (string, error)
+	ArchiveDeploy(app App, archiveURL string, evt *event.Event) (string, error)
 }
 
 // UploadDeployer is a provisioner that can deploy the application from an
 // uploaded file.
 type UploadDeployer interface {
-	UploadDeploy(app App, file io.ReadCloser, fileSize int64, build bool, w io.Writer) (string, error)
+	UploadDeploy(app App, file io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error)
 }
 
 // ImageDeployer is a provisioner that can deploy the application from a
 // previously generated image.
 type ImageDeployer interface {
-	ImageDeploy(app App, image string, w io.Writer) (string, error)
+	ImageDeploy(app App, image string, evt *event.Event) (string, error)
 }
 
 // Provisioner is the basic interface of this package.
@@ -336,7 +337,7 @@ type Provisioner interface {
 	MetricEnvs(App) map[string]string
 
 	// Rollback a deploy
-	Rollback(App, string, io.Writer) (string, error)
+	Rollback(App, string, *event.Event) (string, error)
 
 	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }

@@ -542,12 +542,18 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
-	writer := &bytes.Buffer{}
-	opts := DeployOptions{App: &a, Image: "myimage"}
-	_, err = deployToProvisioner(&opts, writer)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
 	c.Assert(err, check.IsNil)
-	logs := writer.String()
-	c.Assert(logs, check.Equals, "Image deploy called")
+	opts := DeployOptions{App: &a, Image: "myimage"}
+	_, err = deployToProvisioner(&opts, evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Image deploy called")
 }
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
@@ -559,12 +565,18 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
-	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
-	_, err = deployToProvisioner(&opts, writer)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
 	c.Assert(err, check.IsNil)
-	logs := writer.String()
-	c.Assert(logs, check.Equals, "Archive deploy called")
+	_, err = deployToProvisioner(&opts, evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Archive deploy called")
 }
 
 func (s *S) TestDeployToProvisionerUpload(c *check.C) {
@@ -576,12 +588,18 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
-	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, File: ioutil.NopCloser(bytes.NewBuffer([]byte("my file")))}
-	_, err = deployToProvisioner(&opts, writer)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
 	c.Assert(err, check.IsNil)
-	logs := writer.String()
-	c.Assert(logs, check.Equals, "Upload deploy called")
+	_, err = deployToProvisioner(&opts, evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Upload deploy called")
 }
 
 func (s *S) TestDeployToProvisionerImage(c *check.C) {
@@ -593,12 +611,18 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
-	writer := &bytes.Buffer{}
 	opts := DeployOptions{App: &a, Image: "my-image-x"}
-	_, err = deployToProvisioner(&opts, writer)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+	})
 	c.Assert(err, check.IsNil)
-	logs := writer.String()
-	c.Assert(logs, check.Equals, "Image deploy called")
+	_, err = deployToProvisioner(&opts, evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Image deploy called")
 }
 
 func (s *S) TestRollbackWithNameImage(c *check.C) {

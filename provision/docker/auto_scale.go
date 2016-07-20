@@ -308,7 +308,7 @@ func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes
 	if sResult.ToRebalance {
 		evt.Logf("running rebalance, for %q: %#v", pool, sResult)
 		buf := safe.NewBuffer(nil)
-		writer := io.MultiWriter(buf, evt.GetLogWriter())
+		writer := io.MultiWriter(buf, evt)
 		_, err := a.provisioner.rebalanceContainersByFilter(writer, nil, rebalanceFilter, false)
 		if err != nil {
 			return fmt.Errorf("unable to rebalance containers: %s - log: %s", err.Error(), buf.String())

@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -383,7 +384,7 @@ func (p *dockerProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error
 	return err
 }
 
-func (p *dockerProvisioner) Rollback(a provision.App, imageId string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event.Event) (string, error) {
 	validImgs, err := p.ValidAppImages(a.GetName())
 	if err != nil {
 		return "", err
@@ -398,14 +399,15 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, w io.Write
 	if !valid {
 		return "", fmt.Errorf("Image %q not found in app", imageId)
 	}
-	return imageId, p.deploy(a, imageId, w)
+	return imageId, p.deploy(a, imageId, evt)
 }
 
-func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *event.Event) (string, error) {
 	cluster := p.Cluster()
 	if !strings.Contains(imageId, ":") {
 		imageId = fmt.Sprintf("%s:latest", imageId)
 	}
+	w := evt
 	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
 	pullOpts := docker.PullImageOptions{
 		Repository:        imageId,
@@ -486,15 +488,15 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 	return newImage, p.deploy(app, newImage, w)
 }
 
-func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
-	imageId, err := p.archiveDeploy(app, p.getBuildImage(app), archiveURL, w)
+func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
+	imageId, err := p.archiveDeploy(app, p.getBuildImage(app), archiveURL, evt)
 	if err != nil {
 		return "", err
 	}
-	return imageId, p.deployAndClean(app, imageId, w)
+	return imageId, p.deployAndClean(app, imageId, evt)
 }
 
-func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, w io.Writer) (string, error) {
+func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
 	if build {
 		return "", stderr.New("running UploadDeploy with build=true is not yet supported")
 	}
@@ -591,11 +593,11 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	done = p.ActionLimiter().Start(hostAddr)
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
 	done()
-	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)
+	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, evt)
 	if err != nil {
 		return "", err
 	}
-	return imageId, p.deployAndClean(app, imageId, w)
+	return imageId, p.deployAndClean(app, imageId, evt)
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {

@@ -557,10 +557,6 @@ func (e *Event) SetLogWriter(w io.Writer) {
 	e.logWriter = w
 }
 
-func (e *Event) GetLogWriter() io.Writer {
-	return &e.logBuffer
-}
-
 func (e *Event) SetOtherCustomData(data interface{}) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -580,6 +576,13 @@ func (e *Event) Logf(format string, params ...interface{}) {
 		fmt.Fprintf(e.logWriter, format, params...)
 	}
 	fmt.Fprintf(&e.logBuffer, format, params...)
+}
+
+func (e *Event) Write(data []byte) (int, error) {
+	if e.logWriter != nil {
+		e.logWriter.Write(data)
+	}
+	return e.logBuffer.Write(data)
 }
 
 func (e *Event) TryCancel(reason, owner string) error {
@@ -603,7 +606,7 @@ func (e *Event) TryCancel(reason, owner string) error {
 		}},
 		ReturnNew: true,
 	}
-	_, err = coll.FindId(e.ID).Apply(change, &e.eventData)
+	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": false}).Apply(change, &e.eventData)
 	if err == mgo.ErrNotFound {
 		return ErrEventNotFound
 	}

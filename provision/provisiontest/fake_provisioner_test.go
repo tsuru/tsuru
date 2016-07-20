@@ -14,6 +14,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -35,6 +38,11 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
 }
 
@@ -422,86 +430,136 @@ func (s *S) TestPrepareFailure(c *check.C) {
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
-	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "Archive deploy called")
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Archive deploy called")
 	c.Assert(p.apps[app.GetName()].lastArchive, check.Equals, "https://s3.amazonaws.com/smt/archive.tar.gz")
 }
 
 func (s *S) TestArchiveDeployUnknownApp(c *check.C) {
-	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	_, err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", evt)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestArchiveDeployWithPreparedFailure(c *check.C) {
-	var buf bytes.Buffer
-	err := errors.New("not really")
 	app := NewFakeApp("soul", "arch", 1)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
+	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
-	p.PrepareFailure("ArchiveDeploy", err)
-	_, e := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
-	c.Assert(e, check.NotNil)
-	c.Assert(e, check.Equals, err)
+	err = p.Provision(app)
+	c.Assert(err, check.IsNil)
+	p.PrepareFailure("ArchiveDeploy", errors.New("not really"))
+	_, err = p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", evt)
+	c.Assert(err, check.ErrorMatches, "not really")
 }
 
 func (s *S) TestUploadDeploy(c *check.C) {
-	var buf, input bytes.Buffer
+	var input bytes.Buffer
 	file := ioutil.NopCloser(&input)
 	app := NewFakeApp("soul", "arch", 1)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.UploadDeploy(app, file, 0, false, &buf)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "Upload deploy called")
+	p := NewFakeProvisioner()
+	err = p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.UploadDeploy(app, file, 0, false, evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Upload deploy called")
 	c.Assert(p.apps[app.GetName()].lastFile, check.Equals, file)
 }
 
 func (s *S) TestUploadDeployUnknownApp(c *check.C) {
-	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
+	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
-	_, err := p.UploadDeploy(app, nil, 0, false, &buf)
+	_, err = p.UploadDeploy(app, nil, 0, false, evt)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
-	var buf bytes.Buffer
-	err := errors.New("not really")
 	app := NewFakeApp("soul", "arch", 1)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
+	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
-	p.PrepareFailure("UploadDeploy", err)
-	_, e := p.UploadDeploy(app, nil, 0, false, &buf)
-	c.Assert(e, check.NotNil)
-	c.Assert(e, check.Equals, err)
+	err = p.Provision(app)
+	c.Assert(err, check.IsNil)
+	p.PrepareFailure("UploadDeploy", errors.New("not really"))
+	_, err = p.UploadDeploy(app, nil, 0, false, evt)
+	c.Assert(err, check.ErrorMatches, "not really")
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	var buf bytes.Buffer
 	app := NewFakeApp("otherapp", "test", 1)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.ImageDeploy(app, "image/deploy", &buf)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(buf.String(), check.Equals, "Image deploy called")
+	p := NewFakeProvisioner()
+	err = p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.ImageDeploy(app, "image/deploy", evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Image deploy called")
 	c.Assert(p.apps[app.GetName()].image, check.Equals, "image/deploy")
 }
 
 func (s *S) TestImageDeployWithPrepareFailure(c *check.C) {
-	var buf bytes.Buffer
-	err := errors.New("error")
 	app := NewFakeApp("otherapp", "test", 1)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Name: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+	})
+	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
-	p.PrepareFailure("ImageDeploy", err)
-	_, e := p.ImageDeploy(app, "", &buf)
-	c.Assert(e, check.NotNil)
-	c.Assert(e, check.Equals, err)
+	err = p.Provision(app)
+	c.Assert(err, check.IsNil)
+	p.PrepareFailure("ImageDeploy", errors.New("not really"))
+	_, err = p.ImageDeploy(app, "", evt)
+	c.Assert(err, check.ErrorMatches, "not really")
 }
 
 func (s *S) TestProvision(c *check.C) {

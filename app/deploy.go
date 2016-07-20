@@ -209,9 +209,8 @@ func Deploy(opts DeployOptions) (string, error) {
 	logWriter := LogWriter{App: opts.App}
 	logWriter.Async()
 	defer logWriter.Close()
-	eventWriter := opts.Event.GetLogWriter()
-	writer := io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, eventWriter, &logWriter)
-	imageId, err := deployToProvisioner(&opts, writer)
+	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
+	imageId, err := deployToProvisioner(&opts, opts.Event)
 	if err != nil {
 		return "", err
 	}
@@ -225,22 +224,22 @@ func Deploy(opts DeployOptions) (string, error) {
 	return imageId, nil
 }
 
-func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) {
+func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {
 	switch opts.GetKind() {
 	case DeployRollback:
-		return Provisioner.Rollback(opts.App, opts.Image, writer)
+		return Provisioner.Rollback(opts.App, opts.Image, evt)
 	case DeployImage:
 		if deployer, ok := Provisioner.(provision.ImageDeployer); ok {
-			return deployer.ImageDeploy(opts.App, opts.Image, writer)
+			return deployer.ImageDeploy(opts.App, opts.Image, evt)
 		}
 		fallthrough
 	case DeployUpload, DeployUploadBuild:
 		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
-			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, writer)
+			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, evt)
 		}
 		fallthrough
 	default:
-		return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, writer)
+		return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
 	}
 }
 
