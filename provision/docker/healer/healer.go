@@ -13,11 +13,6 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
-const (
-	containerTargetName = "container"
-	nodeTargetName      = "node"
-)
-
 var (
 	consecutiveHealingsTimeframe        = 5 * time.Minute
 	consecutiveHealingsLimitInTimeframe = 3
@@ -40,13 +35,13 @@ type HealingEvent struct {
 
 func init() {
 	event.SetThrottling(event.ThrottlingSpec{
-		TargetName: containerTargetName,
+		TargetType: event.TargetTypeContainer,
 		KindName:   "healer",
 		Time:       consecutiveHealingsTimeframe,
 		Max:        consecutiveHealingsLimitInTimeframe,
 	})
 	event.SetThrottling(event.ThrottlingSpec{
-		TargetName: nodeTargetName,
+		TargetType: event.TargetTypeNode,
 		KindName:   "healer",
 		Time:       consecutiveHealingsTimeframe,
 		Max:        consecutiveHealingsLimitInTimeframe,
@@ -63,7 +58,7 @@ func toHealingEvt(evt *event.Event) (HealingEvent, error) {
 		Error:      evt.Error,
 	}
 	switch evt.Target.Type {
-	case containerTargetName:
+	case event.TargetTypeContainer:
 		err := evt.StartData(&healingEvt.FailingContainer)
 		if err != nil {
 			return healingEvt, err
@@ -72,7 +67,7 @@ func toHealingEvt(evt *event.Event) (HealingEvent, error) {
 		if err != nil {
 			return healingEvt, err
 		}
-	case nodeTargetName:
+	case event.TargetTypeNode:
 		var data nodeHealerCustomData
 		err := evt.StartData(&data)
 		if err != nil {
@@ -100,7 +95,10 @@ func ListHealingHistory(filter string) ([]HealingEvent, error) {
 		KindType: event.KindTypeInternal,
 	}
 	if filter != "" {
-		evtFilter.Target = event.Target{Type: filter}
+		t, err := event.GetTargetType(filter)
+		if err == nil {
+			evtFilter.Target = event.Target{Type: t}
+		}
 	}
 	evts, err := event.List(&evtFilter)
 	if err != nil {

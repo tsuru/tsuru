@@ -23,7 +23,7 @@ import (
 )
 
 func serviceInstanceTarget(name, instance string) event.Target {
-	return event.Target{Type: "service-instance", Value: fmt.Sprintf("%s_%s", name, instance)}
+	return event.Target{Type: event.TargetTypeServiceInstance, Value: fmt.Sprintf("%s_%s", name, instance)}
 }
 
 // title: service instance create

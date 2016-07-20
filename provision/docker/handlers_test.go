@@ -1077,7 +1077,7 @@ func (s *HandlersSuite) TestHealingHistoryNoContent(c *check.C) {
 
 func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "node", Value: "addr1"},
+		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr1"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
 	})
@@ -1085,14 +1085,14 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
 	time.Sleep(10 * time.Millisecond)
 	evt2, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "node", Value: "addr3"},
+		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr3"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
 	evt3, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "container", Value: "1234"},
+		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
 		InternalKind: "healer",
 		CustomData:   container.Container{ID: "1234"},
 	})
@@ -1131,7 +1131,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 
 func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "node", Value: "addr1"},
+		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr1"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
 	})
@@ -1139,14 +1139,14 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
 	time.Sleep(10 * time.Millisecond)
 	evt2, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "node", Value: "addr3"},
+		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr3"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
 	evt3, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "container", Value: "1234"},
+		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
 		InternalKind: "healer",
 		CustomData:   container.Container{ID: "1234"},
 	})

@@ -32,15 +32,16 @@ var (
 	}
 	throttlingInfo = map[string]ThrottlingSpec{}
 
-	ErrNotCancelable  = errors.New("event is not cancelable")
-	ErrEventNotFound  = errors.New("event not found")
-	ErrNoTarget       = ErrValidation("event target is mandatory")
-	ErrNoKind         = ErrValidation("event kind is mandatory")
-	ErrNoOwner        = ErrValidation("event owner is mandatory")
-	ErrNoOpts         = ErrValidation("event opts is mandatory")
-	ErrNoInternalKind = ErrValidation("event internal kind is mandatory")
-	ErrInvalidOwner   = ErrValidation("event owner must not be set on internal events")
-	ErrInvalidKind    = ErrValidation("event kind must not be set on internal events")
+	ErrNotCancelable     = errors.New("event is not cancelable")
+	ErrEventNotFound     = errors.New("event not found")
+	ErrNoTarget          = ErrValidation("event target is mandatory")
+	ErrNoKind            = ErrValidation("event kind is mandatory")
+	ErrNoOwner           = ErrValidation("event owner is mandatory")
+	ErrNoOpts            = ErrValidation("event opts is mandatory")
+	ErrNoInternalKind    = ErrValidation("event internal kind is mandatory")
+	ErrInvalidOwner      = ErrValidation("event owner must not be set on internal events")
+	ErrInvalidKind       = ErrValidation("event kind must not be set on internal events")
+	ErrInvalidTargetType = errors.New("invalid event target type")
 
 	OwnerTypeUser     = ownerType("user")
 	OwnerTypeApp      = ownerType("app")
@@ -48,6 +49,15 @@ var (
 
 	KindTypePermission = kindType("permission")
 	KindTypeInternal   = kindType("internal")
+
+	TargetTypeApp             = targetType("app")
+	TargetTypeNode            = targetType("node")
+	TargetTypeContainer       = targetType("container")
+	TargetTypePool            = targetType("pool")
+	TargetTypeService         = targetType("service")
+	TargetTypeServiceInstance = targetType("service-instance")
+	TargetTypeTeam            = targetType("team")
+	TargetTypeUser            = targetType("user")
 )
 
 type ErrThrottled struct {
@@ -75,7 +85,10 @@ func (err ErrEventLocked) Error() string {
 	return fmt.Sprintf("event locked: %v", err.event)
 }
 
-type Target struct{ Type, Value string }
+type Target struct {
+	Type  targetType
+	Value string
+}
 
 func (id Target) GetBSON() (interface{}, error) {
 	return bson.D{{Name: "type", Value: id.Type}, {Name: "value", Value: id.Value}}, nil
@@ -141,6 +154,30 @@ type ownerType string
 
 type kindType string
 
+type targetType string
+
+func GetTargetType(t string) (targetType, error) {
+	switch t {
+	case "app":
+		return TargetTypeApp, nil
+	case "node":
+		return TargetTypeNode, nil
+	case "container":
+		return TargetTypeContainer, nil
+	case "pool":
+		return TargetTypePool, nil
+	case "service":
+		return TargetTypeService, nil
+	case "service-instance":
+		return TargetTypeServiceInstance, nil
+	case "team":
+		return TargetTypeTeam, nil
+	case "user":
+		return TargetTypeUser, nil
+	}
+	return targetType(""), ErrInvalidTargetType
+}
+
 type Owner struct {
 	Type ownerType
 	Name string
@@ -160,16 +197,16 @@ func (k Kind) String() string {
 }
 
 type ThrottlingSpec struct {
-	TargetName string
+	TargetType targetType
 	KindName   string
 	Max        int
 	Time       time.Duration
 }
 
 func SetThrottling(spec ThrottlingSpec) {
-	key := spec.TargetName
+	key := string(spec.TargetType)
 	if spec.KindName != "" {
-		key = fmt.Sprintf("%s_%s", spec.TargetName, spec.KindName)
+		key = fmt.Sprintf("%s_%s", spec.TargetType, spec.KindName)
 	}
 	throttlingInfo[key] = spec
 }
@@ -179,7 +216,7 @@ func getThrottling(t *Target, k *Kind) *ThrottlingSpec {
 	if s, ok := throttlingInfo[key]; ok {
 		return &s
 	}
-	if s, ok := throttlingInfo[t.Type]; ok {
+	if s, ok := throttlingInfo[string(t.Type)]; ok {
 		return &s
 	}
 	return nil

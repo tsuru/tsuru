@@ -83,18 +83,22 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	config.Set("docker:router", "fake")
 }
 
-func (s *EventSuite) insertEvents(target string, c *check.C) []*event.Event {
+func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, error) {
+	t, err := event.GetTargetType(target)
+	if err != nil {
+		return nil, err
+	}
 	evts := make([]*event.Event, 10)
 	for i := 0; i < 10; i++ {
 		evt, err := event.New(&event.Opts{
-			Target: event.Target{Type: target, Value: strconv.Itoa(i)},
+			Target: event.Target{Type: t, Value: strconv.Itoa(i)},
 			Owner:  s.token,
 			Kind:   permission.PermAppDeploy,
 		})
 		c.Assert(err, check.IsNil)
 		evts[i] = evt
 	}
-	return evts
+	return evts, nil
 }
 
 func (s *EventSuite) TestEventListEmpty(c *check.C) {
@@ -108,7 +112,8 @@ func (s *EventSuite) TestEventListEmpty(c *check.C) {
 }
 
 func (s *EventSuite) TestEventList(c *check.C) {
-	s.insertEvents("something", c)
+	_, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -124,9 +129,10 @@ func (s *EventSuite) TestEventList(c *check.C) {
 }
 
 func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
-	s.insertEvents("something", c)
-	s.insertEvents("nothing", c)
-	request, err := http.NewRequest("GET", "/events?target=something", nil)
+	_, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
+	s.insertEvents("node", c)
+	request, err := http.NewRequest("GET", "/events?target=app", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -141,8 +147,9 @@ func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
 }
 
 func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
-	s.insertEvents("something", c)
-	err := s.conn.Events().Update(bson.M{}, bson.M{"$set": bson.M{"running": true}})
+	_, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Events().Update(bson.M{}, bson.M{"$set": bson.M{"running": true}})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events?running=true", nil)
 	c.Assert(err, check.IsNil)
@@ -165,7 +172,8 @@ func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
 }
 
 func (s *EventSuite) TestEventListFilterByKind(c *check.C) {
-	s.insertEvents("something", c)
+	_, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/events?kindName=%s", permission.PermAppDeploy)
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
@@ -188,7 +196,8 @@ func (s *EventSuite) TestEventListFilterByKind(c *check.C) {
 }
 
 func (s *EventSuite) TestKindList(c *check.C) {
-	s.insertEvents("something", c)
+	_, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events/kinds", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -204,7 +213,8 @@ func (s *EventSuite) TestKindList(c *check.C) {
 }
 
 func (s *EventSuite) TestEventInfo(c *check.C) {
-	events := s.insertEvents("something", c)
+	events, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/events/%s", events[0].UniqueID.Hex())
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)

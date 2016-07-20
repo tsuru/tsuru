@@ -32,7 +32,7 @@ import (
 )
 
 func appTarget(appName string) event.Target {
-	return event.Target{Type: "app", Value: appName}
+	return event.Target{Type: event.TargetTypeApp, Value: appName}
 }
 
 func getAppFromContext(name string, r *http.Request) (app.App, error) {

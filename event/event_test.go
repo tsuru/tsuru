@@ -401,7 +401,7 @@ func (s *S) TestEventDoneLogError(c *check.C) {
 
 func (s *S) TestNewThrottledAllKinds(c *check.C) {
 	SetThrottling(ThrottlingSpec{
-		TargetName: "app",
+		TargetType: TargetTypeApp,
 		Time:       time.Hour,
 		Max:        2,
 	})
@@ -427,7 +427,7 @@ func (s *S) TestNewThrottledAllKinds(c *check.C) {
 
 func (s *S) TestNewThrottledOneKind(c *check.C) {
 	SetThrottling(ThrottlingSpec{
-		TargetName: "app",
+		TargetType: TargetTypeApp,
 		KindName:   permission.PermAppUpdateEnvSet.FullName(),
 		Time:       time.Hour,
 		Max:        2,
@@ -511,4 +511,27 @@ func (s *S) TestEventAsWriter(c *check.C) {
 	err = evt2.Done(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt2.Log, check.Equals, "hey2")
+}
+
+func (s *S) TestGetTargetType(c *check.C) {
+	var tests = []struct {
+		input  string
+		output targetType
+		err    error
+	}{
+		{"app", TargetTypeApp, nil},
+		{"node", TargetTypeNode, nil},
+		{"container", TargetTypeContainer, nil},
+		{"pool", TargetTypePool, nil},
+		{"service", TargetTypeService, nil},
+		{"service-instance", TargetTypeServiceInstance, nil},
+		{"team", TargetTypeTeam, nil},
+		{"user", TargetTypeUser, nil},
+		{"invalid", "", ErrInvalidTargetType},
+	}
+	for _, t := range tests {
+		got, err := GetTargetType(t.input)
+		c.Check(got, check.Equals, t.output)
+		c.Check(err, check.Equals, t.err)
+	}
 }

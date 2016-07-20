@@ -26,7 +26,10 @@ import (
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	filter := &event.Filter{}
 	if target := r.URL.Query().Get("target"); target != "" {
-		filter.Target = event.Target{Type: target}
+		t, err := event.GetTargetType(target)
+		if err == nil {
+			filter.Target = event.Target{Type: t}
+		}
 	}
 	if running, err := strconv.ParseBool(r.URL.Query().Get("running")); err == nil {
 		filter.Running = &running

@@ -45,11 +45,11 @@ func handleAuthError(err error) error {
 }
 
 func userTarget(u string) event.Target {
-	return event.Target{Type: "user", Value: u}
+	return event.Target{Type: event.TargetTypeUser, Value: u}
 }
 
-func teamTarget(u string) event.Target {
-	return event.Target{Type: "team", Value: u}
+func teamTarget(t string) event.Target {
+	return event.Target{Type: event.TargetTypeTeam, Value: t}
 }
 
 // title: user create
