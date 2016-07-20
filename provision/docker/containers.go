@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -84,6 +85,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if w == nil {
 		w = ioutil.Discard
 	}
+	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
 		app:         a,
 		toAdd:       toAdd,
@@ -92,6 +94,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		writer:      w,
 		imageId:     imageId,
 		provisioner: p,
+		event:       evt,
 	}
 	var pipeline *action.Pipeline
 	if p.isDryMode {
@@ -122,6 +125,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	if w == nil {
 		w = ioutil.Discard
 	}
+	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
 		app:         a,
 		toAdd:       toAdd,
@@ -129,6 +133,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		imageId:     imageId,
 		provisioner: p,
 		exposedPort: exposedPort,
+		event:       evt,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,

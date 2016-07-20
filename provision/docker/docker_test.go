@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -21,7 +22,9 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -224,9 +227,35 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	var buf bytes.Buffer
-	_, err = s.p.archiveDeploy(app, s.p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
+	img, err := s.p.archiveDeploy(app, s.p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
 	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+}
+
+func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: "app", Value: "myapp"},
+		Kind:       permission.PermAppDeploy,
+		Owner:      s.token,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	done := make(chan bool)
+	go func() {
+		defer close(done)
+		img, depErr := s.p.archiveDeploy(app, s.p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", evt)
+		c.Assert(depErr, check.ErrorMatches, "deploy canceled by user action")
+		c.Assert(img, check.Equals, "")
+	}()
+	time.Sleep(100 * time.Millisecond)
+	err = evt.TryCancel("because yes", "majortom@ground.control")
+	c.Assert(err, check.IsNil)
+	<-done
 }
 
 func (s *S) TestStart(c *check.C) {

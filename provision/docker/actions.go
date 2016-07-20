@@ -11,10 +11,12 @@ import (
 	"io/ioutil"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -33,6 +35,7 @@ type runContainerActionsArgs struct {
 	buildingImage    string
 	provisioner      *dockerProvisioner
 	exposedPort      string
+	event            *event.Event
 }
 
 type containersToAdd struct {
@@ -50,6 +53,7 @@ type changeUnitsPipelineArgs struct {
 	provisioner *dockerProvisioner
 	appDestroy  bool
 	exposedPort string
+	event       *event.Event
 }
 
 type callbackFunc func(*container.Container, chan *container.Container) error
@@ -111,10 +115,28 @@ func runInContainers(containers []container.Container, callback callbackFunc, ro
 	return nil
 }
 
+func checkCanceled(evt *event.Event) error {
+	if evt == nil {
+		return nil
+	}
+	canceled, err := evt.AckCancel()
+	if err != nil {
+		log.Errorf("unable to check if event should be canceled, ignoring: %s", err)
+		return nil
+	}
+	if canceled {
+		return ErrDeployCanceled
+	}
+	return nil
+}
+
 var insertEmptyContainerInDB = action.Action{
 	Name: "insert-empty-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		contName := args.app.GetName() + "-" + randomString()
 		cont := container.Container{
 			AppName:       args.app.GetName(),
@@ -147,6 +169,9 @@ var updateContainerInDB = action.Action{
 	Name: "update-database-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		coll := args.provisioner.Collection()
 		defer coll.Close()
 		cont := ctx.Previous.(container.Container)
@@ -164,8 +189,11 @@ var updateContainerInDB = action.Action{
 var createContainer = action.Action{
 	Name: "create-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		cont := ctx.Previous.(container.Container)
 		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		cont := ctx.Previous.(container.Container)
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
 		var building bool
 		if args.buildingImage != "" {
@@ -201,6 +229,9 @@ var setContainerID = action.Action{
 	Name: "set-container-id",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		coll := args.provisioner.Collection()
 		defer coll.Close()
 		cont := ctx.Previous.(container.Container)
@@ -246,9 +277,12 @@ var setNetworkInfo = action.Action{
 var startContainer = action.Action{
 	Name: "start-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		c := ctx.Previous.(container.Container)
 		log.Debugf("starting container %s", c.ID)
-		args := ctx.Params[0].(runContainerActionsArgs)
 		err := c.Start(&container.StartArgs{
 			Provisioner: args.provisioner,
 			App:         args.app,
@@ -281,6 +315,9 @@ var provisionAddUnitsToHost = action.Action{
 	Name: "provision-add-units-to-host",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		containers, err := addContainersWithHost(&args)
 		if err != nil {
 			return nil, err
@@ -313,6 +350,9 @@ var bindAndHealthcheck = action.Action{
 	Name: "bind-and-healthcheck",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		webProcessName, err := getImageWebProcessName(args.imageId)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
@@ -383,6 +423,9 @@ var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		webProcessName, err := getImageWebProcessName(args.imageId)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
@@ -464,6 +507,9 @@ var setRouterHealthcheck = action.Action{
 	OnError: rollbackNotice,
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		newContainers := ctx.Previous.([]container.Container)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
@@ -520,8 +566,11 @@ var setRouterHealthcheck = action.Action{
 var removeOldRoutes = action.Action{
 	Name: "remove-old-routes",
 	Forward: func(ctx action.FWContext) (result action.Result, err error) {
-		result = ctx.Previous
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		result = ctx.Previous
 		if args.appDestroy {
 			defer func() {
 				if err != nil {
@@ -666,18 +715,57 @@ var provisionUnbindOldUnits = action.Action{
 var followLogsAndCommit = action.Action{
 	Name: "follow-logs-and-commit",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		c, ok := ctx.Previous.(container.Container)
 		if !ok {
 			return nil, errors.New("Previous result must be a container.")
 		}
-		args := ctx.Params[0].(runContainerActionsArgs)
-		status, err := c.Logs(args.provisioner, args.writer)
-		if err != nil {
-			log.Errorf("error on get logs for container %s - %s", c.ID, err)
-			return nil, err
+		type logsResult struct {
+			status int
+			err    error
 		}
-		if status != 0 {
-			return nil, fmt.Errorf("Exit status %d", status)
+		doneCh := make(chan bool)
+		canceledCh := make(chan error)
+		resultCh := make(chan logsResult)
+		go func() {
+			for {
+				err := checkCanceled(args.event)
+				if err != nil {
+					select {
+					case <-doneCh:
+					case canceledCh <- err:
+					}
+					return
+				}
+				select {
+				case <-doneCh:
+					return
+				case <-time.After(time.Second):
+				}
+			}
+		}()
+		go func() {
+			status, err := c.Logs(args.provisioner, args.writer)
+			select {
+			case resultCh <- logsResult{status: status, err: err}:
+			default:
+			}
+		}()
+		select {
+		case err := <-canceledCh:
+			return nil, err
+		case result := <-resultCh:
+			doneCh <- true
+			if result.err != nil {
+				log.Errorf("error on get logs for container %s - %s", c.ID, result.err)
+				return nil, result.err
+			}
+			if result.status != 0 {
+				return nil, fmt.Errorf("Exit status %d", result.status)
+			}
 		}
 		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
 		imageId, err := c.Commit(args.provisioner, args.writer)
@@ -698,6 +786,9 @@ var updateAppImage = action.Action{
 	Name: "update-app-image",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
 		currentImageName, _ := appCurrentImageName(args.app.GetName())
 		if currentImageName != args.imageId {
 			err := appendAppImageName(args.app.GetName(), args.imageId)

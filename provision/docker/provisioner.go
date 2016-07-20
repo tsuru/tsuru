@@ -43,8 +43,12 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var mainDockerProvisioner *dockerProvisioner
-var ErrEntrypointOrProcfileNotFound = stderr.New("You should provide a entrypoint in image or a Procfile in the following locations: /home/application/current or /app/user or /.")
+var (
+	mainDockerProvisioner *dockerProvisioner
+
+	ErrEntrypointOrProcfileNotFound = stderr.New("You should provide a entrypoint in image or a Procfile in the following locations: /home/application/current or /app/user or /.")
+	ErrDeployCanceled               = stderr.New("deploy canceled by user action")
+)
 
 func init() {
 	mainDockerProvisioner = &dockerProvisioner{}
@@ -485,7 +489,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *
 		return "", err
 	}
 	app.SetUpdatePlatform(true)
-	return newImage, p.deploy(app, newImage, w)
+	return newImage, p.deploy(app, newImage, evt)
 }
 
 func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
@@ -600,15 +604,18 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	return imageId, p.deployAndClean(app, imageId, evt)
 }
 
-func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
-	err := p.deploy(a, imageId, w)
+func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, evt *event.Event) error {
+	err := p.deploy(a, imageId, evt)
 	if err != nil {
 		p.cleanImage(a.GetName(), imageId)
 	}
 	return err
 }
 
-func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
+func (p *dockerProvisioner) deploy(a provision.App, imageId string, evt *event.Event) error {
+	if err := checkCanceled(evt); err != nil {
+		return err
+	}
 	containers, err := p.listContainersByApp(a.GetName())
 	if err != nil {
 		return err
@@ -630,13 +637,13 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId, imageData.ExposedPort)
+		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, imageId, imageData.ExposedPort)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
+		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, imageId)
 	}
 	routesRebuildOrEnqueue(a.GetName())
 	return err

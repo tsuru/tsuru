@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -16,6 +17,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -57,15 +59,15 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, evt *event.Event) (string, error) {
 	commands, err := archiveDeployCmds(app, archiveURL)
 	if err != nil {
 		return "", err
 	}
-	return p.deployPipeline(app, image, commands, w)
+	return p.deployPipeline(app, image, commands, evt)
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, commands []string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -79,14 +81,19 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error getting new image name for app %s", app.GetName()))
 	}
+	var writer io.Writer = evt
+	if evt == nil {
+		writer = ioutil.Discard
+	}
 	args := runContainerActionsArgs{
 		app:           app,
 		imageID:       imageId,
 		commands:      commands,
-		writer:        w,
+		writer:        writer,
 		isDeploy:      true,
 		buildingImage: buildingImage,
 		provisioner:   p,
+		event:         evt,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
