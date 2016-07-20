@@ -567,7 +567,7 @@ var removeOldRoutes = action.Action{
 	Name: "remove-old-routes",
 	Forward: func(ctx action.FWContext) (result action.Result, err error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		if err := checkCanceled(args.event); err != nil {
+		if err = checkCanceled(args.event); err != nil {
 			return nil, err
 		}
 		result = ctx.Previous
