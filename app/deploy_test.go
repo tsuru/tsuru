@@ -543,7 +543,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -567,7 +567,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	s.provisioner.Provision(&a)
 	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -590,7 +590,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	s.provisioner.Provision(&a)
 	opts := DeployOptions{App: &a, File: ioutil.NopCloser(bytes.NewBuffer([]byte("my file")))}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -613,7 +613,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	s.provisioner.Provision(&a)
 	opts := DeployOptions{App: &a, Image: "my-image-x"}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})

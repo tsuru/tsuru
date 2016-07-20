@@ -476,7 +476,7 @@ func (s *S) TestEventOtherCustomData(c *check.C) {
 
 func (s *S) TestEventAsWriter(c *check.C) {
 	evt, err := New(&Opts{
-		Target:     Target{Name: "app", Value: "myapp"},
+		Target:     Target{Type: "app", Value: "myapp"},
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      s.token,
 		CustomData: map[string]string{"x": "y"},
@@ -491,7 +491,7 @@ func (s *S) TestEventAsWriter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log, check.Equals, "hey")
 	evt2, err := New(&Opts{
-		Target:     Target{Name: "app", Value: "myapp"},
+		Target:     Target{Type: "app", Value: "myapp"},
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      s.token,
 		CustomData: map[string]string{"x": "y"},

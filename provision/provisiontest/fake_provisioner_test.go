@@ -435,7 +435,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -452,7 +452,7 @@ func (s *S) TestArchiveDeployUnknownApp(c *check.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -464,7 +464,7 @@ func (s *S) TestArchiveDeployUnknownApp(c *check.C) {
 func (s *S) TestArchiveDeployWithPreparedFailure(c *check.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -482,7 +482,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	file := ioutil.NopCloser(&input)
 	app := NewFakeApp("soul", "arch", 1)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -501,7 +501,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 func (s *S) TestUploadDeployUnknownApp(c *check.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -514,7 +514,7 @@ func (s *S) TestUploadDeployUnknownApp(c *check.C) {
 func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -530,7 +530,7 @@ func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
 func (s *S) TestImageDeploy(c *check.C) {
 	app := NewFakeApp("otherapp", "test", 1)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
@@ -549,7 +549,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 func (s *S) TestImageDeployWithPrepareFailure(c *check.C) {
 	app := NewFakeApp("otherapp", "test", 1)
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: app.name},
+		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
 	})
