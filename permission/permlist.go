@@ -83,8 +83,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.update.reset",
 	"user.update.key.add",
 	"user.update.key.remove",
-	"user.log.in",
-	"user.log.out",
 ).addWithCtx(
 	"service", []contextType{CtxService, CtxTeam},
 ).addWithCtx(
