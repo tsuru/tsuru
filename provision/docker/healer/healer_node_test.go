@@ -358,7 +358,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	failingAddr := fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL()))
 	createdAddr := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL()))
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "node", Value: failingAddr},
+		Target: event.Target{Type: "node", Value: failingAddr},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":   "2 consecutive failures",
@@ -474,7 +474,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	for i := 0; i < 3; i++ {
 		var evt *event.Event
 		evt, err = event.NewInternal(&event.Opts{
-			Target:       event.Target{Name: "node", Value: nodes[0].Address},
+			Target:       event.Target{Type: "node", Value: nodes[0].Address},
 			InternalKind: "healer",
 		})
 		c.Assert(err, check.IsNil)
@@ -907,7 +907,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	failingAddr := fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL()))
 	createdAddr := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL()))
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "node", Value: failingAddr},
+		Target: event.Target{Type: "node", Value: failingAddr},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":         bson.M{"$regex": `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`},
@@ -995,7 +995,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	failingAddr := fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(node1.URL()))
 	createdAddr := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(node2.URL()))
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "node", Value: failingAddr},
+		Target: event.Target{Type: "node", Value: failingAddr},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"reason":   "something",

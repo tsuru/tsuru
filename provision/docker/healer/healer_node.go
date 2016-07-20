@@ -166,7 +166,7 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, lastCheck
 		return nil
 	}
 	evt, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Name: nodeTargetName, Value: node.Address},
+		Target:       event.Target{Type: nodeTargetName, Value: node.Address},
 		InternalKind: "healer",
 		CustomData: nodeHealerCustomData{
 			Node:      node,

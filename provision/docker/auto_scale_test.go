@@ -141,7 +141,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -199,7 +199,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -251,7 +251,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnce(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -308,7 +308,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *
 		"_id": fmt.Sprintf("http://127.0.0.1:%d/", dockertest.URLPort(s.node1.URL())),
 	}}
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       0,
@@ -341,7 +341,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -381,7 +381,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -420,7 +420,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -465,7 +465,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -505,7 +505,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       0,
@@ -609,7 +609,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunStress(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -649,7 +649,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -701,7 +701,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -772,7 +772,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 1},
@@ -806,7 +806,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) 
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -850,7 +850,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 	a.runOnce()
 	c.Assert(s.S.logBuf, check.Matches, `(?s).*error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659.*`)
 	c.Assert(eventtest.EventDesc{
-		Target:       event.Target{Name: "pool", Value: "pool1"},
+		Target:       event.Target{Type: "pool", Value: "pool1"},
 		Kind:         "autoscale",
 		ErrorMatches: `error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659`,
 	}, eventtest.HasEvent)
@@ -892,7 +892,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 1},
@@ -954,7 +954,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 2},
@@ -1007,7 +1007,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 1},
@@ -1073,7 +1073,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 2},
@@ -1281,7 +1281,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 4)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool2"},
+		Target: event.Target{Type: "pool", Value: "pool2"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -1291,7 +1291,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "pool", Value: "pool1"},
+		Target: event.Target{Type: "pool", Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,

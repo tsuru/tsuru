@@ -58,11 +58,11 @@ func toHealingEvt(evt *event.Event) (HealingEvent, error) {
 		ID:         evt.UniqueID,
 		StartTime:  evt.StartTime,
 		EndTime:    evt.EndTime,
-		Action:     fmt.Sprintf("%s-healing", evt.Target.Name),
+		Action:     fmt.Sprintf("%s-healing", evt.Target.Type),
 		Successful: evt.Error == "",
 		Error:      evt.Error,
 	}
-	switch evt.Target.Name {
+	switch evt.Target.Type {
 	case containerTargetName:
 		err := evt.StartData(&healingEvt.FailingContainer)
 		if err != nil {
@@ -100,7 +100,7 @@ func ListHealingHistory(filter string) ([]HealingEvent, error) {
 		KindType: event.KindTypeInternal,
 	}
 	if filter != "" {
-		evtFilter.Target = event.Target{Name: filter}
+		evtFilter.Target = event.Target{Type: filter}
 	}
 	evts, err := event.List(&evtFilter)
 	if err != nil {

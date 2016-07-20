@@ -107,13 +107,13 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	_, err = event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppUpdateEnvSet,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
 	c.Assert(err, check.IsNil)
 	evt2, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: "other"},
+		Target:   event.Target{Type: "app", Value: "other"},
 		Kind:     permission.PermAppUpdateEnvSet,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})

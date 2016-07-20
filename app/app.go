@@ -436,7 +436,7 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		logErr("Unable to remove app from db", err)
 	}
-	err = event.MarkAsRemoved(event.Target{Name: "app", Value: appName})
+	err = event.MarkAsRemoved(event.Target{Type: "app", Value: appName})
 	if err != nil {
 		logErr("Unable to mark old events as removed", err)
 	}

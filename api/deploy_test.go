@@ -668,7 +668,7 @@ func insertDeploysAsEvents(data []app.DeployData, c *check.C) []*event.Event {
 	evts := make([]*event.Event, len(data))
 	for i, d := range data {
 		evt, err := event.New(&event.Opts{
-			Target:   event.Target{Name: "app", Value: d.App},
+			Target:   event.Target{Type: "app", Value: d.App},
 			Kind:     permission.PermAppDeploy,
 			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
 			CustomData: app.DeployOptions{

@@ -60,46 +60,46 @@ func (s *S) TestListFilterMany(c *check.C) {
 		c.Assert(evts, eventtest.EvtEquals, expected)
 	}
 	create(&event.Opts{
-		Target: event.Target{Name: "app", Value: "myapp"},
+		Target: event.Target{Type: "app", Value: "myapp"},
 		Kind:   permission.PermAppUpdateEnvSet,
 		Owner:  s.token,
 	})
 	time.Sleep(100 * time.Millisecond)
 	t0 := time.Now().UTC()
 	create(&event.Opts{
-		Target: event.Target{Name: "app", Value: "myapp2"},
+		Target: event.Target{Type: "app", Value: "myapp2"},
 		Kind:   permission.PermAppUpdateEnvSet,
 		Owner:  s.token,
 	})
 	t05 := time.Now().UTC()
 	time.Sleep(100 * time.Millisecond)
 	create(&event.Opts{
-		Target: event.Target{Name: "app2", Value: "myapp"},
+		Target: event.Target{Type: "app2", Value: "myapp"},
 		Kind:   permission.PermAppUpdateEnvSet,
 		Owner:  s.token,
 	})
 	t1 := time.Now().UTC()
 	time.Sleep(100 * time.Millisecond)
 	createi(&event.Opts{
-		Target:       event.Target{Name: "node", Value: "http://10.0.1.1"},
+		Target:       event.Target{Type: "node", Value: "http://10.0.1.1"},
 		InternalKind: "healer",
 	})
 	createi(&event.Opts{
-		Target:       event.Target{Name: "node", Value: "http://10.0.1.2"},
+		Target:       event.Target{Type: "node", Value: "http://10.0.1.2"},
 		InternalKind: "healer",
 	})
 	createi(&event.Opts{
-		Target:       event.Target{Name: "nodex", Value: "http://10.0.1.3"},
+		Target:       event.Target{Type: "nodex", Value: "http://10.0.1.3"},
 		InternalKind: "healer",
 	})
-	err := event.MarkAsRemoved(event.Target{Name: "nodex", Value: "http://10.0.1.3"})
+	err := event.MarkAsRemoved(event.Target{Type: "nodex", Value: "http://10.0.1.3"})
 	c.Assert(err, check.IsNil)
 	allEvts[len(allEvts)-2].Done(nil)
 	checkFilters(&event.Filter{Sort: "_id"}, allEvts[:len(allEvts)-1])
 	checkFilters(&event.Filter{Running: boolPtr(false)}, allEvts[len(allEvts)-2])
 	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-2])
-	checkFilters(&event.Filter{Target: event.Target{Name: "app"}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[1]})
-	checkFilters(&event.Filter{Target: event.Target{Name: "app", Value: "myapp"}}, allEvts[0])
+	checkFilters(&event.Filter{Target: event.Target{Type: "app"}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[1]})
+	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "myapp"}}, allEvts[0])
 	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, Sort: "_id"}, allEvts[:3])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, KindName: "kind"}, nil)
@@ -112,12 +112,12 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{Since: t0, Until: t1, Sort: "_id"}, allEvts[1:3])
 	checkFilters(&event.Filter{Limit: 2, Sort: "_id"}, allEvts[:2])
 	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-2])
-	checkFilters(&event.Filter{Target: event.Target{Name: "nodex"}}, allEvts[:0])
-	checkFilters(&event.Filter{Target: event.Target{Name: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
+	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}}, allEvts[:0])
+	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
 }
 
 func (s *S) TestGetByID(c *check.C) {
-	evt, err := event.New(&event.Opts{Target: event.Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := event.New(&event.Opts{Target: event.Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	otherEvt, err := event.GetByID(evt.UniqueID)
 	c.Assert(err, check.IsNil)
@@ -130,14 +130,14 @@ func (s *S) TestGetByID(c *check.C) {
 }
 
 func (s *S) TestGetRunning(c *check.C) {
-	evt, err := event.New(&event.Opts{Target: event.Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := event.New(&event.Opts{Target: event.Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
-	getEvt, err := event.GetRunning(event.Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	getEvt, err := event.GetRunning(event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.IsNil)
 	c.Assert(evt, eventtest.EvtEquals, getEvt)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	_, err = event.GetRunning(event.Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	_, err = event.GetRunning(event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 }
 
@@ -147,7 +147,7 @@ func boolPtr(b bool) *bool {
 
 func (s *S) TestGetKinds(c *check.C) {
 	_, err := event.New(&event.Opts{
-		Target: event.Target{Name: "app", Value: "myapp"},
+		Target: event.Target{Type: "app", Value: "myapp"},
 		Kind:   permission.PermAppUpdateEnvSet,
 		Owner:  s.token,
 	})

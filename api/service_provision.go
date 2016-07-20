@@ -17,7 +17,7 @@ import (
 )
 
 func serviceTarget(name string) event.Target {
-	return event.Target{Name: "service", Value: name}
+	return event.Target{Type: "service", Value: name}
 }
 
 func serviceValidate(s service.Service) error {

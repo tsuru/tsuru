@@ -14,7 +14,7 @@ import (
 
 func (s *S) TestListHealingHistory(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Name: "node", Value: "addr1"},
+		Target:       event.Target{Type: "node", Value: "addr1"},
 		InternalKind: "healer",
 	})
 	c.Assert(err, check.IsNil)
@@ -22,7 +22,7 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	time.Sleep(100 * time.Millisecond)
 	evt2, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Name: "container", Value: "cont1"},
+		Target:       event.Target{Type: "container", Value: "cont1"},
 		InternalKind: "healer",
 	})
 	c.Assert(err, check.IsNil)

@@ -25,7 +25,7 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 	evts := make([]*event.Event, len(data))
 	for i, d := range data {
 		evt, err := event.New(&event.Opts{
-			Target:   event.Target{Name: "app", Value: d.App},
+			Target:   event.Target{Type: "app", Value: d.App},
 			Kind:     permission.PermAppDeploy,
 			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
 			CustomData: DeployOptions{
@@ -247,7 +247,7 @@ func (s *S) TestDeployApp(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -277,7 +277,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -309,7 +309,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -339,7 +339,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -369,7 +369,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -398,7 +398,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -427,7 +427,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -461,7 +461,7 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -505,7 +505,7 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
 	}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -613,7 +613,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -644,7 +644,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})
@@ -675,7 +675,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Name: "app", Value: a.Name},
+		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
 	})

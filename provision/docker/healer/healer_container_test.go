@@ -104,7 +104,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 		}},
 	}})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
@@ -153,7 +153,7 @@ func (s *S) TestRunContainerHealerCreatedContainer(c *check.C) {
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
@@ -248,7 +248,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
@@ -310,7 +310,7 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
 
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
@@ -361,7 +361,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	movings := p.Movings()
 	c.Assert(movings, check.DeepEquals, []dockertest.ContainerMoving{expected})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
@@ -509,7 +509,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(hosts[1], check.Equals, net.URLToHost(node1.URL()))
 
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Name: "container", Value: toMoveCont.ID},
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
 			"hostaddr": "127.0.0.1",
@@ -548,7 +548,7 @@ func (s *S) TestRunContainerHealerThrottled(c *check.C) {
 	for i := 0; i < 3; i++ {
 		var evt *event.Event
 		evt, err = event.NewInternal(&event.Opts{
-			Target:       event.Target{Name: "container", Value: toMoveCont.ID},
+			Target:       event.Target{Type: "container", Value: toMoveCont.ID},
 			InternalKind: "healer",
 			CustomData:   toMoveCont,
 		})

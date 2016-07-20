@@ -182,7 +182,7 @@ type evtCustomData struct {
 
 func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 	evt, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Name: poolMetadataName, Value: pool},
+		Target:       event.Target{Type: poolMetadataName, Value: pool},
 		InternalKind: autoScaleEventKind,
 	})
 	if err != nil {

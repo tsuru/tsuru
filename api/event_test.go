@@ -87,7 +87,7 @@ func (s *EventSuite) insertEvents(target string, c *check.C) []*event.Event {
 	evts := make([]*event.Event, 10)
 	for i := 0; i < 10; i++ {
 		evt, err := event.New(&event.Opts{
-			Target: event.Target{Name: target, Value: strconv.Itoa(i)},
+			Target: event.Target{Type: target, Value: strconv.Itoa(i)},
 			Owner:  s.token,
 			Kind:   permission.PermAppDeploy,
 		})

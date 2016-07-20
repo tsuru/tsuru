@@ -48,14 +48,14 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestNewDone(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventId{Target: Target{Name: "app", Value: "myapp"}},
+		ID:             eventId{Target: Target{Type: "app", Value: "myapp"}},
 		UniqueID:       evt.UniqueID,
-		Target:         Target{Name: "app", Value: "myapp"},
+		Target:         Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:        true,
@@ -89,7 +89,7 @@ func (s *S) TestNewDone(c *check.C) {
 
 func (s *S) TestNewCustomDataDone(c *check.C) {
 	customData := struct{ A string }{A: "value"}
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, CustomData: customData})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, CustomData: customData})
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
@@ -98,9 +98,9 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(resultData, check.DeepEquals, customData)
 	expected := &Event{eventData: eventData{
-		ID:              eventId{Target: Target{Name: "app", Value: "myapp"}},
+		ID:              eventId{Target: Target{Type: "app", Value: "myapp"}},
 		UniqueID:        evt.UniqueID,
-		Target:          Target{Name: "app", Value: "myapp"},
+		Target:          Target{Type: "app", Value: "myapp"},
 		Kind:            Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:           Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:         true,
@@ -134,9 +134,9 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 }
 
 func (s *S) TestNewLocks(c *check.C) {
-	_, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	_, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
 	c.Assert(err, check.ErrorMatches, `event locked: app\(myapp\) running "app.update.env.set" start by user me@me.com at .+`)
 }
 
@@ -146,11 +146,11 @@ func (s *S) TestNewLockExpired(c *check.C) {
 	defer func() {
 		lockExpireTimeout = oldLockExpire
 	}()
-	_, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	_, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	updater.stop()
 	time.Sleep(100 * time.Millisecond)
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -171,7 +171,7 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -199,7 +199,7 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 }
 
 func (s *S) TestEventAbort(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Abort()
 	c.Assert(err, check.IsNil)
@@ -209,7 +209,7 @@ func (s *S) TestEventAbort(c *check.C) {
 }
 
 func (s *S) TestEventDoneError(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(errors.New("myerr"))
 	c.Assert(err, check.IsNil)
@@ -222,7 +222,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	expected := &Event{eventData: eventData{
 		ID:             eventId{ObjId: evts[0].ID.ObjId},
 		UniqueID:       evts[0].UniqueID,
-		Target:         Target{Name: "app", Value: "myapp"},
+		Target:         Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		StartTime:      evts[0].StartTime,
@@ -234,7 +234,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 }
 
 func (s *S) TestEventLogf(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	evt.Logf("%s %d", "hey", 42)
 	err = evt.Done(nil)
@@ -246,7 +246,7 @@ func (s *S) TestEventLogf(c *check.C) {
 }
 
 func (s *S) TestEventLogfWithWriter(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	buf := bytes.Buffer{}
 	evt.SetLogWriter(&buf)
@@ -261,7 +261,7 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 }
 
 func (s *S) TestEventCancel(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
@@ -313,7 +313,7 @@ func (s *S) TestEventCancel(c *check.C) {
 }
 
 func (s *S) TestEventCancelError(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.Equals, ErrNotCancelable)
@@ -322,14 +322,14 @@ func (s *S) TestEventCancelError(c *check.C) {
 }
 
 func (s *S) TestEventCancelNotAsked(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
 	err = evt.AckCancel()
 	c.Assert(err, check.Equals, ErrEventNotFound)
 }
 
 func (s *S) TestEventCancelNotRunning(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
@@ -340,7 +340,7 @@ func (s *S) TestEventCancelNotRunning(c *check.C) {
 }
 
 func (s *S) TestEventCancelDoneNoError(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.IsNil)
@@ -355,7 +355,7 @@ func (s *S) TestEventCancelDoneNoError(c *check.C) {
 }
 
 func (s *S) TestEventCancelDoneCustomError(c *check.C) {
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.IsNil)
@@ -374,9 +374,9 @@ func (s *S) TestEventNewValidation(c *check.C) {
 	c.Assert(err, check.Equals, ErrNoOpts)
 	_, err = New(&Opts{Kind: permission.PermAppCreate, Owner: s.token})
 	c.Assert(err, check.Equals, ErrNoTarget)
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Owner: s.token})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Owner: s.token})
 	c.Assert(err, check.Equals, ErrNoKind)
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppCreate})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppCreate})
 	c.Assert(err, check.Equals, ErrNoOwner)
 }
 
@@ -384,7 +384,7 @@ func (s *S) TestEventDoneLogError(c *check.C) {
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	config.Set("database:url", "127.0.0.1:99999")
 	err = evt.Done(nil)
@@ -398,21 +398,21 @@ func (s *S) TestNewThrottledAllKinds(c *check.C) {
 		Time:       time.Hour,
 		Max:        2,
 	})
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evt, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.FitsTypeOf, ErrThrottled{})
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app \"myapp\" is 2 every 1h0m0s")
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
 	c.Assert(err, check.FitsTypeOf, ErrThrottled{})
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app \"myapp\" is 2 every 1h0m0s")
-	evt, err = New(&Opts{Target: Target{Name: "app", Value: "otherapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err = New(&Opts{Target: Target{Type: "app", Value: "otherapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
@@ -425,18 +425,18 @@ func (s *S) TestNewThrottledOneKind(c *check.C) {
 		Time:       time.Hour,
 		Max:        2,
 	})
-	evt, err := New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evt, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	_, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	_, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.FitsTypeOf, ErrThrottled{})
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on app \"myapp\" is 2 every 1h0m0s")
-	evt, err = New(&Opts{Target: Target{Name: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
+	evt, err = New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvUnset, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
@@ -450,13 +450,13 @@ func (s *S) TestListFilterEmpty(c *check.C) {
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
 	_, err := New(&Opts{
-		Target:     Target{Name: "app", Value: "myapp"},
+		Target:     Target{Type: "app", Value: "myapp"},
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      s.token,
 		CustomData: map[string]string{"x": "y"},
 	})
 	c.Assert(err, check.IsNil)
-	getEvt, err := GetRunning(Target{Name: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	getEvt, err := GetRunning(Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.IsNil)
 	err = getEvt.SetOtherCustomData(map[string]string{"z": "h"})
 	c.Assert(err, check.IsNil)

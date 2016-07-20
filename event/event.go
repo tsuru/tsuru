@@ -60,7 +60,7 @@ func (err ErrThrottled) Error() string {
 	if err.Spec.KindName != "" {
 		extra = fmt.Sprintf(" %s on", err.Spec.KindName)
 	}
-	return fmt.Sprintf("event throttled, limit for%s %s %q is %d every %v", extra, err.Target.Name, err.Target.Value, err.Spec.Max, err.Spec.Time)
+	return fmt.Sprintf("event throttled, limit for%s %s %q is %d every %v", extra, err.Target.Type, err.Target.Value, err.Spec.Max, err.Spec.Time)
 }
 
 type ErrValidation string
@@ -75,14 +75,14 @@ func (err ErrEventLocked) Error() string {
 	return fmt.Sprintf("event locked: %v", err.event)
 }
 
-type Target struct{ Name, Value string }
+type Target struct{ Type, Value string }
 
 func (id Target) GetBSON() (interface{}, error) {
-	return bson.D{{Name: "name", Value: id.Name}, {Name: "value", Value: id.Value}}, nil
+	return bson.D{{Name: "type", Value: id.Type}, {Name: "value", Value: id.Value}}, nil
 }
 
 func (id Target) IsValid() bool {
-	return id.Name != "" && id.Value != ""
+	return id.Type != "" && id.Value != ""
 }
 
 type eventId struct {
@@ -175,11 +175,11 @@ func SetThrottling(spec ThrottlingSpec) {
 }
 
 func getThrottling(t *Target, k *Kind) *ThrottlingSpec {
-	key := fmt.Sprintf("%s_%s", t.Name, k.Name)
+	key := fmt.Sprintf("%s_%s", t.Type, k.Name)
 	if s, ok := throttlingInfo[key]; ok {
 		return &s
 	}
-	if s, ok := throttlingInfo[t.Name]; ok {
+	if s, ok := throttlingInfo[t.Type]; ok {
 		return &s
 	}
 	return nil
@@ -203,7 +203,7 @@ type Opts struct {
 
 func (e *Event) String() string {
 	return fmt.Sprintf("%s(%s) running %q start by %s at %s",
-		e.Target.Name,
+		e.Target.Type,
 		e.Target.Value,
 		e.Kind,
 		e.Owner,
@@ -230,8 +230,8 @@ type Filter struct {
 
 func (f *Filter) toQuery() bson.M {
 	query := bson.M{}
-	if f.Target.Name != "" {
-		query["target.name"] = f.Target.Name
+	if f.Target.Type != "" {
+		query["target.type"] = f.Target.Type
 	}
 	if f.Target.Value != "" {
 		query["target.value"] = f.Target.Value
@@ -488,7 +488,7 @@ func newEvt(opts *Opts) (*Event, error) {
 	tSpec := getThrottling(&opts.Target, &k)
 	if tSpec != nil && tSpec.Max > 0 && tSpec.Time > 0 {
 		query := bson.M{
-			"target.name":  opts.Target.Name,
+			"target.type":  opts.Target.Type,
 			"target.value": opts.Target.Value,
 			"starttime":    bson.M{"$gt": time.Now().UTC().Add(-tSpec.Time)},
 		}
@@ -574,7 +574,7 @@ func (e *Event) SetOtherCustomData(data interface{}) error {
 }
 
 func (e *Event) Logf(format string, params ...interface{}) {
-	log.Debugf(fmt.Sprintf("%s(%s)[%s] %s", e.Target.Name, e.Target.Value, e.Kind, format), params...)
+	log.Debugf(fmt.Sprintf("%s(%s)[%s] %s", e.Target.Type, e.Target.Value, e.Kind, format), params...)
 	format += "\n"
 	if e.logWriter != nil {
 		fmt.Fprintf(e.logWriter, format, params...)
