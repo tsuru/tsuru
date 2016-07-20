@@ -31,6 +31,10 @@ const (
 	portAllocMaxTries = 15
 )
 
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
 type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
 	Collection() *storage.Collection
@@ -540,7 +544,6 @@ func (c *Container) Start(args *StartArgs) error {
 func (c *Container) startWithPortSearch(p DockerProvisioner, hostConfig *docker.HostConfig) error {
 	var err error
 	retries := 0
-	rand.Seed(time.Now().UTC().UnixNano())
 	for port := portRangeStart; port <= portRangeEnd; {
 		if retries >= portAllocMaxTries {
 			break
