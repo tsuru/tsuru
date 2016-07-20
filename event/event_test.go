@@ -286,7 +286,8 @@ func (s *S) TestEventCancel(c *check.C) {
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	err = evt.AckCancel()
+	canceled, err := evt.AckCancel()
+	c.Assert(canceled, check.Equals, true)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.CancelInfo.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.CancelInfo.AckTime.IsZero(), check.Equals, false)
@@ -313,20 +314,22 @@ func (s *S) TestEventCancel(c *check.C) {
 	})
 }
 
-func (s *S) TestEventCancelError(c *check.C) {
+func (s *S) TestEventCancelNotCancelable(c *check.C) {
 	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.Equals, ErrNotCancelable)
-	err = evt.AckCancel()
-	c.Assert(err, check.Equals, ErrNotCancelable)
+	canceled, err := evt.AckCancel()
+	c.Assert(err, check.IsNil)
+	c.Assert(canceled, check.Equals, false)
 }
 
 func (s *S) TestEventCancelNotAsked(c *check.C) {
 	evt, err := New(&Opts{Target: Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token, Cancelable: true})
 	c.Assert(err, check.IsNil)
-	err = evt.AckCancel()
-	c.Assert(err, check.Equals, ErrEventNotFound)
+	canceled, err := evt.AckCancel()
+	c.Assert(err, check.IsNil)
+	c.Assert(canceled, check.Equals, false)
 }
 
 func (s *S) TestEventCancelNotRunning(c *check.C) {
@@ -336,8 +339,9 @@ func (s *S) TestEventCancelNotRunning(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.Equals, ErrNotCancelable)
-	err = evt.AckCancel()
-	c.Assert(err, check.Equals, ErrNotCancelable)
+	canceled, err := evt.AckCancel()
+	c.Assert(err, check.IsNil)
+	c.Assert(canceled, check.Equals, false)
 }
 
 func (s *S) TestEventCancelDoneNoError(c *check.C) {
@@ -345,8 +349,9 @@ func (s *S) TestEventCancelDoneNoError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.IsNil)
-	err = evt.AckCancel()
+	canceled, err := evt.AckCancel()
 	c.Assert(err, check.IsNil)
+	c.Assert(canceled, check.Equals, true)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
 	evts, err := All()
@@ -360,8 +365,9 @@ func (s *S) TestEventCancelDoneCustomError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.TryCancel("yes", "admin@admin.com")
 	c.Assert(err, check.IsNil)
-	err = evt.AckCancel()
+	canceled, err := evt.AckCancel()
 	c.Assert(err, check.IsNil)
+	c.Assert(canceled, check.Equals, true)
 	err = evt.Done(errors.New("my err"))
 	c.Assert(err, check.IsNil)
 	evts, err := All()

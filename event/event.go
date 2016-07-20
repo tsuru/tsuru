@@ -613,13 +613,13 @@ func (e *Event) TryCancel(reason, owner string) error {
 	return err
 }
 
-func (e *Event) AckCancel() error {
+func (e *Event) AckCancel() (bool, error) {
 	if !e.Cancelable || !e.Running {
-		return ErrNotCancelable
+		return false, nil
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer conn.Close()
 	coll := conn.Events()
@@ -632,9 +632,9 @@ func (e *Event) AckCancel() error {
 	}
 	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": true}).Apply(change, &e.eventData)
 	if err == mgo.ErrNotFound {
-		return ErrEventNotFound
+		return false, nil
 	}
-	return err
+	return err == nil, err
 }
 
 func (e *Event) StartData(value interface{}) error {
