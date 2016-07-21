@@ -28,10 +28,10 @@ import (
 )
 
 type EventSuite struct {
-	conn    *db.Storage
-	logConn *db.LogStorage
-	token   auth.Token
-	team    *auth.Team
+	conn        *db.Storage
+	logConn     *db.LogStorage
+	token       auth.Token
+	team        *auth.Team
 	provisioner *provisiontest.FakeProvisioner
 }
 
@@ -327,7 +327,7 @@ func (s *EventSuite) TestEventCancelNotCancelable(c *check.C) {
 }
 
 func (s *EventSuite) TestEventInfoAppPermission(c *check.C) {
-	token := 	customUserWithPermission(c, "myuser", permission.Permission{
+	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -337,9 +337,9 @@ func (s *EventSuite) TestEventInfoAppPermission(c *check.C) {
 	err = app.CreateApp(&a, usr)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-			Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
-			Owner:  s.token,
-			Kind:   permission.PermAppDeploy,
+		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
 	})
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
@@ -358,7 +358,7 @@ func (s *EventSuite) TestEventInfoAppPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventInfoAppWithoutPermission(c *check.C) {
-	token := 	customUserWithPermission(c, "myuser", permission.Permission{
+	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -368,9 +368,56 @@ func (s *EventSuite) TestEventInfoAppWithoutPermission(c *check.C) {
 	err = app.CreateApp(&a, usr)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-			Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
-			Owner:  s.token,
-			Kind:   permission.PermAppDeploy,
+		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventInfoTeamPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermTeamRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
+func (s *EventSuite) TestEventInfoTeamWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
 	})
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())

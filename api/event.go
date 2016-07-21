@@ -94,13 +94,23 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if e.Target.Type == event.TargetTypeApp {
 		a, err := getAppFromContext(e.Target.Value, r)
 		if err != nil {
-				return err
+			return err
 		}
 		hasPermission = permission.Check(t, permission.PermAppReadEvents,
 			append(permission.Contexts(permission.CtxTeam, a.Teams),
 				permission.Context(permission.CtxApp, a.Name),
 				permission.Context(permission.CtxPool, a.Pool),
 			)...,
+		)
+	}
+	if e.Target.Type == event.TargetTypeTeam {
+		tm, err := auth.GetTeam(e.Target.Value)
+		if err != nil {
+			return err
+		}
+		hasPermission = permission.Check(
+			t, permission.PermTeamReadEvents,
+			permission.Context(permission.CtxTeam, tm.Name),
 		)
 	}
 	if !hasPermission {
