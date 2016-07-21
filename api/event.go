@@ -113,6 +113,17 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			permission.Context(permission.CtxTeam, tm.Name),
 		)
 	}
+	if e.Target.Type == event.TargetTypeService {
+		s, err := getService(e.Target.Value)
+		if err != nil {
+			return err
+		}
+		hasPermission = permission.Check(t, permission.PermServiceReadEvents,
+			append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+				permission.Context(permission.CtxService, s.Name),
+			)...,
+		)
+	}
 	if !hasPermission {
 		return permission.ErrUnauthorized
 	}

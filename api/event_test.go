@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -416,6 +417,63 @@ func (s *EventSuite) TestEventInfoTeamWithoutPermission(c *check.C) {
 	})
 	evt, err := event.New(&event.Opts{
 		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventInfoServicePermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	srv := service.Service{
+		Name:       "myservice",
+		OwnerTeams: []string{s.team.Name},
+		Username:   "myuser",
+	}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeService, Value: srv.Name},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
+func (s *EventSuite) TestEventInfoServiceWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	srv := service.Service{Name: "myservice", OwnerTeams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeService, Value: srv.Name},
 		Owner:  s.token,
 		Kind:   permission.PermAppDeploy,
 	})
