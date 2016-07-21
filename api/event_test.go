@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -91,9 +92,10 @@ func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, er
 	evts := make([]*event.Event, 10)
 	for i := 0; i < 10; i++ {
 		evt, err := event.New(&event.Opts{
-			Target: event.Target{Type: t, Value: strconv.Itoa(i)},
-			Owner:  s.token,
-			Kind:   permission.PermAppDeploy,
+			Target:     event.Target{Type: t, Value: strconv.Itoa(i)},
+			Owner:      s.token,
+			Kind:       permission.PermAppDeploy,
+			Cancelable: i == 0,
 		})
 		c.Assert(err, check.IsNil)
 		evts[i] = evt
@@ -252,4 +254,80 @@ func (s *EventSuite) TestEventInfoNotFound(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *EventSuite) TestEventCancel(c *check.C) {
+	events, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", events[0].UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelInvalidObjectID(c *check.C) {
+	u := fmt.Sprintf("/events/%s/cancel", "123")
+	body := strings.NewReader("reason=we ain't gonna take it")
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "uuid parameter is not ObjectId: 123\n")
+}
+
+func (s *EventSuite) TestEventCancelNotFound(c *check.C) {
+	id := bson.NewObjectId()
+	u := fmt.Sprintf("/events/%s/cancel", id.Hex())
+	body := strings.NewReader("reason=we ain't gonna take it")
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "event not found\n")
+}
+
+func (s *EventSuite) TestEventCancelNoReason(c *check.C) {
+	events, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=")
+	u := fmt.Sprintf("/events/%s/cancel", events[0].UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "reason is mandatory\n")
+}
+
+func (s *EventSuite) TestEventCancelNotCancelable(c *check.C) {
+	events, err := s.insertEvents("app", c)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=pretty please")
+	u := fmt.Sprintf("/events/%s/cancel", events[1].UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "event is not cancelable\n")
 }
