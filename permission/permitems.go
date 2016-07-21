@@ -107,6 +107,7 @@ var (
 	PermServiceInstanceCreate            = PermissionRegistry.get("service-instance.create")
 	PermServiceInstanceDelete            = PermissionRegistry.get("service-instance.delete")
 	PermServiceInstanceRead              = PermissionRegistry.get("service-instance.read")
+	PermServiceInstanceReadEvents        = PermissionRegistry.get("service-instance.read.events")
 	PermServiceInstanceReadStatus        = PermissionRegistry.get("service-instance.read.status")
 	PermServiceInstanceUpdate            = PermissionRegistry.get("service-instance.update")
 	PermServiceInstanceUpdateBind        = PermissionRegistry.get("service-instance.update.bind")

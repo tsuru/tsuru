@@ -103,6 +103,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).addWithCtx(
 	"service-instance.create", []contextType{CtxTeam},
 ).add(
+	"service-instance.read.events",
 	"service-instance.read.status",
 	"service-instance.delete",
 	"service-instance.update.proxy",
