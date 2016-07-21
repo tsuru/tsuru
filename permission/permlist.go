@@ -132,6 +132,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).addWithCtx(
 	"pool.create", []contextType{},
 ).add(
+	"pool.read.events",
 	"pool.update.logs",
 	"pool.delete",
 ).add(
