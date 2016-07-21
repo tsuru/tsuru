@@ -74,6 +74,7 @@ var (
 	PermNodeCreate                       = PermissionRegistry.get("node.create")
 	PermNodeDelete                       = PermissionRegistry.get("node.delete")
 	PermNodeRead                         = PermissionRegistry.get("node.read")
+	PermNodeReadEvents                   = PermissionRegistry.get("node.read.events")
 	PermNodeUpdate                       = PermissionRegistry.get("node.update")
 	PermNodecontainer                    = PermissionRegistry.get("nodecontainer")
 	PermNodecontainerCreate              = PermissionRegistry.get("nodecontainer.create")
