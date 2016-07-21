@@ -19,6 +19,8 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
@@ -30,6 +32,7 @@ type EventSuite struct {
 	logConn *db.LogStorage
 	token   auth.Token
 	team    *auth.Team
+	provisioner *provisiontest.FakeProvisioner
 }
 
 var _ = check.Suite(&EventSuite{})
@@ -64,15 +67,22 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *EventSuite) TearDownTest(c *check.C) {
+	s.provisioner.Reset()
+}
+
 func (s *EventSuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	s.conn.Apps().Database.DropDatabase()
 	s.logConn.Logs("myapp").Database.DropDatabase()
+	s.provisioner.Reset()
 	s.conn.Close()
 	s.logConn.Close()
 }
 
 func (s *EventSuite) SetUpTest(c *check.C) {
+	s.provisioner = provisiontest.NewFakeProvisioner()
+	app.Provisioner = s.provisioner
 	repositorytest.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
@@ -82,6 +92,9 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 	config.Set("docker:router", "fake")
+	opts := provision.AddPoolOptions{Name: "test1", Default: true}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, error) {
@@ -214,25 +227,6 @@ func (s *EventSuite) TestKindList(c *check.C) {
 	c.Assert(result, check.HasLen, 1)
 }
 
-func (s *EventSuite) TestEventInfo(c *check.C) {
-	events, err := s.insertEvents("app", c)
-	c.Assert(err, check.IsNil)
-	u := fmt.Sprintf("/events/%s", events[0].UniqueID.Hex())
-	request, err := http.NewRequest("GET", u, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var result event.Event
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result.Kind, check.DeepEquals, events[0].Kind)
-	c.Assert(result.Target, check.DeepEquals, events[0].Target)
-}
-
 func (s *EventSuite) TestEventInfoInvalidObjectID(c *check.C) {
 	u := fmt.Sprintf("/events/%s", "123")
 	request, err := http.NewRequest("GET", u, nil)
@@ -330,4 +324,61 @@ func (s *EventSuite) TestEventCancelNotCancelable(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "event is not cancelable\n")
+}
+
+func (s *EventSuite) TestEventInfoAppPermission(c *check.C) {
+	token := 	customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	a := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+			Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+			Owner:  s.token,
+			Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
+func (s *EventSuite) TestEventInfoAppWithoutPermission(c *check.C) {
+	token := 	customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	a := app.App{Name: "new-app2", Platform: "zend", TeamOwner: s.team.Name}
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+			Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+			Owner:  s.token,
+			Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -76,6 +77,7 @@ func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // responses:
 //   200: OK
 //   400: Invalid uuid
+//   401: Unauthorized
 //   404: Not found
 func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	uuid := r.URL.Query().Get(":uuid")
@@ -87,6 +89,22 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	e, err := event.GetByID(objID)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	var hasPermission bool
+	if e.Target.Type == event.TargetTypeApp {
+		a, err := getAppFromContext(e.Target.Value, r)
+		if err != nil {
+				return err
+		}
+		hasPermission = permission.Check(t, permission.PermAppReadEvents,
+			append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...,
+		)
+	}
+	if !hasPermission {
+		return permission.ErrUnauthorized
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(e)
