@@ -128,6 +128,8 @@ var (
 	PermTeam                             = PermissionRegistry.get("team")
 	PermTeamCreate                       = PermissionRegistry.get("team.create")
 	PermTeamDelete                       = PermissionRegistry.get("team.delete")
+	PermTeamRead                         = PermissionRegistry.get("team.read")
+	PermTeamReadEvents                   = PermissionRegistry.get("team.read.events")
 	PermUser                             = PermissionRegistry.get("user")
 	PermUserCreate                       = PermissionRegistry.get("user.create")
 	PermUserDelete                       = PermissionRegistry.get("user.delete")
