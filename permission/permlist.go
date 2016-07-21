@@ -92,6 +92,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"service.read.doc",
 	"service.read.plans",
+	"service.read.events",
 	"service.update.proxy",
 	"service.update.revoke-access",
 	"service.update.grant-access",

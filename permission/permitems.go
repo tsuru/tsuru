@@ -119,6 +119,7 @@ var (
 	PermServiceDelete                    = PermissionRegistry.get("service.delete")
 	PermServiceRead                      = PermissionRegistry.get("service.read")
 	PermServiceReadDoc                   = PermissionRegistry.get("service.read.doc")
+	PermServiceReadEvents                = PermissionRegistry.get("service.read.events")
 	PermServiceReadPlans                 = PermissionRegistry.get("service.read.plans")
 	PermServiceUpdate                    = PermissionRegistry.get("service.update")
 	PermServiceUpdateDoc                 = PermissionRegistry.get("service.update.doc")
