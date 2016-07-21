@@ -135,6 +135,8 @@ var (
 	PermUser                             = PermissionRegistry.get("user")
 	PermUserCreate                       = PermissionRegistry.get("user.create")
 	PermUserDelete                       = PermissionRegistry.get("user.delete")
+	PermUserRead                         = PermissionRegistry.get("user.read")
+	PermUserReadEvents                   = PermissionRegistry.get("user.read.events")
 	PermUserUpdate                       = PermissionRegistry.get("user.update")
 	PermUserUpdateKey                    = PermissionRegistry.get("user.update.key")
 	PermUserUpdateKeyAdd                 = PermissionRegistry.get("user.update.key.add")

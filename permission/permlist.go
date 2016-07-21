@@ -79,6 +79,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"user.create",
 	"user.delete",
+	"user.read.events",
 	"user.update.token",
 	"user.update.quota",
 	"user.update.password",
