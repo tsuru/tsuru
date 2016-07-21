@@ -26,6 +26,7 @@ var (
 	PermAppRead                          = PermissionRegistry.get("app.read")
 	PermAppReadDeploy                    = PermissionRegistry.get("app.read.deploy")
 	PermAppReadEnv                       = PermissionRegistry.get("app.read.env")
+	PermAppReadEvents                    = PermissionRegistry.get("app.read.events")
 	PermAppReadLog                       = PermissionRegistry.get("app.read.log")
 	PermAppReadMetric                    = PermissionRegistry.get("app.read.metric")
 	PermAppRun                           = PermissionRegistry.get("app.run")
