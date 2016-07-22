@@ -364,3 +364,17 @@ func (s *S) TestListPoolEmpty(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 0)
 }
+
+func (s *S) TestGetPoolByName(c *check.C) {
+	coll := s.storage.Pools()
+	pool := Pool{Name: "pool1", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	p, err := GetPoolByName(pool.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Name, check.Equals, pool.Name)
+	p, err = GetPoolByName("not found")
+	c.Assert(p, check.IsNil)
+	c.Assert(err, check.NotNil)
+}

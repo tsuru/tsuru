@@ -138,6 +138,21 @@ func ListPools(query bson.M) ([]Pool, error) {
 	return pools, nil
 }
 
+// GetPoolByName finds a pool by name
+func GetPoolByName(name string) (*Pool, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var p Pool
+	err = conn.Pools().FindId(name).One(&p)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func PoolUpdate(poolName string, query bson.M, forceDefault bool) error {
 	conn, err := db.Conn()
 	if err != nil {
