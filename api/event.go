@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -138,6 +139,16 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				)...,
 			)
 		}
+	}
+	if e.Target.Type == event.TargetTypePool {
+		p, err := provision.GetPoolByName(e.Target.Value)
+		if err != nil {
+			return err
+		}
+		hasPermission = permission.Check(
+			t, permission.PermPoolReadEvents,
+			permission.Context(permission.CtxPool, p.Name),
+		)
 	}
 	if !hasPermission {
 		return permission.ErrUnauthorized
