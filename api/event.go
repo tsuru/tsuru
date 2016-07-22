@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -123,6 +124,20 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				permission.Context(permission.CtxService, s.Name),
 			)...,
 		)
+	}
+	if e.Target.Type == event.TargetTypeServiceInstance {
+		if v := strings.SplitN(e.Target.Value, "_", 2); len(v) == 2 {
+			si, err := getServiceInstanceOrError(v[0], v[1])
+			if err != nil {
+				return err
+			}
+			permissionValue := v[0] + "/" + v[1]
+			hasPermission = permission.Check(t, permission.PermServiceInstanceReadEvents,
+				append(permission.Contexts(permission.CtxTeam, si.Teams),
+					permission.Context(permission.CtxServiceInstance, permissionValue),
+				)...,
+			)
+		}
 	}
 	if !hasPermission {
 		return permission.ErrUnauthorized

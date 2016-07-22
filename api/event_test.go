@@ -487,3 +487,104 @@ func (s *EventSuite) TestEventInfoServiceWithoutPermission(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
+
+func (s *EventSuite) TestEventInfoServiceInstancePermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeServiceInstance, Value: "foo_foo-instance"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
+func (s *EventSuite) TestEventInfoServiceInstanceWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeServiceInstance, Value: "foo_foo-instance"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventInfoServiceInstanceInvalidTargetValue(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeServiceInstance, Value: "foofoo-instance"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
