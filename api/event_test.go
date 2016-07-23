@@ -228,6 +228,16 @@ func (s *EventSuite) TestKindList(c *check.C) {
 	c.Assert(result, check.HasLen, 1)
 }
 
+func (s *EventSuite) TestKindListNoContent(c *check.C) {
+	request, err := http.NewRequest("GET", "/events/kinds", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *EventSuite) TestEventInfoInvalidObjectID(c *check.C) {
 	u := fmt.Sprintf("/events/%s", "123")
 	request, err := http.NewRequest("GET", u, nil)
