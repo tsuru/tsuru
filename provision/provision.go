@@ -359,7 +359,7 @@ type OptionalLogsProvisioner interface {
 	LogsEnabled(App) (bool, string, error)
 }
 
-type NodeStatusProvisioner interface {
+type NodeProvisioner interface {
 	// SetNodeStatus changes the status of a node and all its units.
 	SetNodeStatus(NodeStatusData) error
 }

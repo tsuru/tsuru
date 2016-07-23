@@ -572,7 +572,7 @@ func UpdateNodeStatus(node provision.NodeStatusData) ([]UpdateUnitsResult, error
 			return nil, err
 		}
 	}
-	if nodeProvisioner, ok := Provisioner.(provision.NodeStatusProvisioner); ok {
+	if nodeProvisioner, ok := Provisioner.(provision.NodeProvisioner); ok {
 		err := nodeProvisioner.SetNodeStatus(node)
 		if err != nil {
 			log.Errorf("unable to set node status: %s", err)
