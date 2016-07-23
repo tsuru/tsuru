@@ -609,7 +609,7 @@ type apiUser struct {
 	Permissions []rolePermissionData
 }
 
-func createApiUser(perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
+func createAPIUser(perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
 	var permData []rolePermissionData
 	roleData := make([]rolePermissionData, 0, len(user.Roles))
 	if roleMap == nil {
@@ -689,7 +689,7 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	for _, user := range users {
-		usrData, err := createApiUser(perms, &user, roleMap, includeAll)
+		usrData, err := createAPIUser(perms, &user, roleMap, includeAll)
 		if err != nil {
 			return err
 		}
@@ -737,7 +737,7 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	userData, err := createApiUser(perms, user, nil, true)
+	userData, err := createAPIUser(perms, user, nil, true)
 	if err != nil {
 		return err
 	}

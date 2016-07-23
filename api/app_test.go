@@ -4922,7 +4922,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	oldIp := units[0].Ip
+	oldIP := units[0].Ip
 	body := strings.NewReader("hostname=" + units[0].ID)
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
@@ -4943,7 +4943,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, oldIp+"-updated")
+	c.Assert(units[0].Ip, check.Equals, oldIP+"-updated")
 }
 
 func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
@@ -4992,7 +4992,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	oldIp := units[0].Ip
+	oldIP := units[0].Ip
 	v := url.Values{}
 	v.Set("hostname", units[0].ID)
 	v.Set("customdata", `{"mydata": "something"}`)
@@ -5016,7 +5016,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, oldIp+"-updated")
+	c.Assert(units[0].Ip, check.Equals, oldIP+"-updated")
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
 		"mydata": "something",
 	})

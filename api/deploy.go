@@ -327,8 +327,8 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	depId := r.URL.Query().Get(":deploy")
-	deploy, err := app.GetDeploy(depId)
+	depID := r.URL.Query().Get(":deploy")
+	deploy, err := app.GetDeploy(depID)
 	if err != nil {
 		if err == event.ErrEventNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}

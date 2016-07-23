@@ -58,11 +58,11 @@ func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) erro
 //   401: Unauthorized
 //   404: Not found
 func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) error {
-	machineId := r.URL.Query().Get(":machine_id")
-	if machineId == "" {
+	machineID := r.URL.Query().Get(":machine_id")
+	if machineID == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "machine id is required"}
 	}
-	m, err := iaas.FindMachineById(machineId)
+	m, err := iaas.FindMachineById(machineID)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: "machine not found"}
