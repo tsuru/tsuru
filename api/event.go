@@ -150,6 +150,12 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			permission.Context(permission.CtxPool, p.Name),
 		)
 	}
+	if e.Target.Type == event.TargetTypeUser {
+		hasPermission = permission.Check(
+			t, permission.PermUserReadEvents,
+			permission.Context(permission.CtxGlobal, ""),
+		)
+	}
 	if !hasPermission {
 		return permission.ErrUnauthorized
 	}
