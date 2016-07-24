@@ -54,7 +54,7 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventId{Target: Target{Type: "app", Value: "myapp"}},
+		ID:             eventID{Target: Target{Type: "app", Value: "myapp"}},
 		UniqueID:       evt.UniqueID,
 		Target:         Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
@@ -84,7 +84,7 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
-	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
+	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
 	c.Assert(&evts[0], check.DeepEquals, expected)
 }
 
@@ -99,7 +99,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(resultData, check.DeepEquals, customData)
 	expected := &Event{eventData: eventData{
-		ID:              eventId{Target: Target{Type: "app", Value: "myapp"}},
+		ID:              eventID{Target: Target{Type: "app", Value: "myapp"}},
 		UniqueID:        evt.UniqueID,
 		Target:          Target{Type: "app", Value: "myapp"},
 		Kind:            Kind{Type: KindTypePermission, Name: "app.update.env.set"},
@@ -129,7 +129,7 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
-	expected.ID = eventId{ObjId: evts[0].ID.ObjId}
+	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
 	expected.EndCustomData = evts[0].EndCustomData
 	c.Assert(&evts[0], check.DeepEquals, expected)
 }
@@ -221,7 +221,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventId{ObjId: evts[0].ID.ObjId},
+		ID:             eventID{ObjId: evts[0].ID.ObjId},
 		UniqueID:       evts[0].UniqueID,
 		Target:         Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},

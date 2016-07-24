@@ -98,12 +98,12 @@ func (id Target) IsValid() bool {
 	return id.Type != "" && id.Value != ""
 }
 
-type eventId struct {
+type eventID struct {
 	Target Target
 	ObjId  bson.ObjectId
 }
 
-func (id *eventId) SetBSON(raw bson.Raw) error {
+func (id *eventID) SetBSON(raw bson.Raw) error {
 	err := raw.Unmarshal(&id.Target)
 	if err != nil {
 		return raw.Unmarshal(&id.ObjId)
@@ -111,7 +111,7 @@ func (id *eventId) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
-func (id eventId) GetBSON() (interface{}, error) {
+func (id eventID) GetBSON() (interface{}, error) {
 	if len(id.ObjId) != 0 {
 		return id.ObjId, nil
 	}
@@ -122,7 +122,7 @@ func (id eventId) GetBSON() (interface{}, error) {
 // access to its public fields. (They have to be public for database
 // serializing).
 type eventData struct {
-	ID              eventId `bson:"_id"`
+	ID              eventID `bson:"_id"`
 	UniqueID        bson.ObjectId
 	StartTime       time.Time
 	EndTime         time.Time `bson:",omitempty"`
@@ -333,7 +333,7 @@ func GetRunning(target Target, kind string) (*Event, error) {
 	coll := conn.Events()
 	var evt Event
 	err = coll.Find(bson.M{
-		"_id":       eventId{Target: target},
+		"_id":       eventID{Target: target},
 		"kind.name": kind,
 		"running":   true,
 	}).One(&evt.eventData)
@@ -547,7 +547,7 @@ func newEvt(opts *Opts) (*Event, error) {
 		return nil, err
 	}
 	evt := Event{eventData: eventData{
-		ID:              eventId{Target: opts.Target},
+		ID:              eventID{Target: opts.Target},
 		UniqueID:        bson.NewObjectId(),
 		Target:          opts.Target,
 		StartTime:       now,
@@ -731,7 +731,7 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		e.OtherCustomData = dbEvt.OtherCustomData
 	}
 	defer coll.RemoveId(e.ID)
-	e.ID = eventId{ObjId: e.UniqueID}
+	e.ID = eventID{ObjId: e.UniqueID}
 	return coll.Insert(e.eventData)
 }
 
