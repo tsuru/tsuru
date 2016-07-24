@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type S struct {
@@ -127,6 +128,9 @@ func (s *S) TestGetByID(c *check.C) {
 	otherEvt, err = event.GetByID(evt.UniqueID)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt, eventtest.EvtEquals, otherEvt)
+	otherEvt, err = event.GetByID(bson.NewObjectId())
+	c.Assert(otherEvt, check.IsNil)
+	c.Assert(err, check.Equals, event.ErrEventNotFound)
 }
 
 func (s *S) TestGetRunning(c *check.C) {
