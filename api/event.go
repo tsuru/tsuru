@@ -160,7 +160,6 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if e.Target.Type == event.TargetTypeContainer {
 		a, err := app.Provisioner.GetAppFromUnitID(e.Target.Value)
 		if err != nil {
-			fmt.Println("xxx", err)
 			return err
 		}
 		hasPermission = permission.Check(t, permission.PermAppReadEvents,
