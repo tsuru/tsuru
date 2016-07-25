@@ -58,6 +58,7 @@ var (
 	TargetTypeServiceInstance = targetType("service-instance")
 	TargetTypeTeam            = targetType("team")
 	TargetTypeUser            = targetType("user")
+	TargetTypeIaas            = targetType("iaas")
 )
 
 type ErrThrottled struct {
