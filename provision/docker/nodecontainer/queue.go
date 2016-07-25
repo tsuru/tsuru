@@ -35,9 +35,14 @@ func (t *runBs) Name() string {
 }
 
 func (t *runBs) Run(job monsterqueue.Job) {
+	_, err := InitializeBS()
+	if err != nil {
+		job.Error(err)
+		return
+	}
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
-	err := t.waitDocker(dockerEndpoint)
+	err = t.waitDocker(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
 		return
@@ -77,19 +82,19 @@ func (t *runBs) waitDocker(endpoint string) error {
 	exit := make(chan struct{})
 	go func() {
 		for {
+			err := client.Ping()
+			if err == nil {
+				pong <- nil
+				return
+			}
+			if e, ok := err.(*docker.Error); ok && e.Status > 499 {
+				pong <- err
+				return
+			}
 			select {
 			case <-exit:
 				return
-			default:
-				err := client.Ping()
-				if err == nil {
-					pong <- nil
-					return
-				}
-				if e, ok := err.(*docker.Error); ok && e.Status > 499 {
-					pong <- err
-					return
-				}
+			case <-time.After(time.Second):
 			}
 		}
 	}()
