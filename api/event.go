@@ -20,6 +20,40 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
+	if filter == nil {
+		filter = &event.Filter{}
+	}
+	contexts := permission.ContextsForPermission(t, permission.PermAppReadEvents)
+	if len(contexts) > 0 {
+		apps, err := app.List(appFilterByContext(contexts, nil))
+		if err != nil {
+			return nil, err
+		}
+		if len(apps) > 0 {
+			allowed := event.TargetFilter{Type: event.TargetTypeApp}
+			for _, a := range apps {
+				allowed.Values = append(allowed.Values, a.Name)
+			}
+			filter.AllowedTargets = append(filter.AllowedTargets, allowed)
+		}
+	}
+	contexts = permission.ContextsForPermission(t, permission.PermTeamReadEvents)
+	if len(contexts) > 0 {
+		allowed := event.TargetFilter{Type: event.TargetTypeTeam}
+		for _, ctx := range contexts {
+			if ctx.CtxType == permission.CtxGlobal {
+				allowed.Values = nil
+				break
+			} else if ctx.CtxType == permission.CtxTeam {
+				allowed.Values = append(allowed.Values, ctx.Value)
+			}
+		}
+		filter.AllowedTargets = append(filter.AllowedTargets, allowed)
+	}
+	return filter, nil
+}
+
 // title: event list
 // path: /events
 // method: GET
@@ -30,9 +64,9 @@ import (
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	filter := &event.Filter{}
 	if target := r.URL.Query().Get("target"); target != "" {
-		t, err := event.GetTargetType(target)
+		targetType, err := event.GetTargetType(target)
 		if err == nil {
-			filter.Target = event.Target{Type: t}
+			filter.Target = event.Target{Type: targetType}
 		}
 	}
 	if running, err := strconv.ParseBool(r.URL.Query().Get("running")); err == nil {
@@ -40,6 +74,10 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if kindName := r.URL.Query().Get("kindName"); kindName != "" {
 		filter.KindName = kindName
+	}
+	filter, err := filterForPerms(t, filter)
+	if err != nil {
+		return err
 	}
 	events, err := event.List(filter)
 	if err != nil {
