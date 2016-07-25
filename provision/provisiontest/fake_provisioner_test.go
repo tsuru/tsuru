@@ -1257,3 +1257,9 @@ func (s *S) TestGetAppFromUnitID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(app, check.DeepEquals, a)
 }
+
+func (s *S) TestGetAppFromUnitIDNotFound(c *check.C) {
+	p := NewFakeProvisioner()
+	_, err := p.GetAppFromUnitID("chain-lighting-0")
+	c.Assert(err, check.NotNil)
+}
