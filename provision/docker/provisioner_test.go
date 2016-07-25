@@ -2671,6 +2671,30 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 	c.Assert(units, check.DeepEquals, expected)
 }
 
+func (s *S) TestProvisionerGetAppFromUnitID(c *check.C) {
+	app := app.App{Name: "myapplication"}
+	err := s.storage.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	coll := s.p.Collection()
+	defer coll.Close()
+	err = coll.Insert(
+		container.Container{
+			ID:       "9930c24f1c4f",
+			AppName:  app.Name,
+			Type:     "python",
+			Status:   provision.StatusBuilding.String(),
+			IP:       "127.0.0.4",
+			HostAddr: "192.168.123.9",
+			HostPort: "9025",
+		},
+	)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": app.Name})
+	a, err := s.p.GetAppFromUnitID("9930c24f1c4f")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.GetName(), check.Equals, a.GetName())
+}
+
 func (s *S) TestProvisionerUnitsAppDoesNotExist(c *check.C) {
 	app := app.App{Name: "myapplication"}
 	units, err := s.p.Units(&app)

@@ -1135,6 +1135,19 @@ func (p *dockerProvisioner) PlatformRemove(name string) error {
 	return err
 }
 
+// GetAppFromUnitID returns app from unit id
+func (p *dockerProvisioner) GetAppFromUnitID(unitID string) (provision.App, error) {
+	cnt, err := p.GetContainer(unitID)
+	if err != nil {
+		return nil, err
+	}
+	a, err := app.GetByName(cnt.AppName)
+	if err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
 func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
