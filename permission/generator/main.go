@@ -19,7 +19,7 @@ import (
 
 var fileTpl = `// AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
-// 
+//
 // Copyright {{.Time.Year}} tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -28,7 +28,7 @@ package permission
 
 var (
 {{range .Permissions}} \
-    Perm{{.Identifier}} = PermissionRegistry.get("{{.FullName}}")
+    Perm{{.Identifier}} = PermissionRegistry.get("{{.FullName}}") // {{.AllowedContexts}}
 {{end}} \
 )
 `
