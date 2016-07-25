@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/ajg/form"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
 	"gopkg.in/check.v1"
 )
@@ -82,6 +84,14 @@ func (s *S) TestMachinesDestroy(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "test-iaas"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":machine_id", "value": "myid1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestMachinesDestroyError(c *check.C) {
@@ -176,6 +186,19 @@ func (s *S) TestTemplateCreate(c *check.C) {
 		{Name: "x", Value: "y"},
 		{Name: "a", Value: "b"},
 	}))
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "my-iaas"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.template.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Name", "value": "my-tpl"},
+			{"name": "IaaSName", "value": "my-iaas"},
+			{"name": "Data.0.Name", "value": "x"},
+			{"name": "Data.0.Value", "value": "y"},
+			{"name": "Data.1.Name", "value": "a"},
+			{"name": "Data.1.Value", "value": "b"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestTemplateCreateBadRequest(c *check.C) {
@@ -212,6 +235,14 @@ func (s *S) TestTemplateDestroy(c *check.C) {
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
 	c.Assert(templates, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "ec2"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.template.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":template_name", "value": "tpl1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestTemplateUpdate(c *check.C) {
@@ -254,6 +285,20 @@ func (s *S) TestTemplateUpdate(c *check.C) {
 		{Name: "y", Value: "8"},
 		{Name: "z", Value: "9"},
 	}))
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "my-iaas"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.template.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":template_name", "value": "my-tpl"},
+			{"name": "Data.0.Name", "value": "x"},
+			{"name": "Data.0.Value", "value": ""},
+			{"name": "Data.1.Name", "value": "y"},
+			{"name": "Data.1.Value", "value": "8"},
+			{"name": "Data.2.Name", "value": "z"},
+			{"name": "Data.2.Value", "value": "9"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestTemplateUpdateNotFound(c *check.C) {

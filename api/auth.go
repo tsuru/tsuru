@@ -543,7 +543,8 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 //   200: OK
 //   401: Unauthorized
 //   404: User not found
-func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -558,6 +559,16 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) er
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     userTarget(u.Email),
+		Kind:       permission.PermUserUpdateToken,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	apiKey, err := u.RegenerateAPIKey()
 	if err != nil {
 		return err

@@ -1276,19 +1276,24 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget(u.Email),
+		Owner:  u.Email,
+		Kind:   "user.update.token",
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := auth.User{Email: "user@example.com", Password: "123456"}
+	u := auth.User{Email: "leto@arrakis.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	token := s.token
 	c.Assert(err, check.IsNil)
 	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	request, err := http.NewRequest("POST", "/users/api-key?user=user@example.com", nil)
+	request, err := http.NewRequest("POST", "/users/api-key?user=leto@arrakis.com", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = regenerateAPIToken(recorder, request, token)
@@ -1299,6 +1304,14 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: userTarget("leto@arrakis.com"),
+		Owner:  token.GetUserName(),
+		Kind:   "user.update.token",
+		StartCustomData: []map[string]interface{}{
+			{"name": "user", "value": "leto@arrakis.com"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *check.C) {
