@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -155,6 +156,20 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			t, permission.PermUserReadEvents,
 			permission.Context(permission.CtxGlobal, ""),
 		)
+	}
+	if e.Target.Type == event.TargetTypeContainer {
+		a, err := app.Provisioner.GetAppFromUnitID(e.Target.Value)
+		if err != nil {
+			fmt.Println("xxx", err)
+			return err
+		}
+		hasPermission = permission.Check(t, permission.PermAppReadEvents,
+			append(permission.Contexts(permission.CtxTeam, a.GetTeamsName()),
+				permission.Context(permission.CtxApp, a.GetName()),
+				permission.Context(permission.CtxPool, a.GetPool()),
+			)...,
+		)
+
 	}
 	if !hasPermission {
 		return permission.ErrUnauthorized
