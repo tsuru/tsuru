@@ -4882,6 +4882,14 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Lock.Locked, check.Equals, false)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.admin.unlock",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestForceDeleteLockOnlyWithPermission(c *check.C) {

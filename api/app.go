@@ -1610,7 +1610,8 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   200: Ok
 //   401: Unauthorized
 //   404: App not found
-func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1625,6 +1626,16 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppAdminUnlock,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	app.ReleaseApplicationLock(a.Name)
 	return nil
 }
