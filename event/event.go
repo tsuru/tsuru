@@ -250,6 +250,11 @@ func (e *Event) String() string {
 	)
 }
 
+type TargetFilter struct {
+	Type   targetType
+	Values []string
+}
+
 type Filter struct {
 	Target         Target
 	KindType       kindType
@@ -261,6 +266,7 @@ type Filter struct {
 	Running        *bool
 	IncludeRemoved bool
 	Raw            bson.M
+	AllowedTargets []TargetFilter
 
 	Limit int
 	Skip  int
@@ -269,6 +275,17 @@ type Filter struct {
 
 func (f *Filter) toQuery() bson.M {
 	query := bson.M{}
+	if f.AllowedTargets != nil {
+		var orBlock []bson.M
+		for _, at := range f.AllowedTargets {
+			f := bson.M{"target.type": at.Type}
+			if at.Values != nil {
+				f["target.value"] = bson.M{"$in": at.Values}
+			}
+			orBlock = append(orBlock, f)
+		}
+		query["$or"] = orBlock
+	}
 	if f.Target.Type != "" {
 		query["target.type"] = f.Target.Type
 	}

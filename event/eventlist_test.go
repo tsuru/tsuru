@@ -115,6 +115,19 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-2])
 	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}}, allEvts[:0])
 	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
+		{Type: "app"},
+	}, Sort: "_id"}, allEvts[:2])
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
+		{Type: "app", Values: []string{}},
+	}, Sort: "_id"}, allEvts[:0])
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
+		{Type: "app", Values: []string{"myapp", "myapp2"}},
+	}, Sort: "_id"}, allEvts[:2])
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
+		{Type: "app", Values: []string{"myapp"}},
+		{Type: "node", Values: []string{"http://10.0.1.2"}},
+	}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[4]})
 }
 
 func (s *S) TestGetByID(c *check.C) {
