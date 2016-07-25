@@ -277,6 +277,9 @@ type Provisioner interface {
 	// from the app.
 	RemoveUnits(App, uint, string, io.Writer) error
 
+	// GetAppFromUnitID returns an app from unit id
+	GetAppFromUnitID(string) (App, error)
+
 	// SetUnitStatus changes the status of a unit.
 	SetUnitStatus(Unit, Status) error
 
