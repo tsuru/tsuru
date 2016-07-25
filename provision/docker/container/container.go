@@ -138,6 +138,10 @@ func (c *Container) Create(args *CreateArgs) error {
 	if err != nil {
 		return err
 	}
+	hostConf, err := c.hostConfig(args.App, args.Deploy)
+	if err != nil {
+		return err
+	}
 	conf := docker.Config{
 		Image:        args.ImageID,
 		Cmd:          args.Commands,
@@ -161,7 +165,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		},
 	}
 	c.addEnvsToConfig(args, strings.TrimSuffix(c.ExposedPort, "/tcp"), &conf)
-	opts := docker.CreateContainerOptions{Name: c.Name, Config: &conf}
+	opts := docker.CreateContainerOptions{Name: c.Name, Config: &conf, HostConfig: hostConf}
 	var nodeList []string
 	if len(args.DestinationHosts) > 0 {
 		var nodeName string
@@ -475,25 +479,25 @@ type StartArgs struct {
 	Deploy      bool
 }
 
-func (c *Container) Start(args *StartArgs) error {
+func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostConfig, error) {
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
 	hostConfig := docker.HostConfig{
-		Memory:     args.App.GetMemory(),
-		MemorySwap: args.App.GetMemory() + args.App.GetSwap(),
-		CPUShares:  int64(args.App.GetCpuShare()),
+		Memory:     app.GetMemory(),
+		MemorySwap: app.GetMemory() + app.GetSwap(),
+		CPUShares:  int64(app.GetCpuShare()),
 	}
-	if !args.Deploy {
+	if !isDeploy {
 		hostConfig.RestartPolicy = docker.AlwaysRestart()
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: ""}},
 		}
-		pool := args.App.GetPool()
+		pool := app.GetPool()
 		driver, opts, logErr := LogOpts(pool)
 		if logErr != nil {
-			return logErr
+			return nil, logErr
 		}
 		hostConfig.LogConfig = docker.LogConfig{
 			Type:   driver,
@@ -516,21 +520,13 @@ func (c *Container) Start(args *StartArgs) error {
 			hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
 		}
 	}
-	allocator, _ := config.GetString("docker:port-allocator")
-	if allocator == "" {
-		allocator = "docker"
-	}
-	var err error
-	switch allocator {
-	case "tsuru":
-		err = c.startWithPortSearch(args.Provisioner, &hostConfig)
-	case "docker":
-		done := args.Provisioner.ActionLimiter().Start(c.HostAddr)
-		err = args.Provisioner.Cluster().StartContainer(c.ID, &hostConfig)
-		done()
-	default:
-		return fmt.Errorf("invalid docker:port-allocator: %s", allocator)
-	}
+	return &hostConfig, nil
+}
+
+func (c *Container) Start(args *StartArgs) error {
+	done := args.Provisioner.ActionLimiter().Start(c.HostAddr)
+	err := args.Provisioner.Cluster().StartContainer(c.ID, nil)
+	done()
 	if err != nil {
 		return err
 	}
@@ -539,50 +535,6 @@ func (c *Container) Start(args *StartArgs) error {
 		initialStatus = provision.StatusBuilding
 	}
 	return c.SetStatus(args.Provisioner, initialStatus, false)
-}
-
-func (c *Container) startWithPortSearch(p DockerProvisioner, hostConfig *docker.HostConfig) error {
-	var err error
-	retries := 0
-	for port := portRangeStart; port <= portRangeEnd; {
-		if retries >= portAllocMaxTries {
-			break
-		}
-		var usedPorts map[string]struct{}
-		usedPorts, portErr := c.usedPortsForHost(p, c.HostAddr)
-		if portErr != nil {
-			return err
-		}
-		var portStr string
-		for ; port <= portRangeEnd; port++ {
-			portStr = strconv.Itoa(port)
-			if _, used := usedPorts[portStr]; !used {
-				break
-			}
-		}
-		if port > portRangeEnd {
-			break
-		}
-		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: portStr}},
-		}
-		randN := rand.Uint32()
-		done := p.ActionLimiter().Start(c.HostAddr)
-		err = p.Cluster().StartContainer(c.ID, hostConfig)
-		done()
-		if err != nil {
-			if strings.Contains(err.Error(), "already in use") ||
-				strings.Contains(err.Error(), "already allocated") {
-				retries++
-				port += int(randN%uint32(10*retries)) + 1
-				log.Debugf("[port conflict] port conflict for %s in %s with %s trying next %d - %d/%d", c.ShortID(), c.HostAddr, portStr, port, retries, portAllocMaxTries)
-				continue
-			}
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("could not start container, unable to allocate port after %d retries: %s", retries, err)
 }
 
 func (c *Container) usedPortsForHost(p DockerProvisioner, hostaddr string) (map[string]struct{}, error) {

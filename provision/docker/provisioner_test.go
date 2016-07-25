@@ -17,8 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/stdcopy"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"

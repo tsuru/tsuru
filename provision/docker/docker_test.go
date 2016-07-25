@@ -9,11 +9,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"runtime"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -296,104 +293,6 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cont2.Image, check.Equals, imageId)
 	c.Assert(cont2.Status, check.Equals, provision.StatusStopped.String())
-}
-
-func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
-	config.Set("docker:port-allocator", "tsuru")
-	defer config.Unset("docker:port-allocator")
-	alocPorts := map[string]struct{}{}
-	var mut sync.Mutex
-	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, err := ioutil.ReadAll(r.Body)
-		c.Assert(err, check.IsNil)
-		var conf docker.HostConfig
-		err = json.Unmarshal(data, &conf)
-		c.Assert(err, check.IsNil)
-		port := conf.PortBindings["8888/tcp"][0].HostPort
-		mut.Lock()
-		if _, present := alocPorts[port]; present {
-			mut.Unlock()
-			http.Error(w, "port already allocated", http.StatusInternalServerError)
-			return
-		}
-		alocPorts[port] = struct{}{}
-		mut.Unlock()
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-		s.server.DefaultHandler().ServeHTTP(w, r)
-	}))
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
-	imageId, err := appCurrentImageName(app.GetName())
-	wg := sync.WaitGroup{}
-	conts := make([]*container.Container, 100)
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard, "")
-			c.Assert(startErr, check.IsNil)
-			conts[i] = cont
-		}(i)
-	}
-	wg.Wait()
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	c.Assert(alocPorts, check.HasLen, len(conts))
-	for _, cont := range conts {
-		c.Assert(cont, check.NotNil)
-		dockerContainer, err := client.InspectContainer(cont.ID)
-		c.Assert(err, check.IsNil)
-		c.Assert(dockerContainer.State.Running, check.Equals, true)
-		port := dockerContainer.HostConfig.PortBindings["8888/tcp"][0].HostPort
-		c.Assert(port, check.Not(check.Equals), "")
-	}
-}
-
-func (s *S) TestStartTsuruAllocatorSequentialStress(c *check.C) {
-	config.Set("docker:port-allocator", "tsuru")
-	defer config.Unset("docker:port-allocator")
-	alocPorts := map[string]struct{}{}
-	var mut sync.Mutex
-	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, err := ioutil.ReadAll(r.Body)
-		c.Assert(err, check.IsNil)
-		var conf docker.HostConfig
-		err = json.Unmarshal(data, &conf)
-		c.Assert(err, check.IsNil)
-		port := conf.PortBindings["8888/tcp"][0].HostPort
-		mut.Lock()
-		if _, present := alocPorts[port]; present {
-			mut.Unlock()
-			http.Error(w, "port already allocated", http.StatusInternalServerError)
-			return
-		}
-		alocPorts[port] = struct{}{}
-		mut.Unlock()
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-		s.server.DefaultHandler().ServeHTTP(w, r)
-	}))
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
-	imageId, err := appCurrentImageName(app.GetName())
-	conts := make([]*container.Container, 5)
-	for i := 0; i < 5; i++ {
-		cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard, "")
-		c.Assert(startErr, check.IsNil)
-		conts[i] = cont
-	}
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	c.Assert(alocPorts, check.HasLen, len(conts))
-	for _, cont := range conts {
-		dockerContainer, err := client.InspectContainer(cont.ID)
-		c.Assert(err, check.IsNil)
-		c.Assert(dockerContainer.State.Running, check.Equals, true)
-		port := dockerContainer.HostConfig.PortBindings["8888/tcp"][0].HostPort
-		c.Assert(port, check.Not(check.Equals), "")
-	}
 }
 
 func (s *S) TestProvisionerGetCluster(c *check.C) {

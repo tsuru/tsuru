@@ -135,6 +135,70 @@ func (s *S) TestContainerCreate(c *check.C) {
 		"TSURU_PROCESSNAME=myprocess1",
 		"port=8888",
 	})
+	c.Assert(container.State.Running, check.Equals, false)
+	expectedLogOptions := map[string]string{
+		"syslog-address": "udp://localhost:1514",
+	}
+	expectedPortBindings := map[docker.Port][]docker.PortBinding{
+		"8888/tcp": {{HostIP: "", HostPort: ""}},
+	}
+	c.Assert(container.HostConfig.RestartPolicy.Name, check.Equals, "always")
+	c.Assert(container.HostConfig.LogConfig.Type, check.Equals, "syslog")
+	c.Assert(container.HostConfig.LogConfig.Config, check.DeepEquals, expectedLogOptions)
+	c.Assert(container.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
+	c.Assert(container.HostConfig.Memory, check.Equals, int64(15))
+	c.Assert(container.HostConfig.MemorySwap, check.Equals, int64(30))
+	c.Assert(container.HostConfig.CPUShares, check.Equals, int64(50))
+	c.Assert(cont.Status, check.Equals, "created")
+}
+
+func (s *S) TestContainerCreateCustomLog(c *check.C) {
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app.Pool = "mypool"
+	img := "tsuru/brainfuck:latest"
+	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
+	testCases := []struct {
+		name string
+		opts map[string]string
+	}{
+		{"fluentd", map[string]string{
+			"fluentd-address": "localhost:24224",
+		}},
+		{"syslog", map[string]string{
+			"syslog-address": "udp://localhost:1514",
+		}},
+		{"fluentd", map[string]string{
+			"fluentd-address": "somewhere:24224",
+			"tag":             "x",
+		}},
+	}
+	for i, testData := range testCases {
+		c.Logf("test %d", i)
+		cont := Container{
+			Name:        fmt.Sprintf("myName-%d", i),
+			AppName:     app.GetName(),
+			Type:        app.GetPlatform(),
+			Status:      "created",
+			ProcessName: "myprocess1",
+			ExposedPort: "8888/tcp",
+		}
+		conf := DockerLogConfig{Driver: testData.name, LogOpts: testData.opts}
+		err = conf.Save(app.Pool)
+		c.Assert(err, check.IsNil)
+		err := cont.Create(&CreateArgs{
+			App:         app,
+			ImageID:     img,
+			Commands:    []string{"docker", "run"},
+			Provisioner: s.p,
+		})
+		c.Assert(err, check.IsNil)
+		dockerContainer, err := client.InspectContainer(cont.ID)
+		c.Assert(err, check.IsNil)
+		c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, testData.name)
+		c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, testData.opts)
+	}
 }
 
 func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
@@ -219,7 +283,7 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	c.Assert(container.Config.SecurityOpts, check.DeepEquals, []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
 }
 
-func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
+func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
@@ -231,6 +295,8 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 	}))
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 50
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
@@ -253,6 +319,15 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 	info, err := cont.NetworkInfo(s.p)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.HTTPHostPort, check.Equals, "")
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := client.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "")
+	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
+	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
+	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
 }
 
 func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
@@ -743,9 +818,6 @@ func (s *S) TestContainerStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	app.Memory = 15
-	app.Swap = 15
-	app.CpuShare = 10
 	err = cont.Start(&StartArgs{
 		Provisioner: s.p,
 		App:         app,
@@ -754,55 +826,7 @@ func (s *S) TestContainerStart(c *check.C) {
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	expectedLogOptions := map[string]string{
-		"syslog-address": "udp://localhost:1514",
-	}
-	expectedPortBindings := map[docker.Port][]docker.PortBinding{
-		"8888/tcp": {{HostIP: "", HostPort: ""}},
-	}
-	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "always")
-	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "syslog")
-	c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, expectedLogOptions)
-	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
-	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
-	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
-	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(10))
 	c.Assert(cont.Status, check.Equals, "starting")
-}
-
-func (s *S) TestContainerStartCustomLog(c *check.C) {
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	app.Pool = "mypool"
-	testCases := []struct {
-		name string
-		opts map[string]string
-	}{
-		{"fluentd", map[string]string{
-			"fluentd-address": "localhost:24224",
-		}},
-		{"syslog", map[string]string{
-			"syslog-address": "udp://localhost:1514",
-		}},
-		{"fluentd", map[string]string{
-			"fluentd-address": "somewhere:24224",
-			"tag":             "x",
-		}},
-	}
-	for _, testData := range testCases {
-		cont, err := s.newContainer(newContainerOpts{}, nil)
-		c.Assert(err, check.IsNil)
-		conf := DockerLogConfig{Driver: testData.name, LogOpts: testData.opts}
-		err = conf.Save(app.Pool)
-		c.Assert(err, check.IsNil)
-		err = cont.Start(&StartArgs{Provisioner: s.p, App: app})
-		c.Assert(err, check.IsNil)
-		dockerContainer, err := client.InspectContainer(cont.ID)
-		c.Assert(err, check.IsNil)
-		c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, testData.name)
-		c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, testData.opts)
-	}
 }
 
 func (s *S) TestContainerStartDeployContainer(c *check.C) {
@@ -814,19 +838,12 @@ func (s *S) TestContainerStartDeployContainer(c *check.C) {
 	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
 	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	app.Memory = 15
-	app.Swap = 15
-	app.CpuShare = 50
 	err = cont.Start(&StartArgs{Provisioner: s.p, App: app, Deploy: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Status, check.Equals, "building")
 	dockerContainer, err := client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "")
-	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "")
-	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
-	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
-	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
 }
 
 func (s *S) TestContainerStartStartedUnits(c *check.C) {
@@ -839,47 +856,6 @@ func (s *S) TestContainerStartStartedUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cont.Start(&args)
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestContainerStartTsuruAllocator(c *check.C) {
-	config.Set("docker:port-allocator", "tsuru")
-	defer config.Unset("docker:port-allocator")
-	cont, err := s.newContainer(newContainerOpts{}, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
-	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
-	dockerContainer, err := client.InspectContainer(cont.ID)
-	c.Assert(err, check.IsNil)
-	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	app.Memory = 15
-	app.Swap = 15
-	app.CpuShare = 10
-	err = cont.Start(&StartArgs{
-		Provisioner: s.p,
-		App:         app,
-	})
-	c.Assert(err, check.IsNil)
-	dockerContainer, err = client.InspectContainer(cont.ID)
-	c.Assert(err, check.IsNil)
-	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	expectedLogOptions := map[string]string{
-		"syslog-address": "udp://localhost:1514",
-	}
-	expectedPortBindings := map[docker.Port][]docker.PortBinding{
-		"8888/tcp": {{HostIP: "", HostPort: fmt.Sprintf("%d", portRangeStart)}},
-	}
-	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "always")
-	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "syslog")
-	c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, expectedLogOptions)
-	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
-	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
-	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
-	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(10))
-	c.Assert(cont.Status, check.Equals, "starting")
 }
 
 func (s *S) TestContainerLogs(c *check.C) {
