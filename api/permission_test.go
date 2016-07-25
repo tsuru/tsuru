@@ -14,6 +14,8 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -39,6 +41,15 @@ func (s *S) TestAddRole(c *check.C) {
 	roles, err := permission.ListRoles()
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 2)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "test"},
+			{"name": "context", "value": "global"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddRoleUnauthorized(c *check.C) {
@@ -120,6 +131,14 @@ func (s *S) TestRemoveRole(c *check.C) {
 	user, err = token.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Roles, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "test"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemoveRoleUnauthorized(c *check.C) {
@@ -205,6 +224,14 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Strings(r.SchemeNames)
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{"app.deploy", "app.update"})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.permission.add",
+		StartCustomData: []map[string]interface{}{
+			{"name": "permission", "value": []string{"app.update", "app.deploy"}},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddPermissionsToARolePermissionNotFound(c *check.C) {
@@ -331,6 +358,15 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	r, err = permission.FindRole("test")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.permission.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "test"},
+			{"name": ":permission", "value": "app.update"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
@@ -394,6 +430,15 @@ func (s *S) TestAssignRole(c *check.C) {
 	emptyUser, err := emptyToken.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(emptyUser.Roles, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.assign",
+		StartCustomData: []map[string]interface{}{
+			{"name": "email", "value": emptyToken.GetUserName()},
+			{"name": "context", "value": "myteam"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAssignRoleNotFound(c *check.C) {
@@ -531,6 +576,15 @@ func (s *S) TestDissociateRole(c *check.C) {
 	otherUser, err = otherToken.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Roles, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.dissociate",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":email", "value": otherToken.GetUserName()},
+			{"name": "context", "value": "myteam"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
@@ -659,6 +713,33 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 	r3, err := permission.FindRole("r3")
 	c.Assert(err, check.IsNil)
 	c.Assert(r3.Events, check.DeepEquals, []string{permission.RoleEventUserCreate.String()})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.default.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "team-create", "value": []string{"r1", "r2"}},
+			{"name": "user-create", "value": "r3"},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "r2"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.default.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "team-create", "value": []string{"r1", "r2"}},
+			{"name": "user-create", "value": "r3"},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "r3"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.default.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "team-create", "value": []string{"r1", "r2"}},
+			{"name": "user-create", "value": "r3"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddDefaultRoleIncompatibleContext(c *check.C) {
@@ -716,6 +797,14 @@ func (s *S) TestRemoveDefaultRole(c *check.C) {
 	r1, err = permission.FindRole("r1")
 	c.Assert(err, check.IsNil)
 	c.Assert(r1.Events, check.DeepEquals, []string{})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.default.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": "team-create", "value": "r1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
