@@ -461,6 +461,20 @@ func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
 	return pApp.units
 }
 
+// GetAppFromUnitID returns an app from unitID
+func (p *FakeProvisioner) GetAppFromUnitID(unitID string) (provision.App, error) {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	for _, a := range p.apps {
+		for _, u := range a.units {
+			if u.GetID() == unitID {
+				return a.app, nil
+			}
+		}
+	}
+	return nil, errors.New("app not found")
+}
+
 // PrepareOutput sends the given slice of bytes to a queue of outputs.
 //
 // Each prepared output will be used in the ExecuteCommand. It might be sent to

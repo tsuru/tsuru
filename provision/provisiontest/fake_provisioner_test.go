@@ -1243,3 +1243,17 @@ func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	c.Assert(apps, check.DeepEquals, []provision.App{app1})
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestGetAppFromUnitID(c *check.C) {
+	list := []provision.Unit{
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.10", Status: provision.StatusStarted},
+	}
+	app := NewFakeApp("chain-lighting", "rush", 1)
+	p := NewFakeProvisioner()
+	p.apps = map[string]provisionedApp{
+		app.GetName(): {app: app, units: list},
+	}
+	a, err := p.GetAppFromUnitID("chain-lighting-0")
+	c.Assert(err, check.IsNil)
+	c.Assert(app, check.DeepEquals, a)
+}
