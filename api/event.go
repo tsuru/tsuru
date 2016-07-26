@@ -89,7 +89,15 @@ func (c *teamPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 }
 
 func (c *teamPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
-	return false, nil
+	tm, err := auth.GetTeam(e.Target.Value)
+	if err != nil {
+		return false, err
+	}
+	hasPermission := permission.Check(
+		t, permission.PermTeamReadEvents,
+		permission.Context(permission.CtxTeam, tm.Name),
+	)
+	return hasPermission, nil
 }
 
 type servicePermChecker struct{}
@@ -281,21 +289,11 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	var hasPermission bool
-	if e.Target.Type == event.TargetTypeApp {
-		hasPermission, err = evtPermMap[event.TargetTypeApp].check(t, r, e)
+	if e.Target.Type == event.TargetTypeApp || e.Target.Type == event.TargetTypeTeam {
+		hasPermission, err = evtPermMap[e.Target.Type].check(t, r, e)
 		if err != nil {
 			return err
 		}
-	}
-	if e.Target.Type == event.TargetTypeTeam {
-		tm, err := auth.GetTeam(e.Target.Value)
-		if err != nil {
-			return err
-		}
-		hasPermission = permission.Check(
-			t, permission.PermTeamReadEvents,
-			permission.Context(permission.CtxTeam, tm.Name),
-		)
 	}
 	if e.Target.Type == event.TargetTypeService {
 		s, err := getService(e.Target.Value)
