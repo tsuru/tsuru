@@ -56,7 +56,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"node.create",
 	"node.read",
-	"node.read.events",
 	"node.update",
 	"node.delete",
 	"node.autoscale",

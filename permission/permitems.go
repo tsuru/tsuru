@@ -74,7 +74,6 @@ var (
 	PermNodeCreate                       = PermissionRegistry.get("node.create")                         // [global pool]
 	PermNodeDelete                       = PermissionRegistry.get("node.delete")                         // [global pool]
 	PermNodeRead                         = PermissionRegistry.get("node.read")                           // [global pool]
-	PermNodeReadEvents                   = PermissionRegistry.get("node.read.events")                    // [global pool]
 	PermNodeUpdate                       = PermissionRegistry.get("node.update")                         // [global pool]
 	PermNodecontainer                    = PermissionRegistry.get("nodecontainer")                       // [global pool]
 	PermNodecontainerCreate              = PermissionRegistry.get("nodecontainer.create")                // [global pool]
