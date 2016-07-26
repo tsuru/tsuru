@@ -332,6 +332,32 @@ func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 	return hasPermission, nil
 }
 
+type iaasPermChecker struct{}
+
+func (c *iaasPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	return nil, nil
+}
+
+func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return permission.Check(
+		t, permission.PermMachineReadEvents,
+		permission.Context(permission.CtxIaaS, e.Target.Value),
+	), nil
+}
+
+type rolePermChecker struct{}
+
+func (c *rolePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	return nil, nil
+}
+
+func (c *rolePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return permission.Check(
+		t, permission.PermRoleReadEvents,
+		permission.Context(permission.CtxGlobal, ""),
+	), nil
+}
+
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
 	if filter == nil {
 		filter = &event.Filter{}
