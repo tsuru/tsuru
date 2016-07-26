@@ -25,12 +25,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	portRangeStart    = 49153
-	portRangeEnd      = 65535
-	portAllocMaxTries = 15
-)
-
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
@@ -535,21 +529,6 @@ func (c *Container) Start(args *StartArgs) error {
 		initialStatus = provision.StatusBuilding
 	}
 	return c.SetStatus(args.Provisioner, initialStatus, false)
-}
-
-func (c *Container) usedPortsForHost(p DockerProvisioner, hostaddr string) (map[string]struct{}, error) {
-	coll := p.Collection()
-	defer coll.Close()
-	var usedPortsList []string
-	err := coll.Find(bson.M{"hostaddr": hostaddr}).Distinct("hostport", &usedPortsList)
-	if err != nil {
-		return nil, err
-	}
-	usedPorts := map[string]struct{}{}
-	for _, port := range usedPortsList {
-		usedPorts[port] = struct{}{}
-	}
-	return usedPorts, nil
 }
 
 func (c *Container) Logs(p DockerProvisioner, w io.Writer) (int, error) {
