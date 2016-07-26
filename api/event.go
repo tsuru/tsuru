@@ -191,7 +191,15 @@ func (c *poolPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 }
 
 func (c *poolPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
-	return false, nil
+	p, err := provision.GetPoolByName(e.Target.Value)
+	if err != nil {
+		return false, err
+	}
+	hasPermission := permission.Check(
+		t, permission.PermPoolReadEvents,
+		permission.Context(permission.CtxPool, p.Name),
+	)
+	return hasPermission, nil
 }
 
 type userPermChecker struct{}
@@ -311,21 +319,12 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	var hasPermission bool
 	if e.Target.Type == event.TargetTypeApp || e.Target.Type == event.TargetTypeTeam ||
-		e.Target.Type == event.TargetTypeService || e.Target.Type == event.TargetTypeServiceInstance {
+		e.Target.Type == event.TargetTypeService || e.Target.Type == event.TargetTypeServiceInstance ||
+		e.Target.Type == event.TargetTypePool {
 		hasPermission, err = evtPermMap[e.Target.Type].check(t, r, e)
 		if err != nil {
 			return err
 		}
-	}
-	if e.Target.Type == event.TargetTypePool {
-		p, err := provision.GetPoolByName(e.Target.Value)
-		if err != nil {
-			return err
-		}
-		hasPermission = permission.Check(
-			t, permission.PermPoolReadEvents,
-			permission.Context(permission.CtxPool, p.Name),
-		)
 	}
 	if e.Target.Type == event.TargetTypeUser {
 		hasPermission = permission.Check(
