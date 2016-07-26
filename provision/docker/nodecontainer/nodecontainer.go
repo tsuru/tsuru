@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -382,9 +384,16 @@ func shouldPinImage(image string) bool {
 }
 
 func dockerClient(endpoint string) (*docker.Client, error) {
-	client, err := docker.NewClient(endpoint)
+	var client *docker.Client
+	var err error
+	caPath, _ := config.GetString("tls:root-path")
+	if caPath == "" {
+		client, err = docker.NewClient(endpoint)
+	} else {
+		client, err = docker.NewTLSClient(endpoint, filepath.Join(caPath, "cert.pem"), filepath.Join(caPath, "key.pem"), filepath.Join(caPath, "/ca.pem"))
+	}
 	if err != nil {
-		return nil, err
+		return client, err
 	}
 	client.HTTPClient = net.Dial5Full300ClientNoKeepAlive
 	client.Dialer = net.Dial5Dialer
