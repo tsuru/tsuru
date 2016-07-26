@@ -102,6 +102,8 @@ var (
 	PermRoleDefaultCreate                = PermissionRegistry.get("role.default.create")                 // [global]
 	PermRoleDefaultDelete                = PermissionRegistry.get("role.default.delete")                 // [global]
 	PermRoleDelete                       = PermissionRegistry.get("role.delete")                         // [global]
+	PermRoleRead                         = PermissionRegistry.get("role.read")                           // [global]
+	PermRoleReadEvents                   = PermissionRegistry.get("role.read.events")                    // [global]
 	PermRoleUpdate                       = PermissionRegistry.get("role.update")                         // [global]
 	PermRoleUpdateAssign                 = PermissionRegistry.get("role.update.assign")                  // [global]
 	PermRoleUpdateDissociate             = PermissionRegistry.get("role.update.dissociate")              // [global]
