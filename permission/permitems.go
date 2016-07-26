@@ -64,6 +64,7 @@ var (
 	PermMachineCreate                    = PermissionRegistry.get("machine.create")                      // [global iaas]
 	PermMachineDelete                    = PermissionRegistry.get("machine.delete")                      // [global iaas]
 	PermMachineRead                      = PermissionRegistry.get("machine.read")                        // [global iaas]
+	PermMachineReadEvents                = PermissionRegistry.get("machine.read.events")                 // [global iaas]
 	PermMachineTemplate                  = PermissionRegistry.get("machine.template")                    // [global iaas]
 	PermMachineTemplateCreate            = PermissionRegistry.get("machine.template.create")             // [global iaas]
 	PermMachineTemplateDelete            = PermissionRegistry.get("machine.template.delete")             // [global iaas]
