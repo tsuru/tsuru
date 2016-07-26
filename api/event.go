@@ -21,10 +21,10 @@ import (
 )
 
 var evtPermMap = map[event.TargetType]evtPermChecker{
-	event.TargetTypeApp:     &appPermChecker{},
-	event.TargetTypeTeam:    &teamPermChecker{},
-	event.TargetTypeService: &servicePermChecker{},
-	event.TargetTypeService: &serviceInstancePermChecker{},
+	event.TargetTypeApp:             &appPermChecker{},
+	event.TargetTypeTeam:            &teamPermChecker{},
+	event.TargetTypeService:         &servicePermChecker{},
+	event.TargetTypeServiceInstance: &serviceInstancePermChecker{},
 }
 
 type evtPermChecker interface {
