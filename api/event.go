@@ -229,10 +229,44 @@ func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 	), nil
 }
 
+type iaasPermChecker struct{}
+
+func (c *iaasPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	return nil, nil
+}
+
+func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return permission.Check(
+		t, permission.PermMachineReadEvents,
+		permission.Context(permission.CtxIaaS, e.Target.Value),
+	), nil
+}
+
 type containerPermChecker struct{}
 
 func (c *containerPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
-	return nil, nil
+	contexts := permission.ContextsForPermission(t, permission.PermAppReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	apps, err := app.List(appFilterByContext(contexts, nil))
+	if err != nil {
+		return nil, err
+	}
+	if len(apps) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeContainer, Values: []string{}}
+	for _, a := range apps {
+		units, err := a.Units()
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range units {
+			allowed.Values = append(allowed.Values, u.Name)
+		}
+	}
+	return &allowed, nil
 }
 
 func (c *containerPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
@@ -251,35 +285,51 @@ func (c *containerPermChecker) check(t auth.Token, r *http.Request, e *event.Eve
 type nodePermChecker struct{}
 
 func (c *nodePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
-	return nil, nil
+	contexts := permission.ContextsForPermission(t, permission.PermPoolReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeNode}
+	var nodes []provision.Node
+	var err error
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			allowed.Values = nil
+			break
+		} else if ctx.CtxType == permission.CtxPool {
+			if nodes == nil {
+				if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
+					nodes, err = nodeProvisioner.ListNodes(nil)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+			for _, n := range nodes {
+				if n.Pool() == ctx.Value {
+					allowed.Values = append(allowed.Values, n.Address())
+				}
+			}
+		}
+	}
+	return &allowed, nil
 }
 
 func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
 	var hasPermission bool
 	if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
-		p, err := nodeProvisioner.GetPoolByNode(e.Target.Value)
+		nodes, err := nodeProvisioner.ListNodes([]string{e.Target.Value})
 		if err != nil {
 			return false, err
 		}
-		hasPermission = permission.Check(
-			t, permission.PermPoolReadEvents,
-			permission.Context(permission.CtxPool, p),
-		)
+		if len(nodes) > 0 {
+			hasPermission = permission.Check(
+				t, permission.PermPoolReadEvents,
+				permission.Context(permission.CtxPool, nodes[0].Pool()),
+			)
+		}
 	}
 	return hasPermission, nil
-}
-
-type iaasPermChecker struct{}
-
-func (c *iaasPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
-	return nil, nil
-}
-
-func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
-	return permission.Check(
-		t, permission.PermMachineReadEvents,
-		permission.Context(permission.CtxIaaS, e.Target.Value),
-	), nil
 }
 
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
