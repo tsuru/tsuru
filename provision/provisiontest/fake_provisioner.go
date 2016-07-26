@@ -359,6 +359,8 @@ type FakeProvisioner struct {
 	shells    map[string][]provision.ShellOptions
 	shellMut  sync.Mutex
 	validImgs map[string][]string
+	// nodes is a map[node address]pool name
+	nodes map[string]string
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -367,6 +369,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
 	p.shells = make(map[string][]provision.ShellOptions)
+	p.nodes = make(map[string]string)
 	return &p
 }
 
@@ -380,6 +383,10 @@ func (p *FakeProvisioner) getError(method string) error {
 	default:
 	}
 	return nil
+}
+
+func (p *FakeProvisioner) AddNode(name, pool string) {
+	p.nodes[name] = pool
 }
 
 // MetricEnvs returns the metric envs for the app

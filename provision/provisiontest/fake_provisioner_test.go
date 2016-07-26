@@ -1225,6 +1225,12 @@ func (s *S) TestFakeProvisionerMetricEnvs(c *check.C) {
 	c.Assert(envs, check.DeepEquals, expected)
 }
 
+func (s *S) TestFakeProvisionerAddNode(c *check.C) {
+	p := NewFakeProvisioner()
+	p.AddNode("mynode", "mypool")
+	c.Assert(p.nodes, check.DeepEquals, map[string]string{"mynode": "mypool"})
+}
+
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
