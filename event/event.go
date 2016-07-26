@@ -50,16 +50,16 @@ var (
 	KindTypePermission = kindType("permission")
 	KindTypeInternal   = kindType("internal")
 
-	TargetTypeApp             = targetType("app")
-	TargetTypeNode            = targetType("node")
-	TargetTypeContainer       = targetType("container")
-	TargetTypePool            = targetType("pool")
-	TargetTypeService         = targetType("service")
-	TargetTypeServiceInstance = targetType("service-instance")
-	TargetTypeTeam            = targetType("team")
-	TargetTypeUser            = targetType("user")
-	TargetTypeIaas            = targetType("iaas")
-	TargetTypeRole            = targetType("role")
+	TargetTypeApp             = TargetType("app")
+	TargetTypeNode            = TargetType("node")
+	TargetTypeContainer       = TargetType("container")
+	TargetTypePool            = TargetType("pool")
+	TargetTypeService         = TargetType("service")
+	TargetTypeServiceInstance = TargetType("service-instance")
+	TargetTypeTeam            = TargetType("team")
+	TargetTypeUser            = TargetType("user")
+	TargetTypeIaas            = TargetType("iaas")
+	TargetTypeRole            = TargetType("role")
 )
 
 type ErrThrottled struct {
@@ -88,7 +88,7 @@ func (err ErrEventLocked) Error() string {
 }
 
 type Target struct {
-	Type  targetType
+	Type  TargetType
 	Value string
 }
 
@@ -156,9 +156,9 @@ type ownerType string
 
 type kindType string
 
-type targetType string
+type TargetType string
 
-func GetTargetType(t string) (targetType, error) {
+func GetTargetType(t string) (TargetType, error) {
 	switch t {
 	case "app":
 		return TargetTypeApp, nil
@@ -177,7 +177,7 @@ func GetTargetType(t string) (targetType, error) {
 	case "user":
 		return TargetTypeUser, nil
 	}
-	return targetType(""), ErrInvalidTargetType
+	return TargetType(""), ErrInvalidTargetType
 }
 
 type Owner struct {
@@ -199,7 +199,7 @@ func (k Kind) String() string {
 }
 
 type ThrottlingSpec struct {
-	TargetType targetType
+	TargetType TargetType
 	KindName   string
 	Max        int
 	Time       time.Duration
@@ -251,7 +251,7 @@ func (e *Event) String() string {
 }
 
 type TargetFilter struct {
-	Type   targetType
+	Type   TargetType
 	Values []string
 }
 

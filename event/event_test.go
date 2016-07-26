@@ -516,7 +516,7 @@ func (s *S) TestEventAsWriter(c *check.C) {
 func (s *S) TestGetTargetType(c *check.C) {
 	var tests = []struct {
 		input  string
-		output targetType
+		output TargetType
 		err    error
 	}{
 		{"app", TargetTypeApp, nil},
