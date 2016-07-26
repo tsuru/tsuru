@@ -206,7 +206,18 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				permission.Context(permission.CtxPool, a.GetPool()),
 			)...,
 		)
-
+	}
+	if e.Target.Type == event.TargetTypeNode {
+		if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
+			p, err := nodeProvisioner.GetPoolByNode(e.Target.Value)
+			if err != nil {
+				return err
+			}
+			hasPermission = permission.Check(
+				t, permission.PermPoolReadEvents,
+				permission.Context(permission.CtxPool, p),
+			)
+		}
 	}
 	if !hasPermission {
 		return permission.ErrUnauthorized
