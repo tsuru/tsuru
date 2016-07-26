@@ -30,7 +30,8 @@ var (
 		removeCh: make(chan *Target),
 		once:     &sync.Once{},
 	}
-	throttlingInfo = map[string]ThrottlingSpec{}
+	throttlingInfo  = map[string]ThrottlingSpec{}
+	errInvalidQuery = errors.New("invalid query")
 
 	ErrNotCancelable     = errors.New("event is not cancelable")
 	ErrEventNotFound     = errors.New("event not found")
@@ -273,7 +274,7 @@ type Filter struct {
 	Sort  string
 }
 
-func (f *Filter) toQuery() bson.M {
+func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
 	if f.AllowedTargets != nil {
 		var orBlock []bson.M
@@ -283,6 +284,9 @@ func (f *Filter) toQuery() bson.M {
 				f["target.value"] = bson.M{"$in": at.Values}
 			}
 			orBlock = append(orBlock, f)
+		}
+		if len(orBlock) == 0 {
+			return nil, errInvalidQuery
 		}
 		query["$or"] = orBlock
 	}
@@ -325,7 +329,7 @@ func (f *Filter) toQuery() bson.M {
 			query[k] = v
 		}
 	}
-	return query
+	return query, nil
 }
 
 func GetKinds() ([]Kind, error) {
@@ -393,6 +397,7 @@ func List(filter *Filter) ([]Event, error) {
 	limit := 100
 	skip := 0
 	var query bson.M
+	var err error
 	sort := "-starttime"
 	if filter != nil {
 		if filter.Limit != 0 {
@@ -404,7 +409,13 @@ func List(filter *Filter) ([]Event, error) {
 		if filter.Skip > 0 {
 			skip = filter.Skip
 		}
-		query = filter.toQuery()
+		query, err = filter.toQuery()
+		if err != nil {
+			if err == errInvalidQuery {
+				return nil, nil
+			}
+			return nil, err
+		}
 	}
 	conn, err := db.Conn()
 	if err != nil {

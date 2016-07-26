@@ -115,6 +115,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-2])
 	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}}, allEvts[:0])
 	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
+	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{}, Sort: "_id"}, allEvts[:0])
 	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
 		{Type: "app"},
 	}, Sort: "_id"}, allEvts[:2])
