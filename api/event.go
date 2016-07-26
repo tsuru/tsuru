@@ -220,7 +220,10 @@ func (c *userPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 }
 
 func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
-	return false, nil
+	return permission.Check(
+		t, permission.PermUserReadEvents,
+		permission.Context(permission.CtxGlobal, ""),
+	), nil
 }
 
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
@@ -320,17 +323,11 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var hasPermission bool
 	if e.Target.Type == event.TargetTypeApp || e.Target.Type == event.TargetTypeTeam ||
 		e.Target.Type == event.TargetTypeService || e.Target.Type == event.TargetTypeServiceInstance ||
-		e.Target.Type == event.TargetTypePool {
+		e.Target.Type == event.TargetTypePool || e.Target.Type == event.TargetTypeUser {
 		hasPermission, err = evtPermMap[e.Target.Type].check(t, r, e)
 		if err != nil {
 			return err
 		}
-	}
-	if e.Target.Type == event.TargetTypeUser {
-		hasPermission = permission.Check(
-			t, permission.PermUserReadEvents,
-			permission.Context(permission.CtxGlobal, ""),
-		)
 	}
 	if e.Target.Type == event.TargetTypeContainer {
 		a, err := app.Provisioner.GetAppFromUnitID(e.Target.Value)
