@@ -28,6 +28,7 @@ var evtPermMap = map[event.TargetType]evtPermChecker{
 	event.TargetTypePool:            &poolPermChecker{},
 	event.TargetTypeUser:            &userPermChecker{},
 	event.TargetTypeContainer:       &containerPermChecker{},
+	event.TargetTypeNode:            &nodePermChecker{},
 }
 
 type evtPermChecker interface {
@@ -246,6 +247,27 @@ func (c *containerPermChecker) check(t auth.Token, r *http.Request, e *event.Eve
 	), nil
 }
 
+type nodePermChecker struct{}
+
+func (c *nodePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	return nil, nil
+}
+
+func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	var hasPermission bool
+	if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
+		p, err := nodeProvisioner.GetPoolByNode(e.Target.Value)
+		if err != nil {
+			return false, err
+		}
+		hasPermission = permission.Check(
+			t, permission.PermPoolReadEvents,
+			permission.Context(permission.CtxPool, p),
+		)
+	}
+	return hasPermission, nil
+}
+
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
 	if filter == nil {
 		filter = &event.Filter{}
@@ -340,27 +362,9 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	var hasPermission bool
-	if e.Target.Type == event.TargetTypeApp || e.Target.Type == event.TargetTypeTeam ||
-		e.Target.Type == event.TargetTypeService || e.Target.Type == event.TargetTypeServiceInstance ||
-		e.Target.Type == event.TargetTypePool || e.Target.Type == event.TargetTypeUser ||
-		e.Target.Type == event.TargetTypeContainer {
-		hasPermission, err = evtPermMap[e.Target.Type].check(t, r, e)
-		if err != nil {
-			return err
-		}
-	}
-	if e.Target.Type == event.TargetTypeNode {
-		if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
-			p, err := nodeProvisioner.GetPoolByNode(e.Target.Value)
-			if err != nil {
-				return err
-			}
-			hasPermission = permission.Check(
-				t, permission.PermPoolReadEvents,
-				permission.Context(permission.CtxPool, p),
-			)
-		}
+	hasPermission, err := evtPermMap[e.Target.Type].check(t, r, e)
+	if err != nil {
+		return err
 	}
 	if !hasPermission {
 		return permission.ErrUnauthorized
