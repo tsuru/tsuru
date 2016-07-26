@@ -29,6 +29,7 @@ var evtPermMap = map[event.TargetType]evtPermChecker{
 	event.TargetTypeUser:            &userPermChecker{},
 	event.TargetTypeContainer:       &containerPermChecker{},
 	event.TargetTypeNode:            &nodePermChecker{},
+	event.TargetTypeIaas:            &iaasPermChecker{},
 }
 
 type evtPermChecker interface {
@@ -266,6 +267,19 @@ func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 		)
 	}
 	return hasPermission, nil
+}
+
+type iaasPermChecker struct{}
+
+func (c *iaasPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	return nil, nil
+}
+
+func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return permission.Check(
+		t, permission.PermMachineReadEvents,
+		permission.Context(permission.CtxIaaS, e.Target.Value),
+	), nil
 }
 
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {

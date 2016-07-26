@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -765,6 +766,7 @@ func (s *EventSuite) TestEventInfoContainerWithoutPermission(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
+
 func (s *EventSuite) TestEventInfoNodePermission(c *check.C) {
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermPoolRead,
@@ -800,6 +802,55 @@ func (s *EventSuite) TestEventInfoNodeWithoutPermission(c *check.C) {
 	s.provisioner.AddNode("mynode", "test1")
 	evt, err := event.New(&event.Opts{
 		Target: event.Target{Type: event.TargetTypeNode, Value: "mynode"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventInfoIassPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermMachineReadEvents,
+		Context: permission.Context(permission.CtxIaaS, "test-iaas"),
+	})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "test-iaas"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
+func (s *EventSuite) TestEventInfoIaasWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "test-iaas"},
 		Owner:  s.token,
 		Kind:   permission.PermAppDeploy,
 	})
