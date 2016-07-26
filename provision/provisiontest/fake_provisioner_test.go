@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"sort"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -1228,15 +1229,31 @@ func (s *S) TestFakeProvisionerMetricEnvs(c *check.C) {
 func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 	p := NewFakeProvisioner()
 	p.AddNode("mynode", "mypool")
-	c.Assert(p.nodes, check.DeepEquals, map[string]string{"mynode": "mypool"})
+	c.Assert(p.nodes, check.DeepEquals, map[string]fakeNode{"mynode": {address: "mynode", pool: "mypool"}})
 }
 
-func (s *S) TestFakeProvisionerGetPoolByNode(c *check.C) {
+type NodeList []provision.Node
+
+func (l NodeList) Len() int           { return len(l) }
+func (l NodeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l NodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
+
+func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	p := NewFakeProvisioner()
-	p.AddNode("mynode", "mypool")
-	poolName, err := p.GetPoolByNode("mynode")
+	p.AddNode("mynode1", "mypool")
+	p.AddNode("mynode2", "mypool")
+	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(poolName, check.Equals, "mypool")
+	sort.Sort(NodeList(nodes))
+	c.Assert(nodes, check.DeepEquals, []provision.Node{
+		&fakeNode{address: "mynode1", pool: "mypool"},
+		&fakeNode{address: "mynode2", pool: "mypool"},
+	})
+	nodes, err = p.ListNodes([]string{"mynode2"})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.DeepEquals, []provision.Node{
+		&fakeNode{address: "mynode2", pool: "mypool"},
+	})
 }
 
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {

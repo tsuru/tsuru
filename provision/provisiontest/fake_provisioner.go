@@ -359,8 +359,7 @@ type FakeProvisioner struct {
 	shells    map[string][]provision.ShellOptions
 	shellMut  sync.Mutex
 	validImgs map[string][]string
-	// nodes is a map[node address]pool name
-	nodes map[string]string
+	nodes     map[string]fakeNode
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -369,7 +368,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
 	p.shells = make(map[string][]provision.ShellOptions)
-	p.nodes = make(map[string]string)
+	p.nodes = make(map[string]fakeNode)
 	return &p
 }
 
@@ -387,12 +386,38 @@ func (p *FakeProvisioner) getError(method string) error {
 
 // AddNode adds a node
 func (p *FakeProvisioner) AddNode(name, pool string) {
-	p.nodes[name] = pool
+	p.nodes[name] = fakeNode{address: name, pool: pool}
 }
 
-// GetPoolByNode returns a pool by node address
-func (p *FakeProvisioner) GetPoolByNode(address string) (string, error) {
-	return p.nodes[address], nil
+type fakeNode struct {
+	address string
+	pool    string
+}
+
+func (n *fakeNode) Pool() string {
+	return n.pool
+}
+
+func (n *fakeNode) Address() string {
+	return n.address
+}
+
+func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
+	var result []provision.Node
+	if addressFilter != nil {
+		result = make([]provision.Node, 0, len(addressFilter))
+		for _, a := range addressFilter {
+			n := p.nodes[a]
+			result = append(result, &n)
+		}
+	} else {
+		result = make([]provision.Node, 0, len(p.nodes))
+		for a := range p.nodes {
+			n := p.nodes[a]
+			result = append(result, &n)
+		}
+	}
+	return result, nil
 }
 
 // SetNodeStatus defines the node status

@@ -365,8 +365,14 @@ type OptionalLogsProvisioner interface {
 type NodeProvisioner interface {
 	// SetNodeStatus changes the status of a node and all its units.
 	SetNodeStatus(NodeStatusData) error
-	// GetPoolByNode returns pool name by node address
-	GetPoolByNode(address string) (string, error)
+
+	// ListNodes returns a list of all nodes registered in the provisioner.
+	ListNodes(addressFilter []string) ([]Node, error)
+}
+
+type Node interface {
+	Pool() string
+	Address() string
 }
 
 type NodeStatusData struct {

@@ -296,14 +296,6 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return r.AddBackend(app.GetName())
 }
 
-func (p *dockerProvisioner) GetPoolByNode(address string) (string, error) {
-	node, err := mainDockerProvisioner.Cluster().GetNode(address)
-	if err != nil {
-		return "", err
-	}
-	return node.Metadata["pool"], nil
-}
-
 func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer) error {
 	containers, err := p.listContainersByProcess(a.GetName(), process)
 	if err != nil {
@@ -1370,4 +1362,46 @@ func (p *dockerProvisioner) SetNodeStatus(nodeData provision.NodeStatusData) err
 		return nil
 	}
 	return p.nodeHealer.UpdateNodeData(nodeData)
+}
+
+type clusterNodeWrapper struct {
+	node *cluster.Node
+}
+
+func (n *clusterNodeWrapper) Address() string {
+	return n.node.Address
+}
+
+func (n *clusterNodeWrapper) Pool() string {
+	return n.node.Metadata["pool"]
+}
+
+func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
+	nodes, err := p.Cluster().Nodes()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		addressSet map[string]struct{}
+		result     []provision.Node
+	)
+	if addressFilter != nil {
+		addressSet = map[string]struct{}{}
+		for _, a := range addressFilter {
+			addressSet[a] = struct{}{}
+		}
+		result = make([]provision.Node, 0, len(addressFilter))
+	} else {
+		result = make([]provision.Node, 0, len(nodes))
+	}
+	for i := range nodes {
+		n := &nodes[i]
+		if addressSet != nil {
+			if _, ok := addressSet[n.Address]; !ok {
+				continue
+			}
+		}
+		result = append(result, &clusterNodeWrapper{node: n})
+	}
+	return result, nil
 }
