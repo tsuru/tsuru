@@ -20,36 +20,128 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var evtPermMap = map[event.TargetType]evtPermChecker{
+	event.TargetTypeApp:     &appPermChecker{},
+	event.TargetTypeTeam:    &teamPermChecker{},
+	event.TargetTypeService: &servicePermChecker{},
+	event.TargetTypeService: &serviceInstancePermChecker{},
+}
+
+type evtPermChecker interface {
+	filter(t auth.Token) (*event.TargetFilter, error)
+	check(t auth.Token, r *http.Request, e *event.Event) (bool, error)
+}
+
+type appPermChecker struct{}
+
+func (c *appPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	contexts := permission.ContextsForPermission(t, permission.PermAppReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	apps, err := app.List(appFilterByContext(contexts, nil))
+	if err != nil {
+		return nil, err
+	}
+	if len(apps) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeApp}
+	for _, a := range apps {
+		allowed.Values = append(allowed.Values, a.Name)
+	}
+	return &allowed, nil
+}
+
+func (c *appPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return false, nil
+}
+
+type teamPermChecker struct{}
+
+func (c *teamPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	contexts := permission.ContextsForPermission(t, permission.PermTeamReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeTeam}
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			allowed.Values = nil
+			break
+		} else if ctx.CtxType == permission.CtxTeam {
+			allowed.Values = append(allowed.Values, ctx.Value)
+		}
+	}
+	return &allowed, nil
+}
+
+func (c *teamPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return false, nil
+}
+
+type servicePermChecker struct{}
+
+func (c *servicePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	contexts := permission.ContextsForPermission(t, permission.PermServiceReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	services, err := readableServices(t, contexts)
+	if err != nil {
+		return nil, err
+	}
+	if len(services) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeService}
+	for _, s := range services {
+		allowed.Values = append(allowed.Values, s.Name)
+	}
+	return &allowed, nil
+}
+
+func (c *servicePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return false, nil
+}
+
+type serviceInstancePermChecker struct{}
+
+func (c *serviceInstancePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	instances, err := readableInstances(t, contexts, "", "")
+	if err != nil {
+		return nil, err
+	}
+	if len(instances) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeServiceInstance}
+	for _, s := range instances {
+		allowed.Values = append(allowed.Values, serviceIntancePermName(s.ServiceName, s.Name))
+	}
+	return &allowed, nil
+}
+
+func (c *serviceInstancePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return false, nil
+}
+
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
 	if filter == nil {
 		filter = &event.Filter{}
 	}
-	contexts := permission.ContextsForPermission(t, permission.PermAppReadEvents)
-	if len(contexts) > 0 {
-		apps, err := app.List(appFilterByContext(contexts, nil))
+	for _, checker := range evtPermMap {
+		allowed, err := checker.filter(t)
 		if err != nil {
 			return nil, err
 		}
-		if len(apps) > 0 {
-			allowed := event.TargetFilter{Type: event.TargetTypeApp}
-			for _, a := range apps {
-				allowed.Values = append(allowed.Values, a.Name)
-			}
-			filter.AllowedTargets = append(filter.AllowedTargets, allowed)
+		if allowed != nil {
+			filter.AllowedTargets = append(filter.AllowedTargets, *allowed)
 		}
-	}
-	contexts = permission.ContextsForPermission(t, permission.PermTeamReadEvents)
-	if len(contexts) > 0 {
-		allowed := event.TargetFilter{Type: event.TargetTypeTeam}
-		for _, ctx := range contexts {
-			if ctx.CtxType == permission.CtxGlobal {
-				allowed.Values = nil
-				break
-			} else if ctx.CtxType == permission.CtxTeam {
-				allowed.Values = append(allowed.Values, ctx.Value)
-			}
-		}
-		filter.AllowedTargets = append(filter.AllowedTargets, allowed)
 	}
 	return filter, nil
 }
@@ -166,15 +258,14 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		)
 	}
 	if e.Target.Type == event.TargetTypeServiceInstance {
-		if v := strings.SplitN(e.Target.Value, "_", 2); len(v) == 2 {
+		if v := strings.SplitN(e.Target.Value, "/", 2); len(v) == 2 {
 			si, err := getServiceInstanceOrError(v[0], v[1])
 			if err != nil {
 				return err
 			}
-			permissionValue := v[0] + "/" + v[1]
 			hasPermission = permission.Check(t, permission.PermServiceInstanceReadEvents,
 				append(permission.Contexts(permission.CtxTeam, si.Teams),
-					permission.Context(permission.CtxServiceInstance, permissionValue),
+					permission.Context(permission.CtxServiceInstance, e.Target.Value),
 				)...,
 			)
 		}

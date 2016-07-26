@@ -515,7 +515,7 @@ func (s *EventSuite) TestEventInfoServiceInstancePermission(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: event.TargetTypeServiceInstance, Value: "foo_foo-instance"},
+		Target: event.Target{Type: event.TargetTypeServiceInstance, Value: "foo/foo-instance"},
 		Owner:  s.token,
 		Kind:   permission.PermAppDeploy,
 	})
