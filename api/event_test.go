@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -23,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -33,21 +33,22 @@ type EventSuite struct {
 	logConn     *db.LogStorage
 	token       auth.Token
 	team        *auth.Team
+	user        *auth.User
 	provisioner *provisiontest.FakeProvisioner
 }
 
 var _ = check.Suite(&EventSuite{})
 
 func (s *EventSuite) createUserAndTeam(c *check.C) {
-	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppReadDeploy,
+		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	}, permission.Permission{
 		Scheme:  permission.PermAppDeploy,
@@ -82,6 +83,7 @@ func (s *EventSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *EventSuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 	repositorytest.Reset()
@@ -105,8 +107,14 @@ func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, er
 	}
 	evts := make([]*event.Event, 10)
 	for i := 0; i < 10; i++ {
+		name := fmt.Sprintf("app-%d", i)
+		if t == event.TargetTypeApp {
+			a := app.App{Name: name, Platform: "whitespace", TeamOwner: s.team.Name}
+			err = app.CreateApp(&a, s.user)
+			c.Assert(err, check.IsNil)
+		}
 		evt, err := event.New(&event.Opts{
-			Target:     event.Target{Type: t, Value: strconv.Itoa(i)},
+			Target:     event.Target{Type: t, Value: name},
 			Owner:      s.token,
 			Kind:       permission.PermAppDeploy,
 			Cancelable: i == 0,

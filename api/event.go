@@ -25,6 +25,8 @@ var evtPermMap = map[event.TargetType]evtPermChecker{
 	event.TargetTypeTeam:            &teamPermChecker{},
 	event.TargetTypeService:         &servicePermChecker{},
 	event.TargetTypeServiceInstance: &serviceInstancePermChecker{},
+	event.TargetTypePool:            &poolPermChecker{},
+	event.TargetTypeUser:            &userPermChecker{},
 }
 
 type evtPermChecker interface {
@@ -130,10 +132,55 @@ func (c *serviceInstancePermChecker) check(t auth.Token, r *http.Request, e *eve
 	return false, nil
 }
 
+type poolPermChecker struct{}
+
+func (c *poolPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	contexts := permission.ContextsForPermission(t, permission.PermPoolReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypePool}
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			allowed.Values = nil
+			break
+		} else if ctx.CtxType == permission.CtxPool {
+			allowed.Values = append(allowed.Values, ctx.Value)
+		}
+	}
+	return &allowed, nil
+}
+
+func (c *poolPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return false, nil
+}
+
+type userPermChecker struct{}
+
+func (c *userPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	allowed := event.TargetFilter{Type: event.TargetTypeUser, Values: []string{t.GetUserName()}}
+	contexts := permission.ContextsForPermission(t, permission.PermUserReadEvents)
+	if len(contexts) == 0 {
+		return &allowed, nil
+	}
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			allowed.Values = nil
+			break
+		}
+	}
+	return &allowed, nil
+}
+
+func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	return false, nil
+}
+
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
 	if filter == nil {
 		filter = &event.Filter{}
 	}
+	filter.AllowedTargets = []event.TargetFilter{}
 	for _, checker := range evtPermMap {
 		allowed, err := checker.filter(t)
 		if err != nil {
