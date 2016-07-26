@@ -27,6 +27,7 @@ var evtPermMap = map[event.TargetType]evtPermChecker{
 	event.TargetTypeServiceInstance: &serviceInstancePermChecker{},
 	event.TargetTypePool:            &poolPermChecker{},
 	event.TargetTypeUser:            &userPermChecker{},
+	event.TargetTypeContainer:       &containerPermChecker{},
 }
 
 type evtPermChecker interface {
@@ -226,6 +227,25 @@ func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 	), nil
 }
 
+type containerPermChecker struct{}
+
+func (c *containerPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
+	return nil, nil
+}
+
+func (c *containerPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+	a, err := app.Provisioner.GetAppFromUnitID(e.Target.Value)
+	if err != nil {
+		return false, err
+	}
+	return permission.Check(t, permission.PermAppReadEvents,
+		append(permission.Contexts(permission.CtxTeam, a.GetTeamsName()),
+			permission.Context(permission.CtxApp, a.GetName()),
+			permission.Context(permission.CtxPool, a.GetPool()),
+		)...,
+	), nil
+}
+
 func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
 	if filter == nil {
 		filter = &event.Filter{}
@@ -323,23 +343,12 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var hasPermission bool
 	if e.Target.Type == event.TargetTypeApp || e.Target.Type == event.TargetTypeTeam ||
 		e.Target.Type == event.TargetTypeService || e.Target.Type == event.TargetTypeServiceInstance ||
-		e.Target.Type == event.TargetTypePool || e.Target.Type == event.TargetTypeUser {
+		e.Target.Type == event.TargetTypePool || e.Target.Type == event.TargetTypeUser ||
+		e.Target.Type == event.TargetTypeContainer {
 		hasPermission, err = evtPermMap[e.Target.Type].check(t, r, e)
 		if err != nil {
 			return err
 		}
-	}
-	if e.Target.Type == event.TargetTypeContainer {
-		a, err := app.Provisioner.GetAppFromUnitID(e.Target.Value)
-		if err != nil {
-			return err
-		}
-		hasPermission = permission.Check(t, permission.PermAppReadEvents,
-			append(permission.Contexts(permission.CtxTeam, a.GetTeamsName()),
-				permission.Context(permission.CtxApp, a.GetName()),
-				permission.Context(permission.CtxPool, a.GetPool()),
-			)...,
-		)
 	}
 	if e.Target.Type == event.TargetTypeNode {
 		if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
