@@ -1231,6 +1231,14 @@ func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 	c.Assert(p.nodes, check.DeepEquals, map[string]string{"mynode": "mypool"})
 }
 
+func (s *S) TestFakeProvisionerGetPoolByNode(c *check.C) {
+	p := NewFakeProvisioner()
+	p.AddNode("mynode", "mypool")
+	poolName, err := p.GetPoolByNode("mynode")
+	c.Assert(err, check.IsNil)
+	c.Assert(poolName, check.Equals, "mypool")
+}
+
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)

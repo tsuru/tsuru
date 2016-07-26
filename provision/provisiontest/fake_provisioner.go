@@ -385,8 +385,14 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
+// AddNode adds a node
 func (p *FakeProvisioner) AddNode(name, pool string) {
 	p.nodes[name] = pool
+}
+
+// GetPoolByNode returns a pool by node address
+func (p *FakeProvisioner) GetPoolByNode(address string) (string, error) {
+	return p.nodes[address], nil
 }
 
 // MetricEnvs returns the metric envs for the app

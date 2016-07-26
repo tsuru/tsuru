@@ -366,7 +366,7 @@ type NodeProvisioner interface {
 	// SetNodeStatus changes the status of a node and all its units.
 	SetNodeStatus(NodeStatusData) error
 	// GetPoolByNode returns pool name by node address
-	GetPoolByNode(address string) string
+	GetPoolByNode(address string) (string, error)
 }
 
 type NodeStatusData struct {
