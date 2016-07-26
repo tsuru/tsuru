@@ -3272,3 +3272,13 @@ func (s *S) TestFilterAppsByUnitStatus(c *check.C) {
 	c.Assert(apps, check.DeepEquals, []provision.App{})
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestGetPoolByNode(c *check.C) {
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	p, err := s.p.GetPoolByNode(nodes[0].Address)
+	c.Assert(err, check.IsNil)
+	c.Assert(p, check.Equals, nodes[0].Metadata["pool"])
+	_, err = s.p.GetPoolByNode("notfound")
+	c.Assert(err, check.NotNil)
+}

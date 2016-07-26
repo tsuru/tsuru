@@ -296,6 +296,14 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return r.AddBackend(app.GetName())
 }
 
+func (p *dockerProvisioner) GetPoolByNode(address string) (string, error) {
+	node, err := mainDockerProvisioner.Cluster().GetNode(address)
+	if err != nil {
+		return "", err
+	}
+	return node.Metadata["pool"], nil
+}
+
 func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer) error {
 	containers, err := p.listContainersByProcess(a.GetName(), process)
 	if err != nil {
