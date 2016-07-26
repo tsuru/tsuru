@@ -156,7 +156,19 @@ func (c *serviceInstancePermChecker) filter(t auth.Token) (*event.TargetFilter, 
 }
 
 func (c *serviceInstancePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
-	return false, nil
+	var hasPermission bool
+	if v := strings.SplitN(e.Target.Value, "/", 2); len(v) == 2 {
+		si, err := getServiceInstanceOrError(v[0], v[1])
+		if err != nil {
+			return hasPermission, err
+		}
+		hasPermission = permission.Check(t, permission.PermServiceInstanceReadEvents,
+			append(permission.Contexts(permission.CtxTeam, si.Teams),
+				permission.Context(permission.CtxServiceInstance, e.Target.Value),
+			)...,
+		)
+	}
+	return hasPermission, nil
 }
 
 type poolPermChecker struct{}
@@ -299,23 +311,10 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	var hasPermission bool
 	if e.Target.Type == event.TargetTypeApp || e.Target.Type == event.TargetTypeTeam ||
-		e.Target.Type == event.TargetTypeService {
+		e.Target.Type == event.TargetTypeService || e.Target.Type == event.TargetTypeServiceInstance {
 		hasPermission, err = evtPermMap[e.Target.Type].check(t, r, e)
 		if err != nil {
 			return err
-		}
-	}
-	if e.Target.Type == event.TargetTypeServiceInstance {
-		if v := strings.SplitN(e.Target.Value, "/", 2); len(v) == 2 {
-			si, err := getServiceInstanceOrError(v[0], v[1])
-			if err != nil {
-				return err
-			}
-			hasPermission = permission.Check(t, permission.PermServiceInstanceReadEvents,
-				append(permission.Contexts(permission.CtxTeam, si.Teams),
-					permission.Context(permission.CtxServiceInstance, e.Target.Value),
-				)...,
-			)
 		}
 	}
 	if e.Target.Type == event.TargetTypePool {
