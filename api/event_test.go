@@ -123,6 +123,206 @@ func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, er
 	return evts, nil
 }
 
+func runPermTest(checker evtPermChecker, c *check.C) func(auth.Token, *event.TargetFilter) {
+	return func(t auth.Token, expected *event.TargetFilter) {
+		filter, err := checker.filter(t)
+		c.Assert(err, check.IsNil)
+		c.Assert(filter, check.DeepEquals, expected)
+	}
+}
+
+func (s *EventSuite) TestAppPermCheckerFilter(c *check.C) {
+	runTest := runPermTest(&appPermChecker{}, c)
+	err := provision.AddPool(provision.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", Platform: "whitespace", Pool: "pool1", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	runTest(customUserWithPermission(c, "usera", permission.Permission{
+		Scheme:  permission.PermAppReadEvents,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeApp,
+		Values: []string{"myapp"},
+	})
+	runTest(customUserWithPermission(c, "userb", permission.Permission{
+		Scheme:  permission.PermAppReadEvents,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeApp,
+		Values: []string{"myapp"},
+	})
+	runTest(customUserWithPermission(c, "userc", permission.Permission{
+		Scheme:  permission.PermAppReadEvents,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeApp,
+		Values: []string{"myapp"},
+	})
+	runTest(customUserWithPermission(c, "userd", permission.Permission{
+		Scheme:  permission.PermAppReadEvents,
+		Context: permission.Context(permission.CtxPool, a.Pool),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeApp,
+		Values: []string{"myapp"},
+	})
+	runTest(customUserWithPermission(c, "usere", permission.Permission{
+		Scheme:  permission.PermAppReadEvents,
+		Context: permission.Context(permission.CtxTeam, "other-team"),
+	}), nil)
+}
+
+func (s *EventSuite) TestTeamPermCheckerFilter(c *check.C) {
+	runTest := runPermTest(&teamPermChecker{}, c)
+	runTest(customUserWithPermission(c, "usera", permission.Permission{
+		Scheme:  permission.PermTeamReadEvents,
+		Context: permission.Context(permission.CtxTeam, "my-team"),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeTeam,
+		Values: []string{"my-team"},
+	})
+	runTest(customUserWithPermission(c, "userb", permission.Permission{
+		Scheme:  permission.PermTeamReadEvents,
+		Context: permission.Context(permission.CtxTeam, "my-team1"),
+	}, permission.Permission{
+		Scheme:  permission.PermTeamReadEvents,
+		Context: permission.Context(permission.CtxTeam, "my-team2"),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeTeam,
+		Values: []string{"my-team1", "my-team2"},
+	})
+	runTest(customUserWithPermission(c, "userc", permission.Permission{
+		Scheme:  permission.PermTeamReadEvents,
+		Context: permission.Context(permission.CtxTeam, "my-team1"),
+	}, permission.Permission{
+		Scheme:  permission.PermTeamReadEvents,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeTeam,
+		Values: nil,
+	})
+	runTest(customUserWithPermission(c, "userd"), nil)
+}
+
+func (s *EventSuite) TestServicePermCheckerFilter(c *check.C) {
+	runTest := runPermTest(&servicePermChecker{}, c)
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	runTest(customUserWithPermission(c, "usera", permission.Permission{
+		Scheme:  permission.PermServiceReadEvents,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeService,
+		Values: []string{srv.Name},
+	})
+	runTest(customUserWithPermission(c, "userb", permission.Permission{
+		Scheme:  permission.PermServiceReadEvents,
+		Context: permission.Context(permission.CtxService, srv.Name),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeService,
+		Values: []string{srv.Name},
+	})
+	runTest(customUserWithPermission(c, "userc", permission.Permission{
+		Scheme:  permission.PermServiceReadEvents,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeService,
+		Values: []string{srv.Name},
+	})
+	runTest(customUserWithPermission(c, "userd", permission.Permission{
+		Scheme:  permission.PermServiceReadEvents,
+		Context: permission.Context(permission.CtxTeam, "some-other-team"),
+	}), nil)
+}
+
+func (s *EventSuite) TestServiceInstancePermCheckerFilter(c *check.C) {
+	runTest := runPermTest(&serviceInstancePermChecker{}, c)
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{"otherteam"}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{
+		Name:        "nodata",
+		ServiceName: "mongodb",
+		Description: "desc",
+		Teams:       []string{s.team.Name},
+	}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	runTest(customUserWithPermission(c, "usera", permission.Permission{
+		Scheme:  permission.PermServiceInstanceReadEvents,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeServiceInstance,
+		Values: []string{serviceIntancePermName(srv.Name, si.Name)},
+	})
+	runTest(customUserWithPermission(c, "userb", permission.Permission{
+		Scheme:  permission.PermServiceInstanceReadEvents,
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName(srv.Name, si.Name)),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeServiceInstance,
+		Values: []string{serviceIntancePermName(srv.Name, si.Name)},
+	})
+	runTest(customUserWithPermission(c, "userc", permission.Permission{
+		Scheme:  permission.PermServiceInstanceReadEvents,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeServiceInstance,
+		Values: []string{serviceIntancePermName(srv.Name, si.Name)},
+	})
+	runTest(customUserWithPermission(c, "userd", permission.Permission{
+		Scheme:  permission.PermServiceInstanceReadEvents,
+		Context: permission.Context(permission.CtxTeam, "some-other-team"),
+	}), nil)
+}
+
+func (s *EventSuite) TestPoolPermCheckerFilter(c *check.C) {
+	runTest := runPermTest(&poolPermChecker{}, c)
+	runTest(customUserWithPermission(c, "usera", permission.Permission{
+		Scheme:  permission.PermPoolReadEvents,
+		Context: permission.Context(permission.CtxPool, "my-pool"),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypePool,
+		Values: []string{"my-pool"},
+	})
+	runTest(customUserWithPermission(c, "userb", permission.Permission{
+		Scheme:  permission.PermPoolReadEvents,
+		Context: permission.Context(permission.CtxPool, "my-pool1"),
+	}, permission.Permission{
+		Scheme:  permission.PermPoolReadEvents,
+		Context: permission.Context(permission.CtxPool, "my-pool2"),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypePool,
+		Values: []string{"my-pool1", "my-pool2"},
+	})
+	runTest(customUserWithPermission(c, "userc", permission.Permission{
+		Scheme:  permission.PermPoolReadEvents,
+		Context: permission.Context(permission.CtxPool, "my-pool1"),
+	}, permission.Permission{
+		Scheme:  permission.PermPoolReadEvents,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypePool,
+		Values: nil,
+	})
+	runTest(customUserWithPermission(c, "userd"), nil)
+}
+
+func (s *EventSuite) TestUserPermCheckerFilter(c *check.C) {
+	runTest := runPermTest(&userPermChecker{}, c)
+	runTest(customUserWithPermission(c, "usera"), &event.TargetFilter{
+		Type:   event.TargetTypeUser,
+		Values: []string{"usera@groundcontrol.com"},
+	})
+	runTest(customUserWithPermission(c, "userb", permission.Permission{
+		Scheme:  permission.PermUserReadEvents,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}), &event.TargetFilter{
+		Type:   event.TargetTypeUser,
+		Values: nil,
+	})
+}
+
 func (s *EventSuite) TestEventListEmpty(c *check.C) {
 	request, err := http.NewRequest("GET", "/events", nil)
 	c.Assert(err, check.IsNil)

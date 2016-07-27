@@ -126,7 +126,7 @@ func (c *servicePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	if len(contexts) == 0 {
 		return nil, nil
 	}
-	services, err := readableServices(t, contexts)
+	services, err := provisionReadableServices(t, contexts)
 	if err != nil {
 		return nil, err
 	}

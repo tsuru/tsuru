@@ -237,8 +237,8 @@ func readableInstances(t auth.Token, contexts []permission.PermissionContext, ap
 		}
 		switch c.CtxType {
 		case permission.CtxServiceInstance:
-			parts := strings.SplitAfterN(c.Value, "/", 2)
-			if len(parts) == 2 && parts[0] == serviceName {
+			parts := strings.SplitN(c.Value, "/", 2)
+			if len(parts) == 2 && (serviceName == "" || parts[0] == serviceName) {
 				instanceNames = append(instanceNames, parts[1])
 			}
 		case permission.CtxTeam:
@@ -248,7 +248,7 @@ func readableInstances(t auth.Token, contexts []permission.PermissionContext, ap
 	return service.GetServicesInstancesByTeamsAndNames(teams, instanceNames, appName, serviceName)
 }
 
-func readableServices(t auth.Token, contexts []permission.PermissionContext) ([]service.Service, error) {
+func filtersForServiceList(t auth.Token, contexts []permission.PermissionContext) ([]string, []string) {
 	teams := []string{}
 	serviceNames := []string{}
 	for _, c := range contexts {
@@ -264,6 +264,11 @@ func readableServices(t auth.Token, contexts []permission.PermissionContext) ([]
 			teams = append(teams, c.Value)
 		}
 	}
+	return teams, serviceNames
+}
+
+func readableServices(t auth.Token, contexts []permission.PermissionContext) ([]service.Service, error) {
+	teams, serviceNames := filtersForServiceList(t, contexts)
 	return service.GetServicesByTeamsAndServices(teams, serviceNames)
 }
 

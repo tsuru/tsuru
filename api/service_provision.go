@@ -33,6 +33,11 @@ func serviceValidate(s service.Service) error {
 	return nil
 }
 
+func provisionReadableServices(t auth.Token, contexts []permission.PermissionContext) ([]service.Service, error) {
+	teams, serviceNames := filtersForServiceList(t, contexts)
+	return service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
+}
+
 // title: service list
 // path: /services
 // method: GET
@@ -42,23 +47,8 @@ func serviceValidate(s service.Service) error {
 //   204: No content
 //   401: Unauthorized
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	teams := []string{}
-	serviceNames := []string{}
 	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)
-	for _, c := range contexts {
-		if c.CtxType == permission.CtxGlobal {
-			teams = nil
-			serviceNames = nil
-			break
-		}
-		switch c.CtxType {
-		case permission.CtxService:
-			serviceNames = append(serviceNames, c.Value)
-		case permission.CtxTeam:
-			teams = append(teams, c.Value)
-		}
-	}
-	services, err := service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
+	services, err := provisionReadableServices(t, contexts)
 	if err != nil {
 		return err
 	}
