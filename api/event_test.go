@@ -913,8 +913,6 @@ func (s *EventSuite) TestEventInfoRoleWithoutPermission(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-////
-
 func (s *EventSuite) TestEventCancelAppPermission(c *check.C) {
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermAppUpdate,
