@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -107,6 +108,7 @@ type Cluster struct {
 	monitoringDone chan bool
 	dryServer      *testing.DockerServer
 	hooks          map[HookEvent][]Hook
+	CAPath         string
 }
 
 type DockerNodeError struct {
@@ -145,7 +147,7 @@ func wrapErrorWithCmd(n node, err error, cmd string) error {
 // The scheduler parameter defines the scheduling strategy. It defaults
 // to round robin if nil.
 // The storage parameter is the storage the cluster instance will use.
-func New(scheduler Scheduler, storage Storage, nodes ...Node) (*Cluster, error) {
+func New(scheduler Scheduler, storage Storage, caPath string, nodes ...Node) (*Cluster, error) {
 	var (
 		c   Cluster
 		err error
@@ -155,6 +157,7 @@ func New(scheduler Scheduler, storage Storage, nodes ...Node) (*Cluster, error) 
 	}
 	c.stor = storage
 	c.scheduler = scheduler
+	c.CAPath = caPath
 	c.Healer = DefaultHealer{}
 	if scheduler == nil {
 		c.scheduler = &roundRobin{lastUsed: -1}
@@ -229,7 +232,11 @@ func (c *Cluster) UnregisterNodes(addresses ...string) error {
 }
 
 func (c *Cluster) UnfilteredNodes() ([]Node, error) {
-	return c.storage().RetrieveNodes()
+	nodes, err := c.storage().RetrieveNodes()
+	if err != nil {
+		return nil, err
+	}
+	return c.setClusterInNodes(nodes), nil
 }
 
 func (c *Cluster) Nodes() ([]Node, error) {
@@ -237,7 +244,7 @@ func (c *Cluster) Nodes() ([]Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NodeList(nodes).filterDisabled(), nil
+	return NodeList(c.setClusterInNodes(nodes)).filterDisabled(), nil
 }
 
 func (c *Cluster) NodesForMetadata(metadata map[string]string) ([]Node, error) {
@@ -245,15 +252,31 @@ func (c *Cluster) NodesForMetadata(metadata map[string]string) ([]Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NodeList(nodes).filterDisabled(), nil
+	return NodeList(c.setClusterInNodes(nodes)).filterDisabled(), nil
 }
 
 func (c *Cluster) GetNode(address string) (Node, error) {
-	return c.storage().RetrieveNode(address)
+	n, err := c.storage().RetrieveNode(address)
+	if err != nil {
+		return Node{}, err
+	}
+	n.cluster = c
+	return n, nil
+}
+
+func (c *Cluster) setClusterInNodes(nodes []Node) []Node {
+	for _, n := range nodes {
+		n.cluster = c
+	}
+	return nodes
 }
 
 func (c *Cluster) UnfilteredNodesForMetadata(metadata map[string]string) ([]Node, error) {
-	return c.storage().RetrieveNodesByMetadata(metadata)
+	nodes, err := c.storage().RetrieveNodesByMetadata(metadata)
+	if err != nil {
+		return nil, err
+	}
+	return c.setClusterInNodes(nodes), nil
 }
 
 func (c *Cluster) StartActiveMonitoring(updateInterval time.Duration) {
@@ -534,7 +557,13 @@ func (c *Cluster) getNodeByAddr(address string) (node, error) {
 		address = c.dryServer.URL()
 	}
 	var n node
-	client, err := docker.NewClient(address)
+	var client *docker.Client
+	var err error
+	if c.CAPath == "" {
+		client, err = docker.NewClient(address)
+	} else {
+		client, err = docker.NewTLSClient(address, filepath.Join(c.CAPath, "cert.pem"), filepath.Join(c.CAPath, "key.pem"), filepath.Join(c.CAPath, "/ca.pem"))
+	}
 	if err != nil {
 		return n, err
 	}
