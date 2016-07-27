@@ -25,7 +25,7 @@ func serviceValidate(s service.Service) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service id is required"}
 	}
 	if s.Password == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service password is requried"}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service password is required"}
 	}
 	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service production endpoint is required"}

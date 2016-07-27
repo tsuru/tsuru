@@ -19,7 +19,7 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
-func (s *S) TestSucessAndParameters(c *check.C) {
+func (s *S) TestSuccessAndParameters(c *check.C) {
 	actions := []*Action{
 		{
 			Forward: func(ctx FWContext) (Result, error) {

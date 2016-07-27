@@ -76,13 +76,13 @@ func (s *S) TestRegisterRemoved(c *check.C) {
 
 func (s *S) TestRegisterTopic(c *check.C) {
 	mngr := Manager{}
-	mngr.RegisterTopic("target", "targetting everything!")
-	c.Assert(mngr.topics["target"], check.Equals, "targetting everything!")
+	mngr.RegisterTopic("target", "targeting everything!")
+	c.Assert(mngr.topics["target"], check.Equals, "targeting everything!")
 }
 
 func (s *S) TestRegisterTopicDuplicated(c *check.C) {
 	mngr := Manager{}
-	mngr.RegisterTopic("target", "targetting everything!")
+	mngr.RegisterTopic("target", "targeting everything!")
 	defer func() {
 		r := recover()
 		c.Assert(r, check.NotNil)
@@ -92,10 +92,10 @@ func (s *S) TestRegisterTopicDuplicated(c *check.C) {
 
 func (s *S) TestRegisterTopicMultiple(c *check.C) {
 	mngr := Manager{}
-	mngr.RegisterTopic("target", "targetted")
+	mngr.RegisterTopic("target", "targeted")
 	mngr.RegisterTopic("app", "what's an app?")
 	expected := map[string]string{
-		"target": "targetted",
+		"target": "targeted",
 		"app":    "what's an app?",
 	}
 	c.Assert(mngr.topics, check.DeepEquals, expected)

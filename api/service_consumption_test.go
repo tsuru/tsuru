@@ -654,7 +654,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Message, check.Equals, `service instance successfuly removed`)
+	c.Assert(msg.Message, check.Equals, `service instance successfully removed`)
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)
@@ -721,7 +721,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	expected := ""
-	expected += `{"Message":"service instance successfuly removed"}` + "\n"
+	expected += `{"Message":"service instance successfully removed"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
 	var result []service.ServiceInstance
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo2"}).Count()
@@ -737,7 +737,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	expected = ""
 	expected += `{"Message":"Unbind app \"app-instance\" ...\n"}` + "\n"
 	expected += `{"Message":"\nInstance \"foo-instance\" is not bound to the app \"app-instance\" anymore.\n"}` + "\n"
-	expected += `{"Message":"service instance successfuly removed"}` + "\n"
+	expected += `{"Message":"service instance successfully removed"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
 	n, err = s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance", "service_name": "foo"}).Count()
 	c.Assert(err, check.IsNil)

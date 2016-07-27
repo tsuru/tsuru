@@ -1406,7 +1406,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
+func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmitted(c *check.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
@@ -1422,7 +1422,7 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
 	}
 }
 
-func (s *S) TestAddUnitsWorksIfProcessIsOmited(c *check.C) {
+func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Unlimited}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1551,7 +1551,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
+func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmitted(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1563,7 +1563,7 @@ func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
 	c.Assert(e.Message, check.Equals, "You must provide the number of units.")
 }
 
-func (s *S) TestRemoveUnitsWorksIfProcessIsOmited(c *check.C) {
+func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)

@@ -395,7 +395,7 @@ func (c *Container) Exec(p DockerProvisioner, stdout, stderr io.Writer, cmd stri
 // Commits commits the container, creating an image in Docker. It then returns
 // the image identifier for usage in future container creation.
 func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error) {
-	log.Debugf("commiting container %s", c.ID)
+	log.Debugf("committing container %s", c.ID)
 	parts := strings.Split(c.BuildingImage, ":")
 	if len(parts) < 2 {
 		return "", log.WrapError(fmt.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))

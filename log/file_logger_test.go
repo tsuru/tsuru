@@ -70,9 +70,9 @@ func (s *FileLoggerSuite) TestDebugShouldNotWriteDebugIsSetToFalse(c *check.C) {
 	fl, _ := l.(*fileLogger)
 	b := &bytes.Buffer{}
 	fl.logger = log.New(b, "", log.LstdFlags)
-	l.Debug("sould not log this")
+	l.Debug("should not log this")
 	c.Assert(b.String(), check.Equals, "")
-	l.Debugf("sould not log this either %d", 1)
+	l.Debugf("should not log this either %d", 1)
 	c.Assert(b.String(), check.Equals, "")
 }
 

@@ -187,7 +187,7 @@ func (s *cloudstackSuite) TestCreateMachineWithTags(c *check.C) {
 			fmt.Fprintln(w, json)
 		}
 		if cmd == "createTags" {
-			json := `{"createtagsresponse": {"Displaytext": "display", "Success": "sucess"}}`
+			json := `{"createtagsresponse": {"Displaytext": "display", "Success": "success"}}`
 			fmt.Fprintln(w, json)
 		}
 	}))

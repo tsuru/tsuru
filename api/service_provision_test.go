@@ -282,7 +282,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutPassword(c *ch
 	recorder, request := s.makeRequest("PUT", "/services/ble", v.Encode(), c)
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Service password is requried\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Service password is required\n")
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutProductionEndpoint(c *check.C) {

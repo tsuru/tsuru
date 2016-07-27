@@ -651,7 +651,7 @@ func (c *autoScaleDeleteRuleCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-autoscale-rule-remove",
 		Usage: "docker-autoscale-rule-remove [rule-name] [-y/--assume-yes]",
-		Desc:  `Removes an auto-scale rule. The name of the rule may be omited, which means "remove the default rule".`,
+		Desc:  `Removes an auto-scale rule. The name of the rule may be omitted, which means "remove the default rule".`,
 	}
 }
 
