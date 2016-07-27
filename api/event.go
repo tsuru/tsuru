@@ -233,7 +233,20 @@ func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 type iaasPermChecker struct{}
 
 func (c *iaasPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
-	return nil, nil
+	contexts := permission.ContextsForPermission(t, permission.PermMachineReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeIaas}
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			allowed.Values = nil
+			break
+		} else if ctx.CtxType == permission.CtxIaaS {
+			allowed.Values = append(allowed.Values, ctx.Value)
+		}
+	}
+	return &allowed, nil
 }
 
 func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
@@ -336,7 +349,18 @@ func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 type rolePermChecker struct{}
 
 func (c *rolePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
-	return nil, nil
+	contexts := permission.ContextsForPermission(t, permission.PermRoleReadEvents)
+	if len(contexts) == 0 {
+		return nil, nil
+	}
+	allowed := event.TargetFilter{Type: event.TargetTypeRole}
+	for _, ctx := range contexts {
+		if ctx.CtxType == permission.CtxGlobal {
+			allowed.Values = nil
+			break
+		}
+	}
+	return &allowed, nil
 }
 
 func (c *rolePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
