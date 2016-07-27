@@ -49,10 +49,7 @@ func (s *EventSuite) createUserAndTeam(c *check.C) {
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.token = userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppRead,
-		Context: permission.Context(permission.CtxTeam, s.team.Name),
-	}, permission.Permission{
-		Scheme:  permission.PermAppDeploy,
+		Scheme:  permission.PermApp,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 }
@@ -910,6 +907,591 @@ func (s *EventSuite) TestEventInfoRoleWithoutPermission(c *check.C) {
 	request, err := http.NewRequest("GET", u, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+////
+
+func (s *EventSuite) TestEventCancelAppPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	a := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelAppWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	a := app.App{Name: "new-app2", Platform: "zend", TeamOwner: s.team.Name}
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelTeamPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermTeamUpdate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelTeamWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelServicePermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceUpdate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	srv := service.Service{
+		Name:       "myservice",
+		OwnerTeams: []string{s.team.Name},
+		Username:   "myuser",
+	}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeService, Value: srv.Name},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelServiceWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	srv := service.Service{Name: "myservice", OwnerTeams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeService, Value: srv.Name},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelServiceInstancePermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeServiceInstance, Value: "foo/foo-instance"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelServiceInstanceWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeServiceInstance, Value: "foo_foo-instance"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelServiceInstanceInvalidTargetValue(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeServiceInstance, Value: "foofoo-instance"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelPoolPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermPoolUpdate,
+		Context: permission.Context(permission.CtxPool, "test1"),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePool, Value: "test1"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelPoolWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePool, Value: "test1"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelUserPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermUserUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeUser, Value: token.GetUserName()},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelUserWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeUser, Value: token.GetUserName()},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelContainerPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	cnt := units[0]
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeContainer, Value: cnt.ID},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelContainerWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "velha2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	cnt := units[0]
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeContainer, Value: cnt.ID},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelNodePermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermPoolUpdate,
+		Context: permission.Context(permission.CtxPool, "test1"),
+	})
+	s.provisioner.AddNode("mynode", "test1")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeNode, Value: "mynode"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelNodeWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	s.provisioner.AddNode("mynode", "test1")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeNode, Value: "mynode"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelIassPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermMachineUpdate,
+		Context: permission.Context(permission.CtxIaaS, "test-iaas"),
+	})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeIaas, Value: "test-iaas"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelIaasWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppDeploy,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeIaas, Value: "test-iaas"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventCancelRolePermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "app", "")
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelRoleWithoutPermission(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermApp,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	_, err := permission.NewRole("test", "app", "")
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Cancelable: true,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)

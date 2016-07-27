@@ -33,9 +33,16 @@ var evtPermMap = map[event.TargetType]evtPermChecker{
 	event.TargetTypeRole:            &rolePermChecker{},
 }
 
+type checkKind string
+
+var (
+	readCheckKind   checkKind = "read"
+	updateCheckKind checkKind = "update"
+)
+
 type evtPermChecker interface {
 	filter(t auth.Token) (*event.TargetFilter, error)
-	check(t auth.Token, r *http.Request, e *event.Event) (bool, error)
+	check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error)
 }
 
 type appPermChecker struct{}
@@ -59,12 +66,16 @@ func (c *appPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *appPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *appPermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	a, err := getAppFromContext(e.Target.Value, r)
 	if err != nil {
 		return false, err
 	}
-	hasPermission := permission.Check(t, permission.PermAppReadEvents,
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermAppReadEvents,
+		updateCheckKind: permission.PermAppUpdateEvents,
+	}
+	hasPermission := permission.Check(t, perms[kind],
 		append(permission.Contexts(permission.CtxTeam, a.Teams),
 			permission.Context(permission.CtxApp, a.Name),
 			permission.Context(permission.CtxPool, a.Pool),
@@ -92,13 +103,17 @@ func (c *teamPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *teamPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *teamPermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	tm, err := auth.GetTeam(e.Target.Value)
 	if err != nil {
 		return false, err
 	}
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermTeamReadEvents,
+		updateCheckKind: permission.PermTeamUpdateEvents,
+	}
 	hasPermission := permission.Check(
-		t, permission.PermTeamReadEvents,
+		t, perms[kind],
 		permission.Context(permission.CtxTeam, tm.Name),
 	)
 	return hasPermission, nil
@@ -125,12 +140,16 @@ func (c *servicePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *servicePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *servicePermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	s, err := getService(e.Target.Value)
 	if err != nil {
 		return false, err
 	}
-	hasPermission := permission.Check(t, permission.PermServiceReadEvents,
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermServiceReadEvents,
+		updateCheckKind: permission.PermServiceUpdateEvents,
+	}
+	hasPermission := permission.Check(t, perms[kind],
 		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
 			permission.Context(permission.CtxService, s.Name),
 		)...,
@@ -159,14 +178,18 @@ func (c *serviceInstancePermChecker) filter(t auth.Token) (*event.TargetFilter, 
 	return &allowed, nil
 }
 
-func (c *serviceInstancePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *serviceInstancePermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	var hasPermission bool
 	if v := strings.SplitN(e.Target.Value, "/", 2); len(v) == 2 {
 		si, err := getServiceInstanceOrError(v[0], v[1])
 		if err != nil {
 			return hasPermission, err
 		}
-		hasPermission = permission.Check(t, permission.PermServiceInstanceReadEvents,
+		perms := map[checkKind]*permission.PermissionScheme{
+			readCheckKind:   permission.PermServiceInstanceReadEvents,
+			updateCheckKind: permission.PermServiceInstanceUpdateEvents,
+		}
+		hasPermission = permission.Check(t, perms[kind],
 			append(permission.Contexts(permission.CtxTeam, si.Teams),
 				permission.Context(permission.CtxServiceInstance, e.Target.Value),
 			)...,
@@ -194,13 +217,17 @@ func (c *poolPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *poolPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *poolPermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	p, err := provision.GetPoolByName(e.Target.Value)
 	if err != nil {
 		return false, err
 	}
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermPoolReadEvents,
+		updateCheckKind: permission.PermPoolUpdateEvents,
+	}
 	hasPermission := permission.Check(
-		t, permission.PermPoolReadEvents,
+		t, perms[kind],
 		permission.Context(permission.CtxPool, p.Name),
 	)
 	return hasPermission, nil
@@ -223,9 +250,13 @@ func (c *userPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *userPermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermUserReadEvents,
+		updateCheckKind: permission.PermUserUpdateEvents,
+	}
 	return permission.Check(
-		t, permission.PermUserReadEvents,
+		t, perms[kind],
 		permission.Context(permission.CtxGlobal, ""),
 	), nil
 }
@@ -249,9 +280,13 @@ func (c *iaasPermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *iaasPermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermMachineReadEvents,
+		updateCheckKind: permission.PermMachineUpdateEvents,
+	}
 	return permission.Check(
-		t, permission.PermMachineReadEvents,
+		t, perms[kind],
 		permission.Context(permission.CtxIaaS, e.Target.Value),
 	), nil
 }
@@ -283,12 +318,16 @@ func (c *containerPermChecker) filter(t auth.Token) (*event.TargetFilter, error)
 	return &allowed, nil
 }
 
-func (c *containerPermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *containerPermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	a, err := app.Provisioner.GetAppFromUnitID(e.Target.Value)
 	if err != nil {
 		return false, err
 	}
-	return permission.Check(t, permission.PermAppReadEvents,
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermAppReadEvents,
+		updateCheckKind: permission.PermAppUpdateEvents,
+	}
+	return permission.Check(t, perms[kind],
 		append(permission.Contexts(permission.CtxTeam, a.GetTeamsName()),
 			permission.Context(permission.CtxApp, a.GetName()),
 			permission.Context(permission.CtxPool, a.GetPool()),
@@ -329,7 +368,7 @@ func (c *nodePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	var hasPermission bool
 	if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
 		nodes, err := nodeProvisioner.ListNodes([]string{e.Target.Value})
@@ -337,8 +376,12 @@ func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (
 			return false, err
 		}
 		if len(nodes) > 0 {
+			perms := map[checkKind]*permission.PermissionScheme{
+				readCheckKind:   permission.PermPoolReadEvents,
+				updateCheckKind: permission.PermPoolUpdateEvents,
+			}
 			hasPermission = permission.Check(
-				t, permission.PermPoolReadEvents,
+				t, perms[kind],
 				permission.Context(permission.CtxPool, nodes[0].Pool()),
 			)
 		}
@@ -363,9 +406,13 @@ func (c *rolePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 	return &allowed, nil
 }
 
-func (c *rolePermChecker) check(t auth.Token, r *http.Request, e *event.Event) (bool, error) {
+func (c *rolePermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
+	perms := map[checkKind]*permission.PermissionScheme{
+		readCheckKind:   permission.PermRoleReadEvents,
+		updateCheckKind: permission.PermRoleUpdateEvents,
+	}
 	return permission.Check(
-		t, permission.PermRoleReadEvents,
+		t, perms[kind],
 		permission.Context(permission.CtxGlobal, ""),
 	), nil
 }
@@ -464,7 +511,7 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	hasPermission, err := evtPermMap[e.Target.Type].check(t, r, e)
+	hasPermission, err := evtPermMap[e.Target.Type].check(t, r, e, readCheckKind)
 	if err != nil {
 		return err
 	}
@@ -497,6 +544,13 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	reason := r.FormValue("reason")
 	if reason == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is mandatory"}
+	}
+	hasPermission, err := evtPermMap[e.Target.Type].check(t, r, e, updateCheckKind)
+	if err != nil {
+		return err
+	}
+	if !hasPermission {
+		return permission.ErrUnauthorized
 	}
 	err = e.TryCancel(reason, t.GetUserName())
 	if err != nil {
