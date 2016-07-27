@@ -184,7 +184,7 @@ func (s *HandlersSuite) startFakeDockerNode(c *check.C) (*testing.DockerServer, 
 func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	server, waitQueue := s.startFakeDockerNode(c)
 	defer server.Stop()
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
@@ -222,7 +222,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	server, waitQueue := s.startFakeDockerNode(c)
 	defer server.Stop()
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
@@ -274,7 +274,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	defer server.Stop()
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	iaas.RegisterIaasProvider("another-test-iaas", newTestIaaS)
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	defer provision.RemovePool("pool1")
@@ -457,7 +457,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerNotFound(c *check.C) {
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	var err error
-	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	err = mainDockerProvisioner.Cluster().Register(cluster.Node{Address: "host.com:2375"})
 	c.Assert(err, check.IsNil)
@@ -477,7 +477,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", newTestIaaS)
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
@@ -503,7 +503,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("my-xxx-iaas", newTestIaaS)
 	machine, err := iaas.CreateMachineForIaaS("my-xxx-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
@@ -649,7 +649,7 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 		Machines []iaas.Machine `json:"machines"`
 	}
 	var err error
-	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address:  "host1.com:2375",
@@ -688,7 +688,7 @@ func (s *HandlersSuite) TestListContainersByHostNotFound(c *check.C) {
 
 func (s *HandlersSuite) TestListContainersByHostNoContent(c *check.C) {
 	var err error
-	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster.Register(cluster.Node{Address: "http://node1.company:4243"})
 	req, err := http.NewRequest("GET", "/docker/node/http://node1.company:4243/containers", nil)
@@ -703,7 +703,7 @@ func (s *HandlersSuite) TestListContainersByHostNoContent(c *check.C) {
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container.Container
 	var err error
-	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster.Register(cluster.Node{Address: "http://node1.company:4243"})
 	coll := mainDockerProvisioner.Collection()
@@ -762,7 +762,7 @@ func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app.App{Name: "appbla", Platform: "python"})
 	var result []container.Container
-	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
 	err = coll.Insert(container.Container{ID: "blabla", AppName: "appbla", HostAddr: "http://node.company"})
@@ -795,7 +795,7 @@ func (s *HandlersSuite) TestListContainersByAppHandlerNotAdminUser(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app.App{Name: "appbla", Platform: "python", Pool: "mypool"})
 	var result []container.Container
-	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "")
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
 	err = coll.Insert(container.Container{ID: "blabla", AppName: "appbla", HostAddr: "http://node.company"})
@@ -1270,7 +1270,7 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
 			"m1": "v1",
 			"m2": "v2",
@@ -1309,7 +1309,7 @@ func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
 			"m1": "v1",
 			"m2": "v2",
@@ -1334,7 +1334,7 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "127.0.0.1:1999", Metadata: map[string]string{
 			"m1": "v1",
 			"m2": "v2",
@@ -1373,7 +1373,7 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeDisableNodeHandler(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:1999", CreationStatus: cluster.NodeCreationStatusCreated},
 	)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -1401,7 +1401,7 @@ func (s *HandlersSuite) TestUpdateNodeDisableNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeEnableNodeHandler(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:1999", CreationStatus: cluster.NodeCreationStatusDisabled},
 	)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -1428,7 +1428,7 @@ func (s *HandlersSuite) TestUpdateNodeEnableNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:1999", CreationStatus: cluster.NodeCreationStatusDisabled},
 	)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -1447,7 +1447,7 @@ func (s *HandlersSuite) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandlerEnableCanMoveContainers(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:2375", CreationStatus: cluster.NodeCreationStatusDisabled},
 	)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -1496,7 +1496,7 @@ func (s *HandlersSuite) TestUpdateNodeHandlerEnableCanMoveContainers(c *check.C)
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandlerDisableCannotMoveContainers(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:2375", CreationStatus: cluster.NodeCreationStatusCreated},
 	)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -1539,7 +1539,7 @@ func (s *HandlersSuite) TestUpdateNodeHandlerDisableCannotMoveContainers(c *chec
 }
 
 func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
 		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
 			"pool": "pool1",
 		}},

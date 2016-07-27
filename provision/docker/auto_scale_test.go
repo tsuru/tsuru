@@ -63,7 +63,7 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	url := re.ReplaceAllString(s.node1.URL(), "/127.0.0.1:")
 	sched := &segregatedScheduler{provisioner: s.p}
 	s.p.scheduler = sched
-	clusterInstance, err := cluster.New(sched, s.p.storage,
+	clusterInstance, err := cluster.New(sched, s.p.storage, "",
 		cluster.Node{Address: url, Metadata: map[string]string{
 			"pool":     "pool1",
 			"iaas":     "my-scale-iaas",
@@ -527,7 +527,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	originalNodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{
+	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "", cluster.Node{
 		Address: originalNodes[0].Address,
 		Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
@@ -556,7 +556,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: nodes[0].Address, Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
 			"pool": "pool1",
@@ -1096,7 +1096,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *chec
 	c.Assert(err, check.IsNil)
 	otherUrl := fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL()))
 	s.p.storage = &cluster.MapStorage{}
-	s.p.cluster, err = cluster.New(nil, s.p.storage,
+	s.p.cluster, err = cluster.New(nil, s.p.storage, "",
 		cluster.Node{Address: oldNodes[0].Address, Metadata: map[string]string{
 			"pool":    "pool1",
 			"iaas":    "my-scale-iaas",

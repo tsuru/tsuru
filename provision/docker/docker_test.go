@@ -321,7 +321,7 @@ func (s *S) TestPushImage(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
@@ -359,7 +359,7 @@ func (s *S) TestPushImageAuth(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
