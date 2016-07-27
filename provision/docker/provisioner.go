@@ -100,7 +100,8 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		TotalMemoryMetadata: TotalMemoryMetadata,
 		provisioner:         p,
 	}
-	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
+	caPath, _ := config.GetString("tls:root-path")
+	p.cluster, err = cluster.New(p.scheduler, p.storage, caPath, nodes...)
 	if err != nil {
 		return err
 	}
@@ -194,7 +195,8 @@ func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container.Conta
 		provisioner:         &overridenProvisioner,
 		ignoredContainers:   containerIds,
 	}
-	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage)
+	caPath, _ := config.GetString("tls:root-path")
+	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage, caPath)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +230,8 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container.Container) (*d
 		provisioner:         overridenProvisioner,
 		ignoredContainers:   containerIds,
 	}
-	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage)
+	caPath, _ := config.GetString("tls:root-path")
+	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage, caPath)
 	if err != nil {
 		return nil, err
 	}
