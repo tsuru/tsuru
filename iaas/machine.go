@@ -31,22 +31,6 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 }
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
-	templateName := params["template"]
-	if templateName != "" {
-		template, err := FindTemplate(templateName)
-		if err != nil {
-			return nil, err
-		}
-		templateParams := template.paramsMap()
-		delete(params, "template")
-		// User params will override template params
-		for k, v := range templateParams {
-			_, isSet := params[k]
-			if !isSet {
-				params[k] = v
-			}
-		}
-	}
 	if iaasName == "" {
 		iaasName, _ = params["iaas"]
 	}

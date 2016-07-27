@@ -239,7 +239,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if templateName, ok := params.Metadata["template"]; ok {
-		params.Metadata, err = iaas.ExpandTemplate(templateName)
+		params.Metadata, err = iaas.ExpandTemplate(templateName, params.Metadata)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}

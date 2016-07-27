@@ -185,11 +185,14 @@ func (s *S) TestExpandTemplate(c *check.C) {
 	}
 	err := tpl1.Save()
 	c.Assert(err, check.IsNil)
-	data, err := ExpandTemplate("tpl1")
+	params := map[string]string{
+		"key2": "myvalue2",
+	}
+	data, err := ExpandTemplate("tpl1", params)
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, map[string]string{
 		"key1": "val1",
-		"key2": "val2",
+		"key2": "myvalue2",
 		"iaas": "test-iaas",
 	})
 }

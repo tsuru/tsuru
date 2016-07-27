@@ -101,21 +101,10 @@ func (s *S) TestCreateMachineIaaSInParams(c *check.C) {
 }
 
 func (s *S) TestCreateMachineWithTemplate(c *check.C) {
-	t := Template{
-		Name:     "tpl1",
-		IaaSName: "test-iaas",
-		Data: TemplateDataList{
-			{Name: "key1", Value: "val1"},
-			{Name: "key2", Value: "val2"},
-			{Name: "key3", Value: "val3"},
-		},
-	}
-	err := t.Save()
-	c.Assert(err, check.IsNil)
 	params := map[string]string{
-		"id":       "myid",
-		"template": "tpl1",
-		"key3":     "override3",
+		"id":   "myid",
+		"key3": "override3",
+		"iaas": "test-iaas",
 	}
 	m, err := CreateMachine(params)
 	c.Assert(err, check.IsNil)
@@ -123,12 +112,10 @@ func (s *S) TestCreateMachineWithTemplate(c *check.C) {
 	c.Assert(m.Iaas, check.Equals, "test-iaas")
 	expected := map[string]string{
 		"id":      "myid",
-		"key1":    "val1",
-		"key2":    "val2",
 		"key3":    "override3",
+		"iaas":    "test-iaas",
 		"should":  "be in",
 		"iaas-id": "myid",
-		"iaas":    "test-iaas",
 	}
 	c.Assert(m.CreationParams, check.DeepEquals, expected)
 	c.Assert(params, check.DeepEquals, expected)
