@@ -312,7 +312,7 @@ func (c *containerPermChecker) filter(t auth.Token) (*event.TargetFilter, error)
 			return nil, err
 		}
 		for _, u := range units {
-			allowed.Values = append(allowed.Values, u.Name)
+			allowed.Values = append(allowed.Values, u.ID)
 		}
 	}
 	return &allowed, nil
