@@ -276,7 +276,7 @@ type NodeContainerUpdate struct {
 func (c *NodeContainerUpdate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "node-container-update",
-		Usage: fmt.Sprintf("node-container-update <name> [-p/--pool poolname] %s", c.dockerCmd.info()),
+		Usage: fmt.Sprintf("node-container-update <name> [-o/--pool poolname] %s", c.dockerCmd.info()),
 		Desc: `Update an existing node container. If the pool name is omitted the default
 configuration will be updated. When updating node containers the specified
 configuration will be merged with the existing configuration.`,
