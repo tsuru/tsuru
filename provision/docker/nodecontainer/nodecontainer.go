@@ -386,7 +386,7 @@ func shouldPinImage(image string) bool {
 func dockerClient(endpoint string) (*docker.Client, error) {
 	var client *docker.Client
 	var err error
-	caPath, _ := config.GetString("tls:root-path")
+	caPath, _ := config.GetString("docker:tls:root-path")
 	if caPath == "" {
 		client, err = docker.NewClient(endpoint)
 	} else {
