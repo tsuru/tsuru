@@ -9,7 +9,7 @@ TSR_SRC = cmd/tsurud/*.go
 LINTER_ARGS = \
 	-j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
 	--linter 'unused:unused {path}:^(?P<path>[^\s][^\r\n:]+?\.go):(?P<line>\d+):(?P<col>\d+):\s*(?P<message>.*)$$$'' \
-	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer \
+	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
 	--deadline=15m --tests
 
 .PHONY: all check-path test race docs
