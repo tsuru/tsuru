@@ -209,6 +209,7 @@ func (c *Cluster) UpdateNode(node Node) (Node, error) {
 			dbNode.Metadata[k] = v
 		}
 	}
+	dbNode.cluster = c
 	return dbNode, c.storage().UpdateNode(dbNode)
 }
 
@@ -265,8 +266,8 @@ func (c *Cluster) GetNode(address string) (Node, error) {
 }
 
 func (c *Cluster) setClusterInNodes(nodes []Node) []Node {
-	for _, n := range nodes {
-		n.cluster = c
+	for i, _ := range nodes {
+		nodes[i].cluster = c
 	}
 	return nodes
 }
