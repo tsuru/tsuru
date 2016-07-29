@@ -19,6 +19,10 @@ New features
 * New event track system
   (`#1424 <https://github.com/tsuru/tsuru/issues/1424>`_).
 
+* Support for cancelable events, right now, only the deploy event is cancelable.
+  This means users can use the ``tsuru event-cancel`` command to ask for the
+  cancelation of a deploy. tsuru will do it's best to try cancelling it.
+
 .. _bug-1.1.0:
 
 Bug fixes
