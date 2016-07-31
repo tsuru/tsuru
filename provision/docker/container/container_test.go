@@ -149,6 +149,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.HostConfig.Memory, check.Equals, int64(15))
 	c.Assert(container.HostConfig.MemorySwap, check.Equals, int64(30))
 	c.Assert(container.HostConfig.CPUShares, check.Equals, int64(50))
+	c.Assert(container.HostConfig.OomScoreAdj, check.Equals, 0)
 	c.Assert(cont.Status, check.Equals, "created")
 }
 
@@ -325,9 +326,10 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "")
 	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "")
-	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
-	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
+	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(0))
+	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(0))
 	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
+	c.Assert(dockerContainer.HostConfig.OomScoreAdj, check.Equals, 1000)
 }
 
 func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {

@@ -144,9 +144,9 @@ func (c *Container) Create(args *CreateArgs) error {
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-		Memory:       args.App.GetMemory(),
-		MemorySwap:   args.App.GetMemory() + args.App.GetSwap(),
-		CPUShares:    int64(args.App.GetCpuShare()),
+		Memory:       hostConf.Memory,
+		MemorySwap:   hostConf.MemorySwap,
+		CPUShares:    hostConf.CPUShares,
 		SecurityOpts: securityOpts,
 		User:         user,
 		Labels: map[string]string{
@@ -479,11 +479,12 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
 	hostConfig := docker.HostConfig{
-		Memory:     app.GetMemory(),
-		MemorySwap: app.GetMemory() + app.GetSwap(),
-		CPUShares:  int64(app.GetCpuShare()),
+		CPUShares: int64(app.GetCpuShare()),
 	}
+
 	if !isDeploy {
+		hostConfig.Memory = app.GetMemory()
+		hostConfig.MemorySwap = app.GetMemory() + app.GetSwap()
 		hostConfig.RestartPolicy = docker.AlwaysRestart()
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: ""}},
@@ -497,7 +498,10 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 			Type:   driver,
 			Config: opts,
 		}
+	} else {
+		hostConfig.OomScoreAdj = 1000
 	}
+
 	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
