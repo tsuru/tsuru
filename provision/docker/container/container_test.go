@@ -149,7 +149,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.HostConfig.Memory, check.Equals, int64(15))
 	c.Assert(container.HostConfig.MemorySwap, check.Equals, int64(30))
 	c.Assert(container.HostConfig.CPUShares, check.Equals, int64(50))
-	c.Assert(container.HostConfig.OomScoreAdj, check.Equals, int(0))
+	c.Assert(container.HostConfig.OomScoreAdj, check.Equals, 0)
 	c.Assert(cont.Status, check.Equals, "created")
 }
 
