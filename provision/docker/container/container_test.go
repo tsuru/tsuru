@@ -329,7 +329,7 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(0))
 	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(0))
 	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
-	c.Assert(dockerContainer.HostConfig.OomScoreAdj, check.Equals, int(1000))
+	c.Assert(dockerContainer.HostConfig.OomScoreAdj, check.Equals, 1000)
 }
 
 func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
