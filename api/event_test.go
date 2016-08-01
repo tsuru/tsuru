@@ -121,6 +121,10 @@ func (s *EventSuite) insertEvents(target string, c *check.C) ([]*event.Event, er
 			Cancelable: i == 0,
 		})
 		c.Assert(err, check.IsNil)
+		if i == 1 {
+			err = evt.Done(nil)
+			c.Assert(err, check.IsNil)
+		}
 		evts[i] = evt
 	}
 	return evts, nil
@@ -458,7 +462,7 @@ func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
 	_, err := s.insertEvents("app", c)
 	c.Assert(err, check.IsNil)
 	s.insertEvents("node", c)
-	request, err := http.NewRequest("GET", "/events?target=app", nil)
+	request, err := http.NewRequest("GET", "/events?target.type=app", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -470,6 +474,13 @@ func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 10)
+	request, err = http.NewRequest("GET", "/events?target.type=node", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server = RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
 func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
@@ -488,13 +499,17 @@ func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
 	var result []event.Event
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 10)
+	c.Assert(result, check.HasLen, 9)
 	request, err = http.NewRequest("GET", "/events?running=false", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
 }
 
 func (s *EventSuite) TestEventListFilterByKind(c *check.C) {

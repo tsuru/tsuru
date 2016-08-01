@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -442,20 +442,17 @@ func filterForPerms(t auth.Token, filter *event.Filter) (*event.Filter, error) {
 //   200: OK
 //   204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	r.ParseForm()
 	filter := &event.Filter{}
-	if target := r.URL.Query().Get("target"); target != "" {
-		targetType, err := event.GetTargetType(target)
-		if err == nil {
-			filter.Target = event.Target{Type: targetType}
-		}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	err := dec.DecodeValues(&filter, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse event filters: %s", err)}
 	}
-	if running, err := strconv.ParseBool(r.URL.Query().Get("running")); err == nil {
-		filter.Running = &running
-	}
-	if kindName := r.URL.Query().Get("kindName"); kindName != "" {
-		filter.KindName = kindName
-	}
-	filter, err := filterForPerms(t, filter)
+	filter.PruneUserValues()
+	filter, err = filterForPerms(t, filter)
 	if err != nil {
 		return err
 	}

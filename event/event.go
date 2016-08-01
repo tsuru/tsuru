@@ -274,6 +274,14 @@ type Filter struct {
 	Sort  string
 }
 
+func (f *Filter) PruneUserValues() {
+	f.Raw = nil
+	f.AllowedTargets = nil
+	if f.Limit > 100 {
+		f.Limit = 100
+	}
+}
+
 func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
 	if f.AllowedTargets != nil {
