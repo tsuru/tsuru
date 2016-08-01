@@ -10,12 +10,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -256,7 +254,7 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 		}
 		log.Debugf("[node containers] recreating container %q in %s [%s]", confName, node.Address, pool)
 		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", confName, node.Address, pool)
-		confErr = containerConfig.create(node.Address, pool, p, relaunch)
+		confErr = containerConfig.create(node, pool, p, relaunch)
 		if confErr != nil {
 			msg := fmt.Sprintf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
 			log.Error(msg)
@@ -335,8 +333,8 @@ func (c *NodeContainerConfig) pullImage(client *docker.Client, p DockerProvision
 	return image, err
 }
 
-func (c *NodeContainerConfig) create(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
-	client, err := dockerClient(dockerEndpoint)
+func (c *NodeContainerConfig) create(node *cluster.Node, poolName string, p DockerProvisioner, relaunch bool) error {
+	client, err := node.Client()
 	if err != nil {
 		return err
 	}
@@ -344,7 +342,7 @@ func (c *NodeContainerConfig) create(dockerEndpoint, poolName string, p DockerPr
 	if err != nil {
 		return err
 	}
-	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + dockerEndpoint}, c.Config.Env...)
+	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + node.Address}, c.Config.Env...)
 	opts := docker.CreateContainerOptions{
 		Name:       c.Name,
 		HostConfig: &c.HostConfig,
@@ -381,23 +379,6 @@ func shouldPinImage(image string) bool {
 	lastPart := parts[len(parts)-1]
 	versionParts := strings.SplitN(lastPart, ":", 2)
 	return len(versionParts) < 2 || versionParts[1] == "latest"
-}
-
-func dockerClient(endpoint string) (*docker.Client, error) {
-	var client *docker.Client
-	var err error
-	caPath, _ := config.GetString("docker:tls:root-path")
-	if caPath == "" {
-		client, err = docker.NewClient(endpoint)
-	} else {
-		client, err = docker.NewTLSClient(endpoint, filepath.Join(caPath, "cert.pem"), filepath.Join(caPath, "key.pem"), filepath.Join(caPath, "/ca.pem"))
-	}
-	if err != nil {
-		return client, err
-	}
-	client.HTTPClient = net.Dial5Full300ClientNoKeepAlive
-	client.Dialer = net.Dial5Dialer
-	return client, nil
 }
 
 func pullWithRetry(client *docker.Client, p DockerProvisioner, image string, maxTries int) (string, error) {

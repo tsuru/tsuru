@@ -5,6 +5,7 @@
 package nodecontainer
 
 import (
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
@@ -15,11 +16,15 @@ func (s *S) TestWaitDocker(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var task runBs
-	err = task.waitDocker(server.URL())
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	err = task.waitDocker(client)
 	c.Assert(err, check.IsNil)
 	config.Set("docker:api-timeout", 1)
 	defer config.Unset("docker:api-timeout")
-	err = task.waitDocker("http://169.254.169.254:2375/")
+	client, err = docker.NewClient("http://169.254.169.254:2375/")
+	c.Assert(err, check.IsNil)
+	err = task.waitDocker(client)
 	c.Assert(err, check.NotNil)
 	expectedMsg := `Docker API at "http://169.254.169.254:2375/" didn't respond after 1 seconds`
 	c.Assert(err.Error(), check.Equals, expectedMsg)

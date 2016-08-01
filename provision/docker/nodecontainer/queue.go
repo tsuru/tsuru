@@ -42,12 +42,17 @@ func (t *runBs) Run(job monsterqueue.Job) {
 	}
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
-	err = t.waitDocker(dockerEndpoint)
+	node, err := t.provisioner.Cluster().GetNode(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
 		return
 	}
-	node, err := t.provisioner.Cluster().GetNode(dockerEndpoint)
+	client, err := node.Client()
+	if err != nil {
+		job.Error(err)
+		return
+	}
+	err = t.waitDocker(client)
 	if err != nil {
 		job.Error(err)
 		return
@@ -68,11 +73,7 @@ func (t *runBs) Run(job monsterqueue.Job) {
 	job.Success(nil)
 }
 
-func (t *runBs) waitDocker(endpoint string) error {
-	client, err := dockerClient(endpoint)
-	if err != nil {
-		return err
-	}
+func (t *runBs) waitDocker(client *docker.Client) error {
 	timeout, _ := config.GetInt("docker:api-timeout")
 	if timeout == 0 {
 		timeout = 600
@@ -103,6 +104,6 @@ func (t *runBs) waitDocker(endpoint string) error {
 		return err
 	case <-timeoutChan:
 		close(exit)
-		return fmt.Errorf("Docker API at %q didn't respond after %d seconds", endpoint, timeout)
+		return fmt.Errorf("Docker API at %q didn't respond after %d seconds", client.Endpoint(), timeout)
 	}
 }
