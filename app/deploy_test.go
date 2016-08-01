@@ -322,8 +322,9 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.Deploys, check.Equals, uint(1))
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployData(c *check.C) {
@@ -353,8 +354,9 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.Deploys, check.Equals, uint(1))
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
@@ -382,8 +384,9 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.Deploys, check.Equals, uint(1))
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
@@ -411,8 +414,9 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.Deploys, check.Equals, uint(1))
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
@@ -440,8 +444,9 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.Deploys, check.Equals, uint(1))
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&updatedApp)
+	c.Assert(updatedApp.Deploys, check.Equals, uint(1))
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
