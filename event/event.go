@@ -277,7 +277,7 @@ type Filter struct {
 func (f *Filter) PruneUserValues() {
 	f.Raw = nil
 	f.AllowedTargets = nil
-	if f.Limit > 100 {
+	if f.Limit > 100 || f.Limit <= 0 {
 		f.Limit = 100
 	}
 }

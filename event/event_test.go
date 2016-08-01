@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -453,6 +454,43 @@ func (s *S) TestListFilterEmpty(c *check.C) {
 	evts, err := List(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
+}
+
+func (s *S) TestListFilterPruneUserValues(c *check.C) {
+	t := true
+	f := Filter{
+		Target:         Target{Type: "app", Value: "myapp"},
+		KindType:       KindTypePermission,
+		KindName:       "a",
+		OwnerType:      OwnerTypeUser,
+		OwnerName:      "u",
+		Since:          time.Now(),
+		Until:          time.Now(),
+		Running:        &t,
+		IncludeRemoved: true,
+		Raw:            bson.M{"a": 1},
+		AllowedTargets: []TargetFilter{{Type: TargetTypeApp, Values: []string{"a1"}}},
+		Limit:          50,
+		Skip:           10,
+		Sort:           "id",
+	}
+	expectedFilter := f
+	expectedFilter.Raw = nil
+	expectedFilter.AllowedTargets = nil
+	f.PruneUserValues()
+	c.Assert(f, check.DeepEquals, expectedFilter)
+	f.Limit = 110
+	expectedFilter.Limit = 100
+	f.PruneUserValues()
+	c.Assert(f, check.DeepEquals, expectedFilter)
+	f.Limit = 0
+	expectedFilter.Limit = 100
+	f.PruneUserValues()
+	c.Assert(f, check.DeepEquals, expectedFilter)
+	f.Limit = -10
+	expectedFilter.Limit = 100
+	f.PruneUserValues()
+	c.Assert(f, check.DeepEquals, expectedFilter)
 }
 
 func (s *S) TestEventOtherCustomData(c *check.C) {
