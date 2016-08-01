@@ -178,6 +178,7 @@ func (c *Cluster) Register(node Node) error {
 	if node.Address == "" {
 		return errors.New("Invalid address")
 	}
+	node.cluster = c
 	err := c.runHooks(HookEventBeforeNodeRegister, &node)
 	if err != nil {
 		return err
