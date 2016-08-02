@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 )
 
@@ -52,17 +53,11 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: User not found
-func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	allowed := permission.Check(t, permission.PermUserUpdateQuota)
 	if !allowed {
 		return permission.ErrUnauthorized
-	}
-	limit, err := strconv.Atoi(r.FormValue("limit"))
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid limit",
-		}
 	}
 	email := r.URL.Query().Get(":email")
 	user, err := auth.GetUserByEmail(email)
@@ -73,6 +68,23 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		}
 	} else if err != nil {
 		return err
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
+		Kind:       permission.PermUserUpdateQuota,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	limit, err := strconv.Atoi(r.FormValue("limit"))
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid limit",
+		}
 	}
 	return auth.ChangeQuota(user, limit)
 }
@@ -112,14 +124,8 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Application not found
-func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	limit, err := strconv.Atoi(r.FormValue("limit"))
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid limit",
-		}
-	}
+func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -133,6 +139,23 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
+		Kind:       permission.PermAppAdminQuota,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	limit, err := strconv.Atoi(r.FormValue("limit"))
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid limit",
+		}
 	}
 	return app.ChangeQuota(&a, limit)
 }

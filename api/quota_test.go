@@ -15,6 +15,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -143,18 +145,24 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(user.Quota.Limit, check.Equals, 40)
 	c.Assert(user.Quota.InUse, check.Equals, 2)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
+		Owner:  s.token.GetUserName(),
+		Kind:   "user.update.quota",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":email", "value": user.Email},
+			{"name": "limit", "value": "40"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	user := &auth.User{
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	_, err = nativeScheme.Create(user)
+	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	body := bytes.NewBufferString("limit=40")
@@ -168,6 +176,13 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
 }
 
 func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
+	user := &auth.User{
+		Email:    "radio@gaga.com",
+		Password: "qwe123",
+		Quota:    quota.Quota{Limit: 4, InUse: 2},
+	}
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
 	values := []string{"four", ""}
 	for _, value := range values {
 		body := bytes.NewBufferString("limit=" + value)
@@ -179,6 +194,16 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 		handler.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "Invalid limit\n")
+		c.Assert(eventtest.EventDesc{
+			Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
+			Owner:  s.token.GetUserName(),
+			Kind:   "user.update.quota",
+			StartCustomData: []map[string]interface{}{
+				{"name": ":email", "value": user.Email},
+				{"name": "limit", "value": value},
+			},
+			ErrorMatches: `Invalid limit`,
+		}, eventtest.HasEvent)
 	}
 }
 
@@ -284,6 +309,15 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Quota.InUse, check.Equals, 2)
 	c.Assert(a.Quota.Limit, check.Equals, 40)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.admin.quota",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+			{"name": "limit", "value": "40"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
@@ -319,6 +353,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 	app := app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},
+		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -334,6 +369,16 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 		handler.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "Invalid limit\n")
+		c.Assert(eventtest.EventDesc{
+			Target: event.Target{Type: event.TargetTypeApp, Value: app.Name},
+			Owner:  s.token.GetUserName(),
+			Kind:   "app.admin.quota",
+			StartCustomData: []map[string]interface{}{
+				{"name": ":appname", "value": app.Name},
+				{"name": "limit", "value": value},
+			},
+			ErrorMatches: `Invalid limit`,
+		}, eventtest.HasEvent)
 	}
 }
 
