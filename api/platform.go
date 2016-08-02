@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -26,8 +27,7 @@ import (
 //   200: Platform created
 //   400: Invalid data
 //   401: Unauthorized
-func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
+func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	name := r.FormValue("name")
 	file, _, _ := r.FormFile("dockerfile_content")
 	if file != nil {
@@ -45,16 +45,24 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err := app.PlatformAdd(provision.PlatformOptions{
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:       permission.PermPlatformCreate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = app.PlatformAdd(provision.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
 		Output: writer,
 	})
 	if err != nil {
-		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
-		writer.Write([]byte("Failed to add platform!\n"))
-		return nil
+		return err
 	}
 	writer.Write([]byte("Platform successfully added!\n"))
 	return nil
@@ -68,8 +76,8 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Platform updated
 //   401: Unauthorized
 //   404: Not found
-func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	defer r.Body.Close()
+func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	file, _, _ := r.FormFile("dockerfile_content")
 	if file != nil {
@@ -87,7 +95,17 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	err := app.PlatformUpdate(provision.PlatformOptions{
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:       permission.PermPlatformUpdate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = app.PlatformUpdate(provision.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
@@ -97,9 +115,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if err != nil {
-		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
-		writer.Write([]byte("Failed to update platform!\n"))
-		return nil
+		return err
 	}
 	writer.Write([]byte("Platform successfully updated!\n"))
 	return nil
@@ -112,13 +128,24 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //   200: Platform removed
 //   401: Unauthorized
 //   404: Not found
-func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
 	if !canDeletePlatform {
 		return permission.ErrUnauthorized
 	}
 	name := r.URL.Query().Get(":name")
-	err := app.PlatformRemove(name)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:       permission.PermPlatformDelete,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = app.PlatformRemove(name)
 	if err == app.ErrPlatformNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

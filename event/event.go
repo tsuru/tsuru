@@ -61,6 +61,7 @@ var (
 	TargetTypeUser            = TargetType("user")
 	TargetTypeIaas            = TargetType("iaas")
 	TargetTypeRole            = TargetType("role")
+	TargetTypePlatform        = TargetType("platform")
 )
 
 type ErrThrottled struct {

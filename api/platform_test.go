@@ -19,6 +19,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -97,6 +99,15 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlatform, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "platform.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "test"},
+			{"name": "dockerfile", "value": dockerfileURL},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
@@ -126,6 +137,15 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlatform, Value: "wat"},
+		Owner:  token.GetUserName(),
+		Kind:   "platform.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "wat"},
+			{"name": "dockerfile", "value": dockerfileURL},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
@@ -139,13 +159,16 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
-	dockerfileURL := ""
-	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
-	request, err := http.NewRequest("PUT", "/platforms/wat?disabled=true", strings.NewReader(body))
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("dockerfile", "")
+	writer.WriteField("disabled", "true")
+	writer.Close()
+	request, err := http.NewRequest("PUT", "/platforms/wat", &buf)
 	c.Assert(err, check.IsNil)
 	token := createToken(c)
 	request.Header.Add("Authorization", "b "+token.GetValue())
-	request.Header.Add("Content-Type", "multipart/form-data")
+	request.Header.Add("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
@@ -154,6 +177,15 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlatform, Value: "wat"},
+		Owner:  token.GetUserName(),
+		Kind:   "platform.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "wat"},
+			{"name": "disabled", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
@@ -168,9 +200,13 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := "http://localhost/Dockerfile"
-	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
-	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
-	request.Header.Add("Content-Type", "multipart/form-data")
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("dockerfile", dockerfileURL)
+	writer.WriteField("disabled", "true")
+	writer.Close()
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
@@ -178,6 +214,16 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlatform, Value: "wat"},
+		Owner:  token.GetUserName(),
+		Kind:   "platform.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "wat"},
+			{"name": "disabled", "value": "true"},
+			{"name": "dockerfile", "value": dockerfileURL},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
@@ -192,16 +238,20 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := ""
-	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
-	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
-	request.Header.Add("Content-Type", "multipart/form-data")
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("dockerfile", dockerfileURL)
+	writer.WriteField("disabled", "false")
+	writer.Close()
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
 	token := createToken(c)
 	result := platformUpdate(recorder, request, token)
 	c.Assert(result, check.IsNil)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
+	c.Assert(msg.Error, check.Equals, "")
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
@@ -287,6 +337,14 @@ func (*PlatformSuite) TestPlatformRemove(c *check.C) {
 	token := createToken(c)
 	err = platformRemove(recorder, request, token)
 	c.Assert(err, check.IsNil)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlatform, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "platform.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "test"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformList(c *check.C) {
