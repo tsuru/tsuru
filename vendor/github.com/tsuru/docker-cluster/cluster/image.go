@@ -121,7 +121,7 @@ func deleteImage(url string) (*http.Response, error) {
 		return nil, err
 	}
 	request.Close = true
-	rsp, err := timeout10Client.Do(request)
+	rsp, err := clientWithTimeout(defaultDialTimeout, defaultTimeout, nil).Do(request)
 	if err == nil {
 		rsp.Body.Close()
 	}
