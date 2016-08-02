@@ -241,6 +241,7 @@ type Opts struct {
 	RawOwner     Owner
 	Cancelable   bool
 	CustomData   interface{}
+	DisableLock  bool
 }
 
 func (e *Event) String() string {
@@ -586,9 +587,16 @@ func newEvt(opts *Opts) (*Event, error) {
 	if err != nil {
 		return nil, err
 	}
+	uniqID := bson.NewObjectId()
+	var id eventID
+	if opts.DisableLock {
+		id.ObjId = uniqID
+	} else {
+		id.Target = opts.Target
+	}
 	evt := Event{eventData: eventData{
-		ID:              eventID{Target: opts.Target},
-		UniqueID:        bson.NewObjectId(),
+		ID:              id,
+		UniqueID:        uniqID,
 		Target:          opts.Target,
 		StartTime:       now,
 		Kind:            k,
@@ -602,7 +610,9 @@ func newEvt(opts *Opts) (*Event, error) {
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)
 		if err == nil {
-			updater.addCh <- &opts.Target
+			if !opts.DisableLock {
+				updater.addCh <- &opts.Target
+			}
 			return &evt, nil
 		}
 		if mgo.IsDup(err) {
@@ -769,6 +779,9 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	err = coll.FindId(e.ID).One(&dbEvt.eventData)
 	if err == nil {
 		e.OtherCustomData = dbEvt.OtherCustomData
+	}
+	if len(e.ID.ObjId) != 0 {
+		return coll.UpdateId(e.ID, e.eventData)
 	}
 	defer coll.RemoveId(e.ID)
 	e.ID = eventID{ObjId: e.UniqueID}

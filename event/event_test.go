@@ -142,6 +142,51 @@ func (s *S) TestNewLocks(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `event locked: app\(myapp\) running "app.update.env.set" start by user me@me.com at .+`)
 }
 
+func (s *S) TestNewDoneDisableLock(c *check.C) {
+	evt, err := New(&Opts{
+		Target:      Target{Type: "app", Value: "myapp"},
+		Kind:        permission.PermAppUpdateEnvSet,
+		Owner:       s.token,
+		DisableLock: true,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
+	expected := &Event{eventData: eventData{
+		ID:             eventID{ObjId: evt.UniqueID},
+		UniqueID:       evt.UniqueID,
+		Target:         Target{Type: "app", Value: "myapp"},
+		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
+		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
+		Running:        true,
+		StartTime:      evt.StartTime,
+		LockUpdateTime: evt.LockUpdateTime,
+	}}
+	c.Assert(evt, check.DeepEquals, expected)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
+	evts[0].StartTime = expected.StartTime
+	evts[0].LockUpdateTime = expected.LockUpdateTime
+	c.Assert(&evts[0], check.DeepEquals, expected)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	evts, err = All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].LockUpdateTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	evts[0].EndTime = time.Time{}
+	evts[0].StartTime = expected.StartTime
+	evts[0].LockUpdateTime = expected.LockUpdateTime
+	expected.Running = false
+	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
+	c.Assert(&evts[0], check.DeepEquals, expected)
+}
+
 func (s *S) TestNewLockExpired(c *check.C) {
 	oldLockExpire := lockExpireTimeout
 	lockExpireTimeout = time.Millisecond
