@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
@@ -43,6 +45,16 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "pool1"},
+			{"name": "default", "value": "true"},
+		},
+		ErrorMatches: `Default pool already exists\.`,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddPool(c *check.C) {
@@ -72,6 +84,23 @@ func (s *S) TestAddPool(c *check.C) {
 	pools, err = provision.ListPools(bson.M{"_id": "pool2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(pools[0].Public, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "pool1"},
+		},
+	}, eventtest.HasEvent)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool2"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "pool2"},
+			{"name": "public", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRemovePoolNotFound(c *check.C) {
@@ -100,6 +129,14 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(p, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "pool1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddTeamsToPoolWithoutTeam(c *check.C) {
@@ -137,6 +174,15 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.update.team.add",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "pool1"},
+			{"name": "team", "value": "test"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestAddTeamsToPoolNotFound(c *check.C) {
@@ -197,6 +243,15 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	err = s.conn.Pools().FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Teams, check.DeepEquals, []string{})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.update.team.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "pool1"},
+			{"name": "team", "value": "test"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPoolListPublicPool(c *check.C) {
@@ -334,6 +389,15 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(p[0].Public, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "pool1"},
+			{"name": "public", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {

@@ -12,6 +12,8 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -34,6 +36,18 @@ func (s *S) TestPlanAdd(c *check.C) {
 	c.Assert(plans, check.DeepEquals, []app.Plan{
 		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100, Router: "fake"},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "plan.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "xyz"},
+			{"name": "memory", "value": "9223372036854775807"},
+			{"name": "swap", "value": "1024"},
+			{"name": "cpushare", "value": "100"},
+			{"name": "router", "value": "fake"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
@@ -132,6 +146,18 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	m = RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "plan.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "xyz"},
+			{"name": "memory", "value": "9223372036854775807"},
+			{"name": "swap", "value": "2"},
+			{"name": "cpushare", "value": "3"},
+		},
+		ErrorMatches: `plan already exists`,
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPlanListEmpty(c *check.C) {
@@ -191,6 +217,14 @@ func (s *S) TestPlanRemove(c *check.C) {
 	c.Assert(plans, check.DeepEquals, []app.Plan{
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlan, Value: "plan1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "plan.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":planname", "value": "plan1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPlanRemoveNoPermission(c *check.C) {

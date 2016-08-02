@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/router"
 )
@@ -25,7 +26,7 @@ import (
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Plan already exists
-func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	cpuShare, _ := strconv.Atoi(r.FormValue("cpushare"))
 	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
 	memory := getSize(r.FormValue("memory"))
@@ -42,7 +43,17 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err := plan.Save()
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePlan, Value: plan.Name},
+		Kind:       permission.PermPlanCreate,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = plan.Save()
 	if _, ok := err.(app.PlanValidationError); ok {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -94,13 +105,24 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Plan removed
 //   401: Unauthorized
 //   404: Plan not found
-func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	allowed := permission.Check(t, permission.PermPlanDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	planName := r.URL.Query().Get(":planname")
-	err := app.PlanRemove(planName)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePlan, Value: planName},
+		Kind:       permission.PermPlanDelete,
+		Owner:      t,
+		CustomData: formToEvents(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = app.PlanRemove(planName)
 	if err == app.ErrPlanNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
