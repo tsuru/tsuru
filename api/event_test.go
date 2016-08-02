@@ -693,6 +693,32 @@ func (s *EventSuite) TestEventInfoAppPermission(c *check.C) {
 	c.Assert(result.Target, check.DeepEquals, evt.Target)
 }
 
+func (s *EventSuite) TestEventInfoUnmappedTarget(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	a := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: "invalid-type", Value: "something"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
 func (s *EventSuite) TestEventInfoAppWithoutPermission(c *check.C) {
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
@@ -1259,6 +1285,34 @@ func (s *EventSuite) TestEventCancelAppPermission(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventCancelUnmappedTarget(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	a := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
+	usr, err := token.User()
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, usr)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: "invalid-type", Value: "something"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("reason=we ain't gonna take it")
+	u := fmt.Sprintf("/events/%s/cancel", evt.UniqueID.Hex())
+	request, err := http.NewRequest("POST", u, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *EventSuite) TestEventCancelAppWithoutPermission(c *check.C) {

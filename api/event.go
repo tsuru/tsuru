@@ -508,7 +508,11 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	hasPermission, err := evtPermMap[e.Target.Type].check(t, r, e, readCheckKind)
+	checker := evtPermMap[e.Target.Type]
+	if checker == nil {
+		return permission.ErrUnauthorized
+	}
+	hasPermission, err := checker.check(t, r, e, readCheckKind)
 	if err != nil {
 		return err
 	}
@@ -542,7 +546,11 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if reason == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is mandatory"}
 	}
-	hasPermission, err := evtPermMap[e.Target.Type].check(t, r, e, updateCheckKind)
+	checker := evtPermMap[e.Target.Type]
+	if checker == nil {
+		return permission.ErrUnauthorized
+	}
+	hasPermission, err := checker.check(t, r, e, updateCheckKind)
 	if err != nil {
 		return err
 	}
