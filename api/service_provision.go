@@ -260,16 +260,21 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     serviceTarget(s.Name),
-		Kind:       permission.PermServiceUpdateProxy,
-		Owner:      t,
-		CustomData: formToEvents(r.Form),
-	})
-	if err != nil {
-		return err
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		evt, err := event.New(&event.Opts{
+			Target: serviceTarget(s.Name),
+			Kind:   permission.PermServiceUpdateProxy,
+			Owner:  t,
+			CustomData: append(formToEvents(r.Form), map[string]interface{}{
+				"name":  "method",
+				"value": r.Method,
+			}),
+		})
+		if err != nil {
+			return err
+		}
+		defer func() { evt.Done(err) }()
 	}
-	defer func() { evt.Done(err) }()
 	path := r.URL.Query().Get("callback")
 	return service.Proxy(&s, path, w, r)
 }

@@ -1553,11 +1553,50 @@ func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
 	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
+}
+
+func (s *ConsumptionSuite) TestServiceInstanceProxyPost(c *check.C) {
+	var proxyedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si, "")
+	url := fmt.Sprintf("/services/%s/proxy/%s?callback=/mypath", si.ServiceName, si.Name)
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	m := RunServer(true)
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
+	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("foo", "foo-instance"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service-instance.update.proxy",
 		StartCustomData: []map[string]interface{}{
 			{"name": "callback", "value": "/mypath"},
+			{"name": "method", "value": "POST"},
 		},
 	}, eventtest.HasEvent)
 }

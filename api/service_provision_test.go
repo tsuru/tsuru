@@ -419,12 +419,55 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
 	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
+}
+
+func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
+	var proxyedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si, "")
+	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
+	s.m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Method, check.Equals, "POST")
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
+	c.Assert(eventtest.EventDesc{
 		Target: serviceTarget("foo"),
 		Owner:  s.token.GetUserName(),
 		Kind:   "service.update.proxy",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":service", "value": "foo"},
 			{"name": "callback", "value": "/mypath"},
+			{"name": "method", "value": "POST"},
 		},
 	}, eventtest.HasEvent)
 }
