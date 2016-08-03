@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/tsurutest"
 	"golang.org/x/net/websocket"
@@ -61,6 +62,50 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
 	c.Assert(shells[0].Unit, check.Equals, "")
+}
+
+func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
+	a := app.App{
+		Name:     "someapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.logConn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	m := RunServer(true)
+	server := httptest.NewServer(m)
+	defer server.Close()
+	testServerURL, err := url.Parse(server.URL)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm", testServerURL.Host, a.Name)
+	config, err := websocket.NewConfig(url, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	config.Header.Set("Authorization", "bearer "+token.GetValue())
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte("echo test"))
+	c.Assert(err, check.IsNil)
+	var result string
+	err = tsurutest.WaitCondition(5*time.Second, func() bool {
+		part, readErr := ioutil.ReadAll(wsConn)
+		if readErr != nil {
+			return false
+		}
+		result += string(part)
+		return result == "Error: You don't have permission to do this action\n"
+	})
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAppShellSpecifyUnit(c *check.C) {

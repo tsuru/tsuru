@@ -49,6 +49,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.read.log",
 	"app.delete",
 	"app.run",
+	"app.run.shell",
 	"app.admin.unlock",
 	"app.admin.routes",
 	"app.admin.quota",

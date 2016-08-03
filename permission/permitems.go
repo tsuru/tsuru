@@ -30,6 +30,7 @@ var (
 	PermAppReadLog                       = PermissionRegistry.get("app.read.log")                        // [global app team pool]
 	PermAppReadMetric                    = PermissionRegistry.get("app.read.metric")                     // [global app team pool]
 	PermAppRun                           = PermissionRegistry.get("app.run")                             // [global app team pool]
+	PermAppRunShell                      = PermissionRegistry.get("app.run.shell")                       // [global app team pool]
 	PermAppUpdate                        = PermissionRegistry.get("app.update")                          // [global app team pool]
 	PermAppUpdateBind                    = PermissionRegistry.get("app.update.bind")                     // [global app team pool]
 	PermAppUpdateCname                   = PermissionRegistry.get("app.update.cname")                    // [global app team pool]
