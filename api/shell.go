@@ -32,6 +32,10 @@ type cmdLogger struct {
 }
 
 func (l *cmdLogger) Read(p []byte) (n int, err error) {
+	// XXX(cezarsa): this way of capturing executed commands is ugly, unreliable
+	// and error prone. It's here as a proof of concept and it's probably better
+	// than nothing. I will think about a better approach to this in the future.
+	// For now, I already spent too much time tweaking this code.
 	n, err = l.base.Read(p)
 	if err != nil || n == 0 {
 		return
