@@ -239,9 +239,9 @@ type Opts struct {
 	InternalKind string
 	Owner        auth.Token
 	RawOwner     Owner
-	Cancelable   bool
 	CustomData   interface{}
 	DisableLock  bool
+	Cancelable   bool
 }
 
 func (e *Event) String() string {
