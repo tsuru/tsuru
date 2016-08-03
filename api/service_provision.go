@@ -260,7 +260,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+	if r.Method != httpMethodGet && r.Method != httpMethodHead {
 		evt, err := event.New(&event.Opts{
 			Target: serviceTarget(s.Name),
 			Kind:   permission.PermServiceUpdateProxy,
