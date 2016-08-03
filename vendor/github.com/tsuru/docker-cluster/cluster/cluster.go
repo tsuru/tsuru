@@ -629,6 +629,7 @@ func (c *Cluster) runHookForAddr(evt HookEvent, address string) error {
 	if err != nil {
 		return err
 	}
+	node.tlsConfig = c.tlsConfig
 	return c.runHooks(evt, &node)
 }
 
