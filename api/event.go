@@ -371,20 +371,22 @@ func (c *nodePermChecker) filter(t auth.Token) (*event.TargetFilter, error) {
 func (c *nodePermChecker) check(t auth.Token, r *http.Request, e *event.Event, kind checkKind) (bool, error) {
 	var hasPermission bool
 	if nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner); ok {
+		var ctx []permission.PermissionContext
 		nodes, err := nodeProvisioner.ListNodes([]string{e.Target.Value})
 		if err != nil {
 			return false, err
 		}
 		if len(nodes) > 0 {
-			perms := map[checkKind]*permission.PermissionScheme{
-				readCheckKind:   permission.PermPoolReadEvents,
-				updateCheckKind: permission.PermPoolUpdateEvents,
-			}
-			hasPermission = permission.Check(
-				t, perms[kind],
-				permission.Context(permission.CtxPool, nodes[0].Pool()),
-			)
+			ctx = append(ctx, permission.Context(permission.CtxPool, nodes[0].Pool()))
 		}
+		perms := map[checkKind]*permission.PermissionScheme{
+			readCheckKind:   permission.PermPoolReadEvents,
+			updateCheckKind: permission.PermPoolUpdateEvents,
+		}
+		hasPermission = permission.Check(
+			t, perms[kind],
+			ctx...,
+		)
 	}
 	return hasPermission, nil
 }

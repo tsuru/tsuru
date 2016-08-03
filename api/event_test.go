@@ -1136,6 +1136,32 @@ func (s *EventSuite) TestEventInfoNodePermission(c *check.C) {
 	c.Assert(result.Target, check.DeepEquals, evt.Target)
 }
 
+func (s *EventSuite) TestEventInfoNodePermissionNodeNotFound(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermPoolRead,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeNode, Value: "mynode"},
+		Owner:  s.token,
+		Kind:   permission.PermAppDeploy,
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
 func (s *EventSuite) TestEventInfoNodeWithoutPermission(c *check.C) {
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
