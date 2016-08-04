@@ -275,6 +275,7 @@ type Filter struct {
 	IncludeRemoved bool
 	Raw            bson.M
 	AllowedTargets []TargetFilter
+	ErrorOnly      bool
 
 	Limit int
 	Skip  int
@@ -338,6 +339,9 @@ func (f *Filter) toQuery() (bson.M, error) {
 	}
 	if !f.IncludeRemoved {
 		query["removedate"] = bson.M{"$exists": false}
+	}
+	if f.ErrorOnly {
+		query["error"] = bson.M{"$ne": ""}
 	}
 	if f.Raw != nil {
 		for k, v := range f.Raw {

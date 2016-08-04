@@ -5,6 +5,7 @@
 package event_test
 
 import (
+	"errors"
 	"time"
 
 	"github.com/tsuru/config"
@@ -96,9 +97,11 @@ func (s *S) TestListFilterMany(c *check.C) {
 	err := event.MarkAsRemoved(event.Target{Type: "nodex", Value: "http://10.0.1.3"})
 	c.Assert(err, check.IsNil)
 	allEvts[len(allEvts)-2].Done(nil)
+	allEvts[len(allEvts)-3].Done(errors.New("my err"))
 	checkFilters(&event.Filter{Sort: "_id"}, allEvts[:len(allEvts)-1])
-	checkFilters(&event.Filter{Running: boolPtr(false)}, allEvts[len(allEvts)-2])
-	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-2])
+	checkFilters(&event.Filter{Running: boolPtr(false), Sort: "_id"}, allEvts[len(allEvts)-3:len(allEvts)-1])
+	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-3])
+	checkFilters(&event.Filter{ErrorOnly: true, Sort: "_id"}, allEvts[len(allEvts)-3])
 	checkFilters(&event.Filter{Target: event.Target{Type: "app"}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[1]})
 	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "myapp"}}, allEvts[0])
 	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
