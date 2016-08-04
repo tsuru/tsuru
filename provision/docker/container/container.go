@@ -22,12 +22,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	portRangeStart    = 49153
-	portRangeEnd      = 65535
-	portAllocMaxTries = 15
-)
-
 type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
 	Collection() *storage.Collection
