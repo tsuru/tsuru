@@ -5,8 +5,10 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/io"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
 )
@@ -175,9 +177,9 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	allowed := permission.Check(t, permission.PermServiceInstanceDelete,
 		append(permission.Contexts(permission.CtxTeam, serviceInstance.Teams),
@@ -529,6 +531,23 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(plans)
 }
 
+func parseFormPreserveBody(r *http.Request) {
+	var buf bytes.Buffer
+	var readCloser struct {
+		io.Reader
+		io.Closer
+	}
+	if r.Body != nil {
+		readCloser.Reader = io.TeeReader(r.Body, &buf)
+		readCloser.Closer = r.Body
+		r.Body = &readCloser
+	}
+	r.ParseForm()
+	if buf.Len() > 0 {
+		readCloser.Reader = &buf
+	}
+}
+
 // title: service instance proxy
 // path: /services/{service}/proxy/{instance}
 // method: "*"
@@ -536,7 +555,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Instance not found
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
+	parseFormPreserveBody(r)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)

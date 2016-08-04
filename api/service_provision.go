@@ -246,7 +246,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   401: Unauthorized
 //   404: Service not found
 func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
+	parseFormPreserveBody(r)
 	serviceName := r.URL.Query().Get(":service")
 	s, err := getService(serviceName)
 	if err != nil {
