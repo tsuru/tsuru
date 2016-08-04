@@ -65,6 +65,10 @@ var (
 	TargetTypePlan            = TargetType("plan")
 )
 
+const (
+	filterMaxLimit = 100
+)
+
 type ErrThrottled struct {
 	Spec   *ThrottlingSpec
 	Target Target
@@ -280,8 +284,8 @@ type Filter struct {
 func (f *Filter) PruneUserValues() {
 	f.Raw = nil
 	f.AllowedTargets = nil
-	if f.Limit > 100 || f.Limit <= 0 {
-		f.Limit = 100
+	if f.Limit > filterMaxLimit || f.Limit <= 0 {
+		f.Limit = filterMaxLimit
 	}
 }
 
@@ -405,12 +409,13 @@ func All() ([]Event, error) {
 }
 
 func List(filter *Filter) ([]Event, error) {
-	limit := 100
+	limit := 0
 	skip := 0
 	var query bson.M
 	var err error
 	sort := "-starttime"
 	if filter != nil {
+		limit = filterMaxLimit
 		if filter.Limit != 0 {
 			limit = filter.Limit
 		}
@@ -626,6 +631,30 @@ func newEvt(opts *Opts) (*Event, error) {
 		}
 	}
 	return nil, err
+}
+
+func (e *Event) RawInsert(start, other, end interface{}) error {
+	e.ID = eventID{ObjId: e.UniqueID}
+	var err error
+	e.StartCustomData, err = makeBSONRaw(start)
+	if err != nil {
+		return err
+	}
+	e.OtherCustomData, err = makeBSONRaw(other)
+	if err != nil {
+		return err
+	}
+	e.EndCustomData, err = makeBSONRaw(end)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	return coll.Insert(e.eventData)
 }
 
 func (e *Event) Abort() error {

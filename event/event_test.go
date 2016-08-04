@@ -618,3 +618,24 @@ func (s *S) TestGetTargetType(c *check.C) {
 		c.Check(err, check.Equals, t.err)
 	}
 }
+
+func (s *S) TestEventRawInsert(c *check.C) {
+	now := time.Unix(time.Now().Unix(), 0)
+	evt := &Event{eventData: eventData{
+		UniqueID:  bson.NewObjectId(),
+		Target:    Target{Type: "app", Value: "myapp"},
+		Owner:     Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
+		Kind:      Kind{Type: KindTypePermission, Name: "app.update.env.set"},
+		StartTime: now,
+		EndTime:   now.Add(10 * time.Second),
+		Error:     "err x",
+		Log:       "my log",
+	}}
+	err := evt.RawInsert(nil, nil, nil)
+	c.Assert(err, check.IsNil)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	evt.ID = eventID{ObjId: evt.UniqueID}
+	c.Assert(&evts[0], check.DeepEquals, evt)
+}
