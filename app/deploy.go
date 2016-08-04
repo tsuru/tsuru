@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -267,4 +268,49 @@ func incrementDeploy(app *App) error {
 		app.Deploys += 1
 	}
 	return err
+}
+
+func deployDataToEvent(data *DeployData) error {
+	var evt event.Event
+	evt.UniqueID = data.ID
+	evt.Target = event.Target{Type: event.TargetTypeApp, Value: data.App}
+	evt.Owner = event.Owner{Type: event.OwnerTypeUser, Name: data.User}
+	evt.Kind = event.Kind{Type: event.KindTypePermission, Name: permission.PermAppDeploy.FullName()}
+	evt.StartTime = data.Timestamp
+	evt.EndTime = data.Timestamp.Add(data.Duration)
+	evt.Error = data.Error
+	evt.Log = data.Log
+	evt.RemoveDate = data.RemoveDate
+	startOpts := DeployOptions{
+		Commit: data.Commit,
+		Origin: data.Origin,
+	}
+	var otherData map[string]string
+	if data.Diff != "" {
+		otherData = map[string]string{"diff": data.Diff}
+	}
+	endData := map[string]string{"image": data.Image}
+	err := evt.RawInsert(startOpts, otherData, endData)
+	if mgo.IsDup(err) {
+		return nil
+	}
+	return err
+}
+
+func MigrateDeploysToEvents() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	oldDeploysColl := conn.Collection("deploys")
+	iter := oldDeploysColl.Find(nil).Iter()
+	var data DeployData
+	for iter.Next(&data) {
+		err = deployDataToEvent(&data)
+		if err != nil {
+			return err
+		}
+	}
+	return iter.Close()
 }

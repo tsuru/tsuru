@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -754,4 +755,58 @@ func (s *S) TestDeployKind(c *check.C) {
 		c.Check(t.input.GetKind(), check.Equals, t.expected)
 		c.Check(t.input.Kind, check.Equals, t.expected)
 	}
+}
+
+func (s *S) TestMigrateDeploysToEvents(c *check.C) {
+	a := App{Name: "g1"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	now := time.Unix(time.Now().Unix(), 0)
+	insert := []DeployData{
+		{
+			App:       "g1",
+			Timestamp: now.Add(-3600 * time.Second),
+			Log:       "logs",
+			Diff:      "diff",
+			Duration:  10 * time.Second,
+			Commit:    "c1",
+			Error:     "e1",
+			Origin:    "app-deploy",
+			User:      "admin@example.com",
+		},
+		{
+			App:       "g1",
+			Timestamp: now,
+			Log:       "logs",
+			Diff:      "diff",
+			Duration:  10 * time.Second,
+			Commit:    "c2",
+			Error:     "e2",
+			Origin:    "app-deploy",
+			User:      "admin@example.com",
+		},
+	}
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	oldDeploysColl := conn.Collection("deploys")
+	for _, data := range insert {
+		err = oldDeploysColl.Insert(data)
+		c.Assert(err, check.IsNil)
+	}
+	err = MigrateDeploysToEvents()
+	c.Assert(err, check.IsNil)
+	deploys, err := ListDeploys(nil, 0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(deploys, check.HasLen, 2)
+	for i := range deploys {
+		id := deploys[i].ID
+		var d *DeployData
+		d, err = GetDeploy(id.Hex())
+		c.Assert(err, check.IsNil)
+		deploys[i] = *d
+	}
+	normalizeTS(deploys)
+	normalizeTS(insert)
+	c.Assert(deploys, check.DeepEquals, []DeployData{insert[1], insert[0]})
 }
