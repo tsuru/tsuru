@@ -273,9 +273,9 @@ type Filter struct {
 	Until          time.Time
 	Running        *bool
 	IncludeRemoved bool
+	ErrorOnly      bool
 	Raw            bson.M
 	AllowedTargets []TargetFilter
-	ErrorOnly      bool
 
 	Limit int
 	Skip  int
