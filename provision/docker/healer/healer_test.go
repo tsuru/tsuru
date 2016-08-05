@@ -7,10 +7,17 @@ package healer
 import (
 	"time"
 
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/event/eventtest"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func mongoTime(t time.Time) time.Time {
+	return time.Unix(0, int64((time.Duration(t.UnixNano())/time.Millisecond)*time.Millisecond))
+}
 
 func (s *S) TestListHealingHistory(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
@@ -30,22 +37,62 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evts, err := ListHealingHistory("")
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, eventtest.EvtEquals, []HealingEvent{
+	c.Assert(evts, check.DeepEquals, []HealingEvent{
 		{
 			ID:         evt2.UniqueID,
-			StartTime:  evt2.StartTime,
-			EndTime:    evt2.EndTime,
+			StartTime:  mongoTime(evt2.StartTime),
+			EndTime:    mongoTime(evt2.EndTime),
 			Action:     "container-healing",
 			Successful: true,
 			Error:      "",
 		},
 		{
 			ID:         evt1.UniqueID,
-			StartTime:  evt1.StartTime,
-			EndTime:    evt1.EndTime,
+			StartTime:  mongoTime(evt1.StartTime),
+			EndTime:    mongoTime(evt1.EndTime),
 			Action:     "node-healing",
 			Successful: true,
 			Error:      "",
 		},
 	})
+}
+
+func (s *S) TestMigrateHealingToEvents(c *check.C) {
+	now := mongoTime(time.Now())
+	evts := []HealingEvent{
+		{
+			ID:               bson.NewObjectId(),
+			StartTime:        now.Add(-time.Minute),
+			EndTime:          now,
+			Action:           "container-healing",
+			Successful:       false,
+			Error:            "x",
+			FailingContainer: container.Container{ID: "c1"},
+			CreatedContainer: container.Container{ID: "c2"},
+		},
+		{
+			ID:          bson.NewObjectId(),
+			StartTime:   now,
+			EndTime:     now.Add(time.Minute),
+			Action:      "node-healing",
+			Successful:  false,
+			Error:       "y",
+			FailingNode: cluster.Node{Address: "addr1", Metadata: map[string]string{}},
+			CreatedNode: cluster.Node{Address: "addr2", Metadata: map[string]string{}},
+			Reason:      "r2",
+			Extra:       &nodeChecks{Time: now, Checks: []provision.NodeCheckResult{{Name: "a"}}},
+		},
+	}
+	coll, err := oldHealingCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	for _, evt := range evts {
+		err = coll.Insert(evt)
+		c.Assert(err, check.IsNil)
+	}
+	err = MigrateHealingToEvents()
+	c.Assert(err, check.IsNil)
+	dbEvts, err := ListHealingHistory("")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbEvts, check.DeepEquals, []HealingEvent{evts[1], evts[0]})
 }
