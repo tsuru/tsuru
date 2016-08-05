@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -51,6 +52,10 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-events-deploy", app.MigrateDeploysToEvents)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
+	err = migration.Register("migrate-events-healer", healer.MigrateHealingToEvents)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
