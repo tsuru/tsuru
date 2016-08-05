@@ -293,7 +293,7 @@ func (s *S) TestIfTargetLabelExists(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	mustBeTrueIfExist, err := checkIfTargetLabelExists("default")
+	mustBeTrueIfExist, err := CheckIfTargetLabelExists("default")
 	c.Assert(err, check.IsNil)
 	c.Assert(mustBeTrueIfExist, check.Equals, true)
 }
@@ -304,7 +304,7 @@ func (s *S) TestIfTargetLabelDoesNotExist(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	mustBeFalse, err := checkIfTargetLabelExists("doesnotexist")
+	mustBeFalse, err := CheckIfTargetLabelExists("doesnotexist")
 	c.Assert(err, check.IsNil)
 	c.Assert(mustBeFalse, check.Equals, false)
 }

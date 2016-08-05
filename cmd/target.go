@@ -214,7 +214,7 @@ func resetTargetList() error {
 func writeOnTargetList(label string, target string) error {
 	label = strings.TrimSpace(label)
 	target = strings.TrimSpace(target)
-	targetExist, err := checkIfTargetLabelExists(label)
+	targetExist, err := CheckIfTargetLabelExists(label)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func writeOnTargetList(label string, target string) error {
 	return nil
 }
 
-func checkIfTargetLabelExists(label string) (bool, error) {
+func CheckIfTargetLabelExists(label string) (bool, error) {
 	targets, err := getTargets()
 	if err != nil {
 		return false, err
@@ -391,7 +391,7 @@ func (t *targetSet) Run(ctx *Context, client *Client) error {
 		return errors.New("Invalid arguments")
 	}
 	targetLabelToSet := strings.TrimSpace(ctx.Args[0])
-	labelExist, err := checkIfTargetLabelExists(targetLabelToSet)
+	labelExist, err := CheckIfTargetLabelExists(targetLabelToSet)
 	if !labelExist {
 		return errors.New("Target not found")
 	}
