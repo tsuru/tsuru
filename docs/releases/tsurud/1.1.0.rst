@@ -8,8 +8,8 @@ tsurud 1.1.0 release notes
 
 Welcome to tsurud 1.1.0!
 
-These release notes cover the :ref:`new features <new-1.1.0>`,
-:ref:`bug fixes <bug-1.1.0>`.
+These release notes cover the :ref:`new features <new-1.1.0>`, :ref:`bug fixes
+<bug-1.1.0>` and :ref:`required migrations <migrations-1.1.0>`.
 
 .. _new-1.1.0:
 
@@ -22,6 +22,16 @@ New features
 * Support for cancelable events, right now, only the deploy event is cancelable.
   This means users can use the ``tsuru event-cancel`` command to ask for the
   cancelation of a deploy. tsuru will do it's best to try cancelling it.
+
+.. _migrations-1.1.0:
+
+Required migrations
+===================
+
+* Due to the new event tracking system, simply installing the new version of
+  tsurud will cause deploy list and healing list to be empty. Running ``tsurud
+  migrate`` will fix this by migrating deploys and healings to the new event
+  system.
 
 .. _bug-1.1.0:
 
