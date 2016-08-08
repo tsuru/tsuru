@@ -113,9 +113,9 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 		if resp.StatusCode < 300 {
 			return nil
 		}
-	}
-	if resp.StatusCode == http.StatusConflict {
-		return ErrInstanceAlreadyExistsInAPI
+		if resp.StatusCode == http.StatusConflict {
+			return ErrInstanceAlreadyExistsInAPI
+		}
 	}
 	msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 	log.Error(msg)
@@ -155,7 +155,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		return nil, fmt.Errorf("%s api is down.", instance.Name)
 	}
 	defer resp.Body.Close()
-	if resp != nil && resp.StatusCode == http.StatusNotFound {
+	if resp.StatusCode == http.StatusNotFound {
 		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	}
 	if err != nil {
@@ -163,7 +163,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 		return nil, fmt.Errorf("%s api is down.", instance.Name)
 	}
 	defer resp.Body.Close()
-	if err == nil && resp.StatusCode < 300 {
+	if resp.StatusCode < 300 {
 		var result map[string]string
 		err = c.jsonFromResponse(resp, &result)
 		if err != nil {

@@ -97,6 +97,13 @@ func (s *S) TestEndpointCreate(c *check.C) {
 	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
 }
 
+func (s *S) TestEndpointCreateEndpointDown(c *check.C) {
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam", Description: "xyz"}
+	client := &Client{endpoint: "http://127.0.0.1:19999", username: "user", password: "abcde"}
+	err := client.Create(&instance, "my@user", "Request-ID")
+	c.Assert(err, check.ErrorMatches, `Failed to create the instance my-redis: Post http://127.0.0.1:19999/resources: dial tcp 127.0.0.1:19999: getsockopt: connection refused`)
+}
+
 func (s *S) TestEndpointCreatePlans(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
