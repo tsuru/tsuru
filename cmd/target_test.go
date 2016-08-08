@@ -29,7 +29,7 @@ func (s *S) TestWriteTarget(c *check.C) {
 		fsystem = nil
 	}()
 	os.Unsetenv("TSURU_TARGET")
-	err := writeTarget("http://tsuru.globo.com")
+	err := WriteTarget("http://tsuru.globo.com")
 	c.Assert(err, check.IsNil)
 	filePath := path.Join(os.ExpandEnv("${HOME}"), ".tsuru", "target")
 	c.Assert(rfs.HasAction("openfile "+filePath+" with mode 0600"), check.Equals, true)
@@ -43,7 +43,7 @@ func (s *S) TestWriteTargetKeepsLeadingSlashs(c *check.C) {
 		fsystem = nil
 	}()
 	os.Unsetenv("TSURU_TARGET")
-	err := writeTarget("http://tsuru.globo.com//")
+	err := WriteTarget("http://tsuru.globo.com//")
 	c.Assert(err, check.IsNil)
 	c.Assert(readRecordedTarget(rfs), check.Equals, "http://tsuru.globo.com//")
 }

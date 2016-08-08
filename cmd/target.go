@@ -92,6 +92,8 @@ func (t *targetSlice) String() string {
 	return strings.Join(values, "\n")
 }
 
+// ReadTarget returns the current target, as defined in the TSURU_TARGET
+// environment variable or in the target file.
 func ReadTarget() (string, error) {
 	if target := os.Getenv("TSURU_TARGET"); target != "" {
 		return target, nil
@@ -143,7 +145,8 @@ func GetURL(path string) (string, error) {
 	return GetURLVersion("1.0", path)
 }
 
-func writeTarget(t string) error {
+// WriteTarget writes the given endpoint to the target file.
+func WriteTarget(t string) error {
 	targetPath := JoinWithUserDir(".tsuru", "target")
 	targetFile, err := filesystem().OpenFile(targetPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	if err != nil {
@@ -179,13 +182,13 @@ func (t *targetAdd) Run(ctx *Context, client *Client) error {
 	}
 	label = ctx.Args[0]
 	target = ctx.Args[1]
-	err := writeOnTargetList(label, target)
+	err := WriteOnTargetList(label, target)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target list", label, target)
 	if t.set {
-		writeTarget(target)
+		WriteTarget(target)
 		fmt.Fprint(ctx.Stdout, " and defined as the current target")
 	}
 	fmt.Fprintln(ctx.Stdout)
@@ -211,7 +214,8 @@ func resetTargetList() error {
 	return nil
 }
 
-func writeOnTargetList(label string, target string) error {
+// WriteOnTargetList writes the given target in the target list file.
+func WriteOnTargetList(label, target string) error {
 	label = strings.TrimSpace(label)
 	target = strings.TrimSpace(target)
 	targetExist, err := CheckIfTargetLabelExists(label)
@@ -219,7 +223,7 @@ func writeOnTargetList(label string, target string) error {
 		return err
 	}
 	if targetExist {
-		return errors.New("Target label provided already exist")
+		return errors.New("Target label provided already exists")
 	}
 	targetsPath := JoinWithUserDir(".tsuru", "targets")
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_RDWR|syscall.O_CREAT|syscall.O_APPEND, 0600)
@@ -290,7 +294,7 @@ func copyTargetFiles() {
 		}
 	}
 	if target, err := readTarget(JoinWithUserDir(".tsuru_target")); err == nil {
-		writeTarget(target)
+		WriteTarget(target)
 	}
 }
 
@@ -368,7 +372,7 @@ func (t *targetRemove) Run(ctx *Context, client *Client) error {
 		return err
 	}
 	for label, target := range targets {
-		writeOnTargetList(label, target)
+		WriteOnTargetList(label, target)
 	}
 	return nil
 }
@@ -401,7 +405,7 @@ func (t *targetSet) Run(ctx *Context, client *Client) error {
 	}
 	for label, target := range targets {
 		if label == targetLabelToSet {
-			err = writeTarget(target)
+			err = WriteTarget(target)
 			if err != nil {
 				return err
 			}
