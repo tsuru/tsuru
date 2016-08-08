@@ -369,7 +369,7 @@ func (s *EventSuite) TestContainerPermCheckerFilter(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}), &event.TargetFilter{
 		Type:   event.TargetTypeContainer,
-		Values: []string{"myapp-0", "myapp-1", "myapp-2", "otherapp-0", "otherapp-1", "otherapp-2"},
+		Values: nil,
 	})
 	runTest(customUserWithPermission(c, "userd", permission.Permission{
 		Scheme:  permission.PermAppReadEvents,

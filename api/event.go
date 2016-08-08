@@ -298,6 +298,11 @@ func (c *containerPermChecker) filter(t auth.Token) (*event.TargetFilter, error)
 	if len(contexts) == 0 {
 		return nil, nil
 	}
+	allowed := event.TargetFilter{Type: event.TargetTypeContainer}
+	if ctxHasGlobal(contexts) {
+		return &allowed, nil
+	}
+	allowed.Values = []string{}
 	apps, err := app.List(appFilterByContext(contexts, nil))
 	if err != nil {
 		return nil, err
@@ -305,7 +310,6 @@ func (c *containerPermChecker) filter(t auth.Token) (*event.TargetFilter, error)
 	if len(apps) == 0 {
 		return nil, nil
 	}
-	allowed := event.TargetFilter{Type: event.TargetTypeContainer, Values: []string{}}
 	for _, a := range apps {
 		units, err := a.Units()
 		if err != nil {
@@ -568,4 +572,13 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+func ctxHasGlobal(contexts []permission.PermissionContext) bool {
+	for _, c := range contexts {
+		if c.CtxType == permission.CtxGlobal {
+			return true
+		}
+	}
+	return false
 }
