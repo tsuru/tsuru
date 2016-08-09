@@ -60,7 +60,12 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"node.read",
 	"node.update",
 	"node.delete",
-	"node.autoscale",
+).addWithCtx(
+	"node.autoscale", []contextType{},
+).add(
+	"node.autoscale.update",
+	"node.autoscale.read",
+	"node.autoscale.delete",
 ).addWithCtx(
 	"machine", []contextType{CtxIaaS},
 ).add(

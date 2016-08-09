@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/digitalocean"
@@ -80,7 +81,7 @@ func init() {
 //   200: Ok
 //   401: Unauthorized
 func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedGetConfig := permission.Check(t, permission.PermNodeAutoscale)
+	allowedGetConfig := permission.Check(t, permission.PermNodeAutoscaleRead)
 	if !allowedGetConfig {
 		return permission.ErrUnauthorized
 	}
@@ -98,7 +99,7 @@ func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) er
 //   204: No content
 //   401: Unauthorized
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedListRule := permission.Check(t, permission.PermNodeAutoscale)
+	allowedListRule := permission.Check(t, permission.PermNodeAutoscaleRead)
 	if !allowedListRule {
 		return permission.ErrUnauthorized
 	}
@@ -121,12 +122,12 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
-func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedSetRule := permission.Check(t, permission.PermNodeAutoscale)
+func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	allowedSetRule := permission.Check(t, permission.PermNodeAutoscaleUpdate)
 	if !allowedSetRule {
 		return permission.ErrUnauthorized
 	}
-	err := r.ParseForm()
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -137,6 +138,16 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePool, Value: rule.MetadataFilter},
+		Kind:       permission.PermNodeAutoscaleUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	return rule.update()
 }
 
@@ -147,13 +158,24 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //   200: Ok
 //   401: Unauthorized
 //   404: Not found
-func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	allowedDeleteRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedDeleteRule {
 		return permission.ErrUnauthorized
 	}
-	ruleID := r.URL.Query().Get(":id")
-	err := deleteAutoScaleRule(ruleID)
+	rulePool := r.URL.Query().Get(":id")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypePool, Value: rulePool},
+		Kind:       permission.PermNodeAutoscaleDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = deleteAutoScaleRule(rulePool)
 	if err == mgo.ErrNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "rule not found"}
 	}
@@ -177,7 +199,7 @@ func validateNodeAddress(address string) error {
 	return nil
 }
 
-func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegister bool) (map[string]string, error) {
+func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegister bool) (string, map[string]string, error) {
 	response := make(map[string]string)
 	var machineID string
 	var address string
@@ -189,27 +211,27 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 		response["description"] = desc
 		m, err := iaas.CreateMachine(params)
 		if err != nil {
-			return response, err
+			return address, response, err
 		}
 		address = m.FormatNodeAddress()
 		machineID = m.Id
 	}
 	err := validateNodeAddress(address)
 	if err != nil {
-		return response, err
+		return address, response, err
 	}
 	node := cluster.Node{Address: address, Metadata: params, CreationStatus: cluster.NodeCreationStatusPending}
 	err = p.Cluster().Register(node)
 	if err != nil {
-		return response, err
+		return address, response, err
 	}
 	q, err := queue.Queue()
 	if err != nil {
-		return response, err
+		return address, response, err
 	}
 	jobParams := monsterqueue.JobParams{"endpoint": address, "machine": machineID, "metadata": params}
 	_, err = q.Enqueue(nodecontainer.QueueTaskName, jobParams)
-	return response, err
+	return address, response, err
 }
 
 type addNodeOptions struct {
@@ -226,8 +248,8 @@ type addNodeOptions struct {
 //   201: Ok
 //   401: Unauthorized
 //   404: Not found
-func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -259,11 +281,23 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			return permission.ErrUnauthorized
 		}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypeNode},
+		Kind:        permission.PermNodeCreate,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	w.WriteHeader(http.StatusCreated)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
-	response, err := mainDockerProvisioner.addNodeForParams(params.Metadata, isRegister)
+	addr, response, err := mainDockerProvisioner.addNodeForParams(params.Metadata, isRegister)
+	evt.Target.Value = addr
 	if err != nil {
 		return fmt.Errorf("%s\n\n%s", err, response["description"])
 	}
@@ -277,7 +311,8 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //   200: Ok
 //   401: Unauthorized
 //   404: Not found
-func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	address := r.URL.Query().Get(":address")
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
@@ -304,6 +339,16 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 			return permission.ErrUnauthorized
 		}
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeNode, Value: node.Address},
+		Kind:       permission.PermNodeDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	node.CreationStatus = cluster.NodeCreationStatusDisabled
 	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	if err != nil {
@@ -407,8 +452,8 @@ type updateNodeOptions struct {
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Not found
-func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -446,6 +491,16 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		}
 	}
 	node := cluster.Node{Address: params.Address, Metadata: params.Metadata}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeNode, Value: node.Address},
+		Kind:       permission.PermNodeUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	if params.Disable && params.Enable {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,

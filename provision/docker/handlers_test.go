@@ -32,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -216,6 +217,16 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNode, Value: server.URL()},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Metadata.address", "value": server.URL()},
+			{"name": "Metadata.pool", "value": "pool1"},
+			{"name": "Register", "value": "true"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
@@ -267,6 +278,16 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNode, Value: nodes[0].Address},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Metadata.id", "value": "test1"},
+			{"name": "Metadata.pool", "value": "pool1"},
+			{"name": "Register", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
@@ -372,6 +393,16 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result["Error"], check.Equals, "address=url parameter is required\n\n")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNode},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Metadata.pool", "value": "pool1"},
+			{"name": "Register", "value": "true"},
+		},
+		ErrorMatches: `address=url parameter is required`,
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
@@ -471,6 +502,14 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNode, Value: "host.com:2375"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":address", "value": "host.com:2375"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
@@ -1675,6 +1714,17 @@ func (s *HandlersSuite) TestAutoScaleSetRule(c *check.C) {
 		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
 		rule,
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.autoscale.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "MetadataFilter", "value": "pool1"},
+			{"name": "Enabled", "value": "true"},
+			{"name": "ScaleDownRatio", "value": "1.1"},
+			{"name": "MaxMemoryRatio", "value": "2"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAutoScaleSetRuleInvalidRule(c *check.C) {
@@ -1691,6 +1741,18 @@ func (s *HandlersSuite) TestAutoScaleSetRuleInvalidRule(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), check.Matches, "(?s).*invalid rule, scale down ratio needs to be greater than 1.0, got 0.9.*")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.autoscale.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "MetadataFilter", "value": "pool1"},
+			{"name": "Enabled", "value": "true"},
+			{"name": "ScaleDownRatio", "value": "0.9"},
+			{"name": "MaxMemoryRatio", "value": "2"},
+		},
+		ErrorMatches: `.*invalid rule, scale down ratio needs to be greater than 1.0, got 0.9.*`,
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAutoScaleSetRuleExisting(c *check.C) {
@@ -1730,6 +1792,11 @@ func (s *HandlersSuite) TestAutoScaleDeleteRule(c *check.C) {
 	c.Assert(rules, check.DeepEquals, []autoScaleRule{
 		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: ""},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.autoscale.delete",
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAutoScaleDeleteRuleNonDefault(c *check.C) {
@@ -1748,6 +1815,11 @@ func (s *HandlersSuite) TestAutoScaleDeleteRuleNonDefault(c *check.C) {
 	c.Assert(rules, check.DeepEquals, []autoScaleRule{
 		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "mypool"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.autoscale.delete",
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAutoScaleDeleteRuleNotFound(c *check.C) {
@@ -1759,6 +1831,12 @@ func (s *HandlersSuite) TestAutoScaleDeleteRuleNotFound(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "rule not found\n")
+	c.Assert(eventtest.EventDesc{
+		Target:       event.Target{Type: event.TargetTypePool, Value: "mypool"},
+		Owner:        s.token.GetUserName(),
+		Kind:         "node.autoscale.delete",
+		ErrorMatches: `rule not found`,
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
