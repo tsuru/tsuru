@@ -89,7 +89,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instance.Name),
 		Kind:       permission.PermServiceInstanceCreate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateDescription,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -193,7 +193,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceDelete,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -577,7 +577,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Target: serviceInstanceTarget(serviceName, instanceName),
 			Kind:   permission.PermServiceInstanceUpdateProxy,
 			Owner:  t,
-			CustomData: append(formToEvents(r.Form), map[string]interface{}{
+			CustomData: append(event.FormToCustomData(r.Form), map[string]interface{}{
 				"name":  "method",
 				"value": r.Method,
 			}),
@@ -619,7 +619,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateGrant,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -657,7 +657,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateRevoke,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err

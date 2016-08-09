@@ -141,7 +141,7 @@ func remoteShellHandler(ws *websocket.Conn) {
 		Target:      appTarget(appName),
 		Kind:        permission.PermAppRunShell,
 		Owner:       token,
-		CustomData:  formToEvents(r.Form),
+		CustomData:  event.FormToCustomData(r.Form),
 		DisableLock: true,
 	})
 	if err != nil {

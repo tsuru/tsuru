@@ -49,7 +49,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformCreate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -99,7 +99,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformUpdate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformDelete,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err

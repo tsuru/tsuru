@@ -126,7 +126,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceCreate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -183,7 +183,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -221,7 +221,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceDelete,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 			Target: serviceTarget(s.Name),
 			Kind:   permission.PermServiceUpdateProxy,
 			Owner:  t,
-			CustomData: append(formToEvents(r.Form), map[string]interface{}{
+			CustomData: append(event.FormToCustomData(r.Form), map[string]interface{}{
 				"name":  "method",
 				"value": r.Method,
 			}),
@@ -315,7 +315,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateGrantAccess,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -368,7 +368,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateRevokeAccess,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -408,7 +408,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateDoc,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err

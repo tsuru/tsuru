@@ -73,7 +73,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err

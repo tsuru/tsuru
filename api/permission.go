@@ -43,7 +43,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleCreate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleDelete,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -273,7 +273,7 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionAdd,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -332,7 +332,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionRemove,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -405,7 +405,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -445,7 +445,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -529,7 +529,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultCreate,
 			Owner:      t,
-			CustomData: formToEvents(r.Form),
+			CustomData: event.FormToCustomData(r.Form),
 		})
 		if err != nil {
 			return err
@@ -585,7 +585,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultDelete,
 			Owner:      t,
-			CustomData: formToEvents(r.Form),
+			CustomData: event.FormToCustomData(r.Form),
 		})
 		if err != nil {
 			return err

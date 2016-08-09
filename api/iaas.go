@@ -81,7 +81,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: m.Iaas},
 		Kind:       permission.PermMachineDelete,
 		Owner:      token,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
 		Kind:       permission.PermMachineTemplateCreate,
 		Owner:      token,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -194,7 +194,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: t.IaaSName},
 		Kind:       permission.PermMachineTemplateDelete,
 		Owner:      token,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: dbTpl.IaaSName},
 		Kind:       permission.PermMachineTemplateUpdate,
 		Owner:      token,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err

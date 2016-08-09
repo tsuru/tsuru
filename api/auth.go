@@ -81,7 +81,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		Target:     userTarget(email),
 		Kind:       permission.PermUserCreate,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -204,7 +204,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		Target:     userTarget(email),
 		Kind:       permission.PermUserUpdateReset,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -247,7 +247,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     teamTarget(name),
 		Kind:       permission.PermTeamCreate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     teamTarget(name),
 		Kind:       permission.PermTeamDelete,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -380,7 +380,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     userTarget(t.GetUserName()),
 		Kind:       permission.PermUserUpdateKeyAdd,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -423,7 +423,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     userTarget(t.GetUserName()),
 		Kind:       permission.PermUserUpdateKeyRemove,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -494,7 +494,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     userTarget(u.Email),
 		Kind:       permission.PermUserDelete,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -563,7 +563,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Target:     userTarget(u.Email),
 		Kind:       permission.PermUserUpdateToken,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err

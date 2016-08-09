@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"reflect"
 	"sync"
 	"time"
@@ -104,7 +105,7 @@ func (id Target) GetBSON() (interface{}, error) {
 }
 
 func (id Target) IsValid() bool {
-	return id.Type != "" && id.Value != ""
+	return id.Type != ""
 }
 
 type eventID struct {
@@ -888,4 +889,16 @@ func checkIsExpired(coll *storage.Collection, id interface{}) bool {
 		}
 	}
 	return false
+}
+
+func FormToCustomData(form url.Values) []map[string]interface{} {
+	ret := make([]map[string]interface{}, 0, len(form))
+	for k, v := range form {
+		var val interface{} = v
+		if len(v) == 1 {
+			val = v[0]
+		}
+		ret = append(ret, map[string]interface{}{"name": k, "value": val})
+	}
+	return ret
 }

@@ -293,7 +293,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppCreate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -399,7 +399,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdate,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -468,7 +468,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAdd,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -514,7 +514,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitRemove,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -636,7 +636,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateGrant,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -688,7 +688,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRevoke,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -752,7 +752,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppRun,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -867,7 +867,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -930,7 +930,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvUnset,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -987,7 +987,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameAdd,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1035,7 +1035,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameRemove,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1195,7 +1195,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateBind,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1259,7 +1259,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnbind,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1306,7 +1306,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRestart,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1358,7 +1358,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateSleep,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1477,7 +1477,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(app1Name),
 		Kind:       permission.PermAppUpdateSwap,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1486,7 +1486,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(app2Name),
 		Kind:       permission.PermAppUpdateSwap,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1547,7 +1547,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateStart,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1589,7 +1589,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateStop,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1630,7 +1630,7 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppAdminUnlock,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1744,7 +1744,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppAdminRoutes,
 		Owner:      t,
-		CustomData: formToEvents(r.Form),
+		CustomData: event.FormToCustomData(r.Form),
 	})
 	if err != nil {
 		return err
@@ -1756,16 +1756,4 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	return json.NewEncoder(w).Encode(&result)
-}
-
-func formToEvents(form url.Values) []map[string]interface{} {
-	ret := make([]map[string]interface{}, 0, len(form))
-	for k, v := range form {
-		var val interface{} = v
-		if len(v) == 1 {
-			val = v[0]
-		}
-		ret = append(ret, map[string]interface{}{"name": k, "value": val})
-	}
-	return ret
 }
