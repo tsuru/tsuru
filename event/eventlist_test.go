@@ -62,9 +62,10 @@ func (s *S) TestListFilterMany(c *check.C) {
 		c.Assert(evts, eventtest.EvtEquals, expected)
 	}
 	create(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, "myapp")),
 	})
 	time.Sleep(100 * time.Millisecond)
 	t0 := time.Now().UTC()
@@ -132,6 +133,19 @@ func (s *S) TestListFilterMany(c *check.C) {
 		{Type: "app", Values: []string{"myapp"}},
 		{Type: "node", Values: []string{"http://10.0.1.2"}},
 	}, Sort: "_id"}, []event.Event{allEvts[0], allEvts[4]})
+	checkFilters(&event.Filter{Permissions: []permission.Permission{
+		{Scheme: permission.PermAll, Context: permission.Context(permission.CtxGlobal, "")},
+	}, Sort: "_id"}, allEvts[:len(allEvts)-1])
+	checkFilters(&event.Filter{Permissions: []permission.Permission{
+		{Scheme: permission.PermAll},
+	}, Sort: "_id"}, allEvts[:0])
+	checkFilters(&event.Filter{Permissions: []permission.Permission{
+		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "invalid-app")},
+	}, Sort: "_id"}, allEvts[:1])
+	checkFilters(&event.Filter{Permissions: []permission.Permission{
+		{Scheme: permission.PermAppRead, Context: permission.Context(permission.CtxApp, "invalid-app")},
+	}, Sort: "_id"}, allEvts[:0])
 }
 
 func (s *S) TestGetByID(c *check.C) {

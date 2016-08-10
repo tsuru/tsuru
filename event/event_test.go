@@ -639,3 +639,35 @@ func (s *S) TestEventRawInsert(c *check.C) {
 	evt.ID = eventID{ObjId: evt.UniqueID}
 	c.Assert(&evts[0], check.DeepEquals, evt)
 }
+
+func (s *S) TestNewWithPermission(c *check.C) {
+	evt, err := New(&Opts{
+		Target: Target{Type: "app", Value: "myapp"},
+		Kind:   permission.PermAppUpdateEnvSet,
+		Owner:  s.token,
+		Allowed: Allowed(permission.PermAppReadEvents,
+			permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")),
+	})
+	c.Assert(err, check.IsNil)
+	expected := &Event{eventData: eventData{
+		ID:             eventID{Target: Target{Type: "app", Value: "myapp"}},
+		UniqueID:       evt.UniqueID,
+		Target:         Target{Type: "app", Value: "myapp"},
+		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
+		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
+		Running:        true,
+		StartTime:      evt.StartTime,
+		LockUpdateTime: evt.LockUpdateTime,
+		Allowed: AllowedPermission{
+			Scheme:   permission.PermAppReadEvents.FullName(),
+			Contexts: []permission.PermissionContext{permission.Context(permission.CtxApp, "myapp"), permission.Context(permission.CtxTeam, "myteam")},
+		},
+	}}
+	c.Assert(evt, check.DeepEquals, expected)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	evts[0].StartTime = expected.StartTime
+	evts[0].LockUpdateTime = expected.LockUpdateTime
+	c.Assert(&evts[0], check.DeepEquals, expected)
+}

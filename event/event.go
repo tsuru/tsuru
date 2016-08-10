@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/url"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -149,6 +150,7 @@ type eventData struct {
 	CancelInfo      cancelInfo
 	Cancelable      bool
 	Running         bool
+	Allowed         AllowedPermission
 }
 
 type cancelInfo struct {
@@ -247,6 +249,33 @@ type Opts struct {
 	CustomData   interface{}
 	DisableLock  bool
 	Cancelable   bool
+	Allowed      AllowedPermission
+}
+
+func Allowed(scheme *permission.PermissionScheme, contexts ...permission.PermissionContext) AllowedPermission {
+	return AllowedPermission{
+		Scheme:   scheme.FullName(),
+		Contexts: contexts,
+	}
+}
+
+type AllowedPermission struct {
+	Scheme   string
+	Contexts []permission.PermissionContext `bson:",omitempty"`
+}
+
+func (ap *AllowedPermission) GetBSON() (interface{}, error) {
+	var ctxs []bson.D
+	for _, ctx := range ap.Contexts {
+		ctxs = append(ctxs, bson.D{
+			{Name: "ctxtype", Value: ctx.CtxType},
+			{Name: "value", Value: ctx.Value},
+		})
+	}
+	return bson.M{
+		"scheme":   ap.Scheme,
+		"contexts": ctxs,
+	}, nil
 }
 
 func (e *Event) String() string {
@@ -277,6 +306,7 @@ type Filter struct {
 	ErrorOnly      bool
 	Raw            bson.M
 	AllowedTargets []TargetFilter
+	Permissions    []permission.Permission
 
 	Limit int
 	Skip  int
@@ -286,6 +316,7 @@ type Filter struct {
 func (f *Filter) PruneUserValues() {
 	f.Raw = nil
 	f.AllowedTargets = nil
+	f.Permissions = nil
 	if f.Limit > filterMaxLimit || f.Limit <= 0 {
 		f.Limit = filterMaxLimit
 	}
@@ -293,6 +324,34 @@ func (f *Filter) PruneUserValues() {
 
 func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
+	permMap := map[string][]permission.PermissionContext{}
+	if f.Permissions != nil {
+		for _, p := range f.Permissions {
+			permMap[p.Scheme.FullName()] = append(permMap[p.Scheme.FullName()], p.Context)
+		}
+		var permOrBlock []bson.M
+		for perm, ctxs := range permMap {
+			ctxsBson := []bson.D{}
+			for _, ctx := range ctxs {
+				if ctx.CtxType == permission.CtxGlobal {
+					ctxsBson = nil
+					break
+				}
+				ctxsBson = append(ctxsBson, bson.D{
+					{Name: "ctxtype", Value: ctx.CtxType},
+					{Name: "value", Value: ctx.Value},
+				})
+			}
+			toAppend := bson.M{
+				"allowed.scheme": bson.M{"$regex": "^" + strings.Replace(perm, ".", `\.`, -1)},
+			}
+			if ctxsBson != nil {
+				toAppend["allowed.contexts"] = bson.M{"$in": ctxsBson}
+			}
+			permOrBlock = append(permOrBlock, toAppend)
+		}
+		query["$or"] = permOrBlock
+	}
 	if f.AllowedTargets != nil {
 		var orBlock []bson.M
 		for _, at := range f.AllowedTargets {
@@ -615,6 +674,7 @@ func newEvt(opts *Opts) (*Event, error) {
 		LockUpdateTime:  now,
 		Running:         true,
 		Cancelable:      opts.Cancelable,
+		Allowed:         opts.Allowed,
 	}}
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
