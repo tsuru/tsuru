@@ -80,7 +80,7 @@ function extra_perms {
     done
     fail=
     for p in $newperms; do
-        uses=$(grep -R --exclude-dir "permission" --exclude-dir ".git" --exclude "*_test.go" $p * || true)
+        uses=$((grep -R --exclude-dir "permission" --exclude-dir ".git" --exclude "*_test.go" $p * | grep -v "Binary file") || true)
         if [[ -z $uses ]]; then
             fail=1
             echo "Unused permission $p"
