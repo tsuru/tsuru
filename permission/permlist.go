@@ -72,7 +72,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"machine.create",
 	"machine.delete",
 	"machine.read",
-	"machine.update.events",
 	"machine.read.events",
 	"machine.template.create",
 	"machine.template.delete",
@@ -85,7 +84,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"team.read.events",
 	"team.delete",
-	"team.update.events",
 ).addWithCtx(
 	"user", []contextType{CtxUser},
 ).addWithCtx(
@@ -94,7 +92,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.delete",
 	"user.read.events",
 	"user.update.token",
-	"user.update.events",
 	"user.update.quota",
 	"user.update.password",
 	"user.update.reset",
@@ -109,7 +106,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service.read.plans",
 	"service.read.events",
 	"service.update.proxy",
-	"service.update.events",
 	"service.update.revoke-access",
 	"service.update.grant-access",
 	"service.update.doc",
@@ -122,7 +118,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"service-instance.read.events",
 	"service-instance.read.status",
 	"service-instance.delete",
-	"service-instance.update.events",
 	"service-instance.update.proxy",
 	"service-instance.update.bind",
 	"service-instance.update.unbind",
@@ -133,7 +128,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"role.create",
 	"role.delete",
 	"role.read.events",
-	"role.update.events",
 	"role.update.assign",
 	"role.update.dissociate",
 	"role.update.permission.add",
@@ -157,7 +151,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"pool.read.events",
 	"pool.update.team.add",
 	"pool.update.team.remove",
-	"pool.update.events",
 	"pool.update.logs",
 	"pool.delete",
 ).add(
