@@ -973,3 +973,26 @@ func FormToCustomData(form url.Values) []map[string]interface{} {
 	}
 	return ret
 }
+
+func Migrate(query bson.M, cb func(*Event) error) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	coll := conn.Events()
+	iter := coll.Find(query).Iter()
+	var evtData eventData
+	for iter.Next(&evtData) {
+		evt := &Event{eventData: evtData}
+		err = cb(evt)
+		if err != nil {
+			return fmt.Errorf("unable to migrate %#v: %s", evt, err)
+		}
+		err = coll.UpdateId(evt.ID, evt.eventData)
+		if err != nil {
+			return fmt.Errorf("unable to update %#v: %s", evt, err)
+		}
+	}
+	return iter.Close()
+}
