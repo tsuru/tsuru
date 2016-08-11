@@ -825,24 +825,34 @@
 			"revisionTime": "2016-07-12T00:16:01Z"
 		},
 		{
+			"checksumSHA1": "Ye8lEnmzH4uUJ9GONq/Tp3Pekmo=",
 			"path": "gopkg.in/mgo.v2",
-			"revision": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49",
-			"revisionTime": "2015-12-07T00:15:13-02:00"
+			"revision": "01084657862d7b12d3b10ffd0394357abf8f8bc2",
+			"revisionTime": "2016-08-01T21:38:24Z"
 		},
 		{
+			"checksumSHA1": "X+UmZuc1xY9x8Bj/qVnQNQnGFV0=",
 			"path": "gopkg.in/mgo.v2/bson",
-			"revision": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49",
-			"revisionTime": "2015-12-07T00:15:13-02:00"
+			"revision": "01084657862d7b12d3b10ffd0394357abf8f8bc2",
+			"revisionTime": "2016-08-01T21:38:24Z"
 		},
 		{
+			"checksumSHA1": "XQsrqoNT1U0KzLxOFcAZVvqhLfk=",
+			"path": "gopkg.in/mgo.v2/internal/json",
+			"revision": "01084657862d7b12d3b10ffd0394357abf8f8bc2",
+			"revisionTime": "2016-08-01T21:38:24Z"
+		},
+		{
+			"checksumSHA1": "LEvMCnprte47qdAxWvQ/zRxVF1U=",
 			"path": "gopkg.in/mgo.v2/internal/sasl",
-			"revision": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49",
-			"revisionTime": "2015-12-07T00:15:13-02:00"
+			"revision": "01084657862d7b12d3b10ffd0394357abf8f8bc2",
+			"revisionTime": "2016-08-01T21:38:24Z"
 		},
 		{
+			"checksumSHA1": "+1WDRPaOphSCmRMxVPIPBV4aubc=",
 			"path": "gopkg.in/mgo.v2/internal/scram",
-			"revision": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49",
-			"revisionTime": "2015-12-07T00:15:13-02:00"
+			"revision": "01084657862d7b12d3b10ffd0394357abf8f8bc2",
+			"revisionTime": "2016-08-01T21:38:24Z"
 		},
 		{
 			"checksumSHA1": "N6mkIMn6ROr6xh0z7v0TtUU4H+E=",
