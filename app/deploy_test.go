@@ -29,6 +29,7 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 			Target:   event.Target{Type: "app", Value: d.App},
 			Kind:     permission.PermAppDeploy,
 			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
+			Allowed:  event.Allowed(permission.PermApp),
 			CustomData: DeployOptions{
 				Commit: d.Commit,
 			},
@@ -251,6 +252,7 @@ func (s *S) TestDeployApp(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -281,6 +283,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -313,6 +316,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -344,6 +348,7 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -375,6 +380,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -405,6 +411,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -435,6 +442,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -470,6 +478,7 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -514,6 +523,7 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
@@ -552,6 +562,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	opts := DeployOptions{App: &a, Image: "myimage"}
@@ -576,6 +587,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(&opts, evt)
@@ -599,6 +611,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(&opts, evt)
@@ -622,6 +635,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(&opts, evt)
@@ -646,6 +660,7 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	imgID, err := Deploy(DeployOptions{
@@ -677,6 +692,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	imgID, err := Deploy(DeployOptions{
@@ -708,6 +724,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	imgID, err := Deploy(DeployOptions{

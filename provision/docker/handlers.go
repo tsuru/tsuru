@@ -138,11 +138,16 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	var ctxs []permission.PermissionContext
+	if rule.MetadataFilter != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, rule.MetadataFilter))
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: rule.MetadataFilter},
 		Kind:       permission.PermNodeAutoscaleUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
 		return err
@@ -165,11 +170,16 @@ func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	rulePool := r.URL.Query().Get(":id")
+	var ctxs []permission.PermissionContext
+	if rulePool != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, rulePool))
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: rulePool},
 		Kind:       permission.PermNodeAutoscaleDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
 		return err
@@ -287,6 +297,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:       t,
 		CustomData:  event.FormToCustomData(r.Form),
 		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
 	})
 	if err != nil {
 		return err
@@ -324,8 +335,9 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: fmt.Sprintf("Node %s not found.", address),
 		}
 	}
+	pool := node.Metadata["pool"]
 	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
-		permission.Context(permission.CtxPool, node.Metadata["pool"]),
+		permission.Context(permission.CtxPool, pool),
 	)
 	if !allowedNodeRemove {
 		return permission.ErrUnauthorized
@@ -344,6 +356,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermNodeDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
 	})
 	if err != nil {
 		return err
@@ -496,6 +509,10 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermNodeUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed: event.Allowed(permission.PermPoolReadEvents,
+			permission.Context(permission.CtxPool, oldPool),
+			permission.Context(permission.CtxPool, newPool),
+		),
 	})
 	if err != nil {
 		return err

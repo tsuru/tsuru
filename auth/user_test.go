@@ -383,7 +383,9 @@ func (s *S) TestUserPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
+	})
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.update.env", "app.deploy")
@@ -395,6 +397,7 @@ func (s *S) TestUserPermissions(c *check.C) {
 	perms, err = u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp")},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp2")},
@@ -417,7 +420,9 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
+	})
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.update.env", "app.deploy")
@@ -429,6 +434,7 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	perms, err = u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp")},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp2")},

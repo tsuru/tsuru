@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
@@ -184,6 +185,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypePool, Value: pool},
 		InternalKind: autoScaleEventKind,
+		Allowed:      event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
 	})
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {

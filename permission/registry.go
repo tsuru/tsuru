@@ -7,6 +7,7 @@
 package permission
 
 import (
+	"errors"
 	"strings"
 )
 
@@ -96,6 +97,14 @@ func (r *registry) Permissions() PermissionSchemeList {
 		}
 	}
 	return ret
+}
+
+func SafeGet(name string) (*PermissionScheme, error) {
+	subR := PermissionRegistry.getSubRegistry(name)
+	if subR == nil {
+		return nil, errors.New("unregistered permission")
+	}
+	return &subR.PermissionScheme, nil
 }
 
 func (r *registry) get(name string) *PermissionScheme {

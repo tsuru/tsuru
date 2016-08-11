@@ -48,6 +48,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Kind:       permission.PermPlanCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPlanReadEvents),
 	})
 	if err != nil {
 		return err
@@ -117,6 +118,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Kind:       permission.PermPlanDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPlanReadEvents),
 	})
 	if err != nil {
 		return err

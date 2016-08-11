@@ -68,6 +68,7 @@ func (s *S) TestCreateRootUserCmdRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
-	c.Assert(perms, check.HasLen, 1)
-	c.Assert(perms[0].Scheme, check.Equals, permission.PermAll)
+	c.Assert(perms, check.HasLen, 2)
+	c.Assert(perms[0].Scheme, check.Equals, permission.PermUser)
+	c.Assert(perms[1].Scheme, check.Equals, permission.PermAll)
 }

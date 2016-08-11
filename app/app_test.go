@@ -110,12 +110,14 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppUpdateEnvSet,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	evt2, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: "other"},
 		Kind:     permission.PermAppUpdateEnvSet,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	Delete(app, nil)

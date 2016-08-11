@@ -675,9 +675,10 @@ func insertDeploysAsEvents(data []app.DeployData, c *check.C) []*event.Event {
 				Commit: d.Commit,
 				Origin: d.Origin,
 			},
+			Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permission.CtxApp, d.App)),
 		})
-		evt.StartTime = d.Timestamp
 		c.Assert(err, check.IsNil)
+		evt.StartTime = d.Timestamp
 		evt.Logf(d.Log)
 		err = evt.SetOtherCustomData(map[string]string{"diff": d.Diff})
 		c.Assert(err, check.IsNil)
@@ -1171,9 +1172,10 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	evt, err := event.New(&event.Opts{
-		Target: appTarget(a.Name),
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  appTarget(a.Name),
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()

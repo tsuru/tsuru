@@ -1119,6 +1119,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr1"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	c.Assert(err, check.IsNil)
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
@@ -1127,6 +1128,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr3"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
@@ -1134,6 +1136,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
 		InternalKind: "healer",
 		CustomData:   container.Container{ID: "1234"},
+		Allowed:      event.Allowed(permission.PermApp),
 	})
 	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
 	recorder := httptest.NewRecorder()
@@ -1173,6 +1176,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr1"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	c.Assert(err, check.IsNil)
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
@@ -1181,6 +1185,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr3"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
@@ -1188,6 +1193,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
 		InternalKind: "healer",
 		CustomData:   container.Container{ID: "1234"},
+		Allowed:      event.Allowed(permission.PermApp),
 	})
 	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
 	recorder := httptest.NewRecorder()
@@ -1214,6 +1220,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 		Target:       event.Target{Type: "node", Value: "addr1"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	c.Assert(err, check.IsNil)
 	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
@@ -1222,6 +1229,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 		Target:       event.Target{Type: "node", Value: "addr3"},
 		InternalKind: "healer",
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
@@ -1229,6 +1237,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 		Target:       event.Target{Type: "container", Value: "1234"},
 		InternalKind: "healer",
 		CustomData:   container.Container{ID: "1234"},
+		Allowed:      event.Allowed(permission.PermApp),
 	})
 	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
 	recorder := httptest.NewRecorder()
@@ -1265,6 +1274,7 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: poolMetadataName, Value: "poolx"},
 		InternalKind: autoScaleEventKind,
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	c.Assert(err, check.IsNil)
 	evt1.Logf("my evt1")
@@ -1276,6 +1286,7 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	evt2, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: poolMetadataName, Value: "pooly"},
 		InternalKind: autoScaleEventKind,
+		Allowed:      event.Allowed(permission.PermPool),
 	})
 	c.Assert(err, check.IsNil)
 	evt2.Logf("my evt2")

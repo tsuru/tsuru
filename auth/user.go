@@ -232,7 +232,9 @@ func (u *User) Reload() error {
 }
 
 func (u *User) Permissions() ([]permission.Permission, error) {
-	var permissions []permission.Permission
+	permissions := []permission.Permission{
+		{Scheme: permission.PermUser, Context: permission.Context(permission.CtxUser, u.Email)},
+	}
 	roles := make(map[string]*permission.Role)
 	for _, roleData := range u.Roles {
 		role := roles[roleData.Name]

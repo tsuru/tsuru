@@ -443,10 +443,8 @@ func (s *S) TestDelete(c *check.C) {
 		Target: appTarget(myApp.Name),
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.delete",
-		StartCustomData: map[string]interface{}{
-			"name":      myApp.Name,
-			"teamowner": myApp.TeamOwner,
-			"framework": myApp.Platform,
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": myApp.Name},
 		},
 	}, eventtest.HasEvent)
 	_, err = repository.Manager().GetRepository(myApp.Name)

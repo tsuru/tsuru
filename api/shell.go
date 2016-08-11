@@ -121,12 +121,7 @@ func remoteShellHandler(ws *websocket.Conn) {
 		}
 		return
 	}
-	allowed := permission.Check(token, permission.PermAppRunShell,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
-		)...,
-	)
+	allowed := permission.Check(token, permission.PermAppRunShell, contextsForApp(&a)...)
 	if !allowed {
 		httpErr = permission.ErrUnauthorized
 		return
@@ -142,6 +137,7 @@ func remoteShellHandler(ws *websocket.Conn) {
 		Kind:        permission.PermAppRunShell,
 		Owner:       token,
 		CustomData:  event.FormToCustomData(r.Form),
+		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		DisableLock: true,
 	})
 	if err != nil {

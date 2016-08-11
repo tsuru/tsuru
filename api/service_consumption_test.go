@@ -469,7 +469,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescriptio
 	}
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
-		Context: permission.Context(permission.CtxServiceInstance, si.Name),
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName(se.Name, si.Name)),
 	})
 	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", token.GetValue(), c)
 	m := RunServer(true)
@@ -521,7 +521,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(
 	}
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
-		Context: permission.Context(permission.CtxServiceInstance, si.Name),
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName(se.Name, si.Name)),
 	})
 	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", token.GetValue(), c)
 	m := RunServer(true)

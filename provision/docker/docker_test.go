@@ -236,10 +236,12 @@ func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: "app", Value: "myapp"},
-		Kind:       permission.PermAppDeploy,
-		Owner:      s.token,
-		Cancelable: true,
+		Target:        event.Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppDeploy,
+		Owner:         s.token,
+		Cancelable:    true,
+		Allowed:       event.Allowed(permission.PermApp),
+		AllowedCancel: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	done := make(chan bool)

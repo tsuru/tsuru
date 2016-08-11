@@ -71,9 +71,8 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		}
 		return err
 	}
-	allowed := permission.Check(token, permission.PermMachineDelete,
-		permission.Context(permission.CtxIaaS, m.Iaas),
-	)
+	iaasCtx := permission.Context(permission.CtxIaaS, m.Iaas)
+	allowed := permission.Check(token, permission.PermMachineDelete, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -82,6 +81,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Kind:       permission.PermMachineDelete,
 		Owner:      token,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
 		return err
@@ -143,9 +143,8 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	allowed := permission.Check(token, permission.PermMachineTemplateCreate,
-		permission.Context(permission.CtxIaaS, paramTemplate.IaaSName),
-	)
+	iaasCtx := permission.Context(permission.CtxIaaS, paramTemplate.IaaSName)
+	allowed := permission.Check(token, permission.PermMachineTemplateCreate, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -154,6 +153,7 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Kind:       permission.PermMachineTemplateCreate,
 		Owner:      token,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
 		return err
@@ -184,9 +184,8 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 		}
 		return err
 	}
-	allowed := permission.Check(token, permission.PermMachineTemplateDelete,
-		permission.Context(permission.CtxIaaS, t.IaaSName),
-	)
+	iaasCtx := permission.Context(permission.CtxIaaS, t.IaaSName)
+	allowed := permission.Check(token, permission.PermMachineTemplateDelete, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -195,6 +194,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 		Kind:       permission.PermMachineTemplateDelete,
 		Owner:      token,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
 		return err
@@ -232,9 +232,8 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		}
 		return err
 	}
-	allowed := permission.Check(token, permission.PermMachineTemplateUpdate,
-		permission.Context(permission.CtxIaaS, dbTpl.IaaSName),
-	)
+	iaasCtx := permission.Context(permission.CtxIaaS, dbTpl.IaaSName)
+	allowed := permission.Check(token, permission.PermMachineTemplateUpdate, iaasCtx)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -243,6 +242,7 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Kind:       permission.PermMachineTemplateUpdate,
 		Owner:      token,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
 	if err != nil {
 		return err

@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
@@ -23,6 +24,7 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	evt1, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: "node", Value: "addr1"},
 		InternalKind: "healer",
+		Allowed:      event.Allowed(permission.PermPoolReadEvents),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt1.Done(nil)
@@ -31,6 +33,7 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	evt2, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: "container", Value: "cont1"},
 		InternalKind: "healer",
+		Allowed:      event.Allowed(permission.PermPoolReadEvents),
 	})
 	c.Assert(err, check.IsNil)
 	err = evt2.Done(nil)

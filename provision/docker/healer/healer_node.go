@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
@@ -29,6 +30,7 @@ import (
 
 const (
 	nodeHealerConfigCollection = "node-healer"
+	poolMetadataName           = "pool"
 )
 
 type NodeHealer struct {
@@ -165,6 +167,7 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, lastCheck
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address, reason)
 		return nil
 	}
+	poolName := node.Metadata[node.Metadata[poolMetadataName]]
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeNode, Value: node.Address},
 		InternalKind: "healer",
@@ -173,6 +176,7 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, lastCheck
 			Reason:    reason,
 			LastCheck: lastCheck,
 		},
+		Allowed: event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
 	})
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {
@@ -402,7 +406,7 @@ func (h *NodeHealer) queryPartForConfig(nodes []*cluster.Node, config NodeHealer
 func (h *NodeHealer) shouldHealNode(node *cluster.Node) (bool, error) {
 	conf := healerConfig()
 	var configEntry NodeHealerConfig
-	err := conf.Load(node.Metadata["pool"], &configEntry)
+	err := conf.Load(node.Metadata[poolMetadataName], &configEntry)
 	if err != nil {
 		return false, err
 	}
@@ -433,7 +437,7 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]*cluste
 	nodesPoolMap := map[string][]*cluster.Node{}
 	nodesAddrMap := map[string]*cluster.Node{}
 	for i, n := range nodes {
-		pool := n.Metadata["pool"]
+		pool := n.Metadata[poolMetadataName]
 		nodesPoolMap[pool] = append(nodesPoolMap[pool], &nodes[i])
 		nodesAddrMap[n.Address] = &nodes[i]
 	}

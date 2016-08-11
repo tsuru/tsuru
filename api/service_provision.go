@@ -127,6 +127,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Kind:       permission.PermServiceCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
 		return err
@@ -171,9 +172,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceUpdate,
-		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-			permission.Context(permission.CtxService, s.Name),
-		)...,
+		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -184,6 +183,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Kind:       permission.PermServiceUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
 		return err
@@ -210,9 +210,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceDelete,
-		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-			permission.Context(permission.CtxService, s.Name),
-		)...,
+		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -222,6 +220,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Kind:       permission.PermServiceDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
 		return err
@@ -253,9 +252,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceUpdateProxy,
-		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-			permission.Context(permission.CtxService, s.Name),
-		)...,
+		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -269,6 +266,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 				"name":  "method",
 				"value": r.Method,
 			}),
+			Allowed: event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 		})
 		if err != nil {
 			return err
@@ -296,9 +294,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceUpdateGrantAccess,
-		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-			permission.Context(permission.CtxService, s.Name),
-		)...,
+		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -316,6 +312,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Kind:       permission.PermServiceUpdateGrantAccess,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
 		return err
@@ -345,9 +342,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceUpdateRevokeAccess,
-		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-			permission.Context(permission.CtxService, s.Name),
-		)...,
+		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -369,6 +364,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Kind:       permission.PermServiceUpdateRevokeAccess,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
 		return err
@@ -396,9 +392,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	allowed := permission.Check(t, permission.PermServiceUpdateDoc,
-		append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
-			permission.Context(permission.CtxService, s.Name),
-		)...,
+		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -409,6 +403,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Kind:       permission.PermServiceUpdateDoc,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
 	if err != nil {
 		return err
@@ -424,4 +419,10 @@ func getService(name string) (service.Service, error) {
 		return s, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	return s, err
+}
+
+func contextsForServiceProvision(s *service.Service) []permission.PermissionContext {
+	return append(permission.Contexts(permission.CtxTeam, s.OwnerTeams),
+		permission.Context(permission.CtxService, s.Name),
+	)
 }

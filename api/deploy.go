@@ -122,23 +122,20 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {
-		canDeploy := permission.Check(t, permSchemeForDeploy(opts),
-			append(permission.Contexts(permission.CtxTeam, instance.Teams),
-				permission.Context(permission.CtxApp, appName),
-				permission.Context(permission.CtxPool, instance.Pool),
-			)...,
-		)
+		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 		if !canDeploy {
 			return &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 		}
 	}
 	var imageID string
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppDeploy,
-		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: userName},
-		CustomData: opts,
-		Cancelable: true,
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppDeploy,
+		RawOwner:      event.Owner{Type: event.OwnerTypeUser, Name: userName},
+		CustomData:    opts,
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
@@ -194,12 +191,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if t.GetAppName() != app.InternalAppName {
-		canDiffDeploy := permission.Check(t, permission.PermAppReadDeploy,
-			append(permission.Contexts(permission.CtxTeam, instance.Teams),
-				permission.Context(permission.CtxApp, instance.Name),
-				permission.Context(permission.CtxPool, instance.Pool),
-			)...,
-		)
+		canDiffDeploy := permission.Check(t, permission.PermAppReadDeploy, contextsForApp(instance)...)
 		if !canDiffDeploy {
 			return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 		}
@@ -258,22 +250,19 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Rollback:     true,
 	}
 	opts.GetKind()
-	canRollback := permission.Check(t, permSchemeForDeploy(opts),
-		append(permission.Contexts(permission.CtxTeam, instance.Teams),
-			permission.Context(permission.CtxApp, instance.Name),
-			permission.Context(permission.CtxPool, instance.Pool),
-		)...,
-	)
+	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canRollback {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
 	var imageID string
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppDeploy,
-		Owner:      t,
-		CustomData: opts,
-		Cancelable: true,
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppDeploy,
+		Owner:         t,
+		CustomData:    opts,
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
@@ -339,12 +328,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canGet := permission.Check(t, permission.PermAppReadDeploy,
-		append(permission.Contexts(permission.CtxTeam, dbApp.Teams),
-			permission.Context(permission.CtxApp, dbApp.Name),
-			permission.Context(permission.CtxPool, dbApp.Pool),
-		)...,
-	)
+	canGet := permission.Check(t, permission.PermAppReadDeploy, contextsForApp(dbApp)...)
 	if !canGet {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 	}

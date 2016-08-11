@@ -98,6 +98,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Kind:       permission.PermPoolCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, p.Name)),
 	})
 	if err != nil {
 		return err
@@ -141,6 +142,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermPoolDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
@@ -178,6 +180,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Kind:       permission.PermPoolUpdateTeamAdd,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
@@ -213,6 +216,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 		Kind:       permission.PermPoolUpdateTeamRemove,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
@@ -252,6 +256,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Kind:       permission.PermPoolUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err

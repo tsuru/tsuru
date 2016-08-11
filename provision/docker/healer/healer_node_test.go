@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
 	tsurunet "github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
@@ -476,6 +477,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 		evt, err = event.NewInternal(&event.Opts{
 			Target:       event.Target{Type: "node", Value: nodes[0].Address},
 			InternalKind: "healer",
+			Allowed:      event.Allowed(permission.PermPoolReadEvents),
 		})
 		c.Assert(err, check.IsNil)
 		err = evt.Done(nil)

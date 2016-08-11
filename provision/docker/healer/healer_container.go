@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
@@ -105,11 +107,19 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		}
 		return fmt.Errorf("Containers healing: unable to heal %q couldn't verify it still exists: %s", cont.ID, err)
 	}
+	a, err := app.GetByName(cont.AppName)
+	if err != nil {
+		return fmt.Errorf("Containers healing: unable to heal %q couldn't get app %q: %s", cont.ID, cont.AppName, err)
+	}
 	log.Errorf("Initiating healing process for container %q, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeContainer, Value: cont.ID},
 		InternalKind: "healer",
 		CustomData:   cont,
+		Allowed: event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...),
 	})
 	if err != nil {
 		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())

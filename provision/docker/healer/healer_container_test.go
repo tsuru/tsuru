@@ -10,9 +10,12 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
@@ -20,6 +23,20 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func newFakeAppInDB(name, platform string, units int) *provisiontest.FakeApp {
+	a := provisiontest.NewFakeApp(name, platform, units)
+	appStruct := &app.App{
+		Name:     a.GetName(),
+		Platform: a.GetPlatform(),
+	}
+	conn, err := db.Conn()
+	if err == nil {
+		defer conn.Close()
+		conn.Apps().Insert(appStruct)
+	}
+	return a
+}
 
 func (s *S) TestHealContainer(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
@@ -50,7 +67,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	app := provisiontest.NewFakeApp("myapp", "python", 2)
+	app := newFakeAppInDB("myapp", "python", 2)
 	node1 := p.Servers()[0]
 	containers, err := p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
@@ -121,7 +138,7 @@ func (s *S) TestRunContainerHealerCreatedContainer(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	app := provisiontest.NewFakeApp("myapp", "python", 2)
+	app := newFakeAppInDB("myapp", "python", 2)
 	node1 := p.Servers()[0]
 	containers, err := p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
@@ -170,7 +187,7 @@ func (s *S) TestRunContainerHealerCreatedContainerNoProcess(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	app := provisiontest.NewFakeApp("myapp", "python", 2)
+	app := newFakeAppInDB("myapp", "python", 2)
 	containers, err := p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  p.Servers()[0].URL(),
 		App:       app,
@@ -202,7 +219,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	defer p.Destroy()
 
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	_, err = p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -266,7 +283,7 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	_, err = p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -328,7 +345,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	_, err = p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -379,7 +396,7 @@ func (s *S) TestRunContainerHealerRemovedFromDB(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	_, err = p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -405,7 +422,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	cont, err := p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -436,7 +453,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	cont, err := p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -467,7 +484,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	_, err = p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -527,7 +544,7 @@ func (s *S) TestRunContainerHealerThrottled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	node1 := p.Servers()[0]
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app := newFakeAppInDB("myapp", "python", 0)
 	_, err = p.StartContainers(dockertest.StartContainersArgs{
 		Endpoint:  node1.URL(),
 		App:       app,
@@ -551,6 +568,7 @@ func (s *S) TestRunContainerHealerThrottled(c *check.C) {
 			Target:       event.Target{Type: "container", Value: toMoveCont.ID},
 			InternalKind: "healer",
 			CustomData:   toMoveCont,
+			Allowed:      event.Allowed(permission.PermAppReadEvents),
 		})
 		c.Assert(err, check.IsNil)
 		err = evt.DoneCustomData(nil, nil)

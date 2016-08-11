@@ -42,6 +42,8 @@ var (
 	ErrNoOwner           = ErrValidation("event owner is mandatory")
 	ErrNoOpts            = ErrValidation("event opts is mandatory")
 	ErrNoInternalKind    = ErrValidation("event internal kind is mandatory")
+	ErrNoAllowed         = errors.New("event allowed is mandatory")
+	ErrNoAllowedCancel   = errors.New("event allowed cancel is mandatory for cancelable events")
 	ErrInvalidOwner      = ErrValidation("event owner must not be set on internal events")
 	ErrInvalidKind       = ErrValidation("event kind must not be set on internal events")
 	ErrInvalidTargetType = errors.New("invalid event target type")
@@ -151,6 +153,7 @@ type eventData struct {
 	Cancelable      bool
 	Running         bool
 	Allowed         AllowedPermission
+	AllowedCancel   AllowedPermission
 }
 
 type cancelInfo struct {
@@ -241,15 +244,16 @@ type Event struct {
 }
 
 type Opts struct {
-	Target       Target
-	Kind         *permission.PermissionScheme
-	InternalKind string
-	Owner        auth.Token
-	RawOwner     Owner
-	CustomData   interface{}
-	DisableLock  bool
-	Cancelable   bool
-	Allowed      AllowedPermission
+	Target        Target
+	Kind          *permission.PermissionScheme
+	InternalKind  string
+	Owner         auth.Token
+	RawOwner      Owner
+	CustomData    interface{}
+	DisableLock   bool
+	Cancelable    bool
+	Allowed       AllowedPermission
+	AllowedCancel AllowedPermission
 }
 
 func Allowed(scheme *permission.PermissionScheme, contexts ...permission.PermissionContext) AllowedPermission {
@@ -601,6 +605,12 @@ func newEvt(opts *Opts) (*Event, error) {
 	if !opts.Target.IsValid() {
 		return nil, ErrNoTarget
 	}
+	if opts.Allowed.Scheme == "" && len(opts.Allowed.Contexts) == 0 {
+		return nil, ErrNoAllowed
+	}
+	if opts.Cancelable && opts.AllowedCancel.Scheme == "" && len(opts.AllowedCancel.Contexts) == 0 {
+		return nil, ErrNoAllowedCancel
+	}
 	var k Kind
 	if opts.Kind == nil {
 		if opts.InternalKind == "" {
@@ -675,6 +685,7 @@ func newEvt(opts *Opts) (*Event, error) {
 		Running:         true,
 		Cancelable:      opts.Cancelable,
 		Allowed:         opts.Allowed,
+		AllowedCancel:   opts.AllowedCancel,
 	}}
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {

@@ -55,11 +55,11 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: User not found
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
-	allowed := permission.Check(t, permission.PermUserUpdateQuota)
+	email := r.URL.Query().Get(":email")
+	allowed := permission.Check(t, permission.PermUserUpdateQuota, permission.Context(permission.CtxUser, email))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	email := r.URL.Query().Get(":email")
 	user, err := auth.GetUserByEmail(email)
 	if err == auth.ErrUserNotFound {
 		return &errors.HTTP{
@@ -74,6 +74,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permission.CtxUser, email)),
 	})
 	if err != nil {
 		return err
@@ -102,12 +103,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppRead,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
-		)...,
-	)
+	canRead := permission.Check(t, permission.PermAppRead, contextsForApp(&a)...)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
@@ -131,12 +127,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppAdminQuota,
-		append(permission.Contexts(permission.CtxTeam, a.Teams),
-			permission.Context(permission.CtxApp, a.Name),
-			permission.Context(permission.CtxPool, a.Pool),
-		)...,
-	)
+	allowed := permission.Check(t, permission.PermAppAdminQuota, contextsForApp(&a)...)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -145,6 +136,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
 	if err != nil {
 		return err

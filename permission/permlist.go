@@ -86,8 +86,11 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"team.read.events",
 	"team.delete",
 	"team.update.events",
+).addWithCtx(
+	"user", []contextType{CtxUser},
+).addWithCtx(
+	"user.create", []contextType{},
 ).add(
-	"user.create",
 	"user.delete",
 	"user.read.events",
 	"user.update.token",
@@ -141,9 +144,11 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"platform.create",
 	"platform.delete",
 	"platform.update",
+	"platform.read.events",
 ).add(
 	"plan.create",
 	"plan.delete",
+	"plan.read.events",
 ).addWithCtx(
 	"pool", []contextType{CtxPool},
 ).addWithCtx(

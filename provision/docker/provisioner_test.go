@@ -308,9 +308,10 @@ func (s *S) TestDeploy(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -365,9 +366,10 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -430,9 +432,10 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -491,9 +494,10 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -542,9 +546,10 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -612,9 +617,10 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	}))
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -663,9 +669,10 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -754,9 +761,10 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -793,9 +801,10 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	defer conn.Close()
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -839,9 +848,10 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	}))
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -922,9 +932,10 @@ func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -996,9 +1007,10 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -1092,9 +1104,10 @@ func (s *S) TestImageDeploy(c *check.C) {
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -1170,9 +1183,10 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	defer dataColl.Close()
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -1248,9 +1262,10 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	dataColl.RemoveId(imageName)
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{
@@ -1312,9 +1327,10 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	err = saveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: a.Name},
-		Kind:   permission.PermAppDeploy,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(app.DeployOptions{

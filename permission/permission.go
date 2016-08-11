@@ -47,6 +47,7 @@ var (
 	CtxGlobal          = contextType("global")
 	CtxApp             = contextType("app")
 	CtxTeam            = contextType("team")
+	CtxUser            = contextType("user")
 	CtxPool            = contextType("pool")
 	CtxIaaS            = contextType("iaas")
 	CtxService         = contextType("service")

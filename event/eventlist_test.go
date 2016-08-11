@@ -70,30 +70,35 @@ func (s *S) TestListFilterMany(c *check.C) {
 	time.Sleep(100 * time.Millisecond)
 	t0 := time.Now().UTC()
 	create(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp2"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: "myapp2"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppAdmin),
 	})
 	t05 := time.Now().UTC()
 	time.Sleep(100 * time.Millisecond)
 	create(&event.Opts{
-		Target: event.Target{Type: "app2", Value: "myapp"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app2", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppAdmin),
 	})
 	t1 := time.Now().UTC()
 	time.Sleep(100 * time.Millisecond)
 	createi(&event.Opts{
 		Target:       event.Target{Type: "node", Value: "http://10.0.1.1"},
 		InternalKind: "healer",
+		Allowed:      event.Allowed(permission.PermAppAdmin),
 	})
 	createi(&event.Opts{
 		Target:       event.Target{Type: "node", Value: "http://10.0.1.2"},
 		InternalKind: "healer",
+		Allowed:      event.Allowed(permission.PermAppAdmin),
 	})
 	createi(&event.Opts{
 		Target:       event.Target{Type: "nodex", Value: "http://10.0.1.3"},
 		InternalKind: "healer",
+		Allowed:      event.Allowed(permission.PermAppAdmin),
 	})
 	err := event.MarkAsRemoved(event.Target{Type: "nodex", Value: "http://10.0.1.3"})
 	c.Assert(err, check.IsNil)
@@ -149,7 +154,12 @@ func (s *S) TestListFilterMany(c *check.C) {
 }
 
 func (s *S) TestGetByID(c *check.C) {
-	evt, err := event.New(&event.Opts{Target: event.Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppReadEvents),
+	})
 	c.Assert(err, check.IsNil)
 	otherEvt, err := event.GetByID(evt.UniqueID)
 	c.Assert(err, check.IsNil)
@@ -165,7 +175,12 @@ func (s *S) TestGetByID(c *check.C) {
 }
 
 func (s *S) TestGetRunning(c *check.C) {
-	evt, err := event.New(&event.Opts{Target: event.Target{Type: "app", Value: "myapp"}, Kind: permission.PermAppUpdateEnvSet, Owner: s.token})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppReadEvents),
+	})
 	c.Assert(err, check.IsNil)
 	getEvt, err := event.GetRunning(event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.IsNil)
@@ -182,9 +197,10 @@ func boolPtr(b bool) *bool {
 
 func (s *S) TestGetKinds(c *check.C) {
 	_, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
+		Target:  event.Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
 	kinds, err := event.GetKinds()

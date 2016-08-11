@@ -439,6 +439,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", evt)
@@ -456,6 +457,7 @@ func (s *S) TestArchiveDeployUnknownApp(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", evt)
@@ -468,6 +470,7 @@ func (s *S) TestArchiveDeployWithPreparedFailure(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
@@ -486,6 +489,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
@@ -505,6 +509,7 @@ func (s *S) TestUploadDeployUnknownApp(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
@@ -518,6 +523,7 @@ func (s *S) TestUploadDeployWithPreparedFailure(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
@@ -534,6 +540,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
@@ -553,6 +560,7 @@ func (s *S) TestImageDeployWithPrepareFailure(c *check.C) {
 		Target:   event.Target{Type: "app", Value: app.name},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	p := NewFakeProvisioner()
