@@ -281,6 +281,15 @@ func deployDataToEvent(data *DeployData) error {
 	evt.Error = data.Error
 	evt.Log = data.Log
 	evt.RemoveDate = data.RemoveDate
+	a, err := GetByName(data.App)
+	if err == nil {
+		evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...)
+	} else {
+		evt.Allowed = event.Allowed(permission.PermAppReadEvents)
+	}
 	startOpts := DeployOptions{
 		Commit: data.Commit,
 		Origin: data.Origin,
@@ -290,7 +299,7 @@ func deployDataToEvent(data *DeployData) error {
 		otherData = map[string]string{"diff": data.Diff}
 	}
 	endData := map[string]string{"image": data.Image}
-	err := evt.RawInsert(startOpts, otherData, endData)
+	err = evt.RawInsert(startOpts, otherData, endData)
 	if mgo.IsDup(err) {
 		return nil
 	}

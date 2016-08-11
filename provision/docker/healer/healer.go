@@ -11,9 +11,11 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -154,10 +156,21 @@ func healingEventToEvent(data *HealingEvent) error {
 			LastCheck: lastCheck,
 		}
 		endOpts = data.CreatedNode
+		poolName := data.FailingNode.Metadata[poolMetadataName]
+		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName))
 	case "container-healing":
 		evt.Target = event.Target{Type: event.TargetTypeContainer, Value: data.FailingContainer.ID}
 		startOpts = data.FailingContainer
 		endOpts = data.CreatedContainer
+		a, err := app.GetByName(data.FailingContainer.AppName)
+		if err == nil {
+			evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permission.CtxTeam, a.Teams),
+				permission.Context(permission.CtxApp, a.Name),
+				permission.Context(permission.CtxPool, a.Pool),
+			)...)
+		} else {
+			evt.Allowed = event.Allowed(permission.PermAppReadEvents)
+		}
 	default:
 		return fmt.Errorf("invalid action %q", data.Action)
 	}
