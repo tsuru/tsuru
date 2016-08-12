@@ -14,6 +14,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
+	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 var httpRegexp = regexp.MustCompile(`^https?://`)
@@ -34,12 +35,12 @@ func healthCheckDockerRegistry() error {
 	registry = strings.TrimRight(registry, "/")
 	v1URL := registry + "/v1/_ping"
 	v2URL := registry + "/v2/"
-	resp, err := http.Get(v2URL)
+	resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(v2URL)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		resp, err = http.Get(v1URL)
+		resp, err = tsuruNet.Dial5Full60ClientNoKeepAlive.Get(v1URL)
 		if err != nil {
 			return err
 		}

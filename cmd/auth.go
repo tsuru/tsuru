@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -247,7 +248,7 @@ func schemeInfo() (*loginScheme, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Get(url)
+	resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(url)
 	if err != nil {
 		return nil, err
 	}

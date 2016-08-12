@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/tsurutest"
@@ -453,7 +454,7 @@ func (s *S) TestHealthCheck(c *check.C) {
 func (s *S) TestHealthCheckFailure(c *check.C) {
 	s.vulcandServer.Close()
 	err := tsurutest.WaitCondition(time.Second, func() bool {
-		_, err := http.Get(s.vulcandServer.URL)
+		_, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(s.vulcandServer.URL)
 		return err != nil
 	})
 	c.Assert(err, check.IsNil)

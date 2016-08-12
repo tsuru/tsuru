@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth/saml"
+	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 const formPostPage = `<!DOCTYPE html>
@@ -95,7 +96,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("Error in GetURL: %s", err.Error())
 		}
-		resp, err := http.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+		resp, err := tsuruNet.Dial5Full300Client.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 		if err != nil {
 			return "", fmt.Errorf("Error during login post: %s", err.Error())
 		}

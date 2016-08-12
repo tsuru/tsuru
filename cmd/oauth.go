@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/exec"
+	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 var execut exec.Executor
@@ -68,7 +69,7 @@ func convertToken(code, redirectUrl string) (string, error) {
 	if err != nil {
 		return token, fmt.Errorf("Error in GetURL: %s", err.Error())
 	}
-	resp, err := http.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
+	resp, err := tsuruNet.Dial5Full300Client.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 	if err != nil {
 		return token, fmt.Errorf("Error during login post: %s", err.Error())
 	}
