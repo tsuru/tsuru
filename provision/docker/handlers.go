@@ -544,8 +544,8 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Not found
-func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -569,19 +569,29 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	if !permission.Check(t, permission.PermNode, permContexts...) {
+	if !permission.Check(t, permission.PermNodeUpdateMoveContainer, permContexts...) {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeContainer, Value: contId},
+		Kind:       permission.PermNodeUpdateMoveContainer,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permContexts...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
 	if err != nil {
-		fmt.Fprintf(writer, "Error trying to move container: %s\n", err.Error())
-	} else {
-		fmt.Fprintf(writer, "Containers moved successfully!\n")
+		return fmt.Errorf("Error trying to move container: %s\n", err.Error())
 	}
+	fmt.Fprintf(writer, "Containers moved successfully!\n")
 	return nil
 }
 
@@ -595,8 +605,8 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   400: Invalid data
 //   401: Unauthorized
 //   404: Not found
-func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -616,19 +626,29 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	if !permission.Check(t, permission.PermNode, permContexts...) {
+	if !permission.Check(t, permission.PermNodeUpdateMoveContainers, permContexts...) {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeNode, Value: from},
+		Kind:       permission.PermNodeUpdateMoveContainers,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permContexts...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = mainDockerProvisioner.MoveContainers(from, to, writer)
 	if err != nil {
-		fmt.Fprintf(writer, "Error trying to move containers: %s\n", err.Error())
-	} else {
-		fmt.Fprintf(writer, "Containers moved successfully!\n")
+		return fmt.Errorf("Error trying to move containers: %s\n", err.Error())
 	}
+	fmt.Fprintf(writer, "Containers moved successfully!\n")
 	return nil
 }
 
@@ -668,12 +688,12 @@ type rebalanceOptions struct {
 //   204: No content
 //   400: Invalid data
 //   401: Unauthorized
-func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
 	var params rebalanceOptions
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
-	err := dec.DecodeValues(&params, r.Form)
+	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -681,22 +701,34 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 		}
 	}
 	var permContexts []permission.PermissionContext
-	if pool, ok := params.MetadataFilter["pool"]; ok {
+	pool, ok := params.MetadataFilter["pool"]
+	if ok {
 		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
 	}
-	if !permission.Check(t, permission.PermNode, permContexts...) {
+	if !permission.Check(t, permission.PermNodeUpdateRebalance, permContexts...) {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: pool},
+		Kind:        permission.PermNodeUpdateRebalance,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, permContexts...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	_, err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, params.Dry)
 	if err != nil {
-		fmt.Fprintf(writer, "Error trying to rebalance containers: %s\n", err)
-	} else {
-		fmt.Fprintf(writer, "Containers successfully rebalanced!\n")
+		return fmt.Errorf("Error trying to rebalance containers: %s\n", err)
 	}
+	fmt.Fprintf(writer, "Containers successfully rebalanced!\n")
 	return nil
 }
 
@@ -838,10 +870,23 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 // responses:
 //   200: Ok
 //   401: Unauthorized
-func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermNodeAutoscale) {
+func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	if !permission.Check(t, permission.PermNodeAutoscaleUpdateRun) {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool},
+		Kind:        permission.PermNodeAutoscaleUpdateRun,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	w.WriteHeader(http.StatusOK)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
@@ -851,11 +896,7 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	}
 	autoScaleConfig := mainDockerProvisioner.initAutoScaleConfig()
 	autoScaleConfig.writer = writer
-	err := autoScaleConfig.runOnce()
-	if err != nil {
-		writer.Encoder.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
-	}
-	return nil
+	return autoScaleConfig.runOnce()
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -923,8 +964,8 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
-func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -945,14 +986,26 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("unable to parse fields in docker log config: %s", err),
 		}
 	}
-	if pool == "" && !permission.Check(t, permission.PermPoolUpdateLogs) {
-		return permission.ErrUnauthorized
+	var ctxs []permission.PermissionContext
+	if pool != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, pool))
 	}
-	hasPermission := permission.Check(t, permission.PermPoolUpdateLogs,
-		permission.Context(permission.CtxPool, pool))
+	hasPermission := permission.Check(t, permission.PermPoolUpdateLogs, ctxs...)
 	if !hasPermission {
 		return permission.ErrUnauthorized
 	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: pool},
+		Kind:        permission.PermPoolUpdateLogs,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	err = conf.Save(pool)
 	if err != nil {
 		return err
@@ -1045,22 +1098,31 @@ func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // responses:
 //   200: Ok
 //   401: Unauthorized
-func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return err
 	}
 	poolName := r.FormValue("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermHealingUpdate) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermHealingUpdate,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
+	var ctxs []permission.PermissionContext
+	if poolName != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
+	if !permission.Check(t, permission.PermHealingUpdate, ctxs...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermHealingUpdate,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	var config healer.NodeHealerConfig
 	delete(r.Form, "pool")
 	dec := form.NewDecoder(nil)
@@ -1079,18 +1141,28 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // responses:
 //   200: Ok
 //   401: Unauthorized
-func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	poolName := r.URL.Query().Get("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermHealingUpdate) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermHealingUpdate,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
+	var ctxs []permission.PermissionContext
+	if poolName != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
+	if !permission.Check(t, permission.PermHealingDelete, ctxs...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermHealingDelete,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	if len(r.URL.Query()["name"]) == 0 {
 		return healer.RemoveConfig(poolName, "")
 	}
@@ -1148,22 +1220,31 @@ func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //   200: Ok
 //   400: Invald data
 //   401: Unauthorized
-func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return err
 	}
 	poolName := r.FormValue("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermNodecontainerCreate) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermNodecontainerCreate,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
+	var ctxs []permission.PermissionContext
+	if poolName != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
+	if !permission.Check(t, permission.PermNodecontainerCreate, ctxs...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermNodecontainerCreate,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	dec.IgnoreCase(true)
@@ -1236,22 +1317,31 @@ func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //   400: Invald data
 //   401: Unauthorized
 //   404: Not found
-func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := r.ParseForm()
+func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
 	if err != nil {
 		return err
 	}
 	poolName := r.FormValue("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermNodecontainerUpdate) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermNodecontainerUpdate,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
+	var ctxs []permission.PermissionContext
+	if poolName != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
+	if !permission.Check(t, permission.PermNodecontainerUpdate, ctxs...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermNodecontainerUpdate,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	dec.IgnoreCase(true)
@@ -1287,20 +1377,30 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //   200: Ok
 //   401: Unauthorized
 //   404: Not found
-func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	poolName := r.URL.Query().Get("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermNodecontainerDelete) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermNodecontainerDelete,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
+	var ctxs []permission.PermissionContext
+	if poolName != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
-	err := nodecontainer.RemoveContainer(poolName, name)
+	if !permission.Check(t, permission.PermNodecontainerDelete, ctxs...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermNodecontainerDelete,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = nodecontainer.RemoveContainer(poolName, name)
 	if err == nodecontainer.ErrNodeContainerNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
@@ -1320,20 +1420,29 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //   400: Invald data
 //   401: Unauthorized
 //   404: Not found
-func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	name := r.URL.Query().Get(":name")
 	poolName := r.FormValue("pool")
-	if poolName == "" {
-		if !permission.Check(t, permission.PermNodecontainerUpdateUpgrade) {
-			return permission.ErrUnauthorized
-		}
-	} else {
-		if !permission.Check(t, permission.PermNodecontainerUpdateUpgrade,
-			permission.Context(permission.CtxPool, poolName)) {
-			return permission.ErrUnauthorized
-		}
+	var ctxs []permission.PermissionContext
+	if poolName != "" {
+		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
 	}
-	err := nodecontainer.ResetImage(poolName, name)
+	if !permission.Check(t, permission.PermNodecontainerUpdateUpgrade, ctxs...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermNodecontainerUpdateUpgrade,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = nodecontainer.ResetImage(poolName, name)
 	if err != nil {
 		if err == nodecontainer.ErrNodeContainerNotFound {
 			return &errors.HTTP{

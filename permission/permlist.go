@@ -58,12 +58,15 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"node.create",
 	"node.read",
-	"node.update",
+	"node.update.move.container",
+	"node.update.move.containers",
+	"node.update.rebalance",
 	"node.delete",
 ).addWithCtx(
 	"node.autoscale", []contextType{},
 ).add(
 	"node.autoscale.update",
+	"node.autoscale.update.run",
 	"node.autoscale.read",
 	"node.autoscale.delete",
 ).addWithCtx(
@@ -162,6 +165,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"healing.read",
 	"healing.update",
+	"healing.delete",
 ).addWithCtx(
 	"nodecontainer", []contextType{CtxPool},
 ).add(

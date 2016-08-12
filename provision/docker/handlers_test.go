@@ -916,6 +916,15 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 		{Message: "No units to move in localhost\n"},
 		{Message: "Containers moved successfully!\n"},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNode, Value: "localhost"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.update.move.containers",
+		StartCustomData: []map[string]interface{}{
+			{"name": "from", "value": "localhost"},
+			{"name": "to", "value": "127.0.0.1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestMoveContainerNotFound(c *check.C) {
@@ -1044,6 +1053,14 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	c.Assert(result, check.HasLen, 2)
 	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance\n")
 	c.Assert(result[1].Message, check.Equals, "Containers successfully rebalanced!\n")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.update.rebalance",
+		StartCustomData: []map[string]interface{}{
+			{"name": "MetadataFilter.pool", "value": "pool1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
@@ -1356,6 +1373,16 @@ func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
 		"m2": "v9",
 		"m3": "v8",
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNode, Value: "localhost:1999"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Metadata.m1", "value": ""},
+			{"name": "Metadata.m2", "value": "v9"},
+			{"name": "Metadata.m3", "value": "v8"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
@@ -1613,6 +1640,11 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 		`{"Message":"nothing to do for \"pool\": \"pool1\"\n"}`,
 		``,
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool},
+		Owner:  s.token.GetUserName(),
+		Kind:   "node.autoscale.update.run",
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestAutoScaleConfigHandler(c *check.C) {
@@ -1876,6 +1908,21 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 		c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Log config successfully updated.\\n\"}\n")
 		c.Assert(recorder.Code, check.Equals, http.StatusOK)
 		c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+		var pool string
+		var customData []map[string]interface{}
+		for k, v := range val {
+			if k == "pool" {
+				pool = v[0]
+				continue
+			}
+			customData = append(customData, map[string]interface{}{"name": k, "value": v[0]})
+		}
+		c.Assert(eventtest.EventDesc{
+			Target:          event.Target{Type: event.TargetTypePool, Value: pool},
+			Owner:           s.token.GetUserName(),
+			Kind:            "pool.update.logs",
+			StartCustomData: customData,
+		}, eventtest.HasEvent)
 	}
 	doReq(values1)
 	entries, err := container.LogLoadAll()
@@ -2081,6 +2128,15 @@ func (s *HandlersSuite) TestNodeHealingUpdateRead(c *check.C) {
 		configMap := doRequest(t.A)
 		c.Assert(configMap, check.DeepEquals, t.B, check.Commentf("test %d", i+1))
 	}
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "p1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "healing.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "pool", "value": "p1"},
+			{"name": "MaxUnresponsiveTime", "value": "30"},
+		},
+	}, eventtest.HasEvent)
 	request, err := http.NewRequest("DELETE", "/docker/healing/node?pool=p1&name=MaxUnresponsiveTime", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -2088,6 +2144,14 @@ func (s *HandlersSuite) TestNodeHealingUpdateRead(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "p1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "healing.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "MaxUnresponsiveTime"},
+		},
+	}, eventtest.HasEvent)
 	configMap := doRequest("")
 	c.Assert(configMap, check.DeepEquals, map[string]healer.NodeHealerConfig{
 		"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
@@ -2378,6 +2442,15 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 		}},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool},
+		Owner:  s.token.GetUserName(),
+		Kind:   "nodecontainer.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Name", "value": "c1"},
+			{"name": "Config.Image", "value": "img1"},
+		},
+	}, eventtest.HasEvent)
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:       "c2",
 		Config:     docker.Config{Env: []string{"A=1"}, Image: "img2"},
@@ -2520,6 +2593,14 @@ func (s *HandlersSuite) TestNodeContainerUpdate(c *check.C) {
 	doReq(nodecontainer.NodeContainerConfig{Name: "c1"}, map[string]nodecontainer.NodeContainerConfig{
 		"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool},
+		Owner:  s.token.GetUserName(),
+		Kind:   "nodecontainer.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "Name", "value": "c1"},
+		},
+	}, eventtest.HasEvent)
 	doReq(nodecontainer.NodeContainerConfig{
 		Name:       "c2",
 		Config:     docker.Config{Env: []string{"A=1"}},
@@ -2621,6 +2702,14 @@ func (s *HandlersSuite) TestNodeContainerDelete(c *check.C) {
 			"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=2"}}},
 		}},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool},
+		Owner:  s.token.GetUserName(),
+		Kind:   "nodecontainer.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "c1"},
+		},
+	}, eventtest.HasEvent)
 	request, err = http.NewRequest("DELETE", "/docker/nodecontainers/c1?pool=p1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -2682,6 +2771,14 @@ func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
 			"": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}, Image: "img1"}},
 		}},
 	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool},
+		Owner:  s.token.GetUserName(),
+		Kind:   "nodecontainer.update.upgrade",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "c1"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *HandlersSuite) TestNodeContainerUpgradeNotFound(c *check.C) {
