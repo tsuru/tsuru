@@ -67,6 +67,7 @@ var (
 	TargetTypeRole            = TargetType("role")
 	TargetTypePlatform        = TargetType("platform")
 	TargetTypePlan            = TargetType("plan")
+	TargetTypeNodeContainer   = TargetType("node-container")
 )
 
 const (

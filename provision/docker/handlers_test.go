@@ -2443,7 +2443,7 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 		}},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool},
+		Target: event.Target{Type: event.TargetTypeNodeContainer, Value: "c1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "nodecontainer.create",
 		StartCustomData: []map[string]interface{}{
@@ -2594,7 +2594,7 @@ func (s *HandlersSuite) TestNodeContainerUpdate(c *check.C) {
 		"": {Name: "c1", Config: docker.Config{Image: "img1"}},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool},
+		Target: event.Target{Type: event.TargetTypeNodeContainer, Value: "c1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "nodecontainer.update",
 		StartCustomData: []map[string]interface{}{
@@ -2703,7 +2703,7 @@ func (s *HandlersSuite) TestNodeContainerDelete(c *check.C) {
 		}},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool},
+		Target: event.Target{Type: event.TargetTypeNodeContainer, Value: "c1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "nodecontainer.delete",
 		StartCustomData: []map[string]interface{}{
@@ -2772,7 +2772,7 @@ func (s *HandlersSuite) TestNodeContainerUpgrade(c *check.C) {
 		}},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool},
+		Target: event.Target{Type: event.TargetTypeNodeContainer, Value: "c1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "nodecontainer.update.upgrade",
 		StartCustomData: []map[string]interface{}{

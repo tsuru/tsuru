@@ -1225,6 +1225,14 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	var config nodecontainer.NodeContainerConfig
+	err = dec.DecodeValues(&config, r.Form)
+	if err != nil {
+		return err
+	}
 	poolName := r.FormValue("pool")
 	var ctxs []permission.PermissionContext
 	if poolName != "" {
@@ -1234,25 +1242,16 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
-		Kind:        permission.PermNodecontainerCreate,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: config.Name},
+		Kind:       permission.PermNodecontainerCreate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	var config nodecontainer.NodeContainerConfig
-	err = dec.DecodeValues(&config, r.Form)
-	if err != nil {
-		return err
-	}
 	err = nodecontainer.AddNewContainer(poolName, &config)
 	if err != nil {
 		if _, ok := err.(nodecontainer.ValidationErr); ok {
@@ -1322,6 +1321,14 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	var config nodecontainer.NodeContainerConfig
+	err = dec.DecodeValues(&config, r.Form)
+	if err != nil {
+		return err
+	}
 	poolName := r.FormValue("pool")
 	var ctxs []permission.PermissionContext
 	if poolName != "" {
@@ -1331,25 +1338,16 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
-		Kind:        permission.PermNodecontainerUpdate,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: config.Name},
+		Kind:       permission.PermNodecontainerUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	dec.IgnoreCase(true)
-	var config nodecontainer.NodeContainerConfig
-	err = dec.DecodeValues(&config, r.Form)
-	if err != nil {
-		return err
-	}
 	config.Name = r.URL.Query().Get(":name")
 	err = nodecontainer.UpdateContainer(poolName, &config)
 	if err != nil {
@@ -1389,12 +1387,11 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
-		Kind:        permission.PermNodecontainerDelete,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: name},
+		Kind:       permission.PermNodecontainerDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
 		return err
@@ -1431,12 +1428,11 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
-		Kind:        permission.PermNodecontainerUpdateUpgrade,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
+		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: name},
+		Kind:       permission.PermNodecontainerUpdateUpgrade,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
 	if err != nil {
 		return err
