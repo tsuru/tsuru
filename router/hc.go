@@ -21,6 +21,7 @@ func BuildHealthCheck(routerName string) func() error {
 			return hc.ErrDisabledComponent
 		}
 		routers, _ := routerConfig.(map[interface{}]interface{})
+		checkCount := 0
 		for ifaceName := range routers {
 			name := ifaceName.(string)
 			if name != routerName {
@@ -29,10 +30,14 @@ func BuildHealthCheck(routerName string) func() error {
 					continue
 				}
 			}
+			checkCount++
 			err := healthCheck(name)
 			if err != nil {
 				return err
 			}
+		}
+		if checkCount == 0 {
+			return hc.ErrDisabledComponent
 		}
 		return nil
 	}

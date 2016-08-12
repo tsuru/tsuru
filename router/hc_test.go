@@ -49,3 +49,9 @@ func (s *ExternalSuite) TestBuildHealthCheckNoHealthChecker(c *check.C) {
 	fn := router.BuildHealthCheck("fakeee")
 	c.Assert(fn(), check.Equals, hc.ErrDisabledComponent)
 }
+
+func (s *ExternalSuite) TestBuildHealthCheckOtherConfigured(c *check.C) {
+	config.Set("routers:fake-hc:type", "fake-hc")
+	fn := router.BuildHealthCheck("other-hc")
+	c.Assert(fn(), check.Equals, hc.ErrDisabledComponent)
+}
