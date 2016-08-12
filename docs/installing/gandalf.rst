@@ -76,11 +76,15 @@ address:
     EOF
 
 In the ``/etc/gandalf.conf`` file, remove the comment from the line "template:
-/home/git/bare-template", so it looks like that:
+/home/git/bare-template" and from the line "database", so it looks like that:
 
 .. highlight:: yaml
 
 ::
+
+    database:
+      url: <your-mongodb-server>:27017
+      name: gandalf
 
     git:
       bare:
