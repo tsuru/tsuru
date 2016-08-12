@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/hc"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"gopkg.in/check.v1"
 )
 
@@ -161,4 +163,30 @@ func (s *S) TestHealthCheckDockerFailure(c *check.C) {
 	err = healthCheckDocker()
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "ping failed - API error (500): something went wrong")
+}
+
+func (s *S) TestHealthCheckDockerRegistryV2TLS(c *check.C) {
+	var request *http.Request
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request = r
+		w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+	oldTransport := tsuruNet.Dial5Full60ClientNoKeepAlive.Transport
+	defer func() { tsuruNet.Dial5Full60ClientNoKeepAlive.Transport = oldTransport }()
+	tsuruNet.Dial5Full60ClientNoKeepAlive.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	if old, err := config.Get("docker:registry"); err == nil {
+		defer config.Set("docker:registry", old)
+	} else {
+		defer config.Unset("docker:registry")
+	}
+	config.Set("docker:registry", server.URL+"/")
+	err := healthCheckDockerRegistry()
+	c.Assert(err, check.IsNil)
+	c.Assert(request.URL.Path, check.Equals, "/v2/")
+	c.Assert(request.Method, check.Equals, "GET")
 }
