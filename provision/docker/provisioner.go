@@ -948,8 +948,17 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if cont.Status == provision.StatusBuilding.String() || cont.Status == provision.StatusAsleep.String() {
 		return nil
 	}
-	if status == provision.StatusStopped && cont.Status != provision.StatusStopped.String() {
-		status = provision.StatusError
+	currentStatus := cont.ExpectedStatus()
+	if status == provision.StatusStopped || status == provision.StatusCreated {
+		if currentStatus == provision.StatusStopped {
+			status = provision.StatusStopped
+		} else {
+			status = provision.StatusError
+		}
+	} else if status == provision.StatusStarted {
+		if currentStatus == provision.StatusStopped {
+			status = provision.StatusError
+		}
 	}
 	if unit.AppName != "" && cont.AppName != unit.AppName {
 		return stderr.New("wrong app name")

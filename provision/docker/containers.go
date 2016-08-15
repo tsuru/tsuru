@@ -184,7 +184,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 	if !p.isDryMode {
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
-	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: provision.Status(c.Status)}}
+	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: c.ExpectedStatus()}}
 	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageId, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{

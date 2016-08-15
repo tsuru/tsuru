@@ -175,6 +175,109 @@ func (s *S) TestMoveContainer(c *check.C) {
 	c.Assert(serviceBodies[1], check.Matches, ".*unit-host=localhost")
 }
 
+func (s *S) TestMoveContainerStopped(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2, Status: provision.StatusStopped}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
+	c.Assert(err, check.IsNil)
+	containers, err := p.listContainersByHost("localhost")
+	c.Assert(containers, check.HasLen, 1)
+	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Status, check.Equals, provision.StatusStopped.String())
+}
+
+func (s *S) TestMoveContainerErrorStopped(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2, Status: provision.StatusStopped}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	err = addedConts[0].SetStatus(p, provision.StatusError, true)
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
+	c.Assert(err, check.IsNil)
+	containers, err := p.listContainersByHost("localhost")
+	c.Assert(containers, check.HasLen, 1)
+	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Status, check.Equals, provision.StatusStopped.String())
+}
+
+func (s *S) TestMoveContainerErrorStarted(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	err = addedConts[0].SetStatus(p, provision.StatusError, true)
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
+	c.Assert(err, check.IsNil)
+	containers, err := p.listContainersByHost("localhost")
+	c.Assert(containers, check.HasLen, 1)
+	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Status, check.Equals, provision.StatusStarting.String())
+}
+
 func (s *S) TestRebalanceContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)

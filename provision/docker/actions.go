@@ -249,13 +249,18 @@ var setContainerID = action.Action{
 var stopContainer = action.Action{
 	Name: "stop-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
 		cont := ctx.Previous.(container.Container)
-		cont.Status = provision.StatusStopped.String()
+		err := cont.SetStatus(args.provisioner, provision.StatusStopped, false)
+		if err != nil {
+			return nil, err
+		}
 		return cont, nil
 	},
 	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(runContainerActionsArgs)
 		c := ctx.FWResult.(container.Container)
-		c.Status = provision.StatusCreated.String()
+		c.SetStatus(args.provisioner, provision.StatusCreated, false)
 	},
 }
 

@@ -1835,6 +1835,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusError.String())
+	c.Assert(container.ExpectedStatus(), check.Equals, provision.StatusStarted)
 }
 
 func (s *S) TestProvisionerSetUnitStatusAsleep(c *check.C) {
@@ -1966,6 +1967,21 @@ func (s *S) TestProvisionerSetUnitStatusExpectedStopped(c *check.C) {
 	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusStopped.String())
+}
+
+func (s *S) TestProvisionerSetUnitStatusUnexpectedStarted(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusStopped.String(), AppName: "someapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID, AppName: container.AppName}, provision.StatusStarted)
+	c.Assert(err, check.IsNil)
+	container, err = s.p.GetContainer(container.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Status, check.Equals, provision.StatusError.String())
+	c.Assert(container.ExpectedStatus(), check.Equals, provision.StatusStopped)
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *check.C) {

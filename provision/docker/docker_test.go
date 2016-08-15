@@ -59,13 +59,13 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		if opts.Image != "" {
 			image = opts.Image
 		}
-		container.Status = opts.Status
 		container.AppName = opts.AppName
 		container.ProcessName = opts.ProcessName
 		customData = opts.ImageCustomData
 		if opts.Provisioner != nil {
 			p = opts.Provisioner
 		}
+		container.SetStatus(p, provision.Status(opts.Status), false)
 	}
 	err := s.newFakeImage(p, image, customData)
 	if err != nil {
