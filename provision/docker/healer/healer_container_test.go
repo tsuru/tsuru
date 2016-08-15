@@ -271,7 +271,7 @@ func (s *S) TestRunContainerHealerStoppedContainerAlreadyStopped(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
 	c.Assert(conts[0].Status, check.Equals, provision.StatusStopped.String())
-	c.Assert(time.Now().Sub(conts[0].LastSuccessStatusUpdate) < time.Minute, check.Equals, true)
+	c.Assert(time.Since(conts[0].LastSuccessStatusUpdate) < time.Minute, check.Equals, true)
 }
 
 func (s *S) TestRunContainerHealerCreatedContainerNoProcess(c *check.C) {
