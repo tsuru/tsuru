@@ -72,12 +72,19 @@ func (h *ContainerHealer) healContainer(cont container.Container) (container.Con
 	return createdContainer, err
 }
 
-func (h *ContainerHealer) isRunning(cont container.Container) (bool, error) {
+func (h *ContainerHealer) isAsExpected(cont container.Container) (bool, error) {
 	container, err := h.provisioner.Cluster().InspectContainer(cont.ID)
 	if err != nil {
 		return false, err
 	}
-	return container.State.Running || container.State.Restarting, nil
+	if container.State.Dead || container.State.RemovalInProgress {
+		return false, nil
+	}
+	isRunning := container.State.Running || container.State.Restarting
+	if cont.ExpectedStatus() == provision.StatusStopped {
+		return !isRunning, nil
+	}
+	return isRunning, nil
 }
 
 func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error {
@@ -86,12 +93,12 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 			return nil
 		}
 	}
-	isRunning, err := h.isRunning(cont)
+	isAsExpected, err := h.isAsExpected(cont)
 	if err != nil {
 		log.Errorf("Containers healing: couldn't verify running processes in container %q: %s", cont.ID, err.Error())
 	}
-	if isRunning {
-		cont.SetStatus(h.provisioner, provision.StatusStarted, true)
+	if isAsExpected {
+		cont.SetStatus(h.provisioner, cont.ExpectedStatus(), true)
 		return nil
 	}
 	locked := h.locker.Lock(cont.AppName)
@@ -159,7 +166,6 @@ func listUnresponsiveContainers(p DockerProvisioner, maxUnresponsiveTime time.Du
 			{"processname": bson.M{"$ne": ""}},
 		},
 		"status": bson.M{"$nin": []string{
-			provision.StatusStopped.String(),
 			provision.StatusBuilding.String(),
 			provision.StatusAsleep.String(),
 		}},

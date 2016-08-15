@@ -406,6 +406,56 @@ func (s *S) TestListContainersPreparedNoResultNorError(c *check.C) {
 	c.Assert(p.Queries(), check.DeepEquals, []bson.M{query})
 }
 
+func (s *S) TestListContainersStartedContainers(c *check.C) {
+	p, err := StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	containers, err := p.StartContainers(StartContainersArgs{
+		Endpoint:  p.Servers()[0].URL(),
+		App:       provisiontest.NewFakeApp("myapp", "plat", 2),
+		Amount:    map[string]int{"web": 2},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	p.PrepareListResult(nil, nil)
+	containers, err = p.ListContainers(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	c.Assert(p.Queries(), check.DeepEquals, []bson.M{nil})
+	coll := p.Collection()
+	defer coll.Close()
+	count, err := coll.Find(nil).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
+}
+
+func (s *S) TestListContainersStartedAndPreparedContainers(c *check.C) {
+	p, err := StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	containers, err := p.StartContainers(StartContainersArgs{
+		Endpoint:  p.Servers()[0].URL(),
+		App:       provisiontest.NewFakeApp("myapp", "plat", 2),
+		Amount:    map[string]int{"web": 2},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	p.PrepareListResult([]container.Container{{ID: containers[0].ID}}, nil)
+	containers, err = p.ListContainers(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	c.Assert(p.Queries(), check.DeepEquals, []bson.M{nil})
+	coll := p.Collection()
+	defer coll.Close()
+	count, err := coll.Find(nil).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 1)
+}
+
 func (s *S) TestStartContainers(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	p, err := StartMultipleServersCluster()

@@ -296,8 +296,15 @@ func (p *FakeDockerProvisioner) ListContainers(query bson.M) ([]container.Contai
 	}()
 	for _, containers := range p.containers {
 		for _, c := range containers {
+			n, err := coll.Find(bson.M{"id": c.ID}).Count()
+			if err != nil {
+				return nil, err
+			}
+			if n > 0 {
+				continue
+			}
 			insertedIDs = append(insertedIDs, c.ID)
-			err := coll.Insert(c)
+			err = coll.Insert(c)
 			if err != nil {
 				return nil, err
 			}

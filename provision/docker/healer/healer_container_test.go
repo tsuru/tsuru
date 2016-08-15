@@ -6,6 +6,7 @@ package healer
 
 import (
 	"errors"
+	"sort"
 	"sync"
 	"time"
 
@@ -115,7 +116,6 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 			{"processname": bson.M{"$ne": ""}},
 		},
 		"status": bson.M{"$nin": []string{
-			provision.StatusStopped.String(),
 			provision.StatusBuilding.String(),
 			provision.StatusAsleep.String(),
 		}},
@@ -181,6 +181,97 @@ func (s *S) TestRunContainerHealerCreatedContainer(c *check.C) {
 			"id":       bson.M{"$ne": ""},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestRunContainerHealerStoppedContainer(c *check.C) {
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	app := newFakeAppInDB("myapp", "python", 2)
+	node1 := p.Servers()[0]
+	containers, err := p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 2},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Dead: true})
+	toMoveCont := containers[1]
+	err = toMoveCont.SetStatus(p, provision.StatusStopped, false)
+	c.Assert(err, check.IsNil)
+	toMoveCont.LastSuccessStatusUpdate = time.Now().UTC().Add(-5 * time.Minute)
+	p.PrepareListResult([]container.Container{containers[0], toMoveCont}, nil)
+	node1.PrepareFailure("createError", "/containers/create")
+	healer := NewContainerHealer(ContainerHealerArgs{
+		Provisioner:         p,
+		MaxUnresponsiveTime: time.Minute,
+		Locker:              dockertest.NewFakeLocker(),
+	})
+	healer.runContainerHealerOnce()
+	expected := []dockertest.ContainerMoving{
+		{
+			ContainerID: toMoveCont.ID,
+			HostFrom:    toMoveCont.HostAddr,
+			HostTo:      "",
+		},
+	}
+	movings := p.Movings()
+	c.Assert(movings, check.DeepEquals, expected)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: "container", Value: toMoveCont.ID},
+		Kind:   "healer",
+		StartCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       toMoveCont.ID,
+		},
+		EndCustomData: map[string]interface{}{
+			"hostaddr": "127.0.0.1",
+			"id":       bson.M{"$ne": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestRunContainerHealerStoppedContainerAlreadyStopped(c *check.C) {
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	app := newFakeAppInDB("myapp", "python", 2)
+	node1 := p.Servers()[0]
+	containers, err := p.StartContainers(dockertest.StartContainersArgs{
+		Endpoint:  node1.URL(),
+		App:       app,
+		Amount:    map[string]int{"web": 2},
+		Image:     "tsuru/python",
+		PullImage: true,
+	})
+	c.Assert(err, check.IsNil)
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
+	toMoveCont := containers[1]
+	err = toMoveCont.SetStatus(p, provision.StatusStopped, false)
+	c.Assert(err, check.IsNil)
+	toMoveCont.LastSuccessStatusUpdate = time.Now().UTC().Add(-5 * time.Minute)
+	p.PrepareListResult([]container.Container{containers[0], toMoveCont}, nil)
+	node1.PrepareFailure("createError", "/containers/create")
+	healer := NewContainerHealer(ContainerHealerArgs{
+		Provisioner:         p,
+		MaxUnresponsiveTime: time.Minute,
+		Locker:              dockertest.NewFakeLocker(),
+	})
+	healer.runContainerHealerOnce()
+	movings := p.Movings()
+	c.Assert(movings, check.IsNil)
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
+	conts, err := p.ListContainers(bson.M{"id": toMoveCont.ID})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 1)
+	c.Assert(conts[0].Status, check.Equals, provision.StatusStopped.String())
+	c.Assert(time.Now().Sub(conts[0].LastSuccessStatusUpdate) < time.Minute, check.Equals, true)
 }
 
 func (s *S) TestRunContainerHealerCreatedContainerNoProcess(c *check.C) {
@@ -616,7 +707,7 @@ func (s *S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
 	c.Assert(result, check.HasLen, 0)
 }
 
-func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
+func (s *S) TestListUnresponsiveContainersIncludeStopped(c *check.C) {
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
@@ -633,8 +724,10 @@ func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 1)
-	c.Assert(result[0].ID, check.Equals, "c2")
+	c.Assert(result, check.HasLen, 2)
+	ids := []string{result[0].ID, result[1].ID}
+	sort.Strings(ids)
+	c.Assert(ids, check.DeepEquals, []string{"c1", "c2"})
 }
 
 func (s *S) TestListUnresponsiveContainersAsleep(c *check.C) {
