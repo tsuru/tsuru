@@ -62,6 +62,7 @@ type Container struct {
 	HostPort                string
 	PrivateKey              string
 	Status                  string
+	StatusBeforeError       string
 	Version                 string
 	Image                   string
 	Name                    string
@@ -256,15 +257,27 @@ func (c *Container) NetworkInfo(p DockerProvisioner) (NetworkInfo, error) {
 	return netInfo, err
 }
 
+func (c *Container) ExpectedStatus() provision.Status {
+	if c.StatusBeforeError != "" {
+		return provision.Status(c.StatusBeforeError)
+	}
+	return provision.Status(c.Status)
+}
+
 func (c *Container) SetStatus(p DockerProvisioner, status provision.Status, updateDB bool) error {
 	c.Status = status.String()
 	c.LastStatusUpdate = time.Now().In(time.UTC)
+	if c.Status != provision.StatusError.String() {
+		c.StatusBeforeError = c.Status
+	}
 	updateData := bson.M{
-		"status":           c.Status,
-		"laststatusupdate": c.LastStatusUpdate,
+		"status":            c.Status,
+		"statusbeforeerror": c.StatusBeforeError,
+		"laststatusupdate":  c.LastStatusUpdate,
 	}
 	if c.Status == provision.StatusStarted.String() ||
-		c.Status == provision.StatusStarting.String() {
+		c.Status == provision.StatusStarting.String() ||
+		c.Status == provision.StatusStopped.String() {
 		c.LastSuccessStatusUpdate = c.LastStatusUpdate
 		updateData["lastsuccessstatusupdate"] = c.LastSuccessStatusUpdate
 	}

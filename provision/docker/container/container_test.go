@@ -490,11 +490,15 @@ func (s *S) TestContainerSetStatus(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container)
 	defer coll.Remove(bson.M{"id": container.ID})
-	container.SetStatus(s.p, "what?!", true)
+	err := container.SetStatus(s.p, "what?!", true)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Status, check.Equals, "what?!")
+	c.Assert(container.StatusBeforeError, check.Equals, "what?!")
 	var c2 Container
-	err := coll.Find(bson.M{"id": container.ID}).One(&c2)
+	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
 	c.Assert(err, check.IsNil)
 	c.Assert(c2.Status, check.Equals, "what?!")
+	c.Assert(c2.StatusBeforeError, check.Equals, "what?!")
 	lastUpdate := c2.LastStatusUpdate.In(time.UTC).Format(time.RFC822)
 	c.Assert(lastUpdate, check.Not(check.DeepEquals), update.Format(time.RFC822))
 	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, true)
@@ -513,6 +517,7 @@ func (s *S) TestContainerSetStatusStarted(c *check.C) {
 	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
 	c.Assert(err, check.IsNil)
 	c.Assert(c2.Status, check.Equals, provision.StatusStarted.String())
+	c.Assert(c2.StatusBeforeError, check.Equals, provision.StatusStarted.String())
 	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, false)
 	c2.LastSuccessStatusUpdate = time.Time{}
 	err = coll.Update(bson.M{"id": c2.ID}, c2)
@@ -522,6 +527,52 @@ func (s *S) TestContainerSetStatusStarted(c *check.C) {
 	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
 	c.Assert(err, check.IsNil)
 	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, false)
+}
+
+func (s *S) TestContainerSetStatusStopped(c *check.C) {
+	container := Container{ID: "telnet"}
+	coll := s.p.Collection()
+	defer coll.Close()
+	err := coll.Insert(container)
+	c.Assert(err, check.IsNil)
+	defer coll.Remove(bson.M{"id": container.ID})
+	err = container.SetStatus(s.p, provision.StatusStopped, true)
+	c.Assert(err, check.IsNil)
+	var c2 Container
+	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
+	c.Assert(err, check.IsNil)
+	c.Assert(c2.Status, check.Equals, provision.StatusStopped.String())
+	c.Assert(c2.StatusBeforeError, check.Equals, provision.StatusStopped.String())
+	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, false)
+}
+
+func (s *S) TestContainerSetStatusError(c *check.C) {
+	container := Container{ID: "telnet"}
+	coll := s.p.Collection()
+	defer coll.Close()
+	err := coll.Insert(container)
+	c.Assert(err, check.IsNil)
+	defer coll.Remove(bson.M{"id": container.ID})
+	err = container.SetStatus(s.p, provision.StatusError, true)
+	c.Assert(err, check.IsNil)
+	var c2 Container
+	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
+	c.Assert(err, check.IsNil)
+	c.Assert(c2.Status, check.Equals, provision.StatusError.String())
+	c.Assert(c2.StatusBeforeError, check.Equals, "")
+	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, true)
+	err = container.SetStatus(s.p, provision.StatusStarted, true)
+	c.Assert(err, check.IsNil)
+	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
+	c.Assert(err, check.IsNil)
+	c.Assert(c2.Status, check.Equals, provision.StatusStarted.String())
+	c.Assert(c2.StatusBeforeError, check.Equals, provision.StatusStarted.String())
+	err = container.SetStatus(s.p, provision.StatusError, true)
+	c.Assert(err, check.IsNil)
+	err = coll.Find(bson.M{"id": container.ID}).One(&c2)
+	c.Assert(err, check.IsNil)
+	c.Assert(c2.Status, check.Equals, provision.StatusError.String())
+	c.Assert(c2.StatusBeforeError, check.Equals, provision.StatusStarted.String())
 }
 
 func (s *S) TestContainerSetStatusBuilding(c *check.C) {
@@ -554,6 +605,28 @@ func (s *S) TestContainerSetStatusNoUpdate(c *check.C) {
 	defer coll.Remove(bson.M{"id": c1.ID})
 	err := c1.SetStatus(s.p, provision.StatusStarted, false)
 	c.Assert(err, check.IsNil)
+	c.Assert(c1.Status, check.Equals, provision.StatusStarted.String())
+	c.Assert(c1.StatusBeforeError, check.Equals, provision.StatusStarted.String())
+}
+
+func (s *S) TestContainerExpectedStatus(c *check.C) {
+	c1 := Container{ID: "something-300"}
+	coll := s.p.Collection()
+	defer coll.Close()
+	coll.Insert(c1)
+	c.Assert(c1.ExpectedStatus(), check.Equals, provision.Status(""))
+	err := c1.SetStatus(s.p, provision.StatusStarted, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.ExpectedStatus(), check.Equals, provision.StatusStarted)
+	err = c1.SetStatus(s.p, provision.StatusError, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.ExpectedStatus(), check.Equals, provision.StatusStarted)
+	err = c1.SetStatus(s.p, provision.StatusStopped, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.ExpectedStatus(), check.Equals, provision.StatusStopped)
+	err = c1.SetStatus(s.p, provision.StatusError, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.ExpectedStatus(), check.Equals, provision.StatusStopped)
 }
 
 func (s *S) TestContainerSetImage(c *check.C) {
