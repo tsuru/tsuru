@@ -709,3 +709,191 @@ func (s *S) TestResetImage(c *check.C) {
 		"p2": {Name: "c1"},
 	})
 }
+
+func (s *S) TestEnsureContainersStartedWithoutRelaunch(c *check.C) {
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	_, err := InitializeBS()
+	c.Assert(err, check.IsNil)
+	var reqs []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		reqs = append(reqs, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, false, nil)
+	c.Assert(err, check.IsNil)
+	var paths []string
+	for _, r := range reqs {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+	}
+	c.Assert(paths, check.DeepEquals, []string{
+		"POST /images/create",
+		"POST /containers/create",
+		"GET /version",
+		"POST /containers/big-sibling/start",
+	})
+	reqs = nil
+	err = ensureContainersStarted(p, buf, false, nil)
+	c.Assert(err, check.IsNil)
+	paths = nil
+	for _, r := range reqs {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+	}
+	c.Assert(paths, check.DeepEquals, []string{
+		"POST /images/create",
+		"POST /containers/create",
+		"GET /version",
+		"POST /containers/big-sibling/start",
+	})
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, BsDefaultName)
+}
+
+func (s *S) TestEnsureContainersStartedGracefullyStop(c *check.C) {
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	_, err := InitializeBS()
+	c.Assert(err, check.IsNil)
+	var reqs []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		reqs = append(reqs, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	var paths []string
+	for _, r := range reqs {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+	}
+	c.Assert(paths, check.DeepEquals, []string{
+		"POST /images/create",
+		"POST /containers/create",
+		"GET /version",
+		"POST /containers/big-sibling/start",
+	})
+	reqs = nil
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	paths = nil
+	for _, r := range reqs {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+	}
+	c.Assert(paths, check.DeepEquals, []string{
+		"POST /images/create",
+		"POST /containers/create",
+		"POST /containers/big-sibling/stop",
+		"DELETE /containers/big-sibling",
+		"POST /containers/create",
+		"GET /version",
+		"POST /containers/big-sibling/start",
+	})
+	c.Assert(reqs[3].URL.Query().Get("force"), check.Equals, "")
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, BsDefaultName)
+}
+
+func (s *S) TestEnsureContainersStartedForceStopOnlyOnFailure(c *check.C) {
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	_, err := InitializeBS()
+	c.Assert(err, check.IsNil)
+	var reqs []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		reqs = append(reqs, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	errCount := 0
+	server.CustomHandler("/containers/big-sibling", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs = append(reqs, r)
+		if r.Method != "DELETE" {
+			server.DefaultHandler().ServeHTTP(w, r)
+			return
+		}
+		errCount++
+		if errCount > 2 {
+			server.DefaultHandler().ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	reqs = nil
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	var paths []string
+	for _, r := range reqs {
+		paths = append(paths, r.Method+" "+r.URL.Path)
+	}
+	c.Assert(paths, check.DeepEquals, []string{
+		"POST /images/create",
+		"POST /containers/create",
+		"POST /containers/big-sibling/stop",
+		"DELETE /containers/big-sibling",
+		"DELETE /containers/big-sibling",
+		"DELETE /containers/big-sibling",
+		"POST /containers/create",
+		"GET /version",
+		"POST /containers/big-sibling/start",
+	})
+	c.Assert(reqs[3].URL.Query().Get("force"), check.Equals, "")
+	c.Assert(reqs[4].URL.Query().Get("force"), check.Equals, "1")
+	c.Assert(reqs[5].URL.Query().Get("force"), check.Equals, "1")
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, BsDefaultName)
+}
+
+func (s *S) TestEnsureContainersStartedTryCreatingAfterRmFailure(c *check.C) {
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	_, err := InitializeBS()
+	c.Assert(err, check.IsNil)
+	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	server.CustomHandler("/containers/big-sibling", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("my error"))
+			return
+		}
+		server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	p, err := dockertest.NewFakeDockerProvisioner(server.URL())
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	buf := safe.NewBuffer(nil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.IsNil)
+	err = ensureContainersStarted(p, buf, true, nil)
+	c.Assert(err, check.ErrorMatches, `.*unable to create new node-container: container already exists - previour rm error: API error \(500\): my error`)
+}

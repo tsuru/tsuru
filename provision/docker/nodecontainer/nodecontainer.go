@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -349,21 +350,38 @@ func (c *NodeContainerConfig) create(node *cluster.Node, poolName string, p Dock
 		Config:     &c.Config,
 	}
 	_, err = client.CreateContainer(opts)
-	if relaunch && err == docker.ErrContainerAlreadyExists {
-		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
-		if err != nil {
+	if err != nil {
+		if err != docker.ErrContainerAlreadyExists {
 			return err
 		}
-		_, err = client.CreateContainer(opts)
+		if relaunch {
+			rmErr := tryRemovingOld(client, opts.Name)
+			if rmErr != nil {
+				log.Errorf("unable to remove old node-container: %s", rmErr)
+			}
+			_, err = client.CreateContainer(opts)
+			if err != nil {
+				return fmt.Errorf("unable to create new node-container: %s - previour rm error: %s", err, rmErr)
+			}
+		}
 	}
-	if err != nil && err != docker.ErrContainerAlreadyExists {
-		return err
-	}
-	err = client.StartContainer(c.Name, &c.HostConfig)
+	err = client.StartContainer(c.Name, nil)
 	if _, ok := err.(*docker.ContainerAlreadyRunning); !ok {
 		return err
 	}
 	return nil
+}
+
+func tryRemovingOld(client *docker.Client, id string) error {
+	err := client.StopContainer(id, 10)
+	if err == nil {
+		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: id})
+	}
+	for retries := 2; err != nil && retries > 0; retries-- {
+		time.Sleep(time.Second)
+		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: id, Force: true})
+	}
+	return err
 }
 
 func configFor(name string) *scopedconfig.ScopedConfig {
