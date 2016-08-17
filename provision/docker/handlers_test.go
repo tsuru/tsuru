@@ -2439,7 +2439,7 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 	}
 	doReq(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
 		}},
 	})
 	c.Assert(eventtest.EventDesc{
@@ -2457,10 +2457,10 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 		HostConfig: docker.HostConfig{Memory: 256, Privileged: true},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
@@ -2469,10 +2469,10 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 		HostConfig: docker.HostConfig{Memory: 256},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256}},
+			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
@@ -2480,11 +2480,11 @@ func (s *HandlersSuite) TestNodeContainerCreate(c *check.C) {
 		Config: docker.Config{Env: []string{"X=1"}},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1"}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2"}, HostConfig: docker.HostConfig{Memory: 256}},
-			"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}}},
+			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256}},
+			"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}, Healthcheck: &docker.HealthConfig{}}},
 		}},
 	}, "p1")
 }

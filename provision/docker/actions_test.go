@@ -946,6 +946,13 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 		Provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
+	err = cont.Start(&container.StartArgs{
+		Provisioner: s.p,
+		App:         app,
+	})
+	c.Assert(err, check.IsNil)
+	err = cont.Stop(s.p)
+	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
