@@ -199,11 +199,15 @@ func Deploy(opts DeployOptions) (string, error) {
 	if opts.Rollback && !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
 		validImages, err := findValidImages(opts.App.Name)
 		if err == nil {
+			inputImage := opts.Image
 			for img := range validImages {
 				if strings.HasSuffix(img, opts.Image) {
 					opts.Image = img
 					break
 				}
+			}
+			if opts.Image == inputImage {
+				return "", fmt.Errorf("invalid version: %q", inputImage)
 			}
 		}
 	}

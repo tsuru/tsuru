@@ -1116,30 +1116,12 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rollback deploy called\"}\n")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
-			"app.name":   a.Name,
-			"commit":     "",
-			"filesize":   0,
-			"kind":       "rollback",
-			"archiveurl": "",
-			"user":       s.token.GetUserName(),
-			"image":      "v3",
-			"origin":     "rollback",
-			"build":      false,
-			"rollback":   true,
-		},
-		EndCustomData: map[string]interface{}{
-			"image": "v3",
-		},
-	}, eventtest.HasEvent)
+	var body map[string]string
+	err = json.Unmarshal(recorder.Body.Bytes(), &body)
+	c.Assert(err, check.IsNil)
+	c.Assert(body, check.DeepEquals, map[string]string{"Message": "", "Error": `invalid version: "v3"`})
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
