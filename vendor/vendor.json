@@ -218,6 +218,30 @@
 			"revisionTime": "2016-05-18T20:26:25Z"
 		},
 		{
+			"checksumSHA1": "hZV62Xzt/i0e/WBKWww3rpkRAR4=",
+			"path": "github.com/docker/engine-api/types/filters",
+			"revision": "94a8f8f29307ab291abad6c6f2182d67089aae5d",
+			"revisionTime": "2016-08-16T00:41:22Z"
+		},
+		{
+			"checksumSHA1": "d5BuQrBPAQwmU/WjUSfYBZTKnFA=",
+			"path": "github.com/docker/engine-api/types/mount",
+			"revision": "94a8f8f29307ab291abad6c6f2182d67089aae5d",
+			"revisionTime": "2016-08-16T00:41:22Z"
+		},
+		{
+			"checksumSHA1": "Rpn/9dRkExFqAHIrytBY4jKc+bk=",
+			"path": "github.com/docker/engine-api/types/swarm",
+			"revision": "94a8f8f29307ab291abad6c6f2182d67089aae5d",
+			"revisionTime": "2016-08-16T00:41:22Z"
+		},
+		{
+			"checksumSHA1": "AE3TTpPWvv9ic71FiF0HnRr46mE=",
+			"path": "github.com/docker/engine-api/types/versions",
+			"revision": "94a8f8f29307ab291abad6c6f2182d67089aae5d",
+			"revisionTime": "2016-08-16T00:41:22Z"
+		},
+		{
 			"checksumSHA1": "kktbWelM0xVH61fOWltCEOR/87E=",
 			"path": "github.com/docker/go-connections/nat",
 			"revision": "f549a9393d05688dff0992ef3efd8bbe6c628aeb",
@@ -230,16 +254,16 @@
 			"revisionTime": "2016-01-25T17:48:45Z"
 		},
 		{
-			"checksumSHA1": "uhWARwDA6NE60a3/snaz9QBM7Ow=",
+			"checksumSHA1": "uzD/3swIsEhpsIYnYMd8j6reVE8=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "b669abaf878a47a91653a738176f3b5edf47c8c9",
-			"revisionTime": "2016-07-21T22:11:29Z"
+			"revision": "4efaf0ea3c8990e1648f68672d011289f0c0cb0a",
+			"revisionTime": "2016-08-17T16:02:08Z"
 		},
 		{
-			"checksumSHA1": "kMskTgkAE3I65JHNRa54dL35e0M=",
+			"checksumSHA1": "uoQ9awK5KCWSj1e/YDda9qftBvc=",
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "d433254bb83b41d7072ce470e312ea3cee257882",
-			"revisionTime": "2016-07-25T13:44:23Z"
+			"revision": "4efaf0ea3c8990e1648f68672d011289f0c0cb0a",
+			"revisionTime": "2016-08-17T16:02:08Z"
 		},
 		{
 			"path": "github.com/garyburd/redigo/redis",
@@ -736,6 +760,12 @@
 			"path": "golang.org/x/net/context",
 			"revision": "6dc0abcce25682504770fa9a7a6705bbfdebfa48",
 			"revisionTime": "2015-02-24T17:42:36+11:00"
+		},
+		{
+			"checksumSHA1": "EJMLw8rk55bsqmIpSMtVORJpSGo=",
+			"path": "golang.org/x/net/context/ctxhttp",
+			"revision": "4876518f9e71663000c348837735820161a42df7",
+			"revisionTime": "2016-03-22T02:00:46Z"
 		},
 		{
 			"path": "golang.org/x/net/netutil",

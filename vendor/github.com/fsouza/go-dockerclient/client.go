@@ -34,6 +34,8 @@ import (
 	"github.com/docker/docker/pkg/homedir"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hashicorp/go-cleanhttp"
+	"golang.org/x/net/context"
+	"golang.org/x/net/context/ctxhttp"
 )
 
 const userAgent = "go-dockerclient"
@@ -144,9 +146,6 @@ type Client struct {
 	serverAPIVersion    APIVersion
 	expectedAPIVersion  APIVersion
 	unixHTTPClient      *http.Client
-
-	// A timeout to use when using both the unixHTTPClient and HTTPClient
-	timeout time.Duration
 }
 
 // NewClient returns a Client instance ready for communication with the given
@@ -199,14 +198,16 @@ func NewVersionedClient(endpoint string, apiVersionString string) (*Client, erro
 			return nil, err
 		}
 	}
-	return &Client{
+	c := &Client{
 		HTTPClient:          cleanhttp.DefaultClient(),
 		Dialer:              &net.Dialer{},
 		endpoint:            endpoint,
 		endpointURL:         u,
 		eventMonitor:        new(eventMonitoringState),
 		requestedAPIVersion: requestedAPIVersion,
-	}, nil
+	}
+	c.initializeUnixClient()
+	return c, nil
 }
 
 // NewVersionnedTLSClient has been DEPRECATED, please use NewVersionedTLSClient.
@@ -308,7 +309,7 @@ func NewVersionedTLSClientFromBytes(endpoint string, certPEMBlock, keyPEMBlock, 
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
+	c := &Client{
 		HTTPClient:          &http.Client{Transport: tr},
 		TLSConfig:           tlsConfig,
 		Dialer:              &net.Dialer{},
@@ -316,13 +317,21 @@ func NewVersionedTLSClientFromBytes(endpoint string, certPEMBlock, keyPEMBlock, 
 		endpointURL:         u,
 		eventMonitor:        new(eventMonitoringState),
 		requestedAPIVersion: requestedAPIVersion,
-	}, nil
+	}
+	c.initializeUnixClient()
+	return c, nil
 }
 
-// SetTimeout takes a timeout and applies it to subsequent requests to the
-// docker engine
+// SetTimeout takes a timeout and applies it to both the HTTPClient and
+// unixHTTPClient. It should not be called concurrently with any other Client
+// methods.
 func (c *Client) SetTimeout(t time.Duration) {
-	c.timeout = t
+	if c.HTTPClient != nil {
+		c.HTTPClient.Timeout = t
+	}
+	if c.unixHTTPClient != nil {
+		c.unixHTTPClient.Timeout = t
+	}
 }
 
 func (c *Client) checkAPIVersion() error {
@@ -388,6 +397,7 @@ type doOptions struct {
 	data      interface{}
 	forceJSON bool
 	headers   map[string]string
+	context   context.Context
 }
 
 func (c *Client) do(method, path string, doOptions doOptions) (*http.Response, error) {
@@ -409,15 +419,10 @@ func (c *Client) do(method, path string, doOptions doOptions) (*http.Response, e
 	protocol := c.endpointURL.Scheme
 	var u string
 	if protocol == "unix" {
-		httpClient = c.unixClient()
+		httpClient = c.unixHTTPClient
 		u = c.getFakeUnixURL(path)
 	} else {
 		u = c.getURL(path)
-	}
-
-	// If the user has provided a timeout, apply it.
-	if c.timeout != 0 {
-		httpClient.Timeout = c.timeout
 	}
 
 	req, err := http.NewRequest(method, u, params)
@@ -434,12 +439,19 @@ func (c *Client) do(method, path string, doOptions doOptions) (*http.Response, e
 	for k, v := range doOptions.headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := httpClient.Do(req)
+
+	ctx := doOptions.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	resp, err := ctxhttp.Do(ctx, httpClient, req)
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
 			return nil, ErrConnectionRefused
 		}
-		return nil, err
+
+		return nil, chooseError(ctx, err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return nil, newError(resp)
@@ -460,6 +472,17 @@ type streamOptions struct {
 	// Timeout with no data is received, it's reset every time new data
 	// arrives
 	inactivityTimeout time.Duration
+	context           context.Context
+}
+
+// if error in context, return that instead of generic http error
+func chooseError(ctx context.Context, err error) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return err
+	}
 }
 
 func (c *Client) stream(method, path string, streamOptions streamOptions) error {
@@ -492,18 +515,30 @@ func (c *Client) stream(method, path string, streamOptions streamOptions) error 
 	if streamOptions.stderr == nil {
 		streamOptions.stderr = ioutil.Discard
 	}
-	cancelRequest := cancelable(c.HTTPClient, req)
+
+	// make a sub-context so that our active cancellation does not affect parent
+	ctx := streamOptions.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	subCtx, cancelRequest := context.WithCancel(ctx)
+	defer cancelRequest()
+
 	if protocol == "unix" {
 		dial, err := c.Dialer.Dial(protocol, address)
 		if err != nil {
 			return err
 		}
-		cancelRequest = func() { dial.Close() }
-		defer dial.Close()
+		go func() {
+			select {
+			case <-subCtx.Done():
+				dial.Close()
+			}
+		}()
 		breader := bufio.NewReader(dial)
 		err = req.Write(dial)
 		if err != nil {
-			return err
+			return chooseError(subCtx, err)
 		}
 
 		// ReadResponse may hang if server does not replay
@@ -519,14 +554,15 @@ func (c *Client) stream(method, path string, streamOptions streamOptions) error 
 			if strings.Contains(err.Error(), "connection refused") {
 				return ErrConnectionRefused
 			}
-			return err
+
+			return chooseError(subCtx, err)
 		}
 	} else {
-		if resp, err = c.HTTPClient.Do(req); err != nil {
+		if resp, err = ctxhttp.Do(subCtx, c.HTTPClient, req); err != nil {
 			if strings.Contains(err.Error(), "connection refused") {
 				return ErrConnectionRefused
 			}
-			return err
+			return chooseError(subCtx, err)
 		}
 	}
 	defer resp.Body.Close()
@@ -543,7 +579,7 @@ func (c *Client) stream(method, path string, streamOptions streamOptions) error 
 		if atomic.LoadUint32(&canceled) != 0 {
 			return ErrInactivityTimeout
 		}
-		return err
+		return chooseError(subCtx, err)
 	}
 	return nil
 }
@@ -691,7 +727,7 @@ func (c *Client) hijack(method, path string, hijackOptions hijackOptions) (Close
 		}
 	}
 
-	errs := make(chan error)
+	errs := make(chan error, 1)
 	quit := make(chan struct{})
 	go func() {
 		clientconn := httputil.NewClientConn(dial, nil)
@@ -705,7 +741,7 @@ func (c *Client) hijack(method, path string, hijackOptions hijackOptions) (Close
 		defer rwc.Close()
 
 		errChanOut := make(chan error, 1)
-		errChanIn := make(chan error, 1)
+		errChanIn := make(chan error, 2)
 		if hijackOptions.stdout == nil && hijackOptions.stderr == nil {
 			close(errChanOut)
 		} else {
@@ -755,14 +791,12 @@ func (c *Client) hijack(method, path string, hijackOptions hijackOptions) (Close
 		select {
 		case errIn = <-errChanIn:
 		case <-quit:
-			return
 		}
 
 		var errOut error
 		select {
 		case errOut = <-errChanOut:
 		case <-quit:
-			return
 		}
 
 		if errIn != nil {
@@ -808,9 +842,9 @@ func (c *Client) getFakeUnixURL(path string) string {
 	return fmt.Sprintf("%s%s", urlStr, path)
 }
 
-func (c *Client) unixClient() *http.Client {
-	if c.unixHTTPClient != nil {
-		return c.unixHTTPClient
+func (c *Client) initializeUnixClient() {
+	if c.endpointURL.Scheme != "unix" {
+		return
 	}
 	socketPath := c.endpointURL.Path
 	tr := cleanhttp.DefaultTransport()
@@ -818,7 +852,6 @@ func (c *Client) unixClient() *http.Client {
 		return c.Dialer.Dial("unix", socketPath)
 	}
 	c.unixHTTPClient = &http.Client{Transport: tr}
-	return c.unixHTTPClient
 }
 
 type jsonMessage struct {
@@ -923,7 +956,7 @@ func parseEndpoint(endpoint string, tls bool) (*url.URL, error) {
 	if err != nil {
 		return nil, ErrInvalidEndpoint
 	}
-	if tls {
+	if tls && u.Scheme != "unix" {
 		u.Scheme = "https"
 	}
 	switch u.Scheme {
