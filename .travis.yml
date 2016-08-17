@@ -2,15 +2,13 @@ language: go
 sudo: required
 install: true
 go:
-  - 1.5.4
   - 1.6.3
-  - 1.7rc5
+  - 1.7
   - tip
 env:
   global:
     - GOARCH=amd64
-    - GO15VENDOREXPERIMENT=1
-    - GO_FOR_RELEASE=1.6.3
+    - GO_FOR_RELEASE=1.7
 addons:
   apt:
     packages:
