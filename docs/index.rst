@@ -26,4 +26,5 @@ To get started, first read :ref:`understanding tsuru <understanding>`.
     reference/index
     faq
     releases/index
+    experimental/index
     roadmap
