@@ -10,8 +10,17 @@ Tsuru Installer
 ###############
 
 Tsuru installer provides a way to install Tsuru API and it's required components
-locally or on remote hosts. It's bundled on the tsuru client and using it is as
-easy as running:
+locally or on remote hosts.
+
+.. note::
+
+    Tsuru Installer is distributed inside the tsuru client. To use it, you must
+    first install the client. Check the tsuru client documentation for a full
+    reference, including how to install it: https://tsuru-client.readthedocs.org.
+
+
+To install tsuru locally, one can simply run
+(requires `VirtualBox <https://www.virtualbox.org/wiki/Downloads>`_):
 
 .. highlight:: bash
 
@@ -20,19 +29,9 @@ easy as running:
     $ tsuru install
 
 
-This will install tsuru, and all its dependencies locally in a
-`VirtualBox <https://www.virtualbox.org/wiki/Downloads>`_ VM. It is possible to
-customize the installation using a .yml configuration file (see :ref:`customize`).
-
-How to use it
-=============
-
-Tsuru installer is bundled inside the tsuru client. See the tsuru-client documentation
-for a full reference, including how to install it: https://tsuru-client.readthedocs.org.
-
-To install locally(the default), the installer depends on
-`VirtualBox <https://www.virtualbox.org/wiki/Downloads>`_. See the documentation
-on how to install it.
+After a couple of minutes you will have a full tsuru installation, inside a local
+VirtualBox VM, where you can start deploying your applications and experience the
+tsuru workflow.
 
 How it works
 ============
