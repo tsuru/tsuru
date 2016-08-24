@@ -5,6 +5,8 @@
 :title: tsuru Installer
 :description: Installs tsuru and it`s dependencies
 
+.. _installer:
+
 ###############
 tsuru Installer
 ###############

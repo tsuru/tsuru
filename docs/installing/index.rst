@@ -1,9 +1,9 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
 :title: Installing tsuru
-:description: Step-by-step guide about how to setup a private PaaS with tsuru. 
+:description: Step-by-step guide about how to setup a private PaaS with tsuru.
 
 .. _installing:
 
@@ -21,6 +21,11 @@ Installing
 
     This gives you a very nice environment for trying out tsuru, but this is not
     the recommended approach for a production environment.
+
+.. note ::
+    tsuru client ships with an :ref:`experimental` feature called :ref:`installer`
+    that can be used to provision machines on different iaas and install tsuru
+    on them.
 
 This document will describe how to install each component separately.
 We assume that tsuru is being installed on an Ubuntu Server 14.04 LTS 64-bit
