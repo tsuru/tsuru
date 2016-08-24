@@ -933,8 +933,14 @@ func (s *S) TestContainerStartStartedUnits(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestContainerLogs(c *check.C) {
+func (s *S) TestContainerLogsAlreadyStopped(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont, err := s.newContainer(newContainerOpts{}, nil)
+	c.Assert(err, check.IsNil)
+	args := StartArgs{Provisioner: s.p, App: app}
+	err = cont.Start(&args)
+	c.Assert(err, check.IsNil)
+	err = cont.Stop(s.p)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	var buff bytes.Buffer
@@ -971,10 +977,15 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 }
 
-func (s *S) TestSafeAttachWaitContainer(c *check.C) {
+func (s *S) TestSafeAttachWaitContainerStopped(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont, err := s.newContainer(newContainerOpts{}, nil)
 	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
+	args := StartArgs{Provisioner: s.p, App: app}
+	err = cont.Start(&args)
+	c.Assert(err, check.IsNil)
+	err = cont.Stop(s.p)
+	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	opts := docker.AttachToContainerOptions{
 		Container:    cont.ID,
