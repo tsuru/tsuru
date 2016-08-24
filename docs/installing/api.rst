@@ -9,12 +9,10 @@ API Server
 Dependencies
 ============
 
-tsuru API depends on a MongoDB server, Redis server, Hipache router, and
-Gandalf server. Instructions for installing `MongoDB
-<http://docs.mongodb.org/>`_ and `Redis <http://redis.io/>`_ are outside the
-scope of this documentation, but it's pretty straight-forward following their
-docs. :doc:`Installing Gandalf </installing/gandalf>` and :doc:`installing
-Hipache </installing/hipache-router>` are described in other sessions.
+tsuru API depends on a MongoDB server, Redis server and Hipache router.
+Instructions for installing `MongoDB <http://docs.mongodb.org/>`_ and `Redis <http://redis.io/>`_
+are outside the scope of this documentation, but it's pretty straight-forward following their
+docs. :doc:`installing Hipache </installing/hipache-router>` is described in other session.
 
 
 Adding repositories
@@ -45,8 +43,7 @@ Now you need to customize the configuration in the ``/etc/tsuru/tsuru.conf``. A
 description of possible configuration values can be found in the
 :doc:`configuration reference </reference/config>`. A basic possible
 configuration is described below, please note that you should replace the values
-``your-mongodb-server``, ``your-redis-server``, ``your-gandalf-server`` and
-``your-hipache-server``.
+``your-mongodb-server``, ``your-redis-server`` and ``your-hipache-server``.
 
 .. highlight:: yaml
 
@@ -55,6 +52,7 @@ configuration is described below, please note that you should replace the values
     listen: "0.0.0.0:8080"
     debug: true
     host: http://<machine-public-addr>:8080 # This port must be the same as in the "listen" conf
+    repo-manager: none
     auth:
         user-registration: true
         scheme: native
@@ -67,8 +65,6 @@ configuration is described below, please note that you should replace the values
     queue:
         mongo-url: <your-mongodb-server>:27017
         mongo-database: queuedb
-    git:
-        api-server: http://<your-gandalf-server>:8000
     provisioner: docker
     docker:
         router: hipache
@@ -150,39 +146,5 @@ For a description
     # type the chosen password
 
 
-And that's it, you now have registered a user in your tsuru API server and its 
+And that's it, you now have registered a user in your tsuru API server and its
 ready to run any commands.
-
-
-.. _gandalf_auth_token:
-
-Generating token for Gandalf authentication
-===========================================
-
-Assuming you have already configured your Gandalf server in the :doc:`previous
-installation step </installing/gandalf>`, now we need to export two extra
-environment variables to the git user, which will run our deploy hooks, the URL
-to our API server and a generated token.
-
-First step is to generate a token in the machine we've just installed the API
-server:
-
-.. highlight:: bash
-
-::
-
-    $ tsurud token
-    fed1000d6c05019f6550b20dbc3c572996e2c044
-
-
-Now you have to go back to the machine you installed Gandalf, and run this:
-
-.. highlight:: bash
-
-::
-
-    $ cat | sudo tee -a /home/git/.bash_profile <<EOF
-    export TSURU_HOST=http://<your-tsuru-api-addr>:8080
-    export TSURU_TOKEN=fed1000d6c05019f6550b20dbc3c572996e2c044
-    EOF
-

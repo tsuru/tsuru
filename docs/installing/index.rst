@@ -35,7 +35,7 @@ ride.
 
 .. toctree::
 
-    gandalf
     api
     planb-router
     adding-nodes
+    Gandalf (Optional) <gandalf>

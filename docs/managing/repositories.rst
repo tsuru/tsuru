@@ -60,13 +60,3 @@ tsuru can also manage keys through the API.
 tsuru will not store any public key data, all the data related to SSH keys is
 handled by Gandalf alone, and when Gandalf is not enabled, those key commands
 will not work.
-
-Adding Gandalf to an already existing tsuru cluster
-===================================================
-
-In the case of an old tsuru cluster running without Gandalf, users and
-applications registered in tsuru won't be available in the newly created
-Gandalf server, or both servers may be out-of-sync.
-
-When Gandalf is enabled, administrators of the cloud can run the ``tsurud
-gandalf-sync`` command.
