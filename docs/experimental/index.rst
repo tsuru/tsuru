@@ -3,7 +3,7 @@
    license that can be found in the LICENSE file.
 
 :title: Experimental
-:description: Check Tsuru Experimental features
+:description: Check tsuru Experimental features
 
 .. _experimental:
 

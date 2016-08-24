@@ -2,19 +2,19 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-:title: Tsuru Installer
+:title: tsuru Installer
 :description: Installs tsuru and it`s dependencies
 
 ###############
-Tsuru Installer
+tsuru Installer
 ###############
 
-Tsuru installer provides a way to install Tsuru API and it's required components
+tsuru Installer provides a way to install tsuru API and it's required components
 locally or on remote hosts.
 
 .. note::
 
-    Tsuru Installer is distributed inside the tsuru client. To use it, you must
+    tsuru Installer is distributed inside the tsuru client. To use it, you must
     first install the client. Check the tsuru client documentation for a full
     reference, including how to install it: https://tsuru-client.readthedocs.org.
 
@@ -36,7 +36,7 @@ tsuru workflow.
 How it works
 ============
 
-Tsuru installer uses `docker machine <https://www.docker.com/products/docker-machine>`_
+tsuru installer uses `docker machine <https://www.docker.com/products/docker-machine>`_
 to provision docker hosts, this means that it's possible to use any of the core or
 3rd party docker machine drivers on the installation.
 
@@ -67,7 +67,7 @@ Currently, the installer installs the following components:
 * Redis
 * PlanB router
 * Docker Registry
-* Tsuru API
+* tsuru API
 
 After all basic components are installed, it will:
 
