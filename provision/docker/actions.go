@@ -137,13 +137,17 @@ var insertEmptyContainerInDB = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
+		initialStatus := provision.StatusCreated
+		if args.isDeploy {
+			initialStatus = provision.StatusBuilding
+		}
 		contName := args.app.GetName() + "-" + randomString()
 		cont := container.Container{
 			AppName:       args.app.GetName(),
 			ProcessName:   args.processName,
 			Type:          args.app.GetPlatform(),
 			Name:          contName,
-			Status:        provision.StatusCreated.String(),
+			Status:        initialStatus.String(),
 			Image:         args.imageID,
 			BuildingImage: args.buildingImage,
 			ExposedPort:   args.exposedPort,

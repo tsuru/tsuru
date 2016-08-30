@@ -10,7 +10,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"sort"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -255,6 +259,52 @@ func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
 	err = evt.TryCancel("because yes", "majortom@ground.control")
 	c.Assert(err, check.IsNil)
 	<-done
+}
+
+func (s *S) TestArchiveDeployRegisterRace(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	var p dockerProvisioner
+	var registerCount int64
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		go func(path string) {
+			parts := strings.Split(path, "/")
+			if len(parts) == 4 && parts[3] == "start" {
+				registerErr := p.RegisterUnit(provision.Unit{ID: parts[2]}, nil)
+				if registerErr == nil {
+					atomic.AddInt64(&registerCount, 1)
+				}
+			}
+		}(r.URL.Path)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
+		cluster.Node{Address: server.URL()})
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(&p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	nTests := 100
+	stopCh := s.stopContainers(server.URL(), uint(nTests))
+	defer func() { <-stopCh }()
+	wg := sync.WaitGroup{}
+	for i := 0; i < nTests; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			name := fmt.Sprintf("myapp-%d", i)
+			app := provisiontest.NewFakeApp(name, "python", 1)
+			routertest.FakeRouter.AddBackend(app.GetName())
+			defer routertest.FakeRouter.RemoveBackend(app.GetName())
+			img, _ := p.archiveDeploy(app, p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
+			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
+		}(i)
+	}
+	wg.Wait()
+	c.Assert(registerCount, check.Equals, int64(nTests))
 }
 
 func (s *S) TestStart(c *check.C) {
