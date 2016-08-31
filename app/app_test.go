@@ -4119,8 +4119,7 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Pool: "test2"}
 	err = app.Update(updateData, new(bytes.Buffer))
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "pool not found")
+	c.Assert(err, check.Equals, provision.ErrPoolNotFound)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test")

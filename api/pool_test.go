@@ -69,9 +69,8 @@ func (s *S) TestAddPool(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	c.Assert(err, check.IsNil)
-	pools, err := provision.ListPools(bson.M{"_id": "pool1"})
+	_, err = provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.HasLen, 1)
 	b = bytes.NewBufferString("name=pool2&public=true")
 	req, err = http.NewRequest("POST", "/pools", b)
 	c.Assert(err, check.IsNil)
@@ -81,9 +80,9 @@ func (s *S) TestAddPool(c *check.C) {
 	defer provision.RemovePool("pool2")
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
-	pools, err = provision.ListPools(bson.M{"_id": "pool2"})
+	pool, err := provision.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
-	c.Assert(pools[0].Public, check.Equals, true)
+	c.Assert(pool.Public, check.Equals, true)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -126,9 +125,8 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.ListPools(bson.M{"_id": "pool1"})
-	c.Assert(err, check.IsNil)
-	c.Assert(p, check.HasLen, 0)
+	_, err = provision.GetPoolByName("pool1")
+	c.Assert(err, check.Equals, provision.ErrPoolNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -171,9 +169,9 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.ListPools(bson.M{"_id": "pool1"})
+	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
+	c.Assert(p.Teams, check.DeepEquals, []string{"test"})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -260,10 +258,10 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	defaultPools, err := provision.ListPools(bson.M{"default": true})
+	defaultPool, err := provision.GetDefaultPool()
 	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
-		defaultPools[0],
+		*defaultPool,
 		{Name: "pool1", Public: true, Teams: []string{}},
 	}
 	token := userWithPermission(c, permission.Permission{
@@ -300,10 +298,10 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("nopool")
-	defaultPools, err := provision.ListPools(bson.M{"default": true})
+	defaultPool, err := provision.GetDefaultPool()
 	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
-		defaultPools[0],
+		*defaultPool,
 		{Name: "pool1", Teams: []string{"angra"}},
 	}
 	req, err := http.NewRequest("GET", "/pools", nil)
@@ -386,9 +384,9 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	p, err := provision.ListPools(bson.M{"_id": "pool1"})
+	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	c.Assert(p[0].Public, check.Equals, true)
+	c.Assert(p.Public, check.Equals, true)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -416,9 +414,9 @@ func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	p, err := provision.ListPools(bson.M{"_id": "pool1"})
+	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	c.Assert(p[0].Default, check.Equals, true)
+	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
@@ -440,9 +438,9 @@ func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	p, err := provision.ListPools(bson.M{"_id": "pool2"})
+	p, err := provision.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
-	c.Assert(p[0].Default, check.Equals, true)
+	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
@@ -465,6 +463,39 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
+}
+
+func (s *S) TestPoolUpdateProvisioner(c *check.C) {
+	provision.RemovePool("test1")
+	opts := provision.AddPoolOptions{Name: "pool1", Public: true, Default: true}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool1")
+	b := bytes.NewBufferString("provisioner=myprov&default=false")
+	req, err := http.NewRequest("PUT", "/pools/pool1", b)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	c.Assert(err, check.IsNil)
+	p, err := provision.GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Provisioner, check.Equals, "myprov")
+	c.Assert(p.Public, check.Equals, true)
+	c.Assert(p.Default, check.Equals, false)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "pool1"},
+			{"name": "default", "value": "false"},
+			{"name": "provisioner", "value": "myprov"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPoolUpdateNotFound(c *check.C) {

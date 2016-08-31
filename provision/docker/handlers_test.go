@@ -124,12 +124,6 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
 	s.clusterSess, err = mgo.Dial(clusterDbUrl)
 	c.Assert(err, check.IsNil)
-	pools, err := provision.ListPools(nil)
-	c.Assert(err, check.IsNil)
-	for _, pool := range pools {
-		err = provision.RemovePool(pool.Name)
-		c.Assert(err, check.IsNil)
-	}
 	app.AuthScheme = nativeScheme
 	s.team = &auth.Team{Name: "admin"}
 	err = s.conn.Teams().Insert(s.team)
@@ -968,6 +962,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
+		Pool:     "test-default",
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -1089,6 +1084,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
+		Pool:     "test-default",
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)

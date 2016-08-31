@@ -7,14 +7,13 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	terrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // title: pool list
@@ -39,20 +38,7 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		teams = append(teams, c.Value)
 	}
-	query := []bson.M{{"public": true}, {"default": true}}
-	if teams == nil {
-		filter := bson.M{"default": false, "public": false}
-		query = append(query, filter)
-	}
-	if len(teams) > 0 {
-		filter := bson.M{
-			"default": false,
-			"public":  false,
-			"teams":   bson.M{"$in": teams},
-		}
-		query = append(query, filter)
-	}
-	pools, err := provision.ListPools(bson.M{"$or": query})
+	pools, err := provision.ListPossiblePools(teams)
 	if err != nil {
 		return err
 	}
@@ -78,33 +64,38 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	public, _ := strconv.ParseBool(r.FormValue("public"))
-	isDefault, _ := strconv.ParseBool(r.FormValue("default"))
-	force, _ := strconv.ParseBool(r.FormValue("force"))
-	p := provision.AddPoolOptions{
-		Name:    r.FormValue("name"),
-		Public:  public,
-		Default: isDefault,
-		Force:   force,
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	var addOpts provision.AddPoolOptions
+	err = r.ParseForm()
+	if err == nil {
+		err = dec.DecodeValues(&addOpts, r.Form)
 	}
-	if p.Name == "" {
+	if err != nil {
+		return &terrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	if addOpts.Name == "" {
 		return &terrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: provision.ErrPoolNameIsRequired.Error(),
 		}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: p.Name},
+		Target:     event.Target{Type: event.TargetTypePool, Value: addOpts.Name},
 		Kind:       permission.PermPoolCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, p.Name)),
+		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, addOpts.Name)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = provision.AddPool(p)
+	err = provision.AddPool(addOpts)
 	if err == provision.ErrDefaultPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
@@ -262,17 +253,18 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	query := bson.M{}
-	if v := r.FormValue("default"); v != "" {
-		d, _ := strconv.ParseBool(v)
-		query["default"] = d
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	var updateOpts provision.UpdatePoolOptions
+	err = dec.DecodeValues(&updateOpts, r.Form)
+	if err != nil {
+		return &terrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
 	}
-	if v := r.FormValue("public"); v != "" {
-		public, _ := strconv.ParseBool(v)
-		query["public"] = public
-	}
-	forceDefault, _ := strconv.ParseBool(r.FormValue("force"))
-	err = provision.PoolUpdate(poolName, query, forceDefault)
+	err = provision.PoolUpdate(poolName, updateOpts)
 	if err == provision.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

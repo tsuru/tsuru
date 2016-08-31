@@ -251,8 +251,12 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(p.Teams, check.DeepEquals, []string{"ateam"})
 }
 
+func boolPtr(v bool) *bool {
+	return &v
+}
+
 func (s *S) TestPoolUpdateNotFound(c *check.C) {
-	err := PoolUpdate("notfound", bson.M{"public": true}, false)
+	err := PoolUpdate("notfound", UpdatePoolOptions{Public: boolPtr(true)})
 	c.Assert(err, check.Equals, ErrPoolNotFound)
 }
 
@@ -262,7 +266,7 @@ func (s *S) TestPoolUpdate(c *check.C) {
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	err = PoolUpdate("pool1", bson.M{"public": true}, false)
+	err = PoolUpdate("pool1", UpdatePoolOptions{Public: boolPtr(true)})
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
@@ -276,7 +280,7 @@ func (s *S) TestPoolUpdateToDefault(c *check.C) {
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	err = PoolUpdate("pool1", bson.M{"public": true, "default": true}, false)
+	err = PoolUpdate("pool1", UpdatePoolOptions{Public: boolPtr(true), Default: boolPtr(true)})
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
@@ -294,7 +298,7 @@ func (s *S) TestPoolUpdateForceToDefault(c *check.C) {
 	err = coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	err = PoolUpdate("pool2", bson.M{"public": true, "default": true}, true)
+	err = PoolUpdate("pool2", UpdatePoolOptions{Public: boolPtr(true), Default: boolPtr(true), Force: true})
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": "pool2"}).One(&p)
@@ -312,7 +316,7 @@ func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) 
 	err = coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	err = PoolUpdate("pool2", bson.M{"public": true, "default": true}, false)
+	err = PoolUpdate("pool2", UpdatePoolOptions{Public: boolPtr(true), Default: boolPtr(true)})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrDefaultPoolAlreadyExists)
 }
@@ -323,7 +327,7 @@ func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	err = PoolUpdate("pool1", bson.M{"public": true}, false)
+	err = PoolUpdate("pool1", UpdatePoolOptions{Public: boolPtr(true)})
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
@@ -338,7 +342,7 @@ func (s *S) TestListPoolAll(c *check.C) {
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	pools, err := ListPools(nil)
+	pools, err := ListPossiblePools(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)
 }
@@ -353,14 +357,14 @@ func (s *S) TestListPoolByQuery(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
 	defer coll.RemoveId(pool2.Name)
-	pools, err := ListPools(bson.M{"public": true})
+	pools, err := listPools(bson.M{"public": true})
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)
 	c.Assert(pools[0].Public, check.Equals, true)
 }
 
 func (s *S) TestListPoolEmpty(c *check.C) {
-	pools, err := ListPools(nil)
+	pools, err := ListPossiblePools(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 0)
 }

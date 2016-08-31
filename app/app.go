@@ -298,7 +298,7 @@ func (app *App) Update(updateData App, w io.Writer) error {
 	}
 	if poolName != "" {
 		app.Pool = poolName
-		_, err := app.GetPoolForApp(app.Pool)
+		_, err := app.getPoolForApp(app.Pool)
 		if err != nil {
 			return err
 		}
@@ -711,29 +711,35 @@ func (app *App) validateTeamOwner() error {
 }
 
 func (app *App) SetPool() error {
-	pool, err := app.GetPoolForApp(app.Pool)
+	poolName, err := app.getPoolForApp(app.Pool)
 	if err != nil {
 		return err
 	}
-	if pool == "" {
-		pool, err = app.GetDefaultPool()
+	if poolName == "" {
+		var pool *provision.Pool
+		pool, err = provision.GetDefaultPool()
 		if err != nil {
 			return err
 		}
+		poolName = pool.Name
 	}
-	app.Pool = pool
+	app.Pool = poolName
 	return nil
 }
 
-func (app *App) GetPoolForApp(poolName string) (string, error) {
-	var query bson.M
-	var poolTeam bool
+func (app *App) getPoolForApp(poolName string) (string, error) {
+	var pools []provision.Pool
+	var err error
 	if poolName != "" {
-		query = bson.M{"_id": poolName}
+		var pool *provision.Pool
+		pool, err = provision.GetPoolByName(poolName)
+		if err != nil {
+			return "", err
+		}
+		pools = append(pools, *pool)
 	} else {
-		query = bson.M{"teams": app.TeamOwner}
+		pools, err = provision.ListPoolsForTeam(app.TeamOwner)
 	}
-	pools, err := provision.ListPools(query)
 	if err != nil {
 		return "", err
 	}
@@ -741,11 +747,9 @@ func (app *App) GetPoolForApp(poolName string) (string, error) {
 		return "", stderr.New("you have access to more than one pool, please choose one in app creation")
 	}
 	if len(pools) == 0 {
-		if poolName == "" {
-			return "", nil
-		}
-		return "", stderr.New("pool not found")
+		return "", nil
 	}
+	var poolTeam bool
 	for _, team := range pools[0].Teams {
 		if team == app.TeamOwner {
 			poolTeam = true
@@ -754,17 +758,6 @@ func (app *App) GetPoolForApp(poolName string) (string, error) {
 	}
 	if !pools[0].Public && !poolTeam {
 		return "", fmt.Errorf("App team owner %q has no access to pool %q", app.TeamOwner, poolName)
-	}
-	return pools[0].Name, nil
-}
-
-func (app *App) GetDefaultPool() (string, error) {
-	pools, err := provision.ListPools(bson.M{"default": true})
-	if err != nil {
-		return "", err
-	}
-	if len(pools) == 0 {
-		return "", stderr.New("No default pool.")
 	}
 	return pools[0].Name, nil
 }

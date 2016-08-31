@@ -298,6 +298,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "test-default",
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -507,11 +508,13 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "test-default",
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	appStruct2 := &app.App{
 		Name: appInstance2.GetName(),
+		Pool: "test-default",
 	}
 	err = s.storage.Apps().Insert(appStruct2)
 	c.Assert(err, check.IsNil)
@@ -556,6 +559,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "test-default",
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)

@@ -12,13 +12,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type Pool struct {
-	Name    string `bson:"_id"`
-	Teams   []string
-	Public  bool
-	Default bool
-}
-
 var (
 	ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
 	ErrDefaultPoolAlreadyExists       = errors.New("Default pool already exists.")
@@ -26,11 +19,27 @@ var (
 	ErrPoolNotFound                   = errors.New("Pool does not exist.")
 )
 
+type Pool struct {
+	Name        string `bson:"_id"`
+	Teams       []string
+	Public      bool
+	Default     bool
+	Provisioner string
+}
+
 type AddPoolOptions struct {
-	Name    string
-	Public  bool
-	Default bool
-	Force   bool
+	Name        string
+	Public      bool
+	Default     bool
+	Force       bool
+	Provisioner string
+}
+
+type UpdatePoolOptions struct {
+	Default     *bool
+	Public      *bool
+	Force       bool
+	Provisioner string
 }
 
 func AddPool(opts AddPoolOptions) error {
@@ -48,7 +57,7 @@ func AddPool(opts AddPoolOptions) error {
 			return err
 		}
 	}
-	pool := Pool{Name: opts.Name, Public: opts.Public, Default: opts.Default}
+	pool := Pool{Name: opts.Name, Public: opts.Public, Default: opts.Default, Provisioner: opts.Provisioner}
 	return conn.Pools().Insert(pool)
 }
 
@@ -58,7 +67,7 @@ func changeDefaultPool(force bool) error {
 		return err
 	}
 	defer conn.Close()
-	p, err := ListPools(bson.M{"default": true})
+	p, err := listPools(bson.M{"default": true})
 	if err != nil {
 		return err
 	}
@@ -124,7 +133,24 @@ func RemoveTeamsFromPool(poolName string, teams []string) error {
 	return err
 }
 
-func ListPools(query bson.M) ([]Pool, error) {
+func ListPossiblePools(teams []string) ([]Pool, error) {
+	query := bson.M{}
+	if teams != nil {
+		filter := bson.M{
+			"default": false,
+			"public":  false,
+			"teams":   bson.M{"$in": teams},
+		}
+		query["$or"] = []bson.M{{"public": true}, {"default": true}, filter}
+	}
+	return listPools(query)
+}
+
+func ListPoolsForTeam(team string) ([]Pool, error) {
+	return listPools(bson.M{"teams": team})
+}
+
+func listPools(query bson.M) ([]Pool, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -148,24 +174,54 @@ func GetPoolByName(name string) (*Pool, error) {
 	var p Pool
 	err = conn.Pools().FindId(name).One(&p)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, ErrPoolNotFound
+		}
 		return nil, err
 	}
 	return &p, nil
 }
 
-func PoolUpdate(poolName string, query bson.M, forceDefault bool) error {
+func GetDefaultPool() (*Pool, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var pool Pool
+	err = conn.Pools().Find(bson.M{"default": true}).One(&pool)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, ErrPoolNotFound
+		}
+		return nil, err
+	}
+	return &pool, nil
+}
+
+func PoolUpdate(name string, opts UpdatePoolOptions) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	if _, ok := query["default"]; ok {
-		err = changeDefaultPool(forceDefault)
+	if opts.Default != nil && *opts.Default {
+		err = changeDefaultPool(opts.Force)
 		if err != nil {
 			return err
 		}
 	}
-	err = conn.Pools().UpdateId(poolName, bson.M{"$set": query})
+	query := bson.M{}
+	if opts.Default != nil {
+		query["default"] = *opts.Default
+	}
+	if opts.Public != nil {
+		query["public"] = *opts.Public
+	}
+	if opts.Provisioner != "" {
+		query["provisioner"] = opts.Provisioner
+	}
+	err = conn.Pools().UpdateId(name, bson.M{"$set": query})
 	if err == mgo.ErrNotFound {
 		return ErrPoolNotFound
 	}

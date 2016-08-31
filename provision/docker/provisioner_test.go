@@ -225,6 +225,7 @@ func (s *S) TestProvisionerRestartRebuildRoutesInQueue(c *check.C) {
 	a := &app.App{
 		Name:     "almah",
 		Platform: "static",
+		Pool:     "test-default",
 	}
 	err = coll.Insert(a)
 	c.Assert(err, check.IsNil)

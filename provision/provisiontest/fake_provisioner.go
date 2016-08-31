@@ -69,6 +69,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		units:     make([]provision.Unit, units),
 		instances: make(map[string][]bind.ServiceInstance),
 		Quota:     quota.Unlimited,
+		Pool:      "test-default",
 	}
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {

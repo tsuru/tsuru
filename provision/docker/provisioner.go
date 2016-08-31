@@ -40,7 +40,6 @@ import (
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -1235,44 +1234,15 @@ func (p *dockerProvisioner) ValidAppImages(appName string) ([]string, error) {
 }
 
 func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
-	pool := app.GetPool()
-	var (
-		pools []provision.Pool
-		err   error
-	)
-	if pool == "" {
-		pools, err = provision.ListPools(bson.M{"$or": []bson.M{{"teams": app.GetTeamOwner()}, {"teams": bson.M{"$in": app.GetTeamsName()}}}})
-	} else {
-		pools, err = provision.ListPools(bson.M{"_id": pool})
-	}
+	poolName := app.GetPool()
+	nodes, err := p.Cluster().NodesForMetadata(map[string]string{"pool": poolName})
 	if err != nil {
 		return nil, err
 	}
-	if len(pools) == 0 {
-		query := bson.M{"default": true}
-		pools, err = provision.ListPools(query)
-		if err != nil {
-			return nil, err
-		}
+	if len(nodes) > 0 {
+		return nodes, nil
 	}
-	if len(pools) == 0 {
-		return nil, errNoDefaultPool
-	}
-	for _, pool := range pools {
-		nodes, err := p.Cluster().NodesForMetadata(map[string]string{"pool": pool.Name})
-		if err != nil {
-			return nil, errNoDefaultPool
-		}
-		if len(nodes) > 0 {
-			return nodes, nil
-		}
-	}
-	var nameList []string
-	for _, pool := range pools {
-		nameList = append(nameList, pool.Name)
-	}
-	poolsStr := strings.Join(nameList, ", pool=")
-	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolsStr)
+	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolName)
 }
 
 func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
