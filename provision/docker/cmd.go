@@ -277,9 +277,9 @@ func (c *listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 	}
 	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
 	if resp.StatusCode == http.StatusNoContent {
-			ctx.Stdout.Write(t.Bytes())
-			return nil
-	 }
+		ctx.Stdout.Write(t.Bytes())
+		return nil
+	}
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
