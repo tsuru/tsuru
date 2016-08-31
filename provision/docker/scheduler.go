@@ -22,10 +22,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// errNoDefaultPool is the error returned when no default hosts are configured in
-// the segregated scheduler.
-var errNoDefaultPool = errors.New("no default pool configured in the scheduler: you should create a default pool.")
-
 type segregatedScheduler struct {
 	hostMutex           sync.Mutex
 	maxMemoryRatio      float32
