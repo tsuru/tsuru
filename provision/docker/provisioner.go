@@ -52,7 +52,9 @@ var (
 
 func init() {
 	mainDockerProvisioner = &dockerProvisioner{}
-	provision.Register("docker", mainDockerProvisioner)
+	provision.Register("docker", func() (provision.Provisioner, error) {
+		return mainDockerProvisioner, nil
+	})
 }
 
 func getRouterForApp(app provision.App) (router.Router, error) {

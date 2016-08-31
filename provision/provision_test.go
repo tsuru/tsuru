@@ -22,7 +22,7 @@ func Test(t *testing.T) {
 
 func (ProvisionSuite) TestRegisterAndGetProvisioner(c *check.C) {
 	var p Provisioner
-	Register("my-provisioner", p)
+	Register("my-provisioner", func() (Provisioner, error) { return p, nil })
 	got, err := Get("my-provisioner")
 	c.Assert(err, check.IsNil)
 	c.Check(got, check.DeepEquals, p)
@@ -34,9 +34,10 @@ func (ProvisionSuite) TestRegisterAndGetProvisioner(c *check.C) {
 
 func (ProvisionSuite) TestRegistry(c *check.C) {
 	var p1, p2 Provisioner
-	Register("my-provisioner", p1)
-	Register("your-provisioner", p2)
-	provisioners := Registry()
+	Register("my-provisioner", func() (Provisioner, error) { return p1, nil })
+	Register("your-provisioner", func() (Provisioner, error) { return p2, nil })
+	provisioners, err := Registry()
+	c.Assert(err, check.IsNil)
 	alt1 := []Provisioner{p1, p2}
 	alt2 := []Provisioner{p2, p1}
 	if !reflect.DeepEqual(provisioners, alt1) && !reflect.DeepEqual(provisioners, alt2) {

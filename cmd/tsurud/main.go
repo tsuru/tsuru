@@ -5,6 +5,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -30,12 +31,18 @@ func buildManager() *cmd.Manager {
 	m.Register(&tsurudCommand{Command: gandalfSyncCmd{}})
 	m.Register(&tsurudCommand{Command: createRootUserCmd{}})
 	m.Register(&migrationListCmd{})
-	registerProvisionersCommands(m)
+	err := registerProvisionersCommands(m)
+	if err != nil {
+		log.Fatalf("unable to register commands: %v", err)
+	}
 	return m
 }
 
-func registerProvisionersCommands(m *cmd.Manager) {
-	provisioners := provision.Registry()
+func registerProvisionersCommands(m *cmd.Manager) error {
+	provisioners, err := provision.Registry()
+	if err != nil {
+		return err
+	}
 	for _, p := range provisioners {
 		if c, ok := p.(cmd.Commandable); ok {
 			commands := c.Commands()
@@ -44,6 +51,7 @@ func registerProvisionersCommands(m *cmd.Manager) {
 			}
 		}
 	}
+	return nil
 }
 
 func listenSignals() {

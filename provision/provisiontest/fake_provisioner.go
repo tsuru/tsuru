@@ -29,7 +29,10 @@ var errNotProvisioned = &provision.Error{Reason: "App is not provisioned."}
 var uniqueIpCounter int32 = 0
 
 func init() {
-	provision.Register("fake", &FakeProvisioner{})
+	fakeProvisioner := &FakeProvisioner{}
+	provision.Register("fake", func() (provision.Provisioner, error) {
+		return fakeProvisioner, nil
+	})
 }
 
 // Fake implementation for provision.App.

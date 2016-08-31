@@ -410,29 +410,35 @@ type ExtensibleProvisioner interface {
 	PlatformRemove(name string) error
 }
 
-var provisioners = make(map[string]Provisioner)
+type provisionerFactory func() (Provisioner, error)
+
+var provisioners = make(map[string]provisionerFactory)
 
 // Register registers a new provisioner in the Provisioner registry.
-func Register(name string, p Provisioner) {
-	provisioners[name] = p
+func Register(name string, pFunc provisionerFactory) {
+	provisioners[name] = pFunc
 }
 
 // Get gets the named provisioner from the registry.
 func Get(name string) (Provisioner, error) {
-	p, ok := provisioners[name]
+	pFunc, ok := provisioners[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown provisioner: %q", name)
 	}
-	return p, nil
+	return pFunc()
 }
 
 // Registry returns the list of registered provisioners.
-func Registry() []Provisioner {
+func Registry() ([]Provisioner, error) {
 	registry := make([]Provisioner, 0, len(provisioners))
-	for _, p := range provisioners {
+	for _, pFunc := range provisioners {
+		p, err := pFunc()
+		if err != nil {
+			return nil, err
+		}
 		registry = append(registry, p)
 	}
-	return registry
+	return registry, nil
 }
 
 // Error represents a provisioning error. It encapsulates further errors.
