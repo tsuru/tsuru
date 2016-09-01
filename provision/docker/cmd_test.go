@@ -239,6 +239,27 @@ func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *check.C) {
 `
 	c.Assert(buf.String(), check.Equals, expected)
 }
+
+func (s *S) TestListNodesInTheSchedulerCmdRunNoContent(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/1.0/docker/node"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	err := (&listNodesInTheSchedulerCmd{}).Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `+---------+---------+--------+----------+
+| Address | IaaS ID | Status | Metadata |
++---------+---------+--------+----------+
+`
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
 func (s *S) TestListNodesInTheSchedulerCmdRunWithFlagQ(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
