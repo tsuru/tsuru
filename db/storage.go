@@ -213,8 +213,10 @@ func (s *Storage) Limiter() *storage.Collection {
 func (s *Storage) Events() *storage.Collection {
 	ownerIndex := mgo.Index{Key: []string{"owner"}}
 	kindIndex := mgo.Index{Key: []string{"kind"}}
+	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}
 	c := s.Collection("events")
 	c.EnsureIndex(ownerIndex)
 	c.EnsureIndex(kindIndex)
+	c.EnsureIndex(startTimeIndex)
 	return c
 }
