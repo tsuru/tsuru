@@ -53,7 +53,7 @@ type DeployData struct {
 func findValidImages(apps ...App) (set, error) {
 	validImages := set{}
 	for _, a := range apps {
-		prov, err := a.PoolProvisioner()
+		prov, err := a.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -233,7 +233,7 @@ func Deploy(opts DeployOptions) (string, error) {
 }
 
 func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {
-	prov, err := opts.App.PoolProvisioner()
+	prov, err := opts.App.getProvisioner()
 	if err != nil {
 		return "", err
 	}

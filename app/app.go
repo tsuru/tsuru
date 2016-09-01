@@ -126,7 +126,7 @@ type App struct {
 	provisioner provision.Provisioner
 }
 
-func (app *App) PoolProvisioner() (provision.Provisioner, error) {
+func (app *App) getProvisioner() (provision.Provisioner, error) {
 	if app.provisioner == nil {
 		if app.Pool == "" {
 			return provision.GetDefault()
@@ -145,7 +145,7 @@ func (app *App) PoolProvisioner() (provision.Provisioner, error) {
 
 // Units returns the list of units.
 func (app *App) Units() ([]provision.Unit, error) {
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +417,7 @@ func Delete(app *App, w io.Writer) error {
 		log.Errorf("[delete-app: %s] %s", appName, msg)
 		hasErrors = true
 	}
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -542,7 +542,7 @@ func (app *App) AddUnits(n uint, process string, writer io.Writer) error {
 //     1. Remove units from the provisioner
 //     2. Update quota
 func (app *App) RemoveUnits(n uint, process string, writer io.Writer) error {
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -577,7 +577,7 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 	}
 	for _, unit := range units {
 		if strings.HasPrefix(unit.ID, unitName) {
-			prov, err := app.PoolProvisioner()
+			prov, err := app.getProvisioner()
 			if err != nil {
 				return err
 			}
@@ -880,13 +880,13 @@ func (app *App) sourced(cmd string, w io.Writer, once bool) error {
 
 func (app *App) run(cmd string, w io.Writer, once bool) error {
 	if once {
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			return err
 		}
 		return prov.ExecuteCommandOnce(w, w, app, cmd)
 	}
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -904,7 +904,7 @@ func (app *App) Restart(process string, w io.Writer) error {
 		log.Errorf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
 	}
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -922,7 +922,7 @@ func (app *App) Stop(w io.Writer, process string) error {
 		msg = fmt.Sprintf("\n ---> Stopping the app %q\n", app.Name)
 	}
 	log.Write(w, []byte(msg))
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -963,7 +963,7 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		return err
 	}
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -1139,7 +1139,7 @@ func (app *App) setEnvsToApp(setEnvs bind.SetEnvApp, w io.Writer) error {
 	if !setEnvs.ShouldRestart {
 		return nil
 	}
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -1193,7 +1193,7 @@ func (app *App) unsetEnvsToApp(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 	if !unsetEnvs.ShouldRestart {
 		return nil
 	}
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -1400,7 +1400,7 @@ func (app *App) Log(message, source, unit string) error {
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
 func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
@@ -1518,7 +1518,7 @@ func List(filter *Filter) ([]App, error) {
 		// provisionApps := make([]provision.App, len(apps))
 		for i := range apps {
 			a := &apps[i]
-			prov, err := a.PoolProvisioner()
+			prov, err := a.getProvisioner()
 			if err != nil {
 				return nil, err
 			}
@@ -1547,11 +1547,11 @@ func List(filter *Filter) ([]App, error) {
 // Swap calls the Provisioner.Swap.
 // And updates the app.CName in the database.
 func Swap(app1, app2 *App, cnameOnly bool) error {
-	prov1, err := app1.PoolProvisioner()
+	prov1, err := app1.getProvisioner()
 	if err != nil {
 		return err
 	}
-	prov2, err := app2.PoolProvisioner()
+	prov2, err := app2.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -1593,7 +1593,7 @@ func (app *App) Start(w io.Writer, process string) error {
 		msg = fmt.Sprintf("\n ---> Starting the app %q\n", app.Name)
 	}
 	log.Write(w, []byte(msg))
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -1629,7 +1629,7 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 	}
 	for _, unit := range units {
 		if strings.HasPrefix(unit.ID, unitId) {
-			prov, err := app.PoolProvisioner()
+			prov, err := app.getProvisioner()
 			if err != nil {
 				return err
 			}
@@ -1644,7 +1644,7 @@ func (app *App) GetRouter() (string, error) {
 }
 
 func (app *App) MetricEnvs() (map[string]string, error) {
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
@@ -1653,7 +1653,7 @@ func (app *App) MetricEnvs() (map[string]string, error) {
 
 func (app *App) Shell(opts provision.ShellOptions) error {
 	opts.App = app
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -1717,7 +1717,7 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 		return nil, err
 	}
 	expectedMap := make(map[string]*url.URL)
-	prov, err := app.PoolProvisioner()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}

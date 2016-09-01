@@ -222,7 +222,7 @@ var provisionApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +234,7 @@ var provisionApp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err == nil {
 			prov.Destroy(app)
 		}
@@ -257,7 +257,7 @@ var setAppIp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -349,7 +349,7 @@ var provisionAddUnits = action.Action{
 		w, _ := ctx.Params[2].(io.Writer)
 		n := ctx.Previous.(int)
 		process := ctx.Params[3].(string)
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -545,7 +545,7 @@ var setNewCNamesToProvisioner = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -569,7 +569,7 @@ var setNewCNamesToProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			log.Errorf("Unable to retrieve provisioner: %s", err)
 			return
@@ -674,7 +674,7 @@ var unsetCNameFromProvisioner = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
@@ -698,7 +698,7 @@ var unsetCNameFromProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		prov, err := app.PoolProvisioner()
+		prov, err := app.getProvisioner()
 		if err != nil {
 			log.Errorf("Unable to retrieve provisioner: %s", err)
 			return

@@ -466,7 +466,7 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	prov, err := a.PoolProvisioner()
+	prov, err := a.getProvisioner()
 	c.Assert(err, check.IsNil)
 	err = prov.Provision(&a)
 	c.Assert(err, check.IsNil)

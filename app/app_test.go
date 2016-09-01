@@ -3157,7 +3157,7 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 		}
 		err := s.conn.Apps().Insert(&a)
 		c.Assert(err, check.IsNil)
-		prov, err := a.PoolProvisioner()
+		prov, err := a.getProvisioner()
 		c.Assert(err, check.IsNil)
 		err = prov.Provision(&a)
 		c.Assert(err, check.IsNil)
@@ -3883,7 +3883,7 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 	a := App{Name: "appName", Platform: "python"}
 	envs, err := a.MetricEnvs()
 	c.Assert(err, check.IsNil)
-	prov, err := a.PoolProvisioner()
+	prov, err := a.getProvisioner()
 	c.Assert(err, check.IsNil)
 	expected := prov.MetricEnvs(&a)
 	c.Assert(envs, check.DeepEquals, expected)
