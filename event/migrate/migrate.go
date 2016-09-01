@@ -84,10 +84,20 @@ func setAllowed(evt *event.Event) (err error) {
 	case event.TargetTypeIaas:
 		evt.Allowed = event.Allowed(permission.PermMachineReadEvents, permission.Context(permission.CtxIaaS, evt.Target.Value))
 	case event.TargetTypeContainer:
-		var a provision.App
-		a, err = app.Provisioner.GetAppFromUnitID(evt.Target.Value)
+		var provisioners []provision.Provisioner
+		provisioners, err = provision.Registry()
 		if err != nil {
-			evt.Allowed = event.Allowed(permission.PermAppReadEvents)
+			return err
+		}
+		var a provision.App
+		for _, p := range provisioners {
+			a, err = p.GetAppFromUnitID(evt.Target.Value)
+			_, isNotFound := err.(*provision.UnitNotFoundError)
+			if err == nil || !isNotFound {
+				break
+			}
+		}
+		if err != nil {
 			return err
 		}
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents,
@@ -97,20 +107,21 @@ func setAllowed(evt *event.Event) (err error) {
 			)...,
 		)
 	case event.TargetTypeNode:
-		nodeProvisioner, ok := app.Provisioner.(provision.NodeProvisioner)
-		if !ok {
-			evt.Allowed = event.Allowed(permission.PermPoolReadEvents)
-			return nil
-		}
-		var nodes []provision.Node
-		nodes, err = nodeProvisioner.ListNodes([]string{evt.Target.Value})
+		var provisioners []provision.Provisioner
+		provisioners, err = provision.Registry()
 		if err != nil {
-			evt.Allowed = event.Allowed(permission.PermPoolReadEvents)
 			return err
 		}
 		var ctxs []permission.PermissionContext
-		if len(nodes) > 0 {
-			ctxs = append(ctxs, permission.Context(permission.CtxPool, nodes[0].Pool()))
+		for _, p := range provisioners {
+			if nodeProvisioner, ok := p.(provision.NodeProvisioner); ok {
+				var nodes []provision.Node
+				nodes, err = nodeProvisioner.ListNodes([]string{evt.Target.Value})
+				if err != nil {
+					return err
+				}
+				ctxs = append(ctxs, permission.Context(permission.CtxPool, nodes[0].Pool()))
+			}
 		}
 		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, ctxs...)
 	case event.TargetTypeRole:

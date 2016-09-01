@@ -340,7 +340,9 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	p.storage = &cluster.MapStorage{}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = &p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return &p, nil
+	})
 	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
@@ -406,7 +408,9 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	p.storage = &cluster.MapStorage{}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = &p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return &p, nil
+	})
 	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
@@ -876,7 +880,9 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return p, nil
+	})
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -951,7 +957,9 @@ func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return p, nil
+	})
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -1049,7 +1057,9 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 func (s *S) TestImageDeploy(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return p, nil
+	})
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -1142,7 +1152,9 @@ func (s *S) TestImageDeploy(c *check.C) {
 func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return p, nil
+	})
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -1207,7 +1219,9 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	app.Provisioner = p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return p, nil
+	})
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)

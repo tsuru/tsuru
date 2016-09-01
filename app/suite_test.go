@@ -107,8 +107,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.provisioner = provisiontest.NewFakeProvisioner()
-	Provisioner = s.provisioner
+	s.provisioner = provisiontest.ProvisionerInstance
+	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
 	data, err := json.Marshal(AppLock{})
 	c.Assert(err, check.IsNil)

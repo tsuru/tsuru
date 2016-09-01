@@ -22,12 +22,11 @@ type Platform struct {
 }
 
 var (
-	ErrProvisionerIsNotExtensible = errors.New("Provisioner is not extensible")
-	ErrPlatformNameMissing        = errors.New("Platform name is required.")
-	ErrPlatformNotFound           = errors.New("Platform doesn't exist.")
-	DuplicatePlatformError        = errors.New("Duplicate platform")
-	InvalidPlatformError          = errors.New("Invalid platform")
-	ErrDeletePlatformWithApps     = errors.New("Platform has apps. You should remove them before remove the platform.")
+	ErrPlatformNameMissing    = errors.New("Platform name is required.")
+	ErrPlatformNotFound       = errors.New("Platform doesn't exist.")
+	DuplicatePlatformError    = errors.New("Duplicate platform")
+	InvalidPlatformError      = errors.New("Invalid platform")
+	ErrDeletePlatformWithApps = errors.New("Platform has apps. You should remove them before remove the platform.")
 )
 
 // Platforms returns the list of available platforms.
@@ -48,15 +47,12 @@ func Platforms(enabledOnly bool) ([]Platform, error) {
 
 // PlatformAdd add a new platform to tsuru
 func PlatformAdd(opts provision.PlatformOptions) error {
-	var (
-		provisioner provision.ExtensibleProvisioner
-		ok          bool
-	)
-	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
-		return ErrProvisionerIsNotExtensible
-	}
 	if opts.Name == "" {
 		return ErrPlatformNameMissing
+	}
+	provisioners, err := provision.Registry()
+	if err != nil {
+		return err
 	}
 	p := Platform{Name: opts.Name}
 	conn, err := db.Conn()
@@ -71,11 +67,18 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 		}
 		return err
 	}
-	err = provisioner.PlatformAdd(opts)
+	for _, p := range provisioners {
+		if extensibleProv, ok := p.(provision.ExtensibleProvisioner); ok {
+			err = extensibleProv.PlatformAdd(opts)
+			if err != nil {
+				break
+			}
+		}
+	}
 	if err != nil {
 		dbErr := conn.Platforms().RemoveId(p.Name)
 		if dbErr != nil {
-			return fmt.Errorf("Caused by: %s and %s", err.Error(), dbErr.Error())
+			return fmt.Errorf("unable to rollback platform add: %s. original error: %s", err.Error(), dbErr.Error())
 		}
 		return err
 	}
@@ -83,14 +86,11 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 }
 
 func PlatformUpdate(opts provision.PlatformOptions) error {
-	var (
-		provisioner provision.ExtensibleProvisioner
-		platform    Platform
-		ok          bool
-	)
-	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
-		return ErrProvisionerIsNotExtensible
+	provisioners, err := provision.Registry()
+	if err != nil {
+		return err
 	}
+	var platform Platform
 	if opts.Name == "" {
 		return ErrPlatformNameMissing
 	}
@@ -107,9 +107,13 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 		return err
 	}
 	if opts.Args["dockerfile"] != "" || opts.Input != nil {
-		err = provisioner.PlatformUpdate(opts)
-		if err != nil {
-			return err
+		for _, p := range provisioners {
+			if extensibleProv, ok := p.(provision.ExtensibleProvisioner); ok {
+				err = extensibleProv.PlatformUpdate(opts)
+				if err != nil {
+					return err
+				}
+			}
 		}
 		var apps []App
 		err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
@@ -134,12 +138,9 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 }
 
 func PlatformRemove(name string) error {
-	var (
-		provisioner provision.ExtensibleProvisioner
-		ok          bool
-	)
-	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
-		return ErrProvisionerIsNotExtensible
+	provisioners, err := provision.Registry()
+	if err != nil {
+		return err
 	}
 	if name == "" {
 		return ErrPlatformNameMissing
@@ -153,9 +154,13 @@ func PlatformRemove(name string) error {
 	if apps > 0 {
 		return ErrDeletePlatformWithApps
 	}
-	err = provisioner.PlatformRemove(name)
-	if err != nil {
-		log.Errorf("Failed to remove platform from provisioner: %s", err)
+	for _, p := range provisioners {
+		if extensibleProv, ok := p.(provision.ExtensibleProvisioner); ok {
+			err = extensibleProv.PlatformRemove(name)
+			if err != nil {
+				log.Errorf("Failed to remove platform from provisioner %q: %s", p.GetName(), err)
+			}
+		}
 	}
 	err = conn.Platforms().Remove(bson.M{"_id": name})
 	if err == mgo.ErrNotFound {

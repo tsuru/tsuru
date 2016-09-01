@@ -40,24 +40,23 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	collName       string
-	imageCollName  string
-	repoNamespace  string
-	deployCmd      string
-	runBin         string
-	runArgs        string
-	port           string
-	sshUser        string
-	server         *dtesting.DockerServer
-	extraServer    *dtesting.DockerServer
-	storage        *db.Storage
-	oldProvisioner provision.Provisioner
-	p              *dockerProvisioner
-	user           *auth.User
-	token          auth.Token
-	team           *auth.Team
-	clusterSess    *mgo.Session
-	logBuf         *safe.Buffer
+	collName      string
+	imageCollName string
+	repoNamespace string
+	deployCmd     string
+	runBin        string
+	runArgs       string
+	port          string
+	sshUser       string
+	server        *dtesting.DockerServer
+	extraServer   *dtesting.DockerServer
+	storage       *db.Storage
+	p             *dockerProvisioner
+	user          *auth.User
+	token         auth.Token
+	team          *auth.Team
+	clusterSess   *mgo.Session
+	logBuf        *safe.Buffer
 }
 
 var _ = check.Suite(&S{})
@@ -90,7 +89,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
 	os.Setenv("TSURU_TARGET", "http://localhost")
-	s.oldProvisioner = app.Provisioner
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -121,7 +119,10 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)
 	queue.ResetQueue()
-	app.Provisioner = s.p
+	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
+		return s.p, nil
+	})
+	provision.DefaultProvisioner = "fake-docker-prov"
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	s.p.cluster, err = cluster.New(nil, s.p.storage, "",
@@ -156,7 +157,6 @@ func (s *S) TearDownSuite(c *check.C) {
 	defer s.clusterSess.Close()
 	defer s.storage.Close()
 	os.Unsetenv("TSURU_TARGET")
-	app.Provisioner = s.oldProvisioner
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()

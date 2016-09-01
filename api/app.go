@@ -1656,7 +1656,11 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(a.MetricEnvs())
+	metricMap, err := a.MetricEnvs()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(metricMap)
 }
 
 // title: rebuild routes

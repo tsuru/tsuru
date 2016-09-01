@@ -83,8 +83,9 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
-	s.provisioner = provisiontest.NewFakeProvisioner()
-	app.Provisioner = s.provisioner
+	s.provisioner = provisiontest.ProvisionerInstance
+	provision.DefaultProvisioner = "fake"
+	s.provisioner.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)

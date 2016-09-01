@@ -222,7 +222,11 @@ var provisionApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		err := Provisioner.Provision(app)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		err = prov.Provision(app)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +234,10 @@ var provisionApp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		Provisioner.Destroy(app)
+		prov, err := app.PoolProvisioner()
+		if err == nil {
+			prov.Destroy(app)
+		}
 	},
 	MinParams: 1,
 }
@@ -250,7 +257,11 @@ var setAppIp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app.Ip, err = Provisioner.Addr(app)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		app.Ip, err = prov.Addr(app)
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +349,11 @@ var provisionAddUnits = action.Action{
 		w, _ := ctx.Params[2].(io.Writer)
 		n := ctx.Previous.(int)
 		process := ctx.Params[3].(string)
-		units, err := Provisioner.AddUnits(app, uint(n), process, w)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		units, err := prov.AddUnits(app, uint(n), process, w)
 		if err != nil {
 			return nil, err
 		}
@@ -528,12 +543,16 @@ var validateNewCNames = action.Action{
 var setNewCNamesToProvisioner = action.Action{
 	Name: "set-new-cnames-to-provisioner",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		p, ok := Provisioner.(provision.CNameManager)
+		app := ctx.Params[0].(*App)
+		cnames := ctx.Params[1].([]string)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		p, ok := prov.(provision.CNameManager)
 		if !ok {
 			return nil, errors.New("Provisioner doesn't support cname change.")
 		}
-		app := ctx.Params[0].(*App)
-		cnames := ctx.Params[1].([]string)
 		var cnamesDone []string
 		for _, cname := range cnames {
 			err := p.SetCName(app, cname)
@@ -548,12 +567,17 @@ var setNewCNamesToProvisioner = action.Action{
 		return cnames, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		p, ok := Provisioner.(provision.CNameManager)
+		cnames := ctx.Params[1].([]string)
+		app := ctx.Params[0].(*App)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			log.Errorf("Unable to retrieve provisioner: %s", err)
+			return
+		}
+		p, ok := prov.(provision.CNameManager)
 		if !ok {
 			log.Error("Provisioner doesn't support cname change.")
 		}
-		cnames := ctx.Params[1].([]string)
-		app := ctx.Params[0].(*App)
 		for _, cname := range cnames {
 			err := p.UnsetCName(app, cname)
 			if err != nil {
@@ -648,12 +672,16 @@ var checkCNameExists = action.Action{
 var unsetCNameFromProvisioner = action.Action{
 	Name: "unset-cname-from-provisioner",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		p, ok := Provisioner.(provision.CNameManager)
+		app := ctx.Params[0].(*App)
+		cnames := ctx.Params[1].([]string)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		p, ok := prov.(provision.CNameManager)
 		if !ok {
 			return nil, errors.New("Provisioner doesn't support cname change.")
 		}
-		app := ctx.Params[0].(*App)
-		cnames := ctx.Params[1].([]string)
 		var cnamesDone []string
 		for _, cname := range cnames {
 			err := p.UnsetCName(app, cname)
@@ -668,12 +696,17 @@ var unsetCNameFromProvisioner = action.Action{
 		return cnames, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		p, ok := Provisioner.(provision.CNameManager)
+		cnames := ctx.Params[1].([]string)
+		app := ctx.Params[0].(*App)
+		prov, err := app.PoolProvisioner()
+		if err != nil {
+			log.Errorf("Unable to retrieve provisioner: %s", err)
+			return
+		}
+		p, ok := prov.(provision.CNameManager)
 		if !ok {
 			log.Error("Provisioner doesn't support cname change.")
 		}
-		cnames := ctx.Params[1].([]string)
-		app := ctx.Params[0].(*App)
 		for _, cname := range cnames {
 			err := p.SetCName(app, cname)
 			if err != nil {

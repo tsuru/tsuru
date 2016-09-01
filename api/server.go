@@ -34,14 +34,6 @@ import (
 
 const Version = "1.1.0"
 
-func getProvisioner() (string, error) {
-	provisioner, err := config.GetString("provisioner")
-	if provisioner == "" {
-		provisioner = "docker"
-	}
-	return provisioner, err
-}
-
 type TsuruHandler struct {
 	method string
 	path   string
@@ -285,145 +277,132 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
-		shutdownChan := make(chan bool)
-		shutdownTimeout, _ := config.GetInt("shutdown-timeout")
-		if shutdownTimeout == 0 {
-			shutdownTimeout = 10 * 60
-		}
-		idleTracker := newIdleTracker()
-		shutdown.Register(idleTracker)
-		shutdown.Register(&logTracker)
-		readTimeout, _ := config.GetInt("server:read-timeout")
-		writeTimeout, _ := config.GetInt("server:write-timeout")
-		listen, err := config.GetString("listen")
-		if err != nil {
-			fatal(err)
-		}
-		srv := &graceful.Server{
-			Timeout: time.Duration(shutdownTimeout) * time.Second,
-			Server: &http.Server{
-				ReadTimeout:  time.Duration(readTimeout) * time.Second,
-				WriteTimeout: time.Duration(writeTimeout) * time.Second,
-				Addr:         listen,
-				Handler:      n,
-			},
-			ConnState: func(conn net.Conn, state http.ConnState) {
-				idleTracker.trackConn(conn, state)
-			},
-			NoSignalHandling: true,
-			ShutdownInitiated: func() {
-				fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
-				handlers := shutdown.All()
-				wg := sync.WaitGroup{}
-				for _, h := range handlers {
-					wg.Add(1)
-					go func(h shutdown.Shutdownable) {
-						defer wg.Done()
-						fmt.Printf("running shutdown handler for %v...\n", h)
-						h.Shutdown()
-						fmt.Printf("running shutdown handler for %v. DONE.\n", h)
-					}(h)
-				}
-				wg.Wait()
-				close(shutdownChan)
-			},
-		}
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-		go func() {
-			<-sigChan
-			srv.Stop(srv.Timeout)
-		}()
-		var startupMessage string
-		routers, err := router.List()
-		if err != nil {
-			fatal(err)
-		}
-		for _, routerDesc := range routers {
-			var r router.Router
-			r, err = router.Get(routerDesc.Name)
-			if err != nil {
-				fatal(err)
-			}
-			fmt.Printf("Registered router %q", routerDesc.Name)
-			if messageRouter, ok := r.(router.MessageRouter); ok {
-				startupMessage, err = messageRouter.StartupMessage()
-				if err == nil && startupMessage != "" {
-					fmt.Printf(": %s", startupMessage)
-				}
-			}
-			fmt.Println()
-		}
-		defaultRouter, _ := config.GetString("docker:router")
-		fmt.Printf("Default router is %q.\n", defaultRouter)
-		repoManager, err := config.GetString("repo-manager")
-		if err != nil {
-			repoManager = "gandalf"
-			fmt.Println("Warning: configuration didn't declare a repository manager, using default manager.")
-		}
-		fmt.Printf("Using %q repository manager.\n", repoManager)
-		provisioner, err := getProvisioner()
-		if err != nil {
-			fmt.Println("Warning: configuration didn't declare a provisioner, using default provisioner.")
-		}
-		app.Provisioner, err = provision.Get(provisioner)
-		if err != nil {
-			fatal(err)
-		}
-		fmt.Printf("Using %q provisioner.\n", provisioner)
-		if initializableProvisioner, ok := app.Provisioner.(provision.InitializableProvisioner); ok {
-			err = initializableProvisioner.Initialize()
-			if err != nil {
-				fatal(err)
-			}
-		}
-		if messageProvisioner, ok := app.Provisioner.(provision.MessageProvisioner); ok {
-			startupMessage, err = messageProvisioner.StartupMessage()
-			if err == nil && startupMessage != "" {
-				fmt.Print(startupMessage)
-			}
-		}
-		scheme, err := getAuthScheme()
-		if err != nil {
-			fmt.Printf("Warning: configuration didn't declare auth:scheme, using default scheme.\n")
-		}
-		app.AuthScheme, err = auth.GetScheme(scheme)
-		if err != nil {
-			fatal(err)
-		}
-		fmt.Printf("Using %q auth scheme.\n", scheme)
-		fmt.Println("Checking components status:")
-		results := hc.Check()
-		for _, result := range results {
-			if result.Status != hc.HealthCheckOK {
-				fmt.Printf("    WARNING: %q is not working: %s\n", result.Name, result.Status)
-			}
-		}
-		fmt.Println("    Components checked.")
-		tls, _ := config.GetBool("use-tls")
-		if tls {
-			var (
-				certFile string
-				keyFile  string
-			)
-			certFile, err = config.GetString("tls:cert-file")
-			if err != nil {
-				fatal(err)
-			}
-			keyFile, err = config.GetString("tls:key-file")
-			if err != nil {
-				fatal(err)
-			}
-			fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
-			err = srv.ListenAndServeTLS(certFile, keyFile)
-		} else {
-			fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-			err = srv.ListenAndServe()
-		}
-		if err != nil {
-			fmt.Printf("Listening stopped: %s\n", err)
-		}
-		<-shutdownChan
+		startServer(n)
 	}
 	return n
+}
+
+func startServer(handler http.Handler) {
+	shutdownChan := make(chan bool)
+	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
+	if shutdownTimeout == 0 {
+		shutdownTimeout = 10 * 60
+	}
+	idleTracker := newIdleTracker()
+	shutdown.Register(idleTracker)
+	shutdown.Register(&logTracker)
+	readTimeout, _ := config.GetInt("server:read-timeout")
+	writeTimeout, _ := config.GetInt("server:write-timeout")
+	listen, err := config.GetString("listen")
+	if err != nil {
+		fatal(err)
+	}
+	srv := &graceful.Server{
+		Timeout: time.Duration(shutdownTimeout) * time.Second,
+		Server: &http.Server{
+			ReadTimeout:  time.Duration(readTimeout) * time.Second,
+			WriteTimeout: time.Duration(writeTimeout) * time.Second,
+			Addr:         listen,
+			Handler:      handler,
+		},
+		ConnState: func(conn net.Conn, state http.ConnState) {
+			idleTracker.trackConn(conn, state)
+		},
+		NoSignalHandling: true,
+		ShutdownInitiated: func() {
+			fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
+			handlers := shutdown.All()
+			wg := sync.WaitGroup{}
+			for _, h := range handlers {
+				wg.Add(1)
+				go func(h shutdown.Shutdownable) {
+					defer wg.Done()
+					fmt.Printf("running shutdown handler for %v...\n", h)
+					h.Shutdown()
+					fmt.Printf("running shutdown handler for %v. DONE.\n", h)
+				}(h)
+			}
+			wg.Wait()
+			close(shutdownChan)
+		},
+	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		srv.Stop(srv.Timeout)
+	}()
+	var startupMessage string
+	routers, err := router.List()
+	if err != nil {
+		fatal(err)
+	}
+	for _, routerDesc := range routers {
+		var r router.Router
+		r, err = router.Get(routerDesc.Name)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("Registered router %q", routerDesc.Name)
+		if messageRouter, ok := r.(router.MessageRouter); ok {
+			startupMessage, err = messageRouter.StartupMessage()
+			if err == nil && startupMessage != "" {
+				fmt.Printf(": %s", startupMessage)
+			}
+		}
+		fmt.Println()
+	}
+	defaultRouter, _ := config.GetString("docker:router")
+	fmt.Printf("Default router is %q.\n", defaultRouter)
+	repoManager, err := config.GetString("repo-manager")
+	if err != nil {
+		repoManager = "gandalf"
+		fmt.Println("Warning: configuration didn't declare a repository manager, using default manager.")
+	}
+	fmt.Printf("Using %q repository manager.\n", repoManager)
+	err = provision.InitializeAll()
+	if err != nil {
+		fatal(err)
+	}
+	scheme, err := getAuthScheme()
+	if err != nil {
+		fmt.Printf("Warning: configuration didn't declare auth:scheme, using default scheme.\n")
+	}
+	app.AuthScheme, err = auth.GetScheme(scheme)
+	if err != nil {
+		fatal(err)
+	}
+	fmt.Printf("Using %q auth scheme.\n", scheme)
+	fmt.Println("Checking components status:")
+	results := hc.Check()
+	for _, result := range results {
+		if result.Status != hc.HealthCheckOK {
+			fmt.Printf("    WARNING: %q is not working: %s\n", result.Name, result.Status)
+		}
+	}
+	fmt.Println("    Components checked.")
+	tls, _ := config.GetBool("use-tls")
+	if tls {
+		var (
+			certFile string
+			keyFile  string
+		)
+		certFile, err = config.GetString("tls:cert-file")
+		if err != nil {
+			fatal(err)
+		}
+		keyFile, err = config.GetString("tls:key-file")
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
+		err = srv.ListenAndServeTLS(certFile, keyFile)
+	} else {
+		fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
+		err = srv.ListenAndServe()
+	}
+	if err != nil {
+		fmt.Printf("Listening stopped: %s\n", err)
+	}
+	<-shutdownChan
 }

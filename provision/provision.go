@@ -20,9 +20,14 @@ import (
 	"github.com/tsuru/tsuru/router"
 )
 
+const defaultDockerProvisioner = "docker"
+
 var (
 	ErrInvalidStatus = errors.New("invalid status")
 	ErrEmptyApp      = errors.New("no units for this app")
+	ErrNodeNotFound  = errors.New("node not found")
+
+	DefaultProvisioner = defaultDockerProvisioner
 )
 
 type UnitNotFoundError struct {
@@ -261,6 +266,8 @@ type ImageDeployer interface {
 // Any tsuru provisioner must implement this interface in order to provision
 // tsuru apps.
 type Provisioner interface {
+	Named
+
 	// Provision is called when tsuru is creating the app.
 	Provision(App) error
 
@@ -419,6 +426,11 @@ func Register(name string, pFunc provisionerFactory) {
 	provisioners[name] = pFunc
 }
 
+// Unregister unregisters a provisioner.
+func Unregister(name string) {
+	delete(provisioners, name)
+}
+
 // Get gets the named provisioner from the registry.
 func Get(name string) (Provisioner, error) {
 	pFunc, ok := provisioners[name]
@@ -426,6 +438,13 @@ func Get(name string) (Provisioner, error) {
 		return nil, fmt.Errorf("unknown provisioner: %q", name)
 	}
 	return pFunc()
+}
+
+func GetDefault() (Provisioner, error) {
+	if DefaultProvisioner == "" {
+		DefaultProvisioner = defaultDockerProvisioner
+	}
+	return Get(DefaultProvisioner)
 }
 
 // Registry returns the list of registered provisioners.
@@ -439,6 +458,29 @@ func Registry() ([]Provisioner, error) {
 		registry = append(registry, p)
 	}
 	return registry, nil
+}
+
+func InitializeAll() error {
+	provisioners, err := Registry()
+	if err != nil {
+		return err
+	}
+	var startupMessage string
+	for _, p := range provisioners {
+		if initializableProvisioner, ok := p.(InitializableProvisioner); ok {
+			err = initializableProvisioner.Initialize()
+			if err != nil {
+				return err
+			}
+		}
+		if messageProvisioner, ok := p.(MessageProvisioner); ok {
+			startupMessage, err = messageProvisioner.StartupMessage()
+			if err == nil && startupMessage != "" {
+				fmt.Print(startupMessage)
+			}
+		}
+	}
+	return nil
 }
 
 // Error represents a provisioning error. It encapsulates further errors.

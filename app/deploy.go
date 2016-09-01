@@ -50,11 +50,14 @@ type DeployData struct {
 	Diff        string
 }
 
-func findValidImages(apps ...string) (set, error) {
+func findValidImages(apps ...App) (set, error) {
 	validImages := set{}
-	for _, appName := range apps {
-		var imgs []string
-		imgs, err := Provisioner.ValidAppImages(appName)
+	for _, a := range apps {
+		prov, err := a.PoolProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		imgs, err := prov.ValidAppImages(a.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +92,7 @@ func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
 	if err != nil {
 		return nil, err
 	}
-	validImages, err := findValidImages(apps...)
+	validImages, err := findValidImages(appsList...)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +200,7 @@ func Deploy(opts DeployOptions) (string, error) {
 		return "", fmt.Errorf("missing event in deploy opts")
 	}
 	if opts.Rollback && !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
-		validImages, err := findValidImages(opts.App.Name)
+		validImages, err := findValidImages(*opts.App)
 		if err == nil {
 			inputImage := opts.Image
 			for img := range validImages {
@@ -230,21 +233,25 @@ func Deploy(opts DeployOptions) (string, error) {
 }
 
 func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {
+	prov, err := opts.App.PoolProvisioner()
+	if err != nil {
+		return "", err
+	}
 	switch opts.GetKind() {
 	case DeployRollback:
-		return Provisioner.Rollback(opts.App, opts.Image, evt)
+		return prov.Rollback(opts.App, opts.Image, evt)
 	case DeployImage:
-		if deployer, ok := Provisioner.(provision.ImageDeployer); ok {
+		if deployer, ok := prov.(provision.ImageDeployer); ok {
 			return deployer.ImageDeploy(opts.App, opts.Image, evt)
 		}
 		fallthrough
 	case DeployUpload, DeployUploadBuild:
-		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
+		if deployer, ok := prov.(provision.UploadDeployer); ok {
 			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, evt)
 		}
 		fallthrough
 	default:
-		return Provisioner.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
+		return prov.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
 	}
 }
 

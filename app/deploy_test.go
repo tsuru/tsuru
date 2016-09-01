@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -459,12 +458,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
-	provisioner := provisiontest.NewFakeProvisioner()
-	provisioner.PrepareFailure("ImageDeploy", errors.New("deploy error"))
-	Provisioner = provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
+	s.provisioner.PrepareFailure("ImageDeploy", errors.New("deploy error"))
 	a := App{
 		Name:     "testErrorApp",
 		Platform: "zend",
@@ -472,7 +466,10 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	provisioner.Provision(&a)
+	prov, err := a.PoolProvisioner()
+	c.Assert(err, check.IsNil)
+	err = prov.Provision(&a)
+	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},

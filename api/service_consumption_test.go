@@ -70,8 +70,9 @@ func (s *ConsumptionSuite) SetUpTest(c *check.C) {
 	s.user, err = s.token.User()
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
-	s.provisioner = provisiontest.NewFakeProvisioner()
-	app.Provisioner = s.provisioner
+	s.provisioner = provisiontest.ProvisionerInstance
+	provision.DefaultProvisioner = "fake"
+	s.provisioner.Reset()
 	s.ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))

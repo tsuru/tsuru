@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -17,17 +18,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type PlatformSuite struct {
-	provisioner *provisiontest.FakeProvisioner
-}
+type PlatformSuite struct{}
 
 var _ = check.Suite(&PlatformSuite{})
 
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "platform_tests")
-	s.provisioner = provisiontest.NewFakeProvisioner()
-	Provisioner = s.provisioner
 }
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
@@ -38,7 +35,12 @@ func (s *PlatformSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *PlatformSuite) SetUpTest(c *check.C) {
+	provisiontest.ExtensibleInstance.Reset()
 	repositorytest.Reset()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
 func (s *PlatformSuite) TestPlatforms(c *check.C) {
@@ -114,13 +116,6 @@ func (s *PlatformSuite) TestGetPlatform(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -130,20 +125,13 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, check.IsNil)
-	platform := provisioner.GetPlatform(name)
+	platform := provisiontest.ExtensibleInstance.GetPlatform(name)
 	c.Assert(platform.Name, check.Equals, name)
 	c.Assert(platform.Args, check.DeepEquals, args)
 	c.Assert(platform.Version, check.Equals, 1)
 }
 
 func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -153,20 +141,13 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, check.IsNil)
-	provisioner.PlatformRemove(name)
+	provisiontest.ExtensibleInstance.PlatformRemove(name)
 	err = PlatformAdd(provision.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.Equals, DuplicatePlatformError)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	provisioner.PrepareFailure("PlatformAdd", errors.New("build error"))
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
+	provisiontest.ExtensibleInstance.PrepareFailure("PlatformAdd", errors.New("build error"))
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -181,31 +162,12 @@ func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
 	c.Assert(count, check.Equals, 0)
 }
 
-func (s *PlatformSuite) TestPlatformAddNotExtensibleProvisioner(c *check.C) {
-	err := PlatformAdd(provision.PlatformOptions{Name: "python"})
-	c.Assert(err, check.Equals, ErrProvisionerIsNotExtensible)
-}
-
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	err := PlatformAdd(provision.PlatformOptions{Name: ""})
 	c.Assert(err, check.Equals, ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -223,13 +185,6 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -259,13 +214,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisabletrueFileIn(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -294,13 +242,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisabletrueFileIn(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisabletrueWithoutDockerfile(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -330,13 +271,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisabletrueWithoutDockerfile(c *check.
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -366,13 +300,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -399,25 +326,11 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 }
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	err := PlatformUpdate(provision.PlatformOptions{Name: ""})
 	c.Assert(err, check.Equals, ErrPlatformNameMissing)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -443,13 +356,6 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 }
 
 func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -472,13 +378,6 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -501,13 +400,6 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -518,7 +410,7 @@ func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *check.C) {
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = PlatformAdd(provision.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	provisioner.PlatformRemove(name)
+	provisiontest.ExtensibleInstance.PlatformRemove(name)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	err = PlatformRemove(name)
 	c.Assert(err, check.IsNil)

@@ -24,14 +24,24 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var errNotProvisioned = &provision.Error{Reason: "App is not provisioned."}
+var (
+	ProvisionerInstance *FakeProvisioner
+	ExtensibleInstance  *ExtensibleFakeProvisioner
 
-var uniqueIpCounter int32 = 0
+	errNotProvisioned       = &provision.Error{Reason: "App is not provisioned."}
+	uniqueIpCounter   int32 = 0
+)
 
 func init() {
-	fakeProvisioner := &FakeProvisioner{}
+	ProvisionerInstance = NewFakeProvisioner()
+	ExtensibleInstance = &ExtensibleFakeProvisioner{
+		FakeProvisioner: ProvisionerInstance,
+	}
 	provision.Register("fake", func() (provision.Provisioner, error) {
-		return fakeProvisioner, nil
+		return ProvisionerInstance, nil
+	})
+	provision.Register("fake-extensible", func() (provision.Provisioner, error) {
+		return ExtensibleInstance, nil
 	})
 }
 
@@ -1146,6 +1156,10 @@ func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []
 	return filteredApps, nil
 }
 
+func (p *FakeProvisioner) GetName() string {
+	return "fake"
+}
+
 func stringInArray(value string, array []string) bool {
 	for _, str := range array {
 		if str == value {
@@ -1236,6 +1250,11 @@ func (p *ExtensibleFakeProvisioner) PlatformUpdate(opts provision.PlatformOption
 	platform.Args = opts.Args
 	p.platforms[index] = *platform
 	return nil
+}
+
+func (p *ExtensibleFakeProvisioner) Reset() {
+	p.FakeProvisioner.Reset()
+	p.platforms = nil
 }
 
 func (p *ExtensibleFakeProvisioner) PlatformRemove(name string) error {

@@ -47,8 +47,8 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &auth.Team{Name: "angra"}
 	err = conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	provisioner := provisiontest.NewFakeProvisioner()
-	app.Provisioner = provisioner
+	provision.DefaultProvisioner = "fake"
+	provisiontest.ProvisionerInstance.Reset()
 	opts := provision.AddPoolOptions{Name: "test1", Default: true}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)

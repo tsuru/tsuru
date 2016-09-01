@@ -42,6 +42,13 @@ type UpdatePoolOptions struct {
 	Provisioner string
 }
 
+func (p *Pool) GetProvisioner() (Provisioner, error) {
+	if p.Provisioner != "" {
+		return Get(p.Provisioner)
+	}
+	return GetDefault()
+}
+
 func AddPool(opts AddPoolOptions) error {
 	if opts.Name == "" {
 		return ErrPoolNameIsRequired

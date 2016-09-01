@@ -59,6 +59,8 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	provision.DefaultProvisioner = "fake-extensible"
+	provisiontest.ExtensibleInstance.Reset()
 }
 
 func (s *PlatformSuite) TearDownTest(c *check.C) {
@@ -73,14 +75,6 @@ func (s *PlatformSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	var buf bytes.Buffer
 	dockerfileURL := "http://localhost/Dockerfile"
 	writer := multipart.NewWriter(&buf)
@@ -111,14 +105,6 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
@@ -149,14 +135,6 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
@@ -189,14 +167,6 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := "http://localhost/Dockerfile"
@@ -227,14 +197,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := ""
@@ -255,14 +217,6 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := "http://localhost/Dockerfile"
@@ -279,14 +233,6 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 }
 
 func (*PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	var buf bytes.Buffer
 	dockerfileURL := "http://localhost/Dockerfile"
 	writer := multipart.NewWriter(&buf)
@@ -303,14 +249,6 @@ func (*PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
 }
 
 func (*PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	request, err := http.NewRequest("DELETE", "/platforms/not-found", nil)
 	c.Assert(err, check.IsNil)
 	token := createToken(c)
@@ -322,14 +260,6 @@ func (*PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
 }
 
 func (*PlatformSuite) TestPlatformRemove(c *check.C) {
-	provisioner := provisiontest.ExtensibleFakeProvisioner{
-		FakeProvisioner: provisiontest.NewFakeProvisioner(),
-	}
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &provisioner
-	defer func() {
-		app.Provisioner = oldProvisioner
-	}()
 	err := app.PlatformAdd(provision.PlatformOptions{Name: "test", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("DELETE", "/platforms/test?:name=test", nil)

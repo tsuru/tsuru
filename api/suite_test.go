@@ -98,8 +98,9 @@ func (s *S) SetUpTest(c *check.C) {
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
-	s.provisioner = provisiontest.NewFakeProvisioner()
-	app.Provisioner = s.provisioner
+	s.provisioner = provisiontest.ProvisionerInstance
+	s.provisioner.Reset()
+	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)

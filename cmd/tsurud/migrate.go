@@ -396,17 +396,9 @@ func migrateBSEnvs() error {
 }
 
 func migrateRCEvents() error {
-	provisioner, _ := getProvisioner()
-	if provisioner == defaultProvisionerName {
-		p, err := provision.Get(provisioner)
-		if err != nil {
-			return err
-		}
-		err = p.(provision.InitializableProvisioner).Initialize()
-		if err != nil {
-			return err
-		}
-		app.Provisioner = p
+	err := provision.InitializeAll()
+	if err != nil {
+		return err
 	}
 	return evtMigrate.MigrateRCEvents()
 }

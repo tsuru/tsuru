@@ -2551,9 +2551,13 @@ func (p *logDisabledFakeProvisioner) LogsEnabled(app provision.App) (bool, strin
 }
 
 func (s *S) TestLastLogsDisabled(c *check.C) {
-	oldProvisioner := Provisioner
-	defer func() { Provisioner = oldProvisioner }()
-	Provisioner = &logDisabledFakeProvisioner{}
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "log-disabled"
+	provision.Register("log-disabled", func() (provision.Provisioner, error) {
+		return &logDisabledFakeProvisioner{}, nil
+	})
+	defer provision.Unregister("log-disabled")
 	app := App{
 		Name:     "app3",
 		Platform: "vougan",
@@ -2588,6 +2592,9 @@ func (s *S) TestGetUnits(c *check.C) {
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
 	repository.Manager().CreateRepository("name", nil)
+	opts := provision.AddPoolOptions{Name: "test", Default: false}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	app := App{
 		Name:        "name",
 		Platform:    "Framework",
@@ -3150,7 +3157,9 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 		}
 		err := s.conn.Apps().Insert(&a)
 		c.Assert(err, check.IsNil)
-		err = Provisioner.Provision(&a)
+		prov, err := a.PoolProvisioner()
+		c.Assert(err, check.IsNil)
+		err = prov.Provision(&a)
 		c.Assert(err, check.IsNil)
 		err = a.AddUnits(1, "", nil)
 		c.Assert(err, check.IsNil)
@@ -3871,9 +3880,12 @@ func (s *S) TestShellToAnApp(c *check.C) {
 }
 
 func (s *S) TestAppMetricEnvs(c *check.C) {
-	a := App{Name: "appName", Platform: "python", Pool: "mypool"}
-	envs := a.MetricEnvs()
-	expected := Provisioner.MetricEnvs(&a)
+	a := App{Name: "appName", Platform: "python"}
+	envs, err := a.MetricEnvs()
+	c.Assert(err, check.IsNil)
+	prov, err := a.PoolProvisioner()
+	c.Assert(err, check.IsNil)
+	expected := prov.MetricEnvs(&a)
 	c.Assert(envs, check.DeepEquals, expected)
 }
 

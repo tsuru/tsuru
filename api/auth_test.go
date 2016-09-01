@@ -58,7 +58,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
-	app.Provisioner = provisiontest.NewFakeProvisioner()
+	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 }
 
@@ -71,6 +71,7 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
+	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	conn, err := db.Conn()

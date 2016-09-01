@@ -49,9 +49,11 @@ var (
 	ErrDeployCanceled               = stderr.New("deploy canceled by user action")
 )
 
+const provisionerName = "docker"
+
 func init() {
 	mainDockerProvisioner = &dockerProvisioner{}
-	provision.Register("docker", func() (provision.Provisioner, error) {
+	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return mainDockerProvisioner, nil
 	})
 }
@@ -1388,4 +1390,8 @@ func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node,
 		result = append(result, &clusterNodeWrapper{node: n})
 	}
 	return result, nil
+}
+
+func (p *dockerProvisioner) GetName() string {
+	return provisionerName
 }
