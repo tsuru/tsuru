@@ -3880,7 +3880,9 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	prov, err := a.getProvisioner()
 	c.Assert(err, check.IsNil)
-	expected := prov.MetricEnvs(&a)
+	metricProv, ok := prov.(provision.MetricsProvisioner)
+	c.Assert(ok, check.Equals, true)
+	expected := metricProv.MetricEnvs(&a)
 	c.Assert(envs, check.DeepEquals, expected)
 }
 

@@ -1653,7 +1653,11 @@ func (app *App) MetricEnvs() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return prov.MetricEnvs(app), nil
+	if metricProv, ok := prov.(provision.MetricsProvisioner); ok {
+		return metricProv.MetricEnvs(app), nil
+	} else {
+		return nil, provision.ProvisionerNotSupported{Prov: prov, Action: "metrics"}
+	}
 }
 
 func (app *App) Shell(opts provision.ShellOptions) error {

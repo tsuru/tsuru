@@ -328,10 +328,14 @@ type Provisioner interface {
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error
 
+	FilterAppsByUnitStatus([]App, []string) ([]App, error)
+}
+
+// MetricsProvisioner is a provisioner that exposes environment variables
+// related to metrics.
+type MetricsProvisioner interface {
 	// Returns the metric backend environs for the app.
 	MetricEnvs(App) map[string]string
-
-	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }
 
 // ShellProvisioner is a provisioner that allows opening a shell to existing
