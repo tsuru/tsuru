@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -5086,7 +5087,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var parsed app.RebuildRoutesResult
+	var parsed rebuild.RebuildRoutesResult
 	json.Unmarshal(recorder.Body.Bytes(), &parsed)
-	c.Assert(parsed, check.DeepEquals, app.RebuildRoutesResult{})
+	c.Assert(parsed, check.DeepEquals, rebuild.RebuildRoutesResult{})
 }

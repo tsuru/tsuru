@@ -35,7 +35,6 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -216,38 +215,6 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
 	c.Assert(dbConts[0].IP, check.Equals, expectedIP)
 	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
-}
-
-func (s *S) TestProvisionerRestartRebuildRoutesInQueue(c *check.C) {
-	err := s.p.Initialize()
-	c.Assert(err, check.IsNil)
-	coll := s.storage.Apps()
-	a := &app.App{
-		Name:     "almah",
-		Platform: "static",
-		Pool:     "test-default",
-	}
-	err = coll.Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.p.Provision(a)
-	c.Assert(err, check.IsNil)
-	imageId := "tsuru/app-" + a.Name + ":v1"
-	err = s.newFakeImage(s.p, imageId, nil)
-	c.Assert(err, check.IsNil)
-	_, err = s.p.runCreateUnitsPipeline(nil, a, map[string]*containersToAdd{"web": {Quantity: 1}}, imageId, "")
-	c.Assert(err, check.IsNil)
-	invalidAddr, err := url.Parse("http://invalid.addr")
-	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddRoute(a.GetName(), invalidAddr)
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.FailForIp(invalidAddr.String())
-	err = s.p.Restart(a, "", nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, true)
-	routertest.FakeRouter.RemoveFailForIp(invalidAddr.String())
-	err = queue.TestingWaitQueueTasks(1, 10*time.Second)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasRoute(a.GetName(), invalidAddr.String()), check.Equals, false)
 }
 
 func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
@@ -1390,20 +1357,6 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, false)
 }
 
-func (s *S) TestProvisionerAddr(c *check.C) {
-	cont, err := s.newContainer(nil, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	a := provisiontest.NewFakeApp(cont.AppName, "python", 1)
-	addr, err := s.p.Addr(a)
-	c.Assert(err, check.IsNil)
-	r, err := getRouterForApp(a)
-	c.Assert(err, check.IsNil)
-	expected, err := r.Addr(cont.AppName)
-	c.Assert(err, check.IsNil)
-	c.Assert(addr, check.Equals, expected)
-}
-
 func (s *S) TestProvisionerAddUnits(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
@@ -2093,38 +2046,6 @@ func (s *S) TestProvisionCollection(c *check.C) {
 	c.Assert(collection.Name, check.Equals, s.collName)
 }
 
-func (s *S) TestProvisionSetCName(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "python", 1)
-	routertest.FakeRouter.AddBackend("myapp")
-	addr, _ := url.Parse("http://127.0.0.1")
-	routertest.FakeRouter.AddRoute("myapp", addr)
-	cname := "mycname.com"
-	err := s.p.SetCName(a, cname)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
-}
-
-func (s *S) TestProvisionUnsetCName(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "python", 1)
-	routertest.FakeRouter.AddBackend("myapp")
-	addr, _ := url.Parse("http://127.0.0.1")
-	routertest.FakeRouter.AddRoute("myapp", addr)
-	cname := "mycname.com"
-	err := s.p.SetCName(a, cname)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
-	err = s.p.UnsetCName(a, cname)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, false)
-}
-
-func (s *S) TestProvisionerIsCNameManager(c *check.C) {
-	var _ provision.CNameManager = &dockerProvisioner{}
-}
-
 func (s *S) TestAdminCommands(c *check.C) {
 	expected := []cmd.Command{
 		&moveContainerCmd{},
@@ -2162,29 +2083,11 @@ func (s *S) TestProvisionerIsAdminCommandable(c *check.C) {
 	var _ cmd.AdminCommandable = &dockerProvisioner{}
 }
 
-func (s *S) TestSwap(c *check.C) {
-	app1 := provisiontest.NewFakeApp("app1", "python", 1)
-	app2 := provisiontest.NewFakeApp("app2", "python", 1)
-	routertest.FakeRouter.AddBackend(app1.GetName())
-	addr1, _ := url.Parse("http://127.0.0.1")
-	addr2, _ := url.Parse("http://127.0.0.2")
-	routertest.FakeRouter.AddRoute(app1.GetName(), addr1)
-	routertest.FakeRouter.AddBackend(app2.GetName())
-	routertest.FakeRouter.AddRoute(app2.GetName(), addr2)
-	err := s.p.Swap(app1, app2, false)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasBackend(app1.GetName()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasBackend(app2.GetName()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app2.GetName(), addr1.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app1.GetName(), addr2.String()), check.Equals, true)
-}
-
 func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
 	a := provisiontest.NewFakeApp("otherapp", "python", 1)
 	_, err := s.p.Rollback(a, "inexist", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Image \"inexist\" not found in app")
-
 }
 
 func (s *S) TestProvisionerStart(c *check.C) {

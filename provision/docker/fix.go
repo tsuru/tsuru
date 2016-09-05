@@ -7,6 +7,7 @@ package docker
 import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -38,6 +39,6 @@ func (p *dockerProvisioner) fixContainer(container *container.Container, info co
 	err := coll.Update(bson.M{"id": container.ID}, bson.M{
 		"$set": bson.M{"hostport": container.HostPort, "ip": container.IP},
 	})
-	lockedRoutesRebuildOrEnqueue(container.AppName)
+	rebuild.LockedRoutesRebuildOrEnqueue(container.AppName)
 	return err
 }

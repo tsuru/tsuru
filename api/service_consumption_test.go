@@ -53,6 +53,7 @@ func (s *ConsumptionSuite) SetUpTest(c *check.C) {
 	config.Set("database:name", "tsuru_api_consumption_test")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+	config.Set("docker:router", "fake")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

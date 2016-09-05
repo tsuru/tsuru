@@ -227,12 +227,6 @@ type AppLock interface {
 	GetAcquireDate() time.Time
 }
 
-// CNameManager represents a provisioner that supports cname on applications.
-type CNameManager interface {
-	SetCName(app App, cname string) error
-	UnsetCName(app App, cname string) error
-}
-
 // ShellOptions is the set of options that can be used when calling the method
 // Shell in the provisioner.
 type ShellOptions struct {
@@ -259,6 +253,12 @@ type UploadDeployer interface {
 // previously generated image.
 type ImageDeployer interface {
 	ImageDeploy(app App, image string, evt *event.Event) (string, error)
+}
+
+// RollbackableDeployer is a provisioner that allows rolling back to a
+// previously deployed version.
+type RollbackableDeployer interface {
+	Rollback(App, string, *event.Event) (string, error)
 }
 
 // Provisioner is the basic interface of this package.
@@ -290,12 +290,6 @@ type Provisioner interface {
 	// SetUnitStatus changes the status of a unit.
 	SetUnitStatus(Unit, Status) error
 
-	// ExecuteCommand runs a command in all units of the app.
-	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
-
-	// ExecuteCommandOnce runs a command in one unit of the app.
-	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
-
 	// Restart restarts the units of the application, with an optional
 	// string parameter represeting the name of the process to start. When
 	// the process is empty, Restart will restart all units of the
@@ -311,21 +305,6 @@ type Provisioner interface {
 	// parameter representing the name of the process to start. When the
 	// process is empty, Stop will stop all units of the application.
 	Stop(App, string) error
-
-	// Sleep puts the units of the application to sleep, with an optional string
-	// parameter representing the name of the process to sleep. When the
-	// process is empty, Sleep will put all units of the application to sleep.
-	Sleep(App, string) error
-
-	// Addr returns the address for an app.
-	//
-	// tsuru will use this method to get the IP (although it might not be
-	// an actual IP, collector calls it "IP") of the app from the
-	// provisioner.
-	Addr(App) (string, error)
-
-	// Swap change the router between two apps.
-	Swap(app1, app2 App, cnameOnly bool) error
 
 	// Units returns information about units by App.
 	Units(App) ([]Unit, error)
@@ -346,12 +325,30 @@ type Provisioner interface {
 	// Returns the metric backend environs for the app.
 	MetricEnvs(App) map[string]string
 
-	// Rollback a deploy
-	Rollback(App, string, *event.Event) (string, error)
-
 	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }
 
+// ExecutableProvisioner is a provisioner that allows executing commands on
+// units.
+type ExecutableProvisioner interface {
+	// ExecuteCommand runs a command in all units of the app.
+	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
+
+	// ExecuteCommandOnce runs a command in one unit of the app.
+	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
+}
+
+// SleepableProvisioner is a provisioner that allows putting applications to
+// sleep.
+type SleepableProvisioner interface {
+	// Sleep puts the units of the application to sleep, with an optional string
+	// parameter representing the name of the process to sleep. When the
+	// process is empty, Sleep will put all units of the application to sleep.
+	Sleep(App, string) error
+}
+
+// MessageProvisioner is a provisioner that provides a welcome message for
+// logging.
 type MessageProvisioner interface {
 	StartupMessage() (string, error)
 }

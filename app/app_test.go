@@ -7,7 +7,6 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	stderr "errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1544,7 +1543,7 @@ func (s *S) TestAddCNameValidatesTheCName(c *check.C) {
 	}
 }
 
-func (s *S) TestAddCNameCallsProvisionerSetCName(c *check.C) {
+func (s *S) TestAddCNameCallsRouterSetCName(c *check.C) {
 	a := App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -1553,9 +1552,9 @@ func (s *S) TestAddCNameCallsProvisionerSetCName(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.AddCName("ktulu.mycompany.com", "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
-	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu.mycompany.com")
 	c.Assert(hasCName, check.Equals, true)
-	hasCName = s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	hasCName = routertest.FakeRouter.HasCNameFor(a.Name, "ktulu2.mycompany.com")
 	c.Assert(hasCName, check.Equals, true)
 }
 
@@ -1571,9 +1570,9 @@ func (s *S) TestAddCnameRollbackWithDuplicatedCName(c *check.C) {
 	err = a.AddCName("ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(a.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
-	hasCName := s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu2.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
-	hasCName = s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
+	hasCName = routertest.FakeRouter.HasCNameFor(a.Name, "ktulu3.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
 }
 
@@ -1590,11 +1589,11 @@ func (s *S) TestAddCnameRollbackWithInvalidCName(c *check.C) {
 	err = a.AddCName("ktulu3.mycompany.com", invalidCName)
 	c.Assert(err, check.NotNil)
 	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com"})
-	hasCName := s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu3.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
 }
 
-func (s *S) TestAddCnameRollbackWithProvisionerFailure(c *check.C) {
+func (s *S) TestAddCnameRollbackWithRouterFailure(c *check.C) {
 	a := App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -1603,12 +1602,11 @@ func (s *S) TestAddCnameRollbackWithProvisionerFailure(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.AddCName("ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
-	s.provisioner.PrepareFailure("SetCName", stderr.New("error"))
+	routertest.FakeRouter.FailForIp("ktulu3.mycompany.com")
 	err = a.AddCName("ktulu3.mycompany.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "error")
+	c.Assert(err, check.ErrorMatches, "Forced failure")
 	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com"})
-	hasCName := s.provisioner.HasCName(&a, "ktulu3.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu3.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
 }
 
@@ -1623,7 +1621,7 @@ func (s *S) TestAddCnameRollbackWithDatabaseFailure(c *check.C) {
 	s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.AddCName("ktulu3.mycompany.com")
 	c.Assert(err, check.NotNil)
-	hasCName := s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu3.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
 }
 
@@ -1639,12 +1637,11 @@ func (s *S) TestRemoveCNameRollback(c *check.C) {
 	err = a.RemoveCName("ktulu2.mycompany.com", "test.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com"})
-	hasCName := s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu2.mycompany.com")
 	c.Assert(hasCName, check.Equals, true)
-	s.provisioner.PrepareFailure("UnsetCName", stderr.New("error"))
+	routertest.FakeRouter.FailForIp("ktulu2.mycompany.com")
 	err = a.RemoveCName("ktulu2.mycompany.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "error")
+	c.Assert(err, check.ErrorMatches, "Forced failure")
 	c.Assert(a.CName, check.DeepEquals, []string{"ktulu2.mycompany.com", "ktulu3.mycompany.com", "ktulu.mycompany.com"})
 }
 
@@ -1705,7 +1702,7 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.RemoveCName("ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
+	hasCName := routertest.FakeRouter.HasCNameFor(a.Name, "ktulu.mycompany.com")
 	c.Assert(hasCName, check.Equals, false)
 }
 
@@ -3453,7 +3450,6 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-
 	var b bytes.Buffer
 	err = a.Sleep(&b, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
@@ -3462,7 +3458,6 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	for _, u := range units {
 		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
 	}
-
 	err = a.Start(&b, "web")
 	c.Assert(err, check.IsNil)
 	routes, err := routertest.FakeRouter.Routes(a.Name)
@@ -3889,170 +3884,6 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 	c.Assert(envs, check.DeepEquals, expected)
 }
 
-func (s *S) TestRebuildRoutes(c *check.C) {
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.RemoveRoute(a.Name, units[2].Address)
-	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
-	changes, err := a.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	c.Assert(changes.Added, check.DeepEquals, []string{units[2].Address.String()})
-	c.Assert(changes.Removed, check.DeepEquals, []string{"http://invalid:1234"})
-	routes, err := routertest.FakeRouter.Routes(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 3)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.String()), check.Equals, true)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	addr, err := routertest.FakeRouter.Addr(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, addr)
-}
-
-func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for _, u := range units {
-		routertest.FakeRouter.RemoveRoute(a.Name, u.Address)
-		routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "tcp", Host: u.Address.Host})
-	}
-	changes, err := a.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	c.Assert(changes.Added, check.IsNil)
-	c.Assert(changes.Removed, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 3)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.Host), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.Host), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.Host), check.Equals, true)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	addr, err := routertest.FakeRouter.Addr(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, addr)
-}
-
-type URLList []*url.URL
-
-func (l URLList) Len() int           { return len(l) }
-func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l URLList) Less(i, j int) bool { return l[i].String() < l[j].String() }
-
-func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
-	a1 := App{Name: "my-test-app-1", Plan: Plan{Router: "fake"}}
-	a2 := App{Name: "my-test-app-2", Plan: Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a1)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(&a1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(&a2)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a1)
-	defer s.provisioner.Destroy(&a2)
-	s.provisioner.AddUnits(&a1, 3, "web", nil)
-	s.provisioner.AddUnits(&a2, 2, "web", nil)
-	units1, err := a1.Units()
-	c.Assert(err, check.IsNil)
-	units2, err := a2.Units()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.AddRoute(a1.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
-	routertest.FakeRouter.RemoveRoute(a2.Name, units2[0].Address)
-	err = Swap(&a1, &a2, false)
-	c.Assert(err, check.IsNil)
-	changes1, err := a1.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	changes2, err := a2.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	c.Assert(changes1.Added, check.IsNil)
-	c.Assert(changes1.Removed, check.DeepEquals, []string{"http://invalid:1234"})
-	c.Assert(changes2.Added, check.DeepEquals, []string{units2[0].Address.String()})
-	c.Assert(changes2.Removed, check.IsNil)
-	routes1, err := routertest.FakeRouter.Routes(a1.Name)
-	c.Assert(err, check.IsNil)
-	routes2, err := routertest.FakeRouter.Routes(a2.Name)
-	c.Assert(err, check.IsNil)
-	sort.Sort(URLList(routes1))
-	sort.Sort(URLList(routes2))
-	c.Assert(routes1, check.DeepEquals, []*url.URL{
-		units1[0].Address,
-		units1[1].Address,
-		units1[2].Address,
-	})
-	c.Assert(routes2, check.DeepEquals, []*url.URL{
-		units2[0].Address,
-		units2[1].Address,
-	})
-	c.Assert(routertest.FakeRouter.HasRoute(a1.Name, units2[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a1.Name, units2[1].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a2.Name, units1[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a2.Name, units1[1].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a2.Name, units1[2].Address.String()), check.Equals, true)
-}
-
-func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.RemoveBackend(a.Name)
-	changes, err := a.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	sort.Strings(changes.Added)
-	c.Assert(changes.Added, check.DeepEquals, []string{
-		units[0].Address.String(),
-		units[1].Address.String(),
-		units[2].Address.String(),
-	})
-	routes, err := routertest.FakeRouter.Routes(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 3)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.String()), check.Equals, true)
-}
-
-func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
-	oldIp := a.Ip
-	a.Plan = Plan{Router: "fake-hc"}
-	_, err = a.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Ip, check.Not(check.Equals), oldIp)
-	na, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(na.Ip, check.Equals, a.Ip)
-}
-
 func (s *S) TestUpdateDescription(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)
@@ -4357,31 +4188,4 @@ func (s *S) TestUpdateDescriptionPoolAndPlan(c *check.C) {
 	sort.Strings(routesStr)
 	sort.Strings(expected)
 	c.Assert(routesStr, check.DeepEquals, expected)
-}
-
-func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
-	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	err = a.AddCName("my.cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, true)
-	err = routertest.FakeRouter.UnsetCName("my.cname.com", a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, false)
-	changes, err := a.RebuildRoutes()
-	c.Assert(err, check.IsNil)
-	c.Assert(changes, check.DeepEquals, &RebuildRoutesResult{})
-	routes, err := routertest.FakeRouter.Routes(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, true)
 }

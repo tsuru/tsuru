@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -38,6 +39,9 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Events().Database)
+	c.Assert(err, check.IsNil)
+	config.Set("routers:fake:type", "fake")
+	err = (&app.Plan{Name: "default", Router: "fake", CpuShare: 100, Default: true}).Save()
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme

@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -533,6 +534,7 @@ func (app *App) AddUnits(n uint, process string, writer io.Writer) error {
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
 	).Execute(app, n, writer, process)
+	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return err
 }
 
@@ -547,6 +549,7 @@ func (app *App) RemoveUnits(n uint, process string, writer io.Writer) error {
 		return err
 	}
 	err = prov.RemoveUnits(app, n, process, writer)
+	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	if err != nil {
 		return err
 	}
@@ -879,18 +882,18 @@ func (app *App) sourced(cmd string, w io.Writer, once bool) error {
 }
 
 func (app *App) run(cmd string, w io.Writer, once bool) error {
-	if once {
-		prov, err := app.getProvisioner()
-		if err != nil {
-			return err
-		}
-		return prov.ExecuteCommandOnce(w, w, app, cmd)
-	}
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
-	return prov.ExecuteCommand(w, w, app, cmd)
+	execProv, ok := prov.(provision.ExecutableProvisioner)
+	if !ok {
+		return fmt.Errorf("provisioner %q does not support running commands", prov.GetName())
+	}
+	if once {
+		return execProv.ExecuteCommandOnce(w, w, app, cmd)
+	}
+	return execProv.ExecuteCommand(w, w, app, cmd)
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
@@ -913,6 +916,7 @@ func (app *App) Restart(process string, w io.Writer) error {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
 	}
+	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return nil
 }
 
@@ -935,17 +939,20 @@ func (app *App) Stop(w io.Writer, process string) error {
 }
 
 func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	sleepProv, ok := prov.(provision.SleepableProvisioner)
+	if !ok {
+		return fmt.Errorf("provisioner %q does not support sleep action", prov.GetName())
+	}
 	msg := fmt.Sprintf("\n ---> Putting the process %q to sleep\n", process)
 	if process == "" {
 		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep\n", app.Name)
 	}
 	log.Write(w, []byte(msg))
-	routerName, err := app.GetRouter()
-	if err != nil {
-		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		return err
-	}
-	r, err := router.Get(routerName)
+	r, err := app.Router()
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		return err
@@ -963,11 +970,7 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		return err
 	}
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	err = prov.Sleep(app, process)
+	err = sleepProv.Sleep(app, process)
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		for _, route := range oldRoutes {
@@ -1211,7 +1214,9 @@ func (app *App) AddCName(cnames ...string) error {
 		&saveCNames,
 		&updateApp,
 	}
-	return action.NewPipeline(actions...).Execute(app, cnames)
+	err := action.NewPipeline(actions...).Execute(app, cnames)
+	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	return err
 }
 
 func (app *App) RemoveCName(cnames ...string) error {
@@ -1221,7 +1226,9 @@ func (app *App) RemoveCName(cnames ...string) error {
 		&removeCNameFromDatabase,
 		&removeCNameFromApp,
 	}
-	return action.NewPipeline(actions...).Execute(app, cnames)
+	err := action.NewPipeline(actions...).Execute(app, cnames)
+	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	return err
 }
 
 func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
@@ -1544,21 +1551,19 @@ func List(filter *Filter) ([]App, error) {
 	return apps, nil
 }
 
-// Swap calls the Provisioner.Swap.
-// And updates the app.CName in the database.
+// Swap calls the Router.Swap and updates the app.CName in the database.
 func Swap(app1, app2 *App, cnameOnly bool) error {
-	prov1, err := app1.getProvisioner()
+	r1, err := app1.Router()
 	if err != nil {
 		return err
 	}
-	prov2, err := app2.getProvisioner()
+	r2, err := app2.Router()
 	if err != nil {
 		return err
 	}
-	if prov1.GetName() != prov2.GetName() {
-		return stderr.New("unable to swap apps with different provisioners")
-	}
-	err = prov1.Swap(app1, app2, cnameOnly)
+	defer rebuild.RoutesRebuildOrEnqueue(app1.Name)
+	defer rebuild.RoutesRebuildOrEnqueue(app2.Name)
+	err = r1.Swap(app1.Name, app2.Name, cnameOnly)
 	if err != nil {
 		return err
 	}
@@ -1568,8 +1573,8 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 	}
 	defer conn.Close()
 	app1.CName, app2.CName = app2.CName, app1.CName
-	updateCName := func(app *App) error {
-		app.Ip, err = prov1.Addr(app)
+	updateCName := func(app *App, r router.Router) error {
+		app.Ip, err = r.Addr(app.Name)
 		if err != nil {
 			return err
 		}
@@ -1578,11 +1583,11 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 			bson.M{"$set": bson.M{"cname": app.CName, "ip": app.Ip}},
 		)
 	}
-	err = updateCName(app1)
+	err = updateCName(app1, r1)
 	if err != nil {
 		return err
 	}
-	return updateCName(app2)
+	return updateCName(app2, r2)
 }
 
 // Start starts the app calling the provisioner.Start method and
@@ -1602,7 +1607,7 @@ func (app *App) Start(w io.Writer, process string) error {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return err
 	}
-	_, err = app.RebuildRoutes()
+	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return err
 }
 
@@ -1668,55 +1673,40 @@ func (e *ProcfileError) Error() string {
 	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
 }
 
-type RebuildRoutesResult struct {
-	Added   []string
-	Removed []string
-}
-
-func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
+func (app *App) Router() (router.Router, error) {
 	routerName, err := app.GetRouter()
 	if err != nil {
 		return nil, err
 	}
-	r, err := router.Get(routerName)
+	return router.Get(routerName)
+}
+
+func (app *App) UpdateAddr() error {
+	r, err := app.Router()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if optsRouter, ok := r.(router.OptsRouter); ok {
-		err = optsRouter.AddBackendOpts(app.Name, app.RouterOpts)
-	} else {
-		err = r.AddBackend(app.Name)
-	}
-	if err != nil && err != router.ErrBackendExists {
-		return nil, err
-	}
-	var newAddr string
-	if newAddr, err = r.Addr(app.GetName()); err == nil && newAddr != app.Ip {
-		var conn *db.Storage
-		conn, err = db.Conn()
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": newAddr}})
-		if err != nil {
-			return nil, err
-		}
-		app.Ip = newAddr
-	}
-	if cnameRouter, ok := r.(router.CNameRouter); ok {
-		for _, cname := range app.CName {
-			err = cnameRouter.SetCName(cname, app.Name)
-			if err != nil && err != router.ErrCNameExists {
-				return nil, err
-			}
-		}
-	}
-	oldRoutes, err := r.Routes(app.GetName())
+	newAddr, err := r.Addr(app.Name)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	expectedMap := make(map[string]*url.URL)
+	if newAddr == app.Ip {
+		return nil
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": newAddr}})
+	if err != nil {
+		return err
+	}
+	app.Ip = newAddr
+	return nil
+}
+
+func (app *App) RoutableUnits() ([]*url.URL, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -1725,31 +1715,17 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, unit := range units {
-		expectedMap[unit.Address.Host] = unit.Address
+	urls := make([]*url.URL, len(units))
+	for i := range units {
+		urls[i] = units[i].Address
 	}
-	var toRemove []*url.URL
-	for _, url := range oldRoutes {
-		if _, isPresent := expectedMap[url.Host]; isPresent {
-			delete(expectedMap, url.Host)
-		} else {
-			toRemove = append(toRemove, url)
-		}
-	}
-	var result RebuildRoutesResult
-	for _, toAddUrl := range expectedMap {
-		err := r.AddRoute(app.GetName(), toAddUrl)
-		if err != nil {
-			return nil, err
-		}
-		result.Added = append(result.Added, toAddUrl.String())
-	}
-	for _, toRemoveUrl := range toRemove {
-		err := r.RemoveRoute(app.GetName(), toRemoveUrl)
-		if err != nil {
-			return nil, err
-		}
-		result.Removed = append(result.Removed, toRemoveUrl.String())
-	}
-	return &result, nil
+	return urls, nil
+}
+
+func (app *App) InternalLock(reason string) (bool, error) {
+	return AcquireApplicationLock(app.Name, InternalAppName, reason)
+}
+
+func (app *App) Unlock() {
+	ReleaseApplicationLock(app.Name)
 }

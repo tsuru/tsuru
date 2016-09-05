@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -1694,7 +1695,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	}
 	defer func() { evt.Done(err) }()
 	w.Header().Set("Content-Type", "application/json")
-	result, err := a.RebuildRoutes()
+	result, err := rebuild.RebuildRoutes(&a)
 	if err != nil {
 		return err
 	}

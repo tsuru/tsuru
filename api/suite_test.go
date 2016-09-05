@@ -89,6 +89,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:router", "fake")
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	var err error

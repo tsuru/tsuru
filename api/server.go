@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"golang.org/x/net/websocket"
 	"gopkg.in/tylerb/graceful.v1"
 )
@@ -282,6 +283,14 @@ func RunServer(dry bool) http.Handler {
 	return n
 }
 
+func appFinder(appName string) (rebuild.RebuildApp, error) {
+	a, err := app.GetByName(appName)
+	if err == app.ErrAppNotFound {
+		return nil, nil
+	}
+	return a, err
+}
+
 func startServer(handler http.Handler) {
 	shutdownChan := make(chan bool)
 	shutdownTimeout, _ := config.GetInt("shutdown-timeout")
@@ -360,6 +369,10 @@ func startServer(handler http.Handler) {
 		fmt.Println("Warning: configuration didn't declare a repository manager, using default manager.")
 	}
 	fmt.Printf("Using %q repository manager.\n", repoManager)
+	err = rebuild.RegisterTask(appFinder)
+	if err != nil {
+		fatal(err)
+	}
 	err = provision.InitializeAll()
 	if err != nil {
 		fatal(err)

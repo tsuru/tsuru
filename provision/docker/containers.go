@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/router/rebuild"
 )
 
 type appLocker struct {
@@ -56,7 +57,7 @@ func (l *appLocker) Unlock(appName string) {
 	l.refCount[appName]--
 	if l.refCount[appName] <= 0 {
 		l.refCount[appName] = 0
-		routesRebuildOrEnqueue(appName)
+		rebuild.RoutesRebuildOrEnqueue(appName)
 		app.ReleaseApplicationLock(appName)
 	}
 }

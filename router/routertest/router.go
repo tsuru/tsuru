@@ -96,6 +96,13 @@ func (r *fakeRouter) HasCName(name string) bool {
 	return ok
 }
 
+func (r *fakeRouter) HasCNameFor(name, cname string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	stored, ok := r.cnames[cname]
+	return ok && stored == name
+}
+
 func (r *fakeRouter) HasRoute(name, address string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -259,6 +266,9 @@ func (r *fakeRouter) RemoveRoute(name string, address *url.URL) error {
 }
 
 func (r *fakeRouter) SetCName(cname, name string) error {
+	if r.failuresByIp[cname] {
+		return ErrForcedFailure
+	}
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -279,6 +289,9 @@ func (r *fakeRouter) SetCName(cname, name string) error {
 }
 
 func (r *fakeRouter) UnsetCName(cname, name string) error {
+	if r.failuresByIp[cname] {
+		return ErrForcedFailure
+	}
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err

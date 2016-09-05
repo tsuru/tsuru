@@ -53,6 +53,8 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+	config.Set("docker:router", "fake")
+	config.Set("routers:fake:type", "fake")
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())

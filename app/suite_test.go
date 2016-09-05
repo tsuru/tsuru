@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -103,6 +104,9 @@ var nativeScheme = auth.Scheme(native.NativeScheme{})
 func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queue_app_pkg_tests")
+	config.Set("queue:mongo-polling-interval", 0.01)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
@@ -125,6 +129,16 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	queue.ResetQueue()
+	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
+		a, err := GetByName(appName)
+		if err == ErrAppNotFound {
+			return nil, nil
+		}
+		return a, err
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("docker:router", "fake")
 	routertest.FakeRouter.Reset()
 	routertest.HCRouter.Reset()
 	s.provisioner.Reset()
@@ -140,7 +154,7 @@ func (s *S) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	err := s.conn.Plans().Insert(s.defaultPlan)
+	err = s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
 	opts := provision.AddPoolOptions{Name: s.Pool, Default: true}

@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -107,7 +106,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.storage.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	routesRebuildRetryTime = 50 * time.Millisecond
 }
 
 func (s *S) SetUpTest(c *check.C) {

@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package rebuild
 
 import (
 	"errors"
 	"time"
 
 	"github.com/tsuru/monsterqueue"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
 )
@@ -17,6 +16,8 @@ import (
 const routesRebuildTaskName = "rebuildRoutesTask"
 
 var routesRebuildRetryTime = 10 * time.Second
+
+var appFinder func(string) (RebuildApp, error)
 
 type routesRebuildTask struct{}
 
@@ -36,7 +37,8 @@ func (t *routesRebuildTask) Run(job monsterqueue.Job) {
 	job.Success(nil)
 }
 
-func registerRoutesRebuildTask() error {
+func RegisterTask(finder func(string) (RebuildApp, error)) error {
+	appFinder = finder
 	q, err := queue.Queue()
 	if err != nil {
 		return err
@@ -45,22 +47,30 @@ func registerRoutesRebuildTask() error {
 }
 
 func runRoutesRebuildOnce(appName string, lock bool) bool {
+	if appFinder == nil {
+		return false
+	}
+	a, err := appFinder(appName)
+	if err != nil {
+		log.Errorf("[routes-rebuild-task] error getting app: %s", err)
+		return false
+	}
+	if a == nil {
+		return true
+	}
 	if lock {
-		locked, err := app.AcquireApplicationLock(appName, app.InternalAppName, "rebuild-routes-task")
+		var locked bool
+		locked, err = a.InternalLock("rebuild-routes-task")
 		if err != nil || !locked {
 			return false
 		}
-		defer app.ReleaseApplicationLock(appName)
-	}
-	a, err := app.GetByName(appName)
-	if err == app.ErrAppNotFound {
-		return true
+		defer a.Unlock()
 	}
 	if err != nil {
 		log.Errorf("[routes-rebuild-task] error getting app: %s", err)
 		return false
 	}
-	_, err = a.RebuildRoutes()
+	_, err = RebuildRoutes(a)
 	if err != nil {
 		log.Errorf("[routes-rebuild-task] error rebuilding: %s", err)
 		return false
@@ -68,11 +78,11 @@ func runRoutesRebuildOnce(appName string, lock bool) bool {
 	return true
 }
 
-func routesRebuildOrEnqueue(appName string) {
+func RoutesRebuildOrEnqueue(appName string) {
 	routesRebuildOrEnqueueOptionalLock(appName, false)
 }
 
-func lockedRoutesRebuildOrEnqueue(appName string) {
+func LockedRoutesRebuildOrEnqueue(appName string) {
 	routesRebuildOrEnqueueOptionalLock(appName, true)
 }
 

@@ -18,10 +18,10 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -257,11 +257,11 @@ var setAppIp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		prov, err := app.getProvisioner()
+		r, err := app.Router()
 		if err != nil {
 			return nil, err
 		}
-		app.Ip, err = prov.Addr(app)
+		app.Ip, err = r.Addr(app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -390,10 +390,7 @@ var moveRouterUnits = action.Action{
 		}
 		result := changePlanPipelineResult{oldPlan: oldPlan, app: app, oldIp: app.Ip}
 		if newRouter != oldRouter {
-			_, err = app.RebuildRoutes()
-			if err != nil {
-				return nil, err
-			}
+			rebuild.RoutesRebuildOrEnqueue(app.Name)
 			result.changedRouter = true
 		}
 		return &result, nil
@@ -413,14 +410,9 @@ var moveRouterUnits = action.Action{
 			}
 			defer conn.Close()
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
-			routerName, err := result.app.GetRouter()
+			r, err := result.app.Router()
 			if err != nil {
-				log.Errorf("BACKWARD ABORTED - failed to get app router: %s", err)
-				return
-			}
-			r, err := router.Get(routerName)
-			if err != nil {
-				log.Errorf("BACKWARD ABORTED - failed to retrieve router %q: %s", routerName, err)
+				log.Errorf("BACKWARD ABORTED - failed to retrieve router: %s", err)
 				return
 			}
 			err = r.RemoveBackend(result.app.Name)
@@ -545,20 +537,20 @@ var setNewCNamesToProvisioner = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		prov, err := app.getProvisioner()
+		r, err := app.Router()
 		if err != nil {
 			return nil, err
 		}
-		p, ok := prov.(provision.CNameManager)
+		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			return nil, errors.New("Provisioner doesn't support cname change.")
+			return nil, errors.New("router does not support cname change")
 		}
 		var cnamesDone []string
 		for _, cname := range cnames {
-			err := p.SetCName(app, cname)
+			err := cnameRouter.SetCName(cname, app.Name)
 			if err != nil {
 				for _, c := range cnamesDone {
-					p.UnsetCName(app, c)
+					cnameRouter.UnsetCName(c, app.Name)
 				}
 				return nil, err
 			}
@@ -569,17 +561,18 @@ var setNewCNamesToProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		prov, err := app.getProvisioner()
+		r, err := app.Router()
 		if err != nil {
-			log.Errorf("Unable to retrieve provisioner: %s", err)
+			log.Errorf("Unable to retrieve router: %s", err)
 			return
 		}
-		p, ok := prov.(provision.CNameManager)
+		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			log.Error("Provisioner doesn't support cname change.")
+			log.Error("Router doesn't support cname change.")
+			return
 		}
 		for _, cname := range cnames {
-			err := p.UnsetCName(app, cname)
+			err := cnameRouter.UnsetCName(cname, app.Name)
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -674,20 +667,20 @@ var unsetCNameFromProvisioner = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		prov, err := app.getProvisioner()
+		r, err := app.Router()
 		if err != nil {
 			return nil, err
 		}
-		p, ok := prov.(provision.CNameManager)
+		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			return nil, errors.New("Provisioner doesn't support cname change.")
+			return nil, errors.New("router does not support cname change")
 		}
 		var cnamesDone []string
 		for _, cname := range cnames {
-			err := p.UnsetCName(app, cname)
+			err := cnameRouter.UnsetCName(cname, app.Name)
 			if err != nil {
 				for _, c := range cnamesDone {
-					p.SetCName(app, c)
+					cnameRouter.SetCName(c, app.Name)
 				}
 				return nil, err
 			}
@@ -698,17 +691,18 @@ var unsetCNameFromProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		prov, err := app.getProvisioner()
+		r, err := app.Router()
 		if err != nil {
-			log.Errorf("Unable to retrieve provisioner: %s", err)
+			log.Errorf("Unable to retrieve router: %s", err)
 			return
 		}
-		p, ok := prov.(provision.CNameManager)
+		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			log.Error("Provisioner doesn't support cname change.")
+			log.Error("Router doesn't support cname change.")
+			return
 		}
 		for _, cname := range cnames {
-			err := p.SetCName(app, cname)
+			err := cnameRouter.SetCName(cname, app.Name)
 			if err != nil {
 				log.Error(err.Error())
 			}

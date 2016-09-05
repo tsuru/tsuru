@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router/rebuild"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -219,6 +220,7 @@ func Deploy(opts DeployOptions) (string, error) {
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageId, err := deployToProvisioner(&opts, opts.Event)
+	rebuild.RoutesRebuildOrEnqueue(opts.App.Name)
 	if err != nil {
 		return "", err
 	}
@@ -239,20 +241,23 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 	}
 	switch opts.GetKind() {
 	case DeployRollback:
-		return prov.Rollback(opts.App, opts.Image, evt)
+		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
+			return deployer.Rollback(opts.App, opts.Image, evt)
+		}
 	case DeployImage:
 		if deployer, ok := prov.(provision.ImageDeployer); ok {
 			return deployer.ImageDeploy(opts.App, opts.Image, evt)
 		}
-		fallthrough
 	case DeployUpload, DeployUploadBuild:
 		if deployer, ok := prov.(provision.UploadDeployer); ok {
 			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, evt)
 		}
-		fallthrough
 	default:
-		return prov.(provision.ArchiveDeployer).ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
+		if deployer, ok := prov.(provision.ArchiveDeployer); ok {
+			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
+		}
 	}
+	return "", fmt.Errorf("%s deploy not supported by provisioner %q", opts.GetKind(), prov.GetName())
 }
 
 func ValidateOrigin(origin string) bool {

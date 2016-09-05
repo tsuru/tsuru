@@ -282,10 +282,6 @@ func (p *dockerProvisioner) Initialize() error {
 	if err != nil {
 		return err
 	}
-	err = registerRoutesRebuildTask()
-	if err != nil {
-		return err
-	}
 	return p.initDockerCluster()
 }
 
@@ -324,7 +320,6 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
 	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
-	routesRebuildOrEnqueue(a.GetName())
 	return err
 }
 
@@ -347,7 +342,6 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		}
 		return nil
 	}, nil, true)
-	routesRebuildOrEnqueue(app.GetName())
 	return err
 }
 
@@ -379,19 +373,6 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 		}
 		return err
 	}, nil, true)
-}
-
-func (p *dockerProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
-	r, err := getRouterForApp(app1)
-	if err != nil {
-		return err
-	}
-	err = r.Swap(app1.GetName(), app2.GetName(), cnameOnly)
-	if err != nil {
-		routesRebuildOrEnqueue(app1.GetName())
-		routesRebuildOrEnqueue(app2.GetName())
-	}
-	return err
 }
 
 func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event.Event) (string, error) {
@@ -651,7 +632,6 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, evt *event.E
 		}
 		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, imageId)
 	}
-	routesRebuildOrEnqueue(a.GetName())
 	return err
 }
 
@@ -747,20 +727,6 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		return err
 	}
 	return nil
-}
-
-func (*dockerProvisioner) Addr(app provision.App) (string, error) {
-	r, err := getRouterForApp(app)
-	if err != nil {
-		log.Errorf("Failed to get router: %s", err)
-		return "", err
-	}
-	addr, err := r.Addr(app.GetName())
-	if err != nil {
-		log.Errorf("Failed to obtain app %s address: %s", app.GetName(), err)
-		return "", err
-	}
-	return addr, nil
 }
 
 func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, w io.Writer) error {
@@ -863,7 +829,6 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 		return nil, err
 	}
 	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
-	routesRebuildOrEnqueue(a.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -1000,38 +965,6 @@ func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provisi
 		}
 	}
 	return nil
-}
-
-func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
-	r, err := getRouterForApp(app)
-	if err != nil {
-		return err
-	}
-	cnameRouter, ok := r.(router.CNameRouter)
-	if !ok {
-		return fmt.Errorf("router %T does not allow cnames", r)
-	}
-	err = cnameRouter.SetCName(cname, app.GetName())
-	if err != nil {
-		routesRebuildOrEnqueue(app.GetName())
-	}
-	return err
-}
-
-func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
-	r, err := getRouterForApp(app)
-	if err != nil {
-		return err
-	}
-	cnameRouter, ok := r.(router.CNameRouter)
-	if !ok {
-		return fmt.Errorf("router %T does not allow cnames", r)
-	}
-	err = cnameRouter.UnsetCName(cname, app.GetName())
-	if err != nil {
-		routesRebuildOrEnqueue(app.GetName())
-	}
-	return err
 }
 
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
