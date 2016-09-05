@@ -1522,7 +1522,6 @@ func List(filter *Filter) ([]App, error) {
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
-		// provisionApps := make([]provision.App, len(apps))
 		for i := range apps {
 			a := &apps[i]
 			prov, err := a.getProvisioner()
@@ -1537,9 +1536,11 @@ func List(filter *Filter) ([]App, error) {
 			if err != nil {
 				return nil, err
 			}
-			apps, err = prov.FilterAppsByUnitStatus(apps, filter.Statuses)
-			if err != nil {
-				return nil, err
+			if filterProv, ok := prov.(provision.AppFilterProvisioner); ok {
+				apps, err = filterProv.FilterAppsByUnitStatus(apps, filter.Statuses)
+				if err != nil {
+					return nil, err
+				}
 			}
 			provisionApps = append(provisionApps, apps...)
 		}

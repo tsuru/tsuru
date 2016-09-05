@@ -324,8 +324,6 @@ type Provisioner interface {
 
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error
-
-	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }
 
 // MetricsProvisioner is a provisioner that exposes environment variables
@@ -393,6 +391,12 @@ type NodeProvisioner interface {
 type UnitFinderProvisioner interface {
 	// GetAppFromUnitID returns an app from unit id
 	GetAppFromUnitID(string) (App, error)
+}
+
+// AppFilterProvisioner is a provisioner that allows filtering apps by the
+// state of its units.
+type AppFilterProvisioner interface {
+	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }
 
 type Node interface {
