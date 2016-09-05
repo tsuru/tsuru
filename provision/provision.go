@@ -297,9 +297,6 @@ type Provisioner interface {
 	// from the app.
 	RemoveUnits(App, uint, string, io.Writer) error
 
-	// GetAppFromUnitID returns an app from unit id
-	GetAppFromUnitID(string) (App, error)
-
 	// SetUnitStatus changes the status of a unit.
 	SetUnitStatus(Unit, Status) error
 
@@ -389,6 +386,13 @@ type NodeProvisioner interface {
 
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
+}
+
+// UnitFinderProvisioner is a provisioner that allows finding a specific unit by
+// its id.
+type UnitFinderProvisioner interface {
+	// GetAppFromUnitID returns an app from unit id
+	GetAppFromUnitID(string) (App, error)
 }
 
 type Node interface {
