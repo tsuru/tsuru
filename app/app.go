@@ -888,7 +888,7 @@ func (app *App) run(cmd string, w io.Writer, once bool) error {
 	}
 	execProv, ok := prov.(provision.ExecutableProvisioner)
 	if !ok {
-		return fmt.Errorf("provisioner %q does not support running commands", prov.GetName())
+		return provision.ProvisionerNotSupported{Prov: prov, Action: "running commands"}
 	}
 	if once {
 		return execProv.ExecuteCommandOnce(w, w, app, cmd)
@@ -945,7 +945,7 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 	}
 	sleepProv, ok := prov.(provision.SleepableProvisioner)
 	if !ok {
-		return fmt.Errorf("provisioner %q does not support sleep action", prov.GetName())
+		return provision.ProvisionerNotSupported{Prov: prov, Action: "sleeping"}
 	}
 	msg := fmt.Sprintf("\n ---> Putting the process %q to sleep\n", process)
 	if process == "" {
@@ -1662,7 +1662,11 @@ func (app *App) Shell(opts provision.ShellOptions) error {
 	if err != nil {
 		return err
 	}
-	return prov.Shell(opts)
+	if shellProv, ok := prov.(provision.ShellProvisioner); ok {
+		return shellProv.Shell(opts)
+	} else {
+		return provision.ProvisionerNotSupported{Prov: prov, Action: "running shell"}
+	}
 }
 
 type ProcfileError struct {

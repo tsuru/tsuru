@@ -58,11 +58,13 @@ func findValidImages(apps ...App) (set, error) {
 		if err != nil {
 			return nil, err
 		}
-		imgs, err := prov.ValidAppImages(a.Name)
-		if err != nil {
-			return nil, err
+		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
+			imgs, err := deployer.ValidAppImages(a.Name)
+			if err != nil {
+				return nil, err
+			}
+			validImages.Add(imgs...)
 		}
-		validImages.Add(imgs...)
 	}
 	return validImages, nil
 }
@@ -257,7 +259,7 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
 		}
 	}
-	return "", fmt.Errorf("%s deploy not supported by provisioner %q", opts.GetKind(), prov.GetName())
+	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.GetKind())}
 }
 
 func ValidateOrigin(origin string) bool {

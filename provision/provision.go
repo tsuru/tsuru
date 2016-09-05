@@ -46,6 +46,15 @@ func (e InvalidProcessError) Error() string {
 	return fmt.Sprintf("process error: %s", e.Msg)
 }
 
+type ProvisionerNotSupported struct {
+	Prov   Provisioner
+	Action string
+}
+
+func (e ProvisionerNotSupported) Error() string {
+	return fmt.Sprintf("provisioner %q does not support %s", e.Prov.GetName(), e.Action)
+}
+
 // Status represents the status of a unit in tsuru.
 type Status string
 
@@ -259,6 +268,10 @@ type ImageDeployer interface {
 // previously deployed version.
 type RollbackableDeployer interface {
 	Rollback(App, string, *event.Event) (string, error)
+
+	// Returns list of valid image names for app, these can be used for
+	// rollback.
+	ValidAppImages(string) ([]string, error)
 }
 
 // Provisioner is the basic interface of this package.
@@ -315,17 +328,17 @@ type Provisioner interface {
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error
 
-	// Open a remote shel in one of the units in the application.
-	Shell(ShellOptions) error
-
-	// Returns list of valid image names for app, these can be used for
-	// rollback.
-	ValidAppImages(string) ([]string, error)
-
 	// Returns the metric backend environs for the app.
 	MetricEnvs(App) map[string]string
 
 	FilterAppsByUnitStatus([]App, []string) ([]App, error)
+}
+
+// ShellProvisioner is a provisioner that allows opening a shell to existing
+// units.
+type ShellProvisioner interface {
+	// Open a remote shel in one of the units in the application.
+	Shell(ShellOptions) error
 }
 
 // ExecutableProvisioner is a provisioner that allows executing commands on
