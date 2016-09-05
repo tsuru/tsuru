@@ -205,16 +205,26 @@ func (s *S) TestAddBackend(c *check.C) {
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
-	router := hipacheRouter{prefix: "hipache"}
-	err := router.AddBackend("tip")
+	r := hipacheRouter{prefix: "hipache"}
+	err := r.AddBackend("tip")
 	c.Assert(err, check.IsNil)
-	err = router.RemoveBackend("tip")
+	hcData := router.HealthcheckData{
+		Path:   "/",
+		Status: 200,
+		Body:   "WORKING",
+	}
+	err = r.SetHealthcheck("tip", hcData)
 	c.Assert(err, check.IsNil)
-	conn, err := router.connect()
+	err = r.RemoveBackend("tip")
+	c.Assert(err, check.IsNil)
+	conn, err := r.connect()
 	c.Assert(err, check.IsNil)
 	backends, err := conn.LLen("frontend:tip.golang.org").Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(int64(0), check.Equals, backends)
+	healthchecks, err := conn.HLen("healthcheck:tip.golang.org").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(int64(0), check.Equals, healthchecks)
 }
 
 func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *check.C) {

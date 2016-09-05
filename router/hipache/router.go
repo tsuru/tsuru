@@ -147,6 +147,11 @@ func (r *hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return &router.RouterError{Op: "remove", Err: err}
 	}
+	healthcheck := "healthcheck:" + backendName + "." + domain
+	err = conn.Del(healthcheck).Err()
+	if err != nil {
+		return &router.RouterError{Op: "remove", Err: err}
+	}
 	return nil
 }
 
