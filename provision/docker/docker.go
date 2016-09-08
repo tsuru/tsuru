@@ -39,8 +39,8 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return storage, nil
 }
 
-func (p *dockerProvisioner) getNodeByHost(host string) (cluster.Node, error) {
-	nodes, err := p.Cluster().Nodes()
+func (p *dockerProvisioner) GetNodeByHost(host string) (cluster.Node, error) {
+	nodes, err := p.Cluster().UnfilteredNodes()
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -49,7 +49,7 @@ func (p *dockerProvisioner) getNodeByHost(host string) (cluster.Node, error) {
 			return node, nil
 		}
 	}
-	return cluster.Node{}, fmt.Errorf("Host `%s` not found", host)
+	return cluster.Node{}, fmt.Errorf("node with host %q not found", host)
 }
 
 func randomString() string {

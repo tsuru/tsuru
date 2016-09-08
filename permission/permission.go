@@ -151,6 +151,21 @@ type Token interface {
 	Permissions() ([]Permission, error)
 }
 
+func ListContextValues(t Token, scheme *PermissionScheme, failIfEmpty bool) ([]string, error) {
+	contexts := ContextsForPermission(t, scheme)
+	if len(contexts) == 0 && failIfEmpty {
+		return nil, ErrUnauthorized
+	}
+	values := make([]string, 0, len(contexts))
+	for _, ctx := range contexts {
+		if ctx.CtxType == CtxGlobal {
+			return nil, nil
+		}
+		values = append(values, ctx.Value)
+	}
+	return values, nil
+}
+
 func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme, ctxTypes ...contextType) []PermissionContext {
 	var contexts []PermissionContext
 	for _, perm := range perms {

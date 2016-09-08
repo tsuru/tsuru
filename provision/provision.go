@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"time"
 
@@ -153,6 +154,23 @@ func (u *Unit) GetID() string {
 // GetIp returns the Unit.IP.
 func (u *Unit) GetIp() string {
 	return u.Ip
+}
+
+func (u *Unit) MarshalJSON() ([]byte, error) {
+	type UnitForMarshal Unit
+	host, port, _ := net.SplitHostPort(u.Address.Host)
+	// New fields added for compatibility with old routes returning containers.
+	return json.Marshal(&struct {
+		*UnitForMarshal
+		HostAddr string
+		HostPort string
+		IP       string
+	}{
+		UnitForMarshal: (*UnitForMarshal)(u),
+		HostAddr:       host,
+		HostPort:       port,
+		IP:             u.Ip,
+	})
 }
 
 // Available returns true if the unit is available. It will return true
@@ -378,12 +396,43 @@ type OptionalLogsProvisioner interface {
 	LogsEnabled(App) (bool, string, error)
 }
 
+type AddNodeOptions struct {
+	Address  string
+	Metadata map[string]string
+	Register bool
+}
+
+type RemoveNodeOptions struct {
+	Address   string
+	Rebalance bool
+	Writer    io.Writer
+}
+
+type UpdateNodeOptions struct {
+	Address  string
+	Metadata map[string]string
+	Enable   bool
+	Disable  bool
+}
+
 type NodeProvisioner interface {
 	// SetNodeStatus changes the status of a node and all its units.
 	SetNodeStatus(NodeStatusData) error
 
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
+
+	// GetNode retrieves an existing node by its address.
+	GetNode(address string) (Node, error)
+
+	// AddNode adds a new node in the provisioner.
+	AddNode(AddNodeOptions) error
+
+	// RemoveNode removes an existing node.
+	RemoveNode(RemoveNodeOptions) error
+
+	// UpdateNode can be used to enable/disable a node and update its metadata.
+	UpdateNode(UpdateNodeOptions) error
 }
 
 // UnitFinderProvisioner is a provisioner that allows finding a specific unit by
@@ -402,6 +451,18 @@ type AppFilterProvisioner interface {
 type Node interface {
 	Pool() string
 	Address() string
+	Status() string
+	Metadata() map[string]string
+	Units() ([]Unit, error)
+}
+
+func NodeToJSON(n Node) ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"Address":  n.Address(),
+		"Metadata": n.Metadata(),
+		"Status":   n.Status(),
+		"Pool":     n.Pool(),
+	})
 }
 
 type NodeStatusData struct {

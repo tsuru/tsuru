@@ -1236,8 +1236,15 @@ func (s *S) TestFakeProvisionerMetricEnvs(c *check.C) {
 
 func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 	p := NewFakeProvisioner()
-	p.AddNode("mynode", "mypool")
-	c.Assert(p.nodes, check.DeepEquals, map[string]fakeNode{"mynode": {address: "mynode", pool: "mypool"}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	c.Assert(p.nodes, check.DeepEquals, map[string]fakeNode{"mynode": {
+		address:  "mynode",
+		pool:     "mypool",
+		metadata: map[string]string{"pool": "mypool"},
+		p:        p,
+	}})
 }
 
 type NodeList []provision.Node
@@ -1248,19 +1255,23 @@ func (l NodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
 
 func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	p := NewFakeProvisioner()
-	p.AddNode("mynode1", "mypool")
-	p.AddNode("mynode2", "mypool")
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
 	nodes, err := p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(NodeList(nodes))
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&fakeNode{address: "mynode1", pool: "mypool"},
-		&fakeNode{address: "mynode2", pool: "mypool"},
+		&fakeNode{address: "mynode1", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
+		&fakeNode{address: "mynode2", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
 	})
 	nodes, err = p.ListNodes([]string{"mynode2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&fakeNode{address: "mynode2", pool: "mypool"},
+		&fakeNode{address: "mynode2", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
 	})
 }
 

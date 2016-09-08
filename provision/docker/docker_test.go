@@ -459,3 +459,37 @@ func (s *S) TestBuildClusterStorage(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*docker:cluster:{mongo-url,mongo-database} must be set.")
 	config.Set("docker:cluster:storage", "xxxx")
 }
+
+func (s *S) TestGetNodeByHost(c *check.C) {
+	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	nodes := []cluster.Node{{
+		Address: "http://h1:80",
+	}, {
+		Address: "http://h2:90",
+	}, {
+		Address: "http://h3",
+	}, {
+		Address: "h4",
+	}, {
+		Address: "h5:30123",
+	}}
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "", nodes...)
+	c.Assert(err, check.IsNil)
+	tests := [][]string{
+		{"h1", nodes[0].Address},
+		{"h2", nodes[1].Address},
+		{"h3", nodes[2].Address},
+		{"h4", nodes[3].Address},
+		{"h5", nodes[4].Address},
+	}
+	for _, t := range tests {
+		var n cluster.Node
+		n, err = p.GetNodeByHost(t[0])
+		c.Assert(err, check.IsNil)
+		c.Assert(n.Address, check.DeepEquals, t[1])
+	}
+	_, err = p.GetNodeByHost("h6")
+	c.Assert(err, check.ErrorMatches, `node with host "h6" not found`)
+}

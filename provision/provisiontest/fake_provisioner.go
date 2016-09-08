@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router"
@@ -30,6 +31,8 @@ var (
 
 	errNotProvisioned       = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter   int32 = 0
+
+	_ provision.NodeProvisioner = &FakeProvisioner{}
 )
 
 func init() {
@@ -398,14 +401,12 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
-// AddNode adds a node
-func (p *FakeProvisioner) AddNode(name, pool string) {
-	p.nodes[name] = fakeNode{address: name, pool: pool}
-}
-
 type fakeNode struct {
-	address string
-	pool    string
+	address  string
+	pool     string
+	metadata map[string]string
+	status   string
+	p        *FakeProvisioner
 }
 
 func (n *fakeNode) Pool() string {
@@ -414,6 +415,78 @@ func (n *fakeNode) Pool() string {
 
 func (n *fakeNode) Address() string {
 	return n.address
+}
+
+func (n *fakeNode) Metadata() map[string]string {
+	return n.metadata
+}
+
+func (n *fakeNode) Units() ([]provision.Unit, error) {
+	n.p.mut.Lock()
+	defer n.p.mut.Unlock()
+	var units []provision.Unit
+	for _, a := range n.p.apps {
+		for _, u := range a.units {
+			if net.URLToHost(u.Address.String()) == net.URLToHost(n.address) {
+				units = append(units, u)
+			}
+		}
+	}
+	return units, nil
+}
+
+func (n *fakeNode) Status() string {
+	return n.status
+}
+
+func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
+	p.nodes[opts.Address] = fakeNode{
+		address:  opts.Address,
+		pool:     opts.Metadata["pool"],
+		metadata: opts.Metadata,
+		p:        p,
+	}
+	return nil
+}
+
+func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
+	if n, ok := p.nodes[address]; ok {
+		return &n, nil
+	}
+	return nil, provision.ErrNodeNotFound
+}
+
+func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
+	_, ok := p.nodes[opts.Address]
+	if !ok {
+		return provision.ErrNodeNotFound
+	}
+	delete(p.nodes, opts.Address)
+	if opts.Writer != nil {
+		if opts.Rebalance {
+			opts.Writer.Write([]byte("rebalancing..."))
+		}
+		opts.Writer.Write([]byte("remove done!"))
+	}
+	return nil
+}
+
+func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	n, ok := p.nodes[opts.Address]
+	if !ok {
+		return provision.ErrNodeNotFound
+	}
+	if opts.Metadata != nil {
+		n.metadata = opts.Metadata
+	}
+	if opts.Enable {
+		n.status = "enabled"
+	}
+	if opts.Disable {
+		n.status = "disabled"
+	}
+	p.nodes[opts.Address] = n
+	return nil
 }
 
 func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
@@ -567,6 +640,9 @@ func (p *FakeProvisioner) Reset() {
 	p.shellMut.Lock()
 	p.shells = make(map[string][]provision.ShellOptions)
 	p.shellMut.Unlock()
+
+	p.nodes = make(map[string]fakeNode)
+	uniqueIpCounter = 0
 
 	for {
 		select {
@@ -785,16 +861,25 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w 
 	length := uint(len(pApp.units))
 	for i := uint(0); i < n; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
+		var hostAddr string
+		if len(p.nodes) > 0 {
+			for _, n := range p.nodes {
+				hostAddr = net.URLToHost(n.Address())
+				break
+			}
+		} else {
+			hostAddr = fmt.Sprintf("10.10.10.%d", val)
+		}
 		unit := provision.Unit{
 			ID:          fmt.Sprintf("%s-%d", name, pApp.unitLen),
 			AppName:     name,
 			Type:        platform,
 			Status:      provision.StatusStarted,
-			Ip:          fmt.Sprintf("10.10.10.%d", val),
+			Ip:          hostAddr,
 			ProcessName: process,
 			Address: &url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("10.10.10.%d:%d", val, val),
+				Host:   fmt.Sprintf("%s:%d", hostAddr, val),
 			},
 		}
 		err := routertest.FakeRouter.AddRoute(name, unit.Address)

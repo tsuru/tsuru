@@ -117,10 +117,6 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)
 	queue.ResetQueue()
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return s.p, nil
-	})
-	provision.DefaultProvisioner = "fake-docker-prov"
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	s.p.cluster, err = cluster.New(nil, s.p.storage, "",

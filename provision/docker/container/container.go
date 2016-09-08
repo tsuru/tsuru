@@ -34,6 +34,7 @@ type DockerProvisioner interface {
 	Collection() *storage.Collection
 	PushImage(name, tag string) error
 	ActionLimiter() provision.ActionLimiter
+	GetNodeByHost(host string) (cluster.Node, error)
 }
 
 type SchedulerOpts struct {
@@ -163,12 +164,12 @@ func (c *Container) Create(args *CreateArgs) error {
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &conf, HostConfig: hostConf}
 	var nodeList []string
 	if len(args.DestinationHosts) > 0 {
-		var nodeName string
-		nodeName, err = c.hostToNodeAddress(args.Provisioner, args.DestinationHosts[0])
+		var node cluster.Node
+		node, err = args.Provisioner.GetNodeByHost(args.DestinationHosts[0])
 		if err != nil {
 			return err
 		}
-		nodeList = []string{nodeName}
+		nodeList = []string{node.Address}
 	}
 	schedulerOpts := &SchedulerOpts{
 		AppName:       args.App.GetName(),
@@ -187,19 +188,6 @@ func (c *Container) Create(args *CreateArgs) error {
 	c.ID = cont.ID
 	c.HostAddr = hostAddr
 	return nil
-}
-
-func (c *Container) hostToNodeAddress(p DockerProvisioner, host string) (string, error) {
-	nodes, err := p.Cluster().Nodes()
-	if err != nil {
-		return "", err
-	}
-	for _, node := range nodes {
-		if net.URLToHost(node.Address) == host {
-			return node.Address, nil
-		}
-	}
-	return "", fmt.Errorf("Host `%s` not found", host)
 }
 
 func (c *Container) addEnvsToConfig(args *CreateArgs, port string, cfg *docker.Config) {

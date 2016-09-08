@@ -20,6 +20,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	clusterLog "github.com/tsuru/docker-cluster/log"
+	clusterStorage "github.com/tsuru/docker-cluster/storage"
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
@@ -34,6 +36,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/fusis"
 	_ "github.com/tsuru/tsuru/router/galeb"
@@ -972,9 +975,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&moveContainerCmd{},
 		&moveContainersCmd{},
 		&rebalanceContainersCmd{},
-		&addNodeToSchedulerCmd{},
-		&removeNodeFromSchedulerCmd{},
-		&listNodesInTheSchedulerCmd{},
 		&healer.ListHealingHistoryCmd{},
 		&healer.GetNodeHealingConfigCmd{},
 		&healer.SetNodeHealingConfigCmd{},
@@ -984,7 +984,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&autoScaleInfoCmd{},
 		&autoScaleSetRuleCmd{},
 		&autoScaleDeleteRuleCmd{},
-		&updateNodeToSchedulerCmd{},
 		&dockerLogInfo{},
 		&dockerLogUpdate{},
 		&nodecontainer.NodeContainerList{},
@@ -1285,6 +1284,7 @@ func (p *dockerProvisioner) SetNodeStatus(nodeData provision.NodeStatusData) err
 
 type clusterNodeWrapper struct {
 	node *cluster.Node
+	prov *dockerProvisioner
 }
 
 func (n *clusterNodeWrapper) Address() string {
@@ -1295,8 +1295,35 @@ func (n *clusterNodeWrapper) Pool() string {
 	return n.node.Metadata["pool"]
 }
 
+func (n *clusterNodeWrapper) Metadata() map[string]string {
+	return n.node.Metadata
+}
+
+func (n *clusterNodeWrapper) Status() string {
+	return n.node.Metadata["pool"]
+}
+
+func (n *clusterNodeWrapper) Units() ([]provision.Unit, error) {
+	if n.prov == nil {
+		return nil, stderr.New("no provisioner instance in node wrapper")
+	}
+	conts, err := n.prov.listContainersByHost(net.URLToHost(n.Address()))
+	if err != nil {
+		return nil, err
+	}
+	units := make([]provision.Unit, len(conts))
+	for i, c := range conts {
+		a, err := app.GetByName(c.AppName)
+		if err != nil {
+			return nil, err
+		}
+		units[i] = c.AsUnit(a)
+	}
+	return units, nil
+}
+
 func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	nodes, err := p.Cluster().Nodes()
+	nodes, err := p.Cluster().UnfilteredNodes()
 	if err != nil {
 		return nil, err
 	}
@@ -1320,11 +1347,78 @@ func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node,
 				continue
 			}
 		}
-		result = append(result, &clusterNodeWrapper{node: n})
+		result = append(result, &clusterNodeWrapper{node: n, prov: p})
 	}
 	return result, nil
 }
 
 func (p *dockerProvisioner) GetName() string {
 	return provisionerName
+}
+
+func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
+	node := cluster.Node{Address: opts.Address, Metadata: opts.Metadata, CreationStatus: cluster.NodeCreationStatusPending}
+	err := p.Cluster().Register(node)
+	if err != nil {
+		return err
+	}
+	q, err := queue.Queue()
+	if err != nil {
+		return err
+	}
+	jobParams := monsterqueue.JobParams{"endpoint": opts.Address, "metadata": opts.Metadata}
+	_, err = q.Enqueue(nodecontainer.QueueTaskName, jobParams)
+	return err
+}
+
+func (p *dockerProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	node := cluster.Node{Address: opts.Address, Metadata: opts.Metadata}
+	if opts.Disable {
+		node.CreationStatus = cluster.NodeCreationStatusDisabled
+	}
+	if opts.Enable {
+		node.CreationStatus = cluster.NodeCreationStatusCreated
+	}
+	_, err := mainDockerProvisioner.Cluster().UpdateNode(node)
+	if err == clusterStorage.ErrNoSuchNode {
+		return provision.ErrNodeNotFound
+	}
+	return err
+}
+
+func (p *dockerProvisioner) GetNode(address string) (provision.Node, error) {
+	node, err := p.Cluster().GetNode(address)
+	if err != nil {
+		if err == clusterStorage.ErrNoSuchNode {
+			return nil, provision.ErrNodeNotFound
+		}
+		return nil, err
+	}
+	return &clusterNodeWrapper{node: &node, prov: p}, nil
+}
+
+func (p *dockerProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
+	node, err := p.Cluster().GetNode(opts.Address)
+	if err != nil {
+		if err == clusterStorage.ErrNoSuchNode {
+			return provision.ErrNodeNotFound
+		}
+		return err
+	}
+	node.CreationStatus = cluster.NodeCreationStatusDisabled
+	_, err = p.Cluster().UpdateNode(node)
+	if err != nil {
+		return err
+	}
+	if opts.Rebalance {
+		err = p.rebalanceContainersByHost(net.URLToHost(opts.Address), opts.Writer)
+		if err != nil {
+			return err
+		}
+	}
+	err = p.Cluster().Unregister(opts.Address)
+	if err != nil {
+		return err
+	}
+	return nil
 }

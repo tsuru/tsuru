@@ -5,9 +5,11 @@
 package container
 
 import (
+	"fmt"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -49,6 +51,19 @@ func (p *fakeDockerProvisioner) failPush(errs ...error) {
 
 func (p *fakeDockerProvisioner) Cluster() *cluster.Cluster {
 	return p.cluster
+}
+
+func (p *fakeDockerProvisioner) GetNodeByHost(host string) (cluster.Node, error) {
+	nodes, err := p.cluster.UnfilteredNodes()
+	if err != nil {
+		return cluster.Node{}, err
+	}
+	for _, node := range nodes {
+		if net.URLToHost(node.Address) == host {
+			return node, nil
+		}
+	}
+	return cluster.Node{}, fmt.Errorf("node with host %q not found", host)
 }
 
 func (p *fakeDockerProvisioner) Collection() *storage.Collection {

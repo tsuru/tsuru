@@ -307,9 +307,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	p.storage = &cluster.MapStorage{}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return &p, nil
-	})
+	mainDockerProvisioner = &p
 	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
@@ -375,9 +373,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	p.storage = &cluster.MapStorage{}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return &p, nil
-	})
+	mainDockerProvisioner = &p
 	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
@@ -847,9 +843,7 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return p, nil
-	})
+	mainDockerProvisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -924,9 +918,7 @@ func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return p, nil
-	})
+	mainDockerProvisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -1024,9 +1016,7 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 func (s *S) TestImageDeploy(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return p, nil
-	})
+	mainDockerProvisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -1119,9 +1109,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return p, nil
-	})
+	mainDockerProvisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -1186,9 +1174,7 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	provision.Register("fake-docker-prov", func() (provision.Provisioner, error) {
-		return p, nil
-	})
+	mainDockerProvisioner = p
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
@@ -2051,9 +2037,6 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&moveContainerCmd{},
 		&moveContainersCmd{},
 		&rebalanceContainersCmd{},
-		&addNodeToSchedulerCmd{},
-		&removeNodeFromSchedulerCmd{},
-		&listNodesInTheSchedulerCmd{},
 		&healer.ListHealingHistoryCmd{},
 		&healer.GetNodeHealingConfigCmd{},
 		&healer.SetNodeHealingConfigCmd{},
@@ -2063,7 +2046,6 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&autoScaleInfoCmd{},
 		&autoScaleSetRuleCmd{},
 		&autoScaleDeleteRuleCmd{},
-		&updateNodeToSchedulerCmd{},
 		&dockerLogInfo{},
 		&dockerLogUpdate{},
 		&nodecontainer.NodeContainerList{},
@@ -3229,14 +3211,360 @@ func (s *S) TestListNodes(c *check.C) {
 	listedNodes, err := s.p.ListNodes([]string{nodes[0].Address})
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
-		&clusterNodeWrapper{node: &nodes[0]},
+		&clusterNodeWrapper{node: &nodes[0], prov: s.p},
 	})
 	listedNodes, err = s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
-		&clusterNodeWrapper{node: &nodes[0]},
+		&clusterNodeWrapper{node: &nodes[0], prov: s.p},
 	})
 	listedNodes, err = s.p.ListNodes([]string{"notfound"})
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{})
+}
+
+func (s *S) TestAddNode(c *check.C) {
+	server, waitQueue := startFakeDockerNode(c)
+	defer server.Stop()
+	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
+	mainDockerProvisioner = &p
+	opts := provision.AddNodeOptions{
+		Address: server.URL(),
+		Metadata: map[string]string{
+			"pool": "pool1",
+		},
+	}
+	err = p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	waitQueue()
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, server.URL())
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"pool":        "pool1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
+	})
+	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
+}
+
+func (s *S) TestAddNodeNoAddress(c *check.C) {
+	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
+	mainDockerProvisioner = &p
+	opts := provision.AddNodeOptions{}
+	err = p.AddNode(opts)
+	c.Assert(err, check.ErrorMatches, "Invalid address")
+}
+
+func (s *S) TestRemoveNode(c *check.C) {
+	var buf bytes.Buffer
+	nodes, err := s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	opts := provision.RemoveNodeOptions{
+		Address: nodes[0].Address,
+		Writer:  &buf,
+	}
+	err = s.p.RemoveNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+	c.Assert(buf.String(), check.Equals, "")
+}
+
+func (s *S) TestRemoveNodeRebalanceNoUnits(c *check.C) {
+	var buf bytes.Buffer
+	nodes, err := s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	opts := provision.RemoveNodeOptions{
+		Address:   nodes[0].Address,
+		Rebalance: true,
+		Writer:    &buf,
+	}
+	err = s.p.RemoveNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+	c.Assert(buf.String(), check.Equals, "")
+}
+
+func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	opts := provision.RemoveNodeOptions{
+		Address:   nodes[0].Address,
+		Rebalance: true,
+		Writer:    &buf,
+	}
+	err = p.RemoveNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "localhost")
+	parts := strings.Split(buf.String(), "\n")
+	c.Assert(parts, check.HasLen, 11)
+	c.Assert(parts[0], check.Matches, `Moving unit .+? for "myapp" from 127\.0\.0\.1\.\.\.`)
+	containerList, err := p.listContainersByHost(net.URLToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containerList, check.HasLen, 5)
+}
+
+func (s *S) TestRemoveNodeNoAddress(c *check.C) {
+	var buf bytes.Buffer
+	opts := provision.RemoveNodeOptions{
+		Writer: &buf,
+	}
+	err := s.p.RemoveNode(opts)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+	c.Assert(buf.String(), check.Equals, "")
+	nodes, err := s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+}
+
+func (s *S) TestNodeUnits(c *check.C) {
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	units, err := nodes[0].Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.DeepEquals, []provision.Unit{})
+	err = s.newFakeImage(s.p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	err = s.p.Provision(appInstance)
+	c.Assert(err, check.IsNil)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	containers, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	units, err = nodes[0].Units()
+	c.Assert(err, check.IsNil)
+	expected := []provision.Unit{
+		containers[0].AsUnit(appInstance),
+		containers[1].AsUnit(appInstance),
+		containers[2].AsUnit(appInstance),
+		containers[3].AsUnit(appInstance),
+		containers[4].AsUnit(appInstance),
+	}
+	sortUnits(units)
+	sortUnits(expected)
+	c.Assert(units, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateNode(c *check.C) {
+	nodes, err := s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	opts := provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Metadata: map[string]string{
+			"m1": "v1",
+			"m2": "v2",
+		},
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Status(), check.Equals, "waiting")
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"m1":   "v1",
+		"m2":   "v2",
+		"pool": "test-default",
+	})
+	opts = provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Metadata: map[string]string{
+			"m1": "",
+			"m3": "v3",
+		},
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Status(), check.Equals, "waiting")
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"pool": "test-default",
+		"m2":   "v2",
+		"m3":   "v3",
+	})
+}
+
+func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
+	nodes, err := s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	opts := provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Disable: true,
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+	nodes, err = s.p.Cluster().UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Status(), check.Equals, "disabled")
+	opts = provision.UpdateNodeOptions{
+		Address:  nodes[0].Address,
+		Metadata: map[string]string{"a": "b"},
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Status(), check.Equals, "disabled")
+	c.Assert(nodes[0].Metadata["a"], check.Equals, "b")
+	opts = provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Enable:  true,
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Status(), check.Equals, "waiting")
+	c.Assert(nodes[0].Metadata["a"], check.Equals, "b")
+}
+
+func (s *S) TestUpdateNodeNotFound(c *check.C) {
+	opts := provision.UpdateNodeOptions{}
+	err := s.p.UpdateNode(opts)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestUpdateNodeEnableCanMoveContainers(c *check.C) {
+	nodes, err := s.p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	opts := provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Disable: true,
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	opts = provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Enable:  true,
+	}
+	err = s.p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	err = s.p.MoveContainers("localhost", "127.0.0.1", &buf)
+	c.Assert(err, check.IsNil)
+	parts := strings.Split(buf.String(), "\n")
+	c.Assert(parts, check.DeepEquals, []string{
+		"No units to move in localhost",
+		"",
+	})
+}
+
+func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(net.URLToHost(nodes[0].Address), check.Equals, "127.0.0.1")
+	c.Assert(net.URLToHost(nodes[1].Address), check.Equals, "localhost")
+	opts := provision.UpdateNodeOptions{
+		Address: nodes[0].Address,
+		Disable: true,
+	}
+	err = p.UpdateNode(opts)
+	c.Assert(err, check.IsNil)
+	err = p.MoveContainers("127.0.0.1", "localhost", &buf)
+	c.Assert(err, check.IsNil)
+	parts := strings.Split(buf.String(), "\n")
+	c.Assert(parts, check.HasLen, 4)
+	c.Assert(parts[0], check.Equals, "Moving 1 units...")
+	buf.Reset()
+	err = p.MoveContainers("localhost", "127.0.0.1", &buf)
+	c.Assert(err, check.IsNil)
+	parts = strings.Split(buf.String(), "\n")
+	c.Assert(parts, check.HasLen, 6)
+	c.Assert(parts[0], check.Equals, "Moving 2 units...")
 }
