@@ -3319,7 +3319,7 @@ func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -3327,7 +3327,7 @@ func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
 	opts := provision.RemoveNodeOptions{
 		Address:   nodes[0].Address,
 		Rebalance: true,
-		Writer:    &buf,
+		Writer:    buf,
 	}
 	err = p.RemoveNode(opts)
 	c.Assert(err, check.IsNil)
@@ -3544,7 +3544,7 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	}
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -3556,13 +3556,13 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	}
 	err = p.UpdateNode(opts)
 	c.Assert(err, check.IsNil)
-	err = p.MoveContainers("127.0.0.1", "localhost", &buf)
+	err = p.MoveContainers("127.0.0.1", "localhost", buf)
 	c.Assert(err, check.IsNil)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 4)
 	c.Assert(parts[0], check.Equals, "Moving 1 units...")
 	buf.Reset()
-	err = p.MoveContainers("localhost", "127.0.0.1", &buf)
+	err = p.MoveContainers("localhost", "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	parts = strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 6)
