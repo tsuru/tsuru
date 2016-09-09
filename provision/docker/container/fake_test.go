@@ -6,6 +6,7 @@ package container
 
 import (
 	"fmt"
+
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"

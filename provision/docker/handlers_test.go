@@ -32,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
-	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -46,12 +45,6 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-type TestIaaS struct{}
-
-func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
-	return nil
-}
 
 func createToken(c *check.C) auth.Token {
 	user := &auth.User{Email: "provisioner-docker@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
@@ -71,23 +64,6 @@ func createTokenForUser(user *auth.User, perm, contextType, contextValue string,
 	err = user.AddRole(role.Name, contextValue)
 	c.Assert(err, check.IsNil)
 	return token
-}
-
-func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	m := iaas.Machine{
-		Id:      params["id"],
-		Status:  "running",
-		Address: "127.0.0.1",
-	}
-	return &m, nil
-}
-
-func (TestIaaS) Describe() string {
-	return "my iaas description"
-}
-
-func newTestIaaS(string) iaas.IaaS {
-	return TestIaaS{}
 }
 
 type HandlersSuite struct {

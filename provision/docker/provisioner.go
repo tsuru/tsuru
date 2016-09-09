@@ -1416,9 +1416,5 @@ func (p *dockerProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 			return err
 		}
 	}
-	err = p.Cluster().Unregister(opts.Address)
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.Cluster().Unregister(opts.Address)
 }
