@@ -42,8 +42,8 @@ github.com/tsuru/tsuru/api.kindList
 github.com/tsuru/tsuru/api.eventList
 github.com/tsuru/tsuru/api.eventInfo
 github.com/tsuru/tsuru/api.eventCancel
+github.com/tsuru/tsuru/api.listNodesHandler
 github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
-github.com/tsuru/tsuru/provision/docker.listNodesHandler
 github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.nodeHealingRead
 github.com/tsuru/tsuru/provision/docker.bsEnvSetHandler
