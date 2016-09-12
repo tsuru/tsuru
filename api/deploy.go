@@ -108,6 +108,9 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			message = messages[0]
 		}
 	}
+	if origin == "" && commit != "" {
+		origin = "git"
+	}
 	opts := app.DeployOptions{
 		App:        instance,
 		Commit:     commit,

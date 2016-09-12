@@ -373,7 +373,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 			"archiveurl": "http://something.tar.gz",
 			"user":       "fulano",
 			"image":      "",
-			"origin":     "",
+			"origin":     "git",
 			"build":      false,
 			"rollback":   false,
 			"message":    "msg1",
