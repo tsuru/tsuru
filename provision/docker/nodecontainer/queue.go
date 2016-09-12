@@ -35,11 +35,6 @@ func (t *runBs) Name() string {
 }
 
 func (t *runBs) Run(job monsterqueue.Job) {
-	_, err := InitializeBS()
-	if err != nil {
-		job.Error(err)
-		return
-	}
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
 	node, err := t.provisioner.Cluster().GetNode(dockerEndpoint)
