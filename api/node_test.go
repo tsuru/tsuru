@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 
 	"github.com/ajg/form"
@@ -47,7 +48,7 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 	}
 	v, err := form.EncodeToValues(&params)
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("POST", "/1.0/fake/node", strings.NewReader(v.Encode()))
+	req, err := http.NewRequest("POST", "/1.2/node", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -91,7 +92,7 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	v, err := form.EncodeToValues(&params)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
-	req, err := http.NewRequest("POST", "/fake/node", b)
+	req, err := http.NewRequest("POST", "/node", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -123,6 +124,9 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 }
 
 func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	params := provision.AddNodeOptions{
 		Register: true,
 		Metadata: map[string]string{
@@ -132,7 +136,7 @@ func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	v, err := form.EncodeToValues(&params)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
-	req, err := http.NewRequest("POST", "/fake/node", b)
+	req, err := http.NewRequest("POST", "/node", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -157,6 +161,9 @@ func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
 }
 
 func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	params := provision.AddNodeOptions{
 		Register: true,
 		Metadata: map[string]string{
@@ -167,7 +174,7 @@ func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	v, err := form.EncodeToValues(&params)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
-	req, err := http.NewRequest("POST", "/fake/node", b)
+	req, err := http.NewRequest("POST", "/node", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -189,7 +196,7 @@ func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	v, err = form.EncodeToValues(&params)
 	c.Assert(err, check.IsNil)
 	b = strings.NewReader(v.Encode())
-	req, err = http.NewRequest("POST", "/fake/node", b)
+	req, err = http.NewRequest("POST", "/node", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -203,7 +210,7 @@ func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 
 func (s *S) TestAddNodeHandlerNoPool(c *check.C) {
 	b := bytes.NewBufferString(`{"address": "http://192.168.50.4:2375"}`)
-	req, err := http.NewRequest("POST", "/fake/node?register=true", b)
+	req, err := http.NewRequest("POST", "/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -214,7 +221,7 @@ func (s *S) TestAddNodeHandlerNoPool(c *check.C) {
 }
 
 func (s *S) TestRemoveNodeHandlerNotFound(c *check.C) {
-	req, err := http.NewRequest("DELETE", "/fake/node/host.com:2375", nil)
+	req, err := http.NewRequest("DELETE", "/node/host.com:2375", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -228,7 +235,7 @@ func (s *S) TestRemoveNodeHandler(c *check.C) {
 		Address: "host.com:2375",
 	})
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("DELETE", "/fake/node/host.com:2375", nil)
+	req, err := http.NewRequest("DELETE", "/node/host.com:2375", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -254,7 +261,7 @@ func (s *S) TestRemoveNodeHandlerNoRebalance(c *check.C) {
 		Address: "host.com:2375",
 	})
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("DELETE", "/fake/node/host.com:2375?no-rebalance=true", nil)
+	req, err := http.NewRequest("DELETE", "/node/host.com:2375?no-rebalance=true", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -283,7 +290,7 @@ func (s *S) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
 	})
 	c.Assert(err, check.IsNil)
-	u := fmt.Sprintf("/fake/node/http://%s:2375?remove-iaas=false", machine.Address)
+	u := fmt.Sprintf("/node/http://%s:2375?remove-iaas=false", machine.Address)
 	req, err := http.NewRequest("DELETE", u, nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -307,7 +314,7 @@ func (s *S) TestRemoveNodeHandlerWithRemoveIaaS(c *check.C) {
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
 	})
 	c.Assert(err, check.IsNil)
-	u := fmt.Sprintf("/fake/node/http://%s:2375?remove-iaas=true", machine.Address)
+	u := fmt.Sprintf("/node/http://%s:2375?remove-iaas=true", machine.Address)
 	req, err := http.NewRequest("DELETE", u, nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -323,7 +330,7 @@ func (s *S) TestRemoveNodeHandlerWithRemoveIaaS(c *check.C) {
 }
 
 func (s *S) TestListNodeHandlerNoContent(c *check.C) {
-	req, err := http.NewRequest("GET", "/fake/node", nil)
+	req, err := http.NewRequest("GET", "/node", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	req.Header.Set("Authorization", s.token.GetValue())
@@ -331,6 +338,12 @@ func (s *S) TestListNodeHandlerNoContent(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
 }
+
+type RawList []json.RawMessage
+
+func (l RawList) Len() int           { return len(l) }
+func (l RawList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l RawList) Less(i, j int) bool { return len(l[i]) < len(l[j]) }
 
 func (s *S) TestListNodeHandler(c *check.C) {
 	err := s.provisioner.AddNode(provision.AddNodeOptions{
@@ -343,7 +356,7 @@ func (s *S) TestListNodeHandler(c *check.C) {
 		Metadata: map[string]string{"pool": "pool2", "foo": "bar"},
 	})
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/fake/node", nil)
+	req, err := http.NewRequest("GET", "/node", nil)
 	rec := httptest.NewRecorder()
 	req.Header.Set("Authorization", s.token.GetValue())
 	m := RunServer(true)
@@ -354,18 +367,21 @@ func (s *S) TestListNodeHandler(c *check.C) {
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	nodes := make([]map[string]interface{}, len(result.Nodes))
+	sort.Sort(RawList(result.Nodes))
 	for i, n := range result.Nodes {
 		err = json.Unmarshal(n, &nodes[i])
 		c.Assert(err, check.IsNil)
 	}
 	c.Assert(nodes, check.DeepEquals, []map[string]interface{}{
 		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "", "Metadata": map[string]interface{}{"pool": "pool1"}},
+		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "", "Metadata": map[string]interface{}{"pool": "pool1"}},
+		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
 		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
 	})
 }
 
 func (s *S) TestListUnitsByHostNotFound(c *check.C) {
-	req, err := http.NewRequest("GET", "/fake/node/http://notfound.com:4243/containers", nil)
+	req, err := http.NewRequest("GET", "/node/http://notfound.com:4243/containers", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -379,7 +395,7 @@ func (s *S) TestListUnitsByHostNoContent(c *check.C) {
 		Address: "http://node1.company:4243",
 	})
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/fake/node/http://node1.company:4243/containers", nil)
+	req, err := http.NewRequest("GET", "/node/http://node1.company:4243/containers", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -398,7 +414,7 @@ func (s *S) TestListUnitsByHostHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/fake/node/http://node1.company:4243/containers", nil)
+	req, err := http.NewRequest("GET", "/node/http://node1.company:4243/containers", nil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	server := RunServer(true)
@@ -425,7 +441,7 @@ func (s *S) TestListUnitsByHostHandler(c *check.C) {
 }
 
 func (s *S) TestListUnitsByAppNotFound(c *check.C) {
-	req, err := http.NewRequest("GET", "/fake/node/apps/notfound/containers", nil)
+	req, err := http.NewRequest("GET", "/node/apps/notfound/containers", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -438,7 +454,7 @@ func (s *S) TestListUnitsByAppNoContent(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/fake/node/apps/myapp/containers", nil)
+	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -453,7 +469,7 @@ func (s *S) TestListUnitsByAppHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/fake/node/apps/myapp/containers", nil)
+	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	server := RunServer(true)
@@ -485,7 +501,7 @@ func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
-	req, err := http.NewRequest("GET", "/fake/node/apps/myapp/containers", nil)
+	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -522,7 +538,7 @@ func (s *S) TestUpdateNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
-	defer provision.RemovePool("pool1")
+	c.Assert(err, check.IsNil)
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
 		Metadata: map[string]string{
@@ -535,7 +551,7 @@ func (s *S) TestUpdateNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/1.0/fake/node", b)
+	request, err := http.NewRequest("PUT", "/1.2/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -568,7 +584,7 @@ func (s *S) TestUpdateNodeHandlerNoAddress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/fake/node", b)
+	request, err := http.NewRequest("PUT", "/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -601,7 +617,7 @@ func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/fake/node", b)
+	request, err := http.NewRequest("PUT", "/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -634,7 +650,7 @@ func (s *S) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/fake/node", b)
+	request, err := http.NewRequest("PUT", "/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -663,7 +679,7 @@ func (s *S) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/fake/node", b)
+	request, err := http.NewRequest("PUT", "/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -693,7 +709,7 @@ func (s *S) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(v.Encode())
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("PUT", "/fake/node", b)
+	request, err := http.NewRequest("PUT", "/node", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())

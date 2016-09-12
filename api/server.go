@@ -255,12 +255,20 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/debug/pprof/threadcreate", AuthorizationRequiredHandler(indexHandler))
 	m.Add("1.0", "Get", "/debug/pprof/block", AuthorizationRequiredHandler(indexHandler))
 
-	m.Add("1.0", "GET", "/{provisioner}/node", AuthorizationRequiredHandler(listNodesHandler))
-	m.Add("1.0", "GET", "/{provisioner}/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
-	m.Add("1.0", "GET", "/{provisioner}/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))
-	m.Add("1.0", "POST", "/{provisioner}/node", AuthorizationRequiredHandler(addNodeHandler))
-	m.Add("1.0", "PUT", "/{provisioner}/node", AuthorizationRequiredHandler(updateNodeHandler))
-	m.Add("1.0", "DELETE", "/{provisioner}/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
+	m.Add("1.2", "GET", "/node", AuthorizationRequiredHandler(listNodesHandler))
+	m.Add("1.2", "GET", "/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
+	m.Add("1.2", "GET", "/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))
+	m.Add("1.2", "POST", "/node", AuthorizationRequiredHandler(addNodeHandler))
+	m.Add("1.2", "PUT", "/node", AuthorizationRequiredHandler(updateNodeHandler))
+	m.Add("1.2", "DELETE", "/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
+
+	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
+	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
+	m.Add("1.0", "GET", "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
+	m.Add("1.0", "GET", "/docker/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))
+	m.Add("1.0", "POST", "/docker/node", AuthorizationRequiredHandler(addNodeHandler))
+	m.Add("1.0", "PUT", "/docker/node", AuthorizationRequiredHandler(updateNodeHandler))
+	m.Add("1.0", "DELETE", "/docker/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

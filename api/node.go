@@ -58,7 +58,11 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		}
 		address = m.FormatNodeAddress()
 	}
-	err := validateNodeAddress(address)
+	prov, _, err := provision.FindNode(address)
+	if err != provision.ErrNodeNotFound {
+		return "", nil, fmt.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
+	}
+	err = validateNodeAddress(address)
 	if err != nil {
 		return address, response, err
 	}
@@ -94,11 +98,11 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 	}
-	pool := params.Metadata["pool"]
-	if pool == "" {
+	poolName := params.Metadata["pool"]
+	if poolName == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
-	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, pool)) {
+	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, poolName)) {
 		return permission.ErrUnauthorized
 	}
 	if !params.Register {
@@ -114,13 +118,17 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:       t,
 		CustomData:  event.FormToCustomData(r.Form),
 		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName)),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	prov, err := provision.Get(r.URL.Query().Get(":provisioner"))
+	pool, err := provision.GetPoolByName(poolName)
+	if err != nil {
+		return err
+	}
+	prov, err := pool.GetProvisioner()
 	if err != nil {
 		return err
 	}
@@ -153,21 +161,17 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
-	prov, err := provision.Get(r.URL.Query().Get(":provisioner"))
+	prov, node, err := provision.FindNode(address)
 	if err != nil {
+		if err == provision.ErrNodeNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
-	nodeProv, ok := prov.(provision.NodeProvisioner)
-	if !ok {
-		return provision.ProvisionerNotSupported{Prov: prov, Action: "node operations"}
-	}
-	node, err := nodeProv.GetNode(address)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("Node %s not found.", address),
-		}
-	}
+	nodeProv := prov.(provision.NodeProvisioner)
 	pool := node.Pool()
 	allowedNodeRemove := permission.Check(t, permission.PermNodeDelete,
 		permission.Context(permission.CtxPool, pool),
@@ -232,21 +236,30 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return err
 	}
-	prov, err := provision.Get(r.URL.Query().Get(":provisioner"))
+	provs, err := provision.Registry()
 	if err != nil {
 		return err
 	}
-	nodeProv, ok := prov.(provision.NodeProvisioner)
-	if !ok {
-		return provision.ProvisionerNotSupported{Prov: prov, Action: "node operations"}
-	}
-	nodes, err := nodeProv.ListNodes(nil)
-	if err != nil {
-		return err
+	provNameMap := map[string]string{}
+	var allNodes []provision.Node
+	for _, prov := range provs {
+		nodeProv, ok := prov.(provision.NodeProvisioner)
+		if !ok {
+			continue
+		}
+		var nodes []provision.Node
+		nodes, err = nodeProv.ListNodes(nil)
+		if err != nil {
+			return err
+		}
+		for _, n := range nodes {
+			provNameMap[n.Address()] = prov.GetName()
+		}
+		allNodes = append(allNodes, nodes...)
 	}
 	if pools != nil {
-		filteredNodes := make([]provision.Node, 0, len(nodes))
-		for _, node := range nodes {
+		filteredNodes := make([]provision.Node, 0, len(allNodes))
+		for _, node := range allNodes {
 			for _, pool := range pools {
 				if node.Pool() == pool {
 					filteredNodes = append(filteredNodes, node)
@@ -254,7 +267,7 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 				}
 			}
 		}
-		nodes = filteredNodes
+		allNodes = filteredNodes
 	}
 	iaases, err := permission.ListContextValues(t, permission.PermMachineRead, false)
 	if err != nil {
@@ -276,12 +289,12 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		}
 		machines = filteredMachines
 	}
-	if len(nodes) == 0 && len(machines) == 0 {
+	if len(allNodes) == 0 && len(machines) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	nodesJson := make([]json.RawMessage, len(nodes))
-	for i, n := range nodes {
+	nodesJson := make([]json.RawMessage, len(allNodes))
+	for i, n := range allNodes {
 		nodesJson[i], err = provision.NodeToJSON(n)
 		if err != nil {
 			return err
@@ -325,21 +338,17 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if params.Address == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
-	prov, err := provision.Get(r.URL.Query().Get(":provisioner"))
+	prov, node, err := provision.FindNode(params.Address)
 	if err != nil {
+		if err == provision.ErrNodeNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		}
 		return err
 	}
-	nodeProv, ok := prov.(provision.NodeProvisioner)
-	if !ok {
-		return provision.ProvisionerNotSupported{Prov: prov, Action: "node operations"}
-	}
-	node, err := nodeProv.GetNode(params.Address)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: err.Error(),
-		}
-	}
+	nodeProv := prov.(provision.NodeProvisioner)
 	oldPool := node.Pool()
 	allowedOldPool := permission.Check(t, permission.PermNodeUpdate,
 		permission.Context(permission.CtxPool, oldPool),
@@ -384,20 +393,15 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   404: Not found
 func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
-	prov, err := provision.Get(r.URL.Query().Get(":provisioner"))
+	_, node, err := provision.FindNode(address)
 	if err != nil {
-		return err
-	}
-	nodeProv, ok := prov.(provision.NodeProvisioner)
-	if !ok {
-		return provision.ProvisionerNotSupported{Prov: prov, Action: "node operations"}
-	}
-	node, err := nodeProv.GetNode(address)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("Node %s not found.", address),
+		if err == provision.ErrNodeNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
 		}
+		return err
 	}
 	hasAccess := permission.Check(t, permission.PermNodeRead,
 		permission.Context(permission.CtxPool, node.Pool()))
