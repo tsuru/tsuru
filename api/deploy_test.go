@@ -838,6 +838,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""},
 	}
 	lastDeploy := depData[1]
+	lastDeploy.Origin = "git"
 	evts := insertDeploysAsEvents(depData, c)
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)

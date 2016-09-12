@@ -125,7 +125,7 @@ func eventToDeployData(evt *event.Event, validImages set, full bool) *DeployData
 	err := evt.StartData(&startOpts)
 	if err == nil {
 		data.Commit = startOpts.Commit
-		data.Origin = startOpts.Origin
+		data.Origin = startOpts.GetOrigin()
 	}
 	if full {
 		data.Log = evt.Log
@@ -165,6 +165,16 @@ type DeployOptions struct {
 	Event        *event.Event `bson:"-"`
 	Kind         DeployKind
 	Message      string
+}
+
+func (o *DeployOptions) GetOrigin() string {
+	if o.Origin != "" {
+		return o.Origin
+	}
+	if o.Commit != "" {
+		return "git"
+	}
+	return ""
 }
 
 func (o *DeployOptions) GetKind() (kind DeployKind) {
