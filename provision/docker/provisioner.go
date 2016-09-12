@@ -285,6 +285,10 @@ func (p *dockerProvisioner) Initialize() error {
 	if err != nil {
 		return err
 	}
+	_, err = nodecontainer.InitializeBS()
+	if err != nil {
+		return fmt.Errorf("unable to initialize bs node container: %s", err)
+	}
 	return p.initDockerCluster()
 }
 

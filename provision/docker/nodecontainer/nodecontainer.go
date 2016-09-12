@@ -418,11 +418,7 @@ type ClusterHook struct {
 }
 
 func (h *ClusterHook) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
-	_, err := InitializeBS()
-	if err != nil {
-		return fmt.Errorf("unable to initialize bs node container: %s", err)
-	}
-	err = ensureContainersStarted(h.Provisioner, nil, false, nil, *node)
+	err := ensureContainersStarted(h.Provisioner, nil, false, nil, *node)
 	if err != nil {
 		return fmt.Errorf("unable to start node containers: %s", err)
 	}
