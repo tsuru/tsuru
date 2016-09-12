@@ -388,10 +388,6 @@ func startServer(handler http.Handler) {
 	if err != nil {
 		fatal(err)
 	}
-	err = provision.InitializeAll()
-	if err != nil {
-		fatal(err)
-	}
 	scheme, err := getAuthScheme()
 	if err != nil {
 		fmt.Printf("Warning: configuration didn't declare auth:scheme, using default scheme.\n")
@@ -401,6 +397,10 @@ func startServer(handler http.Handler) {
 		fatal(err)
 	}
 	fmt.Printf("Using %q auth scheme.\n", scheme)
+	err = provision.InitializeAll()
+	if err != nil {
+		fatal(err)
+	}
 	fmt.Println("Checking components status:")
 	results := hc.Check()
 	for _, result := range results {
