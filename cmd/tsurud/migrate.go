@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
 	"github.com/tsuru/tsuru/provision/docker/healer"
-	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )

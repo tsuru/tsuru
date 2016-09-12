@@ -262,6 +262,13 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "PUT", "/node", AuthorizationRequiredHandler(updateNodeHandler))
 	m.Add("1.2", "DELETE", "/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
 
+	m.Add("1.2", "GET", "/nodecontainers", AuthorizationRequiredHandler(nodeContainerList))
+	m.Add("1.2", "POST", "/nodecontainers", AuthorizationRequiredHandler(nodeContainerCreate))
+	m.Add("1.2", "GET", "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerInfo))
+	m.Add("1.2", "DELETE", "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerDelete))
+	m.Add("1.2", "POST", "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
+	m.Add("1.2", "POST", "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
+
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.0", "GET", "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
@@ -269,6 +276,13 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "POST", "/docker/node", AuthorizationRequiredHandler(addNodeHandler))
 	m.Add("1.0", "PUT", "/docker/node", AuthorizationRequiredHandler(updateNodeHandler))
 	m.Add("1.0", "DELETE", "/docker/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
+
+	m.Add("1.0", "GET", "/docker/nodecontainers", AuthorizationRequiredHandler(nodeContainerList))
+	m.Add("1.0", "POST", "/docker/nodecontainers", AuthorizationRequiredHandler(nodeContainerCreate))
+	m.Add("1.0", "GET", "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerInfo))
+	m.Add("1.0", "DELETE", "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerDelete))
+	m.Add("1.0", "POST", "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
+	m.Add("1.0", "POST", "/docker/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

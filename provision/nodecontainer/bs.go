@@ -10,15 +10,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/provision/docker/container"
 )
-
-type DockerProvisioner interface {
-	Cluster() *cluster.Cluster
-	RegistryAuthConfig() docker.AuthConfiguration
-}
 
 const (
 	BsDefaultName      = "big-sibling"
@@ -62,11 +55,15 @@ func InitializeBS() (bool, error) {
 	if image == "" {
 		image = bsDefaultImageName
 	}
+	bsPort, _ := config.GetInt("docker:bs:syslog-port")
+	if bsPort == 0 {
+		bsPort = 1514
+	}
 	bsNodeContainer.Name = BsDefaultName
 	bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, []string{
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"HOST_PROC=" + bsHostProc,
-		"SYSLOG_LISTEN_ADDRESS=" + fmt.Sprintf("udp://0.0.0.0:%d", container.BsSysLogPort()),
+		"SYSLOG_LISTEN_ADDRESS=" + fmt.Sprintf("udp://0.0.0.0:%d", bsPort),
 	}...)
 	bsNodeContainer.Config.Image = image
 	bsNodeContainer.HostConfig.RestartPolicy = docker.AlwaysRestart()

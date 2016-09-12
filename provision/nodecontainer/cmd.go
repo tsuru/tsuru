@@ -83,7 +83,7 @@ func (c *NodeContainerList) Run(context *cmd.Context, client *cmd.Client) error 
 				p = ""
 			}
 			poolEntry := entry.ConfigPools[p]
-			images = append(images, poolEntry.image())
+			images = append(images, poolEntry.Image())
 		}
 		tbl.AddRow(cmd.Row{entry.Name, strings.Join(pools, "\n"), strings.Join(images, "\n")})
 	}

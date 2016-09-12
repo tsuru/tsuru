@@ -7,6 +7,7 @@ package nodecontainer
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -18,6 +19,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 )
@@ -32,135 +34,8 @@ const (
 	digest = "sha256:7f75ad504148650f26429543007607dd84886b54ffc9cdf8879ea8ba4c5edb7d"
 )
 
-func (s *S) TestAddNewContainer(c *check.C) {
-	config := NodeContainerConfig{
-		Name: "bs",
-		Config: docker.Config{
-			Image:        "myimg",
-			Memory:       100,
-			ExposedPorts: map[docker.Port]struct{}{docker.Port("80/tcp"): {}},
-			Env: []string{
-				"A=1",
-				"B=2",
-			},
-		},
-		HostConfig: docker.HostConfig{
-			Privileged: true,
-			Binds:      []string{"/xyz:/abc:rw"},
-			PortBindings: map[docker.Port][]docker.PortBinding{
-				docker.Port("80/tcp"): {{HostIP: "", HostPort: ""}},
-			},
-			LogConfig: docker.LogConfig{
-				Type:   "syslog",
-				Config: map[string]string{"a": "b", "c": "d"},
-			},
-		},
-	}
-	err := AddNewContainer("", &config)
-	c.Assert(err, check.IsNil)
-	conf := configFor(config.Name)
-	var result1 NodeContainerConfig
-	err = conf.Load("", &result1)
-	c.Assert(err, check.IsNil)
-	c.Assert(result1, check.DeepEquals, config)
-	config2 := NodeContainerConfig{
-		Name: "bs",
-		Config: docker.Config{
-			Env: []string{"C=3"},
-		},
-		HostConfig: docker.HostConfig{
-			LogConfig: docker.LogConfig{
-				Config: map[string]string{"a": "", "e": "f"},
-			},
-		},
-	}
-	err = AddNewContainer("p1", &config2)
-	c.Assert(err, check.IsNil)
-	var result2 NodeContainerConfig
-	err = conf.Load("", &result2)
-	c.Assert(err, check.IsNil)
-	c.Assert(result2, check.DeepEquals, config)
-	var result3 NodeContainerConfig
-	err = conf.Load("p1", &result3)
-	c.Assert(err, check.IsNil)
-	expected2 := config
-	expected2.Config.Env = []string{"A=1", "B=2", "C=3"}
-	expected2.HostConfig.LogConfig.Config = map[string]string{"a": "", "c": "d", "e": "f"}
-	c.Assert(result3, check.DeepEquals, expected2)
-}
-
-func (s *S) TestAddNewContainerInvalid(c *check.C) {
-	err := AddNewContainer("", &NodeContainerConfig{})
-	c.Assert(err, check.ErrorMatches, "node container config name cannot be empty")
-	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: ""}})
-	c.Assert(err, check.ErrorMatches, "node container config image cannot be empty")
-	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: "img1"}})
-	c.Assert(err, check.IsNil)
-	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: ""}})
-	c.Assert(err, check.ErrorMatches, "node container config image cannot be empty")
-	err = AddNewContainer("p1", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: ""}})
-	c.Assert(err, check.IsNil)
-	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: "img2"}})
-	c.Assert(err, check.IsNil)
-	err = AddNewContainer("p1", &NodeContainerConfig{Name: "y", Config: docker.Config{Image: "img3"}})
-	c.Assert(err, check.IsNil)
-	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: ""}})
-	c.Assert(err, check.ErrorMatches, "node container config image cannot be empty")
-}
-
-func (s *S) TestUpdateContainer(c *check.C) {
-	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: "img1"}})
-	c.Assert(err, check.IsNil)
-	err = UpdateContainer("", &NodeContainerConfig{Name: "x", HostConfig: docker.HostConfig{Privileged: true}})
-	c.Assert(err, check.IsNil)
-	entry, err := LoadNodeContainer("", "x")
-	c.Assert(err, check.IsNil)
-	c.Assert(entry, check.DeepEquals, &NodeContainerConfig{
-		Name:       "x",
-		Config:     docker.Config{Image: "img1"},
-		HostConfig: docker.HostConfig{Privileged: true}},
-	)
-}
-
-func (s *S) TestUpdateContainerMergeEnvs(c *check.C) {
-	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{
-		Image: "img1",
-		Env:   []string{"A=1", "B=2"},
-	}})
-	c.Assert(err, check.IsNil)
-	err = UpdateContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{
-		Env: []string{"B=3", "C=4"},
-	}})
-	c.Assert(err, check.IsNil)
-	entry, err := LoadNodeContainer("", "x")
-	c.Assert(err, check.IsNil)
-	sort.Strings(entry.Config.Env)
-	c.Assert(entry.Config.Env, check.DeepEquals, []string{"A=1", "B=3", "C=4"})
-}
-
-func (s *S) TestUpdateContainerInvalid(c *check.C) {
-	err := UpdateContainer("", &NodeContainerConfig{})
-	c.Assert(err, check.ErrorMatches, "node container config name cannot be empty")
-	err = UpdateContainer("", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
-	err = UpdateContainer("", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
-	err = AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{Image: "img1"}})
-	c.Assert(err, check.IsNil)
-	err = UpdateContainer("p1", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
-	err = UpdateContainer("", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.IsNil)
-	err = UpdateContainer("p1", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
-	err = AddNewContainer("p1", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.IsNil)
-	err = UpdateContainer("p1", &NodeContainerConfig{Name: "x"})
-	c.Assert(err, check.IsNil)
-}
-
 func (s *S) TestEnsureContainersStarted(c *check.C) {
-	c1 := NodeContainerConfig{
+	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
 			Image: "bsimg",
@@ -175,13 +50,13 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 			Binds:         []string{"/xyz:/abc:rw"},
 		},
 	}
-	err := AddNewContainer("", &c1)
+	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
 	c2 := c1
 	c2.Name = "sysdig"
 	c2.Config.Image = "sysdigimg"
 	c2.Config.Env = []string{"X=Z"}
-	err = AddNewContainer("", &c2)
+	err = nodecontainer.AddNewContainer("", &c2)
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -245,11 +120,9 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 			},
 		},
 	})
-	conf := configFor("bs")
-	var result1 NodeContainerConfig
-	err = conf.Load("", &result1)
+	nodeContainer, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
-	c.Assert(result1.PinnedImage, check.Equals, "")
+	c.Assert(nodeContainer.PinnedImage, check.Equals, "")
 	client, err := docker.NewClient(p.Servers()[0].URL())
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -262,7 +135,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -283,7 +156,7 @@ func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	}, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	_, err = client.CreateContainer(docker.CreateContainerOptions{
-		Name:       BsDefaultName,
+		Name:       nodecontainer.BsDefaultName,
 		Config:     &docker.Config{Image: "base"},
 		HostConfig: &docker.HostConfig{},
 	})
@@ -296,18 +169,18 @@ func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
-	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
+	nodeContainer, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeContainer.PinnedImage, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestEnsureContainersStartedNoDigestNoPin(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -328,7 +201,7 @@ func (s *S) TestEnsureContainersStartedNoDigestNoPin(c *check.C) {
 	}, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	_, err = client.CreateContainer(docker.CreateContainerOptions{
-		Name:       BsDefaultName,
+		Name:       nodecontainer.BsDefaultName,
 		Config:     &docker.Config{Image: "base"},
 		HostConfig: &docker.HostConfig{},
 	})
@@ -341,24 +214,24 @@ func (s *S) TestEnsureContainersStartedNoDigestNoPin(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
-	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
+	nodeContainer, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeContainer.PinnedImage, check.Equals, "")
 }
 
 func (s *S) TestEnsureContainersStartedPinImgInParent(c *check.C) {
-	err := AddNewContainer("", &NodeContainerConfig{
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
 			Image: "myregistry/tsuru/bs",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = AddNewContainer("p1", &NodeContainerConfig{
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 	})
 	c.Assert(err, check.IsNil)
@@ -382,23 +255,23 @@ func (s *S) TestEnsureContainersStartedPinImgInParent(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.IsNil)
-	all, err := LoadNodeContainersForPoolsMerge("c1", false)
+	all, err := nodecontainer.LoadNodeContainersForPoolsMerge("c1", false)
 	c.Assert(err, check.IsNil)
-	c.Assert(all, check.DeepEquals, map[string]NodeContainerConfig{
+	c.Assert(all, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
 		"":   {Name: "c1", PinnedImage: "myregistry/tsuru/bs@" + digest, Config: docker.Config{Image: "myregistry/tsuru/bs"}},
 		"p1": {Name: "c1", PinnedImage: ""},
 	})
 }
 
 func (s *S) TestEnsureContainersStartedPinImgInChild(c *check.C) {
-	err := AddNewContainer("", &NodeContainerConfig{
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
 			Image: "myrootimg",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = AddNewContainer("p1", &NodeContainerConfig{
+	err = nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
 			Image: "myregistry/tsuru/bs",
@@ -425,9 +298,9 @@ func (s *S) TestEnsureContainersStartedPinImgInChild(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.IsNil)
-	all, err := LoadNodeContainersForPoolsMerge("c1", false)
+	all, err := nodecontainer.LoadNodeContainersForPoolsMerge("c1", false)
 	c.Assert(err, check.IsNil)
-	c.Assert(all, check.DeepEquals, map[string]NodeContainerConfig{
+	c.Assert(all, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
 		"":   {Name: "c1", PinnedImage: "", Config: docker.Config{Image: "myrootimg"}},
 		"p1": {Name: "c1", PinnedImage: "myregistry/tsuru/bs@" + digest, Config: docker.Config{Image: "myregistry/tsuru/bs"}},
 	})
@@ -435,12 +308,12 @@ func (s *S) TestEnsureContainersStartedPinImgInChild(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
-	cont, err := LoadNodeContainer("", BsDefaultName)
+	cont, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	cont.PinnedImage = "myregistry/tsuru/bs@" + digest
-	err = AddNewContainer("", cont)
+	err = nodecontainer.AddNewContainer("", cont)
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -461,7 +334,7 @@ func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
 	}, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	_, err = client.CreateContainer(docker.CreateContainerOptions{
-		Name:       BsDefaultName,
+		Name:       nodecontainer.BsDefaultName,
 		Config:     &docker.Config{Image: "base"},
 		HostConfig: &docker.HostConfig{},
 	})
@@ -474,17 +347,17 @@ func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
-	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
+	nodeContainer, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodeContainer.PinnedImage, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestEnsureContainersStartedOnlyChild(c *check.C) {
-	err := AddNewContainer("p1", &NodeContainerConfig{
+	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
 			Image: "myregistry/tsuru/bs",
@@ -520,7 +393,7 @@ func (s *S) TestEnsureContainersStartedOnlyChild(c *check.C) {
 }
 
 func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -538,7 +411,7 @@ func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	client, err = nodes[1].Client()
 	c.Assert(err, check.IsNil)
 	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
@@ -547,13 +420,13 @@ func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
 }
 
 func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C) {
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	var buf safe.Buffer
-	err = RecreateContainers(p, &buf)
+	err = recreateContainers(p, &buf)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -568,7 +441,7 @@ func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C)
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	client, err = nodes[1].Client()
 	c.Assert(err, check.IsNil)
 	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
@@ -576,25 +449,25 @@ func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C)
 	c.Assert(containers, check.HasLen, 1)
 	container, err = client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 }
 
 func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	var buf safe.Buffer
-	err = RecreateContainers(p, &buf)
+	err = recreateContainers(p, &buf)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	client, err := nodes[0].Client()
 	c.Assert(err, check.IsNil)
-	err = client.StopContainer(BsDefaultName, 1)
+	err = client.StopContainer(nodecontainer.BsDefaultName, 1)
 	c.Assert(err, check.IsNil)
-	contData, err := client.InspectContainer(BsDefaultName)
+	contData, err := client.InspectContainer(nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
 	c.Assert(contData.State.Running, check.Equals, false)
 	hook := ClusterHook{Provisioner: p}
@@ -608,7 +481,7 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	c.Assert(container.State.Running, check.Equals, true)
 	client, err = nodes[1].Client()
 	c.Assert(err, check.IsNil)
@@ -617,21 +490,21 @@ func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err = client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 	c.Assert(container.State.Running, check.Equals, true)
 }
 
 func (s *S) TestLoadNodeContainersForPools(c *check.C) {
-	err := AddNewContainer("p1", &NodeContainerConfig{
+	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{
 			Image: "myregistry/tsuru/bs",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	result, err := LoadNodeContainersForPools("c1")
+	result, err := nodecontainer.LoadNodeContainersForPools("c1")
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
+	c.Assert(result, check.DeepEquals, map[string]nodecontainer.NodeContainerConfig{
 		"p1": {
 			Name: "c1",
 			Config: docker.Config{
@@ -642,77 +515,13 @@ func (s *S) TestLoadNodeContainersForPools(c *check.C) {
 }
 
 func (s *S) TestLoadNodeContainersForPoolsNotFound(c *check.C) {
-	_, err := LoadNodeContainersForPools("notfound")
-	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
-}
-
-func (s *S) TestResetImage(c *check.C) {
-	err := AddNewContainer("", &NodeContainerConfig{
-		Name:        "c1",
-		PinnedImage: "img1@1",
-		Config: docker.Config{
-			Image: "img1",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = AddNewContainer("p1", &NodeContainerConfig{
-		Name:        "c1",
-		PinnedImage: "img1@2",
-	})
-	err = AddNewContainer("p2", &NodeContainerConfig{
-		Name: "c1",
-	})
-	c.Assert(err, check.IsNil)
-	err = ResetImage("p1", "c1")
-	c.Assert(err, check.IsNil)
-	result, err := LoadNodeContainersForPools("c1")
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
-		"": {
-			Name:        "c1",
-			PinnedImage: "img1@1",
-			Config: docker.Config{
-				Image: "img1",
-			},
-		},
-		"p1": {Name: "c1"},
-		"p2": {Name: "c1"},
-	})
-	err = ResetImage("p2", "c1")
-	c.Assert(err, check.IsNil)
-	result, err = LoadNodeContainersForPools("c1")
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
-		"": {
-			Name: "c1",
-			Config: docker.Config{
-				Image: "img1",
-			},
-		},
-		"p1": {Name: "c1"},
-		"p2": {Name: "c1"},
-	})
-	err = UpdateContainer("p1", &NodeContainerConfig{Name: "c1", PinnedImage: "img1@1"})
-	c.Assert(err, check.IsNil)
-	err = ResetImage("", "c1")
-	c.Assert(err, check.IsNil)
-	result, err = LoadNodeContainersForPools("c1")
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, map[string]NodeContainerConfig{
-		"": {
-			Name: "c1",
-			Config: docker.Config{
-				Image: "img1",
-			},
-		},
-		"p1": {Name: "c1"},
-		"p2": {Name: "c1"},
-	})
+	_, err := nodecontainer.LoadNodeContainersForPools("notfound")
+	c.Assert(err, check.Equals, nodecontainer.ErrNodeContainerNotFound)
 }
 
 func (s *S) TestEnsureContainersStartedWithoutRelaunch(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	var reqs []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -756,12 +565,12 @@ func (s *S) TestEnsureContainersStartedWithoutRelaunch(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 }
 
 func (s *S) TestEnsureContainersStartedGracefullyStop(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	var reqs []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -809,12 +618,12 @@ func (s *S) TestEnsureContainersStartedGracefullyStop(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 }
 
 func (s *S) TestEnsureContainersStartedForceStopOnlyOnFailure(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	var reqs []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -870,12 +679,12 @@ func (s *S) TestEnsureContainersStartedForceStopOnlyOnFailure(c *check.C) {
 	c.Assert(containers, check.HasLen, 1)
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(container.Name, check.Equals, BsDefaultName)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 }
 
 func (s *S) TestEnsureContainersStartedTryCreatingAfterRmFailure(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := InitializeBS()
+	_, err := nodecontainer.InitializeBS()
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -896,4 +705,75 @@ func (s *S) TestEnsureContainersStartedTryCreatingAfterRmFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.ErrorMatches, `.*unable to create new node-container: container already exists - previour rm error: API error \(500\): my error`)
+}
+
+func (s *S) TestRecreateBsContainers(c *check.C) {
+	_, err := nodecontainer.InitializeBS()
+	c.Assert(err, check.IsNil)
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	var buf safe.Buffer
+	err = recreateContainers(p, &buf)
+	c.Assert(err, check.IsNil)
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	client, err := nodes[0].Client()
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
+	client, err = nodes[1].Client()
+	c.Assert(err, check.IsNil)
+	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err = client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
+	// It runs in parallel, so we check both ordering
+	output1 := fmt.Sprintf(`relaunching node container "big-sibling" in the node %s []
+relaunching node container "big-sibling" in the node %s []
+`, nodes[0].Address, nodes[1].Address)
+	output2 := fmt.Sprintf(`relaunching node container "big-sibling" in the node %s []
+relaunching node container "big-sibling" in the node %s []
+`, nodes[1].Address, nodes[0].Address)
+	if got := buf.String(); got != output1 && got != output2 {
+		c.Errorf("Wrong output:\n%s", got)
+	}
+}
+
+func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
+	_, err := nodecontainer.InitializeBS()
+	c.Assert(err, check.IsNil)
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	servers := p.Servers()
+	servers[0].PrepareFailure("failure-create", "/containers/create")
+	defer servers[1].ResetFailure("failure-create")
+	var buf safe.Buffer
+	err = recreateContainers(p, &buf)
+	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[.*\]: API error \(400\): failure-create.*`)
+	sort.Sort(cluster.NodeList(nodes))
+	client, err := nodes[0].Client()
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 0)
+	client, err = nodes[1].Client()
+	c.Assert(err, check.IsNil)
+	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 }

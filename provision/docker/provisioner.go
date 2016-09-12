@@ -35,7 +35,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
-	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/fusis"
@@ -111,7 +112,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	if err != nil {
 		return err
 	}
-	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &nodecontainer.ClusterHook{Provisioner: p})
+	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &internalNodeContainer.ClusterHook{Provisioner: p})
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
 		disabledSeconds, _ := config.GetInt("docker:healing:disabled-time")
@@ -281,7 +282,7 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	err := nodecontainer.RegisterQueueTask(p)
+	err := internalNodeContainer.RegisterQueueTask(p)
 	if err != nil {
 		return err
 	}
@@ -1371,7 +1372,7 @@ func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return err
 	}
 	jobParams := monsterqueue.JobParams{"endpoint": opts.Address, "metadata": opts.Metadata}
-	_, err = q.Enqueue(nodecontainer.QueueTaskName, jobParams)
+	_, err = q.Enqueue(internalNodeContainer.QueueTaskName, jobParams)
 	return err
 }
 
@@ -1421,4 +1422,8 @@ func (p *dockerProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 		}
 	}
 	return p.Cluster().Unregister(opts.Address)
+}
+
+func (p *dockerProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
+	return internalNodeContainer.RecreateNamedContainers(p, writer, name)
 }

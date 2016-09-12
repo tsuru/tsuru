@@ -53,7 +53,7 @@ func (t *runBs) Run(job monsterqueue.Job) {
 		return
 	}
 	node.CreationStatus = cluster.NodeCreationStatusCreated
-	err = RecreateContainers(t.provisioner, nil, node)
+	err = recreateContainers(t.provisioner, nil, node)
 	if err != nil {
 		t.provisioner.Cluster().UpdateNode(node)
 		job.Error(err)

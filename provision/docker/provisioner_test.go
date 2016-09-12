@@ -33,7 +33,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
-	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -3036,7 +3037,7 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(p.cluster, check.NotNil)
-	c.Assert(p.cluster.Hooks(cluster.HookEventBeforeContainerCreate), check.DeepEquals, []cluster.Hook{&nodecontainer.ClusterHook{Provisioner: &p}})
+	c.Assert(p.cluster.Hooks(cluster.HookEventBeforeContainerCreate), check.DeepEquals, []cluster.Hook{&internalNodeContainer.ClusterHook{Provisioner: &p}})
 }
 
 func (s *S) TestProvisionerLogsEnabled(c *check.C) {

@@ -7,7 +7,7 @@ package main
 import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
