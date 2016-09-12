@@ -31,6 +31,7 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 			Allowed:  event.Allowed(permission.PermApp),
 			CustomData: DeployOptions{
 				Commit: d.Commit,
+				Origin: d.Origin,
 			},
 		})
 		evt.StartTime = d.Timestamp
@@ -50,28 +51,30 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff"},
-		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff"},
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff", Origin: "app-deploy"},
+		{App: "g1", Timestamp: time.Now().Add(-1800 * time.Second), Log: "logs", Diff: "diff"},
+		{App: "g1", Timestamp: time.Now(), Log: "logs", Diff: "diff", Commit: "abcdef1234567890"},
 	}
 	insertDeploysAsEvents(insert, c)
 	deploys, err := ListDeploys(nil, 0, 0)
 	c.Assert(err, check.IsNil)
-	c.Assert(deploys, check.HasLen, 2)
+	c.Assert(deploys, check.HasLen, 3)
 	data, err := json.Marshal(&deploys)
 	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(data, &deploys)
 	c.Assert(err, check.IsNil)
-	expected := []DeployData{insert[1], insert[0]}
-	for i := 0; i < 2; i++ {
+	origins := []string{"git", "", "app-deploy"}
+	expected := []DeployData{insert[2], insert[1], insert[0]}
+	for i := 0; i < 3; i++ {
 		c.Assert(deploys[i].App, check.Equals, expected[i].App)
 		c.Assert(deploys[i].Commit, check.Equals, expected[i].Commit)
 		c.Assert(deploys[i].Error, check.Equals, expected[i].Error)
 		c.Assert(deploys[i].Image, check.Equals, expected[i].Image)
 		c.Assert(deploys[i].User, check.Equals, expected[i].User)
 		c.Assert(deploys[i].CanRollback, check.Equals, expected[i].CanRollback)
-		c.Assert(deploys[i].Origin, check.Equals, expected[i].Origin)
 		c.Assert(deploys[i].Log, check.Equals, "")
 		c.Assert(deploys[i].Diff, check.Equals, "")
+		c.Assert(deploys[i].Origin, check.Equals, origins[i])
 	}
 }
 
@@ -196,6 +199,8 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	}
 	insertDeploysAsEvents(insert, c)
 	expected := []DeployData{insert[2], insert[1]}
+	expected[0].Origin = "git"
+	expected[1].Origin = "git"
 	deploys, err := ListDeploys(nil, 1, 2)
 	c.Assert(err, check.IsNil)
 	c.Assert(deploys, check.HasLen, 2)
