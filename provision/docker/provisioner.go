@@ -1305,7 +1305,7 @@ func (n *clusterNodeWrapper) Metadata() map[string]string {
 }
 
 func (n *clusterNodeWrapper) Status() string {
-	return n.node.Metadata["pool"]
+	return n.node.Status()
 }
 
 func (n *clusterNodeWrapper) Units() ([]provision.Unit, error) {

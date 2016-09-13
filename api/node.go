@@ -220,8 +220,8 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 }
 
 type listNodeResponse struct {
-	Nodes    []json.RawMessage
-	Machines []iaas.Machine
+	Nodes    []json.RawMessage `json:"nodes"`
+	Machines []iaas.Machine    `json:"machines"`
 }
 
 // title: list nodes
