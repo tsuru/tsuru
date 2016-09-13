@@ -103,6 +103,10 @@ func (p *FakeDockerProvisioner) Servers() []*testing.DockerServer {
 	return p.servers
 }
 
+func (p *FakeDockerProvisioner) GetName() string {
+	return "fake"
+}
+
 func (p *FakeDockerProvisioner) FailPush(errs ...error) {
 	for _, err := range errs {
 		p.pushErrors <- err
