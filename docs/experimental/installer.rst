@@ -47,7 +47,7 @@ and needed by docker machine to manage and provision your hosts: certificates,
 configuration files, your CA file etc.
 
 After provisioning the hosts, the installer will install and start every tsuru
-component as a docker container on those hosts.
+component as a swarm service on the hosts.
 
 Docker Machine drivers
 ----------------------
@@ -59,6 +59,26 @@ and also supports the 3rd party ones; just make sure they are available in your 
 For a list of 3rd party plugins supported by the community
 check `here <https://github.com/docker/machine/blob/master/docs/AVAILABLE_DRIVER_PLUGINS.md>`_.
 
+Swarm Mode
+----------
+
+tsuru installer provisions docker hosts with docker v1.12 and uses docker swarm mode
+to orchestrate it's core components in the docker node cluster. This means that it's
+easy to scale up and down every service and swarm is also responsible for recovering
+a service if one of it's tasks is lost.
+
+Hosts
+-----
+
+The installer provision and manages two kinds of hosts: core hosts and apps hosts.
+
+Core hosts are Swarm nodes and are responsible for running tsuru core components as
+swarm services (orchestrated by Swarm).
+
+Apps hosts are docker hosts registered as docker nodes to tsuru. These are responsible
+for running tsuru apps (orchestrated by tsuru).
+
+By default, core hosts are reused as apps hosts (this can be configured by the ``hosts:apps:dedicated`` config).
 
 What is installed
 =================
@@ -162,7 +182,6 @@ it will use an external mongoDB instead of installing it.
             amazonec2-access-key: myAmazonAccessKey
             amazonec2-secret-key: myAmazonSecretKey
             amazonec2-vpc-id: vpc-abc1234
-            amazonec2-subnet-id: subnet-abc1234
 
 Each core/apps host will be created in a different availability zone, "t2.medium" instances
 will be provisioned for core hosts and "t2.small" for apps hosts.
