@@ -485,7 +485,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	}
 
 	err = healer.tryHealingNode(&nodes[0], "myreason", nil)
-	c.Assert(err, check.ErrorMatches, "Error trying to insert nodee healing event, healing aborted: event throttled, limit for healer on node \".*?\" is 3 every 5m0s")
+	c.Assert(err, check.ErrorMatches, "Error trying to insert node healing event, healing aborted: event throttled, limit for healer on node \".*?\" is 3 every 5m0s")
 }
 
 func (s *S) TestHealerUpdateNodeData(c *check.C) {

@@ -183,7 +183,7 @@ func (h *NodeHealer) tryHealingNode(node *cluster.Node, reason string, lastCheck
 			// Healing in progress.
 			return nil
 		}
-		return fmt.Errorf("Error trying to insert nodee healing event, healing aborted: %s", err.Error())
+		return fmt.Errorf("Error trying to insert node healing event, healing aborted: %s", err.Error())
 	}
 	var createdNode cluster.Node
 	var evtErr error
