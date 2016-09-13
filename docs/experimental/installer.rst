@@ -122,6 +122,82 @@ And pass it to the install command as:
 
     $ tsuru install -c config.yml
 
+.. _examples:
+
+Examples
+========
+
+This section cover some examples to show some of the capabilities of the installer.
+
+Multi-host provisioning and installation on AWS
+-----------------------------------------------
+
+The following configuration will provision 3 virtual machines on AWS to run tsuru
+core components and other 3 machines to host tsuru applications.
+
+.. highlight:: yaml
+
+::
+
+    hosts:
+        core:
+            size: 3
+            driver:
+                options:
+                    amazonec2-zone: ["a", "b", "c"]
+                    amazonec2-instance-type: "t2.medium"
+        apps:
+            size: 3
+            dedicated: true
+            driver:
+                options:
+                    amazonec2-zone: ["a", "b", "c"]
+                    amazonec2-instance-type: "t2.small"
+    driver:
+        name: amazonec2
+        options:
+            amazonec2-access-key: myAmazonAccessKey
+            amazonec2-secret-key: myAmazonSecretKey
+            amazonec2-vpc-id: vpc-abc1234
+            amazonec2-subnet-id: subnet-abc1234
+
+Each core/apps host will be created in a different availability zone, "t2.medium" instances
+will be provisioned for core hosts and "t2.small" for apps hosts.
+
+Installing on already provisioned (or physical) hosts
+-----------------------------------------------------
+
+Docker machine provides a `generic driver <https://docs.docker.com/machine/drivers/generic/>`_
+that can be used to install docker to already provisioned virtual or physical machines using ssh.
+The following configuration example will connect to machine-1 and machine-2 using ssh,
+install docker, install and start all tsuru core components on those two machines.
+Machine 3 will be registered as an application node to be used by tsuru applications,
+including the dashboard.
+
+.. highlight:: yaml
+
+::
+
+    hosts:
+        core:
+            size: 2
+            driver:
+                options:
+                    generic-ip-address: ["machine-1-IP", "machine-2-IP"]
+                    generic-ssh-key: ["~/keys/machine-1", "~/keys/machine-2"]
+        apps:
+            size: 1
+            dedicated: true
+            driver:
+                options:
+                    generic-ip-address: ["machine-3-IP"]
+                    generic-ssh-key: ["~/keys/machine-3"]
+    driver:
+        name: generic
+        options:
+            generic-ssh-port: 2222
+            generic-ssh-user: ubuntu
+
 Configuration reference
 ============================
 
