@@ -223,6 +223,56 @@ The name of the installation, e.g, tsuru-ec2, tsuru-local. This will be the name
 of the directory created inside ``~/.tsuru/installs`` and the tsuru target name
 for the api.
 
+components:<component>
+----------------------
+
+This configuration can be used to disable the installation of a core component,
+by setting the component address. For example, by setting:
+
+.. highlight:: yaml
+
+::
+
+    components:
+      mongo: my-mongo.example.com:27017
+
+The installer won't install the mongo component and instead will check the connection
+to my-mongo.example.com:27017 before continuing with the installation.
+The following components can be configured to be used as an external resource: mongo,
+redis, registry and planb.
+
+hosts:core:size
+---------------
+
+Number of machines to be used as hosts for tsuru core components. Default 1.
+
+hosts:core:driver:options
+-------------------------
+
+Under this namespace every driver parameters can be set. These are going to be
+used only for core hosts and each parameter accepts a list or a single value.
+If the number of values is less than the number of hosts, some values will be
+reused across the core hosts.
+
+hosts:apps:size
+---------------
+
+Number of machines to be registered as docker nodes to host tsuru apps. Default 1.
+
+hosts:apps:dedicated
+--------------------
+
+Boolean flag to indicated if apps hosts are dedicated or if they can be used
+to run tsuru core components. Defaults to true.
+
+hosts:apps:driver:options
+-------------------------
+
+Under this namespace every driver parameters can be set. These are going to be
+used only for app hosts and each parameter accepts a list or a single value.
+If the number of values is less than the number of hosts, some values will be
+reused across the apps hosts.
+
 docker-hub-mirror
 -----------------
 
