@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -824,4 +827,34 @@ func (s *S) TestNewWithPermission(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	c.Assert(&evts[0], check.DeepEquals, expected)
+}
+
+func (s *S) TestNewLockRetryRace(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(100))
+	wg := sync.WaitGroup{}
+	var countOK int32
+	for i := 0; i < 150; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			evt, err := New(&Opts{
+				Target:  Target{Type: "app", Value: "myapp"},
+				Kind:    permission.PermAppUpdateEnvSet,
+				Owner:   s.token,
+				Allowed: Allowed(permission.PermAppReadEvents),
+			})
+			if _, ok := err.(ErrEventLocked); ok {
+				return
+			}
+			c.Assert(err, check.IsNil)
+			atomic.AddInt32(&countOK, 1)
+			err = evt.Done(nil)
+			c.Assert(err, check.IsNil)
+		}()
+	}
+	wg.Wait()
+	c.Assert(countOK > 0, check.Equals, true)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, int(countOK))
 }

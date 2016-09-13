@@ -701,10 +701,15 @@ func newEvt(opts *Opts) (*Event, error) {
 			if i >= maxRetries || !checkIsExpired(coll, evt.ID) {
 				var existing Event
 				err = coll.FindId(evt.ID).One(&existing.eventData)
+				if err == mgo.ErrNotFound {
+					maxRetries += 1
+				}
 				if err == nil {
 					err = ErrEventLocked{event: &existing}
 				}
 			}
+		} else {
+			return nil, err
 		}
 	}
 	return nil, err
