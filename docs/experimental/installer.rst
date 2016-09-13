@@ -133,12 +133,15 @@ Multi-host provisioning and installation on AWS
 -----------------------------------------------
 
 The following configuration will provision 3 virtual machines on AWS to run tsuru
-core components and other 3 machines to host tsuru applications.
+core components and other 3 machines to host tsuru applications. Additionaly,
+it will use an external mongoDB instead of installing it.
 
 .. highlight:: yaml
 
 ::
 
+    components:
+        mongo: mongoDB.my-server.com:27017
     hosts:
         core:
             size: 3
