@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ import (
 )
 
 type DockerProvisioner interface {
+	GetName() string
 	Cluster() *cluster.Cluster
 	RegistryAuthConfig() docker.AuthConfiguration
 }
@@ -125,6 +127,13 @@ func create(c *nodecontainer.NodeContainerConfig, node *cluster.Node, poolName s
 		return err
 	}
 	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + node.Address}, c.Config.Env...)
+	if c.Config.Labels == nil {
+		c.Config.Labels = map[string]string{}
+	}
+	c.Config.Labels["tsuru.nodecontainer"] = strconv.FormatBool(true)
+	c.Config.Labels["tsuru.node.pool"] = poolName
+	c.Config.Labels["tsuru.node.address"] = node.Address
+	c.Config.Labels["tsuru.node.provisioner"] = p.GetName()
 	opts := docker.CreateContainerOptions{
 		Name:       c.Name,
 		HostConfig: &c.HostConfig,

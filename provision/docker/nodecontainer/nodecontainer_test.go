@@ -60,6 +60,13 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	for i, n := range nodes {
+		n.Metadata["pool"] = fmt.Sprintf("p-%d", i)
+		_, err = p.Cluster().UpdateNode(n)
+		c.Assert(err, check.IsNil)
+	}
 	var createBodies []string
 	var names []string
 	var mut sync.Mutex
@@ -80,10 +87,10 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 5)
 	sort.Strings(parts)
-	c.Assert(parts[1], check.Matches, `relaunching node container "bs" in the node http://127.0.0.1:\d+/ \[\]`)
-	c.Assert(parts[2], check.Matches, `relaunching node container "bs" in the node http://localhost:\d+/ \[\]`)
-	c.Assert(parts[3], check.Matches, `relaunching node container "sysdig" in the node http://127.0.0.1:\d+/ \[\]`)
-	c.Assert(parts[4], check.Matches, `relaunching node container "sysdig" in the node http://localhost:\d+/ \[\]`)
+	c.Assert(parts[1], check.Matches, `relaunching node container "bs" in the node http://127.0.0.1:\d+/ \[p-0\]`)
+	c.Assert(parts[2], check.Matches, `relaunching node container "bs" in the node http://localhost:\d+/ \[p-1\]`)
+	c.Assert(parts[3], check.Matches, `relaunching node container "sysdig" in the node http://127.0.0.1:\d+/ \[p-0\]`)
+	c.Assert(parts[4], check.Matches, `relaunching node container "sysdig" in the node http://localhost:\d+/ \[p-1\]`)
 	c.Assert(createBodies, check.HasLen, 2)
 	c.Assert(names, check.HasLen, 2)
 	sort.Strings(names)
@@ -102,7 +109,13 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 		HostConfig docker.HostConfig
 	}{
 		{
-			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "A=1", "B=2"}, Image: "bsimg"},
+			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "A=1", "B=2"}, Image: "bsimg",
+				Labels: map[string]string{
+					"tsuru.node.address":     server.URL(),
+					"tsuru.node.pool":        "p-0",
+					"tsuru.node.provisioner": "fake",
+					"tsuru.nodecontainer":    "true",
+				}},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
 				Privileged:    true,
@@ -111,7 +124,13 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 			},
 		},
 		{
-			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "X=Z"}, Image: "sysdigimg"},
+			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "X=Z"}, Image: "sysdigimg",
+				Labels: map[string]string{
+					"tsuru.node.address":     server.URL(),
+					"tsuru.node.pool":        "p-0",
+					"tsuru.node.provisioner": "fake",
+					"tsuru.nodecontainer":    "true",
+				}},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
 				Privileged:    true,
