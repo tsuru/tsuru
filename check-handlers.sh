@@ -43,13 +43,13 @@ github.com/tsuru/tsuru/api.eventList
 github.com/tsuru/tsuru/api.eventInfo
 github.com/tsuru/tsuru/api.eventCancel
 github.com/tsuru/tsuru/api.listNodesHandler
+github.com/tsuru/tsuru/api.nodeContainerInfo
+github.com/tsuru/tsuru/api.nodeContainerList
 github.com/tsuru/tsuru/provision/docker.bsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.logsConfigGetHandler
 github.com/tsuru/tsuru/provision/docker.nodeHealingRead
 github.com/tsuru/tsuru/provision/docker.bsEnvSetHandler
 github.com/tsuru/tsuru/provision/docker.bsUpgradeHandler
-github.com/tsuru/tsuru/provision/docker.nodeContainerInfo
-github.com/tsuru/tsuru/provision/docker.nodeContainerList
 EOF
     )
     ignored=$(echo "$ignored" | sort)
