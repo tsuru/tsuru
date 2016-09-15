@@ -28,8 +28,10 @@ if [ "${TRAVIS_GO_VERSION}" = "${GO_FOR_RELEASE}" ]; then
   }
 }
 EOF
-	if [ "${TRAVIS_BRANCH}" = "master" ] || [ -n "$TRAVIS_TAG" ]; then
+	if [ "${TRAVIS_BRANCH}" = "master" ]; then
 		tag_and_push $LATEST_TAG
+	fi
+	if [ -n "$TRAVIS_TAG" ]; then
 		tag_and_push $MAJOR_TAG
 		tag_and_push $VERSION_TAG
 	fi
