@@ -136,6 +136,9 @@ func (r *fakeRouter) AddBackend(name string) error {
 }
 
 func (r *fakeRouter) RemoveBackend(name string) error {
+	if r.failuresByIp[name] {
+		return ErrForcedFailure
+	}
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
