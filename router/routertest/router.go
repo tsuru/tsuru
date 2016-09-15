@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/tsuru/tsuru/router"
@@ -363,6 +364,14 @@ func (r *hcRouter) SetErr(err error) {
 
 func (r *hcRouter) HealthCheck() error {
 	return r.err
+}
+
+func (r *hcRouter) Addr(name string) (string, error) {
+	addr, err := r.fakeRouter.Addr(name)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(addr, ".fakerouter.com", ".fakehcrouter.com", -1), nil
 }
 
 func (r *fakeRouter) SetHealthcheck(name string, data router.HealthcheckData) error {

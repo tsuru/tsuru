@@ -177,6 +177,21 @@ func (s *S) TestAddr(c *check.C) {
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
+func (s *S) TestAddrHCRouter(c *check.C) {
+	r := newFakeRouter()
+	hcr := hcRouter{fakeRouter: r}
+	err := hcr.AddBackend("name")
+	c.Assert(err, check.IsNil)
+	err = hcr.AddRoute("name", s.localhost)
+	c.Assert(err, check.IsNil)
+	addr, err := hcr.Addr("name")
+	c.Assert(err, check.IsNil)
+	c.Assert(addr, check.Equals, "name.fakehcrouter.com")
+	addr, err = hcr.Addr("unknown")
+	c.Assert(addr, check.Equals, "")
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+}
+
 func (s *S) TestReset(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
