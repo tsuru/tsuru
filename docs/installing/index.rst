@@ -38,4 +38,5 @@ ride.
     api
     planb-router
     adding-nodes
+    dashboard
     Gandalf (Optional) <gandalf>
