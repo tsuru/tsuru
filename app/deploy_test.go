@@ -47,8 +47,8 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 }
 
 func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
-	a := App{Name: "g1"}
-	err := s.conn.Apps().Insert(a)
+	a := App{Name: "g1", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff", Origin: "app-deploy"},
@@ -79,8 +79,8 @@ func (s *S) TestListAppDeploysMarshalJSON(c *check.C) {
 }
 
 func (s *S) TestListAppDeploys(c *check.C) {
-	a := App{Name: "g1"}
-	err := s.conn.Apps().Insert(a)
+	a := App{Name: "g1", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Log: "logs", Diff: "diff"},
@@ -105,8 +105,8 @@ func (s *S) TestListAppDeploys(c *check.C) {
 }
 
 func (s *S) TestListAppDeploysWithImage(c *check.C) {
-	a := App{Name: "g1"}
-	err := s.conn.Apps().Insert(a)
+	a := App{Name: "g1", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "registry.somewhere/tsuru/app-example:v2"},
@@ -134,18 +134,18 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	a := App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "g1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
-	err = s.conn.Apps().Insert(a)
+	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	a = App{
-		Name:     "ge",
-		Platform: "zend",
-		Teams:    []string{team.Name},
+		Name:      "ge",
+		Platform:  "zend",
+		TeamOwner: team.Name,
 	}
-	err = s.conn.Apps().Insert(a)
+	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
@@ -185,11 +185,12 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	team := &auth.Team{Name: "team"}
 	c.Assert(err, check.IsNil)
 	a := App{
-		Name:     "app1",
-		Platform: "zend",
-		Teams:    []string{team.Name},
+		Name:      "app1",
+		Platform:  "zend",
+		Teams:     []string{team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err = s.conn.Apps().Insert(a)
+	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
 		{App: "app1", Commit: "v1", Timestamp: time.Now().Add(-30 * time.Second)},
@@ -211,10 +212,11 @@ func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 
 func (s *S) TestGetDeploy(c *check.C) {
 	a := App{
-		Name:     "g1",
-		Platform: "zend",
+		Name:      "g1",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	newDeploy := DeployData{App: "g1", Timestamp: time.Now()}
 	evts := insertDeploysAsEvents([]DeployData{newDeploy}, c)
@@ -243,14 +245,14 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 
 func (s *S) TestDeployApp(c *check.C) {
 	a := App{
-		Name:     "someApp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "django",
-		Teams:    []string{s.team.Name},
+		Name:      "some-app",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -273,15 +275,15 @@ func (s *S) TestDeployApp(c *check.C) {
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	a := App{
-		Name:           "someApp",
+		Name:           "some-app",
 		Plan:           Plan{Router: "fake"},
 		Platform:       "django",
 		Teams:          []string{s.team.Name},
 		UpdatePlatform: true,
+		TeamOwner:      s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -301,20 +303,20 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	logs := writer.String()
 	c.Assert(logs, check.Equals, "Image deploy called")
 	var updatedApp App
-	s.conn.Apps().Find(bson.M{"name": "someApp"}).One(&updatedApp)
+	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
 }
 
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -338,14 +340,14 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 
 func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
 	evt, err := event.New(&event.Opts{
@@ -371,14 +373,14 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -402,14 +404,14 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -433,14 +435,14 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -465,15 +467,12 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	s.provisioner.PrepareFailure("ImageDeploy", errors.New("deploy error"))
 	a := App{
-		Name:     "testErrorApp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "testerrorapp",
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	prov, err := a.getProvisioner()
-	c.Assert(err, check.IsNil)
-	err = prov.Provision(&a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
@@ -504,14 +503,14 @@ func (s *S) TestValidateOrigin(c *check.C) {
 
 func (s *S) TestDeployAsleepApp(c *check.C) {
 	a := App{
-		Name:     "someApp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "django",
-		Teams:    []string{s.team.Name},
+		Name:      "some-app",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	writer := &bytes.Buffer{}
 	err = a.Sleep(writer, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
@@ -539,11 +538,12 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 
 func (s *S) TestIncrementDeploy(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	incrementDeploy(&a)
 	c.Assert(a.Deploys, check.Equals, uint(1))
@@ -553,13 +553,13 @@ func (s *S) TestIncrementDeploy(c *check.C) {
 
 func (s *S) TestDeployToProvisioner(c *check.C) {
 	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
+		Name:      "some-app",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
@@ -577,13 +577,13 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
+		Name:      "some-app",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -601,13 +601,13 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 
 func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
+		Name:      "some-app",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	opts := DeployOptions{App: &a, File: ioutil.NopCloser(bytes.NewBuffer([]byte("my file")))}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -625,13 +625,13 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 
 func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
+		Name:      "some-app",
+		Platform:  "django",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	opts := DeployOptions{App: &a, Image: "my-image-x"}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -649,14 +649,14 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 
 func (s *S) TestRollbackWithNameImage(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -679,14 +679,14 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	s.provisioner.SetValidImagesForApp("otherapp", []string{"registry.somewhere/tsuru/app-example:v1", "registry.somewhere/tsuru/app-example:v2"})
 	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
 	writer := &bytes.Buffer{}
@@ -711,14 +711,14 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	a := App{
-		Name:     "otherapp",
-		Plan:     Plan{Router: "fake"},
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "otherapp",
+		Plan:      Plan{Router: "fake"},
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.Provision(&a)
 	s.provisioner.SetValidImagesForApp("otherapp", []string{"registry.somewhere/tsuru/app-example:v1", "registry.somewhere/tsuru/app-example:v2"})
 	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
 	writer := &bytes.Buffer{}
@@ -778,8 +778,8 @@ func (s *S) TestDeployKind(c *check.C) {
 }
 
 func (s *S) TestMigrateDeploysToEvents(c *check.C) {
-	a := App{Name: "g1"}
-	err := s.conn.Apps().Insert(a)
+	a := App{Name: "g1", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	now := time.Unix(time.Now().Unix(), 0)
 	insert := []DeployData{

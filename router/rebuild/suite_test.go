@@ -9,13 +9,17 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
@@ -23,6 +27,8 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn *db.Storage
+	user *auth.User
+	team *auth.Team
 }
 
 var _ = check.Suite(&S{})
@@ -36,10 +42,12 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake-hc:type", "fake-hc")
 	config.Set("docker:router", "fake")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	provision.DefaultProvisioner = "fake"
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -60,5 +68,20 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	provisiontest.ProvisionerInstance.Reset()
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err = nativeScheme.Create(s.user)
+	c.Assert(err, check.IsNil)
+	s.team = &auth.Team{Name: "admin"}
+	c.Assert(err, check.IsNil)
+	err = s.conn.Teams().Insert(s.team)
+	c.Assert(err, check.IsNil)
+	err = provision.AddPool(provision.AddPoolOptions{
+		Name:        "p1",
+		Default:     true,
+		Provisioner: "fake",
+	})
 	c.Assert(err, check.IsNil)
 }

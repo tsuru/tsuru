@@ -107,8 +107,13 @@ func ChangeQuota(app *App, limit int) error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Apps().Update(
+	err = conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"quota.limit": limit}},
 	)
+	if err != nil {
+		return err
+	}
+	app.Quota.Limit = limit
+	return nil
 }

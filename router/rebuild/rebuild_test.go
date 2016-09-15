@@ -16,12 +16,11 @@ import (
 )
 
 func (s *S) TestRebuildRoutes(c *check.C) {
-	a := app.App{Name: "my-test-app", Plan: app.Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
-	provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.RemoveRoute(a.Name, units[2].Address)
@@ -44,12 +43,11 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 }
 
 func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
-	a := app.App{Name: "my-test-app", Plan: app.Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
-	provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
@@ -80,18 +78,16 @@ func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l URLList) Less(i, j int) bool { return l[i].String() < l[j].String() }
 
 func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
-	a1 := app.App{Name: "my-test-app-1", Plan: app.Plan{Router: "fake"}}
-	a2 := app.App{Name: "my-test-app-2", Plan: app.Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a1)
+	a1 := app.App{Name: "my-test-app-1", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a1, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(a2)
+	a2 := app.App{Name: "my-test-app-2", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a2, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a1)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a1, 3, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a2)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a2, 2, "web", nil)
 	c.Assert(err, check.IsNil)
-	provisiontest.ProvisionerInstance.AddUnits(&a1, 3, "web", nil)
-	provisiontest.ProvisionerInstance.AddUnits(&a2, 2, "web", nil)
 	units1, err := a1.Units()
 	c.Assert(err, check.IsNil)
 	units2, err := a2.Units()
@@ -131,12 +127,11 @@ func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
 }
 
 func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
-	a := app.App{Name: "my-test-app", Plan: app.Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
-	provisiontest.ProvisionerInstance.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.RemoveBackend(a.Name)
@@ -157,12 +152,11 @@ func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
 }
 
 func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
-	a := app.App{Name: "my-test-app", Plan: app.Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
 	oldIp := a.Ip
 	a.Plan = app.Plan{Router: "fake-hc"}
 	_, err = rebuild.RebuildRoutes(&a)
@@ -174,12 +168,11 @@ func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
 }
 
 func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
-	a := app.App{Name: "my-test-app", Plan: app.Plan{Router: "fake"}}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(&a)
+	_, err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	err = a.AddCName("my.cname.com")

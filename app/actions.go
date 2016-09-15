@@ -210,8 +210,42 @@ var createRepository = action.Action{
 	MinParams: 1,
 }
 
-// provisionApp provisions the app in the provisioner. It takes two arguments:
-// the app, and the number of units to create (an unsigned integer).
+var addRouterBackend = action.Action{
+	Name: "add-router-backend",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app *App
+		switch ctx.Params[0].(type) {
+		case *App:
+			app = ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be *App.")
+		}
+		r, err := app.Router()
+		if err != nil {
+			return nil, err
+		}
+		if optsRouter, ok := r.(router.OptsRouter); ok {
+			err = optsRouter.AddBackendOpts(app.GetName(), app.GetRouterOpts())
+		} else {
+			err = r.AddBackend(app.GetName())
+		}
+		return app, err
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.FWResult.(*App)
+		r, err := app.Router()
+		if err != nil {
+			log.Errorf("[add-router-backend rollback] unable to get app router: %s", err)
+			return
+		}
+		err = r.RemoveBackend(app.GetName())
+		if err != nil {
+			log.Errorf("[add-router-backend rollback] unable to remove router backend: %s", err)
+		}
+	},
+	MinParams: 1,
+}
+
 var provisionApp = action.Action{
 	Name: "provision-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {

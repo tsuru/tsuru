@@ -298,6 +298,7 @@ func CreateApp(app *App, user *auth.User) error {
 		&insertApp,
 		&exportEnvironmentsAction,
 		&createRepository,
+		&addRouterBackend,
 		&provisionApp,
 		&setAppIp,
 	}
@@ -425,6 +426,13 @@ func Delete(app *App, w io.Writer) error {
 	err = prov.Destroy(app)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
+	}
+	r, err := app.Router()
+	if err == nil {
+		err = r.RemoveBackend(app.Name)
+	}
+	if err != nil {
+		logErr("Failed to remove router backend", err)
 	}
 	err = app.unbind()
 	if err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -48,6 +49,10 @@ func (s *S) TestProvisionAddUnitsName(c *check.C) {
 
 func (s *S) TestSetAppIpName(c *check.C) {
 	c.Assert(setAppIp.Name, check.Equals, "set-app-ip")
+}
+
+func (s *S) TestAddRouterBackendName(c *check.C) {
+	c.Assert(addRouterBackend.Name, check.Equals, "add-router-backend")
 }
 
 func (s *S) TestInsertAppForward(c *check.C) {
@@ -262,7 +267,6 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
-	defer s.provisioner.Destroy(&app)
 	c.Assert(err, check.IsNil)
 	a, ok := result.(*App)
 	c.Assert(ok, check.Equals, true)
@@ -280,7 +284,6 @@ func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
-	defer s.provisioner.Destroy(&app)
 	c.Assert(err, check.IsNil)
 	a, ok := result.(*App)
 	c.Assert(ok, check.Equals, true)
@@ -544,11 +547,12 @@ func (s *S) TestReserveUnitsMinParams(c *check.C) {
 
 func (s *S) TestProvisionAddUnits(c *check.C) {
 	app := App{
-		Name:     "visions",
-		Platform: "django",
+		Name:      "visions",
+		Platform:  "django",
+		TeamOwner: s.team.Name,
 	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
 	fwresult, err := provisionAddUnits.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -561,9 +565,12 @@ func (s *S) TestProvisionAddUnits(c *check.C) {
 func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {
 	s.provisioner.PrepareFailure("AddUnits", errors.New("Failed to add units"))
 	app := App{
-		Name:     "visions",
-		Platform: "django",
+		Name:      "visions",
+		Platform:  "django",
+		TeamOwner: s.team.Name,
 	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
 	result, err := provisionAddUnits.Forward(ctx)
 	c.Assert(result, check.IsNil)
@@ -583,10 +590,8 @@ func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
 }
 
 func (s *S) TestSetAppIpForward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey"}
-	err := s.provisioner.Provision(app)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Insert(app)
+	app := &App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
+	err := CreateApp(app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{
@@ -618,4 +623,48 @@ func (s *S) TestSetAppIpBackward(c *check.C) {
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Ip, check.Equals, "")
+}
+
+func (s *S) TestAddRouterBackendForward(c *check.C) {
+	app := App{
+		Name:     "earthshine",
+		Platform: "django",
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.FWContext{Params: []interface{}{&app, 4}}
+	result, err := addRouterBackend.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	a, ok := result.(*App)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
+}
+
+func (s *S) TestAddRouterBackendForwardInvalidApp(c *check.C) {
+	ctx := action.FWContext{Params: []interface{}{"something", 1}}
+	_, err := addRouterBackend.Forward(ctx)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestAddRouterBackendBackward(c *check.C) {
+	app := App{
+		Name:     "earthshine",
+		Platform: "django",
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
+	result, err := addRouterBackend.Forward(fwctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
+	bwctx := action.BWContext{Params: []interface{}{&app, 4}, FWResult: result}
+	addRouterBackend.Backward(bwctx)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
+}
+
+func (s *S) TestAddRouterBackendMinParams(c *check.C) {
+	c.Assert(addRouterBackend.MinParams, check.Equals, 1)
 }

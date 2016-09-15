@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -17,14 +16,12 @@ import (
 )
 
 func (s *S) TestRoutesRebuildOrEnqueueNoError(c *check.C) {
-	coll := s.conn.Apps()
 	a := &app.App{
-		Name:     "almah",
-		Platform: "static",
+		Name:      "almah",
+		Platform:  "static",
+		TeamOwner: s.team.Name,
 	}
-	err := coll.Insert(a)
-	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(a)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	invalidAddr, err := url.Parse("http://invalid.addr")
 	c.Assert(err, check.IsNil)
@@ -35,14 +32,12 @@ func (s *S) TestRoutesRebuildOrEnqueueNoError(c *check.C) {
 }
 
 func (s *S) TestRoutesRebuildOrEnqueueForceEnqueue(c *check.C) {
-	coll := s.conn.Apps()
 	a := &app.App{
-		Name:     "almah",
-		Platform: "static",
+		Name:      "almah",
+		Platform:  "static",
+		TeamOwner: s.team.Name,
 	}
-	err := coll.Insert(a)
-	c.Assert(err, check.IsNil)
-	err = provisiontest.ProvisionerInstance.Provision(a)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	invalidAddr, err := url.Parse("http://invalid.addr")
 	c.Assert(err, check.IsNil)
@@ -58,18 +53,16 @@ func (s *S) TestRoutesRebuildOrEnqueueForceEnqueue(c *check.C) {
 }
 
 func (s *S) TestRoutesRebuildOrEnqueueLocked(c *check.C) {
-	coll := s.conn.Apps()
 	a := &app.App{
-		Name:     "almah",
-		Platform: "static",
+		Name:      "almah",
+		Platform:  "static",
+		TeamOwner: s.team.Name,
 	}
-	err := coll.Insert(a)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	locked, err := app.AcquireApplicationLock(a.Name, "me", "mine")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
-	err = provisiontest.ProvisionerInstance.Provision(a)
-	c.Assert(err, check.IsNil)
 	invalidAddr, err := url.Parse("http://invalid.addr")
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.AddRoute(a.GetName(), invalidAddr)

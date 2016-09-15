@@ -293,17 +293,8 @@ func (p *dockerProvisioner) Initialize() error {
 	return p.initDockerCluster()
 }
 
-// Provision creates a route for the container
 func (p *dockerProvisioner) Provision(app provision.App) error {
-	r, err := getRouterForApp(app)
-	if err != nil {
-		log.Fatalf("Failed to get router: %s", err)
-		return err
-	}
-	if optsRouter, ok := r.(router.OptsRouter); ok {
-		return optsRouter.AddBackendOpts(app.GetName(), app.GetRouterOpts())
-	}
-	return r.AddBackend(app.GetName())
+	return nil
 }
 
 func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer) error {
@@ -723,16 +714,6 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	err = deleteAllAppImageNames(app.GetName())
 	if err != nil {
 		log.Errorf("Failed to remove image names from storage for app %s: %s", app.GetName(), err.Error())
-	}
-	r, err := getRouterForApp(app)
-	if err != nil {
-		log.Errorf("Failed to get router: %s", err.Error())
-		return err
-	}
-	err = r.RemoveBackend(app.GetName())
-	if err != nil {
-		log.Errorf("Failed to remove route backend: %s", err.Error())
-		return err
 	}
 	return nil
 }

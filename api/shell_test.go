@@ -17,23 +17,18 @@ import (
 	"github.com/tsuru/tsuru/tsurutest"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestAppShellWithAppName(c *check.C) {
 	a := app.App{
-		Name:     "someapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "someapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.logConn.Logs(a.Name).DropCollection()
-	err = s.provisioner.Provision(&a)
+	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)
 	defer server.Close()
@@ -66,18 +61,14 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 
 func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 	a := app.App{
-		Name:     "someapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "someapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.logConn.Logs(a.Name).DropCollection()
-	err = s.provisioner.Provision(&a)
+	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)
 	defer server.Close()
@@ -110,18 +101,14 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 
 func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	a := app.App{
-		Name:     "someapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "someapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.logConn.Logs(a.Name).DropCollection()
-	err = s.provisioner.Provision(&a)
+	_, err = s.provisioner.AddUnits(&a, 5, "web", nil)
 	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 5, "web", nil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
 	unit := units[3]
@@ -162,18 +149,14 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 
 func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 	a := app.App{
-		Name:     "someapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
+		Name:      "someapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.logConn.Logs(a.Name).DropCollection()
-	err = s.provisioner.Provision(&a)
+	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)
 	defer server.Close()
@@ -200,21 +183,12 @@ func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 }
 
 func (s *S) TestAppShellGenericError(c *check.C) {
-	a := app.App{
-		Name:     "someapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.provisioner.Provision(&a)
-	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)
 	defer server.Close()
 	testServerURL, err := url.Parse(server.URL)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm", testServerURL.Host, a.Name)
+	url := fmt.Sprintf("ws://%s/apps/someapp/shell?width=140&height=38&term=xterm", testServerURL.Host)
 	config, err := websocket.NewConfig(url, "ws://localhost/")
 	c.Assert(err, check.IsNil)
 	config.Header.Set("Authorization", "bearer "+s.token.GetValue())

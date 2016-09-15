@@ -84,6 +84,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		Quota:     quota.Unlimited,
 		Pool:      "test-default",
 	}
+	routertest.FakeRouter.AddBackend(name)
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
@@ -727,10 +728,6 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	}
 	if p.Provisioned(app) {
 		return &provision.Error{Reason: "App already provisioned."}
-	}
-	err := routertest.FakeRouter.AddBackend(app.GetName())
-	if err != nil {
-		return err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()

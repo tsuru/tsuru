@@ -4772,17 +4772,11 @@ func (s *S) TestSwapIncompatibleUnits(c *check.C) {
 }
 
 func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
+	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
-	err = s.provisioner.Provision(&app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "y"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
-	err = s.provisioner.Provision(&app2)
+	app2 := app.App{Name: "app2", Platform: "y", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("app1=app1&app2=app2&force=true&cnameOnly=false")
 	request, err := http.NewRequest("POST", "/swap", b)
@@ -4914,19 +4908,15 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	a := app.App{
 		Name:     "myappx",
 		Platform: "python",
-		Teams:    []string{s.team.Name},
 		Env: map[string]bind.EnvVar{
 			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
 		},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.logConn.Logs(a.Name).DropCollection()
-	err = s.provisioner.Provision(&a)
+	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	oldIP := units[0].Ip
@@ -4939,15 +4929,14 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	expected := []map[string]interface{}{{
-		"name":   "MY_VAR_1",
-		"value":  "value1",
-		"public": true,
-	}}
 	result := []map[string]interface{}{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
+	envMap := map[interface{}]interface{}{}
+	for _, envVar := range result {
+		envMap[envVar["name"]] = envVar["value"]
+	}
+	c.Assert(envMap["MY_VAR_1"], check.Equals, "value1")
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Ip, check.Equals, oldIP+"-updated")
@@ -4984,19 +4973,15 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	a := app.App{
 		Name:     "myappx",
 		Platform: "python",
-		Teams:    []string{s.team.Name},
 		Env: map[string]bind.EnvVar{
 			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
 		},
+		TeamOwner: s.team.Name,
 	}
-	err := s.conn.Apps().Insert(a)
+	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.logConn.Logs(a.Name).DropCollection()
-	err = s.provisioner.Provision(&a)
+	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	oldIP := units[0].Ip
@@ -5012,15 +4997,14 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	expected := []map[string]interface{}{{
-		"name":   "MY_VAR_1",
-		"value":  "value1",
-		"public": true,
-	}}
 	result := []map[string]interface{}{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
+	envMap := map[interface{}]interface{}{}
+	for _, envVar := range result {
+		envMap[envVar["name"]] = envVar["value"]
+	}
+	c.Assert(envMap["MY_VAR_1"], check.Equals, "value1")
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Ip, check.Equals, oldIP+"-updated")

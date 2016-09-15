@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -113,6 +114,7 @@ func (s *S) SetUpTest(c *check.C) {
 	iaas.ResetAll()
 	repositorytest.Reset()
 	queue.ResetQueue()
+	repository.Manager().CreateUser(s.user.Email)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)

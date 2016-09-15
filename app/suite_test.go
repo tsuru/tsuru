@@ -129,7 +129,14 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	// Reset fake routers twice, first time will remove registered failures and
+	// allow pending enqueued tasks to run, second time (after queue is reset)
+	// will remove any routes added by executed queue tasks.
+	routertest.FakeRouter.Reset()
+	routertest.HCRouter.Reset()
 	queue.ResetQueue()
+	routertest.FakeRouter.Reset()
+	routertest.HCRouter.Reset()
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(appName)
 		if err == ErrAppNotFound {
@@ -139,8 +146,6 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	config.Set("docker:router", "fake")
-	routertest.FakeRouter.Reset()
-	routertest.HCRouter.Reset()
 	s.provisioner.Reset()
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
@@ -153,6 +158,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Swap:     1024,
 		CpuShare: 100,
 		Default:  true,
+		Router:   "fake",
 	}
 	err = s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
