@@ -11,9 +11,9 @@ One of the ways to interact with your tsuru installation is using the
 The dashboard provides interesting features for both tsuru users (application information,
 metrics and logs for example) and tsuru admins (hosts metrics, healings and much more).
 
-The dashboard runs as a regular tsuru python application. This guide will cover:
+The dashboard runs as a regular tsuru Python application. This guide will cover:
 
-    1. Adding the python platform
+    1. Adding the Python platform
     2. Creating the dashboard app
     3. Deploying the tsuru dashboard
 
@@ -21,11 +21,11 @@ You should already have a pool and at least one docker node to run your applicat
 Please refer to :doc:`adding nodes </installing/adding-nodes>` for more details.
 
 --------------------------
-Adding the python platform
+Adding the Python platform
 --------------------------
 
 Platforms are responsible for building and running your application. The dashboard requires
-the python platform, which can be easily installed with:
+the Python platform, which can be easily installed with:
 
 .. highlight:: bash
 
@@ -33,7 +33,7 @@ the python platform, which can be easily installed with:
 
     tsuru-admin platform-add python
 
-This will install the default python platform. Please refer to :doc:`add platform </managing/add-platform>`
+This will install the default Python platform. Please refer to :doc:`add platform </managing/add-platform>`
 for more details.
 
 --------------------------
@@ -48,7 +48,7 @@ Now, lets create the dashboard application:
 
     tsuru app-create tsuru-dashboard python -t admin
 
-This will create an application called tsuru-dashboard which uses the python platform
+This will create an application called tsuru-dashboard which uses the Python platform
 and belongs to the admin team. Please refer to the
 `app-create client reference <https://tsuru-client.readthedocs.io/en/latest/reference.html#create-an-application>`_
 for more information.
