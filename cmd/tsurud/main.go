@@ -7,9 +7,6 @@ package main
 import (
 	"log"
 	"os"
-	"os/signal"
-	"runtime/pprof"
-	"syscall"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
@@ -52,21 +49,6 @@ func registerProvisionersCommands(m *cmd.Manager) error {
 		}
 	}
 	return nil
-}
-
-func listenSignals() {
-	ch := make(chan os.Signal, 2)
-	go func() {
-		for sig := range ch {
-			switch sig {
-			case syscall.SIGUSR1:
-				pprof.Lookup("goroutine").WriteTo(os.Stdout, 2)
-			case syscall.SIGHUP:
-				config.ReadConfigFile(configPath)
-			}
-		}
-	}()
-	signal.Notify(ch, syscall.SIGHUP, syscall.SIGUSR1)
 }
 
 func main() {
