@@ -76,6 +76,41 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestAddNodeHandlerExisting(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	defer provision.RemovePool("pool1")
+	serverAddr := "http://mysrv1"
+	params := provision.AddNodeOptions{
+		Register: true,
+		Metadata: map[string]string{
+			"address": serverAddr,
+			"pool":    "pool1",
+		},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("POST", "/1.2/node", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
+	req, err = http.NewRequest("POST", "/1.2/node", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", s.token.GetValue())
+	rec = httptest.NewRecorder()
+	m.ServeHTTP(rec, req)
+	var result map[string]string
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result["Error"], check.Equals, "node with address \"http://mysrv1\" already exists in provisioner \"fake\"\n\n")
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
+}
+
 func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	opts := provision.AddPoolOptions{Name: "pool1"}

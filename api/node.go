@@ -60,7 +60,10 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 	}
 	prov, _, err := provision.FindNode(address)
 	if err != provision.ErrNodeNotFound {
-		return "", nil, fmt.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
+		if err == nil {
+			return "", nil, fmt.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
+		}
+		return "", nil, err
 	}
 	err = validateNodeAddress(address)
 	if err != nil {
