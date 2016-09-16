@@ -1,4 +1,4 @@
-// Copyright 2015 go-dockerclient authors. All rights reserved.
+// Copyright 2013 go-dockerclient authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -297,7 +297,6 @@ type Config struct {
 	Image             string              `json:"Image,omitempty" yaml:"Image,omitempty"`
 	Volumes           map[string]struct{} `json:"Volumes,omitempty" yaml:"Volumes,omitempty"`
 	VolumeDriver      string              `json:"VolumeDriver,omitempty" yaml:"VolumeDriver,omitempty"`
-	VolumesFrom       string              `json:"VolumesFrom,omitempty" yaml:"VolumesFrom,omitempty"`
 	WorkingDir        string              `json:"WorkingDir,omitempty" yaml:"WorkingDir,omitempty"`
 	MacAddress        string              `json:"MacAddress,omitempty" yaml:"MacAddress,omitempty"`
 	Entrypoint        []string            `json:"Entrypoint" yaml:"Entrypoint"`
@@ -306,6 +305,10 @@ type Config struct {
 	OnBuild           []string            `json:"OnBuild,omitempty" yaml:"OnBuild,omitempty"`
 	Mounts            []Mount             `json:"Mounts,omitempty" yaml:"Mounts,omitempty"`
 	Labels            map[string]string   `json:"Labels,omitempty" yaml:"Labels,omitempty"`
+
+	// This is no longer used and has been kept here for backward
+	// compatibility, please use HostConfig.VolumesFrom.
+	VolumesFrom string `json:"VolumesFrom,omitempty" yaml:"VolumesFrom,omitempty"`
 }
 
 // Mount represents a mount point in the container.
@@ -1166,6 +1169,12 @@ type CopyFromContainerOptions struct {
 func (c *Client) CopyFromContainer(opts CopyFromContainerOptions) error {
 	if opts.Container == "" {
 		return &NoSuchContainer{ID: opts.Container}
+	}
+	if c.serverAPIVersion == nil {
+		c.checkAPIVersion()
+	}
+	if c.serverAPIVersion != nil && c.serverAPIVersion.GreaterThanOrEqualTo(apiVersion124) {
+		return errors.New("go-dockerclient: CopyFromContainer is no longer available in Docker >= 1.12, use DownloadFromContainer instead")
 	}
 	url := fmt.Sprintf("/containers/%s/copy", opts.Container)
 	resp, err := c.do("POST", url, doOptions{
