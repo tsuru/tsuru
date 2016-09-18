@@ -23,6 +23,7 @@ func (s *S) TestValidateEmail(c *check.C) {
 		input    string
 		expected bool
 	}{
+		{"test+testing@example.com", true},
 		{"gopher.golang@corp.globo.com", true},
 		{"gopher@corp.globo.com", true},
 		{"gopher@souza.cc", true},
