@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -20,6 +21,8 @@ const (
 	labelInternalPrefix = "tsuru-internal-"
 	labelDockerAddr     = labelInternalPrefix + "docker-addr"
 )
+
+var errNotImplemented = errors.New("not implemented")
 
 type swarmProvisioner struct{}
 
@@ -38,47 +41,47 @@ func (p *swarmProvisioner) Provision(provision.App) error {
 }
 
 func (p *swarmProvisioner) Destroy(provision.App) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) AddUnits(provision.App, uint, string, io.Writer) ([]provision.Unit, error) {
-	return nil, nil
+	return nil, errNotImplemented
 }
 
 func (p *swarmProvisioner) RemoveUnits(provision.App, uint, string, io.Writer) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) Restart(provision.App, string, io.Writer) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) Start(provision.App, string) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) Stop(provision.App, string) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) Units(provision.App) ([]provision.Unit, error) {
-	return nil, nil
+	return nil, errNotImplemented
 }
 
 func (p *swarmProvisioner) RoutableUnits(provision.App) ([]provision.Unit, error) {
-	return nil, nil
+	return nil, errNotImplemented
 }
 
 func (p *swarmProvisioner) RegisterUnit(provision.Unit, map[string]interface{}) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) SetNodeStatus(provision.NodeStatusData) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
@@ -189,9 +192,9 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *swarmProvisioner) RemoveNode(provision.RemoveNodeOptions) error {
-	return nil
+	return errNotImplemented
 }
 
 func (p *swarmProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
-	return nil
+	return errNotImplemented
 }
