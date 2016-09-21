@@ -102,7 +102,7 @@ func (p *swarmProvisioner) SetNodeStatus(provision.NodeStatusData) error {
 }
 
 func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	client, _, err := chooseDBSwarmNode()
+	client, err := chooseDBSwarmNode()
 	if err != nil {
 		if err == errNoSwarmNode {
 			return nil, nil
@@ -146,7 +146,7 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	existingClient, existingAddr, err := chooseDBSwarmNode()
+	existingClient, err := chooseDBSwarmNode()
 	if err != nil && err != errNoSwarmNode {
 		return err
 	}
@@ -167,16 +167,28 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		}
 	} else {
 		var swarmInfo swarm.Swarm
+		var dockerInfo *docker.DockerInfo
 		swarmInfo, err = existingClient.InspectSwarm(nil)
 		if err != nil {
 			return err
+		}
+		dockerInfo, err = existingClient.Info()
+		if err != nil {
+			return err
+		}
+		if len(dockerInfo.Swarm.RemoteManagers) == 0 {
+			return fmt.Errorf("no remote managers found in node %#v", dockerInfo)
+		}
+		addrs := make([]string, len(dockerInfo.Swarm.RemoteManagers))
+		for i, peer := range dockerInfo.Swarm.RemoteManagers {
+			addrs[i] = peer.Addr
 		}
 		opts := docker.JoinSwarmOptions{
 			JoinRequest: swarm.JoinRequest{
 				ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
 				AdvertiseAddr: host,
 				JoinToken:     swarmInfo.JoinTokens.Manager,
-				RemoteAddrs:   []string{existingAddr.SwarmAddress},
+				RemoteAddrs:   addrs,
 			},
 		}
 		err = newClient.JoinSwarm(opts)

@@ -17,31 +17,30 @@ var errNoSwarmNode = errors.New("no swarm nodes available")
 
 type NodeAddr struct {
 	DockerAddress string `bson:"_id"`
-	SwarmAddress  string
 }
 
-func chooseDBSwarmNode() (*docker.Client, *NodeAddr, error) {
+func chooseDBSwarmNode() (*docker.Client, error) {
 	coll, err := nodeAddrCollection()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer coll.Close()
 	var addrs []NodeAddr
 	err = coll.Find(nil).All(&addrs)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if len(addrs) == 0 {
-		return nil, nil, errNoSwarmNode
+		return nil, errNoSwarmNode
 	}
 	addr := addrs[rand.Intn(len(addrs))]
 	// TODO(cezarsa): try ping. in case of failure, try another node and update
 	// swarm node collection
 	client, err := newClient(addr.DockerAddress)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return client, &addr, nil
+	return client, nil
 }
 
 func updateDBSwarmNodes(client *docker.Client) error {
@@ -60,7 +59,6 @@ func updateDBSwarmNodes(client *docker.Client) error {
 		}
 		docs = append(docs, NodeAddr{
 			DockerAddress: addr,
-			SwarmAddress:  n.ManagerStatus.Addr,
 		})
 	}
 	coll, err := nodeAddrCollection()

@@ -6,7 +6,6 @@ package swarm
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -51,8 +50,7 @@ func (s *S) TestAddNode(c *check.C) {
 	var all []NodeAddr
 	err = coll.Find(nil).All(&all)
 	c.Assert(err, check.IsNil)
-	_, port, _ := net.SplitHostPort(srv.SwarmAddress())
-	c.Assert(all, check.DeepEquals, []NodeAddr{{DockerAddress: srv.URL(), SwarmAddress: "127.0.0.1:" + port}})
+	c.Assert(all, check.DeepEquals, []NodeAddr{{DockerAddress: srv.URL()}})
 }
 
 func (s *S) TestAddNodeMultiple(c *check.C) {
@@ -65,7 +63,7 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 			Metadata: metadata,
 		}
 		err = s.p.AddNode(opts)
-		c.Assert(err, check.IsNil)
+		c.Assert(err, check.IsNil, check.Commentf("server %d", i))
 	}
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
