@@ -1367,6 +1367,12 @@ func (s *DockerServer) infoDocker(w http.ResponseWriter, r *http.Request) {
 		swarmInfo = &swarm.Info{
 			NodeID: s.nodeId,
 		}
+		for _, n := range s.nodes {
+			swarmInfo.RemoteManagers = append(swarmInfo.RemoteManagers, swarm.Peer{
+				NodeID: n.ID,
+				Addr:   n.ManagerStatus.Addr,
+			})
+		}
 	}
 	envs := map[string]interface{}{
 		"ID":                "AAAA:XXXX:0000:BBBB:AAAA:XXXX:0000:BBBB:AAAA:XXXX:0000:BBBB",
