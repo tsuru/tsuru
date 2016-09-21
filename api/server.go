@@ -269,6 +269,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "POST", "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
 	m.Add("1.2", "POST", "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
 
+	m.Add("1.3", "POST", "/install/hosts", AuthorizationRequiredHandler(installHostAdd))
+	m.Add("1.3", "GET", "/install/hosts", AuthorizationRequiredHandler(installHostList))
+	m.Add("1.3", "GET", "/install/hosts/{name}", AuthorizationRequiredHandler(installHostInfo))
+
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.0", "GET", "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
