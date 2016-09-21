@@ -97,8 +97,8 @@ var (
 //
 // See https://goo.gl/xBe1u3 for more details.
 type ListImagesOptions struct {
-	All     bool
 	Filters map[string][]string
+	All     bool
 	Digests bool
 	Filter  string
 	Context context.Context
@@ -444,6 +444,7 @@ type BuildImageOptions struct {
 	Pull                bool               `qs:"pull"`
 	RmTmpContainer      bool               `qs:"rm"`
 	ForceRmTmpContainer bool               `qs:"forcerm"`
+	RawJSONStream       bool               `qs:"-"`
 	Memory              int64              `qs:"memory"`
 	Memswap             int64              `qs:"memswap"`
 	CPUShares           int64              `qs:"cpushares"`
@@ -452,7 +453,6 @@ type BuildImageOptions struct {
 	CPUSetCPUs          string             `qs:"cpusetcpus"`
 	InputStream         io.Reader          `qs:"-"`
 	OutputStream        io.Writer          `qs:"-"`
-	RawJSONStream       bool               `qs:"-"`
 	Remote              string             `qs:"remote"`
 	Auth                AuthConfiguration  `qs:"-"` // for older docker X-Registry-Auth header
 	AuthConfigs         AuthConfigurations `qs:"-"` // for newer docker X-Registry-Config header

@@ -52,8 +52,9 @@ type DockerInfo struct {
 	BridgeNfIptables   bool
 	BridgeNfIP6tables  bool `json:"BridgeNfIp6tables"`
 	Debug              bool
-	NFd                int
 	OomKillDisable     bool
+	ExperimentalBuild  bool
+	NFd                int
 	NGoroutines        int
 	SystemTime         string
 	ExecutionDriver    string
@@ -73,7 +74,6 @@ type DockerInfo struct {
 	NoProxy            string
 	Name               string
 	Labels             []string
-	ExperimentalBuild  bool
 	ServerVersion      string
 	ClusterStore       string
 	ClusterAdvertise   string

@@ -76,7 +76,7 @@ func (c *Client) InspectNode(id string) (*swarm.Node, error) {
 // See http://goo.gl/VPBFgA for more details.
 type UpdateNodeOptions struct {
 	swarm.NodeSpec
-	Version int
+	Version uint64
 	Context context.Context
 }
 
@@ -85,7 +85,7 @@ type UpdateNodeOptions struct {
 // See http://goo.gl/VPBFgA for more details.
 func (c *Client) UpdateNode(id string, opts UpdateNodeOptions) error {
 	params := make(url.Values)
-	params.Set("version", strconv.Itoa(opts.Version))
+	params.Set("version", strconv.FormatUint(opts.Version, 10))
 	path := "/nodes/" + id + "/update?" + params.Encode()
 	_, err := c.do("POST", path, doOptions{
 		context:   opts.Context,

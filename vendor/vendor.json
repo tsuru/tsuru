@@ -254,16 +254,16 @@
 			"revisionTime": "2016-01-25T17:48:45Z"
 		},
 		{
-			"checksumSHA1": "T6oH2oU+mrYVfFEsSwPSVT53fVw=",
+			"checksumSHA1": "mh1aI2zsArn9RUyGb1zO5FPOUE4=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "01804dec8a84d0a77e63611f2b62d33e9bb2b64a",
-			"revisionTime": "2016-09-10T00:22:56Z"
+			"revision": "2ad621ddb86067e378f61f918704d81dda2ec792",
+			"revisionTime": "2016-09-21T14:08:13Z"
 		},
 		{
-			"checksumSHA1": "QHFTlf+6qxphNxnlvfSQRVZ02dY=",
+			"checksumSHA1": "EeeqXfyU6R+upU+he4E/Yo7zk9A=",
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "01804dec8a84d0a77e63611f2b62d33e9bb2b64a",
-			"revisionTime": "2016-09-10T00:22:56Z"
+			"revision": "2ad621ddb86067e378f61f918704d81dda2ec792",
+			"revisionTime": "2016-09-21T14:08:13Z"
 		},
 		{
 			"path": "github.com/garyburd/redigo/redis",

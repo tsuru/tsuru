@@ -61,13 +61,12 @@ func (c *Client) CreateExec(opts CreateExecOptions) (*Exec, error) {
 //
 // See https://goo.gl/iQCnto for more details
 type StartExecOptions struct {
-	Detach bool `json:"Detach,omitempty" yaml:"Detach,omitempty"`
-
-	Tty bool `json:"Tty,omitempty" yaml:"Tty,omitempty"`
-
 	InputStream  io.Reader `qs:"-"`
 	OutputStream io.Writer `qs:"-"`
 	ErrorStream  io.Writer `qs:"-"`
+
+	Detach bool `json:"Detach,omitempty" yaml:"Detach,omitempty"`
+	Tty    bool `json:"Tty,omitempty" yaml:"Tty,omitempty"`
 
 	// Use raw terminal? Usually true when the container contains a TTY.
 	RawTerminal bool `qs:"-"`
@@ -154,8 +153,8 @@ func (c *Client) ResizeExecTTY(id string, height, width int) error {
 // ExecProcessConfig is a type describing the command associated to a Exec
 // instance. It's used in the ExecInspect type.
 type ExecProcessConfig struct {
-	Privileged bool     `json:"privileged,omitempty" yaml:"privileged,omitempty"`
 	User       string   `json:"user,omitempty" yaml:"user,omitempty"`
+	Privileged bool     `json:"privileged,omitempty" yaml:"privileged,omitempty"`
 	Tty        bool     `json:"tty,omitempty" yaml:"tty,omitempty"`
 	EntryPoint string   `json:"entrypoint,omitempty" yaml:"entrypoint,omitempty"`
 	Arguments  []string `json:"arguments,omitempty" yaml:"arguments,omitempty"`
@@ -168,8 +167,8 @@ type ExecProcessConfig struct {
 // See https://goo.gl/gPtX9R for more details
 type ExecInspect struct {
 	ID            string            `json:"ID,omitempty" yaml:"ID,omitempty"`
-	Running       bool              `json:"Running,omitempty" yaml:"Running,omitempty"`
 	ExitCode      int               `json:"ExitCode,omitempty" yaml:"ExitCode,omitempty"`
+	Running       bool              `json:"Running,omitempty" yaml:"Running,omitempty"`
 	OpenStdin     bool              `json:"OpenStdin,omitempty" yaml:"OpenStdin,omitempty"`
 	OpenStderr    bool              `json:"OpenStderr,omitempty" yaml:"OpenStderr,omitempty"`
 	OpenStdout    bool              `json:"OpenStdout,omitempty" yaml:"OpenStdout,omitempty"`
