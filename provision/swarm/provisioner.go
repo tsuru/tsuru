@@ -179,8 +179,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		nodeData.Spec.Annotations.Labels[k] = v
 	}
 	err = newClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
-		// TODO(cezarsa): go-dockerclient should also expect a uint64 as Version
-		Version:  int(nodeData.Version.Index),
+		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,
 	})
 	if err != nil {
