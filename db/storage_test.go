@@ -202,3 +202,12 @@ func (s *S) TestRoles(c *check.C) {
 	rolesc := strg.Collection("roles")
 	c.Assert(roles, check.DeepEquals, rolesc)
 }
+
+func (s *S) TestInstallHosts(c *check.C) {
+	strg, err := Conn()
+	c.Assert(err, check.IsNil)
+	defer strg.Close()
+	hosts := strg.InstallHosts()
+	hostsc := strg.Collection("install_hosts")
+	c.Assert(hosts, check.DeepEquals, hostsc)
+}
