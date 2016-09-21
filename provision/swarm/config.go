@@ -10,8 +10,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"path/filepath"
-
-	"github.com/tsuru/config"
 )
 
 var swarmConfig swarmProvisionerConfig
@@ -19,22 +17,6 @@ var swarmConfig swarmProvisionerConfig
 type swarmProvisionerConfig struct {
 	swarmPort int
 	tlsConfig *tls.Config
-}
-
-func (p *swarmProvisioner) Initialize() error {
-	var err error
-	swarmConfig.swarmPort, err = config.GetInt("swarm:swarm-port")
-	if err != nil {
-		swarmConfig.swarmPort = 2377
-	}
-	caPath, _ := config.GetString("swarm:tls:root-path")
-	if caPath != "" {
-		swarmConfig.tlsConfig, err = readTLSConfig(caPath)
-		if err != nil {
-			return err
-		}
-	}
-	return err
 }
 
 func readTLSConfig(caPath string) (*tls.Config, error) {

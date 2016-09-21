@@ -12,27 +12,33 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
+const (
+	dockerDialTimeout  = 5 * time.Second
+	dockerFullTimeout  = time.Minute
+	dockerTCPKeepALive = 30 * time.Second
+)
+
 func newClient(address string) (*docker.Client, error) {
 	client, err := docker.NewClient(address)
 	if err != nil {
 		return nil, err
 	}
-	dialTimeout := 5 * time.Second
-	fullTimeout := time.Minute
 	dialer := &net.Dialer{
-		Timeout:   dialTimeout,
-		KeepAlive: 30 * time.Second,
+		Timeout:   dockerDialTimeout,
+		KeepAlive: dockerTCPKeepALive,
 	}
 	transport := http.Transport{
 		Dial:                dialer.Dial,
-		TLSHandshakeTimeout: dialTimeout,
-		MaxIdleConnsPerHost: -1,
-		DisableKeepAlives:   true,
+		TLSHandshakeTimeout: dockerDialTimeout,
 		TLSClientConfig:     swarmConfig.tlsConfig,
+		// No connection pooling so that we have reliable dial timeouts. Slower
+		// but safer.
+		DisableKeepAlives:   true,
+		MaxIdleConnsPerHost: -1,
 	}
 	httpClient := &http.Client{
 		Transport: &transport,
-		Timeout:   fullTimeout,
+		Timeout:   dockerFullTimeout,
 	}
 	client.HTTPClient = httpClient
 	client.Dialer = dialer

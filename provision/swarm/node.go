@@ -44,5 +44,5 @@ func (n *swarmNodeWrapper) Metadata() map[string]string {
 }
 
 func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
-	return nil, nil
+	return nil, errNotImplemented
 }

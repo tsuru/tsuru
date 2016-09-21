@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 )
@@ -30,6 +31,22 @@ func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return &swarmProvisioner{}, nil
 	})
+}
+
+func (p *swarmProvisioner) Initialize() error {
+	var err error
+	swarmConfig.swarmPort, err = config.GetInt("swarm:swarm-port")
+	if err != nil {
+		swarmConfig.swarmPort = 2377
+	}
+	caPath, _ := config.GetString("swarm:tls:root-path")
+	if caPath != "" {
+		swarmConfig.tlsConfig, err = readTLSConfig(caPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (p *swarmProvisioner) GetName() string {
