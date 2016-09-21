@@ -25,6 +25,7 @@ func chooseDBSwarmNode() (*docker.Client, *NodeAddr, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	defer coll.Close()
 	var addrs []NodeAddr
 	err = coll.Find(nil).All(&addrs)
 	if err != nil {
@@ -66,6 +67,7 @@ func updateDBSwarmNodes(client *docker.Client) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	// TODO(cezarsa): safety and performance, do diff update instead of remove
 	// all and add all.
 	_, err = coll.RemoveAll(nil)
