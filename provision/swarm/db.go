@@ -6,42 +6,41 @@ package swarm
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 var errNoSwarmNode = errors.New("no swarm nodes available")
 
 type NodeAddr struct {
-	Address string `bson:"_id"`
+	DockerAddress string `bson:"_id"`
+	SwarmAddress  string
 }
 
-func chooseDBSwarmNode() (*docker.Client, string, error) {
+func chooseDBSwarmNode() (*docker.Client, *NodeAddr, error) {
 	coll, err := nodeAddrCollection()
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	var addrs []NodeAddr
 	err = coll.Find(nil).All(&addrs)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	if len(addrs) == 0 {
-		return nil, "", errNoSwarmNode
+		return nil, nil, errNoSwarmNode
 	}
 	addr := addrs[rand.Intn(len(addrs))]
 	// TODO(cezarsa): try ping. in case of failure, try another node and update
 	// swarm node collection
-	client, err := newClient(addr.Address)
+	client, err := newClient(addr.DockerAddress)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
-	return client, addr.Address, nil
+	return client, &addr, nil
 }
 
 func updateDBSwarmNodes(client *docker.Client) error {
@@ -54,8 +53,13 @@ func updateDBSwarmNodes(client *docker.Client) error {
 		if n.ManagerStatus == nil {
 			continue
 		}
+		addr := n.Spec.Annotations.Labels[labelDockerAddr]
+		if addr == "" {
+			continue
+		}
 		docs = append(docs, NodeAddr{
-			Address: fmt.Sprintf("%s:%d", tsuruNet.URLToHost(n.ManagerStatus.Addr), swarmConfig.dockerPort),
+			DockerAddress: addr,
+			SwarmAddress:  n.ManagerStatus.Addr,
 		})
 	}
 	coll, err := nodeAddrCollection()

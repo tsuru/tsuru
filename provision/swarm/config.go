@@ -17,30 +17,21 @@ import (
 var swarmConfig swarmProvisionerConfig
 
 type swarmProvisionerConfig struct {
-	swarmPort  int
-	dockerPort int
-	tlsConfig  *tls.Config
+	swarmPort int
+	tlsConfig *tls.Config
 }
 
 func (p *swarmProvisioner) Initialize() error {
-	swarmConfig.swarmPort, _ = config.GetInt("swarm:swarm-port")
-	if swarmConfig.swarmPort == 0 {
+	var err error
+	swarmConfig.swarmPort, err = config.GetInt("swarm:swarm-port")
+	if err != nil {
 		swarmConfig.swarmPort = 2377
 	}
 	caPath, _ := config.GetString("swarm:tls:root-path")
-	var err error
 	if caPath != "" {
 		swarmConfig.tlsConfig, err = readTLSConfig(caPath)
 		if err != nil {
 			return err
-		}
-	}
-	swarmConfig.dockerPort, _ = config.GetInt("swarm:docker-port")
-	if swarmConfig.dockerPort == 0 {
-		if swarmConfig.tlsConfig != nil {
-			swarmConfig.dockerPort = 2376
-		} else {
-			swarmConfig.dockerPort = 2375
 		}
 	}
 	return err

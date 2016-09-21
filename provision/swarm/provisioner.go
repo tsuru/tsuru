@@ -14,7 +14,12 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-const provisionerName = "swarm"
+const (
+	provisionerName = "swarm"
+
+	labelInternalPrefix = "tsuru-internal-"
+	labelDockerAddr     = labelInternalPrefix + "docker-addr"
+)
 
 type swarmProvisioner struct{}
 
@@ -129,12 +134,12 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return err
 	}
+	host := tsuruNet.URLToHost(opts.Address)
 	if existingClient == nil {
-		host := tsuruNet.URLToHost(opts.Address)
 		_, err = newClient.InitSwarm(docker.InitSwarmOptions{
 			InitRequest: swarm.InitRequest{
 				ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
-				AdvertiseAddr: fmt.Sprintf("%s:%d", host, swarmConfig.swarmPort),
+				AdvertiseAddr: host,
 			},
 		})
 		if err == docker.ErrNodeAlreadyInSwarm {
@@ -148,9 +153,10 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		}
 		opts := docker.JoinSwarmOptions{
 			JoinRequest: swarm.JoinRequest{
-				ListenAddr:  fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
-				JoinToken:   swarmInfo.JoinTokens.Manager,
-				RemoteAddrs: []string{fmt.Sprintf("%s:%d", existingAddr, swarmConfig.swarmPort)},
+				ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
+				AdvertiseAddr: host,
+				JoinToken:     swarmInfo.JoinTokens.Manager,
+				RemoteAddrs:   []string{existingAddr.SwarmAddress},
 			},
 		}
 		err = newClient.JoinSwarm(opts)
@@ -166,7 +172,12 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return err
 	}
-	nodeData.Spec.Annotations.Labels = opts.Metadata
+	nodeData.Spec.Annotations.Labels = map[string]string{
+		labelDockerAddr: opts.Address,
+	}
+	for k, v := range opts.Metadata {
+		nodeData.Spec.Annotations.Labels[k] = v
+	}
 	err = newClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		// TODO(cezarsa): go-dockerclient should also expect a uint64 as Version
 		Version:  int(nodeData.Version.Index),
