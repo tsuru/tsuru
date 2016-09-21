@@ -6,10 +6,11 @@ package swarm
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
-	"net"
 )
 
 func (s *S) TestAddNode(c *check.C) {
