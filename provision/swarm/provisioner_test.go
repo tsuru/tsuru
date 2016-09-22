@@ -6,8 +6,11 @@ package swarm
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/fsouza/go-dockerclient/testing"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
@@ -123,4 +126,57 @@ func (s *S) TestGetNode(c *check.C) {
 func (s *S) TestGetNodeNotFound(c *check.C) {
 	_, err := s.p.GetNode("http://tai.shar.malkier")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestRemoveNode(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	err = s.p.RemoveNode(provision.RemoveNodeOptions{
+		Address: srv.URL(),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.GetNode(srv.URL())
+	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestRemoveNodeRebalance(c *check.C) {
+	var reqs []*http.Request
+	srv, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/nodes/") {
+			reqs = append(reqs, r)
+		}
+	})
+	c.Assert(err, check.IsNil)
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	reqs = nil
+	err = s.p.RemoveNode(provision.RemoveNodeOptions{
+		Address:   srv.URL(),
+		Rebalance: true,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.GetNode(srv.URL())
+	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+	c.Assert(reqs, check.HasLen, 2)
+	c.Assert(reqs[0].Method, check.Equals, "POST")
+	c.Assert(reqs[1].Method, check.Equals, "DELETE")
+}
+
+func (s *S) TestRemoveNodeNotFound(c *check.C) {
+	err := s.p.RemoveNode(provision.RemoveNodeOptions{
+		Address: "localhost:1000",
+	})
+	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
 }

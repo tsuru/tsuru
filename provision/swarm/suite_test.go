@@ -43,4 +43,6 @@ func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.p = &swarmProvisioner{}
+	err = s.p.Initialize()
+	c.Assert(err, check.IsNil)
 }

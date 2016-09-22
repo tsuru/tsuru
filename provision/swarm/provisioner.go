@@ -7,6 +7,7 @@ package swarm
 import (
 	"io"
 
+	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -184,8 +185,34 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	return updateDBSwarmNodes(newClient)
 }
 
-func (p *swarmProvisioner) RemoveNode(provision.RemoveNodeOptions) error {
-	return errNotImplemented
+func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
+	node, err := p.GetNode(opts.Address)
+	if err != nil {
+		return err
+	}
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	swarmNode := node.(*swarmNodeWrapper).Node
+	if opts.Rebalance {
+		swarmNode.Spec.Availability = swarm.NodeAvailabilityDrain
+		err = client.UpdateNode(swarmNode.ID, docker.UpdateNodeOptions{
+			NodeSpec: swarmNode.Spec,
+			Version:  swarmNode.Version.Index,
+		})
+		if err != nil {
+			return errors.Wrap(err, "")
+		}
+	}
+	err = client.RemoveNode(docker.RemoveNodeOptions{
+		ID:    swarmNode.ID,
+		Force: true,
+	})
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	return updateDBSwarmNodes(client)
 }
 
 func (p *swarmProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
