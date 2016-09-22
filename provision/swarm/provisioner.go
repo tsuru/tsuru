@@ -152,11 +152,10 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return err
 	}
-	host := tsuruNet.URLToHost(opts.Address)
 	if existingClient == nil {
-		err = initSwarm(newClient, host)
+		err = initSwarm(newClient, opts.Address)
 	} else {
-		err = joinSwarm(existingClient, newClient, host)
+		err = joinSwarm(existingClient, newClient, opts.Address)
 	}
 	if err != nil {
 		return err

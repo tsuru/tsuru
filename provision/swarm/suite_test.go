@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -37,6 +38,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	rand.Seed(0)
 	config.Set("swarm:swarm-port", 0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)

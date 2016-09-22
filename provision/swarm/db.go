@@ -5,6 +5,8 @@
 package swarm
 
 import (
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"math/rand"
 
 	"github.com/fsouza/go-dockerclient"
@@ -21,8 +23,15 @@ func (e notFoundError) NotFound() bool {
 
 var errNoSwarmNode = notFoundError{errors.New("no swarm nodes available")}
 
-type NodeAddr struct {
-	DockerAddress string `bson:"_id"`
+const (
+	uniqueDocumentID    = "swarm"
+	swarmCollectionName = "swarmnodes"
+	nodeRetryCount      = 3
+)
+
+type NodeAddrs struct {
+	UniqueID  string `bson:"_id"`
+	Addresses []string
 }
 
 func chooseDBSwarmNode() (*docker.Client, error) {
@@ -31,20 +40,34 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 		return nil, err
 	}
 	defer coll.Close()
-	var addrs []NodeAddr
-	err = coll.Find(nil).All(&addrs)
+	var addrs NodeAddrs
+	err = coll.FindId(uniqueDocumentID).One(&addrs)
+	if err != nil && err != mgo.ErrNotFound {
+		return nil, errors.Wrap(err, "")
+	}
+	if len(addrs.Addresses) == 0 {
+		return nil, errors.Wrap(errNoSwarmNode, "")
+	}
+	var client *docker.Client
+	initialIdx := rand.Intn(len(addrs.Addresses))
+	var i int
+	for ; i < nodeRetryCount; i++ {
+		idx := (initialIdx + i) % len(addrs.Addresses)
+		addr := addrs.Addresses[idx]
+		client, err = newClient(addr)
+		if err != nil {
+			return nil, err
+		}
+		err = client.Ping()
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "")
 	}
-	if len(addrs) == 0 {
-		return nil, errors.Wrap(errNoSwarmNode, "")
-	}
-	addr := addrs[rand.Intn(len(addrs))]
-	// TODO(cezarsa): try ping. in case of failure, try another node and update
-	// swarm node collection
-	client, err := newClient(addr.DockerAddress)
-	if err != nil {
-		return nil, err
+	if i > 0 {
+		updateDBSwarmNodes(client)
 	}
 	return client, nil
 }
@@ -54,7 +77,7 @@ func updateDBSwarmNodes(client *docker.Client) error {
 	if err != nil {
 		return errors.Wrap(err, "")
 	}
-	var docs []interface{}
+	var addrs []string
 	for _, n := range nodes {
 		if n.ManagerStatus == nil {
 			continue
@@ -63,22 +86,14 @@ func updateDBSwarmNodes(client *docker.Client) error {
 		if addr == "" {
 			continue
 		}
-		docs = append(docs, NodeAddr{
-			DockerAddress: addr,
-		})
+		addrs = append(addrs, addr)
 	}
 	coll, err := nodeAddrCollection()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	// TODO(cezarsa): safety and performance, do diff update instead of remove
-	// all and add all.
-	_, err = coll.RemoveAll(nil)
-	if err != nil {
-		return errors.Wrap(err, "")
-	}
-	err = coll.Insert(docs...)
+	_, err = coll.UpsertId(uniqueDocumentID, bson.M{"$set": bson.M{"addresses": addrs}})
 	if err != nil {
 		return errors.Wrap(err, "")
 	}
@@ -90,5 +105,5 @@ func nodeAddrCollection() (*storage.Collection, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "")
 	}
-	return conn.Collection("swarmnodes"), nil
+	return conn.Collection(swarmCollectionName), nil
 }

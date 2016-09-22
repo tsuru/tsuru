@@ -13,6 +13,7 @@ import (
 	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
+	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 const (
@@ -49,7 +50,8 @@ func newClient(address string) (*docker.Client, error) {
 	return client, nil
 }
 
-func initSwarm(client *docker.Client, host string) error {
+func initSwarm(client *docker.Client, addr string) error {
+	host := tsuruNet.URLToHost(addr)
 	_, err := client.InitSwarm(docker.InitSwarmOptions{
 		InitRequest: swarm.InitRequest{
 			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
@@ -62,7 +64,7 @@ func initSwarm(client *docker.Client, host string) error {
 	return nil
 }
 
-func joinSwarm(existingClient *docker.Client, newClient *docker.Client, host string) error {
+func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr string) error {
 	swarmInfo, err := existingClient.InspectSwarm(nil)
 	if err != nil {
 		return errors.Wrap(err, "")
@@ -78,6 +80,7 @@ func joinSwarm(existingClient *docker.Client, newClient *docker.Client, host str
 	for i, peer := range dockerInfo.Swarm.RemoteManagers {
 		addrs[i] = peer.Addr
 	}
+	host := tsuruNet.URLToHost(addr)
 	opts := docker.JoinSwarmOptions{
 		JoinRequest: swarm.JoinRequest{
 			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),

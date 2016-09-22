@@ -48,10 +48,10 @@ func (s *S) TestAddNode(c *check.C) {
 	coll, err := nodeAddrCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	var all []NodeAddr
-	err = coll.Find(nil).All(&all)
+	var nodeAddrs NodeAddrs
+	err = coll.FindId(uniqueDocumentID).One(&nodeAddrs)
 	c.Assert(err, check.IsNil)
-	c.Assert(all, check.DeepEquals, []NodeAddr{{DockerAddress: srv.URL()}})
+	c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{srv.URL()})
 }
 
 func (s *S) TestAddNodeMultiple(c *check.C) {
