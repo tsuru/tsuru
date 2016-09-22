@@ -32,6 +32,7 @@ before_install:
   - go env && pwd
 script:
   - make test
+  - while true; do echo .; sleep 30; done &
   - make metalint
   - go get golang.org/x/net/http2/...
   - ./check-handlers.sh
