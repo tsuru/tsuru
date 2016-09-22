@@ -47,6 +47,7 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(node.Status(), check.Equals, "ready")
 	coll, err := nodeAddrCollection()
 	c.Assert(err, check.IsNil)
+	defer coll.Close()
 	var all []NodeAddr
 	err = coll.Find(nil).All(&all)
 	c.Assert(err, check.IsNil)
