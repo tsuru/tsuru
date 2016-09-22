@@ -5,12 +5,10 @@
 package swarm
 
 import (
-	"errors"
-	"fmt"
 	"io"
 
-	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -104,7 +102,7 @@ func (p *swarmProvisioner) SetNodeStatus(provision.NodeStatusData) error {
 func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
-		if err == errNoSwarmNode {
+		if errors.Cause(err) == errNoSwarmNode {
 			return nil, nil
 		}
 		return nil, err
@@ -147,7 +145,7 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	existingClient, err := chooseDBSwarmNode()
-	if err != nil && err != errNoSwarmNode {
+	if err != nil && errors.Cause(err) != errNoSwarmNode {
 		return err
 	}
 	newClient, err := newClient(opts.Address)
@@ -156,53 +154,20 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	}
 	host := tsuruNet.URLToHost(opts.Address)
 	if existingClient == nil {
-		_, err = newClient.InitSwarm(docker.InitSwarmOptions{
-			InitRequest: swarm.InitRequest{
-				ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
-				AdvertiseAddr: host,
-			},
-		})
-		if err == docker.ErrNodeAlreadyInSwarm {
-			err = nil
-		}
+		err = initSwarm(newClient, host)
 	} else {
-		var swarmInfo swarm.Swarm
-		var dockerInfo *docker.DockerInfo
-		swarmInfo, err = existingClient.InspectSwarm(nil)
-		if err != nil {
-			return err
-		}
-		dockerInfo, err = existingClient.Info()
-		if err != nil {
-			return err
-		}
-		if len(dockerInfo.Swarm.RemoteManagers) == 0 {
-			return fmt.Errorf("no remote managers found in node %#v", dockerInfo)
-		}
-		addrs := make([]string, len(dockerInfo.Swarm.RemoteManagers))
-		for i, peer := range dockerInfo.Swarm.RemoteManagers {
-			addrs[i] = peer.Addr
-		}
-		opts := docker.JoinSwarmOptions{
-			JoinRequest: swarm.JoinRequest{
-				ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
-				AdvertiseAddr: host,
-				JoinToken:     swarmInfo.JoinTokens.Manager,
-				RemoteAddrs:   addrs,
-			},
-		}
-		err = newClient.JoinSwarm(opts)
+		err = joinSwarm(existingClient, newClient, host)
 	}
 	if err != nil {
 		return err
 	}
 	dockerInfo, err := newClient.Info()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 	nodeData, err := newClient.InspectNode(dockerInfo.Swarm.NodeID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 	nodeData.Spec.Annotations.Labels = map[string]string{
 		labelDockerAddr: opts.Address,
@@ -215,7 +180,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		NodeSpec: nodeData.Spec,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 	return updateDBSwarmNodes(newClient)
 }

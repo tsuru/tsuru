@@ -5,11 +5,14 @@
 package swarm
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -21,7 +24,7 @@ const (
 func newClient(address string) (*docker.Client, error) {
 	client, err := docker.NewClient(address)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 	dialer := &net.Dialer{
 		Timeout:   dockerDialTimeout,
@@ -44,4 +47,48 @@ func newClient(address string) (*docker.Client, error) {
 	client.Dialer = dialer
 	client.TLSConfig = swarmConfig.tlsConfig
 	return client, nil
+}
+
+func initSwarm(client *docker.Client, host string) error {
+	_, err := client.InitSwarm(docker.InitSwarmOptions{
+		InitRequest: swarm.InitRequest{
+			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
+			AdvertiseAddr: host,
+		},
+	})
+	if err != nil && errors.Cause(err) != docker.ErrNodeAlreadyInSwarm {
+		return errors.Wrap(err, "")
+	}
+	return nil
+}
+
+func joinSwarm(existingClient *docker.Client, newClient *docker.Client, host string) error {
+	swarmInfo, err := existingClient.InspectSwarm(nil)
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	dockerInfo, err := existingClient.Info()
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	if len(dockerInfo.Swarm.RemoteManagers) == 0 {
+		return errors.Errorf("no remote managers found in node %#v", dockerInfo)
+	}
+	addrs := make([]string, len(dockerInfo.Swarm.RemoteManagers))
+	for i, peer := range dockerInfo.Swarm.RemoteManagers {
+		addrs[i] = peer.Addr
+	}
+	opts := docker.JoinSwarmOptions{
+		JoinRequest: swarm.JoinRequest{
+			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
+			AdvertiseAddr: host,
+			JoinToken:     swarmInfo.JoinTokens.Manager,
+			RemoteAddrs:   addrs,
+		},
+	}
+	err = newClient.JoinSwarm(opts)
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	return nil
 }

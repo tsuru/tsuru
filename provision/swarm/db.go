@@ -5,15 +5,21 @@
 package swarm
 
 import (
-	"errors"
 	"math/rand"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 )
 
-var errNoSwarmNode = errors.New("no swarm nodes available")
+type notFoundError struct{ error }
+
+func (e notFoundError) NotFound() bool {
+	return true
+}
+
+var errNoSwarmNode = notFoundError{errors.New("no swarm nodes available")}
 
 type NodeAddr struct {
 	DockerAddress string `bson:"_id"`
@@ -28,10 +34,10 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 	var addrs []NodeAddr
 	err = coll.Find(nil).All(&addrs)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 	if len(addrs) == 0 {
-		return nil, errNoSwarmNode
+		return nil, errors.Wrap(errNoSwarmNode, "")
 	}
 	addr := addrs[rand.Intn(len(addrs))]
 	// TODO(cezarsa): try ping. in case of failure, try another node and update
@@ -46,7 +52,7 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 func updateDBSwarmNodes(client *docker.Client) error {
 	nodes, err := client.ListNodes(docker.ListNodesOptions{})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
 	var docs []interface{}
 	for _, n := range nodes {
@@ -70,15 +76,19 @@ func updateDBSwarmNodes(client *docker.Client) error {
 	// all and add all.
 	_, err = coll.RemoveAll(nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "")
 	}
-	return coll.Insert(docs...)
+	err = coll.Insert(docs...)
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	return nil
 }
 
 func nodeAddrCollection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "")
 	}
 	return conn.Collection("swarmnodes"), nil
 }
