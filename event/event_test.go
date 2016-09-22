@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/safe"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -538,7 +539,7 @@ func (s *S) TestEventNewValidation(c *check.C) {
 }
 
 func (s *S) TestEventDoneLogError(c *check.C) {
-	logBuf := bytes.NewBuffer(nil)
+	logBuf := safe.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
 	evt, err := New(&Opts{
