@@ -22,7 +22,7 @@ func (s *S) TestInstallHostAdd(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&driverName=amazonec2&driver.IP=127.0.0.1")
+	body := strings.NewReader(`name=xyz&driverName=amazonec2&driver={"SSHPort": 22}`)
 	request, err := http.NewRequest("POST", "/install/hosts", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -34,15 +34,16 @@ func (s *S) TestInstallHostAdd(c *check.C) {
 	var hosts []install.Host
 	err = s.conn.InstallHosts().Find(nil).All(&hosts)
 	c.Assert(err, check.IsNil)
-	c.Assert(hosts, check.DeepEquals, []install.Host{
-		{Name: "xyz", DriverName: "amazonec2", Driver: map[string]interface{}{"IP": "127.0.0.1"}},
-	})
+	c.Assert(len(hosts), check.Equals, 1)
+	c.Assert(hosts[0].Name, check.Equals, "xyz")
+	c.Assert(hosts[0].DriverName, check.Equals, "amazonec2")
+	c.Assert(hosts[0].Driver["SSHPort"], check.DeepEquals, float64(22))
 }
 
 func (s *S) TestInstallHostReturnsForbiddenIfNoPermissions(c *check.C) {
 	token := userWithPermission(c)
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&driverName=amazonec2&driver.IP=127.0.0.1")
+	body := strings.NewReader(`name=xyz&driverName=amazonec2&driver={"IP": "127.0.0.1"}`)
 	request, err := http.NewRequest("POST", "/install/hosts", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
