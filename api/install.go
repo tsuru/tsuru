@@ -41,10 +41,12 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal([]byte(r.Form.Get("driver")), &host.Driver)
+	var rawDriver map[string]interface{}
+	err = json.Unmarshal([]byte(r.Form.Get("driver")), &rawDriver)
 	if err != nil {
 		return err
 	}
+	host.Driver = rawDriver
 	err = install.AddHost(host)
 	if err != nil {
 		return err

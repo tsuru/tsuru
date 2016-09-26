@@ -37,7 +37,7 @@ func (s *S) TestInstallHostAdd(c *check.C) {
 	c.Assert(len(hosts), check.Equals, 1)
 	c.Assert(hosts[0].Name, check.Equals, "xyz")
 	c.Assert(hosts[0].DriverName, check.Equals, "amazonec2")
-	c.Assert(hosts[0].Driver["SSHPort"], check.DeepEquals, float64(22))
+	c.Assert(hosts[0].Driver, check.DeepEquals, map[string]interface{}{"SSHPort": float64(22)})
 }
 
 func (s *S) TestInstallHostReturnsForbiddenIfNoPermissions(c *check.C) {
