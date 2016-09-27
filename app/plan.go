@@ -52,7 +52,7 @@ func (plan *Plan) Save() error {
 	if plan.Router != "" {
 		_, err := router.Get(plan.Router)
 		if err != nil {
-			return PlanValidationError{"router"}
+			return PlanValidationError{fmt.Sprintf("router error: %v", err)}
 		}
 	}
 	conn, err := db.Conn()
