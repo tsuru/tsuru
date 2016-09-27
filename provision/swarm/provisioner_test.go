@@ -7,11 +7,13 @@ package swarm
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
@@ -179,4 +181,34 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 		Address: "localhost:1000",
 	})
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestImageDeploy(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	image, err := s.p.ImageDeploy(a, "myimg:v1", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(image, check.Equals, "myimg:v1")
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{ID: units[0].ID, AppName: a.Name, Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+	})
+	image, err = s.p.ImageDeploy(a, "myimg:v2", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(image, check.Equals, "myimg:v2")
+	unitsAfter, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(unitsAfter, check.HasLen, 1)
+	c.Assert(units[0].ID, check.Not(check.Equals), unitsAfter[0].ID)
+	c.Assert(unitsAfter, check.DeepEquals, []provision.Unit{
+		{ID: unitsAfter[0].ID, AppName: a.Name, Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+	})
 }

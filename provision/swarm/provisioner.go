@@ -5,12 +5,16 @@
 package swarm
 
 import (
+	"fmt"
 	"io"
+	"net"
+	"net/url"
 
 	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 )
@@ -84,12 +88,63 @@ func (p *swarmProvisioner) Stop(provision.App, string) error {
 	return errNotImplemented
 }
 
-func (p *swarmProvisioner) Units(provision.App) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return nil, err
+	}
+	service, err := client.InspectService(app.GetName())
+	if err != nil {
+		if _, ok := err.(*docker.NoSuchService); ok {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "")
+	}
+	var pubPort uint32
+	if len(service.Endpoint.Ports) > 0 {
+		pubPort = service.Endpoint.Ports[0].PublishedPort
+	}
+	tasks, err := client.ListTasks(docker.ListTasksOptions{
+		Filters: map[string][]string{
+			"service": []string{app.GetName()},
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "")
+	}
+	nodeMap := map[string]*swarm.Node{}
+	units := make([]provision.Unit, len(tasks))
+	for i, t := range tasks {
+		if _, ok := nodeMap[t.NodeID]; !ok {
+			var node *swarm.Node
+			node, err = client.InspectNode(t.NodeID)
+			if err != nil {
+				return nil, errors.Wrap(err, "")
+			}
+			nodeMap[node.ID] = node
+		}
+		addr := nodeMap[t.NodeID].ManagerStatus.Addr
+		host, _, _ := net.SplitHostPort(addr)
+		units[i] = provision.Unit{
+			ID:      t.Status.ContainerStatus.ContainerID,
+			AppName: app.GetName(),
+			// TODO(cezarsa): no process support for now, must add latter.
+			ProcessName: "",
+			Type:        app.GetPlatform(),
+			Ip:          host,
+			Status:      provision.StatusStarted,
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("%s:%d", host, pubPort),
+			},
+		}
+	}
+	return units, nil
 }
 
-func (p *swarmProvisioner) RoutableUnits(provision.App) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+	// TODO(cezarsa): filter only routable units using process name
+	return p.Units(app)
 }
 
 func (p *swarmProvisioner) RegisterUnit(provision.Unit, map[string]interface{}) error {
@@ -217,4 +272,91 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 
 func (p *swarmProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
 	return errNotImplemented
+}
+
+func serviceSpecForApp(app provision.App, image string, baseSpec *swarm.ServiceSpec) (swarm.ServiceSpec, error) {
+	var envs []string
+	for _, envData := range app.Envs() {
+		envs = append(envs, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
+	}
+	host, _ := config.GetString("host")
+	envs = append(envs, []string{
+		fmt.Sprintf("%s=%s", "port", "8888"),
+		fmt.Sprintf("%s=%s", "PORT", "8888"),
+		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
+	}...)
+	var unitCount uint64 = 1
+	if baseSpec != nil {
+		unitCount = *baseSpec.Mode.Replicated.Replicas
+	}
+	spec := swarm.ServiceSpec{
+		TaskTemplate: swarm.TaskSpec{
+			ContainerSpec: swarm.ContainerSpec{
+				Image: image,
+				Env:   envs,
+			},
+			RestartPolicy: &swarm.RestartPolicy{
+				Condition: swarm.RestartPolicyConditionAny,
+			},
+			Placement: &swarm.Placement{
+				Constraints: []string{
+					fmt.Sprintf("node.labels.pool == %s", app.GetPool()),
+				},
+			},
+		},
+		EndpointSpec: &swarm.EndpointSpec{
+			Mode: swarm.ResolutionModeVIP,
+			Ports: []swarm.PortConfig{
+				{TargetPort: 8888, PublishedPort: 0},
+			},
+		},
+		Annotations: swarm.Annotations{
+			Name: app.GetName(),
+		},
+		Mode: swarm.ServiceMode{
+			Replicated: &swarm.ReplicatedService{
+				Replicas: &unitCount,
+			},
+		},
+	}
+	return spec, nil
+}
+
+func (p *swarmProvisioner) ImageDeploy(app provision.App, image string, evt *event.Event) (string, error) {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return "", err
+	}
+	srv, err := client.InspectService(app.GetName())
+	if err != nil {
+		if _, isNotFound := err.(*docker.NoSuchService); !isNotFound {
+			return "", errors.Wrap(err, "")
+		}
+	}
+	if srv == nil {
+		var spec swarm.ServiceSpec
+		spec, err = serviceSpecForApp(app, image, nil)
+		if err != nil {
+			return "", err
+		}
+		srv, err = client.CreateService(docker.CreateServiceOptions{
+			ServiceSpec: spec,
+		})
+		if err != nil {
+			return "", errors.Wrap(err, "")
+		}
+	} else {
+		srv.Spec, err = serviceSpecForApp(app, image, &srv.Spec)
+		if err != nil {
+			return "", err
+		}
+		err = client.UpdateService(srv.ID, docker.UpdateServiceOptions{
+			Version:     srv.Version.Index,
+			ServiceSpec: srv.Spec,
+		})
+		if err != nil {
+			return "", errors.Wrap(err, "")
+		}
+	}
+	return image, nil
 }
