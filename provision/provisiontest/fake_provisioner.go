@@ -368,16 +368,15 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	cmds      []Cmd
-	cmdMut    sync.Mutex
-	outputs   chan []byte
-	failures  chan failure
-	apps      map[string]provisionedApp
-	mut       sync.RWMutex
-	shells    map[string][]provision.ShellOptions
-	shellMut  sync.Mutex
-	validImgs map[string][]string
-	nodes     map[string]fakeNode
+	cmds     []Cmd
+	cmdMut   sync.Mutex
+	outputs  chan []byte
+	failures chan failure
+	apps     map[string]provisionedApp
+	mut      sync.RWMutex
+	shells   map[string][]provision.ShellOptions
+	shellMut sync.Mutex
+	nodes    map[string]fakeNode
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
