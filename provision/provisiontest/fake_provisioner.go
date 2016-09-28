@@ -1207,23 +1207,6 @@ func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
 	return nil
 }
 
-func (p *FakeProvisioner) SetValidImagesForApp(appName string, imgs []string) {
-	if p.validImgs == nil {
-		p.validImgs = map[string][]string{}
-	}
-	p.validImgs[appName] = imgs
-}
-
-func (p *FakeProvisioner) ValidAppImages(appName string) ([]string, error) {
-	if err := p.getError("ValidAppImages"); err != nil {
-		return nil, err
-	}
-	if p.validImgs != nil && p.validImgs[appName] != nil {
-		return p.validImgs[appName], nil
-	}
-	return []string{"app-image-old", "app-image"}, nil
-}
-
 func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {
 	filteredApps := []provision.App{}
 	for i := range apps {

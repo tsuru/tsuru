@@ -18,6 +18,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -1058,9 +1059,8 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.SetValidImagesForApp("otherapp", []string{
-		"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1",
-	})
+	err = image.AppendAppImageName("otherapp", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1")
+	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("origin", "rollback")
 	v.Set("image", "v1")

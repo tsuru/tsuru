@@ -309,6 +309,9 @@ func basicImageName() string {
 		parts = append(parts, registry)
 	}
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	if repoNamespace == "" {
+		repoNamespace = "tsuru"
+	}
 	parts = append(parts, repoNamespace)
 	return strings.Join(parts, "/")
 }
@@ -329,7 +332,7 @@ func appImagesColl() (*storage.Collection, error) {
 	}
 	name, err := config.GetString("docker:collection")
 	if err != nil {
-		return nil, err
+		name = "docker"
 	}
 	return conn.Collection(fmt.Sprintf("%s_app_image", name)), nil
 }
@@ -341,7 +344,7 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	}
 	name, err := config.GetString("docker:collection")
 	if err != nil {
-		return nil, err
+		name = "docker"
 	}
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }

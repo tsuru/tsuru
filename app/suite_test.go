@@ -107,6 +107,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queue_app_pkg_tests")
 	config.Set("queue:mongo-polling-interval", 0.01)
+	config.Set("docker:registry", "registry.somewhere")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()

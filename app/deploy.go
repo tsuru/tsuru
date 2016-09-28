@@ -56,7 +56,7 @@ func findValidImages(apps ...App) (set, error) {
 	validImages := set{}
 	for _, a := range apps {
 		imgs, err := image.ListAppImages(a.Name)
-		if err != nil {
+		if err != nil && err != mgo.ErrNotFound {
 			return nil, err
 		}
 		validImages.Add(imgs...)

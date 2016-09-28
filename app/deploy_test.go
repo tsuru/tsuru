@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -146,6 +147,8 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 		TeamOwner: team.Name,
 	}
 	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("ge", "app-image")
 	c.Assert(err, check.IsNil)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
@@ -687,8 +690,12 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.SetValidImagesForApp("otherapp", []string{"registry.somewhere/tsuru/app-example:v1", "registry.somewhere/tsuru/app-example:v2"})
-	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
+	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v1")
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v2")
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("invalid", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2")
+	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -719,8 +726,12 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.SetValidImagesForApp("otherapp", []string{"registry.somewhere/tsuru/app-example:v1", "registry.somewhere/tsuru/app-example:v2"})
-	s.provisioner.SetValidImagesForApp("invalid", []string{"127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2"})
+	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v1")
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v2")
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("invalid", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2")
+	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
