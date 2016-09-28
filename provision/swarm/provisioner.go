@@ -106,7 +106,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"service": []string{app.GetName()},
+			"service": {app.GetName()},
 		},
 	})
 	if err != nil {

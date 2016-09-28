@@ -5,7 +5,6 @@
 package swarm
 
 import (
-	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"testing"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
