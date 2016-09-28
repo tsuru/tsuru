@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -54,17 +55,11 @@ type DeployData struct {
 func findValidImages(apps ...App) (set, error) {
 	validImages := set{}
 	for _, a := range apps {
-		prov, err := a.getProvisioner()
+		imgs, err := image.ListAppImages(a.Name)
 		if err != nil {
 			return nil, err
 		}
-		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
-			imgs, err := deployer.ValidAppImages(a.Name)
-			if err != nil {
-				return nil, err
-			}
-			validImages.Add(imgs...)
-		}
+		validImages.Add(imgs...)
 	}
 	return validImages, nil
 }

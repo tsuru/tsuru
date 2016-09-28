@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -272,7 +273,7 @@ func (s *S) TestDeploy(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -328,7 +329,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -392,7 +393,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -453,7 +454,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 			"worker": "python myworker.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -500,9 +501,9 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -615,11 +616,11 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
 	c.Assert(err, check.IsNil)
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -710,7 +711,7 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -737,7 +738,7 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 func (s *S) TestRollbackDeploy(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
-	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
@@ -774,7 +775,7 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
-	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -876,10 +877,7 @@ func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	dataColl.RemoveId(imageName)
+	image.PullAppImageNames(a.Name, []string{imageName})
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -950,10 +948,7 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	dataColl.RemoveId(imageName)
+	image.PullAppImageNames(a.Name, []string{imageName})
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -1046,10 +1041,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	dataColl.RemoveId(imageName)
+	image.PullAppImageNames(a.Name, []string{imageName})
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -1068,8 +1060,8 @@ func (s *S) TestImageDeploy(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	appCurrentImage, err := appCurrentImageName(a.GetName())
-	imd, err := getImageCustomData(appCurrentImage)
+	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
+	imd, err := image.GetImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string]string{"web": "/bin/sh \"-c\" \"python test.py\""}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -1123,11 +1115,7 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	dataColl.RemoveId(imageName)
-	defer dataColl.Close()
+	image.PullAppImageNames(a.Name, []string{imageName})
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -1143,8 +1131,8 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	appCurrentImage, err := appCurrentImageName(a.GetName())
-	imd, err := getImageCustomData(appCurrentImage)
+	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
+	imd, err := image.GetImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string]string{"web": "test.sh"}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -1202,10 +1190,7 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	dataColl.RemoveId(imageName)
+	image.PullAppImageNames(a.Name, []string{imageName})
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -1268,7 +1253,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
+	err = image.SaveImageCustomData(fmt.Sprintf("%s/tsuru/app-%s:v1", registryURL, a.Name), customData)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -1409,7 +1394,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container.Container{ID: "xxxfoo", AppName: a.GetName(), Version: "123987", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
-	imageID, err := appCurrentImageName(a.GetName())
+	imageID, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
@@ -1433,7 +1418,7 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(a)
 	defer s.p.Destroy(a)
-	imageId, err := appCurrentImageName(a.GetName())
+	imageId, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	var callCount int32
 	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1497,7 +1482,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
 	c.Assert(err, check.IsNil)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
@@ -1565,7 +1550,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
 	c.Assert(err, check.IsNil)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
@@ -1688,7 +1673,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	c.Assert(err, check.IsNil)
@@ -1734,7 +1719,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
+	err = image.SaveImageCustomData("tsuru/app-"+a1.Name, customData)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
 	c.Assert(err, check.IsNil)
@@ -2401,7 +2386,7 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	requests = requests[len(requests)-3:]
 	c.Assert(requests[0].URL.Path, check.Equals, "/build")
 	queryString := requests[0].URL.Query()
-	c.Assert(queryString.Get("t"), check.Equals, platformImageName("test"))
+	c.Assert(queryString.Get("t"), check.Equals, image.PlatformImageName("test"))
 	c.Assert(queryString.Get("remote"), check.Equals, "http://localhost/Dockerfile")
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test:latest/json")
 	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
@@ -2432,7 +2417,7 @@ func (s *S) TestProvisionerPlatformAddData(c *check.C) {
 	requests = requests[len(requests)-3:]
 	c.Assert(requests[0].URL.Path, check.Equals, "/build")
 	queryString := requests[0].URL.Query()
-	c.Assert(queryString.Get("t"), check.Equals, platformImageName("test"))
+	c.Assert(queryString.Get("t"), check.Equals, image.PlatformImageName("test"))
 	c.Assert(queryString.Get("remote"), check.Equals, "")
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test:latest/json")
 	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
@@ -2776,11 +2761,7 @@ func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py"}
 	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	var image ImageMetadata
-	err = dataColl.FindId(container.BuildingImage).One(&image)
+	image, err := image.GetImageCustomData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(image.CustomData, check.DeepEquals, data)
 	expectedProcesses := map[string]string{"web": "python myapp.py"}
@@ -2810,11 +2791,7 @@ func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
 	}
 	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
 	c.Assert(err, check.IsNil)
-	dataColl, err := imageCustomDataColl()
-	c.Assert(err, check.IsNil)
-	defer dataColl.Close()
-	var image ImageMetadata
-	err = dataColl.FindId(container.BuildingImage).One(&image)
+	image, err := image.GetImageCustomData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(image.CustomData, check.DeepEquals, data)
 	expectedProcesses := map[string]string{"web": "python web.py", "worker": "python worker.py"}
@@ -2849,7 +2826,7 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 			},
 		},
 	}
-	err := saveImageCustomData("tsuru/python:latest", customData)
+	err := image.SaveImageCustomData("tsuru/python:latest", customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -2923,7 +2900,7 @@ func (s *S) TestDryMode(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer s.p.Destroy(appInstance)
 	s.p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
@@ -3083,14 +3060,14 @@ func (s *S) TestProvisionerRoutableUnits(c *check.C) {
 	routes, err := s.p.RoutableUnits(fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []provision.Unit{})
-	err = appendAppImageName(appName, "myimg")
+	err = image.AppendAppImageName(appName, "myimg")
 	c.Assert(err, check.IsNil)
-	err = pullAppImageNames(appName, []string{"myimg"})
+	err = image.PullAppImageNames(appName, []string{"myimg"})
 	c.Assert(err, check.IsNil)
 	routes, err = s.p.RoutableUnits(fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []provision.Unit{})
-	err = appendAppImageName(appName, "myimg")
+	err = image.AppendAppImageName(appName, "myimg")
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(s.p, "myimg", nil)
 	c.Assert(err, check.IsNil)
@@ -3112,7 +3089,7 @@ func (s *S) TestProvisionerRoutableUnits(c *check.C) {
 func (s *S) TestProvisionerRoutableUnitsInvalidContainers(c *check.C) {
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
-	err := appendAppImageName(appName, "myimg")
+	err := image.AppendAppImageName(appName, "myimg")
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(s.p, "myimg", nil)
 	c.Assert(err, check.IsNil)
@@ -3269,7 +3246,7 @@ func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
@@ -3334,7 +3311,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	err = s.p.Provision(appInstance)
 	c.Assert(err, check.IsNil)
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
@@ -3486,7 +3463,7 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",

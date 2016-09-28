@@ -15,6 +15,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -36,7 +37,7 @@ func (s *S) TestHealthcheck(c *check.C) {
 			"status": http.StatusCreated,
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -74,7 +75,7 @@ func (s *S) TestHealthcheckWithMatch(c *check.C) {
 		},
 	}
 	imageName := "tsuru/app"
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -108,7 +109,7 @@ func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 			"path": "/x/y",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -159,7 +160,7 @@ func (s *S) TestHealthcheckNoPath(c *check.C) {
 			"status": 200,
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -198,7 +199,7 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 		},
 	}
 	imageName := "tsuru/app"
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -225,7 +226,7 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 			"path": "/x/y",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -277,7 +278,7 @@ func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 		},
 	}
 	imageName := "tsuru/app"
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)

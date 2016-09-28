@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -77,7 +78,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	buildingImage, err := appNewImageName(app.GetName())
+	buildingImage, err := image.AppNewImageName(app.GetName())
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error getting new image name for app %s", app.GetName()))
 	}

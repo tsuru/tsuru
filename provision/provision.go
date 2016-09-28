@@ -286,10 +286,6 @@ type ImageDeployer interface {
 // previously deployed version.
 type RollbackableDeployer interface {
 	Rollback(App, string, *event.Event) (string, error)
-
-	// Returns list of valid image names for app, these can be used for
-	// rollback.
-	ValidAppImages(string) ([]string, error)
 }
 
 // Provisioner is the basic interface of this package.

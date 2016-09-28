@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -279,7 +280,7 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 			"worker": "tail -f /dev/null",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -323,7 +324,7 @@ func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
 			"api": "python myapi.py",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.1", HostPort: "1234"}
 	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.2", HostPort: "4321"}
@@ -461,7 +462,7 @@ func (s *S) TestSetRouterHealthcheckForward(c *check.C) {
 			"use_in_router": true,
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -493,7 +494,7 @@ func (s *S) TestSetRouterHealthcheckForwardNoUseInRouter(c *check.C) {
 			"match":  "ignored",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -523,7 +524,7 @@ func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
 			"use_in_router": true,
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -560,7 +561,7 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 			"worker": "tail -f /dev/null",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -595,9 +596,9 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 
 func (s *S) TestRemoveOldRoutesForwardNoImageData(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	err := appendAppImageName(app.GetName(), "img1")
+	err := image.AppendAppImageName(app.GetName(), "img1")
 	c.Assert(err, check.IsNil)
-	err = pullAppImageNames(app.GetName(), []string{"img1"})
+	err = image.PullAppImageNames(app.GetName(), []string{"img1"})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -626,7 +627,7 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 			"worker": "tail -f /dev/null",
 		},
 	}
-	err := saveImageCustomData(imageName, customData)
+	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -763,7 +764,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
-	imageId, err := appNewImageName(app.GetName())
+	imageId, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(p, imageId, nil)
 	c.Assert(err, check.IsNil)
@@ -794,7 +795,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	p.Provision(app)
 	coll := p.Collection()
 	defer coll.Close()
-	imageId, err := appNewImageName(app.GetName())
+	imageId, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(p, imageId, nil)
 	c.Assert(err, check.IsNil)
@@ -910,7 +911,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
-	nextImgName, err := appNewImageName(app.GetName())
+	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	cont := container.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}
 	err = cont.Create(&container.CreateArgs{

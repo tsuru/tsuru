@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -48,7 +49,7 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 }
 
 func processCmdForImage(processName, imageId string) (string, string, error) {
-	data, err := getImageCustomData(imageId)
+	data, err := image.GetImageCustomData(imageId)
 	if err != nil {
 		return "", "", err
 	}
@@ -82,7 +83,7 @@ func runLeanContainerCmds(processName, imageId string, app provision.App) ([]str
 		cmds, err = runWithAgentCmds(app)
 		return cmds, "", err
 	}
-	yamlData, err := getImageTsuruYamlData(imageId)
+	yamlData, err := image.GetImageTsuruYamlData(imageId)
 	if err != nil {
 		return nil, "", err
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
@@ -58,7 +59,7 @@ func (s *S) TestRunLeanContainersCmd(c *check.C) {
 			"web": "python web.py",
 		},
 	}
-	err := saveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	cmds, process, err := runLeanContainerCmds("web", imageId, nil)
 	c.Assert(err, check.IsNil)
@@ -79,7 +80,7 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 			"web": "python web.py",
 		},
 	}
-	err := saveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	cmds, process, err := runLeanContainerCmds("web", imageId, nil)
 	c.Assert(err, check.IsNil)
@@ -91,7 +92,7 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	imageId := "tsuru/app-sample"
 	customData := map[string]interface{}{}
-	err := saveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
@@ -118,7 +119,7 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 			"web": "python web.py",
 		},
 	}
-	err := saveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	cmds, process, err := runLeanContainerCmds("", imageId, nil)
 	c.Assert(err, check.IsNil)
@@ -135,7 +136,7 @@ func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 			"worker": "python worker.py",
 		},
 	}
-	err := saveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	cmds, process, err := runLeanContainerCmds("", imageId, nil)
 	c.Assert(err, check.NotNil)
@@ -153,7 +154,7 @@ func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 			"web": "python web.py",
 		},
 	}
-	err := saveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	cmds, process, err := runLeanContainerCmds("worker", imageId, nil)
 	c.Assert(err, check.NotNil)

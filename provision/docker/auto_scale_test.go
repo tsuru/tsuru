@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/iaas"
@@ -80,14 +81,14 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	iaas.RegisterIaasProvider("my-scale-iaas", healerConst)
 	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(s.appInstance)
-	s.imageId, err = appCurrentImageName(s.appInstance.GetName())
+	s.imageId, err = image.AppCurrentImageName(s.appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python ./myapp",
 		},
 	}
-	err = saveImageCustomData(s.imageId, customData)
+	err = image.SaveImageCustomData(s.imageId, customData)
 	c.Assert(err, check.IsNil)
 	optsPull := docker.PullImageOptions{Repository: s.imageId, OutputStream: nil}
 	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
@@ -1245,14 +1246,14 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	}
 	err = s.S.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	imageId, err := appCurrentImageName(appInstance2.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance2.GetName())
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python ./myapp",
 		},
 	}
-	err = saveImageCustomData(imageId, customData)
+	err = image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},

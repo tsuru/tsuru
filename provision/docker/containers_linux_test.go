@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -52,7 +53,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		appInstance := provisiontest.NewFakeApp(appName, "python", 0)
 		defer p.Destroy(appInstance)
 		p.Provision(appInstance)
-		imageId, aErr := appCurrentImageName(appInstance.GetName())
+		imageId, aErr := image.AppCurrentImageName(appInstance.GetName())
 		c.Assert(aErr, check.IsNil)
 		var chosenNode string
 		for j := range variation {

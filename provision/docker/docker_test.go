@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
@@ -57,11 +58,11 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if p == nil {
 		p = s.p
 	}
-	image := "tsuru/python:latest"
+	imageName := "tsuru/python:latest"
 	var customData map[string]interface{}
 	if opts != nil {
 		if opts.Image != "" {
-			image = opts.Image
+			imageName = opts.Image
 		}
 		container.AppName = opts.AppName
 		container.ProcessName = opts.ProcessName
@@ -71,7 +72,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		}
 		container.SetStatus(p, provision.Status(opts.Status), false)
 	}
-	err := s.newFakeImage(p, image, customData)
+	err := s.newFakeImage(p, imageName, customData)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +85,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		docker.Port(s.port + "/tcp"): {},
 	}
 	config := docker.Config{
-		Image:        image,
+		Image:        imageName,
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
@@ -95,7 +96,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		return nil, err
 	}
 	container.ID = c.ID
-	container.Image = image
+	container.Image = imageName
 	container.Name = createOptions.Name
 	conn, err := db.Conn()
 	if err != nil {
@@ -106,7 +107,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if err != nil {
 		return nil, err
 	}
-	imageId, err := appCurrentImageName(container.AppName)
+	imageId, err := image.AppCurrentImageName(container.AppName)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func (s *S) newFakeImage(p *dockerProvisioner, repo string, customData map[strin
 	}
 	var buf safe.Buffer
 	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
-	err := saveImageCustomData(repo, customData)
+	err := image.SaveImageCustomData(repo, customData)
 	if err != nil && !mgo.IsDup(err) {
 		return err
 	}
@@ -187,7 +188,7 @@ func (s *S) TestGetContainers(c *check.C) {
 
 func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img := s.p.getBuildImage(app)
+	img := image.GetBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, fmt.Sprintf("%s/python:latest", repoNamespace))
@@ -204,7 +205,7 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	defer coll.Close()
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"id": cont.ID})
-	img := s.p.getBuildImage(app)
+	img := image.GetBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s:latest", repoNamespace, app.Platform))
@@ -214,7 +215,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img := s.p.getBuildImage(app)
+	img := image.GetBuildImage(app)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	expected := fmt.Sprintf("localhost:3030/%s/python:latest", repoNamespace)
 	c.Assert(img, check.Equals, expected)
@@ -228,7 +229,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	img, err := s.p.archiveDeploy(app, s.p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
+	img, err := s.p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 }
@@ -251,7 +252,7 @@ func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
 	done := make(chan bool)
 	go func() {
 		defer close(done)
-		img, depErr := s.p.archiveDeploy(app, s.p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", evt)
+		img, depErr := s.p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", evt)
 		c.Assert(depErr, check.ErrorMatches, "deploy canceled by user action")
 		c.Assert(img, check.Equals, "")
 	}()
@@ -299,7 +300,7 @@ func (s *S) TestArchiveDeployRegisterRace(c *check.C) {
 			app := provisiontest.NewFakeApp(name, "python", 1)
 			routertest.FakeRouter.AddBackend(app.GetName())
 			defer routertest.FakeRouter.RemoveBackend(app.GetName())
-			img, _ := p.archiveDeploy(app, p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
+			img, _ := p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
 			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
 		}(i)
 	}
@@ -311,7 +312,7 @@ func (s *S) TestStart(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageId := s.p.getBuildImage(app)
+	imageId := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -333,7 +334,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageId := s.p.getBuildImage(app)
+	imageId := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer

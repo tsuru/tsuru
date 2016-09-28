@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -235,7 +236,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
@@ -290,7 +291,7 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	coll := p.Collection()
 	defer coll.Close()
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
@@ -357,7 +358,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageId, err := appCurrentImageName(appInstance.GetName())
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",

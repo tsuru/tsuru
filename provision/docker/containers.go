@@ -16,6 +16,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -168,7 +169,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		}
 		return container.Container{}
 	}
-	imageId, err := appCurrentImageName(a.GetName())
+	imageId, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,

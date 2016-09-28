@@ -16,6 +16,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -363,7 +364,7 @@ var bindAndHealthcheck = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		webProcessName, err := getImageWebProcessName(args.imageId)
+		webProcessName, err := image.GetImageWebProcessName(args.imageId)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
 		}
@@ -437,7 +438,7 @@ var addNewRoutes = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		webProcessName, err := getImageWebProcessName(args.imageId)
+		webProcessName, err := image.GetImageWebProcessName(args.imageId)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
 		}
@@ -530,7 +531,7 @@ var setRouterHealthcheck = action.Action{
 		if !ok {
 			return newContainers, nil
 		}
-		yamlData, err := getImageTsuruYamlData(args.imageId)
+		yamlData, err := image.GetImageTsuruYamlData(args.imageId)
 		if err != nil {
 			return nil, err
 		}
@@ -561,8 +562,8 @@ var setRouterHealthcheck = action.Action{
 		if !ok {
 			return
 		}
-		currentImageName, _ := appCurrentImageName(args.app.GetName())
-		yamlData, err := getImageTsuruYamlData(currentImageName)
+		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
+		yamlData, err := image.GetImageTsuruYamlData(currentImageName)
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err.Error())
 		}
@@ -601,11 +602,11 @@ var removeOldRoutes = action.Action{
 		if len(args.toRemove) > 0 {
 			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
 		}
-		currentImageName, err := appCurrentImageName(args.app.GetName())
-		if err != nil && err != errNoImagesAvailable {
+		currentImageName, err := image.AppCurrentImageName(args.app.GetName())
+		if err != nil && err != image.ErrNoImagesAvailable {
 			return
 		}
-		webProcessName, err := getImageWebProcessName(currentImageName)
+		webProcessName, err := image.GetImageWebProcessName(currentImageName)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process for route removal: %s", err)
 		}
@@ -800,15 +801,15 @@ var updateAppImage = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		currentImageName, _ := appCurrentImageName(args.app.GetName())
+		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
 		if currentImageName != args.imageId {
-			err := appendAppImageName(args.app.GetName(), args.imageId)
+			err := image.AppendAppImageName(args.app.GetName(), args.imageId)
 			if err != nil {
 				return nil, fmt.Errorf("unable to save image name: %s", err.Error())
 			}
 		}
-		imgHistorySize := imageHistorySize()
-		allImages, err := listAppImages(args.app.GetName())
+		imgHistorySize := image.ImageHistorySize()
+		allImages, err := image.ListAppImages(args.app.GetName())
 		if err != nil {
 			log.Errorf("Couldn't list images for cleaning: %s", err.Error())
 			return ctx.Previous, nil

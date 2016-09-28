@@ -14,12 +14,13 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
 func runHealthcheck(cont *container.Container, w io.Writer) error {
-	yamlData, err := getImageTsuruYamlData(cont.Image)
+	yamlData, err := image.GetImageTsuruYamlData(cont.Image)
 	if err != nil {
 		return err
 	}
