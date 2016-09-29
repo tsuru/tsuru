@@ -8,9 +8,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/iaas/dockermachine"
 	"github.com/tsuru/tsuru/provision"
 	_ "github.com/tsuru/tsuru/provision/docker"
 	_ "github.com/tsuru/tsuru/provision/swarm"
@@ -52,9 +54,21 @@ func registerProvisionersCommands(m *cmd.Manager) error {
 	return nil
 }
 
+func inDockerMachineDriverMode() bool {
+	return os.Getenv(localbinary.PluginEnvKey) == localbinary.PluginEnvVal
+}
+
 func main() {
-	config.ReadConfigFile(configPath)
-	listenSignals()
-	m := buildManager()
-	m.Run(os.Args[1:])
+	if inDockerMachineDriverMode() {
+		err := dockermachine.RunDriver(os.Getenv(localbinary.PluginEnvDriverName))
+		if err != nil {
+			log.Fatalf("Error running driver: %s", err)
+		}
+	} else {
+		localbinary.CurrentBinaryIsDockerMachine = true
+		config.ReadConfigFile(configPath)
+		listenSignals()
+		m := buildManager()
+		m.Run(os.Args[1:])
+	}
 }

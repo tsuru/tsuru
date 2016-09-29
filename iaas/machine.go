@@ -25,6 +25,7 @@ type Machine struct {
 	Port           int
 	Protocol       string
 	CreationParams map[string]string
+	CustomData     map[string]interface{}
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {

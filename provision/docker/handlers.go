@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/digitalocean"
+	_ "github.com/tsuru/tsuru/iaas/dockermachine"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
