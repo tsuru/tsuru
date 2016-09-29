@@ -127,6 +127,20 @@ func (s *S) TestGetConfigString(c *check.C) {
 	c.Assert(val, check.Equals, "custom_url")
 }
 
+func (s *S) TestGetConfig(c *check.C) {
+	iaasInst := NamedIaaS{BaseIaaSName: "base-iaas"}
+	config.Set("iaas:base-iaas:options", map[string]interface{}{
+		"option1": "value1",
+		"option2": 2,
+	})
+	val, err := iaasInst.GetConfig("options")
+	c.Assert(err, check.IsNil)
+	mapVal, ok := val.(map[string]interface{})
+	c.Assert(ok, check.Equals, true)
+	c.Assert(mapVal["option1"], check.Equals, "value1")
+	c.Assert(mapVal["option2"], check.Equals, 2)
+}
+
 func (s *S) TestStressConcurrentGet(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1000))
 	RegisterIaasProvider("customable-iaas", newTestCustomizableIaaS)
