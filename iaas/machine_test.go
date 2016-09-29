@@ -190,5 +190,7 @@ func (s *S) TestFormatNodeAddress(c *check.C) {
 	m.Port = 9123
 	addr = m.FormatNodeAddress()
 	c.Assert(addr, check.Equals, "https://myid.somewhere.com:9123")
-
+	m.Protocol = "http"
+	addr = m.FormatNodeAddress()
+	c.Assert(addr, check.Equals, "http://myid.somewhere.com:9123")
 }

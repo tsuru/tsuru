@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package provision provides interfaces that need to be satisfied in order to
+// Package iaas provides interfaces that need to be satisfied in order to
 // implement a new iaas on tsuru.
 package iaas
 
@@ -23,6 +23,7 @@ type Machine struct {
 	Status         string
 	Address        string
 	Port           int
+	Protocol       string
 	CreationParams map[string]string
 }
 
@@ -126,7 +127,10 @@ func (m *Machine) Destroy() error {
 }
 
 func (m *Machine) FormatNodeAddress() string {
-	protocol, _ := config.GetString("iaas:node-protocol")
+	protocol := m.Protocol
+	if protocol == "" {
+		protocol, _ = config.GetString("iaas:node-protocol")
+	}
 	if protocol == "" {
 		protocol = "http"
 	}
