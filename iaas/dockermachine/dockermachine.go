@@ -60,7 +60,7 @@ func NewDockerMachine(config DockerMachineConfig) (dockerMachineAPI, error) {
 }
 
 func (d *DockerMachine) Close() error {
-	defer os.RemoveAll(d.path)
+	os.RemoveAll(d.path)
 	return d.client.Close()
 }
 
@@ -152,9 +152,5 @@ func copy(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(dst, fileSrc, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(dst, fileSrc, 0644)
 }

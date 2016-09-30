@@ -16,9 +16,9 @@ import (
 
 func (s *S) TestNewDockerMachine(c *check.C) {
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{InsecureRegistry: "registry.com"})
+	c.Assert(err, check.IsNil)
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
-	c.Assert(err, check.IsNil)
 	c.Assert(dm.client, check.NotNil)
 	pathInfo, err := os.Stat(dm.path)
 	c.Assert(err, check.IsNil)
@@ -34,9 +34,9 @@ func (s *S) TestNewDockerMachineCopyCaFiles(c *check.C) {
 	err = ioutil.WriteFile(filepath.Join(caPath, "ca-key.pem"), []byte("ca key content"), 0700)
 	c.Assert(err, check.IsNil)
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{CaPath: caPath})
+	c.Assert(err, check.IsNil)
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
-	c.Assert(err, check.IsNil)
 	c.Assert(dm.client, check.NotNil)
 	ca, err := ioutil.ReadFile(filepath.Join(dm.path, "ca.pem"))
 	c.Assert(err, check.IsNil)
@@ -49,9 +49,9 @@ func (s *S) TestNewDockerMachineCopyCaFiles(c *check.C) {
 func (s *S) TestClose(c *check.C) {
 	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
+	c.Assert(err, check.IsNil)
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
-	c.Assert(err, check.IsNil)
 	dm.client = fakeAPI
 	err = dm.Close()
 	c.Assert(err, check.IsNil)
@@ -67,6 +67,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 		InsecureRegistry:       "registry.com",
 		DockerEngineInstallURL: "https://getdocker2.com",
 	})
+	c.Assert(err, check.IsNil)
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
 	dm.client = fakeAPI
@@ -94,6 +95,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 func (s *S) TestDeleteMachine(c *check.C) {
 	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
+	c.Assert(err, check.IsNil)
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
 	dm.client = fakeAPI
