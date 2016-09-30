@@ -5,6 +5,8 @@
 package dockermachine
 
 import (
+	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	check "gopkg.in/check.v1"
@@ -133,6 +135,22 @@ func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {
 	})
 	c.Assert(err, check.Equals, errDriverNotSet)
 	c.Assert(m, check.IsNil)
+}
+
+func (s *S) TestCreateMachineGeneratesName(c *check.C) {
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	config.Set("iaas:dockermachine:ca-path", "/etc/ca-path")
+	defer config.Unset("iaas:dockermachine:ca-path")
+	i := newDockerMachineIaaS("dockermachine")
+	dmIaas := i.(*dockerMachineIaaS)
+	dmIaas.apiFactory = newFakeAPI
+	m, err := dmIaas.CreateMachine(map[string]string{
+		"pool":   "theonepool",
+		"driver": "driver-name",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Id, check.Equals, fmt.Sprintf("theonepool-%d", len(machines)+1))
 }
 
 func (s *S) TestDeleteMachineIaaS(c *check.C) {
