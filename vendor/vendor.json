@@ -318,6 +318,12 @@
 			"revisionTime": "2016-05-18T20:26:25Z"
 		},
 		{
+			"checksumSHA1": "OwFTgd8CksvdiYsG9YC2p4/1ako=",
+			"path": "github.com/docker/docker/pkg/term",
+			"revision": "d89fb40e1ce1373e3b188b9a817fcf9a5f37cd13",
+			"revisionTime": "2016-09-30T14:46:07-04:00"
+		},
+		{
 			"checksumSHA1": "hZV62Xzt/i0e/WBKWww3rpkRAR4=",
 			"path": "github.com/docker/engine-api/types/filters",
 			"revision": "94a8f8f29307ab291abad6c6f2182d67089aae5d",
