@@ -58,9 +58,9 @@ func (s *S) TestCreateMachineIaaS(c *check.C) {
 func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	config.Set("iaas:dockermachine:docker-install-url", "https://getdocker.com")
 	config.Set("iaas:dockermachine:ca-path", "/etc/ca-path")
-	config.Set("iaas:dockermachine:driver", "driver-name")
+	config.Set("iaas:dockermachine:driver:name", "driver-name")
 	defer config.Unset("iaas:dockermachine:ca-path")
-	defer config.Unset("iaas:dockermachine:driver")
+	defer config.Unset("iaas:dockermachine:driver:name")
 	defer config.Unset("iaas:dockermachine:docker-install-url")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)

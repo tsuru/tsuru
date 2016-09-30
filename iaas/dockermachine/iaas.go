@@ -44,11 +44,15 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	if err != nil {
 		return nil, errCaPathNotSet
 	}
-	driverName, err := i.getParamOrConfigString("driver", params)
-	if err != nil {
-		return nil, errDriverNotSet
+	driverName, ok := params["driver"]
+	if !ok {
+		name, errConf := i.base.GetConfigString("driver:name")
+		if errConf != nil {
+			return nil, errDriverNotSet
+		}
+		driverName = name
+		params["driver"] = driverName
 	}
-	params["driver"] = driverName
 	dockerEngineInstallURL, err := i.getParamOrConfigString("docker-install-url", params)
 	if err != nil {
 		dockerEngineInstallURL = ""
