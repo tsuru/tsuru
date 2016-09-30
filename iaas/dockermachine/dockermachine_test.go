@@ -5,87 +5,14 @@
 package dockermachine
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"testing"
 
 	"github.com/docker/machine/drivers/amazonec2"
-	"github.com/docker/machine/drivers/fakedriver"
-	"github.com/docker/machine/libmachine/drivers"
-	"github.com/docker/machine/libmachine/engine"
-	"github.com/docker/machine/libmachine/host"
-	"github.com/docker/machine/libmachine/persist/persisttest"
-	"github.com/docker/machine/libmachine/state"
 
 	check "gopkg.in/check.v1"
 )
-
-func Test(t *testing.T) { check.TestingT(t) }
-
-type S struct{}
-
-var _ = check.Suite(&S{})
-
-type fakeMachineAPI struct {
-	*persisttest.FakeStore
-	driverName string
-	ec2Driver  *amazonec2.Driver
-	closed     bool
-}
-
-func (f *fakeMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.Host, error) {
-	f.driverName = driverName
-	var driverOpts map[string]interface{}
-	json.Unmarshal(rawDriver, &driverOpts)
-	var driver drivers.Driver
-	if driverName == "amazonec2" {
-		driver = amazonec2.NewDriver("", "")
-	} else {
-		driver = &fakedriver.Driver{}
-	}
-	var name string
-	if m, ok := driverOpts["MachineName"]; ok {
-		name = m.(string)
-	} else {
-		name = driverOpts["MockName"].(string)
-	}
-	return &host.Host{
-		Name:   name,
-		Driver: driver,
-		HostOptions: &host.Options{
-			EngineOptions: &engine.Options{},
-		},
-	}, nil
-}
-
-func (f *fakeMachineAPI) Create(h *host.Host) error {
-	if f.driverName == "amazonec2" {
-		f.ec2Driver = h.Driver.(*amazonec2.Driver)
-	}
-	h.Driver = &fakedriver.Driver{
-		MockName:  h.Name,
-		MockState: state.Running,
-		MockIP:    "192.168.10.3",
-	}
-	if f.FakeStore == nil {
-		f.FakeStore = &persisttest.FakeStore{
-			Hosts: make([]*host.Host, 0),
-		}
-	}
-	f.Save(h)
-	return nil
-}
-
-func (f *fakeMachineAPI) Close() error {
-	f.closed = true
-	return nil
-}
-
-func (f *fakeMachineAPI) GetMachinesDir() string {
-	return ""
-}
 
 func (s *S) TestNewDockerMachine(c *check.C) {
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{InsecureRegistry: "registry.com"})
@@ -120,7 +47,7 @@ func (s *S) TestNewDockerMachineCopyCaFiles(c *check.C) {
 }
 
 func (s *S) TestClose(c *check.C) {
-	fakeAPI := &fakeMachineAPI{}
+	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
@@ -135,7 +62,7 @@ func (s *S) TestClose(c *check.C) {
 }
 
 func (s *S) TestCreateMachine(c *check.C) {
-	fakeAPI := &fakeMachineAPI{}
+	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{
 		InsecureRegistry:       "registry.com",
 		DockerEngineInstallURL: "https://getdocker2.com",
@@ -165,7 +92,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 }
 
 func (s *S) TestDeleteMachine(c *check.C) {
-	fakeAPI := &fakeMachineAPI{}
+	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
