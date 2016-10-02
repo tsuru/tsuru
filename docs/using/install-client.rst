@@ -1,18 +1,18 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
 .. meta::
-    :description: Install guide for tsuru clients
+    :description: Install guide for tsuru client
     :keywords: paas, cloud computing, tsuru
 
-++++++++++++++++++++++++
-Installing tsuru clients
-++++++++++++++++++++++++
++++++++++++++++++++++++
+Installing tsuru client
++++++++++++++++++++++++
 
 **tsuru** is the command line utility used by application developers, that
-  will allow users to create, list, bind and manage apps. For more details,
-  check :doc:`tsuru usage </reference/tsuru-client>`.
+will allow users to create, list, bind and manage apps. For more details,
+check :doc:`tsuru usage </reference/tsuru-client>`.
 
 This document describes how you can install tsuru CLI, using pre-compiled
 binaries, packages or building them from source.
