@@ -23,6 +23,12 @@ You will also need to create a YAML document that will serve as the service
 manifest. We provide a command-line tool to help you to create this manifest
 and manage your service.
 
+Install crane
+=============
+
+`crane` is a command-line interface (CLI) used by service manager to manage
+services. Before start, make sure that you have `crane` installed: https://tsuru-crane.readthedocs.io/en/latest/#installing
+
 Creating your service API
 =========================
 
