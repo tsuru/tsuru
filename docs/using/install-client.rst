@@ -10,16 +10,11 @@
 Installing tsuru clients
 ++++++++++++++++++++++++
 
-tsuru contains three clients: ``tsuru``, ``tsuru-admin`` and ``crane``.
-
-* **tsuru** is the command line utility used by application developers, that
+**tsuru** is the command line utility used by application developers, that
   will allow users to create, list, bind and manage apps. For more details,
-  check :doc:`tsuru usage </reference/tsuru-client>`;
-* **crane** is used by service administrators.
-* **tsuru-admin** is used by cloud administrators. Whoever is allowed to use
-  it has gotten super powers :-)
+  check :doc:`tsuru usage </reference/tsuru-client>`.
 
-This document describes how you can install those clients, using pre-compiled
+This document describes how you can install tsuru CLI, using pre-compiled
 binaries, packages or building them from source.
 
 - `Downloading binaries (Mac OS X, Linux and Windows)`_
@@ -34,16 +29,13 @@ We provide pre-built binaries for OS X and Linux, only for the amd64
 architecture. You can download these binaries directly from the releases page
 of the project:
 
-    * crane: https://github.com/tsuru/crane/releases
     * tsuru: https://github.com/tsuru/tsuru-client/releases
-    * tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
 
 Using homebrew (Mac OS X only)
 ==============================
 
 If you use Mac OS X and `homebrew <http://mxcl.github.com/homebrew/>`_, you may
-use a custom tap to install ``tsuru``, ``crane`` and ``tsuru-admin``. First you
-need to add the tap:
+use a custom tap to install ``tsuru``. First you need to add the tap:
 
 .. highlight:: bash
 
@@ -51,29 +43,27 @@ need to add the tap:
 
     $ brew tap tsuru/homebrew-tsuru
 
-Now you can install tsuru, tsuru-admin and crane:
+Now you can install tsuru:
 
 .. highlight:: bash
 
 ::
 
     $ brew install tsuru
-    $ brew install tsuru-admin
-    $ brew install crane
 
-Whenever a new version of any of tsuru's clients is out, you can just run:
+Whenever a new version of any of tsuru clients is out, you can just run:
 
 .. highlight:: bash
 
 ::
 
     $ brew update
-    $ brew upgrade <formula> # tsuru/tsuru-admin/crane
+    $ brew upgrade tsuru
 
 For more details on taps, check `homebrew documentation
 <https://github.com/Homebrew/homebrew/wiki/brew-tap>`_.
 
-**NOTE:** tsuru clients require Go 1.4 or higher. Make sure you have the last version
+**NOTE:** tsuru client require Go 1.4 or higher. Make sure you have the last version
 of Go installed in your system.
 
 Using the PPA (Ubuntu only)
@@ -90,15 +80,13 @@ repository locally and run an ``apt-get update``:
     $ sudo apt-add-repository ppa:tsuru/ppa
     $ sudo apt-get update
 
-Now you can install tsuru's clients:
+Now you can install tsuru clients:
 
 .. highlight:: bash
 
 ::
 
     $ sudo apt-get install tsuru-client
-    $ sudo apt-get install crane
-    $ sudo apt-get install tsuru-admin
 
 Build from source (Linux, Mac OS X and Windows)
 ===============================================
@@ -112,13 +100,11 @@ Build from source (Linux, Mac OS X and Windows)
 <http://golang.org>`_, so before installing tsuru from source, please make sure
 you have `installed and configured Go <http://golang.org/doc/install>`_.
 
-With Go installed and configured, you can use ``go get`` to install any of
-tsuru's clients:
+With Go installed and configured, you can use ``go get`` to install tsuru
+client:
 
 .. highlight:: bash
 
 ::
 
     $ go get github.com/tsuru/tsuru-client/tsuru
-    $ go get github.com/tsuru/tsuru-admin
-    $ go get github.com/tsuru/crane
