@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -182,6 +183,12 @@ func (s *DockerServer) containerForService(srv *swarm.Service, name string) *doc
 		Created:    time.Now(),
 		Config:     &dockerConfig,
 		HostConfig: &hostConfig,
+		State: docker.State{
+			Running:   true,
+			StartedAt: time.Now(),
+			Pid:       rand.Int() % 50000,
+			ExitCode:  0,
+		},
 	}
 }
 
@@ -322,22 +329,40 @@ func (s *DockerServer) taskList(w http.ResponseWriter, r *http.Request) {
 	}
 	var ret []*swarm.Task
 	for i, task := range s.tasks {
-		var srvName string
-		for _, srv := range s.services {
+		var srv *swarm.Service
+		for _, srv = range s.services {
 			if task.ServiceID == srv.ID {
-				srvName = srv.Spec.Name
 				break
 			}
 		}
+		if srv == nil {
+			http.Error(w, "service not found", http.StatusNotFound)
+			return
+		}
 		if inFilter(filters["id"], task.ID) ||
 			inFilter(filters["service"], task.ServiceID) ||
-			inFilter(filters["service"], srvName) ||
+			inFilter(filters["service"], srv.Spec.Name) ||
 			inFilter(filters["node"], task.NodeID) ||
-			inFilter(filters["desired-state"], string(task.DesiredState)) {
+			inFilter(filters["desired-state"], string(task.DesiredState)) ||
+			inLabelFilter(filters["label"], srv.Spec.Annotations.Labels) {
 			ret = append(ret, s.tasks[i])
 		}
 	}
 	json.NewEncoder(w).Encode(ret)
+}
+
+func inLabelFilter(list []string, labels map[string]string) bool {
+	for _, item := range list {
+		parts := strings.Split(item, "=")
+		key := parts[0]
+		if val, ok := labels[key]; ok {
+			if len(parts) > 1 && val != parts[1] {
+				continue
+			}
+			return true
+		}
+	}
+	return false
 }
 
 func inFilter(list []string, wanted string) bool {
@@ -406,7 +431,9 @@ func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "service not found", http.StatusNotFound)
 		return
 	}
-	json.NewDecoder(r.Body).Decode(&toUpdate.Spec)
+	var newSpec swarm.ServiceSpec
+	json.NewDecoder(r.Body).Decode(&newSpec)
+	toUpdate.Spec = newSpec
 	var newTasks []*swarm.Task
 	var newContainers []*docker.Container
 	for i := 0; i < len(s.tasks); i++ {

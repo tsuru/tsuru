@@ -293,6 +293,8 @@ func (s *DockerServer) CustomHandler(path string, handler http.Handler) {
 // MutateContainer changes the state of a container, returning an error if the
 // given id does not match to any container "running" in the server.
 func (s *DockerServer) MutateContainer(id string, state docker.State) error {
+	s.cMut.Lock()
+	defer s.cMut.Unlock()
 	for _, container := range s.containers {
 		if container.ID == id {
 			container.State = state

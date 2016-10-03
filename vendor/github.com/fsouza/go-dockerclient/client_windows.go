@@ -3,9 +3,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package docker provides a client for the Docker remote API.
-//
-// See https://goo.gl/G3plxW for more details on the remote API.
 package docker
 
 import (
