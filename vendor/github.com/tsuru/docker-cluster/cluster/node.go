@@ -9,7 +9,9 @@ package cluster
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 
@@ -17,13 +19,16 @@ import (
 )
 
 // Node represents a host running Docker. Each node has an Address
-// (in the form <scheme>://<host>:<port>/) and map with arbritary
+// (in the form <scheme>://<host>:<port>/) and a map with arbritary
 // metadata.
 type Node struct {
 	Address        string `bson:"_id"`
 	Healing        HealingData
 	Metadata       map[string]string
 	CreationStatus string
+	CaCert         []byte
+	ClientCert     []byte
+	ClientKey      []byte
 	tlsConfig      *tls.Config
 }
 
@@ -110,8 +115,12 @@ func (n *Node) Client() (*docker.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client.TLSConfig = n.tlsConfig
-	client.HTTPClient = clientWithTimeout(defaultDialTimeout, defaultTimeout, n.tlsConfig)
+	tlsConfig, err := n.getTLSConfig()
+	if err != nil {
+		return nil, err
+	}
+	client.TLSConfig = tlsConfig
+	client.HTTPClient = clientWithTimeout(defaultDialTimeout, defaultTimeout, tlsConfig)
 	client.Dialer = timeout10Dialer
 	return client, nil
 }
@@ -177,4 +186,27 @@ func (nodes NodeList) filterDisabled() NodeList {
 		}
 	}
 	return filtered
+}
+
+func (n *Node) getTLSConfig() (*tls.Config, error) {
+	if n.tlsConfig != nil {
+		return n.tlsConfig, nil
+	}
+	if len(n.CaCert) > 0 {
+		tlsCert, err := tls.X509KeyPair(n.ClientCert, n.ClientKey)
+		if err != nil {
+			return nil, err
+		}
+		caPool := x509.NewCertPool()
+		if !caPool.AppendCertsFromPEM(n.CaCert) {
+			return nil, errors.New("Could not add RootCA pem")
+		}
+		config := &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+			RootCAs:      caPool,
+		}
+		n.tlsConfig = config
+		return config, nil
+	}
+	return nil, nil
 }
