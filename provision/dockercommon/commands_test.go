@@ -2,18 +2,50 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package dockercommon
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
+
+type S struct {
+	conn *db.Storage
+}
+
+var _ = check.Suite(&S{})
+
+func Test(t *testing.T) {
+	check.TestingT(t)
+}
+
+func (s *S) SetUpSuite(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "provision_dockercommon_tests_s")
+	config.Set("docker:run-cmd:bin", "runcmd")
+	config.Set("docker:deploy-cmd", "deploycmd")
+	var err error
+	s.conn, err = db.Conn()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TearDownSuite(c *check.C) {
+	s.conn.Close()
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+}
 
 func (s *S) TestArchiveDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
@@ -30,9 +62,8 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
 	expectedPart1 := fmt.Sprintf("%s archive %s", deployCmd, archiveURL)
 	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
-	cmds, err := archiveDeployCmds(app, archiveURL)
-	c.Assert(err, check.IsNil)
-	c.Assert(cmds, check.DeepEquals, []string{"/bin/bash", "-lc", expectedAgent})
+	cmds := ArchiveDeployCmds(app, archiveURL)
+	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
 }
 
 func (s *S) TestRunWithAgentCmds(c *check.C) {
@@ -61,7 +92,7 @@ func (s *S) TestRunLeanContainersCmd(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := runLeanContainerCmds("web", imageId, nil)
+	cmds, process, err := LeanContainerCmds("web", imageId, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
@@ -82,7 +113,7 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := runLeanContainerCmds("web", imageId, nil)
+	cmds, process, err := LeanContainerCmds("web", imageId, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; cmd1 && cmd2 && exec python web.py"}
@@ -103,7 +134,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(tokenEnv)
-	cmds, process, err := runLeanContainerCmds("", imageId, app)
+	cmds, process, err := LeanContainerCmds("", imageId, app)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "")
 	runCmd, err := config.GetString("docker:run-cmd:bin")
@@ -121,7 +152,7 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := runLeanContainerCmds("", imageId, nil)
+	cmds, process, err := LeanContainerCmds("", imageId, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
@@ -138,7 +169,7 @@ func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := runLeanContainerCmds("", imageId, nil)
+	cmds, process, err := LeanContainerCmds("", imageId, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(provision.InvalidProcessError)
 	c.Assert(ok, check.Equals, true)
@@ -156,7 +187,7 @@ func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := runLeanContainerCmds("worker", imageId, nil)
+	cmds, process, err := LeanContainerCmds("worker", imageId, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(provision.InvalidProcessError)
 	c.Assert(ok, check.Equals, true)
@@ -166,7 +197,7 @@ func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdNoImageMetadata(c *check.C) {
-	cmds, process, err := runLeanContainerCmds("web", "tsuru/app-myapp", nil)
+	cmds, process, err := LeanContainerCmds("web", "tsuru/app-myapp", nil)
 	c.Assert(err, check.FitsTypeOf, provision.InvalidProcessError{})
 	c.Assert(err, check.ErrorMatches, `.*no command declared in Procfile for process "web"`)
 	c.Assert(process, check.Equals, "")

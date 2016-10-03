@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
@@ -743,7 +744,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	for processName, v := range args.toAdd {
 		units += v.Quantity
 		if processName == "" {
-			_, processName, _ = processCmdForImage(processName, imageId)
+			_, processName, _ = dockercommon.ProcessCmdForImage(processName, imageId)
 		}
 		processMsg = append(processMsg, fmt.Sprintf("[%s: %d]", processName, v.Quantity))
 	}
@@ -844,7 +845,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	if err != nil {
 		return err
 	}
-	_, processName, err = processCmdForImage(processName, imgId)
+	_, processName, err = dockercommon.ProcessCmdForImage(processName, imgId)
 	if err != nil {
 		return err
 	}

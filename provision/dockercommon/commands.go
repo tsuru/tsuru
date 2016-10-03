@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package dockercommon
 
 import (
 	"fmt"
@@ -13,23 +13,22 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-// archiveDeployCmds returns the list of commands that are used when the
 // provisioner deploys a unit using the archive method.
-func archiveDeployCmds(app provision.App, archiveURL string) ([]string, error) {
-	return deployCmds(app, "archive", archiveURL)
+func ArchiveDeployCmds(app provision.App, archiveURL string) []string {
+	return DeployCmds(app, "archive", archiveURL)
 }
 
-func deployCmds(app provision.App, params ...string) ([]string, error) {
+func DeployCmds(app provision.App, params ...string) []string {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
-		return nil, err
+		deployCmd = "/var/lib/tsuru/deploy"
 	}
 	cmds := append([]string{deployCmd}, params...)
 	host, _ := config.GetString("host")
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
 	finalCmd := strings.Join(unitAgentCmds, " ")
-	return []string{"/bin/bash", "-lc", finalCmd}, nil
+	return []string{"/bin/sh", "-lc", finalCmd}
 }
 
 // runWithAgentCmds returns the list of commands that should be passed when the
@@ -48,7 +47,7 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }
 
-func processCmdForImage(processName, imageId string) (string, string, error) {
+func ProcessCmdForImage(processName, imageId string) (string, string, error) {
 	data, err := image.GetImageCustomData(imageId)
 	if err != nil {
 		return "", "", err
@@ -71,8 +70,8 @@ func processCmdForImage(processName, imageId string) (string, string, error) {
 	return processCmd, processName, nil
 }
 
-func runLeanContainerCmds(processName, imageId string, app provision.App) ([]string, string, error) {
-	processCmd, processName, err := processCmdForImage(processName, imageId)
+func LeanContainerCmds(processName, imageId string, app provision.App) ([]string, string, error) {
+	processCmd, processName, err := ProcessCmdForImage(processName, imageId)
 	if err != nil {
 		return nil, "", err
 	}
