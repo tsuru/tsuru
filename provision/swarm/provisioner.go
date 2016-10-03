@@ -5,15 +5,18 @@
 package swarm
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
 	"net/url"
+	"strings"
 
 	"github.com/docker/engine-api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -93,26 +96,16 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	service, err := client.InspectService(app.GetName())
-	if err != nil {
-		if _, ok := err.(*docker.NoSuchService); ok {
-			return nil, nil
-		}
-		return nil, errors.Wrap(err, "")
-	}
-	var pubPort uint32
-	if len(service.Endpoint.Ports) > 0 {
-		pubPort = service.Endpoint.Ports[0].PublishedPort
-	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"service": {app.GetName()},
+			"label": {fmt.Sprintf("%s=%s", labelAppName, app.GetName())},
 		},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "")
 	}
 	nodeMap := map[string]*swarm.Node{}
+	serviceMap := map[string]*swarm.Service{}
 	units := make([]provision.Unit, len(tasks))
 	for i, t := range tasks {
 		if _, ok := nodeMap[t.NodeID]; !ok {
@@ -123,13 +116,25 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 			}
 			nodeMap[node.ID] = node
 		}
+		if _, ok := serviceMap[t.ServiceID]; !ok {
+			var service *swarm.Service
+			service, err = client.InspectService(t.ServiceID)
+			if err != nil {
+				return nil, errors.Wrap(err, "")
+			}
+			serviceMap[service.ID] = service
+		}
 		addr := nodeMap[t.NodeID].ManagerStatus.Addr
+		service := serviceMap[t.ServiceID]
 		host, _, _ := net.SplitHostPort(addr)
+		var pubPort uint32
+		if len(service.Endpoint.Ports) > 0 {
+			pubPort = service.Endpoint.Ports[0].PublishedPort
+		}
 		units[i] = provision.Unit{
-			ID:      t.Status.ContainerStatus.ContainerID,
-			AppName: app.GetName(),
-			// TODO(cezarsa): no process support for now, must add latter.
-			ProcessName: "",
+			ID:          t.Status.ContainerStatus.ContainerID,
+			AppName:     app.GetName(),
+			ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
 			Type:        app.GetPlatform(),
 			Ip:          host,
 			Status:      provision.StatusStarted,
@@ -143,12 +148,59 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 }
 
 func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
-	// TODO(cezarsa): filter only routable units using process name
-	return p.Units(app)
+	imgID, err := image.AppCurrentImageName(app.GetName())
+	if err != nil && err != image.ErrNoImagesAvailable {
+		return nil, err
+	}
+	webProcessName, err := image.GetImageWebProcessName(imgID)
+	if err != nil {
+		return nil, err
+	}
+	units, err := p.Units(app)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(units); i++ {
+		if units[i].ProcessName != webProcessName {
+			units = append(units[:i], units[i+1:]...)
+			i--
+		}
+	}
+	return units, nil
 }
 
-func (p *swarmProvisioner) RegisterUnit(provision.Unit, map[string]interface{}) error {
-	return errNotImplemented
+func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	tasks, err := client.ListTasks(docker.ListTasksOptions{
+		Filters: map[string][]string{
+			"label": {labelServiceDeploy.String() + "=true"},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	var foundTask *swarm.Task
+	for i, t := range tasks {
+		if t.Status.ContainerStatus.ContainerID == unit.ID {
+			foundTask = &tasks[i]
+			break
+		}
+	}
+	if foundTask == nil {
+		return nil
+	}
+	srv, err := client.InspectService(foundTask.ServiceID)
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	buildingImage := srv.Spec.Annotations.Labels[labelServiceBuildImage.String()]
+	if buildingImage == "" {
+		return errors.Errorf("invalid build image label for build service: %#v", srv)
+	}
+	return image.SaveImageCustomData(buildingImage, customData)
 }
 
 func (p *swarmProvisioner) SetNodeStatus(provision.NodeStatusData) error {
@@ -274,89 +326,218 @@ func (p *swarmProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
 	return errNotImplemented
 }
 
-func serviceSpecForApp(app provision.App, image string, baseSpec *swarm.ServiceSpec) (swarm.ServiceSpec, error) {
-	var envs []string
-	for _, envData := range app.Envs() {
-		envs = append(envs, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
+func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {
+	baseImage := image.GetBuildImage(app)
+	buildingImage, err := image.AppNewImageName(app.GetName())
+	if err != nil {
+		return "", errors.Wrap(err, "")
 	}
-	host, _ := config.GetString("host")
-	envs = append(envs, []string{
-		fmt.Sprintf("%s=%s", "port", "8888"),
-		fmt.Sprintf("%s=%s", "PORT", "8888"),
-		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
-	}...)
-	var unitCount uint64 = 1
-	if baseSpec != nil {
-		unitCount = *baseSpec.Mode.Replicated.Replicas
-	}
-	spec := swarm.ServiceSpec{
-		TaskTemplate: swarm.TaskSpec{
-			ContainerSpec: swarm.ContainerSpec{
-				Image: image,
-				Env:   envs,
-			},
-			RestartPolicy: &swarm.RestartPolicy{
-				Condition: swarm.RestartPolicyConditionAny,
-			},
-			Placement: &swarm.Placement{
-				Constraints: []string{
-					fmt.Sprintf("node.labels.pool == %s", app.GetPool()),
-				},
-			},
-		},
-		EndpointSpec: &swarm.EndpointSpec{
-			Mode: swarm.ResolutionModeVIP,
-			Ports: []swarm.PortConfig{
-				{TargetPort: 8888, PublishedPort: 0},
-			},
-		},
-		Annotations: swarm.Annotations{
-			Name: app.GetName(),
-		},
-		Mode: swarm.ServiceMode{
-			Replicated: &swarm.ReplicatedService{
-				Replicas: &unitCount,
-			},
-		},
-	}
-	return spec, nil
-}
-
-func (p *swarmProvisioner) ImageDeploy(app provision.App, image string, evt *event.Event) (string, error) {
+	cmds := deployCmds(app, archiveURL)
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
 	}
-	srv, err := client.InspectService(app.GetName())
+	srvID, task, err := runOnceBuildCmds(client, app, cmds, baseImage, buildingImage, evt)
+	if srvID != "" {
+		defer removeServiceAndLog(client, srvID)
+	}
 	if err != nil {
-		if _, isNotFound := err.(*docker.NoSuchService); !isNotFound {
-			return "", errors.Wrap(err, "")
+		return "", err
+	}
+	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, app)
+	if err != nil {
+		return "", err
+	}
+	err = deployProcesses(client, app, buildingImage)
+	if err != nil {
+		return "", errors.Wrap(err, "")
+	}
+	return buildingImage, nil
+}
+
+func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(imgID, ":") {
+		imgID = fmt.Sprintf("%s:latest", imgID)
+	}
+	newImage, err := image.AppNewImageName(a.GetName())
+	if err != nil {
+		return "", errors.Wrap(err, "")
+	}
+	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
+	var buf bytes.Buffer
+	cmds := []string{"/bin/bash", "-c", "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"}
+	srvID, task, err := runOnceBuildCmds(client, a, cmds, imgID, newImage, &buf)
+	if srvID != "" {
+		defer removeServiceAndLog(client, srvID)
+	}
+	if err != nil {
+		return "", err
+	}
+	client, err = clientForNode(client, task.NodeID)
+	if err != nil {
+		return "", err
+	}
+	procfileData := buf.String()
+	procfile := image.GetProcessesFromProcfile(procfileData)
+	imageInspect, err := client.InspectImage(imgID)
+	if err != nil {
+		return "", errors.Wrap(err, "")
+	}
+	if len(procfile) == 0 {
+		fmt.Fprintln(evt, "  ---> Procfile not found, trying to get entrypoint")
+		if len(imageInspect.Config.Entrypoint) == 0 {
+			return "", errors.New("no procfile or entrypoint found in image")
+		}
+		webProcess := imageInspect.Config.Entrypoint[0]
+		for _, c := range imageInspect.Config.Entrypoint[1:] {
+			webProcess += fmt.Sprintf(" %q", c)
+		}
+		procfile["web"] = webProcess
+	}
+	for k, v := range procfile {
+		fmt.Fprintf(evt, "  ---> Process %s found with command: %v\n", k, v)
+	}
+	imageInfo := strings.Split(newImage, ":")
+	repo, tag := strings.Join(imageInfo[:len(imageInfo)-1], ":"), imageInfo[len(imageInfo)-1]
+	err = client.TagImage(imgID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
+	if err != nil {
+		return "", errors.Wrap(err, "")
+	}
+	err = pushImage(client, repo, tag)
+	if err != nil {
+		return "", err
+	}
+	imageData := image.CreateImageMetadata(newImage, procfile)
+	if len(imageInspect.Config.ExposedPorts) > 1 {
+		return "", errors.New("Too many ports. You should especify which one you want to.")
+	}
+	for k := range imageInspect.Config.ExposedPorts {
+		imageData.CustomData["exposedPort"] = string(k)
+	}
+	err = image.SaveImageCustomData(newImage, imageData.CustomData)
+	if err != nil {
+		return "", errors.Wrap(err, "")
+	}
+	a.SetUpdatePlatform(true)
+	err = deployProcesses(client, a, newImage)
+	if err != nil {
+		return "", err
+	}
+	return newImage, nil
+}
+
+func deployProcesses(client *docker.Client, a provision.App, imgID string) error {
+	imageData, err := image.GetImageCustomData(imgID)
+	if err != nil {
+		return err
+	}
+	for processName, cmd := range imageData.Processes {
+		err = deploy(client, a, processName, cmd, imgID)
+		if err != nil {
+			// TODO(cezarsa): better error handling
+			return err
 		}
 	}
-	if srv == nil {
-		var spec swarm.ServiceSpec
-		spec, err = serviceSpecForApp(app, image, nil)
-		if err != nil {
-			return "", err
+	err = image.AppendAppImageName(a.GetName(), imgID)
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	return nil
+}
+
+func deploy(client *docker.Client, a provision.App, process, cmd, imgID string) error {
+	srvName := serviceNameForApp(a, process)
+	srv, err := client.InspectService(srvName)
+	if err != nil {
+		if _, isNotFound := err.(*docker.NoSuchService); !isNotFound {
+			return errors.Wrap(err, "")
 		}
-		srv, err = client.CreateService(docker.CreateServiceOptions{
-			ServiceSpec: spec,
+	}
+	var spec *swarm.ServiceSpec
+	if srv == nil {
+		spec, err = serviceSpecForApp(tsuruServiceOpts{
+			app:     a,
+			process: process,
+			image:   imgID,
 		})
 		if err != nil {
-			return "", errors.Wrap(err, "")
+			return err
+		}
+		srv, err = client.CreateService(docker.CreateServiceOptions{
+			ServiceSpec: *spec,
+		})
+		if err != nil {
+			return errors.Wrap(err, "")
 		}
 	} else {
-		srv.Spec, err = serviceSpecForApp(app, image, &srv.Spec)
+		spec, err = serviceSpecForApp(tsuruServiceOpts{
+			app:      a,
+			process:  process,
+			image:    imgID,
+			baseSpec: &srv.Spec,
+		})
 		if err != nil {
-			return "", err
+			return err
 		}
+		srv.Spec = *spec
 		err = client.UpdateService(srv.ID, docker.UpdateServiceOptions{
 			Version:     srv.Version.Index,
 			ServiceSpec: srv.Spec,
 		})
 		if err != nil {
-			return "", errors.Wrap(err, "")
+			return errors.Wrap(err, "")
 		}
 	}
-	return image, nil
+	return nil
+}
+
+func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, imgID, buildingImage string, w io.Writer) (string, *swarm.Task, error) {
+	spec, err := serviceSpecForApp(tsuruServiceOpts{
+		app:        a,
+		image:      imgID,
+		isDeploy:   true,
+		buildImage: buildingImage,
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	spec.TaskTemplate.ContainerSpec.Command = cmds
+	spec.TaskTemplate.RestartPolicy.Condition = swarm.RestartPolicyConditionNone
+	srv, err := client.CreateService(docker.CreateServiceOptions{
+		ServiceSpec: *spec,
+	})
+	createdID := srv.ID
+	if err != nil {
+		return "", nil, errors.Wrap(err, "")
+	}
+	tasks, err := waitForTasks(client, createdID, swarm.TaskStateShutdown)
+	if err != nil {
+		return createdID, nil, err
+	}
+	client, err = clientForNode(client, tasks[0].NodeID)
+	if err != nil {
+		return createdID, nil, err
+	}
+	contID := tasks[0].Status.ContainerStatus.ContainerID
+	attachOpts := docker.AttachToContainerOptions{
+		Container:    contID,
+		OutputStream: w,
+		ErrorStream:  w,
+		Logs:         true,
+		Stdout:       true,
+		Stderr:       true,
+		Stream:       true,
+	}
+	exitCode, err := safeAttachWaitContainer(client, attachOpts)
+	if err != nil {
+		return createdID, nil, err
+	}
+	if exitCode != 0 {
+		return createdID, nil, errors.Errorf("unexpected result code for build container: %d", exitCode)
+	}
+	return createdID, &tasks[0], nil
 }

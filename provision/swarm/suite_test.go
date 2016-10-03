@@ -22,10 +22,11 @@ import (
 )
 
 type S struct {
-	p    *swarmProvisioner
-	conn *db.Storage
-	user *auth.User
-	team *auth.Team
+	p     *swarmProvisioner
+	conn  *db.Storage
+	user  *auth.User
+	team  *auth.Team
+	token auth.Token
 }
 
 var _ = check.Suite(&S{})
@@ -75,5 +76,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.team = &auth.Team{Name: "admin"}
 	c.Assert(err, check.IsNil)
 	err = s.conn.Teams().Insert(s.team)
+	c.Assert(err, check.IsNil)
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 }

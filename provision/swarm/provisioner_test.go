@@ -5,15 +5,21 @@
 package swarm
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
@@ -183,8 +189,58 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
 }
 
+func (s *S) TestArchiveDeploy(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, true)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.ArchiveDeploy(a, "http://server/myfile.tgz", evt)
+	c.Assert(err, check.IsNil)
+	c.Assert(<-attached, check.Equals, true)
+	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1")
+	dbImg, err := image.AppCurrentImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+	})
+}
+
 func (s *S) TestImageDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, false)
+	imageName := "myimg:v1"
+	srv.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint:   []string{"/bin/sh", "-c", "python test.py"},
+				ExposedPorts: map[docker.Port]struct{}{"80/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = cli.PullImage(docker.PullImageOptions{
+		Repository: "myimg",
+		Tag:        "v1",
+	}, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
@@ -192,23 +248,45 @@ func (s *S) TestImageDeploy(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	image, err := s.p.ImageDeploy(a, "myimg:v1", nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(image, check.Equals, "myimg:v1")
+	deployedImg, err := s.p.ImageDeploy(a, imageName, evt)
+	c.Assert(err, check.IsNil)
+	c.Assert(<-attached, check.Equals, true)
+	c.Assert(deployedImg, check.Equals, "tsuru/app-myapp:v1")
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+		{ID: units[0].ID, AppName: a.Name, ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
 	})
-	image, err = s.p.ImageDeploy(a, "myimg:v2", nil)
+	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(image, check.Equals, "myimg:v2")
-	unitsAfter, err := s.p.Units(a)
-	c.Assert(err, check.IsNil)
-	c.Assert(unitsAfter, check.HasLen, 1)
-	c.Assert(units[0].ID, check.Not(check.Equals), unitsAfter[0].ID)
-	c.Assert(unitsAfter, check.DeepEquals, []provision.Unit{
-		{ID: unitsAfter[0].ID, AppName: a.Name, Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
-	})
+	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+}
+
+func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool) <-chan bool {
+	chAttached := make(chan bool, 1)
+	srv.CustomHandler("/containers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) == 4 && parts[3] == "attach" {
+			if register {
+				err := s.p.RegisterUnit(provision.Unit{ID: parts[2]}, map[string]interface{}{
+					"processes": map[string]interface{}{
+						"web": "python myapp.py",
+					},
+				})
+				c.Assert(err, check.IsNil)
+			}
+			srv.MutateContainer(parts[2], docker.State{StartedAt: time.Now(), Running: false})
+			chAttached <- true
+		}
+		srv.DefaultHandler().ServeHTTP(w, r)
+	}))
+	return chAttached
 }
