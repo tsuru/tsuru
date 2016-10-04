@@ -26,6 +26,9 @@ type Machine struct {
 	Protocol       string
 	CreationParams map[string]string
 	CustomData     map[string]interface{}
+	CaCert         []byte
+	ClientCert     []byte
+	ClientKey      []byte
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {
