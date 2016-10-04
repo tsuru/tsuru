@@ -57,6 +57,9 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 			return address, response, err
 		}
 		address = m.FormatNodeAddress()
+		params.CaCert = m.CaCert
+		params.ClientCert = m.ClientCert
+		params.ClientKey = m.ClientKey
 	}
 	prov, _, err := provision.FindNode(address)
 	if err != provision.ErrNodeNotFound {

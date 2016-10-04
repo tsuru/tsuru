@@ -393,9 +393,12 @@ type OptionalLogsProvisioner interface {
 }
 
 type AddNodeOptions struct {
-	Address  string
-	Metadata map[string]string
-	Register bool
+	Address    string
+	Metadata   map[string]string
+	Register   bool
+	CaCert     []byte
+	ClientCert []byte
+	ClientKey  []byte
 }
 
 type RemoveNodeOptions struct {
