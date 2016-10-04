@@ -111,6 +111,20 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 		Protocol:   "https",
 		CustomData: driverData,
 	}
+	if host.AuthOptions() != nil {
+		m.CaCert, err = ioutil.ReadFile(host.AuthOptions().CaCertPath)
+		if err != nil {
+			return nil, err
+		}
+		m.ClientCert, err = ioutil.ReadFile(host.AuthOptions().ClientCertPath)
+		if err != nil {
+			return nil, err
+		}
+		m.ClientKey, err = ioutil.ReadFile(host.AuthOptions().ClientKeyPath)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return m, nil
 }
 

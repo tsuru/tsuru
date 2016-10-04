@@ -78,11 +78,16 @@ func (s *S) TestCreateMachine(c *check.C) {
 	}
 	m, err := dm.CreateMachine("my-machine", "amazonec2", driverOpts)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(fakeAPI.Hosts), check.Equals, 1)
+
 	c.Assert(m.Id, check.Equals, "my-machine")
 	c.Assert(m.Port, check.Equals, 2376)
 	c.Assert(m.Protocol, check.Equals, "https")
 	c.Assert(m.Address, check.Equals, "192.168.10.3")
+	c.Assert(string(m.CaCert), check.Equals, "ca")
+	c.Assert(string(m.ClientCert), check.Equals, "cert")
+	c.Assert(string(m.ClientKey), check.Equals, "key")
+
+	c.Assert(len(fakeAPI.Hosts), check.Equals, 1)
 	c.Assert(fakeAPI.driverName, check.Equals, "amazonec2")
 	c.Assert(fakeAPI.ec2Driver.AccessKey, check.Equals, "access-key")
 	c.Assert(fakeAPI.ec2Driver.SecretKey, check.Equals, "secret-key")

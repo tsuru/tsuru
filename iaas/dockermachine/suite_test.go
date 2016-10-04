@@ -6,12 +6,15 @@ package dockermachine
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	check "gopkg.in/check.v1"
 
 	"github.com/docker/machine/drivers/amazonec2"
 	"github.com/docker/machine/drivers/fakedriver"
+	"github.com/docker/machine/libmachine/auth"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/engine"
 	"github.com/docker/machine/libmachine/host"
@@ -31,6 +34,7 @@ type fakeLibMachineAPI struct {
 	driverName string
 	ec2Driver  *amazonec2.Driver
 	closed     bool
+	tempFiles  []*os.File
 }
 
 func (f *fakeLibMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.Host, error) {
@@ -49,13 +53,43 @@ func (f *fakeLibMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.
 	} else {
 		name = driverOpts["MockName"].(string)
 	}
+	caFile, err := createTempFile("ca")
+	if err != nil {
+		return nil, err
+	}
+	certFile, err := createTempFile("cert")
+	if err != nil {
+		return nil, err
+	}
+	keyFile, err := createTempFile("key")
+	if err != nil {
+		return nil, err
+	}
+	f.tempFiles = append(f.tempFiles, caFile, certFile, keyFile)
+
 	return &host.Host{
 		Name:   name,
 		Driver: driver,
 		HostOptions: &host.Options{
 			EngineOptions: &engine.Options{},
+			AuthOptions: &auth.Options{
+				CaCertPath:     caFile.Name(),
+				ClientCertPath: certFile.Name(),
+				ClientKeyPath:  keyFile.Name(),
+			},
 		},
 	}, nil
+}
+func createTempFile(content string) (*os.File, error) {
+	file, err := ioutil.TempFile("", "")
+	if err != nil {
+		return nil, err
+	}
+	_, err = file.WriteString(content)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 func (f *fakeLibMachineAPI) Create(h *host.Host) error {
@@ -77,6 +111,9 @@ func (f *fakeLibMachineAPI) Create(h *host.Host) error {
 }
 
 func (f *fakeLibMachineAPI) Close() error {
+	for _, f := range f.tempFiles {
+		os.Remove(f.Name())
+	}
 	f.closed = true
 	return nil
 }
