@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net"
 	"net/url"
 	"strings"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 )
 
 const (
@@ -114,7 +114,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "")
 			}
-			nodeMap[node.ID] = node
+			nodeMap[t.NodeID] = node
 		}
 		if _, ok := serviceMap[t.ServiceID]; !ok {
 			var service *swarm.Service
@@ -122,11 +122,11 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "")
 			}
-			serviceMap[service.ID] = service
+			serviceMap[t.ServiceID] = service
 		}
-		addr := nodeMap[t.NodeID].ManagerStatus.Addr
+		addr := nodeMap[t.NodeID].Spec.Labels[labelDockerAddr]
 		service := serviceMap[t.ServiceID]
-		host, _, _ := net.SplitHostPort(addr)
+		host := tsuruNet.URLToHost(addr)
 		var pubPort uint32
 		if len(service.Endpoint.Ports) > 0 {
 			pubPort = service.Endpoint.Ports[0].PublishedPort
@@ -170,6 +170,9 @@ func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, e
 }
 
 func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
+	if customData == nil {
+		return nil
+	}
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
@@ -332,7 +335,7 @@ func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, e
 	if err != nil {
 		return "", errors.Wrap(err, "")
 	}
-	cmds := deployCmds(app, archiveURL)
+	cmds := dockercommon.ArchiveDeployCmds(app, archiveURL)
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
@@ -510,10 +513,10 @@ func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, img
 	srv, err := client.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: *spec,
 	})
-	createdID := srv.ID
 	if err != nil {
 		return "", nil, errors.Wrap(err, "")
 	}
+	createdID := srv.ID
 	tasks, err := waitForTasks(client, createdID, swarm.TaskStateShutdown)
 	if err != nil {
 		return createdID, nil, err

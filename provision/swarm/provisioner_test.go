@@ -218,6 +218,15 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
 	})
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	cont, err := cli.InspectContainer(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+	})
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
@@ -268,6 +277,13 @@ func (s *S) TestImageDeploy(c *check.C) {
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+	cont, err := cli.InspectContainer(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; exec /bin/sh \"-c\" \"python test.py\"",
+	})
 }
 
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool) <-chan bool {

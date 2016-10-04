@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
 )
@@ -247,11 +248,21 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	host, _ := config.GetString("host")
 	envs = append(envs, fmt.Sprintf("%s=%s", "TSURU_HOST", host))
+	var ports []swarm.PortConfig
+	var cmds []string
+	var err error
 	if !opts.isDeploy {
 		envs = append(envs, []string{
 			fmt.Sprintf("%s=%s", "port", "8888"),
 			fmt.Sprintf("%s=%s", "PORT", "8888"),
 		}...)
+		ports = []swarm.PortConfig{
+			{TargetPort: 8888, PublishedPort: 0},
+		}
+		cmds, _, err = dockercommon.LeanContainerCmds(opts.process, opts.image, opts.app)
+		if err != nil {
+			return nil, errors.Wrap(err, "")
+		}
 	}
 	var unitCount uint64 = 1
 	if opts.baseSpec != nil {
@@ -282,9 +293,10 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
-				Image:  opts.image,
-				Env:    envs,
-				Labels: labels,
+				Image:   opts.image,
+				Env:     envs,
+				Labels:  labels,
+				Command: cmds,
 			},
 			RestartPolicy: &swarm.RestartPolicy{
 				Condition: swarm.RestartPolicyConditionAny,
@@ -296,10 +308,8 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			},
 		},
 		EndpointSpec: &swarm.EndpointSpec{
-			Mode: swarm.ResolutionModeVIP,
-			Ports: []swarm.PortConfig{
-				{TargetPort: 8888, PublishedPort: 0},
-			},
+			Mode:  swarm.ResolutionModeVIP,
+			Ports: ports,
 		},
 		Annotations: swarm.Annotations{
 			Name:   srvName,
@@ -312,23 +322,6 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		},
 	}
 	return &spec, nil
-}
-
-func deployCmds(app provision.App, archiveURL string) []string {
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	if err != nil {
-		deployCmd = "/var/lib/tsuru/deploy"
-	}
-	cmds := append([]string{deployCmd}, "archive", archiveURL)
-	host, _ := config.GetString("host")
-	appEnvs := app.Envs()
-	var token string
-	if tokenEnv, ok := appEnvs["TSURU_APP_TOKEN"]; ok {
-		token = tokenEnv.Value
-	}
-	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
-	finalCmd := strings.Join(unitAgentCmds, " ")
-	return []string{"/bin/bash", "-lc", finalCmd}
 }
 
 func removeServiceAndLog(client *docker.Client, id string) {
