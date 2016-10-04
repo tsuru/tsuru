@@ -954,6 +954,7 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	expected := provision.Unit{
 		ID:          "c-id",
+		Name:        "c-name",
 		AppName:     "myapp",
 		Type:        "python",
 		Ip:          "192.168.50.4",
@@ -963,6 +964,7 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 	}
 	container := Container{
 		ID:          "c-id",
+		Name:        "c-name",
 		HostAddr:    "192.168.50.4",
 		HostPort:    "8080",
 		ProcessName: "web",

@@ -565,6 +565,7 @@ func (c *Container) AsUnit(a provision.App) provision.Unit {
 	}
 	return provision.Unit{
 		ID:          c.ID,
+		Name:        c.Name,
 		AppName:     a.GetName(),
 		Type:        cType,
 		Ip:          c.HostAddr,
