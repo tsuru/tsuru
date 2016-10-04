@@ -5,6 +5,7 @@
 BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
+TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 LINTER_ARGS = \
 	-j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
@@ -12,7 +13,7 @@ LINTER_ARGS = \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
 	--deadline=15m --tests
 
-.PHONY: all check-path test race docs
+.PHONY: all check-path test race docs install
 
 all: check-path test
 
@@ -33,8 +34,8 @@ endif
 	@exit 0
 
 _go_test:
-	go clean $(GO_EXTRAFLAGS) ./...
-	go test $(GO_EXTRAFLAGS) ./... -check.vv
+	go clean $(GO_EXTRAFLAGS) $(TSR_PKGS)
+	go test $(GO_EXTRAFLAGS) $(TSR_PKGS) -check.vv
 
 _tsurud_dry:
 	go build $(GO_EXTRAFLAGS) -o tsurud ./cmd/tsurud
@@ -52,13 +53,13 @@ metalint:
 		go get -u github.com/alecthomas/gometalinter; \
 		go get -u honnef.co/go/unused/cmd/unused; \
 		gometalinter --install --update; \
-		go install ./...; \
+		go install $(TSR_PKGS); \
 		go list ./... | grep -v vendor/ | sed -e "s;^;$$GOPATH/src/;" | xargs gometalinter $(LINTER_ARGS); \
 	fi
 
 race:
-	go test $(GO_EXTRAFLAGS) -race -i ./...
-	go test $(GO_EXTRAFLAGS) -race ./...
+	go test $(GO_EXTRAFLAGS) -race -i $(TSR_PKGS)
+	go test $(GO_EXTRAFLAGS) -race $(TSR_PKGS)
 
 _install_api_doc:
 	@go get $(GO_EXTRAFLAGS) github.com/tsuru/tsuru-api-docs
@@ -109,7 +110,7 @@ release:
 	@echo "$(version) released!"
 
 install:
-	go install $(GO_EXTRAFLAGS) ./... ../tsuru-client/...
+	go install $(GO_EXTRAFLAGS) $(TSR_PKGS) ../tsuru-client/...
 
 serve: run-tsurud-api
 
