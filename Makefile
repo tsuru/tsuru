@@ -4,7 +4,7 @@
 
 BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
-TSR_SRC = cmd/tsurud/*.go
+TSR_SRC = ./cmd/tsurud
 
 LINTER_ARGS = \
 	-j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
