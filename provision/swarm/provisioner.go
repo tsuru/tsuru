@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/docker/engine-api/types/swarm"
+	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
