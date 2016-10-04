@@ -172,6 +172,7 @@ func (s *DockerServer) containerForService(srv *swarm.Service, name string) *doc
 		PortBindings: portBindings,
 	}
 	dockerConfig := docker.Config{
+		Entrypoint:   srv.Spec.TaskTemplate.ContainerSpec.Command,
 		Cmd:          srv.Spec.TaskTemplate.ContainerSpec.Args,
 		Env:          srv.Spec.TaskTemplate.ContainerSpec.Env,
 		ExposedPorts: exposedPort,
