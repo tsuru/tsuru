@@ -9,7 +9,6 @@ TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 LINTER_ARGS = \
 	-j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
-	--linter 'unused:unused {path}:^(?P<path>[^\s][^\r\n:]+?\.go):(?P<line>\d+):(?P<col>\d+):\s*(?P<message>.*)$$$'' \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
 	--deadline=15m --tests
 
@@ -51,9 +50,8 @@ lint: metalint
 metalint:
 	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
 		go get -u github.com/alecthomas/gometalinter; \
-		go get -u honnef.co/go/unused/cmd/unused; \
 		gometalinter --install --update; \
-		go install $(TSR_PKGS); \
+		for pkg in $$(go list ./...); do go install $$pkg; done; \
 		go list ./... | grep -v vendor/ | sed -e "s;^;$$GOPATH/src/;" | xargs gometalinter $(LINTER_ARGS); \
 	fi
 
