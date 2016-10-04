@@ -620,7 +620,7 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{}, "",
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
 		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
 			"pool": "pool1",
 		}},

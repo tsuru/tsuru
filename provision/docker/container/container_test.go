@@ -472,7 +472,7 @@ func (s *S) TestContainerNetworkInfo(c *check.C) {
 	storage.StoreContainer("c-01", server.URL)
 	p, err := newFakeDockerProvisioner(server.URL)
 	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &storage, "",
+	p.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)

@@ -37,7 +37,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	p.storage, err = buildClusterStorage()
 	c.Assert(err, check.IsNil)
 	p.scheduler = &segregatedScheduler{provisioner: p}
-	p.cluster, err = cluster.New(p.scheduler, p.storage, "", nodes...)
+	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
