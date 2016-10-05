@@ -124,3 +124,34 @@ func (ProvisionSuite) TestUnitNotFoundError(c *check.C) {
 	var err error = &UnitNotFoundError{ID: "some unit"}
 	c.Assert(err.Error(), check.Equals, `unit "some unit" not found`)
 }
+
+type testNode struct{}
+
+func (n *testNode) Pool() string {
+	return "a"
+}
+func (n *testNode) Address() string {
+	return "b"
+}
+func (n *testNode) Status() string {
+	return "c"
+}
+func (n *testNode) Metadata() map[string]string {
+	return map[string]string{"d": "e"}
+}
+func (n *testNode) Units() ([]Unit, error) {
+	return nil, nil
+}
+
+func (ProvisionSuite) TestNodeToJson(c *check.C) {
+	n := testNode{}
+	data, err := NodeToJSON(&n)
+	c.Assert(err, check.IsNil)
+	c.Assert(string(data), check.Equals, `{"Address":"b","Metadata":{"d":"e"},"Status":"c","Pool":"a"}`)
+}
+
+func (ProvisionSuite) TestNodeToSpec(c *check.C) {
+	n := testNode{}
+	spec := NodeToSpec(&n)
+	c.Assert(spec, check.DeepEquals, NodeSpec{Address: "b", Metadata: map[string]string{"d": "e"}, Status: "c", Pool: "a"})
+}

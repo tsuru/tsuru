@@ -399,6 +399,7 @@ type AddNodeOptions struct {
 	CaCert     []byte
 	ClientCert []byte
 	ClientKey  []byte
+	WaitTO     time.Duration
 }
 
 type RemoveNodeOptions struct {
@@ -459,13 +460,31 @@ type Node interface {
 	Units() ([]Unit, error)
 }
 
+type NodeHealthChecker interface {
+	Node
+	FailureCount() int
+	HasSuccess() bool
+	ResetFailures()
+}
+
+type NodeSpec struct {
+	Address  string
+	Metadata map[string]string
+	Status   string
+	Pool     string
+}
+
+func NodeToSpec(n Node) NodeSpec {
+	return NodeSpec{
+		Address:  n.Address(),
+		Metadata: n.Metadata(),
+		Status:   n.Status(),
+		Pool:     n.Pool(),
+	}
+}
+
 func NodeToJSON(n Node) ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"Address":  n.Address(),
-		"Metadata": n.Metadata(),
-		"Status":   n.Status(),
-		"Pool":     n.Pool(),
-	})
+	return json.Marshal(NodeToSpec(n))
 }
 
 type NodeStatusData struct {
