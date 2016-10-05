@@ -408,10 +408,10 @@ func (s *S) TestListNodeHandler(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	c.Assert(nodes, check.DeepEquals, []map[string]interface{}{
-		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "", "Metadata": map[string]interface{}{"pool": "pool1"}},
-		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "", "Metadata": map[string]interface{}{"pool": "pool1"}},
-		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
-		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
+		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool1"}},
+		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool1"}},
+		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
+		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
 	})
 }
 
