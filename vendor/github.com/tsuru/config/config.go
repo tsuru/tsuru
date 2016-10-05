@@ -10,6 +10,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -159,7 +160,8 @@ func WriteConfigFile(filePath string, perm os.FileMode) error {
 //   mongo: $MONGOURI
 //
 // If there is an environment variable MONGOURI=localhost/test, the key "mongo"
-// would return "localhost/test"
+// would return "localhost/test". If the variable value is a json object/list, this
+// object will also be expanded.
 func Get(key string) (interface{}, error) {
 	keys := strings.Split(key, ":")
 	configs.RLock()
@@ -169,21 +171,65 @@ func Get(key string) (interface{}, error) {
 		return nil, fmt.Errorf("key %q not found", key)
 	}
 	for _, k := range keys[1:] {
-		_, ok = conf.(map[interface{}]interface{})
-		if !ok {
+		switch c := conf.(type) {
+		case map[interface{}]interface{}:
+			if conf, ok = c[k]; !ok {
+				return nil, fmt.Errorf("key %q not found", key)
+			}
+		case string:
+			value, err := expandEnv(c)
+			if err != nil {
+				return nil, ErrMismatchConf
+			}
+			if conf, ok = value.(map[interface{}]interface{})[k]; !ok {
+				return nil, fmt.Errorf("key %q not found", key)
+			}
+		default:
 			return nil, ErrMismatchConf
-		}
-		if conf, ok = conf.(map[interface{}]interface{})[k]; !ok {
-			return nil, fmt.Errorf("key %q not found", key)
 		}
 	}
 	if v, ok := conf.(func() interface{}); ok {
 		conf = v()
 	}
 	if v, ok := conf.(string); ok {
-		return os.ExpandEnv(v), nil
+		value, _ := expandEnv(v)
+		return value, nil
 	}
 	return conf, nil
+}
+
+// expandEnv expands an environment variable and unmarshalls
+// an json object or slice if it's found.
+func expandEnv(s string) (interface{}, error) {
+	raw := os.ExpandEnv(s)
+	var jsonMap map[string]interface{}
+	err := json.Unmarshal([]byte(raw), &jsonMap)
+	if err != nil {
+		var jsonSlice []interface{}
+		errS := json.Unmarshal([]byte(raw), &jsonSlice)
+		if errS != nil {
+			return raw, err
+		}
+		return jsonSlice, nil
+	}
+	return toInfMap(jsonMap), nil
+}
+
+// toInfMap takes an map[string]interface{} and recursively converts it
+// to an map[interface{}]interface{}.
+func toInfMap(sMap map[string]interface{}) map[interface{}]interface{} {
+	newMap := make(map[interface{}]interface{})
+	for k, v := range sMap {
+		var newValue interface{}
+		switch v := v.(type) {
+		case map[string]interface{}:
+			newValue = toInfMap(v)
+		default:
+			newValue = v
+		}
+		newMap[k] = newValue
+	}
+	return newMap
 }
 
 // GetString works like Get, but does an string type assertion before returning
@@ -196,15 +242,15 @@ func GetString(key string) (string, error) {
 		return "", err
 	}
 	switch v := value.(type) {
-                case int:
-                        return strconv.Itoa(v), nil
-                case int64:
-                        return strconv.FormatInt(v, 10), nil
-                default:
-                        if v, ok := value.(string); ok {
-                                return v, nil
-                        }
-        }
+	case int:
+		return strconv.Itoa(v), nil
+	case int64:
+		return strconv.FormatInt(v, 10), nil
+	default:
+		if v, ok := value.(string); ok {
+			return v, nil
+		}
+	}
 	return "", &invalidValue{key, "string|int|int64"}
 }
 
@@ -222,6 +268,10 @@ func GetInt(key string) (int, error) {
 	} else if v, ok := value.(string); ok {
 		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
 			return int(i), nil
+		}
+	} else if v, err := GetFloat(key); err == nil {
+		if float64(int(v)) == v {
+			return int(v), nil
 		}
 	}
 	return 0, &invalidValue{key, "int"}
@@ -253,11 +303,7 @@ func GetFloat(key string) (float64, error) {
 
 // GetUint parses and returns an unsigned integer from the config file.
 func GetUint(key string) (uint, error) {
-	value, err := Get(key)
-	if err != nil {
-		return 0, err
-	}
-	if v, ok := value.(int); ok {
+	if v, err := GetInt(key); err == nil {
 		if v < 0 {
 			return 0, &invalidValue{key, "uint"}
 		}
