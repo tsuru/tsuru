@@ -577,6 +577,12 @@ func makeBSONRaw(in interface{}) (bson.Raw, error) {
 	}
 	var kind byte
 	v := reflect.ValueOf(in)
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return bson.Raw{}, nil
+		}
+		v = v.Elem()
+	}
 	switch v.Kind() {
 	case reflect.Map, reflect.Struct:
 		kind = 3 // BSON "Document" kind

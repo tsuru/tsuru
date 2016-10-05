@@ -859,3 +859,34 @@ func (s *S) TestNewLockRetryRace(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, int(countOK))
 }
+
+func (s *S) TestNewCustomDataPtr(c *check.C) {
+	customData := struct{ A string }{A: "value"}
+	evt, err := New(&Opts{
+		Target:     Target{Type: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		CustomData: &customData,
+		Allowed:    Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
+	var resultData struct{ A string }
+	err = evt.StartData(&resultData)
+	c.Assert(err, check.IsNil)
+	c.Assert(resultData, check.DeepEquals, customData)
+	expected := &Event{eventData: eventData{
+		ID:              eventID{Target: Target{Type: "app", Value: "myapp"}},
+		UniqueID:        evt.UniqueID,
+		Target:          Target{Type: "app", Value: "myapp"},
+		Kind:            Kind{Type: KindTypePermission, Name: "app.update.env.set"},
+		Owner:           Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
+		Running:         true,
+		StartTime:       evt.StartTime,
+		LockUpdateTime:  evt.LockUpdateTime,
+		StartCustomData: evt.StartCustomData,
+		Allowed:         Allowed(permission.PermAppReadEvents),
+	}}
+	c.Assert(evt, check.DeepEquals, expected)
+}
