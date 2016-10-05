@@ -3205,6 +3205,34 @@ func (s *S) TestAddNodeNoAddress(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "Invalid address")
 }
 
+func (s *S) TestAddNodeWithWait(c *check.C) {
+	server, _ := startFakeDockerNode(c)
+	defer server.Stop()
+	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner = &p
+	opts := provision.AddNodeOptions{
+		Address: server.URL(),
+		Metadata: map[string]string{
+			"pool": "pool1",
+		},
+		WaitTO: time.Second,
+	}
+	err = p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, server.URL())
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"pool":        "pool1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
+	})
+	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
+}
+
 func (s *S) TestRemoveNode(c *check.C) {
 	var buf bytes.Buffer
 	nodes, err := s.p.Cluster().Nodes()

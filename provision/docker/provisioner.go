@@ -1382,7 +1382,15 @@ func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return err
 	}
 	jobParams := monsterqueue.JobParams{"endpoint": opts.Address, "metadata": opts.Metadata}
-	_, err = q.Enqueue(internalNodeContainer.QueueTaskName, jobParams)
+	var job monsterqueue.Job
+	if opts.WaitTO != 0 {
+		job, err = q.EnqueueWait(internalNodeContainer.QueueTaskName, jobParams, opts.WaitTO)
+	} else {
+		_, err = q.Enqueue(internalNodeContainer.QueueTaskName, jobParams)
+	}
+	if err == nil && job != nil {
+		_, err = job.Result()
+	}
 	return err
 }
 
