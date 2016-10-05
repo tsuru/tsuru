@@ -376,7 +376,7 @@ type FakeProvisioner struct {
 	mut      sync.RWMutex
 	shells   map[string][]provision.ShellOptions
 	shellMut sync.Mutex
-	nodes    map[string]fakeNode
+	nodes    map[string]FakeNode
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -385,7 +385,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
 	p.shells = make(map[string][]provision.ShellOptions)
-	p.nodes = make(map[string]fakeNode)
+	p.nodes = make(map[string]FakeNode)
 	return &p
 }
 
@@ -401,27 +401,33 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
-type fakeNode struct {
-	address  string
-	pool     string
-	metadata map[string]string
-	status   string
-	p        *FakeProvisioner
+type FakeNode struct {
+	address    string
+	pool       string
+	metadata   map[string]string
+	status     string
+	p          *FakeProvisioner
+	failures   int
+	hasSuccess bool
 }
 
-func (n *fakeNode) Pool() string {
+func (n *FakeNode) Pool() string {
 	return n.pool
 }
 
-func (n *fakeNode) Address() string {
+func (n *FakeNode) Address() string {
 	return n.address
 }
 
-func (n *fakeNode) Metadata() map[string]string {
+func (n *FakeNode) Metadata() map[string]string {
 	return n.metadata
 }
 
-func (n *fakeNode) Units() ([]provision.Unit, error) {
+func (n *FakeNode) CleanMetadata() map[string]string {
+	return n.metadata
+}
+
+func (n *FakeNode) Units() ([]provision.Unit, error) {
 	n.p.mut.Lock()
 	defer n.p.mut.Unlock()
 	var units []provision.Unit
@@ -435,21 +441,49 @@ func (n *fakeNode) Units() ([]provision.Unit, error) {
 	return units, nil
 }
 
-func (n *fakeNode) Status() string {
+func (n *FakeNode) Status() string {
 	return n.status
 }
 
+func (n *FakeNode) FailureCount() int {
+	return n.failures
+}
+
+func (n *FakeNode) HasSuccess() bool {
+	return n.hasSuccess
+}
+
+func (n *FakeNode) ResetFailures() {
+	n.failures = 0
+}
+
+func (n *FakeNode) SetHealth(failures int, hasSuccess bool) {
+	n.failures = failures
+	n.hasSuccess = hasSuccess
+}
+
 func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	p.nodes[opts.Address] = fakeNode{
+	if err := p.getError("AddNode"); err != nil {
+		return err
+	}
+	metadata := opts.Metadata
+	if metadata == nil {
+		metadata = map[string]string{}
+	}
+	p.nodes[opts.Address] = FakeNode{
 		address:  opts.Address,
-		pool:     opts.Metadata["pool"],
-		metadata: opts.Metadata,
+		pool:     metadata["pool"],
+		metadata: metadata,
 		p:        p,
+		status:   "enabled",
 	}
 	return nil
 }
 
 func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
+	if err := p.getError("GetNode"); err != nil {
+		return nil, err
+	}
 	if n, ok := p.nodes[address]; ok {
 		return &n, nil
 	}
@@ -457,6 +491,9 @@ func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
 }
 
 func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
+	if err := p.getError("RemoveNode"); err != nil {
+		return err
+	}
 	_, ok := p.nodes[opts.Address]
 	if !ok {
 		return provision.ErrNodeNotFound
@@ -472,6 +509,9 @@ func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 }
 
 func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	if err := p.getError("UpdateNode"); err != nil {
+		return err
+	}
 	n, ok := p.nodes[opts.Address]
 	if !ok {
 		return provision.ErrNodeNotFound
@@ -490,6 +530,9 @@ func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 }
 
 func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
+	if err := p.getError("ListNodes"); err != nil {
+		return nil, err
+	}
 	var result []provision.Node
 	if addressFilter != nil {
 		result = make([]provision.Node, 0, len(addressFilter))
@@ -641,7 +684,7 @@ func (p *FakeProvisioner) Reset() {
 	p.shells = make(map[string][]provision.ShellOptions)
 	p.shellMut.Unlock()
 
-	p.nodes = make(map[string]fakeNode)
+	p.nodes = make(map[string]FakeNode)
 	uniqueIpCounter = 0
 
 	for {
@@ -840,6 +883,10 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 }
 
 func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w io.Writer) ([]provision.Unit, error) {
+	return p.AddUnitsToNode(app, n, process, w, "")
+}
+
+func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process string, w io.Writer, nodeAddr string) ([]provision.Unit, error) {
 	if err := p.getError("AddUnits"); err != nil {
 		return nil, err
 	}
@@ -858,7 +905,9 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w 
 	for i := uint(0); i < n; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		var hostAddr string
-		if len(p.nodes) > 0 {
+		if nodeAddr != "" {
+			hostAddr = net.URLToHost(nodeAddr)
+		} else if len(p.nodes) > 0 {
 			for _, n := range p.nodes {
 				hostAddr = net.URLToHost(n.Address())
 				break

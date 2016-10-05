@@ -747,6 +747,42 @@ func (s *S) TestAddUnitsFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "Cannot add more units.")
 }
 
+func (s *S) TestAddUnitsNodeAware(c *check.C) {
+	app := NewFakeApp("mystic-rhythms", "rush", 0)
+	p := NewFakeProvisioner()
+	p.Reset()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.AddNode(provision.AddNodeOptions{
+		Address: "http://n1:123",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 2, "web", nil)
+	c.Assert(err, check.IsNil)
+	allUnits := p.GetUnits(app)
+	c.Assert(allUnits, check.HasLen, 2)
+	c.Assert(allUnits[0].Address.Host, check.Equals, "n1:1")
+	c.Assert(allUnits[1].Address.Host, check.Equals, "n1:2")
+}
+
+func (s *S) TestAddUnitsToNode(c *check.C) {
+	app := NewFakeApp("mystic-rhythms", "rush", 0)
+	p := NewFakeProvisioner()
+	p.Reset()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.AddNode(provision.AddNodeOptions{
+		Address: "http://n1:123",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnitsToNode(app, 2, "web", nil, "nother")
+	c.Assert(err, check.IsNil)
+	allUnits := p.GetUnits(app)
+	c.Assert(allUnits, check.HasLen, 2)
+	c.Assert(allUnits[0].Address.Host, check.Equals, "nother:1")
+	c.Assert(allUnits[1].Address.Host, check.Equals, "nother:2")
+}
+
 func (s *S) TestRemoveUnits(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
@@ -1239,11 +1275,12 @@ func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 	p.AddNode(provision.AddNodeOptions{Address: "mynode", Metadata: map[string]string{
 		"pool": "mypool",
 	}})
-	c.Assert(p.nodes, check.DeepEquals, map[string]fakeNode{"mynode": {
+	c.Assert(p.nodes, check.DeepEquals, map[string]FakeNode{"mynode": {
 		address:  "mynode",
 		pool:     "mypool",
 		metadata: map[string]string{"pool": "mypool"},
 		p:        p,
+		status:   "enabled",
 	}})
 }
 
@@ -1265,13 +1302,13 @@ func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Sort(NodeList(nodes))
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&fakeNode{address: "mynode1", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
-		&fakeNode{address: "mynode2", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{address: "mynode1", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{address: "mynode2", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
 	})
 	nodes, err = p.ListNodes([]string{"mynode2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&fakeNode{address: "mynode2", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{address: "mynode2", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
 	})
 }
 
@@ -1312,4 +1349,37 @@ func (s *S) TestGetAppFromUnitIDNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	_, err := p.GetAppFromUnitID("chain-lighting-0")
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestFakeNodeHealthChecker(c *check.C) {
+	p := NewFakeProvisioner()
+	p.Reset()
+	err := p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	c.Assert(err, check.IsNil)
+	nodes, err := p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	hcNode, ok := nodes[0].(provision.NodeHealthChecker)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(hcNode.FailureCount(), check.Equals, 0)
+	c.Assert(hcNode.HasSuccess(), check.Equals, false)
+}
+
+func (s *S) TestFakeNodeHealthCheckerSetHealth(c *check.C) {
+	p := NewFakeProvisioner()
+	p.Reset()
+	err := p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	c.Assert(err, check.IsNil)
+	nodes, err := p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	fakeNode, ok := nodes[0].(*FakeNode)
+	c.Assert(ok, check.Equals, true)
+	fakeNode.SetHealth(10, true)
+	c.Assert(fakeNode.FailureCount(), check.Equals, 10)
+	c.Assert(fakeNode.HasSuccess(), check.Equals, true)
+	fakeNode.ResetFailures()
+	c.Assert(fakeNode.FailureCount(), check.Equals, 0)
 }
