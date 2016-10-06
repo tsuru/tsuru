@@ -27,9 +27,9 @@ type S struct{}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "docker_provision_bs_tests")
+	config.Set("database:name", "docker_provision_docker_nodecontainer_tests")
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
-	config.Set("docker:cluster:mongo-database", "docker_provision_bs_tests_cluster_stor")
+	config.Set("docker:cluster:mongo-database", "docker_provision_docker_nodecontainer_tests_cluster_stor")
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	conn, err := db.Conn()
