@@ -55,7 +55,11 @@ func (s *S) SetUpTest(c *check.C) {
 	rand.Seed(0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool(provision.AddPoolOptions{Name: "bonehunters", Default: true, Provisioner: "swarm"})
+	err = provision.AddPool(provision.AddPoolOptions{
+		Name:        "bonehunters",
+		Default:     true,
+		Provisioner: "kubernetes",
+	})
 	c.Assert(err, check.IsNil)
 	p := app.Plan{
 		Name:     "default",
