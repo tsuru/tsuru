@@ -52,17 +52,22 @@ type NodeHealerConfig struct {
 	MaxUnresponsiveTimeInherited bool
 }
 
-type nodeStatusData struct {
+type NodeStatusData struct {
 	Address     string       `bson:"_id,omitempty"`
-	Checks      []nodeChecks `bson:",omitempty"`
+	Checks      []NodeChecks `bson:",omitempty"`
 	LastSuccess time.Time    `bson:",omitempty"`
 	LastUpdate  time.Time
+}
+
+type NodeChecks struct {
+	Time   time.Time
+	Checks []provision.NodeCheckResult
 }
 
 type NodeHealerCustomData struct {
 	Node      provision.NodeSpec
 	Reason    string
-	LastCheck *nodeChecks
+	LastCheck *NodeChecks
 }
 
 func newNodeHealer(args nodeHealerArgs) *NodeHealer {
@@ -156,7 +161,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	return &nodeSpec, nil
 }
 
-func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastCheck *nodeChecks) error {
+func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastCheck *NodeChecks) error {
 	_, hasIaas := node.Metadata()["iaas"]
 	if !hasIaas {
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address(), reason)
@@ -244,11 +249,6 @@ func (h *NodeHealer) String() string {
 	return "node healer"
 }
 
-type nodeChecks struct {
-	Time   time.Time
-	Checks []provision.NodeCheckResult
-}
-
 func allNodes() ([]provision.Node, error) {
 	provs, err := provision.Registry()
 	if err != nil {
@@ -327,7 +327,7 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 		}
 	}
 	now := time.Now().UTC()
-	toInsert := nodeStatusData{
+	toInsert := NodeStatusData{
 		LastUpdate: now,
 	}
 	if isSuccess {
@@ -342,7 +342,7 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 		"$set": toInsert,
 		"$push": bson.M{
 			"checks": bson.D([]bson.DocElem{
-				{Name: "$each", Value: []nodeChecks{{Time: now, Checks: nodeData.Checks}}},
+				{Name: "$each", Value: []NodeChecks{{Time: now, Checks: nodeData.Checks}}},
 				{Name: "$slice", Value: -10},
 			}),
 		},
@@ -432,7 +432,7 @@ func (h *NodeHealer) shouldHealNode(node provision.Node) (bool, error) {
 	return count > 0, nil
 }
 
-func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]provision.Node, error) {
+func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provision.Node, error) {
 	nodes, err := allNodes()
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to retrieve nodes: %s", err)
@@ -484,7 +484,7 @@ func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]provisi
 		return nil, nil, fmt.Errorf("unable to get node data collection: %s", err)
 	}
 	defer coll.Close()
-	var nodesStatus []nodeStatusData
+	var nodesStatus []NodeStatusData
 	err = coll.Find(bson.M{"$or": query}).All(&nodesStatus)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to find nodes to heal: %s", err)

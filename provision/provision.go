@@ -466,7 +466,8 @@ type NodeHealthChecker interface {
 }
 
 type NodeSpec struct {
-	Address  string
+	// BSON tag for bson serialized compatibility with cluster.Node
+	Address  string `bson:"_id"`
 	Metadata map[string]string
 	Status   string
 	Pool     string

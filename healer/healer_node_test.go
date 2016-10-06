@@ -279,11 +279,11 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
-			"reason":       "2 consecutive failures",
-			"node.address": "http://addr1:1",
+			"reason":   "2 consecutive failures",
+			"node._id": "http://addr1:1",
 		},
 		EndCustomData: map[string]interface{}{
-			"address": "http://addr2:2",
+			"_id": "http://addr2:2",
 		},
 	}, eventtest.HasEvent)
 }
@@ -351,8 +351,8 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
-			"reason":       "2 consecutive failures",
-			"node.address": "http://addr1:1",
+			"reason":   "2 consecutive failures",
+			"node._id": "http://addr1:1",
 		},
 		ErrorMatches: `Can't auto-heal after 2 failures for node addr1: error registering new node: error registering new node`,
 	}, eventtest.HasEvent)
@@ -480,7 +480,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	var result nodeStatusData
+	var result NodeStatusData
 	err = coll.FindId(nodeAddr).One(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
@@ -489,9 +489,9 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	result.LastUpdate = time.Time{}
 	result.LastSuccess = time.Time{}
 	result.Checks[0].Time = time.Time{}
-	c.Assert(result, check.DeepEquals, nodeStatusData{
+	c.Assert(result, check.DeepEquals, NodeStatusData{
 		Address: nodeAddr,
-		Checks:  []nodeChecks{{Checks: data.Checks}},
+		Checks:  []NodeChecks{{Checks: data.Checks}},
 	})
 }
 
@@ -518,7 +518,7 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	var result nodeStatusData
+	var result NodeStatusData
 	err = coll.FindId(nodeAddr).One(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
@@ -526,9 +526,9 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 	result.LastUpdate = time.Time{}
 	result.LastSuccess = time.Time{}
 	c.Assert(result.Checks, check.HasLen, 10)
-	expectedChecks := []nodeChecks{}
+	expectedChecks := []NodeChecks{}
 	for i, check := range result.Checks {
-		expectedChecks = append(expectedChecks, nodeChecks{
+		expectedChecks = append(expectedChecks, NodeChecks{
 			Time: check.Time,
 			Checks: []provision.NodeCheckResult{
 				{Name: fmt.Sprintf("ok1-%d", 10+i), Successful: true},
@@ -536,7 +536,7 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 			},
 		})
 	}
-	c.Assert(result, check.DeepEquals, nodeStatusData{
+	c.Assert(result, check.DeepEquals, NodeStatusData{
 		Address: nodeAddr,
 		Checks:  expectedChecks,
 	})
@@ -594,7 +594,7 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	var result nodeStatusData
+	var result NodeStatusData
 	err = coll.FindId(nodeAddr).One(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
@@ -603,9 +603,9 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 	result.LastUpdate = time.Time{}
 	result.LastSuccess = time.Time{}
 	result.Checks[0].Time = time.Time{}
-	c.Assert(result, check.DeepEquals, nodeStatusData{
+	c.Assert(result, check.DeepEquals, NodeStatusData{
 		Address: nodeAddr,
-		Checks:  []nodeChecks{{Checks: data.Checks}},
+		Checks:  []NodeChecks{{Checks: data.Checks}},
 	})
 }
 
@@ -798,10 +798,10 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 		StartCustomData: map[string]interface{}{
 			"reason":         bson.M{"$regex": `last update \d+\.\d*?s ago, last success \d+\.\d*?s ago`},
 			"lastcheck.time": bson.M{"$exists": true},
-			"node.address":   "http://addr1:1",
+			"node._id":       "http://addr1:1",
 		},
 		EndCustomData: map[string]interface{}{
-			"address": "http://addr2:2",
+			"_id": "http://addr2:2",
 		},
 	}, eventtest.HasEvent)
 }
@@ -868,11 +868,11 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		Target: event.Target{Type: "node", Value: "http://addr1:1"},
 		Kind:   "healer",
 		StartCustomData: map[string]interface{}{
-			"reason":       "something",
-			"node.address": "http://addr1:1",
+			"reason":   "something",
+			"node._id": "http://addr1:1",
 		},
 		EndCustomData: map[string]interface{}{
-			"address": "http://addr2:2",
+			"_id": "http://addr2:2",
 		},
 	}, eventtest.HasEvent)
 }
