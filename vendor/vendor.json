@@ -1672,6 +1672,24 @@
 		{
 			"path": "govendor",
 			"revision": ""
+		},
+		{
+			"checksumSHA1": "NfJO3M3nckxMwCba8cmh4M1sqjo=",
+			"path": "k8s.io/kubernetes/pkg/apis/extensions",
+			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
+			"revisionTime": "2016-10-05T22:38:25Z"
+		},
+		{
+			"checksumSHA1": "ZRCyaAH1eUXlaVitDhPiF5PPmRA=",
+			"path": "k8s.io/kubernetes/pkg/client/restclient",
+			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
+			"revisionTime": "2016-10-05T22:38:25Z"
+		},
+		{
+			"checksumSHA1": "D2cYoHPg6pj8c9/WuxGfE6GFlrU=",
+			"path": "k8s.io/kubernetes/pkg/client/unversioned",
+			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
+			"revisionTime": "2016-10-05T22:38:25Z"
 		}
 	],
 	"rootPath": "github.com/tsuru/tsuru"
