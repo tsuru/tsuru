@@ -8,9 +8,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
@@ -31,8 +28,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "healer_tests")
 	config.Set("docker:repository-namespace", "tsuru")
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	app.AuthScheme = nativeScheme
 }
 
 func (s *S) SetUpTest(c *check.C) {
