@@ -1285,25 +1285,24 @@ func (p *dockerProvisioner) SetNodeStatus(nodeData provision.NodeStatusData) err
 	return p.nodeHealer.UpdateNodeData(nodeData)
 }
 
+var _ provision.Node = &clusterNodeWrapper{}
+var _ provision.NodeHealthChecker = &clusterNodeWrapper{}
+
 type clusterNodeWrapper struct {
-	node *cluster.Node
+	*cluster.Node
 	prov *dockerProvisioner
 }
 
 func (n *clusterNodeWrapper) Address() string {
-	return n.node.Address
+	return n.Node.Address
 }
 
 func (n *clusterNodeWrapper) Pool() string {
-	return n.node.Metadata["pool"]
+	return n.Node.Metadata["pool"]
 }
 
 func (n *clusterNodeWrapper) Metadata() map[string]string {
-	return n.node.Metadata
-}
-
-func (n *clusterNodeWrapper) Status() string {
-	return n.node.Status()
+	return n.Node.Metadata
 }
 
 func (n *clusterNodeWrapper) Units() ([]provision.Unit, error) {
@@ -1354,7 +1353,7 @@ func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node,
 				continue
 			}
 		}
-		result = append(result, &clusterNodeWrapper{node: n, prov: p})
+		result = append(result, &clusterNodeWrapper{Node: n, prov: p})
 	}
 	return result, nil
 }
@@ -1421,7 +1420,7 @@ func (p *dockerProvisioner) GetNode(address string) (provision.Node, error) {
 		}
 		return nil, err
 	}
-	return &clusterNodeWrapper{node: &node, prov: p}, nil
+	return &clusterNodeWrapper{Node: &node, prov: p}, nil
 }
 
 func (p *dockerProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {

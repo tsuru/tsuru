@@ -3154,12 +3154,12 @@ func (s *S) TestListNodes(c *check.C) {
 	listedNodes, err := s.p.ListNodes([]string{nodes[0].Address})
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
-		&clusterNodeWrapper{node: &nodes[0], prov: s.p},
+		&clusterNodeWrapper{Node: &nodes[0], prov: s.p},
 	})
 	listedNodes, err = s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(listedNodes, check.DeepEquals, []provision.Node{
-		&clusterNodeWrapper{node: &nodes[0], prov: s.p},
+		&clusterNodeWrapper{Node: &nodes[0], prov: s.p},
 	})
 	listedNodes, err = s.p.ListNodes([]string{"notfound"})
 	c.Assert(err, check.IsNil)
