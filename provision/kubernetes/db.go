@@ -10,12 +10,6 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 )
 
-type notFoundError struct{ error }
-
-func (e notFoundError) NotFound() bool {
-	return true
-}
-
 const (
 	uniqueDocumentID         = "kubernetes"
 	kubernetesCollectionName = "kubernetesnodes"
