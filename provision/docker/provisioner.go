@@ -32,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	tsuruHealer "github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -79,11 +80,22 @@ type dockerProvisioner struct {
 	storage        cluster.Storage
 	scheduler      *segregatedScheduler
 	isDryMode      bool
-	nodeHealer     *healer.NodeHealer
 	actionLimiter  provision.ActionLimiter
 	caCert         []byte
 	clientCert     []byte
 	clientKey      []byte
+}
+
+type hookHealer struct {
+	p *dockerProvisioner
+}
+
+func (h hookHealer) HandleError(node *cluster.Node) time.Duration {
+	return tsuruHealer.HealerInstance.HandleError(&clusterNodeWrapper{Node: node, prov: h.p})
+}
+
+func (h hookHealer) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
+	return tsuruHealer.HealerInstance.RemoveNode(&clusterNodeWrapper{Node: node, prov: h.p})
 }
 
 func (p *dockerProvisioner) initDockerCluster() error {
@@ -133,29 +145,10 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		return err
 	}
 	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &internalNodeContainer.ClusterHook{Provisioner: p})
-	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
-	if autoHealingNodes {
-		disabledSeconds, _ := config.GetInt("docker:healing:disabled-time")
-		if disabledSeconds <= 0 {
-			disabledSeconds = 30
-		}
-		maxFailures, _ := config.GetInt("docker:healing:max-failures")
-		if maxFailures <= 0 {
-			maxFailures = 5
-		}
-		waitSecondsNewMachine, _ := config.GetInt("docker:healing:wait-new-time")
-		if waitSecondsNewMachine <= 0 {
-			waitSecondsNewMachine = 5 * 60
-		}
-		p.nodeHealer = healer.NewNodeHealer(healer.NodeHealerArgs{
-			Provisioner:           p,
-			DisabledTime:          time.Duration(disabledSeconds) * time.Second,
-			WaitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
-			FailuresBeforeHealing: maxFailures,
-		})
-		shutdown.Register(p.nodeHealer)
-		p.cluster.Healer = p.nodeHealer
-		p.cluster.AddHook(cluster.HookEventBeforeNodeUnregister, p.nodeHealer)
+	if tsuruHealer.HealerInstance != nil {
+		healer := hookHealer{p: p}
+		p.cluster.Healer = healer
+		p.cluster.AddHook(cluster.HookEventBeforeNodeUnregister, healer)
 	}
 	healContainersSeconds, _ := config.GetInt("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {
