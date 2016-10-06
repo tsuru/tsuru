@@ -8,9 +8,13 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
+
+	"k8s.io/kubernetes/pkg/client/restclient"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
@@ -89,6 +93,18 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return err
 	}
 	defer coll.Close()
+	token, err := config.GetString("kubernetes:token")
+	if err != nil {
+		return err
+	}
+	_, err = client.New(&restclient.Config{
+		Host:        opts.Address,
+		Insecure:    true,
+		BearerToken: token,
+	})
+	if err != nil {
+		return err
+	}
 	addrs := []string{opts.Address}
 	_, err = coll.UpsertId(uniqueDocumentID, bson.M{"$set": bson.M{"addresses": addrs}})
 	if err != nil {

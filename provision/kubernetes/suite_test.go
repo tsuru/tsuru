@@ -38,6 +38,7 @@ func Test(t *testing.T) {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("kubernetes:token", "token==")
 	config.Set("database:name", "provision_kubernetes_tests_s")
 	config.Set("routers:fake:type", "fake")
 	var err error
