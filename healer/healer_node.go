@@ -59,7 +59,7 @@ type nodeStatusData struct {
 	LastUpdate  time.Time
 }
 
-type nodeHealerCustomData struct {
+type NodeHealerCustomData struct {
 	Node      provision.NodeSpec
 	Reason    string
 	LastCheck *nodeChecks
@@ -166,7 +166,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeNode, Value: node.Address()},
 		InternalKind: "healer",
-		CustomData: nodeHealerCustomData{
+		CustomData: NodeHealerCustomData{
 			Node:      provision.NodeToSpec(node),
 			Reason:    reason,
 			LastCheck: lastCheck,
