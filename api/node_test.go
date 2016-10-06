@@ -16,8 +16,10 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -752,4 +754,184 @@ func (s *S) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "A node can't be enabled and disabled simultaneously.\n")
+}
+
+func (s *S) TestNodeHealingUpdateRead(c *check.C) {
+	doRequest := func(str string) map[string]healer.NodeHealerConfig {
+		body := bytes.NewBufferString(str)
+		request, err := http.NewRequest("POST", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder := httptest.NewRecorder()
+		server := RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		request, err = http.NewRequest("GET", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configMap map[string]healer.NodeHealerConfig
+		json.Unmarshal(recorder.Body.Bytes(), &configMap)
+		return configMap
+	}
+	tests := []struct {
+		A string
+		B map[string]healer.NodeHealerConfig
+	}{
+		{"", map[string]healer.NodeHealerConfig{
+			"": {},
+		}},
+		{"Enabled=true&MaxTimeSinceSuccess=60", map[string]healer.NodeHealerConfig{
+			"": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60)},
+		}},
+		{"MaxUnresponsiveTime=10", map[string]healer.NodeHealerConfig{
+			"": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(10)},
+		}},
+		{"Enabled=false", map[string]healer.NodeHealerConfig{
+			"": {Enabled: boolPtr(false), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(10)},
+		}},
+		{"MaxUnresponsiveTime=20", map[string]healer.NodeHealerConfig{
+			"": {Enabled: boolPtr(false), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+		}},
+		{"Enabled=true", map[string]healer.NodeHealerConfig{
+			"": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+		}},
+		{"pool=p1&Enabled=false", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+			"p1": {Enabled: boolPtr(false), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(20), MaxUnresponsiveTimeInherited: true},
+		}},
+		{"pool=p1&Enabled=true", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+			"p1": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(20), MaxUnresponsiveTimeInherited: true},
+		}},
+		{"pool=p1", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+			"p1": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(20), MaxUnresponsiveTimeInherited: true},
+		}},
+		{"pool=p1&MaxUnresponsiveTime=30", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+			"p1": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(30), MaxUnresponsiveTimeInherited: false},
+		}},
+		{"pool=p1&MaxUnresponsiveTime=0", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+			"p1": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(0), MaxUnresponsiveTimeInherited: false},
+		}},
+		{"pool=p1&Enabled=false", map[string]healer.NodeHealerConfig{
+			"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+			"p1": {Enabled: boolPtr(false), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(0), MaxUnresponsiveTimeInherited: false},
+		}},
+	}
+	for i, t := range tests {
+		configMap := doRequest(t.A)
+		c.Assert(configMap, check.DeepEquals, t.B, check.Commentf("test %d", i+1))
+	}
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "p1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "healing.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "pool", "value": "p1"},
+			{"name": "MaxUnresponsiveTime", "value": "30"},
+		},
+	}, eventtest.HasEvent)
+	request, err := http.NewRequest("DELETE", "/docker/healing/node?pool=p1&name=MaxUnresponsiveTime", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "p1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "healing.delete",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "MaxUnresponsiveTime"},
+		},
+	}, eventtest.HasEvent)
+	configMap := doRequest("")
+	c.Assert(configMap, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60), MaxUnresponsiveTime: intPtr(20)},
+		"p1": {Enabled: boolPtr(false), MaxTimeSinceSuccess: intPtr(60), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTime: intPtr(20), MaxUnresponsiveTimeInherited: true},
+	})
+	request, err = http.NewRequest("DELETE", "/docker/healing/node", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	configMap = doRequest("")
+	c.Assert(configMap, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"":   {},
+		"p1": {Enabled: boolPtr(false), MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTimeInherited: true},
+	})
+	request, err = http.NewRequest("DELETE", "/docker/healing/node?pool=p1&name=Enabled", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	configMap = doRequest("")
+	c.Assert(configMap, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"":   {},
+		"p1": {EnabledInherited: true, MaxTimeSinceSuccessInherited: true, MaxUnresponsiveTimeInherited: true},
+	})
+}
+
+func (s *S) TestNodeHealingConfigUpdateReadLimited(c *check.C) {
+	doRequest := func(t auth.Token, code int, str string) map[string]healer.NodeHealerConfig {
+		body := bytes.NewBufferString(str)
+		request, err := http.NewRequest("POST", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+t.GetValue())
+		recorder := httptest.NewRecorder()
+		server := RunServer(true)
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, code)
+		request, err = http.NewRequest("GET", "/docker/healing/node", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+t.GetValue())
+		recorder = httptest.NewRecorder()
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK)
+		var configMap map[string]healer.NodeHealerConfig
+		json.Unmarshal(recorder.Body.Bytes(), &configMap)
+		return configMap
+	}
+	t := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermHealingUpdate,
+		Context: permission.Context(permission.CtxPool, "p2"),
+	}, permission.Permission{
+		Scheme:  permission.PermHealingRead,
+		Context: permission.Context(permission.CtxPool, "p2"),
+	})
+	data := doRequest(t, http.StatusForbidden, "Enabled=true&MaxTimeSinceSuccess=60")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {},
+	})
+	data = doRequest(s.token, http.StatusOK, "Enabled=true&MaxTimeSinceSuccess=60")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60)},
+	})
+	data = doRequest(t, http.StatusForbidden, "pool=p1&Enabled=true&MaxTimeSinceSuccess=20")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60)},
+	})
+	data = doRequest(t, http.StatusOK, "pool=p2&Enabled=true&MaxTimeSinceSuccess=20")
+	c.Assert(data, check.DeepEquals, map[string]healer.NodeHealerConfig{
+		"":   {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(60)},
+		"p2": {Enabled: boolPtr(true), MaxTimeSinceSuccess: intPtr(20), MaxUnresponsiveTimeInherited: true},
+	})
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+func intPtr(i int) *int {
+	return &i
 }
