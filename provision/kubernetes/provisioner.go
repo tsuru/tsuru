@@ -5,11 +5,12 @@
 package kubernetes
 
 import (
-	"errors"
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -87,7 +88,17 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	return errNotImplemented
+	coll, err := nodeAddrCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	addrs := []string{opts.Address}
+	_, err = coll.UpsertId(uniqueDocumentID, bson.M{"$set": bson.M{"addresses": addrs}})
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
