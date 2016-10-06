@@ -7,8 +7,8 @@ package healer
 import (
 	"time"
 
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -80,22 +80,16 @@ func (s *S) TestMigrateHealingToEvents(c *check.C) {
 			Action:     "node-healing",
 			Successful: false,
 			Error:      "y",
-			FailingNode: cluster.Node{
-				Address:    "addr1",
-				Metadata:   map[string]string{},
-				CaCert:     []byte{},
-				ClientCert: []byte{},
-				ClientKey:  []byte{},
+			FailingNode: provision.NodeSpec{
+				Address:  "addr1",
+				Metadata: map[string]string{},
 			},
-			CreatedNode: cluster.Node{
-				Address:    "addr2",
-				Metadata:   map[string]string{},
-				CaCert:     []byte{},
-				ClientCert: []byte{},
-				ClientKey:  []byte{},
+			CreatedNode: provision.NodeSpec{
+				Address:  "addr2",
+				Metadata: map[string]string{},
 			},
 			Reason: "r2",
-			Extra:  &nodeChecks{Time: now, Checks: []provision.NodeCheckResult{{Name: "a"}}},
+			Extra:  &healer.NodeChecks{Time: now, Checks: []provision.NodeCheckResult{{Name: "a"}}},
 		},
 	}
 	coll, err := oldHealingCollection()

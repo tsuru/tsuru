@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -33,8 +34,8 @@ type HealingEvent struct {
 	Action           string
 	Reason           string
 	Extra            interface{}
-	FailingNode      cluster.Node
-	CreatedNode      cluster.Node
+	FailingNode      provision.NodeSpec
+	CreatedNode      provision.NodeSpec
 	FailingContainer container.Container
 	CreatedContainer container.Container
 	Successful       bool
@@ -44,12 +45,6 @@ type HealingEvent struct {
 func init() {
 	event.SetThrottling(event.ThrottlingSpec{
 		TargetType: event.TargetTypeContainer,
-		KindName:   "healer",
-		Time:       consecutiveHealingsTimeframe,
-		Max:        consecutiveHealingsLimitInTimeframe,
-	})
-	event.SetThrottling(event.ThrottlingSpec{
-		TargetType: event.TargetTypeNode,
 		KindName:   "healer",
 		Time:       consecutiveHealingsTimeframe,
 		Max:        consecutiveHealingsLimitInTimeframe,
@@ -76,7 +71,7 @@ func toHealingEvt(evt *event.Event) (HealingEvent, error) {
 			return healingEvt, err
 		}
 	case event.TargetTypeNode:
-		var data nodeHealerCustomData
+		var data healer.NodeHealerCustomData
 		err := evt.StartData(&data)
 		if err != nil {
 			return healingEvt, err
@@ -85,10 +80,8 @@ func toHealingEvt(evt *event.Event) (HealingEvent, error) {
 			healingEvt.Extra = data.LastCheck
 		}
 		healingEvt.Reason = data.Reason
-		if data.Node != nil {
-			healingEvt.FailingNode = *data.Node
-		}
-		var createdNode cluster.Node
+		healingEvt.FailingNode = data.Node
+		var createdNode provision.NodeSpec
 		err = evt.EndData(&createdNode)
 		if err != nil {
 			return healingEvt, err
@@ -143,20 +136,20 @@ func healingEventToEvent(data *HealingEvent) error {
 	switch data.Action {
 	case "node-healing":
 		evt.Target = event.Target{Type: event.TargetTypeNode, Value: data.FailingNode.Address}
-		var lastCheck *nodeChecks
+		var lastCheck *healer.NodeChecks
 		if data.Extra != nil {
 			checkRaw, err := json.Marshal(data.Extra)
 			if err == nil {
 				json.Unmarshal(checkRaw, &lastCheck)
 			}
 		}
-		startOpts = nodeHealerCustomData{
-			Node:      &data.FailingNode,
+		startOpts = healer.NodeHealerCustomData{
+			Node:      data.FailingNode,
 			Reason:    data.Reason,
 			LastCheck: lastCheck,
 		}
 		endOpts = data.CreatedNode
-		poolName := data.FailingNode.Metadata[poolMetadataName]
+		poolName := data.FailingNode.Metadata["pool"]
 		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, poolName))
 	case "container-healing":
 		evt.Target = event.Target{Type: event.TargetTypeContainer, Value: data.FailingContainer.ID}
