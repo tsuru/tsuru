@@ -231,7 +231,7 @@ func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, 
 	}
 	nodeList := make([]provision.Node, 0, len(nodes))
 	for i := range nodes {
-		wrapped := &swarmNodeWrapper{Node: &nodes[i]}
+		wrapped := &swarmNodeWrapper{Node: &nodes[i], provisioner: p}
 		toAdd := true
 		if filterMap != nil {
 			_, toAdd = filterMap[tsuruNet.URLToHost(wrapped.Address())]

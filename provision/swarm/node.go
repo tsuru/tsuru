@@ -14,6 +14,7 @@ import (
 
 type swarmNodeWrapper struct {
 	*swarm.Node
+	provisioner *swarmProvisioner
 }
 
 func (n *swarmNodeWrapper) Pool() string {
@@ -45,4 +46,8 @@ func (n *swarmNodeWrapper) Metadata() map[string]string {
 
 func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	return nil, errNotImplemented
+}
+
+func (n *swarmNodeWrapper) Provisioner() provision.NodeProvisioner {
+	return n.provisioner
 }

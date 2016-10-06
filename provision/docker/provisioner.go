@@ -1325,6 +1325,10 @@ func (n *clusterNodeWrapper) Units() ([]provision.Unit, error) {
 	return units, nil
 }
 
+func (n *clusterNodeWrapper) Provisioner() provision.NodeProvisioner {
+	return n.prov
+}
+
 func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	nodes, err := p.Cluster().UnfilteredNodes()
 	if err != nil {

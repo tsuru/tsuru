@@ -142,6 +142,9 @@ func (n *testNode) Metadata() map[string]string {
 func (n *testNode) Units() ([]Unit, error) {
 	return nil, nil
 }
+func (n *testNode) Provisioner() NodeProvisioner {
+	return nil
+}
 
 func (ProvisionSuite) TestNodeToJson(c *check.C) {
 	n := testNode{}

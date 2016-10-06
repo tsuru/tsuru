@@ -458,6 +458,7 @@ type Node interface {
 	Status() string
 	Metadata() map[string]string
 	Units() ([]Unit, error)
+	Provisioner() NodeProvisioner
 }
 
 type NodeHealthChecker interface {

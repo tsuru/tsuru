@@ -457,6 +457,10 @@ func (n *FakeNode) ResetFailures() {
 	n.failures = 0
 }
 
+func (n *FakeNode) Provisioner() provision.NodeProvisioner {
+	return n.p
+}
+
 func (n *FakeNode) SetHealth(failures int, hasSuccess bool) {
 	n.failures = failures
 	n.hasSuccess = hasSuccess
