@@ -25,6 +25,7 @@ import (
 	_ "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/hc"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
@@ -416,6 +417,10 @@ func startServer(handler http.Handler) {
 	}
 	fmt.Printf("Using %q auth scheme.\n", scheme)
 	err = provision.InitializeAll()
+	if err != nil {
+		fatal(err)
+	}
+	_, err = healer.Initialize()
 	if err != nil {
 		fatal(err)
 	}

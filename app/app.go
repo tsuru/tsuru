@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -625,17 +626,11 @@ func UpdateNodeStatus(node provision.NodeStatusData) ([]UpdateUnitsResult, error
 			}
 		}
 	}
-	// nodeFound := false
-	for _, p := range provisioners {
-		if nodeProvisioner, ok := p.(provision.NodeProvisioner); ok {
-			err = nodeProvisioner.SetNodeStatus(node)
-			if err == nil || err != provision.ErrNodeNotFound {
-				break
-			}
+	if healer.HealerInstance != nil {
+		err = healer.HealerInstance.UpdateNodeData(node)
+		if err != nil {
+			log.Errorf("unable to set node status: %s", err)
 		}
-	}
-	if err != nil {
-		log.Errorf("unable to set node status: %s", err)
 	}
 	return result, nil
 }
