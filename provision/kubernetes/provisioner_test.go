@@ -39,6 +39,7 @@ func (s *S) TestAddNode(c *check.C) {
 func (s *S) TestImageDeploy(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -47,4 +48,5 @@ func (s *S) TestImageDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.p.ImageDeploy(a, "imageName", evt)
+	c.Assert(err, check.IsNil)
 }

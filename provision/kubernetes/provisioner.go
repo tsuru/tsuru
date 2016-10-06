@@ -36,7 +36,7 @@ func (p *kubernetesProvisioner) GetName() string {
 }
 
 func (p *kubernetesProvisioner) Provision(provision.App) error {
-	return errNotImplemented
+	return nil
 }
 
 func (p *kubernetesProvisioner) Destroy(provision.App) error {
