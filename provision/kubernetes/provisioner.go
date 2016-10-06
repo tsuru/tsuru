@@ -75,10 +75,6 @@ func (p *kubernetesProvisioner) RegisterUnit(unit provision.Unit, customData map
 	return errNotImplemented
 }
 
-func (p *kubernetesProvisioner) SetNodeStatus(provision.NodeStatusData) error {
-	return errNotImplemented
-}
-
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	return nil, errNotImplemented
 }

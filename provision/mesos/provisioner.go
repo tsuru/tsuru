@@ -74,10 +74,6 @@ func (p *mesosProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 	return errNotImplemented
 }
 
-func (p *mesosProvisioner) SetNodeStatus(provision.NodeStatusData) error {
-	return errNotImplemented
-}
-
 func (p *mesosProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	return nil, errNotImplemented
 }

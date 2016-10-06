@@ -554,11 +554,6 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 	return result, nil
 }
 
-// SetNodeStatus defines the node status
-func (p *FakeProvisioner) SetNodeStatus(provision.NodeStatusData) error {
-	return nil
-}
-
 // MetricEnvs returns the metric envs for the app
 func (p *FakeProvisioner) MetricEnvs(app provision.App) map[string]string {
 	return map[string]string{

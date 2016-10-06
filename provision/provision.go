@@ -416,9 +416,6 @@ type UpdateNodeOptions struct {
 }
 
 type NodeProvisioner interface {
-	// SetNodeStatus changes the status of a node and all its units.
-	SetNodeStatus(NodeStatusData) error
-
 	// ListNodes returns a list of all nodes registered in the provisioner.
 	ListNodes(addressFilter []string) ([]Node, error)
 

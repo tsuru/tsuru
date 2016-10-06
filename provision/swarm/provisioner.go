@@ -206,10 +206,6 @@ func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 	return image.SaveImageCustomData(buildingImage, customData)
 }
 
-func (p *swarmProvisioner) SetNodeStatus(provision.NodeStatusData) error {
-	return errNotImplemented
-}
-
 func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	client, err := chooseDBSwarmNode()
 	if err != nil {

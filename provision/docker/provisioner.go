@@ -1278,13 +1278,6 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 	return result, nil
 }
 
-func (p *dockerProvisioner) SetNodeStatus(nodeData provision.NodeStatusData) error {
-	if p.nodeHealer == nil {
-		return nil
-	}
-	return p.nodeHealer.UpdateNodeData(nodeData)
-}
-
 var _ provision.Node = &clusterNodeWrapper{}
 var _ provision.NodeHealthChecker = &clusterNodeWrapper{}
 
