@@ -34,15 +34,14 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
@@ -72,14 +71,13 @@ func (s *S) TestHealerHealNode(c *check.C) {
 }
 
 func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err := p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{},
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Second,
 	})
@@ -105,15 +103,14 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	iaasInst.Addr = "addr2"
 	iaasInst.Err = fmt.Errorf("my create machine error")
 
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
@@ -145,15 +142,14 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 	p.PrepareFailure("AddNode", fmt.Errorf("add node error"))
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:        p,
+	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Second,
 	})
 	healer.Shutdown()
@@ -182,15 +178,14 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:        p,
+	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Minute,
 	})
 	healer.Shutdown()
@@ -233,15 +228,14 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
@@ -304,15 +298,14 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
@@ -366,14 +359,13 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 }
 
 func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err := p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		DisabledTime:          20,
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
@@ -418,14 +410,13 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
@@ -469,15 +460,13 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 }
 
 func (s *S) TestHealerUpdateNodeData(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err := p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs: []string{"addr1"},
@@ -507,15 +496,13 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 }
 
 func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err := p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	for i := 0; i < 20; i++ {
 		data := provision.NodeStatusData{
@@ -556,15 +543,13 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 }
 
 func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err := p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs: []string{"10.0.0.1"},
@@ -578,7 +563,7 @@ func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
 }
 
 func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err := p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
@@ -589,9 +574,7 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
@@ -627,7 +610,7 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 }
 
 func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr1 := "http://addr1:1"
 	err := p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr1,
@@ -638,9 +621,7 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
 		Address: nodeAddr2,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs: []string{"addr1", "addr2"},
@@ -654,15 +635,13 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
 }
 
 func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err := p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	nodes, nodesMap, err := healer.findNodesForHealing()
 	c.Assert(err, check.IsNil)
@@ -678,15 +657,13 @@ func (s *S) TestFindNodesForHealingWithConfNoEntries(c *check.C) {
 	conf := healerConfig()
 	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err = p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
@@ -703,15 +680,13 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 	conf := healerConfig()
 	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err = p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	healer.started = time.Now().Add(-3 * time.Second)
 	data := provision.NodeStatusData{
@@ -735,15 +710,13 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 	conf := healerConfig()
 	err := conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	nodeAddr := "http://addr1:1"
 	err = p.AddNode(provision.AddNodeOptions{
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner: p,
-	})
+	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	data := provision.NodeStatusData{
 		Addrs:  []string{"addr1"},
@@ -776,15 +749,14 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
 
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
 
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:        p,
+	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Minute,
 	})
 	healer.Shutdown()
@@ -845,14 +817,13 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
@@ -916,14 +887,13 @@ func (s *S) TestTryHealingNodeDoubleCheck(c *check.C) {
 	config.Set("iaas:node-port", 2)
 	defer config.Unset("iaas:node-protocol")
 	defer config.Unset("iaas:node-port")
-	p := provisiontest.NewFakeProvisioner()
+	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
-	healer := NewNodeHealer(NodeHealerArgs{
-		Provisioner:           p,
+	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})

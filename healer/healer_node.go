@@ -30,7 +30,6 @@ const (
 
 type NodeHealer struct {
 	wg                    sync.WaitGroup
-	provisioner           provision.NodeProvisioner
 	disabledTime          time.Duration
 	waitTimeNewMachine    time.Duration
 	failuresBeforeHealing int
@@ -38,8 +37,7 @@ type NodeHealer struct {
 	started               time.Time
 }
 
-type NodeHealerArgs struct {
-	Provisioner           provision.NodeProvisioner
+type nodeHealerArgs struct {
 	DisabledTime          time.Duration
 	WaitTimeNewMachine    time.Duration
 	FailuresBeforeHealing int
@@ -67,10 +65,9 @@ type nodeHealerCustomData struct {
 	LastCheck *nodeChecks
 }
 
-func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
+func newNodeHealer(args nodeHealerArgs) *NodeHealer {
 	healer := &NodeHealer{
 		quit:                  make(chan bool),
-		provisioner:           args.Provisioner,
 		disabledTime:          args.DisabledTime,
 		waitTimeNewMachine:    args.WaitTimeNewMachine,
 		failuresBeforeHealing: args.FailuresBeforeHealing,
@@ -111,7 +108,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		}
 		return nil, fmt.Errorf("Can't auto-heal after %d failures for node %s: error creating new machine: %s", failures, failingHost, err.Error())
 	}
-	err = h.provisioner.UpdateNode(provision.UpdateNodeOptions{
+	err = node.Provisioner().UpdateNode(provision.UpdateNodeOptions{
 		Address: failingAddr,
 		Disable: true,
 	})
@@ -126,12 +123,12 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		Metadata: newNodeMetadata,
 		WaitTO:   h.waitTimeNewMachine,
 	}
-	err = h.provisioner.AddNode(createOpts)
+	err = node.Provisioner().AddNode(createOpts)
 	if err != nil {
 		if isHealthNode {
 			healthNode.ResetFailures()
 		}
-		h.provisioner.UpdateNode(provision.UpdateNodeOptions{Address: failingAddr, Enable: true})
+		node.Provisioner().UpdateNode(provision.UpdateNodeOptions{Address: failingAddr, Enable: true})
 		machine.Destroy()
 		return nil, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}
@@ -139,7 +136,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	nodeSpec.Address = newAddr
 	nodeSpec.Metadata = newNodeMetadata
 	var buf bytes.Buffer
-	err = h.provisioner.RemoveNode(provision.RemoveNodeOptions{
+	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
 		Address:   failingAddr,
 		Rebalance: true,
 		Writer:    &buf,
@@ -196,7 +193,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 			log.Errorf("error trying to update healing event: %s", updateErr.Error())
 		}
 	}()
-	_, err = h.provisioner.GetNode(node.Address())
+	_, err = node.Provisioner().GetNode(node.Address())
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return nil
@@ -252,8 +249,27 @@ type nodeChecks struct {
 	Checks []provision.NodeCheckResult
 }
 
+func allNodes() ([]provision.Node, error) {
+	provs, err := provision.Registry()
+	if err != nil {
+		return nil, err
+	}
+	var nodes []provision.Node
+	for _, p := range provs {
+		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
+			var provNodes []provision.Node
+			provNodes, err = nodeProv.ListNodes(nil)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, provNodes...)
+		}
+	}
+	return nodes, nil
+}
+
 func (h *NodeHealer) findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
-	nodes, err := h.provisioner.ListNodes(nil)
+	nodes, err := allNodes()
 	if err != nil {
 		return nil, err
 	}
@@ -347,19 +363,6 @@ func (h *NodeHealer) RemoveNode(node provision.Node) error {
 	return nil
 }
 
-// func (h *NodeHealer) RunClusterHook(evt cluster.HookEvent, node provision.Node) error {
-// 	coll, err := nodeDataCollection()
-// 	if err != nil {
-// 		return fmt.Errorf("unable to get node data collection: %s", err)
-// 	}
-// 	defer coll.Close()
-// 	err = coll.RemoveId(node.Address)
-// 	if err != nil && err != mgo.ErrNotFound {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func healerConfig() *scopedconfig.ScopedConfig {
 	conf := scopedconfig.FindScopedConfig(nodeHealerConfigCollection)
 	conf.AllowEmpty = true
@@ -430,7 +433,7 @@ func (h *NodeHealer) shouldHealNode(node provision.Node) (bool, error) {
 }
 
 func (h *NodeHealer) findNodesForHealing() ([]nodeStatusData, map[string]provision.Node, error) {
-	nodes, err := h.provisioner.ListNodes(nil)
+	nodes, err := allNodes()
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to retrieve nodes: %s", err)
 	}
