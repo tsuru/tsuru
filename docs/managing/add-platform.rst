@@ -9,9 +9,25 @@ Installing platforms
 A platform is a well defined pack with installed dependencies for a language or
 framework that a group of applications will need.
 
-Platforms are defined as Dockerfiles and tsuru already have a number of
-supported ones listed in `https://github.com/tsuru/basebuilder
-<https://github.com/tsuru/basebuilder>`_
+Platforms are defined as Dockerfiles and tsuru already have a number of supported ones listed bellow:
+
+- Go_
+- Java_
+- Nodejs_
+- php_
+- Python2_
+- Python3_
+- Ruby_
+- Static_
+
+.. _Static: https://github.com/tsuru/platforms/tree/master/static
+.. _Ruby: https://github.com/tsuru/platforms/tree/master/ruby
+.. _Python3: https://github.com/tsuru/platforms/tree/master/python3
+.. _Python2: https://github.com/tsuru/platforms/tree/master/python
+.. _php: https://github.com/tsuru/platforms/tree/master/php
+.. _Nodejs: https://github.com/tsuru/platforms/tree/master/nodejs
+.. _Java: https://github.com/tsuru/platforms/tree/master/java
+.. _Go: https://github.com/tsuru/platforms/tree/master/go
 
 These platforms don't come pre-installed in tsuru, you have to add them to your
 server using the `platform-add
@@ -48,4 +64,3 @@ you simply have to call:
 
     Then you should `add registry address to tsuru.conf
     <http://docs.tsuru.io/en/latest/reference/config.html#docker-registry>`_.
-
