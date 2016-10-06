@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
-
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -126,5 +126,23 @@ func (p *kubernetesProvisioner) ArchiveDeploy(app provision.App, archiveURL stri
 }
 
 func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
-	return "", errNotImplemented
+	hosts, err := p.ListNodes(nil)
+	if err != nil {
+		return "", err
+	}
+	client, err := client.New(&restclient.Config{
+		Host:        hosts[0].Address(),
+		Insecure:    true,
+		BearerToken: "",
+	})
+	if err != nil {
+		return "", err
+	}
+	deployment := extensions.Deployment{
+		Spec: extensions.DeploymentSpec{
+			Replicas: 1,
+		},
+	}
+	_, err = client.Deployments("").Create(&deployment)
+	return "", err
 }

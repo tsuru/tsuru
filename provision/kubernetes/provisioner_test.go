@@ -5,6 +5,9 @@
 package kubernetes
 
 import (
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
@@ -31,4 +34,17 @@ func (s *S) TestAddNode(c *check.C) {
 	// err = coll.FindId(uniqueDocumentID).One(&nodeAddrs)
 	// c.Assert(err, check.IsNil)
 	// c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{url})
+}
+
+func (s *S) TestImageDeploy(c *check.C) {
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.p.ImageDeploy(a, "imageName", evt)
 }
