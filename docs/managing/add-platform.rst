@@ -31,24 +31,22 @@ Platforms are defined as Dockerfiles and tsuru already have a number of supporte
 
 These platforms don't come pre-installed in tsuru, you have to add them to your
 server using the `platform-add
-<http://tsuru-admin.readthedocs.org/en/latest/#platform-add>`_ command in
+<http://tsuru-admin.readthedocs.io/en/latest/reference.html#add-a-new-platform>`_ command in
 :doc:`tsuru-admin </reference/tsuru-admin>`.
 
-.. highlight:: bash
-
-::
-
-    tsuru-admin platform-add platform-name --dockerfile dockerfile-url
-
-For example, to install the Python platform from tsuru's basebuilder repository
+For example, to install the Python platform from tsuru's platforms repository
 you simply have to call:
 
 .. highlight:: bash
 
 ::
 
-    tsuru-admin platform-add python --dockerfile https://raw.githubusercontent.com/tsuru/basebuilder/master/python/Dockerfile
+    tsuru-admin platform-add python
 
+
+If your application is not currently supported by the platforms above,
+you can create a new platform. See :doc:`creating a platform</managing/create-platform>`
+for more information.
 
 .. attention::
 
