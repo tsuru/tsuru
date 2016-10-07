@@ -182,6 +182,9 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 		imgID = fmt.Sprintf("%s:latest", imgID)
 	}
 	deployment := extensions.Deployment{
+		ObjectMeta: api.ObjectMeta{
+			Name: a.GetName(),
+		},
 		Spec: extensions.DeploymentSpec{
 			Replicas: 1,
 			Template: api.PodTemplateSpec{
