@@ -10,7 +10,19 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func (s *S) TestListNodes(c *check.C) {
+	coll, _ := nodeAddrCollection()
+	defer coll.Close()
+	coll.Insert(bson.M{"_id": uniqueDocumentID, "addresses": []string{"192.168.99.100"}})
+	defer coll.RemoveId(uniqueDocumentID)
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.100")
+}
 
 func (s *S) TestAddNode(c *check.C) {
 	url := "https://192.168.99.100:8443"

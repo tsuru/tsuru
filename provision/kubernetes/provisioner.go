@@ -83,7 +83,17 @@ func (p *kubernetesProvisioner) RegisterUnit(unit provision.Unit, customData map
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	return nil, errNotImplemented
+	coll, err := nodeAddrCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var data kubernetesNodeWrapper
+	err = coll.FindId(uniqueDocumentID).One(&data)
+	if err != nil {
+		return nil, errors.Wrap(err, "")
+	}
+	return []provision.Node{&data}, nil
 }
 
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
