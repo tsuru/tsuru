@@ -97,7 +97,16 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 }
 
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
-	return nil, errNotImplemented
+	nodes, err := p.ListNodes(nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range nodes {
+		if address == n.Address() {
+			return n, nil
+		}
+	}
+	return nil, provision.ErrNodeNotFound
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
