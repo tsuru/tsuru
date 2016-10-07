@@ -190,6 +190,9 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 			Template: api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
 					Name: a.GetName(),
+					Labels: map[string]string{
+						"name": a.GetName(),
+					},
 				},
 				Spec: api.PodSpec{
 					Containers: []api.Container{
