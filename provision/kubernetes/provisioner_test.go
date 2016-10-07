@@ -32,6 +32,19 @@ func (s *S) TestListNodesWithoutNodes(c *check.C) {
 	c.Assert(nodes, check.HasLen, 0)
 }
 
+func (s *S) TestListNodesFilteringByAddress(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	nodes, err := s.p.ListNodes([]string{"https://192.168.99.101"})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
 func (s *S) TestAddNode(c *check.C) {
 	url := "https://192.168.99.100:8443"
 	opts := provision.AddNodeOptions{

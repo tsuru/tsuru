@@ -93,6 +93,14 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 	if err != nil {
 		return []provision.Node{}, nil
 	}
+	if len(addressFilter) > 0 {
+		for _, addr := range addressFilter {
+			if addr == data.Address() {
+				return []provision.Node{&data}, nil
+			}
+		}
+		return []provision.Node{}, nil
+	}
 	return []provision.Node{&data}, nil
 }
 
