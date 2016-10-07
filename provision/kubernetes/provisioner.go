@@ -91,7 +91,7 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 	var data kubernetesNodeWrapper
 	err = coll.FindId(uniqueDocumentID).One(&data)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return []provision.Node{}, nil
 	}
 	return []provision.Node{&data}, nil
 }

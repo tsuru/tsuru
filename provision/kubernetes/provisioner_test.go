@@ -26,6 +26,12 @@ func (s *S) TestListNodes(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, url)
 }
 
+func (s *S) TestListNodesWithoutNodes(c *check.C) {
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
 func (s *S) TestAddNode(c *check.C) {
 	url := "https://192.168.99.100:8443"
 	opts := provision.AddNodeOptions{
@@ -58,8 +64,15 @@ func (s *S) TestRemoveNode(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
+	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
