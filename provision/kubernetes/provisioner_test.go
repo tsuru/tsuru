@@ -60,6 +60,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	err = s.p.RemoveNode(removeNodeOpts)
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 }
 
