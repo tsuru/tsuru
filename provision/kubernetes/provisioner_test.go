@@ -14,14 +14,15 @@ import (
 )
 
 func (s *S) TestListNodes(c *check.C) {
+	address := "https://192.168.99.100:8443"
 	coll, _ := nodeAddrCollection()
 	defer coll.Close()
-	coll.Insert(bson.M{"_id": uniqueDocumentID, "addresses": []string{"192.168.99.100"}})
+	coll.Insert(bson.M{"_id": uniqueDocumentID, "addresses": []string{address}})
 	defer coll.RemoveId(uniqueDocumentID)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.100")
+	c.Assert(nodes[0].Address(), check.Equals, address)
 }
 
 func (s *S) TestAddNode(c *check.C) {
@@ -33,19 +34,11 @@ func (s *S) TestAddNode(c *check.C) {
 	}
 	err := s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	// node, err := s.p.GetNode(url)
-	// c.Assert(err, check.IsNil)
-	// c.Assert(node.Address(), check.Equals, url)
-	// c.Assert(node.Metadata(), check.DeepEquals, metadata)
-	// c.Assert(node.Pool(), check.Equals, "p1")
-	// c.Assert(node.Status(), check.Equals, "ready")
-	// coll, err := nodeAddrCollection()
-	// c.Assert(err, check.IsNil)
-	// defer coll.Close()
-	// var nodeAddrs NodeAddrs
-	// err = coll.FindId(uniqueDocumentID).One(&nodeAddrs)
-	// c.Assert(err, check.IsNil)
-	// c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{url})
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	node := nodes[0]
+	c.Assert(node.Address(), check.Equals, url)
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
