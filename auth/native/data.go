@@ -4,9 +4,24 @@
 
 package native
 
-import "text/template"
+import (
+	"text/template"
 
-var resetEmailData = template.Must(template.New("reset").Parse(`Subject: [tsuru] Password reset process
+	"github.com/tsuru/config"
+)
+
+
+var passwordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_@#$%^&*()~[]{}?=-+,.<>:;`"
+
+func getEmailResetPasswordTemplate() (*template.Template) {
+	templateFile, _ := config.GetString("email-reset-password-template-file")
+	if templateFile != "" {
+		tmp, err := template.ParseFiles(templateFile)
+		if err == nil {
+			return tmp
+		}
+	}
+	return template.Must(template.New("reset").Parse(`Subject: [tsuru] Password reset process
 To: {{.UserEmail}}
 
 Someone, hopefully you, requested to reset your password on tsuru. You will
@@ -15,8 +30,17 @@ need to use the following token to finish this process:
 {{.Token}}
 
 If you think this is email is wrong, just ignore it.`))
+}
 
-var passwordResetConfirm = template.Must(template.New("reset").Parse(`Subject: [tsuru] Password successfully reset
+func getEmailResetPasswordSucessfullyTemplate() (*template.Template) {
+	templateFile, _ := config.GetString("email-reset-password-successfully-template-file")
+	if templateFile != "" {
+		tmp, err := template.ParseFiles(templateFile)
+		if err == nil {
+			return tmp
+		}
+	}
+	return template.Must(template.New("reset").Parse(`Subject: [tsuru] Password successfully reset
 To: {{.email}}
 
 Greetings!
@@ -26,5 +50,4 @@ This message is the confirmation that your password has been reset. The new pass
 {{.password}}
 
 Use it to authenticate with tsuru server, and change it later.`))
-
-var passwordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_@#$%^&*()~[]{}?=-+,.<>:;`"
+}

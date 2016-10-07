@@ -19,7 +19,8 @@ import (
 
 func sendResetPassword(u *auth.User, t *passwordToken) {
 	var body bytes.Buffer
-	err := resetEmailData.Execute(&body, t)
+	template := getEmailResetPasswordTemplate()
+	err := template.Execute(&body, t)
 	if err != nil {
 		log.Errorf("Failed to send password token to user %q: %s", u.Email, err)
 		return
@@ -36,7 +37,8 @@ func sendNewPassword(u *auth.User, password string) {
 		"email":    u.Email,
 	}
 	var body bytes.Buffer
-	err := passwordResetConfirm.Execute(&body, m)
+	template := getEmailResetPasswordSucessfullyTemplate()
+	err := template.Execute(&body, m)
 	if err != nil {
 		log.Errorf("Failed to send new password to user %q: %s", u.Email, err)
 		return

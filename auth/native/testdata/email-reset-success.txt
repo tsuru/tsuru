@@ -1,0 +1,10 @@
+Subject: [tsuru] Password successfully reset
+To: {{.email}}
+
+Congrats!
+
+This message is the confirmation that your password has been reset. The new password is:
+
+{{.password}}
+
+Use it to authenticate with tsuru server, and change it later.
