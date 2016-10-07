@@ -5,14 +5,17 @@
 package kubernetes
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
-
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
@@ -36,7 +39,7 @@ func (p *kubernetesProvisioner) GetName() string {
 }
 
 func (p *kubernetesProvisioner) Provision(provision.App) error {
-	return errNotImplemented
+	return nil
 }
 
 func (p *kubernetesProvisioner) Destroy(provision.App) error {
@@ -80,7 +83,17 @@ func (p *kubernetesProvisioner) RegisterUnit(unit provision.Unit, customData map
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	return nil, errNotImplemented
+	coll, err := nodeAddrCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var data kubernetesNodeWrapper
+	err = coll.FindId(uniqueDocumentID).One(&data)
+	if err != nil {
+		return nil, errors.Wrap(err, "")
+	}
+	return []provision.Node{&data}, nil
 }
 
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
@@ -126,5 +139,37 @@ func (p *kubernetesProvisioner) ArchiveDeploy(app provision.App, archiveURL stri
 }
 
 func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
-	return "", errNotImplemented
+	hosts, err := p.ListNodes(nil)
+	if err != nil {
+		return "", err
+	}
+	token, err := config.GetString("kubernetes:token")
+	if err != nil {
+		return "", err
+	}
+	client, err := client.New(&restclient.Config{
+		Host:        hosts[0].Address(),
+		Insecure:    true,
+		BearerToken: token,
+	})
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(imgID, ":") {
+		imgID = fmt.Sprintf("%s:latest", imgID)
+	}
+	deployment := extensions.Deployment{
+		Spec: extensions.DeploymentSpec{
+			Replicas: 1,
+			Template: api.PodTemplateSpec{
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{Name: a.GetName(), Image: imgID},
+					},
+				},
+			},
+		},
+	}
+	_, err = client.Deployments("").Create(&deployment)
+	return "", err
 }
