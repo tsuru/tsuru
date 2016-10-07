@@ -462,6 +462,11 @@ func startServer(handler http.Handler) {
 	}
 	if err != nil {
 		fmt.Printf("Listening stopped: %s\n", err)
+		if errOp, ok := err.(*net.OpError); ok {
+			if errOp.Op == "listen" {
+				os.Exit(1)
+			}
+		}
 	}
 	<-shutdownChan
 }
