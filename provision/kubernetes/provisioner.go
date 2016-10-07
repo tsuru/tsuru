@@ -130,10 +130,14 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 	if err != nil {
 		return "", err
 	}
+	token, err := config.GetString("kubernetes:token")
+	if err != nil {
+		return "", err
+	}
 	client, err := client.New(&restclient.Config{
 		Host:        hosts[0].Address(),
 		Insecure:    true,
-		BearerToken: "",
+		BearerToken: token,
 	})
 	if err != nil {
 		return "", err
