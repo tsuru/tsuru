@@ -5,13 +5,16 @@
 package kubernetes
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -142,9 +145,19 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 	if err != nil {
 		return "", err
 	}
+	if !strings.Contains(imgID, ":") {
+		imgID = fmt.Sprintf("%s:latest", imgID)
+	}
 	deployment := extensions.Deployment{
 		Spec: extensions.DeploymentSpec{
 			Replicas: 1,
+			Template: api.PodTemplateSpec{
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{Name: a.GetName(), Image: imgID},
+					},
+				},
+			},
 		},
 	}
 	_, err = client.Deployments("").Create(&deployment)
