@@ -127,7 +127,13 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
-	return errNotImplemented
+	coll, err := nodeAddrCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.RemoveId(uniqueDocumentID)
+	return err
 }
 
 func (p *kubernetesProvisioner) UpdateNode(provision.UpdateNodeOptions) error {

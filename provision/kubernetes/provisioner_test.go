@@ -41,6 +41,22 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(node.Address(), check.Equals, url)
 }
 
+func (s *S) TestRemoveNode(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	addNodeOpts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(addNodeOpts)
+	c.Assert(err, check.IsNil)
+	removeNodeOpts := provision.RemoveNodeOptions{
+		Address: url,
+	}
+	err = s.p.RemoveNode(removeNodeOpts)
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
 func (s *S) TestImageDeploy(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
