@@ -185,6 +185,6 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 			},
 		},
 	}
-	_, err = client.Deployments("").Create(&deployment)
+	_, err = client.Deployments("default").Create(&deployment)
 	return "", err
 }
