@@ -177,6 +177,9 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 		Spec: extensions.DeploymentSpec{
 			Replicas: 1,
 			Template: api.PodTemplateSpec{
+				ObjectMeta: api.ObjectMeta{
+					Name: a.GetName(),
+				},
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{Name: a.GetName(), Image: imgID},
