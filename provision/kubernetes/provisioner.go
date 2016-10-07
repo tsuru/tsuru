@@ -71,7 +71,7 @@ func (p *kubernetesProvisioner) Stop(provision.App, string) error {
 }
 
 func (p *kubernetesProvisioner) Units(app provision.App) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+	return nil, nil
 }
 
 func (p *kubernetesProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {

@@ -71,3 +71,12 @@ func (s *S) TestImageDeploy(c *check.C) {
 	s.p.ImageDeploy(a, "imageName", evt)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestUnits(c *check.C) {
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.IsNil)
+}
