@@ -10,30 +10,30 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestListNodes(c *check.C) {
-	address := "https://192.168.99.100:8443"
-	coll, _ := nodeAddrCollection()
-	defer coll.Close()
-	coll.Insert(bson.M{"_id": uniqueDocumentID, "addresses": []string{address}})
-	defer coll.RemoveId(uniqueDocumentID)
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, address)
+	c.Assert(nodes[0].Address(), check.Equals, url)
 }
 
 func (s *S) TestAddNode(c *check.C) {
 	url := "https://192.168.99.100:8443"
-	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
-		Address:  url,
-		Metadata: metadata,
+		Address: url,
 	}
 	err := s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
