@@ -14,7 +14,7 @@ import (
 var passwordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_@#$%^&*()~[]{}?=-+,.<>:;`"
 
 func getEmailResetPasswordTemplate() (*template.Template) {
-	templateFile, _ := config.GetString("email-reset-password-template-file")
+	templateFile, _ := config.GetString("reset-password-template")
 	if templateFile != "" {
 		tmp, err := template.ParseFiles(templateFile)
 		if err == nil {
@@ -33,7 +33,7 @@ If you think this is email is wrong, just ignore it.`))
 }
 
 func getEmailResetPasswordSucessfullyTemplate() (*template.Template) {
-	templateFile, _ := config.GetString("email-reset-password-successfully-template-file")
+	templateFile, _ := config.GetString("reset-password-successfully-template")
 	if templateFile != "" {
 		tmp, err := template.ParseFiles(templateFile)
 		if err == nil {

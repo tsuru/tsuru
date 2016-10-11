@@ -23,8 +23,8 @@ func (s *S) TestResetWithoutTemplate(c *check.C) {
 }
 
 func (s *S) TestResetWithTemplate(c *check.C) {
-	config.Set("email-reset-password-template-file", "testdata/email-reset-password.txt")
-	defer config.Unset("email-reset-password-template-file")
+	config.Set("reset-password-template", "testdata/email-reset-password.txt")
+	defer config.Unset("reset-password-template")
 	var email bytes.Buffer
 	tmp := getEmailResetPasswordTemplate()
 	err := tmp.Execute(&email, nil)
@@ -33,8 +33,8 @@ func (s *S) TestResetWithTemplate(c *check.C) {
 }
 
 func (s *S) TestResetWithNotFoundTemplate(c *check.C) {
-	config.Set("email-reset-password-template-file", "testdata/wrong-email-reset-password.txt")
-	defer config.Unset("email-reset-password-template-file")
+	config.Set("reset-password-template", "testdata/wrong-email-reset-password.txt")
+	defer config.Unset("reset-password-template")
 	var email bytes.Buffer
 	tmp := getEmailResetPasswordTemplate()
 	err := tmp.Execute(&email, nil)
@@ -51,8 +51,8 @@ func (s *S) TestResetSuccessWithoutTemplate(c *check.C) {
 }
 
 func (s *S) TestResetSuccessWithTemplate(c *check.C) {
-	config.Set("email-reset-password-successfully-template-file", "testdata/email-reset-success.txt")
-	defer config.Unset("email-reset-password-successfully-template-file")
+	config.Set("reset-password-successfully-template", "testdata/email-reset-success.txt")
+	defer config.Unset("reset-password-successfully-template")
 	var email bytes.Buffer
 	tmp := getEmailResetPasswordSucessfullyTemplate()
 	err := tmp.Execute(&email, nil)
@@ -61,8 +61,8 @@ func (s *S) TestResetSuccessWithTemplate(c *check.C) {
 }
 
 func (s *S) TestResetSuccessWithWrongTemplate(c *check.C) {
-	config.Set("email-reset-password-successfully-template-file", "testdata/wrong-email-reset-success.txt")
-	defer config.Unset("email-reset-password-successfully-template-file")
+	config.Set("reset-password-successfully-template", "testdata/wrong-email-reset-success.txt")
+	defer config.Unset("reset-password-successfully-template")
 	var email bytes.Buffer
 	tmp := getEmailResetPasswordSucessfullyTemplate()
 	err := tmp.Execute(&email, nil)
