@@ -9,6 +9,7 @@ env:
   global:
     - GOARCH=amd64
     - GO_FOR_RELEASE=1.7.1
+    - IMAGE_NAME=tsuru/api
 addons:
   apt:
     packages:
@@ -39,7 +40,7 @@ script:
   - make check-api-doc
   - CGO_ENABLED=0 go build ./cmd/tsurud/
 after_success:
-  - travis/send_to_docker_hub.sh
+  - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
 notifications:
   email:
     on_success: change
