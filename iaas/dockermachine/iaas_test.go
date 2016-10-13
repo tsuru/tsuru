@@ -29,14 +29,13 @@ func (s *S) TestBuildDriverOpts(c *check.C) {
 }
 
 func (s *S) TestCreateMachineIaaS(c *check.C) {
-	config.Set("iaas:dockermachine:insecure-registry", "registry.com")
-	defer config.Unset("iaas:dockermachine:insecure-registry")
 	config.Set("iaas:dockermachine:ca-path", "/etc/ca-path")
 	defer config.Unset("iaas:dockermachine:ca-path")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
 	dmIaas.apiFactory = newFakeDockerMachine
 	m, err := dmIaas.CreateMachine(map[string]string{
+		"insecure-registry":  "registry.com",
 		"name":               "host-name",
 		"driver":             "driver-name",
 		"docker-install-url": "http://getdocker.com",
@@ -44,6 +43,7 @@ func (s *S) TestCreateMachineIaaS(c *check.C) {
 	expectedMachine := &iaas.Machine{
 		Id: "host-name",
 		CreationParams: map[string]string{
+			"insecure-registry":  "registry.com",
 			"driver":             "driver-name",
 			"docker-install-url": "http://getdocker.com",
 		},

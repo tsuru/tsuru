@@ -57,7 +57,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	if err != nil {
 		dockerEngineInstallURL = ""
 	}
-	insecureRegistry, _ := i.base.GetConfigString("insecure-registry")
+	insecureRegistry, _ := i.getParamOrConfigString("insecure-registry", params)
 	machineName, ok := params["name"]
 	if !ok {
 		machines, errList := iaas.ListMachines()
