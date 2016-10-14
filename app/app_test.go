@@ -2515,7 +2515,8 @@ func (s *S) TestRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.Run("ls -lh", &buf, false, false)
+	args := provision.RunArgs{Once: false, Isolated: false}
+	err = app.Run("ls -lh", &buf, args)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -2554,7 +2555,8 @@ func (s *S) TestRunOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.Run("ls -lh", &buf, true, false)
+	args := provision.RunArgs{Once: true, Isolated: false}
+	err = app.Run("ls -lh", &buf, args)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -2574,7 +2576,8 @@ func (s *S) TestRunIsolated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.Run("ls -lh", &buf, false, true)
+	args := provision.RunArgs{Once: false, Isolated: true}
+	err = app.Run("ls -lh", &buf, args)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -2594,7 +2597,8 @@ func (s *S) TestRunWithoutEnv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.run("ls -lh", &buf, false, false)
+	args := provision.RunArgs{Once: false, Isolated: false}
+	err = app.run("ls -lh", &buf, args)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	cmds := s.provisioner.GetCmds("ls -lh", &app)

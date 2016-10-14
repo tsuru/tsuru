@@ -187,6 +187,12 @@ type Named interface {
 	GetName() string
 }
 
+// RunArgs groups together the arguments to run an App.
+type RunArgs struct {
+	Once     bool
+	Isolated bool
+}
+
 // App represents a tsuru app.
 //
 // It contains only relevant information for provisioning.
@@ -211,7 +217,7 @@ type App interface {
 	// Run executes the command in app units. Commands executed with this
 	// method should have access to environment variables defined in the
 	// app.
-	Run(cmd string, w io.Writer, once, isolated bool) error
+	Run(cmd string, w io.Writer, args RunArgs) error
 
 	Envs() map[string]bind.EnvVar
 

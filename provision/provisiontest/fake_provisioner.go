@@ -325,7 +325,7 @@ func (a *FakeApp) SerializeEnvVars() error {
 	return nil
 }
 
-func (a *FakeApp) Run(cmd string, w io.Writer, once, isolated bool) error {
+func (a *FakeApp) Run(cmd string, w io.Writer, args provision.RunArgs) error {
 	a.commMut.Lock()
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
 	a.commMut.Unlock()

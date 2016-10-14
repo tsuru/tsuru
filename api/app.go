@@ -748,7 +748,8 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	onceBool, _ := strconv.ParseBool(once)
 	isolatedBool, _ := strconv.ParseBool(isolated)
-	return a.Run(command, writer, onceBool, isolatedBool)
+	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool}
+	return a.Run(command, writer, args)
 }
 
 // title: get envs
