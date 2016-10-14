@@ -970,6 +970,19 @@ func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provisi
 	return nil
 }
 
+func (p *dockerProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	imageID, err := image.AppCurrentImageName(app.GetName())
+	if err != nil {
+		return err
+	}
+	output, err := p.runCommandInContainer(imageID, cmd, app)
+	if err != nil {
+		return err
+	}
+	stdout.Write(output.Bytes())
+	return nil
+}
+
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 	return []cmd.Command{
 		&moveContainerCmd{},

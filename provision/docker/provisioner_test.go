@@ -1977,6 +1977,44 @@ func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
+func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/app-almah", nil)
+	c.Assert(err, check.IsNil)
+	a := provisiontest.NewFakeApp("almah", "static", 1)
+	var stdout, stderr bytes.Buffer
+	var executed bool
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "test")
+		executed = true
+
+		conn.Close()
+	}))
+	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.IsNil)
+	c.Assert(executed, check.Equals, true)
+	c.Assert(stdout.String(), check.Equals, "test")
+}
+
+func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {
+	a := provisiontest.NewFakeApp("almah", "static", 2)
+	var buf bytes.Buffer
+	err := s.p.ExecuteCommandIsolated(&buf, &buf, a, "ls", "-lh")
+	c.Assert(err, check.ErrorMatches, ".*no such image.*")
+}
+
 func (s *S) TestProvisionCollection(c *check.C) {
 	collection := s.p.Collection()
 	defer collection.Close()

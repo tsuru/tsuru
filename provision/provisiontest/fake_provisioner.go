@@ -325,7 +325,7 @@ func (a *FakeApp) SerializeEnvVars() error {
 	return nil
 }
 
-func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
+func (a *FakeApp) Run(cmd string, w io.Writer, once, isolated bool) error {
 	a.commMut.Lock()
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
 	a.commMut.Unlock()
@@ -1053,6 +1053,36 @@ func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 		stdout.Write(output)
 	case fail := <-p.failures:
 		if fail.method == "ExecuteCommandOnce" {
+			select {
+			case output = <-p.outputs:
+				stderr.Write(output)
+			default:
+			}
+			return fail.err
+		} else {
+			p.failures <- fail
+		}
+	case <-time.After(2e9):
+		return errors.New("FakeProvisioner timed out waiting for output.")
+	}
+	return nil
+}
+
+func (p *FakeProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	var output []byte
+	command := Cmd{
+		Cmd:  cmd,
+		Args: args,
+		App:  app,
+	}
+	p.cmdMut.Lock()
+	p.cmds = append(p.cmds, command)
+	p.cmdMut.Unlock()
+	select {
+	case output = <-p.outputs:
+		stdout.Write(output)
+	case fail := <-p.failures:
+		if fail.method == "ExecuteCommandIsolated" {
 			select {
 			case output = <-p.outputs:
 				stderr.Write(output)

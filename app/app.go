@@ -866,7 +866,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 
 // Run executes the command in app units, sourcing apprc before running the
 // command.
-func (app *App) Run(cmd string, w io.Writer, once bool) error {
+func (app *App) Run(cmd string, w io.Writer, once, isolated bool) error {
 	if !app.available() {
 		return stderr.New("App must be available to run commands")
 	}
@@ -874,17 +874,17 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 	logWriter := LogWriter{App: app, Source: "app-run"}
 	logWriter.Async()
 	defer logWriter.Close()
-	return app.sourced(cmd, io.MultiWriter(w, &logWriter), once)
+	return app.sourced(cmd, io.MultiWriter(w, &logWriter), once, isolated)
 }
 
-func (app *App) sourced(cmd string, w io.Writer, once bool) error {
+func (app *App) sourced(cmd string, w io.Writer, once, isolated bool) error {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := fmt.Sprintf("[ -d %s ] && cd %s", defaultAppDir, defaultAppDir)
 	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
-	return app.run(cmd, w, once)
+	return app.run(cmd, w, once, isolated)
 }
 
-func (app *App) run(cmd string, w io.Writer, once bool) error {
+func (app *App) run(cmd string, w io.Writer, once, isolated bool) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -892,6 +892,9 @@ func (app *App) run(cmd string, w io.Writer, once bool) error {
 	execProv, ok := prov.(provision.ExecutableProvisioner)
 	if !ok {
 		return provision.ProvisionerNotSupported{Prov: prov, Action: "running commands"}
+	}
+	if isolated {
+		return execProv.ExecuteCommandIsolated(w, w, app, cmd)
 	}
 	if once {
 		return execProv.ExecuteCommandOnce(w, w, app, cmd)

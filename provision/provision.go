@@ -211,7 +211,7 @@ type App interface {
 	// Run executes the command in app units. Commands executed with this
 	// method should have access to environment variables defined in the
 	// app.
-	Run(cmd string, w io.Writer, once bool) error
+	Run(cmd string, w io.Writer, once, isolated bool) error
 
 	Envs() map[string]bind.EnvVar
 
@@ -362,6 +362,9 @@ type ExecutableProvisioner interface {
 
 	// ExecuteCommandOnce runs a command in one unit of the app.
 	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
+
+	// ExecuteCommandIsolated runs a command in an new and ephemeral container.
+	ExecuteCommandIsolated(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 }
 
 // SleepableProvisioner is a provisioner that allows putting applications to

@@ -2515,7 +2515,7 @@ func (s *S) TestRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.Run("ls -lh", &buf, false)
+	err = app.Run("ls -lh", &buf, false, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -2554,7 +2554,27 @@ func (s *S) TestRunOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.Run("ls -lh", &buf, true)
+	err = app.Run("ls -lh", &buf, true, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "a lot of files")
+	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
+	expected += " [ -d /home/application/current ] && cd /home/application/current;"
+	expected += " ls -lh"
+	cmds := s.provisioner.GetCmds(expected, &app)
+	c.Assert(cmds, check.HasLen, 1)
+}
+
+func (s *S) TestRunIsolated(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	app := App{
+		Name:      "myapp",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&app, 1, "web", nil)
+	var buf bytes.Buffer
+	err = app.Run("ls -lh", &buf, false, true)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -2574,7 +2594,7 @@ func (s *S) TestRunWithoutEnv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
-	err = app.run("ls -lh", &buf, false)
+	err = app.run("ls -lh", &buf, false, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "a lot of files")
 	cmds := s.provisioner.GetCmds("ls -lh", &app)
