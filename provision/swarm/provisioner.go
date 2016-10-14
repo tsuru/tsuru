@@ -15,6 +15,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -429,26 +430,44 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	return newImage, nil
 }
 
-func deployProcesses(client *docker.Client, a provision.App, imgID string) error {
-	imageData, err := image.GetImageCustomData(imgID)
+func deployProcesses(client *docker.Client, a provision.App, newImg string) error {
+	newImageData, err := image.GetImageCustomData(newImg)
 	if err != nil {
 		return err
 	}
-	for processName, cmd := range imageData.Processes {
-		err = deploy(client, a, processName, cmd, imgID)
-		if err != nil {
-			// TODO(cezarsa): better error handling
-			return err
-		}
+	curImg, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return err
 	}
-	err = image.AppendAppImageName(a.GetName(), imgID)
+	currentImageData, err := image.GetImageCustomData(curImg)
+	if err != nil {
+		return err
+	}
+	pipeline := action.NewPipeline(
+		updateServices,
+		updateImageInDB,
+		removeOldServices,
+	)
+	return pipeline.Execute(&pipelineArgs{
+		client:         client,
+		app:            a,
+		newImage:       newImg,
+		newImgData:     &newImageData,
+		currentImage:   curImg,
+		currentImgData: &currentImageData,
+	})
+}
+
+func removeService(client *docker.Client, a provision.App, process string) error {
+	srvName := serviceNameForApp(a, process)
+	err := client.RemoveService(docker.RemoveServiceOptions{ID: srvName})
 	if err != nil {
 		return errors.Wrap(err, "")
 	}
 	return nil
 }
 
-func deploy(client *docker.Client, a provision.App, process, cmd, imgID string) error {
+func deploy(client *docker.Client, a provision.App, process, imgID string) error {
 	srvName := serviceNameForApp(a, process)
 	srv, err := client.InspectService(srvName)
 	if err != nil {
@@ -466,7 +485,7 @@ func deploy(client *docker.Client, a provision.App, process, cmd, imgID string) 
 		if err != nil {
 			return err
 		}
-		srv, err = client.CreateService(docker.CreateServiceOptions{
+		_, err = client.CreateService(docker.CreateServiceOptions{
 			ServiceSpec: *spec,
 		})
 		if err != nil {

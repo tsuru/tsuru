@@ -7,6 +7,7 @@ package swarm
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -189,6 +190,10 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
 }
 
+func (s *S) TestRegisterUnit(c *check.C) {
+	c.Fatal("aaaargh")
+}
+
 func (s *S) TestArchiveDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -198,6 +203,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -227,6 +233,57 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 		"-lc",
 		"[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
 	})
+}
+
+func (s *S) TestDeployServiceBind(c *check.C) {
+	c.Skip("no support for service bind in the provisioner just yet")
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, true)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.ArchiveDeploy(a, "http://server/myfile.tgz", evt)
+	c.Assert(err, check.IsNil)
+	c.Assert(<-attached, check.Equals, true)
+	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1")
+	dbImg, err := image.AppCurrentImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+	})
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	cont, err := cli.InspectContainer(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+	})
+	c.Assert(serviceBodies, check.HasLen, 1)
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
 }
 
 func (s *S) TestImageDeploy(c *check.C) {

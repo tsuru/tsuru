@@ -6,6 +6,8 @@ package swarm
 
 import (
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -17,8 +19,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type S struct {
@@ -79,4 +83,20 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn http.HandlerFunc) func() {
+	ts := httptest.NewServer(fn)
+	ret := func() {
+		ts.Close()
+		s.conn.Services().Remove(bson.M{"_id": "mysql"})
+		s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Units: units, Apps: []string{appName}}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	return ret
 }

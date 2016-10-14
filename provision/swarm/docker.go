@@ -265,7 +265,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		}
 	}
 	var unitCount uint64 = 1
-	if opts.baseSpec != nil {
+	if opts.baseSpec != nil && opts.baseSpec.Mode.Replicated != nil {
 		unitCount = *opts.baseSpec.Mode.Replicated.Replicas
 	}
 	routerName, err := opts.app.GetRouter()
