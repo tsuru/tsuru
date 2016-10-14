@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/set"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -52,8 +53,8 @@ type DeployData struct {
 	Diff        string
 }
 
-func findValidImages(apps ...App) (set, error) {
-	validImages := set{}
+func findValidImages(apps ...App) (set.Set, error) {
+	validImages := set.Set{}
 	for _, a := range apps {
 		imgs, err := image.ListAppImages(a.Name)
 		if err != nil && err != mgo.ErrNotFound {
@@ -113,7 +114,7 @@ func GetDeploy(id string) (*DeployData, error) {
 	return eventToDeployData(evt, nil, true), nil
 }
 
-func eventToDeployData(evt *event.Event, validImages set, full bool) *DeployData {
+func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *DeployData {
 	data := &DeployData{
 		ID:        evt.UniqueID,
 		App:       evt.Target.Value,
