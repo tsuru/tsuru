@@ -190,10 +190,6 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
 }
 
-func (s *S) TestRegisterUnit(c *check.C) {
-	c.Fatal("aaaargh")
-}
-
 func (s *S) TestArchiveDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
