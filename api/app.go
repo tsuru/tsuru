@@ -720,6 +720,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	appName := r.URL.Query().Get(":app")
 	once := r.FormValue("once")
+	isolated := r.FormValue("isolated")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
@@ -746,7 +747,9 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	onceBool, _ := strconv.ParseBool(once)
-	return a.Run(command, writer, onceBool)
+	isolatedBool, _ := strconv.ParseBool(isolated)
+	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool}
+	return a.Run(command, writer, args)
 }
 
 // title: get envs

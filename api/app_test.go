@@ -2161,6 +2161,40 @@ func (s *S) TestRun(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestRunIsolated(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("lots of files"))
+	a := app.App{Name: "secrets", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	url := fmt.Sprintf("/apps/%s/run", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("command=ls&isolated=true"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of files"}`+"\n")
+	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
+	expected += " [ -d /home/application/current ] && cd /home/application/current;"
+	expected += " ls"
+	cmds := s.provisioner.GetCmds(expected, &a)
+	c.Assert(cmds, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.run",
+		StartCustomData: []map[string]interface{}{
+			{"name": "command", "value": "ls"},
+			{"name": "isolated", "value": "true"},
+			{"name": ":app", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 	s.provisioner.PrepareFailure("ExecuteCommand", &errors.HTTP{Code: 500, Message: "something went wrong"})
 	s.provisioner.PrepareOutput([]byte("failure output"))

@@ -912,6 +912,20 @@ func (s *S) TestExecuteComandTimeout(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "FakeProvisioner timed out waiting for output.")
 }
 
+func (s *S) TestExecuteCommandIsolated(c *check.C) {
+	var buf bytes.Buffer
+	output := []byte("myoutput!")
+	app := NewFakeApp("grand-designs", "rush", 1)
+	p := NewFakeProvisioner()
+	p.PrepareOutput(output)
+	err := p.ExecuteCommandIsolated(&buf, nil, app, "ls", "-l")
+	c.Assert(err, check.IsNil)
+	cmds := p.GetCmds("ls", app)
+	c.Assert(cmds, check.HasLen, 1)
+	expected := string(output)
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
 func (s *S) TestAddr(c *check.C) {
 	app := NewFakeApp("quick", "who", 1)
 	p := NewFakeProvisioner()
