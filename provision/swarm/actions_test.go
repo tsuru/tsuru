@@ -5,6 +5,8 @@
 package swarm
 
 import (
+	"net/http"
+
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -13,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
-	"net/http"
 )
 
 func (s *S) TestActionUpdateServicesForward(c *check.C) {
