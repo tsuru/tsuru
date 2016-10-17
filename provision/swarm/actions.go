@@ -5,6 +5,8 @@
 package swarm
 
 import (
+	"sort"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -41,9 +43,16 @@ var updateServices = &action.Action{
 	Name: "update-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(*pipelineArgs)
-		var deployedProcesses []string
-		var err error
+		var (
+			toDeployProcesses []string
+			deployedProcesses []string
+			err               error
+		)
 		for processName := range args.newImgData.Processes {
+			toDeployProcesses = append(toDeployProcesses, processName)
+		}
+		sort.Strings(toDeployProcesses)
+		for _, processName := range toDeployProcesses {
 			err = deploy(args.client, args.app, processName, args.newImage)
 			if err != nil {
 				break
