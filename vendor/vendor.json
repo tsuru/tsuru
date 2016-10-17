@@ -15,20 +15,6 @@
 			"revision": ""
 		},
 		{
-			"checksumSHA1": "Cslv4/ITyQmgjSUhNXFu8q5bqOU=",
-			"origin": "k8s.io/kubernetes/vendor/cloud.google.com/go/compute/metadata",
-			"path": "cloud.google.com/go/compute/metadata",
-			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
-			"revisionTime": "2016-10-05T22:38:25Z"
-		},
-		{
-			"checksumSHA1": "hiJXjkFEGy+sDFf6O58Ocdy9Rnk=",
-			"origin": "k8s.io/kubernetes/vendor/cloud.google.com/go/internal",
-			"path": "cloud.google.com/go/internal",
-			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
-			"revisionTime": "2016-10-05T22:38:25Z"
-		},
-		{
 			"path": "fetch",
 			"revision": ""
 		},
