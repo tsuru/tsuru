@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/pkg/errors"
@@ -188,6 +189,103 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 		Address: "localhost:1000",
 	})
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestRegisterUnit(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	cli, err := chooseDBSwarmNode()
+	c.Assert(err, check.IsNil)
+	_, err = cli.CreateService(docker.CreateServiceOptions{
+		ServiceSpec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "myapp-web",
+				Labels: map[string]string{
+					labelServiceDeploy.String():     "true",
+					labelServiceBuildImage.String(): "app:v1",
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	conts, err := cli.ListContainers(docker.ListContainersOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 1)
+	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID}, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	data, err := image.GetImageCustomData("app:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(data.Processes, check.DeepEquals, map[string]string{"web": "python myapp.py"})
+}
+
+func (s *S) TestRegisterUnitNotBuild(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	cli, err := chooseDBSwarmNode()
+	c.Assert(err, check.IsNil)
+	_, err = cli.CreateService(docker.CreateServiceOptions{
+		ServiceSpec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "myapp-web",
+				Labels: map[string]string{
+					labelServiceBuildImage.String(): "notset:v1",
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	conts, err := cli.ListContainers(docker.ListContainersOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 1)
+	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID}, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	data, err := image.GetImageCustomData("notset:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(data, check.DeepEquals, image.ImageMetadata{})
+}
+
+func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	cli, err := chooseDBSwarmNode()
+	c.Assert(err, check.IsNil)
+	_, err = cli.CreateService(docker.CreateServiceOptions{
+		ServiceSpec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "myapp-web",
+				Labels: map[string]string{
+					labelServiceDeploy.String(): "true",
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	conts, err := cli.ListContainers(docker.ListContainersOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 1)
+	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID}, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.ErrorMatches, `invalid build image label for build service: .*`)
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
