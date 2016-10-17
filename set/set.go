@@ -4,6 +4,8 @@
 
 package set
 
+import "reflect"
+
 var none struct{}
 
 type Set map[string]struct{}
@@ -57,10 +59,14 @@ func FromSlice(l []string) Set {
 	return s
 }
 
-func FromMap(m map[string]string) Set {
+func FromMap(m interface{}) Set {
 	s := Set{}
-	for k := range m {
-		s[k] = struct{}{}
+	v := reflect.ValueOf(m)
+	if v.Kind() != reflect.Map {
+		return s
+	}
+	for _, k := range v.MapKeys() {
+		s[k.String()] = struct{}{}
 	}
 	return s
 }

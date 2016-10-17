@@ -49,3 +49,10 @@ func (s *SetSuite) TestSetDiff(c *check.C) {
 	diff = s2.Difference(s1)
 	c.Assert(diff, check.DeepEquals, FromValues("d"))
 }
+
+func (s *SetSuite) TestFromMap(c *check.C) {
+	set := FromMap(map[string]string{"a": "1", "b": "2"})
+	c.Assert(set, check.DeepEquals, FromValues("a", "b"))
+	set = FromMap(map[string]int{"a": 1, "b": 2})
+	c.Assert(set, check.DeepEquals, FromValues("a", "b"))
+}
