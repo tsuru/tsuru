@@ -7,6 +7,7 @@ package dockermachine
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
 )
 
@@ -62,7 +63,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	if !ok {
 		machines, errList := iaas.ListMachines()
 		if errList != nil {
-			return nil, errList
+			return nil, errors.Wrap(errList, "failed to list machines")
 		}
 		machineName = fmt.Sprintf("%s-%d", params["pool"], len(machines)+1)
 	} else {

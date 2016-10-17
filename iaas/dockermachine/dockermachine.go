@@ -6,7 +6,6 @@ package dockermachine
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/rpc"
 	"github.com/docker/machine/libmachine/log"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
 )
 
@@ -45,16 +45,16 @@ type dockerMachineAPI interface {
 func NewDockerMachine(config DockerMachineConfig) (dockerMachineAPI, error) {
 	path, err := ioutil.TempDir("", "")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create temp dir")
 	}
 	if config.CaPath != "" {
 		err = copy(filepath.Join(config.CaPath, "ca.pem"), filepath.Join(path, "ca.pem"))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to copy ca file")
 		}
 		err = copy(filepath.Join(config.CaPath, "ca-key.pem"), filepath.Join(path, "ca-key.pem"))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to copy ca key file")
 		}
 	}
 	if config.OutWriter != nil {
@@ -85,15 +85,15 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 		StorePath:   d.path,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to marshal base driver")
 	}
 	host, err := d.client.NewHost(driver, rawDriver)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to initialize host")
 	}
 	err = configureDriver(host.Driver, params)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to configure driver")
 	}
 	engineOpts := host.HostOptions.EngineOptions
 	if d.config.InsecureRegistry != "" {
@@ -104,20 +104,20 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	}
 	err = d.client.Create(host)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create host")
 	}
 	ip, err := host.Driver.GetIP()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to retrive host ip")
 	}
 	rawDriver, err = json.Marshal(host.Driver)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to marshal host driver")
 	}
 	var driverData map[string]interface{}
 	err = json.Unmarshal(rawDriver, &driverData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshal host driver")
 	}
 	m := &iaas.Machine{
 		Id:         host.Name,
@@ -129,15 +129,15 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	if host.AuthOptions() != nil {
 		m.CaCert, err = ioutil.ReadFile(host.AuthOptions().CaCertPath)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to read host ca cert")
 		}
 		m.ClientCert, err = ioutil.ReadFile(host.AuthOptions().ClientCertPath)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to read host client cert")
 		}
 		m.ClientKey, err = ioutil.ReadFile(host.AuthOptions().ClientKeyPath)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to read host client key")
 		}
 	}
 	return m, nil
@@ -146,15 +146,15 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
 	rawDriver, err := json.Marshal(m.CustomData)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal machine data")
 	}
 	host, err := d.client.NewHost(m.CreationParams["driver"], rawDriver)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to initialize host")
 	}
 	err = host.Driver.Remove()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to remove host")
 	}
 	return d.client.Remove(m.Id)
 }
@@ -170,16 +170,15 @@ func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) e
 			}
 		}
 	}
-	if err := driver.SetConfigFromFlags(opts); err != nil {
-		return fmt.Errorf("Error setting driver configurations: %s", err)
-	}
-	return nil
+	err := driver.SetConfigFromFlags(opts)
+	return errors.Wrap(err, "failed to set driver configuration")
 }
 
 func copy(src, dst string) error {
 	fileSrc, err := ioutil.ReadFile(src)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to read %s", src)
 	}
-	return ioutil.WriteFile(dst, fileSrc, 0644)
+	err = ioutil.WriteFile(dst, fileSrc, 0644)
+	return errors.Wrapf(err, "failed to write %s", dst)
 }
