@@ -15,8 +15,11 @@ import (
 	"github.com/docker/machine/libmachine"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/rpc"
+	"github.com/docker/machine/libmachine/log"
 	"github.com/tsuru/tsuru/iaas"
 )
+
+var defaultWriter = ioutil.Discard
 
 type DockerMachine struct {
 	io.Closer
@@ -29,6 +32,8 @@ type DockerMachineConfig struct {
 	CaPath                 string
 	InsecureRegistry       string
 	DockerEngineInstallURL string
+	OutWriter              io.Writer
+	ErrWriter              io.Writer
 }
 
 type dockerMachineAPI interface {
@@ -51,6 +56,16 @@ func NewDockerMachine(config DockerMachineConfig) (dockerMachineAPI, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	if config.OutWriter != nil {
+		log.SetOutWriter(config.OutWriter)
+	} else {
+		log.SetOutWriter(defaultWriter)
+	}
+	if config.ErrWriter != nil {
+		log.SetOutWriter(config.ErrWriter)
+	} else {
+		log.SetOutWriter(defaultWriter)
 	}
 	return &DockerMachine{
 		path:   path,
