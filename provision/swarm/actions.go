@@ -16,20 +16,22 @@ import (
 	"github.com/tsuru/tsuru/set"
 )
 
+type processSpec map[string]int
+
 type pipelineArgs struct {
-	client         *docker.Client
-	app            provision.App
-	newImage       string
-	newImgData     *image.ImageMetadata
-	currentImage   string
-	currentImgData *image.ImageMetadata
+	client           *docker.Client
+	app              provision.App
+	newImage         string
+	newImageSpec     processSpec
+	currentImage     string
+	currentImageSpec processSpec
 }
 
 func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 	for _, processName := range processes {
 		var err error
-		if _, in := args.currentImgData.Processes[processName]; in {
-			err = deploy(args.client, args.app, processName, args.currentImage)
+		if count, in := args.currentImageSpec[processName]; in {
+			err = deploy(args.client, args.app, processName, count, args.currentImage)
 		} else {
 			err = removeService(args.client, args.app, processName)
 		}
@@ -48,12 +50,12 @@ var updateServices = &action.Action{
 			deployedProcesses []string
 			err               error
 		)
-		for processName := range args.newImgData.Processes {
+		for processName := range args.newImageSpec {
 			toDeployProcesses = append(toDeployProcesses, processName)
 		}
 		sort.Strings(toDeployProcesses)
 		for _, processName := range toDeployProcesses {
-			err = deploy(args.client, args.app, processName, args.newImage)
+			err = deploy(args.client, args.app, processName, args.newImageSpec[processName], args.newImage)
 			if err != nil {
 				break
 			}
@@ -88,8 +90,8 @@ var removeOldServices = &action.Action{
 	Name: "remove-old-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(*pipelineArgs)
-		old := set.FromMap(args.currentImgData.Processes)
-		new := set.FromMap(args.newImgData.Processes)
+		old := set.FromMap(args.currentImageSpec)
+		new := set.FromMap(args.newImageSpec)
 		for processName := range old.Difference(new) {
 			err := removeService(args.client, args.app, processName)
 			if err != nil {

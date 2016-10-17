@@ -40,13 +40,11 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	args := &pipelineArgs{
-		client:   cli,
-		app:      a,
-		newImage: imgName,
-		newImgData: &image.ImageMetadata{
-			Processes: map[string]string{"web": ""},
-		},
-		currentImgData: &image.ImageMetadata{},
+		client:           cli,
+		app:              a,
+		newImage:         imgName,
+		newImageSpec:     processSpec{"web": 0},
+		currentImageSpec: processSpec{},
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
@@ -56,6 +54,48 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
 		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
 	})
+}
+
+func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	cli, err := chooseDBSwarmNode()
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "app:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	args := &pipelineArgs{
+		client:           cli,
+		app:              a,
+		newImage:         imgName,
+		newImageSpec:     processSpec{"web": 5},
+		currentImageSpec: processSpec{},
+	}
+	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	c.Assert(err, check.IsNil)
+	c.Assert(processes, check.DeepEquals, []string{"web"})
+	service, err := cli.InspectService("myapp-web")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
+		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+	})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 5)
 }
 
 func (s *S) TestActionUpdateServicesForwardUpdateExisting(c *check.C) {
@@ -94,13 +134,11 @@ func (s *S) TestActionUpdateServicesForwardUpdateExisting(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	args := &pipelineArgs{
-		client:   cli,
-		app:      a,
-		newImage: imgName,
-		newImgData: &image.ImageMetadata{
-			Processes: map[string]string{"web": ""},
-		},
-		currentImgData: &image.ImageMetadata{},
+		client:           cli,
+		app:              a,
+		newImage:         imgName,
+		newImageSpec:     processSpec{"web": 0},
+		currentImageSpec: processSpec{},
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
@@ -173,16 +211,14 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("bad error"))
 	}))
-	imgData := &image.ImageMetadata{
-		Processes: map[string]string{"web": "", "worker": ""},
-	}
+	spec := processSpec{"web": 0, "worker": 0}
 	args := &pipelineArgs{
-		client:         cli,
-		app:            a,
-		newImage:       newImg,
-		newImgData:     imgData,
-		currentImage:   oldImg,
-		currentImgData: imgData,
+		client:           cli,
+		app:              a,
+		newImage:         newImg,
+		newImageSpec:     spec,
+		currentImage:     oldImg,
+		currentImageSpec: spec,
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.ErrorMatches, ".*bad error")
@@ -221,16 +257,13 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
+	spec := processSpec{"web": 0}
 	args := &pipelineArgs{
-		client:       cli,
-		app:          a,
-		currentImage: imgName,
-		newImgData: &image.ImageMetadata{
-			Processes: map[string]string{"web": ""},
-		},
-		currentImgData: &image.ImageMetadata{
-			Processes: map[string]string{"web": ""},
-		},
+		client:           cli,
+		app:              a,
+		currentImage:     imgName,
+		newImageSpec:     spec,
+		currentImageSpec: spec,
 	}
 	updateServices.Backward(action.BWContext{
 		FWResult: []string{"web"},
@@ -279,13 +312,11 @@ func (s *S) TestActionUpdateServicesBackwardNotInCurrent(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	args := &pipelineArgs{
-		client:       cli,
-		app:          a,
-		currentImage: imgName,
-		newImgData: &image.ImageMetadata{
-			Processes: map[string]string{"web": ""},
-		},
-		currentImgData: &image.ImageMetadata{},
+		client:           cli,
+		app:              a,
+		currentImage:     imgName,
+		newImageSpec:     processSpec{"web": 0},
+		currentImageSpec: processSpec{},
 	}
 	updateServices.Backward(action.BWContext{
 		FWResult: []string{"web"},

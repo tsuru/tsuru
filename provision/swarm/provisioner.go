@@ -348,7 +348,7 @@ func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, e
 	if err != nil {
 		return "", err
 	}
-	err = deployProcesses(client, app, buildingImage)
+	err = deployProcesses(client, app, buildingImage, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "")
 	}
@@ -423,18 +423,14 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 		return "", errors.Wrap(err, "")
 	}
 	a.SetUpdatePlatform(true)
-	err = deployProcesses(client, a, newImage)
+	err = deployProcesses(client, a, newImage, nil)
 	if err != nil {
 		return "", err
 	}
 	return newImage, nil
 }
 
-func deployProcesses(client *docker.Client, a provision.App, newImg string) error {
-	newImageData, err := image.GetImageCustomData(newImg)
-	if err != nil {
-		return err
-	}
+func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
 	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
@@ -443,18 +439,33 @@ func deployProcesses(client *docker.Client, a provision.App, newImg string) erro
 	if err != nil {
 		return err
 	}
+	currentSpec := processSpec{}
+	for p := range currentImageData.Processes {
+		currentSpec[p] = 0
+	}
+	newImageData, err := image.GetImageCustomData(newImg)
+	if err != nil {
+		return err
+	}
+	newSpec := processSpec{}
+	for p := range newImageData.Processes {
+		newSpec[p] = 0
+		if updateSpec != nil {
+			newSpec[p] = updateSpec[p]
+		}
+	}
 	pipeline := action.NewPipeline(
 		updateServices,
 		updateImageInDB,
 		removeOldServices,
 	)
 	return pipeline.Execute(&pipelineArgs{
-		client:         client,
-		app:            a,
-		newImage:       newImg,
-		newImgData:     &newImageData,
-		currentImage:   curImg,
-		currentImgData: &currentImageData,
+		client:           client,
+		app:              a,
+		newImage:         newImg,
+		newImageSpec:     newSpec,
+		currentImage:     curImg,
+		currentImageSpec: currentSpec,
 	})
 }
 
@@ -467,7 +478,7 @@ func removeService(client *docker.Client, a provision.App, process string) error
 	return nil
 }
 
-func deploy(client *docker.Client, a provision.App, process, imgID string) error {
+func deploy(client *docker.Client, a provision.App, process string, count int, imgID string) error {
 	srvName := serviceNameForApp(a, process)
 	srv, err := client.InspectService(srvName)
 	if err != nil {
@@ -475,16 +486,27 @@ func deploy(client *docker.Client, a provision.App, process, imgID string) error
 			return errors.Wrap(err, "")
 		}
 	}
-	var spec *swarm.ServiceSpec
+	var baseSpec *swarm.ServiceSpec
+	if srv != nil {
+		baseSpec = &srv.Spec
+	}
+	spec, err := serviceSpecForApp(tsuruServiceOpts{
+		app:      a,
+		process:  process,
+		image:    imgID,
+		baseSpec: baseSpec,
+	})
+	if err != nil {
+		return err
+	}
+	replicas := *spec.Mode.Replicated.Replicas
+	if count != 0 {
+		replicas += uint64(count)
+	} else if replicas == 0 {
+		replicas = 1
+	}
+	spec.Mode.Replicated.Replicas = &replicas
 	if srv == nil {
-		spec, err = serviceSpecForApp(tsuruServiceOpts{
-			app:     a,
-			process: process,
-			image:   imgID,
-		})
-		if err != nil {
-			return err
-		}
 		_, err = client.CreateService(docker.CreateServiceOptions{
 			ServiceSpec: *spec,
 		})
@@ -492,15 +514,6 @@ func deploy(client *docker.Client, a provision.App, process, imgID string) error
 			return errors.Wrap(err, "")
 		}
 	} else {
-		spec, err = serviceSpecForApp(tsuruServiceOpts{
-			app:      a,
-			process:  process,
-			image:    imgID,
-			baseSpec: &srv.Spec,
-		})
-		if err != nil {
-			return err
-		}
 		srv.Spec = *spec
 		err = client.UpdateService(srv.ID, docker.UpdateServiceOptions{
 			Version:     srv.Version.Index,
@@ -525,6 +538,8 @@ func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, img
 	}
 	spec.TaskTemplate.ContainerSpec.Command = cmds
 	spec.TaskTemplate.RestartPolicy.Condition = swarm.RestartPolicyConditionNone
+	replicas := uint64(1)
+	spec.Mode.Replicated.Replicas = &replicas
 	srv, err := client.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: *spec,
 	})

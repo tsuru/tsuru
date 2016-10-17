@@ -264,7 +264,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			return nil, errors.Wrap(err, "")
 		}
 	}
-	var unitCount uint64 = 1
+	var unitCount uint64 = 0
 	if opts.baseSpec != nil && opts.baseSpec.Mode.Replicated != nil {
 		unitCount = *opts.baseSpec.Mode.Replicated.Replicas
 	}
