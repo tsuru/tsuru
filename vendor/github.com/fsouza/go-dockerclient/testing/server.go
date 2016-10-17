@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/mux"
 )
@@ -381,13 +381,17 @@ func (s *DockerServer) listContainers(w http.ResponseWriter, r *http.Request) {
 	result := make([]docker.APIContainers, 0, len(s.containers))
 	for _, container := range s.containers {
 		if all == "1" || container.State.Running {
+			var ports []docker.APIPort
+			if container.NetworkSettings != nil {
+				ports = container.NetworkSettings.PortMappingAPI()
+			}
 			result = append(result, docker.APIContainers{
 				ID:      container.ID,
 				Image:   container.Image,
 				Command: fmt.Sprintf("%s %s", container.Path, strings.Join(container.Args, " ")),
 				Created: container.Created.Unix(),
 				Status:  container.State.String(),
-				Ports:   container.NetworkSettings.PortMappingAPI(),
+				Ports:   ports,
 				Names:   []string{fmt.Sprintf("/%s", container.Name)},
 			})
 		}

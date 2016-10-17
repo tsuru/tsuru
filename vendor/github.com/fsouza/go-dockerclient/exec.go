@@ -33,6 +33,7 @@ type CreateExecOptions struct {
 	Container    string          `json:"Container,omitempty" yaml:"Container,omitempty"`
 	User         string          `json:"User,omitempty" yaml:"User,omitempty"`
 	Context      context.Context `json:"-"`
+	Privileged   bool            `json:"Privileged,omitempty" yaml:"Privileged,omitempty"`
 }
 
 // CreateExec sets up an exec instance in a running container `id`, returning the exec
