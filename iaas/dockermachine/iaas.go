@@ -81,6 +81,12 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	driverOpts := i.buildDriverOpts(params)
 	m, err := dockerMachine.CreateMachine(machineName, driverName, driverOpts)
 	if err != nil {
+		if m != nil {
+			errRem := dockerMachine.DeleteMachine(m)
+			if errRem != nil {
+				return nil, errors.Wrapf(errRem, "failed to remove failed machine: %s", err)
+			}
+		}
 		return nil, err
 	}
 	m.CreationParams = params

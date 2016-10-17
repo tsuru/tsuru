@@ -6,6 +6,7 @@ package dockermachine
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -148,7 +149,11 @@ func (f *fakeDockerMachine) CreateMachine(name, driver string, driverOpts map[st
 	f.createdMachine = &iaas.Machine{
 		Id: name,
 	}
-	return f.createdMachine, nil
+	var errCreate error
+	if v, ok := driverOpts["error"]; ok {
+		errCreate = errors.New(v.(string))
+	}
+	return f.createdMachine, errCreate
 }
 
 func (f *fakeDockerMachine) DeleteMachine(m *iaas.Machine) error {

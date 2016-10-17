@@ -106,10 +106,6 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create host")
 	}
-	ip, err := host.Driver.GetIP()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to retrive host ip")
-	}
 	rawDriver, err = json.Marshal(host.Driver)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal host driver")
@@ -121,23 +117,26 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	}
 	m := &iaas.Machine{
 		Id:         host.Name,
-		Address:    ip,
 		Port:       2376,
 		Protocol:   "https",
 		CustomData: driverData,
 	}
+	m.Address, err = host.Driver.GetIP()
+	if err != nil {
+		return m, errors.Wrap(err, "failed to retrive host ip")
+	}
 	if host.AuthOptions() != nil {
 		m.CaCert, err = ioutil.ReadFile(host.AuthOptions().CaCertPath)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to read host ca cert")
+			return m, errors.Wrap(err, "failed to read host ca cert")
 		}
 		m.ClientCert, err = ioutil.ReadFile(host.AuthOptions().ClientCertPath)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to read host client cert")
+			return m, errors.Wrap(err, "failed to read host client cert")
 		}
 		m.ClientKey, err = ioutil.ReadFile(host.AuthOptions().ClientKeyPath)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to read host client key")
+			return m, errors.Wrap(err, "failed to read host client key")
 		}
 	}
 	return m, nil

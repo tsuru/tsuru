@@ -119,6 +119,23 @@ func (s *S) TestCreateMachineGeneratesName(c *check.C) {
 	c.Assert(m.Id, check.Equals, fmt.Sprintf("theonepool-%d", len(machines)+1))
 }
 
+func (s *S) TestCreateMachineDeletesMachineWithError(c *check.C) {
+	config.Set("iaas:dockermachine:ca-path", "/etc/ca-path")
+	defer config.Unset("iaas:dockermachine:ca-path")
+	i := newDockerMachineIaaS("dockermachine")
+	dmIaas := i.(*dockerMachineIaaS)
+	dmIaas.apiFactory = newFakeDockerMachine
+	m, err := dmIaas.CreateMachine(map[string]string{
+		"pool":   "theonepool",
+		"driver": "driver-name",
+		"name":   "my-machine",
+		"error":  "failed to create",
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(m, check.IsNil)
+	c.Assert(fakeDM.deletedMachine.Id, check.Equals, "my-machine")
+}
+
 func (s *S) TestDeleteMachineIaaS(c *check.C) {
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
