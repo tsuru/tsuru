@@ -11,11 +11,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 )
 
-var (
-	errCaPathNotSet = fmt.Errorf("ca-path configuration is mandatory")
-
-	errDriverNotSet = fmt.Errorf("driver is mandatory")
-)
+var errDriverNotSet = fmt.Errorf("driver is mandatory")
 
 func init() {
 	iaas.RegisterIaasProvider("dockermachine", newDockerMachineIaaS)
@@ -41,10 +37,7 @@ func (i *dockerMachineIaaS) getParamOrConfigString(name string, params map[strin
 }
 
 func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	caPath, err := i.base.GetConfigString("ca-path")
-	if err != nil {
-		return nil, errCaPathNotSet
-	}
+	caPath, _ := i.base.GetConfigString("ca-path")
 	driverName, ok := params["driver"]
 	if !ok {
 		name, errConf := i.base.GetConfigString("driver:name")

@@ -77,18 +77,6 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	c.Assert(fakeDM.config.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
 }
 
-func (s *S) TestCreateMachineIaaSFailsWithNoCaPath(c *check.C) {
-	i := newDockerMachineIaaS("dockermachine")
-	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
-	m, err := dmIaas.CreateMachine(map[string]string{
-		"name":   "host-name",
-		"driver": "driver-name",
-	})
-	c.Assert(err, check.Equals, errCaPathNotSet)
-	c.Assert(m, check.IsNil)
-}
-
 func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {
 	config.Unset("iaas:dockermachine:driver")
 	config.Set("iaas:dockermachine:ca-path", "/etc/ca-path")
