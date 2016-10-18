@@ -16,6 +16,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 )
 
@@ -75,6 +76,10 @@ func (t *Target) Error(v string) {
 	}
 }
 
+type withStack interface {
+	StackTrace() errors.StackTrace
+}
+
 // Errorf writes the formatted string to the Target
 // logger.
 func (t *Target) Errorf(format string, v ...interface{}) {
@@ -82,6 +87,11 @@ func (t *Target) Errorf(format string, v ...interface{}) {
 	defer t.mut.RUnlock()
 	if t.logger != nil {
 		t.logger.Errorf(format, v...)
+		for _, item := range v {
+			if _, hasStack := item.(withStack); hasStack {
+				t.logger.Errorf("stack for error: %+v", item)
+			}
+		}
 	}
 }
 

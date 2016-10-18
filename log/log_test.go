@@ -9,6 +9,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
@@ -40,6 +41,15 @@ func (s *S) TestLogErrorf(c *check.C) {
 	defer buf.Reset()
 	Errorf("log anything %d", 1)
 	c.Assert(buf.String(), check.Equals, "ERROR: log anything 1\n")
+}
+
+func (s *S) TestLogErrorfWithStack(c *check.C) {
+	buf := newFakeLogger()
+	defer buf.Reset()
+	err := errors.New("my error")
+	Errorf("bad bad error: %s", err)
+	c.Assert(buf.String(), check.Matches,
+		`(?s)ERROR: bad bad error: my error\nERROR: stack for error: my error\ngithub.com/tsuru/tsuru/log.\(\*S\).TestLogErrorfWithStack.*`)
 }
 
 func (s *S) TestLogErrorWithoutTarget(c *check.C) {
