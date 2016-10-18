@@ -970,7 +970,7 @@ docker:auto-scale:metadata-filter
 +++++++++++++++++++++++++++++++++
 
 The name of a pool where auto scale will be enabled. Leave unset to allow
-dynamically configuring with ``tsuru-admin docker-autoscale-rule-set``. 
+dynamically configuring with ``tsuru-admin docker-autoscale-rule-set``.
 
 docker:auto-scale:max-container-count
 +++++++++++++++++++++++++++++++++++++
@@ -1143,6 +1143,37 @@ Defaults to a script which will run `tsuru now installation
 
 .. _config_custom_iaas:
 
+Docker Machine IaaS
+-------------------
+
+iaas:dockermachine:ca-path
+++++++++++++++++++++++++++
+
+Path to a directory containing ``ca.pem`` and ``ca-key.pem`` files to be used for
+signing the certificates used by docker engine.
+
+iaas:dockermachine:driver:name
+++++++++++++++++++++++++++++++
+
+The name of the docker machine driver to be used for machine provisioning. Can be
+any of the `core drivers <https://docs.docker.com/machine/drivers/>`_ or a 3rd party driver (available on the $PATH).
+
+iaas:dockermachine:driver:options
++++++++++++++++++++++++++++++++++
+
+Any parameter to be sent to the driver. For example:
+``iaas:dockermachine:driver:options:amazonec2-access-key: ABCDE``.
+
+iaas:dockermachine:docker-install-url
++++++++++++++++++++++++++++++++++++++
+
+Remote script to be used for docker installation. Defaults to: http://get.docker.com.
+
+iaas:dockermachine:insecure-registry
+++++++++++++++++++++++++++++++++++++
+
+Registry to be added as insecure registry to the docker engine.
+
 Custom IaaS
 -----------
 
@@ -1153,8 +1184,8 @@ keys with the format ``iaas:custom:<name>`` will create a new IaaS with
 iaas:custom:<name>:provider
 +++++++++++++++++++++++++++
 
-The base provider name, it can be one of the supported providers: ``cloudstack``
-or ``ec2``.
+The base provider name, it can be any of the supported providers: ``cloudstack``,
+``ec2``, ``digitalocean`` or ``dockermachine``.
 
 iaas:custom:<name>:<any_other_option>
 +++++++++++++++++++++++++++++++++++++
