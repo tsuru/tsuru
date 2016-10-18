@@ -439,19 +439,19 @@ var moveRouterUnits = action.Action{
 			app.Ip = result.oldIp
 			conn, err := db.Conn()
 			if err != nil {
-				log.Errorf("BACKWARD ABORTED - failed to connect to the database: %s", err)
+				log.Errorf("BACKWARD move router units - failed to connect to the database: %s", err)
 				return
 			}
 			defer conn.Close()
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
 			r, err := result.app.Router()
 			if err != nil {
-				log.Errorf("BACKWARD ABORTED - failed to retrieve router: %s", err)
+				log.Errorf("BACKWARD move router units - failed to retrieve router: %s", err)
 				return
 			}
 			err = r.RemoveBackend(result.app.Name)
 			if err != nil {
-				log.Error(err.Error())
+				log.Errorf("BACKWARD move router units - failed to remove backend: %s", err)
 			}
 		}
 	},
@@ -480,14 +480,14 @@ var saveApp = action.Action{
 		result := ctx.FWResult.(*changePlanPipelineResult)
 		conn, err := db.Conn()
 		if err != nil {
-			log.Errorf("BACKWARD ABORTED - failed to get database connection: %s", err)
+			log.Errorf("BACKWARD save app - failed to get database connection: %s", err)
 			return
 		}
 		defer conn.Close()
 		update := bson.M{"$set": bson.M{"plan": *result.oldPlan}}
 		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
 		if err != nil {
-			log.Error(err.Error())
+			log.Errorf("BACKWARD save app - failed to update app: %s", err)
 		}
 	},
 }
@@ -597,18 +597,18 @@ var setNewCNamesToProvisioner = action.Action{
 		app := ctx.Params[0].(*App)
 		r, err := app.Router()
 		if err != nil {
-			log.Errorf("Unable to retrieve router: %s", err)
+			log.Errorf("BACKWARD set cnames - unable to retrieve router: %s", err)
 			return
 		}
 		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			log.Error("Router doesn't support cname change.")
+			log.Error("BACKWARD set cnames - router doesn't support cname change.")
 			return
 		}
 		for _, cname := range cnames {
 			err := cnameRouter.UnsetCName(cname, app.Name)
 			if err != nil {
-				log.Error(err.Error())
+				log.Errorf("BACKWARD set cnames - unable to unset cname: %s", err)
 			}
 		}
 	},
@@ -649,7 +649,7 @@ var saveCNames = action.Action{
 		cnames := ctx.Params[1].([]string)
 		conn, err := db.Conn()
 		if err != nil {
-			log.Error(err.Error())
+			log.Errorf("BACKWARD add cnames db - unable to connect: %s", err)
 			return
 		}
 		defer conn.Close()
@@ -659,7 +659,7 @@ var saveCNames = action.Action{
 				bson.M{"$pull": bson.M{"cname": c}},
 			)
 			if err != nil {
-				log.Error(err.Error())
+				log.Errorf("BACKWARD add cnames db - unable to update: %s", err)
 			}
 		}
 	},
@@ -727,18 +727,18 @@ var unsetCNameFromProvisioner = action.Action{
 		app := ctx.Params[0].(*App)
 		r, err := app.Router()
 		if err != nil {
-			log.Errorf("Unable to retrieve router: %s", err)
+			log.Errorf("BACKWARD unset cname - unable to retrieve router: %s", err)
 			return
 		}
 		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			log.Error("Router doesn't support cname change.")
+			log.Error("BACKWARD unset cname - router doesn't support cname change.")
 			return
 		}
 		for _, cname := range cnames {
 			err := cnameRouter.SetCName(cname, app.Name)
 			if err != nil {
-				log.Error(err.Error())
+				log.Errorf("BACKWARD unset cname - unable to set cname: %s", err)
 			}
 		}
 	},
@@ -779,7 +779,7 @@ var removeCNameFromDatabase = action.Action{
 		cnames := ctx.Params[1].([]string)
 		conn, err := db.Conn()
 		if err != nil {
-			log.Error(err.Error())
+			log.Errorf("BACKWARD remove cname db - unable to connect to db: %s", err)
 			return
 		}
 		defer conn.Close()
@@ -789,7 +789,7 @@ var removeCNameFromDatabase = action.Action{
 				bson.M{"$push": bson.M{"cname": c}},
 			)
 			if err != nil {
-				log.Error(err.Error())
+				log.Errorf("BACKWARD remove cname db - unable to update: %s", err)
 			}
 		}
 	},

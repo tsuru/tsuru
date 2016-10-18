@@ -23,7 +23,7 @@ func addLogs(ws *websocket.Conn) {
 		msg := &errMsg{}
 		if err != nil {
 			msg.Error = err.Error()
-			log.Error(err.Error())
+			log.Errorf("failure in logs webservice: %s", err)
 		}
 		websocket.JSON.Send(ws, msg)
 		ws.Close()
