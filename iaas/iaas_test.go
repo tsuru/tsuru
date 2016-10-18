@@ -141,6 +141,82 @@ func (s *S) TestGetConfig(c *check.C) {
 	c.Assert(mapVal["option2"], check.Equals, 2)
 }
 
+func (s *S) TestGetDefaultIaaSDefaultConfig(c *check.C) {
+	config.Set("iaas:default", "default-iaas")
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.IsNil)
+	c.Assert(val, check.Equals, "default-iaas")
+}
+
+func (s *S) TestGetDefaultIaaSFailsWhenNoDefaultConfig(c *check.C) {
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.DeepEquals, ErrNoDefaultIaaS)
+	c.Assert(val, check.Equals, "")
+}
+
+func (s *S) TestGetDefaultIaaSSingleConfigured(c *check.C) {
+	RegisterIaasProvider("customable-iaas-1", newTestCustomizableIaaS)
+	RegisterIaasProvider("customable-iaas-2", newTestCustomizableIaaS)
+	config.Set("iaas:customable-iaas-1", map[interface{}]interface{}{
+		"conf": "abc",
+	})
+	defer config.Unset("iaas")
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.IsNil)
+	c.Assert(val, check.Equals, "customable-iaas-1")
+}
+
+func (s *S) TestGetDefaultIaaSSingleCustomConfigured(c *check.C) {
+	RegisterIaasProvider("iaas-1", newTestCustomizableIaaS)
+	config.Set("iaas:custom:custom-1", map[interface{}]interface{}{
+		"provider": "iaas-1",
+	})
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.IsNil)
+	c.Assert(val, check.Equals, "custom-1")
+}
+
+func (s *S) TestGetDefaultIaaSFailsMultipleConfigured(c *check.C) {
+	RegisterIaasProvider("customable-iaas-1", newTestCustomizableIaaS)
+	RegisterIaasProvider("customable-iaas-2", newTestCustomizableIaaS)
+	config.Set("iaas:customable-iaas-1", map[interface{}]interface{}{
+		"conf": "abc",
+	})
+	config.Set("iaas:customable-iaas-2", map[interface{}]interface{}{
+		"conf": "def",
+	})
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.Equals, ErrNoDefaultIaaS)
+	c.Assert(val, check.Equals, "")
+}
+
+func (s *S) TestGetDefaultIaaSFailsMultipleCustomConfigured(c *check.C) {
+	RegisterIaasProvider("iaas-1", newTestCustomizableIaaS)
+	config.Set("iaas:custom:custom-1", map[interface{}]interface{}{
+		"provider": "iaas-1",
+	})
+	config.Set("iaas:custom:custom-2", map[interface{}]interface{}{
+		"provider": "iaas-1",
+	})
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.Equals, ErrNoDefaultIaaS)
+	c.Assert(val, check.Equals, "")
+}
+
+func (s *S) TestGetDefaultIaaSEc2MultipleConfigured(c *check.C) {
+	RegisterIaasProvider("ec2", newTestCustomizableIaaS)
+	RegisterIaasProvider("customable-iaas-1", newTestCustomizableIaaS)
+	config.Set("iaas:ec2", map[interface{}]interface{}{
+		"conf": "abc",
+	})
+	config.Set("iaas:customable-iaas-1", map[interface{}]interface{}{
+		"conf": "def",
+	})
+	val, err := getDefaultIaasName()
+	c.Assert(err, check.IsNil)
+	c.Assert(val, check.Equals, "ec2")
+}
+
 func (s *S) TestStressConcurrentGet(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1000))
 	RegisterIaasProvider("customable-iaas", newTestCustomizableIaaS)

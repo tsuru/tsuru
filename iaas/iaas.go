@@ -7,6 +7,7 @@
 package iaas
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,12 +17,11 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
-const (
-	defaultUserData = `#!/bin/bash
+const defaultUserData = `#!/bin/bash
 curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
 `
-	defaultIaaSProviderName = "ec2"
-)
+
+var ErrNoDefaultIaaS = errors.New("no default iaas configured")
 
 // Every Tsuru IaaS must implement this interface.
 type IaaS interface {
@@ -129,9 +129,9 @@ func getIaasProvider(name string) (IaaS, error) {
 
 func Describe(iaasName ...string) (string, error) {
 	if len(iaasName) == 0 || iaasName[0] == "" {
-		defaultIaaS, err := config.GetString("iaas:default")
+		defaultIaaS, err := getDefaultIaasName()
 		if err != nil {
-			defaultIaaS = defaultIaaSProviderName
+			return "", err
 		}
 		iaasName = []string{defaultIaaS}
 	}
@@ -144,6 +144,39 @@ func Describe(iaasName ...string) (string, error) {
 		return "", nil
 	}
 	return desc.Describe(), nil
+}
+
+func getDefaultIaasName() (string, error) {
+	defaultIaaS, err := config.GetString("iaas:default")
+	if err == nil {
+		return defaultIaaS, nil
+	}
+	ec2ProviderName := "ec2"
+	ec2Configured := false
+	var configuredIaases []string
+	for provider := range iaasProviders {
+		if _, err = config.Get(fmt.Sprintf("iaas:%s", provider)); err == nil {
+			configuredIaases = append(configuredIaases, provider)
+			if provider == ec2ProviderName {
+				ec2Configured = true
+			}
+		}
+	}
+	c, err := config.Get("iaas:custom")
+	if err == nil {
+		if v, ok := c.(map[interface{}]interface{}); ok {
+			for provider := range v {
+				configuredIaases = append(configuredIaases, provider.(string))
+			}
+		}
+	}
+	if len(configuredIaases) == 1 {
+		return configuredIaases[0], nil
+	}
+	if ec2Configured {
+		return ec2ProviderName, nil
+	}
+	return "", ErrNoDefaultIaaS
 }
 
 func ResetAll() {

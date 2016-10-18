@@ -40,9 +40,9 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 		iaasName, _ = params["iaas"]
 	}
 	if iaasName == "" {
-		defaultIaaS, err := config.GetString("iaas:default")
+		defaultIaaS, err := getDefaultIaasName()
 		if err != nil {
-			defaultIaaS = defaultIaaSProviderName
+			return nil, err
 		}
 		iaasName = defaultIaaS
 	}

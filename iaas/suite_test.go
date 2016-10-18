@@ -18,6 +18,7 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Unset("iaas")
 	config.Set("database:name", "iaas_tests_s")
 	iaasProviders = make(map[string]iaasFactory)
 	iaasInstances = make(map[string]IaaS)
