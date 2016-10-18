@@ -1029,10 +1029,10 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
-			"checksumSHA1": "Hky3u+8Rqum+wB5BHMj0A8ZmT4g=",
+			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
 			"path": "github.com/pkg/errors",
-			"revision": "a887431f7f6ef7687b556dbf718d9f351d4858a0",
-			"revisionTime": "2016-09-16T11:02:12Z"
+			"revision": "839d9e913e063e28dfd0e6c7b7512793e0a48be9",
+			"revisionTime": "2016-10-02T05:25:12Z"
 		},
 		{
 			"checksumSHA1": "EePv6HOjq1czDsuftUZi13xBJ0U=",
