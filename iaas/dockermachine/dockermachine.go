@@ -14,6 +14,7 @@ import (
 	"github.com/docker/machine/libmachine"
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/rpc"
+	"github.com/docker/machine/libmachine/engine"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
@@ -117,7 +118,7 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	}
 	m := &iaas.Machine{
 		Id:         host.Name,
-		Port:       2376,
+		Port:       engine.DefaultPort,
 		Protocol:   "https",
 		CustomData: driverData,
 	}
