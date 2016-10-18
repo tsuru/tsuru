@@ -43,7 +43,7 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 	var addrs NodeAddrs
 	err = coll.FindId(uniqueDocumentID).One(&addrs)
 	if err != nil && err != mgo.ErrNotFound {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	if len(addrs.Addresses) == 0 {
 		return nil, errors.Wrap(errNoSwarmNode, "")
@@ -64,7 +64,7 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 		}
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	if i > 0 {
 		updateDBSwarmNodes(client)
@@ -75,7 +75,7 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 func updateDBSwarmNodes(client *docker.Client) error {
 	nodes, err := client.ListNodes(docker.ListNodesOptions{})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	var addrs []string
 	for _, n := range nodes {
@@ -95,7 +95,7 @@ func updateDBSwarmNodes(client *docker.Client) error {
 	defer coll.Close()
 	_, err = coll.UpsertId(uniqueDocumentID, bson.M{"$set": bson.M{"addresses": addrs}})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func updateDBSwarmNodes(client *docker.Client) error {
 func nodeAddrCollection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	return conn.Collection(swarmCollectionName), nil
 }

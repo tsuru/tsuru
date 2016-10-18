@@ -86,7 +86,7 @@ func changeUnits(a provision.App, units int, processName string, w io.Writer) er
 	if processName == "" {
 		_, processName, err = dockercommon.ProcessCmdForImage(processName, imageId)
 		if err != nil {
-			return errors.Wrap(err, "")
+			return errors.WithStack(err)
 		}
 	}
 	return deployProcesses(client, a, imageId, processSpec{processName: units})
@@ -131,7 +131,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	nodeMap := map[string]*swarm.Node{}
 	serviceMap := map[string]*swarm.Service{}
@@ -141,7 +141,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 			var node *swarm.Node
 			node, err = client.InspectNode(t.NodeID)
 			if err != nil {
-				return nil, errors.Wrap(err, "")
+				return nil, errors.WithStack(err)
 			}
 			nodeMap[t.NodeID] = node
 		}
@@ -149,7 +149,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 			var service *swarm.Service
 			service, err = client.InspectService(t.ServiceID)
 			if err != nil {
-				return nil, errors.Wrap(err, "")
+				return nil, errors.WithStack(err)
 			}
 			serviceMap[t.ServiceID] = service
 		}
@@ -212,7 +212,7 @@ func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	var foundTask *swarm.Task
 	for i, t := range tasks {
@@ -226,7 +226,7 @@ func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 	}
 	srv, err := client.InspectService(foundTask.ServiceID)
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	buildingImage := srv.Spec.Annotations.Labels[labelServiceBuildImage.String()]
 	if buildingImage == "" {
@@ -298,11 +298,11 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	}
 	dockerInfo, err := newClient.Info()
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	nodeData, err := newClient.InspectNode(dockerInfo.Swarm.NodeID)
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	nodeData.Spec.Annotations.Labels = map[string]string{
 		labelDockerAddr: opts.Address,
@@ -315,7 +315,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		NodeSpec: nodeData.Spec,
 	})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return updateDBSwarmNodes(newClient)
 }
@@ -337,7 +337,7 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 			Version:  swarmNode.Version.Index,
 		})
 		if err != nil {
-			return errors.Wrap(err, "")
+			return errors.WithStack(err)
 		}
 	}
 	err = client.RemoveNode(docker.RemoveNodeOptions{
@@ -345,7 +345,7 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 		Force: true,
 	})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return updateDBSwarmNodes(client)
 }
@@ -358,7 +358,7 @@ func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, e
 	baseImage := image.GetBuildImage(app)
 	buildingImage, err := image.AppNewImageName(app.GetName())
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	cmds := dockercommon.ArchiveDeployCmds(app, archiveURL)
 	client, err := chooseDBSwarmNode()
@@ -378,7 +378,7 @@ func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, e
 	}
 	err = deployProcesses(client, app, buildingImage, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	return buildingImage, nil
 }
@@ -393,7 +393,7 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	}
 	newImage, err := image.AppNewImageName(a.GetName())
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
 	var buf bytes.Buffer
@@ -413,7 +413,7 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	procfile := image.GetProcessesFromProcfile(procfileData)
 	imageInspect, err := client.InspectImage(imgID)
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, "  ---> Procfile not found, trying to get entrypoint")
@@ -433,7 +433,7 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	repo, tag := strings.Join(imageInfo[:len(imageInfo)-1], ":"), imageInfo[len(imageInfo)-1]
 	err = client.TagImage(imgID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	err = pushImage(client, repo, tag)
 	if err != nil {
@@ -448,7 +448,7 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	}
 	err = image.SaveImageCustomData(newImage, imageData.CustomData)
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	a.SetUpdatePlatform(true)
 	err = deployProcesses(client, a, newImage, nil)
@@ -504,7 +504,7 @@ func removeService(client *docker.Client, a provision.App, process string) error
 	srvName := serviceNameForApp(a, process)
 	err := client.RemoveService(docker.RemoveServiceOptions{ID: srvName})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -514,7 +514,7 @@ func deploy(client *docker.Client, a provision.App, process string, count int, i
 	srv, err := client.InspectService(srvName)
 	if err != nil {
 		if _, isNotFound := err.(*docker.NoSuchService); !isNotFound {
-			return errors.Wrap(err, "")
+			return errors.WithStack(err)
 		}
 	}
 	var baseSpec *swarm.ServiceSpec
@@ -546,7 +546,7 @@ func deploy(client *docker.Client, a provision.App, process string, count int, i
 			ServiceSpec: *spec,
 		})
 		if err != nil {
-			return errors.Wrap(err, "")
+			return errors.WithStack(err)
 		}
 	} else {
 		srv.Spec = *spec
@@ -555,7 +555,7 @@ func deploy(client *docker.Client, a provision.App, process string, count int, i
 			ServiceSpec: srv.Spec,
 		})
 		if err != nil {
-			return errors.Wrap(err, "")
+			return errors.WithStack(err)
 		}
 	}
 	return nil
@@ -579,7 +579,7 @@ func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, img
 		ServiceSpec: *spec,
 	})
 	if err != nil {
-		return "", nil, errors.Wrap(err, "")
+		return "", nil, errors.WithStack(err)
 	}
 	createdID := srv.ID
 	tasks, err := waitForTasks(client, createdID, swarm.TaskStateShutdown)

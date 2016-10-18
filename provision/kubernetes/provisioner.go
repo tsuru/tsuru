@@ -138,7 +138,7 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	addrs := []string{opts.Address}
 	_, err = coll.UpsertId(uniqueDocumentID, bson.M{"$set": bson.M{"addresses": addrs}})
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return nil
 }

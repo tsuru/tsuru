@@ -23,7 +23,7 @@ type NodeAddrs struct {
 func nodeAddrCollection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	return conn.Collection(kubernetesCollectionName), nil
 }

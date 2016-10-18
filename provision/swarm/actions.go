@@ -80,7 +80,7 @@ var updateImageInDB = &action.Action{
 		args := ctx.Params[0].(*pipelineArgs)
 		err := image.AppendAppImageName(args.app.GetName(), args.newImage)
 		if err != nil {
-			return nil, errors.Wrap(err, "")
+			return nil, errors.WithStack(err)
 		}
 		return ctx.Previous, nil
 	},

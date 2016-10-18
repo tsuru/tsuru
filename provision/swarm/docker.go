@@ -50,7 +50,7 @@ var (
 func newClient(address string) (*docker.Client, error) {
 	client, err := docker.NewClient(address)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	dialer := &net.Dialer{
 		Timeout:   dockerDialTimeout,
@@ -84,7 +84,7 @@ func initSwarm(client *docker.Client, addr string) error {
 		},
 	})
 	if err != nil && errors.Cause(err) != docker.ErrNodeAlreadyInSwarm {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -92,11 +92,11 @@ func initSwarm(client *docker.Client, addr string) error {
 func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr string) error {
 	swarmInfo, err := existingClient.InspectSwarm(nil)
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	dockerInfo, err := existingClient.Info()
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	if len(dockerInfo.Swarm.RemoteManagers) == 0 {
 		return errors.Errorf("no remote managers found in node %#v", dockerInfo)
@@ -116,7 +116,7 @@ func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr str
 	}
 	err = newClient.JoinSwarm(opts)
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -147,7 +147,7 @@ func safeAttachWaitContainer(client *docker.Client, opts docker.AttachToContaine
 		}
 		contData, err := client.InspectContainer(opts.Container)
 		if err != nil {
-			return 0, errors.Wrap(err, "")
+			return 0, errors.WithStack(err)
 		}
 		if !contData.State.Running {
 			return contData.State.ExitCode, nil
@@ -166,7 +166,7 @@ func waitForTasks(client *docker.Client, serviceID string, wantedState swarm.Tas
 			},
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "")
+			return nil, errors.WithStack(err)
 		}
 		var inStateCount int
 		for _, t := range tasks {
@@ -198,7 +198,7 @@ func commitPushBuildImage(client *docker.Client, img, contID string, app provisi
 		Tag:        tag,
 	})
 	if err != nil {
-		return "", errors.Wrap(err, "")
+		return "", errors.WithStack(err)
 	}
 	err = pushImage(client, repository, tag)
 	if err != nil {
@@ -213,7 +213,7 @@ func pushImage(client *docker.Client, repo, tag string) error {
 		pushOpts := docker.PushImageOptions{Name: repo, Tag: tag, OutputStream: &buf, InactivityTimeout: tsuruNet.StreamInactivityTimeout}
 		err = client.PushImage(pushOpts, registryAuthConfig())
 		if err != nil {
-			return errors.Wrap(err, "")
+			return errors.WithStack(err)
 		}
 	}
 	return nil
@@ -261,7 +261,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		}
 		cmds, _, err = dockercommon.LeanContainerCmds(opts.process, opts.image, opts.app)
 		if err != nil {
-			return nil, errors.Wrap(err, "")
+			return nil, errors.WithStack(err)
 		}
 	}
 	var unitCount uint64 = 0
@@ -270,11 +270,11 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	routerName, err := opts.app.GetRouter()
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	routerType, _, err := router.Type(routerName)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	srvName := serviceNameForApp(opts.app, opts.process)
 	if opts.isDeploy {
@@ -329,14 +329,14 @@ func removeServiceAndLog(client *docker.Client, id string) {
 		ID: id,
 	})
 	if err != nil {
-		log.Errorf("error removing service: %+v", errors.Wrap(err, ""))
+		log.Errorf("error removing service: %+v", errors.WithStack(err))
 	}
 }
 
 func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, error) {
 	node, err := baseClient.InspectNode(nodeID)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.WithStack(err)
 	}
 	return newClient(node.Spec.Annotations.Labels[labelDockerAddr])
 }
