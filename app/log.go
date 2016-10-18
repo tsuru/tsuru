@@ -76,23 +76,23 @@ func (l *LogListener) Close() (err error) {
 func notify(appName string, messages []interface{}) {
 	factory, err := queue.Factory()
 	if err != nil {
-		log.Errorf("Error on logs notify: %s", err.Error())
+		log.Errorf("Error on logs notify: %s", err)
 		return
 	}
 	pubSubQ, err := factory.PubSub(logQueueName(appName))
 	if err != nil {
-		log.Errorf("Error on logs notify: %s", err.Error())
+		log.Errorf("Error on logs notify: %s", err)
 		return
 	}
 	for _, msg := range messages {
 		bytes, err := json.Marshal(msg)
 		if err != nil {
-			log.Errorf("Error on logs notify: %s", err.Error())
+			log.Errorf("Error on logs notify: %s", err)
 			continue
 		}
 		err = pubSubQ.Pub(bytes)
 		if err != nil {
-			log.Errorf("Error on logs notify: %s", err.Error())
+			log.Errorf("Error on logs notify: %s", err)
 		}
 	}
 }

@@ -346,7 +346,7 @@ var provisionAddUnitsToHost = action.Action{
 		runInContainers(containers, func(cont *container.Container, _ chan *container.Container) error {
 			err := cont.Remove(args.provisioner)
 			if err != nil {
-				log.Errorf("Error removing added container %s: %s", cont.ID, err.Error())
+				log.Errorf("Error removing added container %s: %s", cont.ID, err)
 				return nil
 			}
 			fmt.Fprintf(w, " ---> Destroyed unit %s [%s]\n", cont.ShortID(), cont.ProcessName)
@@ -484,7 +484,7 @@ var addNewRoutes = action.Action{
 		newContainers := ctx.FWResult.([]container.Container)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
-			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
+			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err)
 		}
 		w := args.writer
 		if w == nil {
@@ -502,7 +502,7 @@ var addNewRoutes = action.Action{
 		}
 		err = r.RemoveRoutes(args.app.GetName(), routesToRemove)
 		if err != nil {
-			log.Errorf("[add-new-routes:Backward] Error removing route for [%v]: %s", routesToRemove, err.Error())
+			log.Errorf("[add-new-routes:Backward] Error removing route for [%v]: %s", routesToRemove, err)
 			return
 		}
 		for _, c := range newContainers {
@@ -555,7 +555,7 @@ var setRouterHealthcheck = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
-			log.Errorf("[set-router-healthcheck:Backward] Error getting router: %s", err.Error())
+			log.Errorf("[set-router-healthcheck:Backward] Error getting router: %s", err)
 			return
 		}
 		hcRouter, ok := r.(router.CustomHealthcheckRouter)
@@ -565,12 +565,12 @@ var setRouterHealthcheck = action.Action{
 		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
 		yamlData, err := image.GetImageTsuruYamlData(currentImageName)
 		if err != nil {
-			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err.Error())
+			log.Errorf("[set-router-healthcheck:Backward] Error getting yaml data: %s", err)
 		}
 		hcData := yamlData.Healthcheck.ToRouterHC()
 		err = hcRouter.SetHealthcheck(args.app.GetName(), hcData)
 		if err != nil {
-			log.Errorf("[set-router-healthcheck:Backward] Error setting healthcheck: %s", err.Error())
+			log.Errorf("[set-router-healthcheck:Backward] Error setting healthcheck: %s", err)
 		}
 	},
 }
@@ -641,7 +641,7 @@ var removeOldRoutes = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
-			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err.Error())
+			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err)
 		}
 		w := args.writer
 		if w == nil {
@@ -659,7 +659,7 @@ var removeOldRoutes = action.Action{
 		}
 		err = r.AddRoutes(args.app.GetName(), routesToAdd)
 		if err != nil {
-			log.Errorf("[remove-old-routes:Backward] Error adding back route for [%v]: %s", routesToAdd, err.Error())
+			log.Errorf("[remove-old-routes:Backward] Error adding back route for [%v]: %s", routesToAdd, err)
 			return
 		}
 		for _, c := range args.toRemove {
@@ -811,7 +811,7 @@ var updateAppImage = action.Action{
 		imgHistorySize := image.ImageHistorySize()
 		allImages, err := image.ListAppImages(args.app.GetName())
 		if err != nil {
-			log.Errorf("Couldn't list images for cleaning: %s", err.Error())
+			log.Errorf("Couldn't list images for cleaning: %s", err)
 			return ctx.Previous, nil
 		}
 		for i, imgName := range allImages {

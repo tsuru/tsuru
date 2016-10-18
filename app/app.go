@@ -236,12 +236,12 @@ func AcquireApplicationLockWait(appName string, owner string, reason string, tim
 func ReleaseApplicationLock(appName string) {
 	conn, err := db.Conn()
 	if err != nil {
-		log.Errorf("Error getting DB, couldn't unlock %s: %s", appName, err.Error())
+		log.Errorf("Error getting DB, couldn't unlock %s: %s", appName, err)
 	}
 	defer conn.Close()
 	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": AppLock{}}})
 	if err != nil {
-		log.Errorf("Error updating entry, couldn't unlock %s: %s", appName, err.Error())
+		log.Errorf("Error updating entry, couldn't unlock %s: %s", appName, err)
 	}
 }
 

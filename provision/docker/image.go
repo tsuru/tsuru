@@ -81,7 +81,7 @@ func (p *dockerProvisioner) cleanImage(appName, imgName string) {
 	if shouldRemove {
 		err = image.PullAppImageNames(appName, []string{imgName})
 		if err != nil {
-			log.Errorf("Ignored error pulling old images from database: %s", err.Error())
+			log.Errorf("Ignored error pulling old images from database: %s", err)
 		}
 	}
 }

@@ -429,7 +429,7 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 		err = p.PushImage(repository, tag)
 		if err != nil {
 			fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
-			log.Errorf("error in push image %s: %s", c.BuildingImage, err.Error())
+			log.Errorf("error in push image %s: %s", c.BuildingImage, err)
 			time.Sleep(time.Second)
 			continue
 		}

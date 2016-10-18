@@ -95,7 +95,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	}
 	isAsExpected, err := h.isAsExpected(cont)
 	if err != nil {
-		log.Errorf("Containers healing: couldn't verify running processes in container %q: %s", cont.ID, err.Error())
+		log.Errorf("Containers healing: couldn't verify running processes in container %q: %s", cont.ID, err)
 	}
 	if isAsExpected {
 		cont.SetStatus(h.provisioner, cont.ExpectedStatus(), true)
@@ -137,7 +137,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	}
 	err = evt.DoneCustomData(healErr, newCont)
 	if err != nil {
-		log.Errorf("Error trying to update containers healing event: %s", err.Error())
+		log.Errorf("Error trying to update containers healing event: %s", err)
 	}
 	return healErr
 }
@@ -145,12 +145,12 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 func (h *ContainerHealer) runContainerHealerOnce() {
 	containers, err := listUnresponsiveContainers(h.provisioner, h.maxUnresponsiveTime)
 	if err != nil {
-		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
+		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err)
 	}
 	for _, cont := range containers {
 		err := h.healContainerIfNeeded(cont)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Errorf("Containers Healing: couldn't heal container: %s", err)
 		}
 	}
 }

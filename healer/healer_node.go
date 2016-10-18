@@ -147,7 +147,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		Writer:    &buf,
 	})
 	if err != nil {
-		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err.Error(), buf.String())
+		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err, buf.String())
 	}
 	failingMachine, err := iaas.FindMachineByIdOrAddress(node.Metadata()["iaas-id"], failingHost)
 	if err != nil {
@@ -195,7 +195,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 			updateErr = evt.DoneCustomData(evtErr, createdNode)
 		}
 		if updateErr != nil {
-			log.Errorf("error trying to update healing event: %s", updateErr.Error())
+			log.Errorf("error trying to update healing event: %s", updateErr)
 		}
 	}()
 	_, err = node.Provisioner().GetNode(node.Address())

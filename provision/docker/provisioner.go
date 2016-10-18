@@ -562,14 +562,15 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		tarball.WriteHeader(&header)
 		n, tarErr := io.Copy(tarball, archiveFile)
 		if tarErr != nil {
-			log.Errorf("upload-deploy: unable to copy archive to tarball: %s", tarErr.Error())
+			log.Errorf("upload-deploy: unable to copy archive to tarball: %s", tarErr)
 			writer.CloseWithError(tarErr)
 			tarball.Close()
 			return
 		}
 		if n != fileSize {
-			tarErr = stderr.New("upload-deploy: short-write copying to tarball")
-			log.Errorf(tarErr.Error())
+			msg := "upload-deploy: short-write copying to tarball"
+			log.Errorf(msg)
+			tarErr = stderr.New(msg)
 			writer.CloseWithError(tarErr)
 			tarball.Close()
 			return
@@ -691,7 +692,7 @@ func getContainersToAdd(data image.ImageMetadata, oldContainers []container.Cont
 func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to list app containers: %s", err.Error())
+		log.Errorf("Failed to list app containers: %s", err)
 		return err
 	}
 	args := changeUnitsPipelineArgs{
@@ -712,22 +713,22 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	}
 	images, err := image.ListAppImages(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err.Error())
+		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err)
 	}
 	cluster := p.Cluster()
 	for _, imageId := range images {
 		err = cluster.RemoveImage(imageId)
 		if err != nil {
-			log.Errorf("Failed to remove image %s: %s", imageId, err.Error())
+			log.Errorf("Failed to remove image %s: %s", imageId, err)
 		}
 		err = cluster.RemoveFromRegistry(imageId)
 		if err != nil {
-			log.Errorf("Failed to remove image %s from registry: %s", imageId, err.Error())
+			log.Errorf("Failed to remove image %s from registry: %s", imageId, err)
 		}
 	}
 	err = image.DeleteAllAppImageNames(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to remove image names from storage for app %s: %s", app.GetName(), err.Error())
+		log.Errorf("Failed to remove image names from storage for app %s: %s", app.GetName(), err)
 	}
 	return nil
 }

@@ -92,14 +92,14 @@ func routesRebuildOrEnqueueOptionalLock(appName string, lock bool) {
 	}
 	q, err := queue.Queue()
 	if err != nil {
-		log.Errorf("unable to enqueue rebuild routes task: %s", err.Error())
+		log.Errorf("unable to enqueue rebuild routes task: %s", err)
 		return
 	}
 	_, err = q.Enqueue(routesRebuildTaskName, monsterqueue.JobParams{
 		"appName": appName,
 	})
 	if err != nil {
-		log.Errorf("unable to enqueue rebuild routes task: %s", err.Error())
+		log.Errorf("unable to enqueue rebuild routes task: %s", err)
 		return
 	}
 }
