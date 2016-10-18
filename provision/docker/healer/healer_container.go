@@ -6,9 +6,9 @@ package healer
 
 import (
 	"bytes"
-	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -67,7 +67,7 @@ func (h *ContainerHealer) healContainer(cont container.Container) (container.Con
 	close(moveErrors)
 	err := h.provisioner.HandleMoveErrors(moveErrors, &buf)
 	if err != nil {
-		err = fmt.Errorf("Error trying to heal containers %s: couldn't move container: %s - %s", cont.ID, err.Error(), buf.String())
+		err = errors.Wrapf(err, "Error trying to heal containers %s: couldn't move container. buffer: %s", cont.ID, buf.String())
 	}
 	return createdContainer, err
 }
@@ -103,7 +103,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 	}
 	locked := h.locker.Lock(cont.AppName)
 	if !locked {
-		return fmt.Errorf("Containers healing: unable to heal %q couldn't lock app %s", cont.ID, cont.AppName)
+		return errors.Errorf("Containers healing: unable to heal %q couldn't lock app %s", cont.ID, cont.AppName)
 	}
 	defer h.locker.Unlock(cont.AppName)
 	// Sanity check, now we have a lock, let's find out if the container still exists
@@ -112,11 +112,11 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		if _, isNotFound := err.(*provision.UnitNotFoundError); isNotFound {
 			return nil
 		}
-		return fmt.Errorf("Containers healing: unable to heal %q couldn't verify it still exists: %s", cont.ID, err)
+		return errors.Wrapf(err, "Containers healing: unable to heal %q couldn't verify it still exists", cont.ID)
 	}
 	a, err := app.GetByName(cont.AppName)
 	if err != nil {
-		return fmt.Errorf("Containers healing: unable to heal %q couldn't get app %q: %s", cont.ID, cont.AppName, err)
+		return errors.Wrapf(err, "Containers healing: unable to heal %q couldn't get app %q", cont.ID, cont.AppName)
 	}
 	log.Errorf("Initiating healing process for container %q, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
 	evt, err := event.NewInternal(&event.Opts{
@@ -129,11 +129,11 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		)...),
 	})
 	if err != nil {
-		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
+		return errors.Wrap(err, "Error trying to insert container healing event, healing aborted")
 	}
 	newCont, healErr := h.healContainer(cont)
 	if healErr != nil {
-		healErr = fmt.Errorf("Error healing container %q: %s", cont.ID, healErr.Error())
+		healErr = errors.Errorf("Error healing container %q: %s", cont.ID, healErr.Error())
 	}
 	err = evt.DoneCustomData(healErr, newCont)
 	if err != nil {

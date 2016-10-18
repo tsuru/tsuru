@@ -5,10 +5,10 @@
 package cloudstack
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/log"
 )
@@ -48,7 +48,7 @@ func (t *machineCreate) Run(job monsterqueue.Job) {
 	if err != nil {
 		_, qErr := job.Queue().Enqueue(t.iaas.taskName(machineDeleteTaskName), jobParams)
 		if qErr != nil {
-			job.Error(fmt.Errorf("error trying to enqueue deletion: %s caused by: %s", qErr, err))
+			job.Error(errors.Wrapf(err, "error trying to enqueue deletion: %s caused by", qErr))
 			return
 		}
 		job.Error(err)

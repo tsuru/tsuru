@@ -723,7 +723,7 @@ func (s *S) TestEnsureContainersStartedTryCreatingAfterRmFailure(c *check.C) {
 	err = ensureContainersStarted(p, buf, true, nil)
 	c.Assert(err, check.IsNil)
 	err = ensureContainersStarted(p, buf, true, nil)
-	c.Assert(err, check.ErrorMatches, `.*unable to create new node-container: container already exists - previour rm error: API error \(500\): my error`)
+	c.Assert(err, check.ErrorMatches, `(?s).*API error \(500\): my error.*unable to remove old node-container.*container already exists.*unable to create new node-container.*`)
 }
 
 func (s *S) TestRecreateBsContainers(c *check.C) {
@@ -780,7 +780,7 @@ func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
 	defer servers[1].ResetFailure("failure-create")
 	var buf safe.Buffer
 	err = recreateContainers(p, &buf)
-	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[.*\]: API error \(400\): failure-create.*`)
+	c.Assert(err, check.ErrorMatches, `(?s)API error \(400\): failure-create.*failed to create container in .* \[.*\].*`)
 	sort.Sort(cluster.NodeList(nodes))
 	client, err := nodes[0].Client()
 	c.Assert(err, check.IsNil)

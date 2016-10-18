@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/pkg/errors"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
@@ -87,7 +88,7 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instanceID string, createPara
 	job, err := q.EnqueueWait(taskName, jobParams, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
-			return "", fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, instanceID)
+			return "", errors.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, instanceID)
 		}
 		return "", err
 	}
@@ -121,7 +122,7 @@ Optional params:
 func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 	regionOrEndpoint := getRegionOrEndpoint(m.CreationParams, false)
 	if regionOrEndpoint == "" {
-		return fmt.Errorf("region or endpoint creation param required")
+		return errors.Errorf("region or endpoint creation param required")
 	}
 	ec2Inst, err := i.createEC2Handler(regionOrEndpoint)
 	if err != nil {
@@ -290,10 +291,10 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	}
 	options.UserData = aws.String(base64.StdEncoding.EncodeToString([]byte(userData)))
 	if options.ImageId == nil || *options.ImageId == "" {
-		return nil, fmt.Errorf("the parameter %q is required", "imageid")
+		return nil, errors.Errorf("the parameter %q is required", "imageid")
 	}
 	if options.InstanceType == nil || *options.InstanceType == "" {
-		return nil, fmt.Errorf("the parameter %q is required", "instancetype")
+		return nil, errors.Errorf("the parameter %q is required", "instancetype")
 	}
 	ec2Inst, err := i.createEC2Handler(regionOrEndpoint)
 	if err != nil {
@@ -304,7 +305,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		return nil, err
 	}
 	if len(resp.Instances) == 0 {
-		return nil, fmt.Errorf("no instance created")
+		return nil, errors.Errorf("no instance created")
 	}
 	runInst := resp.Instances[0]
 	if tags, ok := params["tags"]; ok {

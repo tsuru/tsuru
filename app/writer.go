@@ -5,10 +5,10 @@
 package app
 
 import (
-	"errors"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 )
 

@@ -7,9 +7,10 @@ package swarm
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"io/ioutil"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 )
 
 var swarmConfig swarmProvisionerConfig

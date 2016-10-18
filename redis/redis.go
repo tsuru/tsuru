@@ -5,11 +5,11 @@
 package redis
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/redis.v3"
@@ -196,7 +196,7 @@ func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, 
 	if err == nil {
 		masterName, _ := config.GetString(prefix + ":redis-sentinel-master")
 		if masterName == "" {
-			return nil, fmt.Errorf("%s:redis-sentinel-master must be specified if using redis-sentinel", prefix)
+			return nil, errors.Errorf("%s:redis-sentinel-master must be specified if using redis-sentinel", prefix)
 		}
 		log.Debugf("Connecting to redis sentinel from %q config prefix. Addrs: %s. Master: %s. DB: %d.", prefix, sentinels, masterName, db)
 		return newRedisSentinel(createServerList(sentinels), masterName, defaultConfig)
@@ -204,10 +204,10 @@ func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, 
 	cluster, err := config.GetString(prefix + ":redis-cluster-addrs")
 	if err == nil {
 		if defaultConfig.DB != 0 {
-			return nil, fmt.Errorf("could not initialize redis from %q config, using redis-cluster with db != 0 is not supported", prefix)
+			return nil, errors.Errorf("could not initialize redis from %q config, using redis-cluster with db != 0 is not supported", prefix)
 		}
 		if defaultConfig.MaxRetries != 0 {
-			return nil, fmt.Errorf("could not initialize redis from %q config, using redis-cluster with max-retries > 0 is not supported", prefix)
+			return nil, errors.Errorf("could not initialize redis from %q config, using redis-cluster with max-retries > 0 is not supported", prefix)
 		}
 		log.Debugf("Connecting to redis cluster from %q config prefix. Addrs: %s. DB: %d.", prefix, cluster, db)
 		return redisCluster(createServerList(cluster), defaultConfig)

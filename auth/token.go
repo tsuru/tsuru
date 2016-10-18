@@ -5,9 +5,9 @@
 package auth
 
 import (
-	"errors"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 )
 

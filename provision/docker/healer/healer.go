@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
@@ -165,7 +166,7 @@ func healingEventToEvent(data *HealingEvent) error {
 			evt.Allowed = event.Allowed(permission.PermAppReadEvents)
 		}
 	default:
-		return fmt.Errorf("invalid action %q", data.Action)
+		return errors.Errorf("invalid action %q", data.Action)
 	}
 	evt.Owner = event.Owner{Type: event.OwnerTypeInternal}
 	evt.Kind = event.Kind{Type: event.KindTypeInternal, Name: "healer"}

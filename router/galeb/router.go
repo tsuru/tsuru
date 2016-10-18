@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
@@ -40,7 +41,7 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	token, _ := config.GetString(configPrefix + ":token")
 	tokenHeader, _ := config.GetString(configPrefix + ":token-header")
 	if token == "" && (username == "" || password == "") {
-		return nil, fmt.Errorf("either token or username and password must be set for galeb router")
+		return nil, errors.Errorf("either token or username and password must be set for galeb router")
 	}
 	domain, err := config.GetString(configPrefix + ":domain")
 	if err != nil {

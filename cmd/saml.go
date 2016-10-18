@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth/saml"
 	tsuruNet "github.com/tsuru/tsuru/net"
 )
@@ -94,16 +95,16 @@ func requestToken(schemeData map[string]string) (string, error) {
 	for count := 0; count <= maxRetries; count += 2 {
 		u, err := GetURL("/auth/login")
 		if err != nil {
-			return "", fmt.Errorf("Error in GetURL: %s", err.Error())
+			return "", errors.Wrap(err, "Error in GetURL")
 		}
 		resp, err := tsuruNet.Dial5Full300Client.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 		if err != nil {
-			return "", fmt.Errorf("Error during login post: %s", err.Error())
+			return "", errors.Wrap(err, "Error during login post")
 		}
 		defer resp.Body.Close()
 		result, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return "", fmt.Errorf("Error reading body: %s", err.Error())
+			return "", errors.Wrap(err, "Error reading body")
 		}
 		if strings.TrimSpace(string(result)) == saml.ErrRequestWaitingForCredentials.Message {
 			if count < maxRetries {
@@ -113,7 +114,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 		}
 		data := make(map[string]interface{})
 		if err = json.Unmarshal(result, &data); err != nil {
-			return "", fmt.Errorf("API response: %s", result)
+			return "", errors.Errorf("API response: %s", result)
 		}
 		return data["token"].(string), nil
 	}

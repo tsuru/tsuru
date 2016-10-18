@@ -10,12 +10,13 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/docker-cluster/cluster"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/fix"
@@ -75,7 +76,7 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", confName, node.Address, pool)
 		confErr = create(containerConfig, node, pool, p, relaunch)
 		if confErr != nil {
-			confErr = fmt.Errorf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
+			confErr = errors.Wrapf(confErr, "[node containers] failed to create container in %s [%s]", node.Address, pool)
 			errChan <- log.WrapError(confErr)
 		}
 	}
@@ -91,14 +92,14 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 	}
 	wg.Wait()
 	close(errChan)
-	var allErrors []string
+	var allErrors []error
 	for err = range errChan {
-		allErrors = append(allErrors, err.Error())
+		allErrors = append(allErrors, err)
 	}
 	if len(allErrors) == 0 {
 		return nil
 	}
-	return fmt.Errorf("multiple errors: %s", strings.Join(allErrors, ", "))
+	return tsuruErrors.NewMultiError(allErrors...)
 }
 
 func pullImage(c *nodecontainer.NodeContainerConfig, client *docker.Client, p DockerProvisioner, pool string) (string, error) {
@@ -143,13 +144,15 @@ func create(c *nodecontainer.NodeContainerConfig, node *cluster.Node, poolName s
 			return err
 		}
 		if relaunch {
-			rmErr := tryRemovingOld(client, opts.Name)
-			if rmErr != nil {
-				log.Errorf("unable to remove old node-container: %s", rmErr)
+			multiErr := tsuruErrors.NewMultiError()
+			err = tryRemovingOld(client, opts.Name)
+			if err != nil {
+				multiErr.Add(errors.Wrapf(err, "unable to remove old node-container"))
 			}
 			_, err = client.CreateContainer(opts)
 			if err != nil {
-				return fmt.Errorf("unable to create new node-container: %s - previour rm error: %s", err, rmErr)
+				multiErr.Add(errors.Wrapf(err, "unable to create new node-container"))
+				return multiErr
 			}
 		}
 	}
@@ -193,7 +196,7 @@ type ClusterHook struct {
 func (h *ClusterHook) RunClusterHook(evt cluster.HookEvent, node *cluster.Node) error {
 	err := ensureContainersStarted(h.Provisioner, nil, false, nil, *node)
 	if err != nil {
-		return fmt.Errorf("unable to start node containers: %s", err)
+		return errors.Wrap(err, "unable to start node containers")
 	}
 	return nil
 }

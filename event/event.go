@@ -5,7 +5,6 @@
 package event
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -589,14 +589,14 @@ func makeBSONRaw(in interface{}) (bson.Raw, error) {
 	case reflect.Array, reflect.Slice:
 		kind = 4 // BSON "Array" kind
 	default:
-		return bson.Raw{}, fmt.Errorf("cannot use type %T as event custom data", in)
+		return bson.Raw{}, errors.Errorf("cannot use type %T as event custom data", in)
 	}
 	data, err := bson.Marshal(in)
 	if err != nil {
 		return bson.Raw{}, err
 	}
 	if len(data) == 0 {
-		return bson.Raw{}, fmt.Errorf("invalid empty bson object for object %#v", in)
+		return bson.Raw{}, errors.Errorf("invalid empty bson object for object %#v", in)
 	}
 	return bson.Raw{
 		Kind: kind,
@@ -967,7 +967,7 @@ func checkIsExpired(coll *storage.Collection, id interface{}) bool {
 		now := time.Now().UTC()
 		lastUpdate := existingEvt.LockUpdateTime.UTC()
 		if now.After(lastUpdate.Add(lockExpireTimeout)) {
-			existingEvt.Done(fmt.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
+			existingEvt.Done(errors.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
 			return true
 		}
 	}
@@ -999,11 +999,11 @@ func Migrate(query bson.M, cb func(*Event) error) error {
 		evt := &Event{eventData: evtData}
 		err = cb(evt)
 		if err != nil {
-			return fmt.Errorf("unable to migrate %#v: %s", evt, err)
+			return errors.Wrapf(err, "unable to migrate %#v", evt)
 		}
 		err = coll.UpdateId(evt.ID, evt.eventData)
 		if err != nil {
-			return fmt.Errorf("unable to update %#v: %s", evt, err)
+			return errors.Wrapf(err, "unable to update %#v", evt)
 		}
 	}
 	return iter.Close()

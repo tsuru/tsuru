@@ -6,9 +6,9 @@ package app
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
@@ -66,7 +66,7 @@ func (l *LogListener) ListenChan() <-chan Applog {
 func (l *LogListener) Close() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("Recovered panic closing listener (possible double close): %v", r)
+			err = errors.Errorf("Recovered panic closing listener (possible double close): %v", r)
 		}
 	}()
 	err = l.q.UnSub()

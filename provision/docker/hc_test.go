@@ -162,7 +162,7 @@ func (s *S) TestHealthCheckDockerFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = healthCheckDocker()
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "ping failed - API error (500): something went wrong")
+	c.Assert(err.Error(), check.Equals, "ping failed: API error (500): something went wrong")
 }
 
 func (s *S) TestHealthCheckDockerRegistryV2TLS(c *check.C) {

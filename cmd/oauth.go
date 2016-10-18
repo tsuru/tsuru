@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/exec"
 	tsuruNet "github.com/tsuru/tsuru/net"
 )
@@ -67,21 +68,21 @@ func convertToken(code, redirectUrl string) (string, error) {
 	v.Set("redirectUrl", redirectUrl)
 	u, err := GetURL("/auth/login")
 	if err != nil {
-		return token, fmt.Errorf("Error in GetURL: %s", err.Error())
+		return token, errors.Wrap(err, "Error in GetURL")
 	}
 	resp, err := tsuruNet.Dial5Full300Client.Post(u, "application/x-www-form-urlencoded", strings.NewReader(v.Encode()))
 	if err != nil {
-		return token, fmt.Errorf("Error during login post: %s", err.Error())
+		return token, errors.Wrap(err, "Error during login post")
 	}
 	defer resp.Body.Close()
 	result, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return token, fmt.Errorf("Error reading body: %s", err.Error())
+		return token, errors.Wrap(err, "Error reading body")
 	}
 	data := make(map[string]interface{})
 	err = json.Unmarshal(result, &data)
 	if err != nil {
-		return token, fmt.Errorf("Error parsing response: %s - %s", result, err.Error())
+		return token, errors.Wrapf(err, "Error parsing response: %s", result)
 	}
 	return data["token"].(string), nil
 }

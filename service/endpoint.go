@@ -6,8 +6,6 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/log"
@@ -40,7 +39,7 @@ func (c *Client) buildErrorMessage(err error, resp *http.Response) error {
 	if resp != nil {
 		defer resp.Body.Close()
 		b, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("invalid response: %s", string(b))
+		return errors.Errorf("invalid response: %s", string(b))
 	}
 	return nil
 }
@@ -116,7 +115,7 @@ func (c *Client) Create(instance *ServiceInstance, user, requestID string) error
 			return ErrInstanceAlreadyExistsInAPI
 		}
 	}
-	err = fmt.Errorf("Failed to create the instance %s: %s", instance.Name, c.buildErrorMessage(err, resp))
+	err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to create the instance %s", instance.Name)
 	return log.WrapError(err)
 }
 
@@ -132,7 +131,7 @@ func (c *Client) Destroy(instance *ServiceInstance, requestID string) error {
 			if resp.StatusCode == http.StatusNotFound {
 				return ErrInstanceNotFoundInAPI
 			}
-			err = fmt.Errorf("Failed to destroy the instance %s: %s", instance.Name, c.buildErrorMessage(err, resp))
+			err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to destroy the instance %s", instance.Name)
 			return log.WrapError(err)
 		}
 	}
@@ -148,14 +147,14 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
 	if err != nil {
-		return nil, log.WrapError(fmt.Errorf(`Failed to bind app %q to service instance "%s/%s": %s`, app.GetName(), instance.ServiceName, instance.Name, err))
+		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
 		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	}
 	if err != nil {
-		return nil, log.WrapError(fmt.Errorf(`Failed to bind app %q to service instance "%s/%s": %s`, app.GetName(), instance.ServiceName, instance.Name, err))
+		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 300 {
@@ -172,7 +171,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 	case http.StatusNotFound:
 		return nil, ErrInstanceNotFoundInAPI
 	}
-	err = fmt.Errorf(`Failed to bind the instance "%s/%s" to the app %q: %s`, instance.ServiceName, instance.Name, app.GetName(), c.buildErrorMessage(err, resp))
+	err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the app %q`, instance.ServiceName, instance.Name, app.GetName())
 	return nil, log.WrapError(err)
 }
 
@@ -186,7 +185,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	if err != nil {
-		return log.WrapError(fmt.Errorf(`Failed to bind the instance "%s/%s" to the unit %q: %s`, instance.ServiceName, instance.Name, unit.GetIp(), err))
+		return log.WrapError(errors.Wrapf(err, `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp()))
 	}
 	defer resp.Body.Close()
 	switch resp.StatusCode {
@@ -196,7 +195,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		return ErrInstanceNotFoundInAPI
 	}
 	if resp.StatusCode > 299 {
-		err = fmt.Errorf(`Failed to bind the instance "%s/%s" to the unit %q: %s`, instance.ServiceName, instance.Name, unit.GetIp(), c.buildErrorMessage(err, resp))
+		err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp())
 		return log.WrapError(err)
 	}
 	return nil
@@ -216,7 +215,7 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 			if resp.StatusCode == http.StatusNotFound {
 				return ErrInstanceNotFoundInAPI
 			}
-			err = fmt.Errorf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
+			err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to unbind (%q)", url)
 			return log.WrapError(err)
 		}
 	}
@@ -238,7 +237,7 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 			if resp.StatusCode == http.StatusNotFound {
 				return ErrInstanceNotFoundInAPI
 			}
-			err = fmt.Errorf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
+			err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to unbind (%q)", url)
 			return log.WrapError(err)
 		}
 	}
@@ -272,7 +271,7 @@ func (c *Client) Status(instance *ServiceInstance, requestID string) (string, er
 			return "down", nil
 		}
 	}
-	err = fmt.Errorf("Failed to get status of instance %s: %s", instance.Name, c.buildErrorMessage(err, resp))
+	err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to get status of instance %s", instance.Name)
 	return "", log.WrapError(err)
 }
 

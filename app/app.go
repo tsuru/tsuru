@@ -6,7 +6,6 @@ package app
 
 import (
 	"encoding/json"
-	stderr "errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,11 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
@@ -39,10 +39,10 @@ var AuthScheme auth.Scheme
 var (
 	nameRegexp = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
 
-	ErrAlreadyHaveAccess = stderr.New("team already have access to this app")
-	ErrNoAccess          = stderr.New("team does not have access to this app")
-	ErrCannotOrphanApp   = stderr.New("cannot revoke access from this team, as it's the unique team with access to the app")
-	ErrDisabledPlatform  = stderr.New("Disabled Platform, only admin users can create applications with the platform")
+	ErrAlreadyHaveAccess = errors.New("team already have access to this app")
+	ErrNoAccess          = errors.New("team does not have access to this app")
+	ErrCannotOrphanApp   = errors.New("cannot revoke access from this team, as it's the unique team with access to the app")
+	ErrDisabledPlatform  = errors.New("Disabled Platform, only admin users can create applications with the platform")
 )
 
 const (
@@ -387,7 +387,7 @@ func (app *App) unbind() error {
 		}
 	}
 	if msg != "" {
-		return stderr.New(msg)
+		return errors.New(msg)
 	}
 	return nil
 }
@@ -396,10 +396,10 @@ func (app *App) unbind() error {
 func Delete(app *App, w io.Writer) error {
 	isSwapped, swappedWith, err := router.IsSwapped(app.GetName())
 	if err != nil {
-		return fmt.Errorf("unable to check if app is swapped: %s", err)
+		return errors.Wrap(err, "unable to check if app is swapped")
 	}
 	if isSwapped {
-		return fmt.Errorf("application is swapped with %q, cannot remove it", swappedWith)
+		return errors.Errorf("application is swapped with %q, cannot remove it", swappedWith)
 	}
 	appName := app.Name
 	if w == nil {
@@ -537,7 +537,7 @@ func (app *App) serviceInstances() ([]service.ServiceInstance, error) {
 // database and enqueues the apprc serialization.
 func (app *App) AddUnits(n uint, process string, writer io.Writer) error {
 	if n == 0 {
-		return stderr.New("Cannot add zero units.")
+		return errors.New("Cannot add zero units.")
 	}
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
@@ -798,7 +798,7 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 		return "", err
 	}
 	if len(pools) > 1 {
-		return "", stderr.New("you have access to more than one pool, please choose one in app creation")
+		return "", errors.New("you have access to more than one pool, please choose one in app creation")
 	}
 	if len(pools) == 0 {
 		return "", nil
@@ -811,7 +811,7 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 		}
 	}
 	if !pools[0].Public && !poolTeam {
-		return "", fmt.Errorf("App team owner %q has no access to pool %q", app.TeamOwner, poolName)
+		return "", errors.Errorf("App team owner %q has no access to pool %q", app.TeamOwner, poolName)
 	}
 	return pools[0].Name, nil
 }
@@ -836,7 +836,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 		ok  bool
 	)
 	if env, ok = app.Env[name]; !ok {
-		err = stderr.New("Environment variable not declared for this app.")
+		err = errors.New("Environment variable not declared for this app.")
 	}
 	return env, err
 }
@@ -847,7 +847,7 @@ func (app *App) validate() error {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
-		return &errors.ValidationError{Message: msg}
+		return &tsuruErrors.ValidationError{Message: msg}
 	}
 	return nil
 }
@@ -868,7 +868,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 // command.
 func (app *App) Run(cmd string, w io.Writer, args provision.RunArgs) error {
 	if !app.available() {
-		return stderr.New("App must be available to run commands")
+		return errors.New("App must be available to run commands")
 	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru", "api")
 	logWriter := LogWriter{App: app, Source: "app-run"}
@@ -1048,7 +1048,7 @@ func (app *App) GetQuota() quota.Quota {
 
 func (app *App) SetQuotaInUse(inUse int) error {
 	if inUse < 0 {
-		return stderr.New("invalid value, cannot be lesser than 0")
+		return errors.New("invalid value, cannot be lesser than 0")
 	}
 	if !app.Quota.Unlimited() && inUse > app.Quota.Limit {
 		return &quota.QuotaExceededError{
@@ -1426,7 +1426,7 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 			return nil, err
 		}
 		if !enabled {
-			return nil, stderr.New(doc)
+			return nil, errors.New(doc)
 		}
 	}
 	conn, err := db.LogConn()

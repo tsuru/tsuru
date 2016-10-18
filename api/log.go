@@ -6,10 +6,10 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"runtime"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -31,11 +31,11 @@ func addLogs(ws *websocket.Conn) {
 	req := ws.Request()
 	t := context.GetAuthToken(req)
 	if t == nil {
-		err = fmt.Errorf("wslogs: no token")
+		err = errors.Errorf("wslogs: no token")
 		return
 	}
 	if t.GetAppName() != app.InternalAppName {
-		err = fmt.Errorf("wslogs: invalid token app name: %q", t.GetAppName())
+		err = errors.Errorf("wslogs: invalid token app name: %q", t.GetAppName())
 		return
 	}
 	err = scanLogs(ws)
@@ -59,7 +59,7 @@ func scanLogs(stream io.Reader) error {
 				break
 			}
 			dispatcher.Stop()
-			return fmt.Errorf("wslogs: parsing log line: %s", err)
+			return errors.Wrap(err, "wslogs: parsing log line")
 		}
 		dispatcher.Send(&entry)
 	}

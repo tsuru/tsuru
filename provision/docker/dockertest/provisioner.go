@@ -5,13 +5,13 @@
 package dockertest
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	"github.com/pkg/errors"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -127,7 +127,7 @@ func (p *FakeDockerProvisioner) GetNodeByHost(host string) (cluster.Node, error)
 			return node, nil
 		}
 	}
-	return cluster.Node{}, fmt.Errorf("node with host %q not found", host)
+	return cluster.Node{}, errors.Errorf("node with host %q not found", host)
 }
 
 func (p *FakeDockerProvisioner) Collection() *storage.Collection {
@@ -258,7 +258,7 @@ func (p *FakeDockerProvisioner) MoveContainers(fromHost, toHost string, w io.Wri
 	defer p.containersMut.Unlock()
 	containers, ok := p.containers[fromHost]
 	if !ok {
-		return fmt.Errorf("host not found: %s", fromHost)
+		return errors.Errorf("host not found: %s", fromHost)
 	}
 	for _, container := range containers {
 		_, err := p.moveOneContainer(container, toHost)

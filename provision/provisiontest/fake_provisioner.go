@@ -5,7 +5,6 @@
 package provisiontest
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"

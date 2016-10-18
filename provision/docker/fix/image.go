@@ -5,8 +5,9 @@
 package fix
 
 import (
-	"errors"
 	"regexp"
+
+	"github.com/pkg/errors"
 )
 
 var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)

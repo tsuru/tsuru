@@ -5,9 +5,9 @@
 package rebuild
 
 import (
-	"errors"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"

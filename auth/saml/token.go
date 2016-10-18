@@ -7,10 +7,10 @@ package saml
 import (
 	"crypto"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"

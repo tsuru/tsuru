@@ -5,7 +5,6 @@
 package native
 
 import (
-	"errors"
 	"runtime"
 	"sync"
 
@@ -62,18 +61,22 @@ func (s *S) TestSMTPServer(c *check.C) {
 	var tests = []struct {
 		input   string
 		output  string
-		failure error
+		failure string
 	}{
-		{"smtp.gmail.com", "smtp.gmail.com:25", nil},
-		{"smtp.gmail.com:465", "smtp.gmail.com:465", nil},
-		{"", "", errors.New(`Setting "smtp:server" is not defined`)},
+		{"smtp.gmail.com", "smtp.gmail.com:25", ""},
+		{"smtp.gmail.com:465", "smtp.gmail.com:465", ""},
+		{"", "", `Setting "smtp:server" is not defined`},
 	}
 	old, _ := config.Get("smtp:server")
 	defer config.Set("smtp:server", old)
 	for _, t := range tests {
 		config.Set("smtp:server", t.input)
 		server, err := smtpServer()
-		c.Check(err, check.DeepEquals, t.failure)
+		if t.failure != "" {
+			c.Check(err, check.ErrorMatches, t.failure)
+		} else {
+			c.Check(err, check.IsNil)
+		}
 		c.Check(server, check.Equals, t.output)
 	}
 }

@@ -5,10 +5,10 @@
 package service
 
 import (
-	"errors"
 	"net/http"
 	"regexp"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"

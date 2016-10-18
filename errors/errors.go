@@ -44,6 +44,36 @@ func (err *NotAuthorizedError) Error() string {
 	return err.Message
 }
 
+type MultiError struct {
+	errors []error
+}
+
+func NewMultiError(errs ...error) *MultiError {
+	return &MultiError{errors: errs}
+}
+
+func (m *MultiError) Add(err error) {
+	m.errors = append(m.errors, err)
+}
+
+func (m *MultiError) Len() int {
+	return len(m.errors)
+}
+
+func (m *MultiError) Error() string {
+	if len(m.errors) == 0 {
+		return "multi error created but no errors added"
+	}
+	if len(m.errors) == 1 {
+		return fmt.Sprintf("%+v", m.errors[0])
+	}
+	msg := fmt.Sprintf("multiple errors reported (%d):\n", len(m.errors))
+	for i, err := range m.errors {
+		msg += fmt.Sprintf("error #%d: %+v\n", i, err)
+	}
+	return msg
+}
+
 type CompositeError struct {
 	Base    error
 	Message string

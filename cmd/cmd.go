@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"bytes"
-	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,19 +15,20 @@ import (
 	"strings"
 
 	goVersion "github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/gnuflag"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/net"
 )
 
 var (
-	ErrAbortCommand = stderrors.New("")
+	ErrAbortCommand = errors.New("")
 
 	// ErrLookup is the error that should be returned by lookup functions when it
 	// cannot find a matching command for the given parameters.
-	ErrLookup = stderrors.New("lookup error - command not found")
+	ErrLookup = errors.New("lookup error - command not found")
 )
 
 const (
@@ -248,7 +248,7 @@ func (m *Manager) Run(args []string) {
 	}
 	if err != nil {
 		errorMsg := err.Error()
-		httpErr, ok := err.(*errors.HTTP)
+		httpErr, ok := err.(*tsuruErrors.HTTP)
 		if ok && httpErr.Code == http.StatusUnauthorized && name != loginCmdName {
 			errorMsg = fmt.Sprintf(`You're not authenticated or your session has expired. Please use %q command for authentication.`, loginCmdName)
 		}
@@ -414,7 +414,7 @@ func (c *help) Run(context *Context, client *Client) error {
 		} else if topic, ok := c.manager.topics[context.Args[0]]; ok {
 			output += topic
 		} else {
-			return fmt.Errorf("command %q does not exist.", context.Args[0])
+			return errors.Errorf("command %q does not exist.", context.Args[0])
 		}
 	} else {
 		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)

@@ -5,10 +5,10 @@
 package service
 
 import (
-	"errors"
 	"io"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"

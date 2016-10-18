@@ -7,12 +7,12 @@
 package iaas
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruNet "github.com/tsuru/tsuru/net"
 )
@@ -64,7 +64,7 @@ func (i *UserDataIaaS) ReadUserData() (string, error) {
 			return "", err
 		}
 		if resp.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("Invalid user-data status code: %d", resp.StatusCode)
+			return "", errors.Errorf("Invalid user-data status code: %d", resp.StatusCode)
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
@@ -113,7 +113,7 @@ func getIaasProvider(name string) (IaaS, error) {
 		}
 		providerFactory, ok := iaasProviders[providerName]
 		if !ok {
-			return nil, fmt.Errorf("IaaS provider %q based on %q not registered", name, providerName)
+			return nil, errors.Errorf("IaaS provider %q based on %q not registered", name, providerName)
 		}
 		instance = providerFactory(name)
 		if init, ok := instance.(InitializableIaaS); ok {

@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,6 +15,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"golang.org/x/crypto/ssh/terminal"
 )

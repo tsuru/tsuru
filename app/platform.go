@@ -5,11 +5,11 @@
 package app
 
 import (
-	"errors"
-	"fmt"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
@@ -78,7 +78,10 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 	if err != nil {
 		dbErr := conn.Platforms().RemoveId(p.Name)
 		if dbErr != nil {
-			return fmt.Errorf("unable to rollback platform add: %s. original error: %s", err.Error(), dbErr.Error())
+			return tsuruErrors.NewMultiError(
+				errors.Wrapf(dbErr, "unable to rollback platform add"),
+				errors.Wrapf(err, "original platform add error"),
+			)
 		}
 		return err
 	}

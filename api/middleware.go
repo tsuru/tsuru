@@ -15,11 +15,12 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 )
@@ -40,7 +41,7 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 	}
 	if t.IsAppToken() {
 		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {
-			return nil, &errors.HTTP{
+			return nil, &tsuruErrors.HTTP{
 				Code:    http.StatusForbidden,
 				Message: fmt.Sprintf("app token mismatch, token for %q, request for %q", t.GetAppName(), q),
 			}
@@ -103,7 +104,7 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	err := context.GetRequestError(r)
 	if err != nil {
 		code := http.StatusInternalServerError
-		if e, ok := err.(*errors.HTTP); ok {
+		if e, ok := err.(*tsuruErrors.HTTP); ok {
 			code = e.Code
 		}
 		flushing, ok := w.(*io.FlushingWriter)
@@ -180,12 +181,12 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 	}
 	_, err := app.GetByName(appName)
 	if err == app.ErrAppNotFound {
-		context.AddRequestError(r, &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()})
+		context.AddRequestError(r, &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()})
 		return
 	}
 	ok, err := app.AcquireApplicationLockWait(appName, owner, fmt.Sprintf("%s %s", r.Method, r.URL.Path), lockWaitDuration)
 	if err != nil {
-		context.AddRequestError(r, fmt.Errorf("Error trying to acquire application lock: %s", err))
+		context.AddRequestError(r, errors.Wrap(err, "Error trying to acquire application lock"))
 		return
 	}
 	if ok {
@@ -200,12 +201,12 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 	a, err := app.GetByName(appName)
 	if err != nil {
 		if err == app.ErrAppNotFound {
-			err = &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+			err = &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		} else {
-			err = fmt.Errorf("Error to get application: %s", err)
+			err = errors.Wrap(err, "Error to get application")
 		}
 	} else {
-		httpErr := &errors.HTTP{Code: http.StatusConflict}
+		httpErr := &tsuruErrors.HTTP{Code: http.StatusConflict}
 		if a.Lock.Locked {
 			httpErr.Message = fmt.Sprintf("%s", &a.Lock)
 		} else {

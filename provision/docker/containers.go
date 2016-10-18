@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
@@ -68,7 +68,7 @@ var containerMovementErr = errors.New("Error moving some containers.")
 func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Writer) error {
 	hasError := false
 	for err := range moveErrors {
-		err = fmt.Errorf("Error moving container: %s", err)
+		err = errors.Wrap(err, "Error moving container")
 		log.Error(err)
 		fmt.Fprintf(writer, "%s\n", err)
 		hasError = true
@@ -151,19 +151,19 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost string, errors chan error, wg *sync.WaitGroup, writer io.Writer, locker container.AppLocker) container.Container {
+func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost string, errCh chan error, wg *sync.WaitGroup, writer io.Writer, locker container.AppLocker) container.Container {
 	if wg != nil {
 		defer wg.Done()
 	}
 	locked := locker.Lock(c.AppName)
 	if !locked {
-		errors <- fmt.Errorf("couldn't move %s, unable to lock %q", c.ID, c.AppName)
+		errCh <- errors.Errorf("couldn't move %s, unable to lock %q", c.ID, c.AppName)
 		return container.Container{}
 	}
 	defer locker.Unlock(c.AppName)
 	a, err := app.GetByName(c.AppName)
 	if err != nil {
-		errors <- &tsuruErrors.CompositeError{
+		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
 			Message: fmt.Sprintf("error getting app %q for unit %s", c.AppName, c.ID),
 		}
@@ -171,7 +171,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 	}
 	imageId, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
-		errors <- &tsuruErrors.CompositeError{
+		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
 			Message: fmt.Sprintf("error getting app %q image name for unit %s", c.AppName, c.ID),
 		}
@@ -189,7 +189,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: c.ExpectedStatus()}}
 	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageId, destHosts...)
 	if err != nil {
-		errors <- &tsuruErrors.CompositeError{
+		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
 			Message: fmt.Sprintf("Error moving unit %s", c.ID),
 		}

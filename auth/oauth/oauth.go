@@ -6,25 +6,25 @@ package oauth
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
 
 var (
-	ErrMissingCodeError       = &errors.ValidationError{Message: "You must provide code to login"}
-	ErrMissingCodeRedirectUrl = &errors.ValidationError{Message: "You must provide the used redirect url to login"}
-	ErrEmptyAccessToken       = &errors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
-	ErrEmptyUserEmail         = &errors.NotAuthorizedError{Message: "Couldn't parse user email."}
+	ErrMissingCodeError       = &tsuruErrors.ValidationError{Message: "You must provide code to login"}
+	ErrMissingCodeRedirectUrl = &tsuruErrors.ValidationError{Message: "You must provide the used redirect url to login"}
+	ErrEmptyAccessToken       = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
+	ErrEmptyUserEmail         = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
 )
 
 type OAuthParser interface {
@@ -215,14 +215,14 @@ func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
 	}{}
 	data, err := ioutil.ReadAll(infoResponse.Body)
 	if err != nil {
-		return "", fmt.Errorf("unable to read user data response: %s", err)
+		return "", errors.Wrap(err, "unable to read user data response")
 	}
 	if infoResponse.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected user data response %d: %s", infoResponse.StatusCode, data)
+		return "", errors.Errorf("unexpected user data response %d: %s", infoResponse.StatusCode, data)
 	}
 	err = json.Unmarshal(data, &user)
 	if err != nil {
-		return "", fmt.Errorf("unable to parse user data: %s - %s", data, err)
+		return "", errors.Wrapf(err, "unable to parse user data: %s", data)
 	}
 	return user.Email, nil
 }

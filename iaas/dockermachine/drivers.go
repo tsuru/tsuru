@@ -5,8 +5,6 @@
 package dockermachine
 
 import (
-	"fmt"
-
 	"github.com/docker/machine/drivers/amazonec2"
 	"github.com/docker/machine/drivers/azure"
 	"github.com/docker/machine/drivers/digitalocean"
@@ -23,6 +21,7 @@ import (
 	"github.com/docker/machine/drivers/vmwarevcloudair"
 	"github.com/docker/machine/drivers/vmwarevsphere"
 	"github.com/docker/machine/libmachine/drivers/plugin"
+	"github.com/pkg/errors"
 )
 
 func RunDriver(driverName string) error {
@@ -58,7 +57,7 @@ func RunDriver(driverName string) error {
 	case "vmwarevsphere":
 		plugin.RegisterDriver(vmwarevsphere.NewDriver("", ""))
 	default:
-		return fmt.Errorf("Unsupported driver: %s\n", driverName)
+		return errors.Errorf("Unsupported driver: %s\n", driverName)
 	}
 	return nil
 }

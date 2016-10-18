@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -776,7 +776,7 @@ var followLogsAndCommit = action.Action{
 				return nil, result.err
 			}
 			if result.status != 0 {
-				return nil, fmt.Errorf("Exit status %d", result.status)
+				return nil, errors.Errorf("Exit status %d", result.status)
 			}
 		}
 		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
@@ -805,7 +805,7 @@ var updateAppImage = action.Action{
 		if currentImageName != args.imageId {
 			err := image.AppendAppImageName(args.app.GetName(), args.imageId)
 			if err != nil {
-				return nil, fmt.Errorf("unable to save image name: %s", err.Error())
+				return nil, errors.Wrap(err, "unable to save image name")
 			}
 		}
 		imgHistorySize := image.ImageHistorySize()

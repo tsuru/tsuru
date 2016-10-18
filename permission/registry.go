@@ -5,8 +5,9 @@
 package permission
 
 import (
-	"errors"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type registry struct {

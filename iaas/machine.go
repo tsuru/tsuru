@@ -9,6 +9,7 @@ package iaas
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -192,7 +193,7 @@ func collectionEnsureIdx() (*storage.Collection, error) {
 	err = coll.EnsureIndex(index)
 	if err != nil {
 		coll.Close()
-		return nil, fmt.Errorf(`Could not create index on address for machines collection.
+		return nil, errors.Errorf(`Could not create index on address for machines collection.
 This can be caused by multiple machines with the same address, please run
 "tsuru-admin machine-list" to check for duplicated entries and "tsuru-admin
 machine-destroy" to remove them.

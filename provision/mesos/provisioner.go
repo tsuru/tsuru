@@ -5,9 +5,9 @@
 package mesos
 
 import (
-	"errors"
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 )

@@ -5,12 +5,12 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"regexp"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/gnuflag"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/git"
 )
 
@@ -29,7 +29,7 @@ type GitGuesser struct{}
 func (g GitGuesser) GuessName(path string) (string, error) {
 	repoPath, err := git.DiscoverRepositoryPath(path)
 	if err != nil {
-		return "", fmt.Errorf("Git repository not found: %s.", err)
+		return "", errors.Wrap(err, "Git repository not found")
 	}
 	repo, err := git.OpenRepository(repoPath)
 	if err != nil {
@@ -42,7 +42,7 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	re := regexp.MustCompile(`^.*@.*:(.*)\.git$`)
 	matches := re.FindStringSubmatch(remoteURL)
 	if len(matches) < 2 {
-		return "", fmt.Errorf(`"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got %s`, remoteURL)
+		return "", errors.Errorf(`"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got %s`, remoteURL)
 	}
 	return matches[1], nil
 }
@@ -53,17 +53,15 @@ type MultiGuesser struct {
 }
 
 func (g MultiGuesser) GuessName(pathname string) (string, error) {
-	cumulativeErr := errors.New("")
-
+	var errors []error
 	for _, guesser := range g.Guessers {
 		app, err := guesser.GuessName(pathname)
 		if err == nil {
 			return app, nil
 		}
-		cumulativeErr = fmt.Errorf("%s%s\n", cumulativeErr, err)
+		errors = append(errors, err)
 	}
-
-	return "", cumulativeErr
+	return "", tsuruErrors.NewMultiError(errors...)
 }
 
 // Embed this struct if you want your command to guess the name of the app.
@@ -86,11 +84,11 @@ func (cmd *GuessingCommand) Guess() (string, error) {
 	}
 	path, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("Unable to guess app name: %s.", err)
+		return "", errors.Wrap(err, "Unable to guess app name")
 	}
 	name, err := cmd.guesser().GuessName(path)
 	if err != nil {
-		return "", fmt.Errorf(`tsuru wasn't able to guess the name of the app.
+		return "", errors.Errorf(`tsuru wasn't able to guess the name of the app.
 
 Use the --app flag to specify it.
 

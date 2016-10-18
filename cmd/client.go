@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +13,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/pkg/errors"
 	tsuruerr "github.com/tsuru/tsuru/errors"
 	tsuruio "github.com/tsuru/tsuru/io"
 )
@@ -47,10 +47,10 @@ func (c *Client) detectClientError(err error) error {
 	switch urlErr.Err.(type) {
 	case x509.UnknownAuthorityError:
 		target, _ := ReadTarget()
-		return fmt.Errorf("Failed to connect to tsuru server (%s): %s", target, urlErr.Err)
+		return errors.Wrapf(urlErr.Err, "Failed to connect to tsuru server (%s)", target)
 	}
 	target, _ := ReadTarget()
-	return fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", target)
+	return errors.Errorf("Failed to connect to tsuru server (%s), it's probably down.", target)
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
@@ -139,7 +139,7 @@ func StreamJSONResponse(w io.Writer, response *http.Response) error {
 	}
 	unparsed := output.Remaining()
 	if len(unparsed) > 0 {
-		return fmt.Errorf("unparsed message error: %s", string(unparsed))
+		return errors.Errorf("unparsed message error: %s", string(unparsed))
 	}
 	return nil
 }

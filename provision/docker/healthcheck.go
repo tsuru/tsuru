@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
@@ -64,11 +65,11 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 		}
 		rsp, err := net.Dial5Full60ClientNoKeepAlive.Do(req)
 		if err != nil {
-			lastError = fmt.Errorf("healthcheck fail(%s): %s", cont.ShortID(), err.Error())
+			lastError = errors.Wrapf(err, "healthcheck fail(%s)", cont.ShortID())
 		} else {
 			defer rsp.Body.Close()
 			if status != 0 && rsp.StatusCode != status {
-				lastError = fmt.Errorf("healthcheck fail(%s): wrong status code, expected %d, got: %d", cont.ShortID(), status, rsp.StatusCode)
+				lastError = errors.Errorf("healthcheck fail(%s): wrong status code, expected %d, got: %d", cont.ShortID(), status, rsp.StatusCode)
 			} else if matchRE != nil {
 				result, err := ioutil.ReadAll(rsp.Body)
 
@@ -76,7 +77,7 @@ func runHealthcheck(cont *container.Container, w io.Writer) error {
 					lastError = err
 				}
 				if !matchRE.Match(result) {
-					lastError = fmt.Errorf("healthcheck fail(%s): unexpected result, expected %q, got: %s", cont.ShortID(), match, string(result))
+					lastError = errors.Errorf("healthcheck fail(%s): unexpected result, expected %q, got: %s", cont.ShortID(), match, string(result))
 				}
 			}
 			if lastError != nil {

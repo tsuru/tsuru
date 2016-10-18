@@ -7,12 +7,12 @@
 package router
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -65,7 +65,7 @@ func Get(name string) (Router, error) {
 	}
 	factory, ok := routers[routerType]
 	if !ok {
-		return nil, fmt.Errorf("unknown router: %q.", routerType)
+		return nil, errors.Errorf("unknown router: %q.", routerType)
 	}
 	r, err := factory(name, prefix)
 	if err != nil {
@@ -288,7 +288,7 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 		return err
 	}
 	if data1["kind"] != data2["kind"] {
-		return fmt.Errorf("swap is only allowed between routers of the same kind. %q uses %q, %q uses %q",
+		return errors.Errorf("swap is only allowed between routers of the same kind. %q uses %q, %q uses %q",
 			backend1, data1["kind"], backend2, data2["kind"])
 	}
 	if cnameOnly {

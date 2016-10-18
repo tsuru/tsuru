@@ -14,9 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
@@ -38,21 +39,21 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
 		file, _, err = r.FormFile("file")
 		if err != nil {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: err.Error(),
 			}
 		}
 		fileSize, err = file.Seek(0, os.SEEK_END)
 		if err != nil {
-			return fmt.Errorf("unable to find uploaded file size: %s", err)
+			return errors.Wrap(err, "unable to find uploaded file size")
 		}
 		file.Seek(0, os.SEEK_SET)
 	}
 	archiveURL := r.FormValue("archive-url")
 	image := r.FormValue("image")
 	if image == "" && archiveURL == "" && file == nil {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you must specify either the archive-url, a image url or upload a file.",
 		}
@@ -66,7 +67,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	if origin != "" {
 		if !app.ValidateOrigin(origin) {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid deployment origin",
 			}
@@ -75,7 +76,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var userName string
 	if t.IsAppToken() {
 		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
-			return &errors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
+			return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
 		}
 		userName = r.FormValue("user")
 	} else {
@@ -84,14 +85,14 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	instance, err := app.GetByName(appName)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	var build bool
 	buildString := r.FormValue("build")
 	if buildString != "" {
 		build, err = strconv.ParseBool(buildString)
 		if err != nil {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: err.Error(),
 			}
@@ -127,7 +128,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if t.GetAppName() != app.InternalAppName {
 		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 		if !canDeploy {
-			return &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
+			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 		}
 	}
 	var imageID string
@@ -191,12 +192,12 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	diff := r.FormValue("customdata")
 	instance, err := app.GetByName(appName)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if t.GetAppName() != app.InternalAppName {
 		canDiffDeploy := permission.Check(t, permission.PermAppReadDeploy, contextsForApp(instance)...)
 		if !canDiffDeploy {
-			return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
+			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 		}
 	}
 	evt, err := event.GetRunning(appTarget(appName), permission.PermAppDeploy.FullName())
@@ -222,11 +223,11 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
 	image := r.FormValue("image")
 	if image == "" {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you cannot rollback without an image name",
 		}
@@ -234,7 +235,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	origin := r.FormValue("origin")
 	if origin != "" {
 		if !app.ValidateOrigin(origin) {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: "Invalid deployment origin",
 			}
@@ -255,7 +256,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	opts.GetKind()
 	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canRollback {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
 	var imageID string
 	evt, err := event.New(&event.Opts{
@@ -323,7 +324,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	deploy, err := app.GetDeploy(depID)
 	if err != nil {
 		if err == event.ErrEventNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
+			return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 		}
 		return err
 	}
@@ -333,7 +334,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	canGet := permission.Check(t, permission.PermAppReadDeploy, contextsForApp(dbApp)...)
 	if !canGet {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(deploy)

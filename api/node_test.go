@@ -109,7 +109,7 @@ func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result["Error"], check.Equals, "node with address \"http://mysrv1\" already exists in provisioner \"fake\"\n\n")
+	c.Assert(result["Error"], check.Equals, "node with address \"http://mysrv1\" already exists in provisioner \"fake\"")
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 }
 
@@ -184,7 +184,7 @@ func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result["Error"], check.Equals, "address=url parameter is required\n\n")
+	c.Assert(result["Error"], check.Equals, "address=url parameter is required")
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeNode},
 		Owner:  s.token.GetUserName(),
@@ -222,7 +222,7 @@ func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result["Error"], check.Equals, "Invalid address url: host cannot be empty\n\n")
+	c.Assert(result["Error"], check.Equals, "Invalid address url: host cannot be empty")
 	params = provision.AddNodeOptions{
 		Register: true,
 		Metadata: map[string]string{
@@ -242,7 +242,7 @@ func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result["Error"], check.Equals, "Invalid address url: scheme must be http[s]\n\n")
+	c.Assert(result["Error"], check.Equals, "Invalid address url: scheme must be http[s]")
 }
 
 func (s *S) TestAddNodeHandlerNoPool(c *check.C) {

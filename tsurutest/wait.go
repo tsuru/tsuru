@@ -6,8 +6,9 @@
 package tsurutest
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func WaitCondition(timeout time.Duration, cond func() bool) error {
@@ -31,6 +32,6 @@ func WaitCondition(timeout time.Duration, cond func() bool) error {
 		return nil
 	case <-time.After(timeout):
 		close(exit)
-		return fmt.Errorf("timed out waiting for condition after %s", timeout)
+		return errors.Errorf("timed out waiting for condition after %s", timeout)
 	}
 }

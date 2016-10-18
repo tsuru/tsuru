@@ -138,7 +138,7 @@ func (s *S) TestOAuthParseInvalid(c *check.C) {
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := OAuthParser(&OAuthScheme{})
 	_, err := parser.Parse(rsp)
-	c.Assert(err, check.ErrorMatches, `unable to parse user data: {xxxxxxx} - invalid character.*`)
+	c.Assert(err, check.ErrorMatches, `unable to parse user data: {xxxxxxx}: invalid character.*`)
 }
 
 func (s *S) TestOAuthParseInvalidStatus(c *check.C) {

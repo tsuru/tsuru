@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
@@ -100,13 +101,13 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	requestID := context.GetRequestID(r, requestIDHeader)
 	err = service.CreateServiceInstance(instance, &srv, user, requestID)
 	if err == service.ErrInstanceNameAlreadyExists {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusConflict,
 			Message: err.Error(),
 		}
 	}
 	if err == service.ErrInvalidInstanceName {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
 		}
@@ -131,7 +132,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
 	if description == "" {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid value for description",
 		}
@@ -354,7 +355,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := context.GetRequestID(r, requestIDHeader)
 	if b, err = serviceInstance.Status(requestID); err != nil {
-		return fmt.Errorf("Could not retrieve status of service instance, error: %s", err)
+		return errors.Wrap(err, "Could not retrieve status of service instance, error")
 	}
 	_, err = fmt.Fprintf(w, `Service instance "%s" is %s`, instanceName, b)
 	return err
@@ -464,7 +465,7 @@ func getServiceInstanceOrError(serviceName string, instanceName string) (*servic
 	if err != nil {
 		switch err {
 		case service.ErrServiceInstanceNotFound:
-			return nil, &errors.HTTP{
+			return nil, &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}

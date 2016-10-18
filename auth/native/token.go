@@ -7,10 +7,10 @@ package native
 import (
 	"crypto"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -80,7 +80,7 @@ func loadConfig() error {
 			cost = bcrypt.DefaultCost
 		}
 		if cost < bcrypt.MinCost || cost > bcrypt.MaxCost {
-			return fmt.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
+			return errors.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
 		}
 	}
 	return nil

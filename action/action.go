@@ -5,9 +5,9 @@
 package action
 
 import (
-	"errors"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 )
 

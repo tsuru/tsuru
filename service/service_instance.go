@@ -6,11 +6,11 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"regexp"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"

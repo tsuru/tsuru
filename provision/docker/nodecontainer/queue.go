@@ -5,10 +5,10 @@
 package nodecontainer
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
@@ -99,6 +99,6 @@ func (t *runBs) waitDocker(client *docker.Client) error {
 		return err
 	case <-timeoutChan:
 		close(exit)
-		return fmt.Errorf("Docker API at %q didn't respond after %d seconds", client.Endpoint(), timeout)
+		return errors.Errorf("Docker API at %q didn't respond after %d seconds", client.Endpoint(), timeout)
 	}
 }

@@ -6,12 +6,12 @@ package scopedconfig
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"gopkg.in/mgo.v2"
@@ -187,13 +187,13 @@ func (n *ScopedConfig) LoadPoolsMerge(filterPools []string, allVal interface{}, 
 	if allValValue.Type().Kind() != reflect.Map ||
 		allValValue.Type().Key().Kind() != reflect.String ||
 		allValValue.Type().Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("received object must be a map[string]<yourstruct>, received: %v", allValValue.Type())
+		return errors.Errorf("received object must be a map[string]<yourstruct>, received: %v", allValValue.Type())
 	}
 	if isPtr {
 		allValValue.Set(reflect.MakeMap(allValValue.Type()))
 	}
 	if allValValue.IsNil() {
-		return fmt.Errorf("uninitialized map")
+		return errors.Errorf("uninitialized map")
 	}
 	var defaultValues scopedConfigEntry
 	var allPoolValues []scopedConfigEntry
@@ -374,7 +374,7 @@ func (n *ScopedConfig) mergeInto(base reflect.Value, pool reflect.Value) (merged
 func (n *ScopedConfig) mergeIntoInherited(base reflect.Value, pool reflect.Value, setInherited bool) (merged bool, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("error trying to merge items: %s", r)
+			err = errors.Errorf("error trying to merge items: %s", r)
 		}
 	}()
 	switch base.Kind() {

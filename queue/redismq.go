@@ -5,10 +5,10 @@
 package queue
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruRedis "github.com/tsuru/tsuru/redis"
 	"gopkg.in/redis.v3"
@@ -108,7 +108,7 @@ func (factory *redisPubSubFactory) getConn() (tsuruRedis.PubSubClient, error) {
 	var ok bool
 	factory.pool, ok = client.(tsuruRedis.PubSubClient)
 	if !ok {
-		return nil, fmt.Errorf("redis client is not a capable of pubsub: %#v", client)
+		return nil, errors.Errorf("redis client is not a capable of pubsub: %#v", client)
 	}
 	return factory.pool, nil
 }

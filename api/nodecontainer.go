@@ -12,8 +12,9 @@ import (
 	"time"
 
 	"github.com/ajg/form"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
@@ -101,7 +102,7 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	err = nodecontainer.AddNewContainer(poolName, &config)
 	if err != nil {
 		if _, ok := err.(nodecontainer.ValidationErr); ok {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: err.Error(),
 			}
@@ -128,7 +129,7 @@ func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	configMap, err := nodecontainer.LoadNodeContainersForPools(name)
 	if err != nil {
 		if err == nodecontainer.ErrNodeContainerNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
@@ -198,13 +199,13 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	err = nodecontainer.UpdateContainer(poolName, &config)
 	if err != nil {
 		if err == nodecontainer.ErrNodeContainerNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
 		}
 		if _, ok := err.(nodecontainer.ValidationErr); ok {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: err.Error(),
 			}
@@ -245,7 +246,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	defer func() { evt.Done(err) }()
 	err = nodecontainer.RemoveContainer(poolName, name)
 	if err == nodecontainer.ErrNodeContainerNotFound {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprintf("node container %q not found for pool %q", name, poolName),
 		}
@@ -287,7 +288,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	err = nodecontainer.ResetImage(poolName, name)
 	if err != nil {
 		if err == nodecontainer.ErrNodeContainerNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
@@ -314,7 +315,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 	}
 	if len(allErrors) > 0 {
-		return fmt.Errorf("multiple errors upgrading nodes: %s", strings.Join(allErrors, "; "))
+		return errors.Errorf("multiple errors upgrading nodes: %s", strings.Join(allErrors, "; "))
 	}
 	return nil
 }

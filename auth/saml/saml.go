@@ -10,20 +10,21 @@ import (
 	"strings"
 
 	"github.com/diego-araujo/go-saml"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/validation"
 )
 
 var (
-	ErrMissingRequestIdError        = &errors.ValidationError{Message: "You must provide RequestID to login"}
-	ErrMissingFormValueError        = &errors.ValidationError{Message: "SAMLResponse form value missing"}
-	ErrParseResponseError           = &errors.ValidationError{Message: "SAMLResponse parse error"}
-	ErrEmptyIDPResponseError        = &errors.ValidationError{Message: "SAMLResponse form value missing"}
-	ErrRequestWaitingForCredentials = &errors.ValidationError{Message: "Waiting credentials from IDP"}
+	ErrMissingRequestIdError        = &tsuruErrors.ValidationError{Message: "You must provide RequestID to login"}
+	ErrMissingFormValueError        = &tsuruErrors.ValidationError{Message: "SAMLResponse form value missing"}
+	ErrParseResponseError           = &tsuruErrors.ValidationError{Message: "SAMLResponse parse error"}
+	ErrEmptyIDPResponseError        = &tsuruErrors.ValidationError{Message: "SAMLResponse form value missing"}
+	ErrRequestWaitingForCredentials = &tsuruErrors.ValidationError{Message: "Waiting credentials from IDP"}
 )
 
 type SAMLAuthParser interface {
@@ -228,12 +229,12 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	}
 	if !validation.ValidateEmail(email) {
 		if strings.Contains(email, "@") {
-			return &errors.ValidationError{Message: "attribute user identity contains invalid character"}
+			return &tsuruErrors.ValidationError{Message: "attribute user identity contains invalid character"}
 		}
 		// we need create a unique email for the user
 		email = strings.Join([]string{email, "@", s.idpHost()}, "")
 		if !validation.ValidateEmail(email) {
-			return &errors.ValidationError{Message: "could not create valid email with auth:saml:idp-attribute-user-identity"}
+			return &tsuruErrors.ValidationError{Message: "could not create valid email with auth:saml:idp-attribute-user-identity"}
 		}
 	}
 	req.Authed = true
@@ -338,16 +339,16 @@ func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 		response, err = saml.ParseCompressedEncodedResponse(xml)
 	}
 	if err != nil || response == nil {
-		return nil, fmt.Errorf("unable to parse identity provider data: %s - %s", xml, err)
+		return nil, errors.Wrapf(err, "unable to parse identity provider data: %s", xml)
 	}
 	sp, err := s.createSP()
 	if err != nil {
-		return nil, fmt.Errorf("unable to create service provider object: %s", err)
+		return nil, errors.Wrap(err, "unable to create service provider object")
 	}
 	if response.IsEncrypted() {
 		if err = response.Decrypt(sp.PrivateKeyPath); err != nil {
 			respData, _ := response.String()
-			return nil, fmt.Errorf("unable to decrypt identity provider data: %s - %s", respData, err)
+			return nil, errors.Wrapf(err, "unable to decrypt identity provider data: %s", respData)
 		}
 	}
 	resp, _ := response.String()

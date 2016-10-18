@@ -6,7 +6,6 @@ package docker
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/ajg/form"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
@@ -131,7 +131,7 @@ func (c *autoScaleRunCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	unparsed := w.Remaining()
 	if len(unparsed) > 0 {
-		return fmt.Errorf("unparsed message error: %s", string(unparsed))
+		return errors.Errorf("unparsed message error: %s", string(unparsed))
 	}
 	return nil
 }

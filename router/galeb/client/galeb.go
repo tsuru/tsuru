@@ -7,7 +7,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 )
@@ -95,11 +95,11 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	}
 	if rsp.StatusCode != http.StatusCreated {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		return "", fmt.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
+		return "", errors.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
 	}
 	location := rsp.Header.Get("Location")
 	if location == "" {
-		return "", fmt.Errorf("POST %s: empty location header. PARAMS: %#v", path, params)
+		return "", errors.Errorf("POST %s: empty location header. PARAMS: %#v", path, params)
 	}
 	return location, nil
 }
@@ -182,7 +182,7 @@ func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPo
 	}
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return c.waitStatusOK(poolID)
 }
@@ -260,7 +260,7 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 	}
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
-		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return c.waitStatusOK(ruleID)
 }
@@ -361,7 +361,7 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET /target/search/findByParentName?name={parentName}: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, errors.Errorf("GET /target/search/findByParentName?name={parentName}: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -370,7 +370,7 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, fmt.Errorf("GET /target/search/findByParentName?name={parentName}: unable to parse: %s: %s", string(responseData), err)
+		return nil, errors.Wrapf(err, "GET /target/search/findByParentName?name={parentName}: unable to parse: %s", string(responseData))
 	}
 	return rspObj.Embedded.Targets, nil
 }
@@ -387,7 +387,7 @@ func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, er
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET /rule/{id}/parents: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, errors.Errorf("GET /rule/{id}/parents: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -396,7 +396,7 @@ func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, er
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, fmt.Errorf("GET /rule/{id}/parents: unable to parse: %s: %s", string(responseData), err)
+		return nil, errors.Wrapf(err, "GET /rule/{id}/parents: unable to parse: %s", string(responseData))
 	}
 	return rspObj.Embedded.VirtualHosts, nil
 }
@@ -409,10 +409,10 @@ func (c *GalebClient) Healthcheck() error {
 	data, _ := ioutil.ReadAll(rsp.Body)
 	dataStr := string(data)
 	if rsp.StatusCode != http.StatusOK {
-		return fmt.Errorf("wrong healthcheck status code: %d. content: %s", rsp.StatusCode, dataStr)
+		return errors.Errorf("wrong healthcheck status code: %d. content: %s", rsp.StatusCode, dataStr)
 	}
 	if !strings.HasPrefix(dataStr, "WORKING") {
-		return fmt.Errorf("wrong healthcheck response: %s.", dataStr)
+		return errors.Errorf("wrong healthcheck response: %s.", dataStr)
 	}
 	return nil
 }
@@ -425,7 +425,7 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return errors.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return nil
 }
@@ -445,7 +445,7 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	}
 	err = json.Unmarshal(rspData, &rspObj)
 	if err != nil {
-		return "", fmt.Errorf("unable to parse find response %q: %s", string(rspData), err)
+		return "", errors.Wrapf(err, "unable to parse find response %q", string(rspData))
 	}
 	itemList := rspObj.Embedded[item]
 	if len(itemList) == 0 {
@@ -464,16 +464,16 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 func (c *GalebClient) fetchPathStatus(path string) (string, error) {
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
-		return "", fmt.Errorf("GET %s: unable to make request: %s", path, err)
+		return "", errors.Wrapf(err, "GET %s: unable to make request", path)
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return "", errors.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	var response commonPostResponse
 	err = json.Unmarshal(responseData, &response)
 	if err != nil {
-		return "", fmt.Errorf("GET %s: unable to unmarshal response: %s: %s", path, err, string(responseData))
+		return "", errors.Wrapf(err, "GET %s: unable to unmarshal response. data: %s", path, string(responseData))
 	}
 	return response.Status, nil
 }
@@ -494,7 +494,7 @@ loop:
 		}
 		select {
 		case <-timeout:
-			err = fmt.Errorf("GET %s: timeout after %v waiting for status change from %s", path, c.WaitTimeout, status)
+			err = errors.Errorf("GET %s: timeout after %v waiting for status change from %s", path, c.WaitTimeout, status)
 			break loop
 		default:
 			time.Sleep(500 * time.Millisecond)
@@ -504,7 +504,7 @@ loop:
 		return err
 	}
 	if status != STATUS_OK {
-		return fmt.Errorf("GET %s: invalid status %s", path, status)
+		return errors.Errorf("GET %s: invalid status %s", path, status)
 	}
 	return nil
 }

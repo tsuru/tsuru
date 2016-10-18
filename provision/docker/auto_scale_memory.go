@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 )
@@ -34,7 +35,7 @@ func (a *memoryScaler) nodesMemoryData(nodes []*cluster.Node) (map[string]*nodeM
 	for _, node := range nodes {
 		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.TotalMemoryMetadata], 64)
 		if totalMemory == 0.0 {
-			return nil, fmt.Errorf("no value found for memory metadata (%s) in node %s", a.TotalMemoryMetadata, node.Address)
+			return nil, errors.Errorf("no value found for memory metadata (%s) in node %s", a.TotalMemoryMetadata, node.Address)
 		}
 		maxMemory := int64(float64(a.rule.MaxMemoryRatio) * totalMemory)
 		data := &nodeMemoryData{
@@ -46,7 +47,7 @@ func (a *memoryScaler) nodesMemoryData(nodes []*cluster.Node) (map[string]*nodeM
 		for _, cont := range containersMap[node.Address] {
 			a, err := app.GetByName(cont.AppName)
 			if err != nil {
-				return nil, fmt.Errorf("couldn't find container app (%s): %s", cont.AppName, err)
+				return nil, errors.Wrapf(err, "couldn't find container app (%s)", cont.AppName)
 			}
 			data.containersMemory[cont.ID] = a.Plan.Memory
 			data.reserved += a.Plan.Memory
@@ -83,7 +84,7 @@ func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, groupMetadata s
 func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scalerResult, error) {
 	plans, err := app.PlansList()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't list plans: %s", err)
+		return nil, errors.Wrap(err, "couldn't list plans")
 	}
 	var maxPlanMemory int64
 	for _, plan := range plans {
@@ -95,7 +96,7 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scal
 		var defaultPlan *app.Plan
 		defaultPlan, err = app.DefaultPlan()
 		if err != nil {
-			return nil, fmt.Errorf("couldn't get default plan: %s", err)
+			return nil, errors.Wrap(err, "couldn't get default plan")
 		}
 		maxPlanMemory = defaultPlan.Memory
 	}
@@ -118,7 +119,7 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scal
 	for _, node := range nodes {
 		data := memoryData[node.Address]
 		if maxPlanMemory > data.maxMemory {
-			return nil, fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
+			return nil, errors.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
 		totalReserved += data.reserved
 		totalMem += data.maxMemory

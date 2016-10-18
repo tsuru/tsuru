@@ -5,9 +5,7 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 )
 
@@ -24,7 +22,7 @@ func checkGandalf() error {
 	if value, err := config.GetString("repo-manager"); value == "gandalf" || value == "" {
 		_, err = config.Get("git:api-server")
 		if err != nil {
-			return fmt.Errorf("config error: you must define the %q config key", "git:api-server")
+			return errors.Errorf("config error: you must define the %q config key", "git:api-server")
 		}
 	}
 	return nil
@@ -102,12 +100,12 @@ func checkDockerBasicConfig() error {
 func checkCluster() error {
 	storage, _ := config.GetString("docker:cluster:storage")
 	if storage != "mongodb" && storage != "" {
-		return fmt.Errorf("Config Error: docker:cluster:storage is deprecated. mongodb is now the only storage available.")
+		return errors.Errorf("Config Error: docker:cluster:storage is deprecated. mongodb is now the only storage available.")
 	}
 	mustHave := []string{"docker:cluster:mongo-url", "docker:cluster:mongo-database"}
 	for _, value := range mustHave {
 		if _, err := config.Get(value); err != nil {
-			return fmt.Errorf("Config Error: you should configure %q", value)
+			return errors.Errorf("Config Error: you should configure %q", value)
 		}
 	}
 	return nil
@@ -117,14 +115,14 @@ func checkCluster() error {
 // It verifies your scheduler configuration and validates related confs.
 func checkScheduler() error {
 	if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
-		return fmt.Errorf(`Using docker:servers is deprecated, please remove it your config and use "tsuru-admin docker-node-add" do add docker nodes.`)
+		return errors.Errorf(`Using docker:servers is deprecated, please remove it your config and use "tsuru-admin docker-node-add" do add docker nodes.`)
 	}
 	isSegregate, err := config.GetBool("docker:segregate")
 	if err == nil {
 		if isSegregate {
 			return config.NewWarning(`Setting "docker:segregate" is not necessary anymore, this is the default behavior from now on.`)
 		} else {
-			return fmt.Errorf(`You must remove "docker:segregate" from your config.`)
+			return errors.Errorf(`You must remove "docker:segregate" from your config.`)
 		}
 	}
 	return nil
@@ -135,7 +133,7 @@ func checkScheduler() error {
 func checkRouter() error {
 	defaultRouter, _ := config.GetString("docker:router")
 	if defaultRouter == "" {
-		return fmt.Errorf(`You must configure a default router in "docker:router".`)
+		return errors.Errorf(`You must configure a default router in "docker:router".`)
 	}
 	isHipacheOld := false
 	if defaultRouter == "hipache" {
@@ -147,11 +145,11 @@ func checkRouter() error {
 		return config.NewWarning(`Setting "hipache:*" config entries is deprecated. You should configure your router with "routers:*". See http://docs.tsuru.io/en/latest/reference/config.html#routers for more details.`)
 	}
 	if routerConf == nil {
-		return fmt.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)
+		return errors.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)
 	}
 	routerType, _ := config.Get("routers:" + defaultRouter + ":type")
 	if routerType == nil {
-		return fmt.Errorf(`You must configure your default router type in "routers:%s:type".`, defaultRouter)
+		return errors.Errorf(`You must configure your default router type in "routers:%s:type".`, defaultRouter)
 	}
 	return nil
 }
@@ -159,7 +157,7 @@ func checkRouter() error {
 func checkConfigPresent(keys []string, fmtMsg string) error {
 	for _, key := range keys {
 		if _, err := config.Get(key); err != nil {
-			return fmt.Errorf(fmtMsg, key)
+			return errors.Errorf(fmtMsg, key)
 		}
 	}
 	return nil

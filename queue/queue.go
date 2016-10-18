@@ -8,10 +8,10 @@
 package queue
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/monsterqueue/mongodb"
@@ -98,7 +98,7 @@ func TestingWaitQueueTasks(n int, timeout time.Duration) error {
 			}
 			select {
 			case <-timeoutCh:
-				return fmt.Errorf("timeout waiting for task after %v", timeout)
+				return errors.Errorf("timeout waiting for task after %v", timeout)
 			case <-time.After(10 * time.Millisecond):
 			}
 		}
@@ -139,7 +139,7 @@ func Queue() (monsterqueue.Queue, error) {
 	var err error
 	queueData.instance, err = mongodb.NewQueue(conf)
 	if err != nil {
-		return nil, fmt.Errorf("could not create queue instance, please check queue:mongo-url and queue:mongo-database config entries. error: %s", err)
+		return nil, errors.Wrap(err, "could not create queue instance, please check queue:mongo-url and queue:mongo-database config entries. error")
 	}
 	shutdown.Register(&queueData)
 	go queueData.instance.ProcessLoop()

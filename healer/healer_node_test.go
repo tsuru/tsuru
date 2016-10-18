@@ -559,7 +559,7 @@ func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
 		},
 	}
 	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[node healer update\] node not found for addrs: \[10.0.0.1\]`)
+	c.Assert(err, check.ErrorMatches, `\[node healer update\]: node not found for addrs: \[10.0.0.1\]`)
 }
 
 func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
@@ -631,7 +631,7 @@ func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
 		},
 	}
 	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[node healer update\] addrs match multiple nodes: \[.*? .*?\]`)
+	c.Assert(err, check.ErrorMatches, `\[node healer update\]: addrs match multiple nodes: \[.*? .*?\]`)
 }
 
 func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {

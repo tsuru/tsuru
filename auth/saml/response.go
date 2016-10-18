@@ -5,16 +5,15 @@
 package saml
 
 import (
-	"fmt"
-
 	"github.com/diego-araujo/go-saml"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 )
 
 var (
-	ErrRequestIdNotFound = &errors.ValidationError{Message: "Field attribute InResponseTo not found in saml response data"}
-	ErrCheckSignature    = &errors.ValidationError{Message: "SAMLResponse signature validation"}
+	ErrRequestIdNotFound = &tsuruErrors.ValidationError{Message: "Field attribute InResponseTo not found in saml response data"}
+	ErrCheckSignature    = &tsuruErrors.ValidationError{Message: "SAMLResponse signature validation"}
 )
 
 func getRequestIdFromResponse(r *saml.Response) (string, error) {
@@ -33,11 +32,11 @@ func getRequestIdFromResponse(r *saml.Response) (string, error) {
 func getUserIdentity(r *saml.Response) (string, error) {
 	attrFriendlyNameIdentifier, err := config.GetString("auth:saml:idp-attribute-user-identity")
 	if err != nil {
-		return "", fmt.Errorf("error reading config auth:saml:idp-attribute-user-identity: %s ", err)
+		return "", errors.Wrap(err, "error reading config auth:saml:idp-attribute-user-identity")
 	}
 	userIdentifier := r.GetAttribute(attrFriendlyNameIdentifier)
 	if userIdentifier == "" {
-		return "", fmt.Errorf("unable to parse identity provider data - not found  <Attribute FriendlyName=" + attrFriendlyNameIdentifier + "> ")
+		return "", errors.Errorf("unable to parse identity provider data - not found  <Attribute FriendlyName=" + attrFriendlyNameIdentifier + "> ")
 	}
 	return userIdentifier, nil
 }

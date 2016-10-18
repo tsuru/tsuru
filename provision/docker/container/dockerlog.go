@@ -5,9 +5,9 @@
 package container
 
 import (
-	"errors"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/scopedconfig"
 )
 

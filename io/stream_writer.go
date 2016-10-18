@@ -7,9 +7,9 @@ package io
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 type streamWriter struct {
@@ -46,7 +46,7 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 				if len(parts) == 1 {
 					return writtenCount, nil
 				} else {
-					err = fmt.Errorf("Unparseable chunk: %q", parts[0])
+					err = errors.Errorf("Unparseable chunk: %q", parts[0])
 				}
 			}
 			return writtenCount, err

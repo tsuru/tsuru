@@ -10,11 +10,12 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/tsuru/tsuru/errors"
+	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 )
 
-var ErrUnauthorized = &errors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
-var ErrTooManyTeams = &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team to execute this action."}
+var ErrUnauthorized = &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
+var ErrTooManyTeams = &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team to execute this action."}
 
 type PermissionScheme struct {
 	name     string
@@ -64,7 +65,7 @@ func parseContext(ctx string) (contextType, error) {
 			return t, nil
 		}
 	}
-	return "", fmt.Errorf("invalid context type %q", ctx)
+	return "", errors.Errorf("invalid context type %q", ctx)
 }
 
 func (l PermissionSchemeList) Len() int           { return len(l) }

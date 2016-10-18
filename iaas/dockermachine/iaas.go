@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 )
 
-var errDriverNotSet = fmt.Errorf("driver is mandatory")
+var errDriverNotSet = errors.Errorf("driver is mandatory")
 
 func init() {
 	iaas.RegisterIaasProvider("dockermachine", newDockerMachineIaaS)

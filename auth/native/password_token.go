@@ -6,9 +6,9 @@ package native
 
 import (
 	"crypto"
-	"errors"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"

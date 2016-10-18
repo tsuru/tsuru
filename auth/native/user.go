@@ -6,12 +6,12 @@ package native
 
 import (
 	"bytes"
-	"errors"
 	"math/rand"
 	"net"
 	"net/smtp"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/log"

@@ -5,12 +5,12 @@
 package routertest
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/router"
 )
 

@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,9 +13,10 @@ import (
 	"time"
 
 	"github.com/ajg/form"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
@@ -29,17 +29,17 @@ import (
 
 func validateNodeAddress(address string) error {
 	if address == "" {
-		return fmt.Errorf("address=url parameter is required")
+		return errors.Errorf("address=url parameter is required")
 	}
 	url, err := url.ParseRequestURI(address)
 	if err != nil {
-		return fmt.Errorf("Invalid address url: %s", err.Error())
+		return errors.Wrap(err, "Invalid address url")
 	}
 	if url.Host == "" {
-		return fmt.Errorf("Invalid address url: host cannot be empty")
+		return errors.Errorf("Invalid address url: host cannot be empty")
 	}
 	if !strings.HasPrefix(url.Scheme, "http") {
-		return fmt.Errorf("Invalid address url: scheme must be http[s]")
+		return errors.Errorf("Invalid address url: scheme must be http[s]")
 	}
 	return nil
 }
@@ -65,7 +65,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 	prov, _, err := provision.FindNode(address)
 	if err != provision.ErrNodeNotFound {
 		if err == nil {
-			return "", nil, fmt.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
+			return "", nil, errors.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
 		}
 		return "", nil, err
 	}
@@ -90,24 +90,24 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	err = r.ParseForm()
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	var params provision.AddNodeOptions
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if templateName, ok := params.Metadata["template"]; ok {
 		params.Metadata, err = iaas.ExpandTemplate(templateName, params.Metadata)
 		if err != nil {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+			return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 	}
 	poolName := params.Metadata["pool"]
 	if poolName == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "pool is required"}
 	}
 	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, poolName)) {
 		return permission.ErrUnauthorized
@@ -150,7 +150,10 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	addr, response, err := addNodeForParams(nodeProv, params)
 	evt.Target.Value = addr
 	if err != nil {
-		return fmt.Errorf("%s\n\n%s", err, response["description"])
+		if desc := response["description"]; desc != "" {
+			return errors.Wrapf(err, "Instructions:\n%s", desc)
+		}
+		return err
 	}
 	return nil
 }
@@ -166,12 +169,12 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	r.ParseForm()
 	address := r.URL.Query().Get(":address")
 	if address == "" {
-		return fmt.Errorf("Node address is required.")
+		return errors.Errorf("Node address is required.")
 	}
 	prov, node, err := provision.FindNode(address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
@@ -327,28 +330,28 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	err = r.ParseForm()
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	var params provision.UpdateNodeOptions
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&params, r.Form)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if params.Disable && params.Enable {
-		return &errors.HTTP{
+		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "A node can't be enabled and disabled simultaneously.",
 		}
 	}
 	if params.Address == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
 	prov, node, err := provision.FindNode(params.Address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
@@ -403,7 +406,7 @@ func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	_, node, err := provision.FindNode(address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
@@ -441,7 +444,7 @@ func listUnitsByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	a, err := app.GetByName(appName)
 	if err != nil {
 		if err == app.ErrAppNotFound {
-			return &errors.HTTP{
+			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}

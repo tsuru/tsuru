@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -34,7 +35,7 @@ func (r *autoScaleRule) normalize() error {
 	if r.ScaleDownRatio == 0.0 {
 		r.ScaleDownRatio = 1.333
 	} else if r.ScaleDownRatio <= 1.0 {
-		err := fmt.Errorf("invalid rule, scale down ratio needs to be greater than 1.0, got %f", r.ScaleDownRatio)
+		err := errors.Errorf("invalid rule, scale down ratio needs to be greater than 1.0, got %f", r.ScaleDownRatio)
 		r.Error = err.Error()
 		return err
 	}
@@ -44,7 +45,7 @@ func (r *autoScaleRule) normalize() error {
 	}
 	TotalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	if r.Enabled && r.MaxContainerCount <= 0 && (TotalMemoryMetadata == "" || r.MaxMemoryRatio <= 0) {
-		err := fmt.Errorf("invalid rule, either memory information or max container count must be set")
+		err := errors.Errorf("invalid rule, either memory information or max container count must be set")
 		r.Error = err.Error()
 		return err
 	}

@@ -5,12 +5,12 @@
 package digitalocean
 
 import (
-	"errors"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/digitalocean/godo"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"

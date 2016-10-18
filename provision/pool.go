@@ -5,8 +5,7 @@
 package provision
 
 import (
-	"errors"
-
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

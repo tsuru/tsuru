@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db/storage"
@@ -399,7 +400,7 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 	log.Debugf("committing container %s", c.ID)
 	parts := strings.Split(c.BuildingImage, ":")
 	if len(parts) < 2 {
-		return "", log.WrapError(fmt.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))
+		return "", log.WrapError(errors.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))
 	}
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
@@ -408,7 +409,7 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 	image, err := p.Cluster().CommitContainer(opts)
 	done()
 	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
+		return "", log.WrapError(errors.Wrapf(err, "error in commit container %s", c.ID))
 	}
 	imgHistory, err := p.Cluster().ImageHistory(c.BuildingImage)
 	imgSize := ""
@@ -436,14 +437,14 @@ func (c *Container) Commit(p DockerProvisioner, writer io.Writer) (string, error
 		break
 	}
 	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
+		return "", log.WrapError(errors.Wrapf(err, "error in push image %s", c.BuildingImage))
 	}
 	return c.BuildingImage, nil
 }
 
 func (c *Container) Sleep(p DockerProvisioner) error {
 	if c.Status != provision.StatusStarted.String() && c.Status != provision.StatusStarting.String() {
-		return fmt.Errorf("container %s is not starting or started", c.ID)
+		return errors.Errorf("container %s is not starting or started", c.ID)
 	}
 	done := p.ActionLimiter().Start(c.HostAddr)
 	err := p.Cluster().StopContainer(c.ID, 10)

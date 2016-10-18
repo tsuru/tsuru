@@ -8,11 +8,11 @@
 package exectest
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/exec"
 	"github.com/tsuru/tsuru/safe"
 )

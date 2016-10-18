@@ -11,11 +11,11 @@
 package gandalf
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/app"

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
@@ -107,7 +108,7 @@ func (a *autoScaleConfig) run() error {
 		err := a.runScaler()
 		if err != nil {
 			a.logError(err.Error())
-			err = fmt.Errorf("[node autoscale] %s", err.Error())
+			err = errors.Wrap(err, "[node autoscale]")
 		}
 		select {
 		case <-a.done:
@@ -151,12 +152,12 @@ func (a *autoScaleConfig) String() string {
 func (a *autoScaleConfig) runScaler() (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
-			retErr = fmt.Errorf("recovered panic, we can never stop! panic: %v", r)
+			retErr = errors.Errorf("recovered panic, we can never stop! panic: %v", r)
 		}
 	}()
 	nodes, err := a.provisioner.Cluster().Nodes()
 	if err != nil {
-		retErr = fmt.Errorf("error getting nodes: %s", err.Error())
+		retErr = errors.Wrap(err, "error getting nodes")
 		return
 	}
 	clusterMap := map[string][]*cluster.Node{}
@@ -221,7 +222,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 	}
 	if err != nil {
 		if err != mgo.ErrNotFound {
-			retErr = fmt.Errorf("unable to fetch auto scale rules for %s: %s", pool, err)
+			retErr = errors.Wrapf(err, "unable to fetch auto scale rules for %s", pool)
 			return
 		}
 		evt.Logf("no auto scale rule for %s", pool)
@@ -233,7 +234,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 	}
 	scaler, err := a.scalerForRule(rule)
 	if err != nil {
-		retErr = fmt.Errorf("error getting scaler for %s: %s", pool, err)
+		retErr = errors.Wrapf(err, "error getting scaler for %s", pool)
 		return
 	}
 	evt.Logf("running scaler %T for %q: %q", scaler, poolMetadataName, pool)
@@ -243,7 +244,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []*cluster.Node) {
 			evt.Logf("aborting scaler for now, gonna retry later: %s", err)
 			return
 		}
-		retErr = fmt.Errorf("error scaling group %s: %s", pool, err.Error())
+		retErr = errors.Wrapf(err, "error scaling group %s", pool)
 		return
 	}
 	if sResult.ToAdd > 0 {
@@ -291,14 +292,14 @@ func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes
 		buf := safe.NewBuffer(nil)
 		dryProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
 		if err != nil {
-			return fmt.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+			return errors.Wrapf(err, "unable to run dry rebalance to check if rebalance is needed. log: %s", buf.String())
 		}
 		if dryProvisioner == nil {
 			return nil
 		}
 		_, gapAfter, err := dryProvisioner.containerGapInNodes(nodes)
 		if err != nil {
-			return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
+			return errors.Wrap(err, "couldn't find containers from rebalanced nodes")
 		}
 		if math.Abs((float64)(gap-gapAfter)) > 2.0 {
 			sResult.ToRebalance = true
@@ -313,7 +314,7 @@ func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes
 		writer := io.MultiWriter(buf, evt)
 		_, err := a.provisioner.rebalanceContainersByFilter(writer, nil, rebalanceFilter, false)
 		if err != nil {
-			return fmt.Errorf("unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
+			return errors.Wrapf(err, "unable to rebalance containers. log: %s", buf.String())
 		}
 	}
 	return nil
@@ -352,11 +353,11 @@ func (a *autoScaleConfig) addNode(evt *event.Event, modelNodes []*cluster.Node) 
 	}
 	_, hasIaas := metadata["iaas"]
 	if !hasIaas {
-		return nil, fmt.Errorf("no IaaS information in nodes metadata: %#v", metadata)
+		return nil, errors.Errorf("no IaaS information in nodes metadata: %#v", metadata)
 	}
 	machine, err := iaas.CreateMachineForIaaS(metadata["iaas"], metadata)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create machine: %s", err.Error())
+		return nil, errors.Wrap(err, "unable to create machine")
 	}
 	newAddr := machine.FormatNodeAddress()
 	evt.Logf("new machine created: %s - Waiting for docker to start...", newAddr)
@@ -368,7 +369,7 @@ func (a *autoScaleConfig) addNode(evt *event.Event, modelNodes []*cluster.Node) 
 	err = a.provisioner.Cluster().Register(createdNode)
 	if err != nil {
 		machine.Destroy()
-		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
+		return nil, errors.Wrapf(err, "error registering new node %s", newAddr)
 	}
 	q, err := queue.Queue()
 	if err == nil {
@@ -386,7 +387,7 @@ func (a *autoScaleConfig) addNode(evt *event.Event, modelNodes []*cluster.Node) 
 	if err != nil {
 		machine.Destroy()
 		a.provisioner.Cluster().Unregister(newAddr)
-		return nil, fmt.Errorf("error running bs task: %s", err)
+		return nil, errors.Wrap(err, "error running bs task")
 	}
 	evt.Logf("new machine created: %s - started!", newAddr)
 	return &createdNode, nil
@@ -398,14 +399,14 @@ func (a *autoScaleConfig) removeMultipleNodes(evt *event.Event, chosenNodes []cl
 	for i, node := range chosenNodes {
 		_, hasIaas := node.Metadata["iaas"]
 		if !hasIaas {
-			return fmt.Errorf("no IaaS information in node (%s) metadata: %#v", node.Address, node.Metadata)
+			return errors.Errorf("no IaaS information in node (%s) metadata: %#v", node.Address, node.Metadata)
 		}
 		nodeAddrs[i] = node.Address
 		nodeHosts[i] = net.URLToHost(node.Address)
 	}
 	err := a.provisioner.Cluster().UnregisterNodes(nodeAddrs...)
 	if err != nil {
-		return fmt.Errorf("unable to unregister nodes (%s) for removal: %s", strings.Join(nodeAddrs, ", "), err)
+		return errors.Wrapf(err, "unable to unregister nodes (%s) for removal", strings.Join(nodeAddrs, ", "))
 	}
 	buf := safe.NewBuffer(nil)
 	err = a.provisioner.moveContainersFromHosts(nodeHosts, "", buf)
@@ -413,7 +414,7 @@ func (a *autoScaleConfig) removeMultipleNodes(evt *event.Event, chosenNodes []cl
 		for _, node := range chosenNodes {
 			a.provisioner.Cluster().Register(node)
 		}
-		return fmt.Errorf("unable to move containers from nodes (%s): %s - log: %s", strings.Join(nodeAddrs, ", "), err, buf.String())
+		return errors.Wrapf(err, "unable to move containers from nodes (%s). log: %s", strings.Join(nodeAddrs, ", "), buf.String())
 	}
 	wg := sync.WaitGroup{}
 	for i := range chosenNodes {
@@ -541,7 +542,7 @@ func splitMetadata(nodes []*cluster.Node) (metaWithFrequencyList, map[string]str
 				}
 			}
 			if diffCount > 0 && (diffCount < len(exclusive[i]) || diffCount > len(exclusive[j])) {
-				return nil, nil, fmt.Errorf("unbalanced metadata for node group: %v vs %v", exclusive[i], exclusive[j])
+				return nil, nil, errors.Errorf("unbalanced metadata for node group: %v vs %v", exclusive[i], exclusive[j])
 			}
 			if diffCount == 0 {
 				sameMap[j] = true

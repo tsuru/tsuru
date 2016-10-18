@@ -5,13 +5,13 @@
 package docker
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -58,7 +58,7 @@ func pingDockerRegistry(scheme string) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status - %s", body)
+		return errors.Errorf("unexpected status - %s", body)
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func healthCheckDocker() error {
 	}
 	err = client.Ping()
 	if err != nil {
-		return fmt.Errorf("ping failed - %s", err.Error())
+		return errors.Wrap(err, "ping failed")
 	}
 	return nil
 }

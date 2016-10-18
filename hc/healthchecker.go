@@ -8,8 +8,9 @@
 package hc
 
 import (
-	"errors"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // HealthCheckOK is the status returned when the healthcheck works.

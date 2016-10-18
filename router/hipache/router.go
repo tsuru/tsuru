@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
@@ -348,7 +349,7 @@ func (r *hipacheRouter) HealthCheck() error {
 		return err
 	}
 	if result != "PONG" {
-		return fmt.Errorf("unexpected PING response from Redis server, want %q, got %q", "PONG", result)
+		return errors.Errorf("unexpected PING response from Redis server, want %q, got %q", "PONG", result)
 	}
 	return nil
 }

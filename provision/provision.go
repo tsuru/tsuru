@@ -8,13 +8,13 @@ package provision
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/url"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/quota"
@@ -548,7 +548,7 @@ func Unregister(name string) {
 func Get(name string) (Provisioner, error) {
 	pFunc, ok := provisioners[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown provisioner: %q", name)
+		return nil, errors.Errorf("unknown provisioner: %q", name)
 	}
 	return pFunc()
 }

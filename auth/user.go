@@ -8,13 +8,13 @@ import (
 	"crypto"
 	"crypto/rand"
 	_ "crypto/sha256"
-	stderrors "errors"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	ErrUserNotFound = stderrors.New("user not found")
-	ErrInvalidKey   = stderrors.New("invalid key")
-	ErrKeyDisabled  = stderrors.New("key management is disabled")
+	ErrUserNotFound = errors.New("user not found")
+	ErrInvalidKey   = errors.New("invalid key")
+	ErrKeyDisabled  = errors.New("key management is disabled")
 )
 
 type RoleInstance struct {
@@ -90,7 +90,7 @@ usersLoop:
 
 func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
-		return nil, &errors.ValidationError{Message: "invalid email"}
+		return nil, &tsuruErrors.ValidationError{Message: "invalid email"}
 	}
 	var u User
 	conn, err := db.Conn()
@@ -109,7 +109,7 @@ func (u *User) Create() error {
 	conn, err := db.Conn()
 	if err != nil {
 		addr, _ := db.DbConfig("")
-		return stderrors.New(fmt.Sprintf("Failed to connect to MongoDB %q - %s.", addr, err.Error()))
+		return errors.New(fmt.Sprintf("Failed to connect to MongoDB %q - %s.", addr, err.Error()))
 	}
 	defer conn.Close()
 	if u.Quota.Limit == 0 {
@@ -314,12 +314,12 @@ func (u *User) RemoveRole(roleName string, contextValue string) error {
 func (u *User) AddRolesForEvent(roleEvent *permission.RoleEvent, contextValue string) error {
 	roles, err := permission.ListRolesForEvent(roleEvent)
 	if err != nil {
-		return fmt.Errorf("unable to list roles: %s", err)
+		return errors.Wrap(err, "unable to list roles")
 	}
 	for _, r := range roles {
 		err = u.AddRole(r.Name, contextValue)
 		if err != nil {
-			return fmt.Errorf("unable to add role: %s", err)
+			return errors.Wrap(err, "unable to add role")
 		}
 	}
 	return nil

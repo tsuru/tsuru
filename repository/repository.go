@@ -7,8 +7,7 @@
 package repository
 
 import (
-	"errors"
-
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 )
 

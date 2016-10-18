@@ -5,11 +5,11 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"regexp"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"

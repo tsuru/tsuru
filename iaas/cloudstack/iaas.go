@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/iaas"
@@ -60,7 +61,7 @@ func (i *CloudstackIaaS) HealthCheck() error {
 		if name == "" {
 			name = i.base.BaseIaaSName
 		}
-		return fmt.Errorf("%q - not enough zones available, want at least 1, got %d", name, resp.ListZonesResponse.Count)
+		return errors.Errorf("%q - not enough zones available, want at least 1, got %d", name, resp.ListZonesResponse.Count)
 	}
 	return nil
 }
@@ -82,7 +83,7 @@ func validateParams(params map[string]string) error {
 	for _, p := range mandatory {
 		_, isPresent := params[p]
 		if !isPresent {
-			return fmt.Errorf("param %q is mandatory", p)
+			return errors.Errorf("param %q is mandatory", p)
 		}
 	}
 	return nil
@@ -108,12 +109,12 @@ func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interfa
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected response code for %s command %d: %s", cmd, resp.StatusCode, string(body))
+		return errors.Errorf("Unexpected response code for %s command %d: %s", cmd, resp.StatusCode, string(body))
 	}
 	if result != nil {
 		err = json.Unmarshal(body, result)
 		if err != nil {
-			return fmt.Errorf("Unexpected result data for %s command: %s - Body: %s", cmd, err.Error(), string(body))
+			return errors.Wrapf(err, "Unexpected result data for %s command. Body: %s", cmd, string(body))
 		}
 	}
 	return nil
@@ -137,7 +138,7 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 	job, err := q.EnqueueWait(i.taskName(machineDeleteTaskName), jobParams, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
-			return fmt.Errorf("cloudstack: time out after %v waiting for instance %s to be destroyed", waitDuration, machine.Id)
+			return errors.Errorf("cloudstack: time out after %v waiting for instance %s to be destroyed", waitDuration, machine.Id)
 		}
 		return err
 	}
@@ -189,7 +190,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	job, err := q.EnqueueWait(i.taskName(machineCreateTaskName), jobParams, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
-			return nil, fmt.Errorf("cloudstack: time out after %v waiting for instance %s to start", waitDuration, vmStatus.DeployVirtualMachineResponse.ID)
+			return nil, errors.Errorf("cloudstack: time out after %v waiting for instance %s to start", waitDuration, vmStatus.DeployVirtualMachineResponse.ID)
 		}
 		return nil, err
 	}
@@ -248,7 +249,7 @@ func (i *CloudstackIaaS) waitForAsyncJob(jobId string) (QueryAsyncJobResultRespo
 		}
 		if jobResponse.QueryAsyncJobResultResponse.JobStatus != jobInProgress {
 			if jobResponse.QueryAsyncJobResultResponse.JobStatus == jobFailed {
-				return jobResponse, fmt.Errorf("job failed to complete: %#v", jobResponse.QueryAsyncJobResultResponse.JobResult)
+				return jobResponse, errors.Errorf("job failed to complete: %#v", jobResponse.QueryAsyncJobResultResponse.JobResult)
 			}
 			return jobResponse, nil
 		}
