@@ -222,6 +222,13 @@ func (s *DockerServer) serviceCreate(w http.ResponseWriter, r *http.Request) {
 		ID:   s.generateID(),
 		Spec: config,
 	}
+	s.addTasks(&service, false)
+	s.services = append(s.services, &service)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(service)
+}
+
+func (s *DockerServer) addTasks(service *swarm.Service, update bool) {
 	containerCount := 1
 	if service.Spec.Mode.Global != nil {
 		containerCount = len(s.nodes)
@@ -231,7 +238,11 @@ func (s *DockerServer) serviceCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for i := 0; i < containerCount; i++ {
-		container := s.containerForService(&service, fmt.Sprintf("%s-%d", config.Name, i))
+		name := fmt.Sprintf("%s-%d", service.Spec.Name, i)
+		if update {
+			name = fmt.Sprintf("%s-%d-updated", service.Spec.Name, i)
+		}
+		container := s.containerForService(service, name)
 		chosenNode := s.nodes[s.nodeRR]
 		s.nodeRR = (s.nodeRR + 1) % len(s.nodes)
 		task := swarm.Task{
@@ -245,15 +256,12 @@ func (s *DockerServer) serviceCreate(w http.ResponseWriter, r *http.Request) {
 				},
 			},
 			DesiredState: swarm.TaskStateReady,
-			Spec:         config.TaskTemplate,
+			Spec:         service.Spec.TaskTemplate,
 		}
 		s.tasks = append(s.tasks, &task)
 		s.containers = append(s.containers, container)
 		s.notify(container)
 	}
-	s.services = append(s.services, &service)
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(service)
 }
 
 func (s *DockerServer) serviceInspect(w http.ResponseWriter, r *http.Request) {
@@ -435,8 +443,6 @@ func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
 	var newSpec swarm.ServiceSpec
 	json.NewDecoder(r.Body).Decode(&newSpec)
 	toUpdate.Spec = newSpec
-	var newTasks []*swarm.Task
-	var newContainers []*docker.Container
 	for i := 0; i < len(s.tasks); i++ {
 		if s.tasks[i].ServiceID != toUpdate.ID {
 			continue
@@ -445,30 +451,10 @@ func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
 		if contIdx != -1 {
 			s.containers = append(s.containers[:contIdx], s.containers[contIdx+1:]...)
 		}
-		container := s.containerForService(toUpdate, fmt.Sprintf("%s-%d-updated", toUpdate.Spec.Name, i))
-		chosenNode := s.nodes[s.nodeRR]
-		s.nodeRR = (s.nodeRR + 1) % len(s.nodes)
-		task := swarm.Task{
-			ID:        s.generateID(),
-			ServiceID: toUpdate.ID,
-			NodeID:    chosenNode.ID,
-			Status: swarm.TaskStatus{
-				State: swarm.TaskStateReady,
-				ContainerStatus: swarm.ContainerStatus{
-					ContainerID: container.ID,
-				},
-			},
-			DesiredState: swarm.TaskStateReady,
-			Spec:         toUpdate.Spec.TaskTemplate,
-		}
 		s.tasks = append(s.tasks[:i], s.tasks[i+1:]...)
 		i--
-		newTasks = append(newTasks, &task)
-		newContainers = append(newContainers, container)
-		s.notify(container)
 	}
-	s.containers = append(s.containers, newContainers...)
-	s.tasks = append(s.tasks, newTasks...)
+	s.addTasks(toUpdate, true)
 }
 
 func (s *DockerServer) nodeUpdate(w http.ResponseWriter, r *http.Request) {
