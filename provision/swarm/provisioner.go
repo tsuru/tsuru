@@ -68,12 +68,40 @@ func (p *swarmProvisioner) Destroy(provision.App) error {
 	return errNotImplemented
 }
 
-func (p *swarmProvisioner) AddUnits(provision.App, uint, string, io.Writer) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+func changeUnits(a provision.App, units int, processName string, w io.Writer) error {
+	if a.GetDeploys() == 0 {
+		return errors.New("units can only be modified after the first deploy")
+	}
+	if units == 0 {
+		return errors.New("cannot change 0 units")
+	}
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	imageId, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return err
+	}
+	if processName == "" {
+		_, processName, err = dockercommon.ProcessCmdForImage(processName, imageId)
+		if err != nil {
+			return errors.Wrap(err, "")
+		}
+	}
+	return deployProcesses(client, a, imageId, processSpec{processName: units})
 }
 
-func (p *swarmProvisioner) RemoveUnits(provision.App, uint, string, io.Writer) error {
-	return errNotImplemented
+func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) ([]provision.Unit, error) {
+	err := changeUnits(a, int(units), processName, w)
+	if err != nil {
+		return nil, err
+	}
+	return p.Units(a)
+}
+
+func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
+	return changeUnits(a, -int(units), processName, w)
 }
 
 func (p *swarmProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
@@ -447,6 +475,9 @@ func deployProcesses(client *docker.Client, a provision.App, newImg string, upda
 	if err != nil {
 		return err
 	}
+	if len(newImageData.Processes) == 0 {
+		return errors.Errorf("no process information found deploying image %q", newImg)
+	}
 	newSpec := processSpec{}
 	for p := range newImageData.Processes {
 		newSpec[p] = 0
@@ -499,13 +530,17 @@ func deploy(client *docker.Client, a provision.App, process string, count int, i
 	if err != nil {
 		return err
 	}
-	replicas := *spec.Mode.Replicated.Replicas
+	replicas := int(*spec.Mode.Replicated.Replicas)
 	if count != 0 {
-		replicas += uint64(count)
+		replicas += count
+		if replicas < 0 {
+			return errors.New("cannot have less than 0 units")
+		}
 	} else if replicas == 0 {
 		replicas = 1
 	}
-	spec.Mode.Replicated.Replicas = &replicas
+	uReplicas := uint64(replicas)
+	spec.Mode.Replicated.Replicas = &uReplicas
 	if srv == nil {
 		_, err = client.CreateService(docker.CreateServiceOptions{
 			ServiceSpec: *spec,

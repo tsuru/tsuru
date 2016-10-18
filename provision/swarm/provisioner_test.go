@@ -115,6 +115,124 @@ func (s *S) TestListNodesEmpty(c *check.C) {
 	c.Assert(nodes, check.HasLen, 0)
 }
 
+func (s *S) TestAddUnits(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+	units, err = s.p.AddUnits(a, 2, "web", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 5)
+}
+
+func (s *S) TestAddUnitsNoDeploys(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.ErrorMatches, `units can only be modified after the first deploy`)
+}
+
+func (s *S) TestAddUnitsNoImage(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.ErrorMatches, `no process information found deploying image "tsuru/app-myapp"`)
+}
+
+func (s *S) TestAddUnitsZeroUnits(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 0, "web", nil)
+	c.Assert(err, check.ErrorMatches, `cannot change 0 units`)
+}
+
+func (s *S) TestRemoveUnits(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+	err = s.p.RemoveUnits(a, 2, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	err = s.p.RemoveUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+	err = s.p.RemoveUnits(a, 1, "web", nil)
+	c.Assert(err, check.ErrorMatches, `cannot have less than 0 units`)
+}
+
 func (s *S) TestGetNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
