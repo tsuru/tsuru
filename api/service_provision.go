@@ -69,16 +69,8 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	b, err := json.Marshal(results)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	n, err := w.Write(b)
-	if n != len(b) {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
-	}
 	w.Header().Set("Content-Type", "application/json")
-	return err
+	return json.NewEncoder(w).Encode(results)
 }
 
 // title: service create

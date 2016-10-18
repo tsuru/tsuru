@@ -326,16 +326,8 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	body, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-	n, err := w.Write(body)
-	if n != len(body) {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write the response body."}
-	}
 	w.Header().Set("Content-Type", "application/json")
-	return err
+	return json.NewEncoder(w).Encode(result)
 }
 
 // title: service instance status
@@ -362,18 +354,10 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	requestIDHeader, _ := config.GetString("request-id-header")
 	requestID := context.GetRequestID(r, requestIDHeader)
 	if b, err = serviceInstance.Status(requestID); err != nil {
-		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err)
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
+		return fmt.Errorf("Could not retrieve status of service instance, error: %s", err)
 	}
-	b = fmt.Sprintf(`Service instance "%s" is %s`, instanceName, b)
-	n, err := w.Write([]byte(b))
-	if err != nil {
-		return err
-	}
-	if n != len(b) {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
-	}
-	return nil
+	_, err = fmt.Fprintf(w, `Service instance "%s" is %s`, instanceName, b)
+	return err
 }
 
 type serviceInstanceInfo struct {

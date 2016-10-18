@@ -198,23 +198,22 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 		return
 	}
 	a, err := app.GetByName(appName)
-	httpErr := &errors.HTTP{Code: http.StatusInternalServerError}
 	if err != nil {
 		if err == app.ErrAppNotFound {
-			httpErr.Code = http.StatusNotFound
-			httpErr.Message = err.Error()
+			err = &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		} else {
-			httpErr.Message = fmt.Sprintf("Error to get application: %s", err)
+			err = fmt.Errorf("Error to get application: %s", err)
 		}
 	} else {
-		httpErr.Code = http.StatusConflict
+		httpErr := &errors.HTTP{Code: http.StatusConflict}
 		if a.Lock.Locked {
 			httpErr.Message = fmt.Sprintf("%s", &a.Lock)
 		} else {
 			httpErr.Message = "Not locked anymore, please try again."
 		}
+		err = httpErr
 	}
-	context.AddRequestError(r, httpErr)
+	context.AddRequestError(r, err)
 }
 
 func runDelayedHandler(w http.ResponseWriter, r *http.Request) {

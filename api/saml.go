@@ -31,7 +31,7 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 	}
 	page, err := saml.Metadata()
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	w.Header().Set("Content-Type", "application/xml")
 	w.Write([]byte(page))
