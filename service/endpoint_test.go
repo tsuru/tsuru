@@ -180,7 +180,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user", "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
+	c.Assert(err, check.ErrorMatches, "^Failed to create the instance "+instance.Name+": invalid response: Server failed to do its job.$")
 }
 
 func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
@@ -205,7 +205,7 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Destroy(&instance, "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
+	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": invalid response: Server failed to do its job.$")
 }
 
 func (s *S) TestDestroyNotFound(c *check.C) {
@@ -224,7 +224,7 @@ func (s *S) TestBindAppEndpointDown(c *check.C) {
 	client := &Client{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, ".* api is down.")
+	c.Assert(err, check.ErrorMatches, `Failed to bind app "her-app" to service instance "redis/her-redis": Post http://localhost:1234/resources/her-redis/bind-app:.*connection refused`)
 }
 
 func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
@@ -298,7 +298,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/her-redis" to the app "her-app": Server failed to do its job.$`)
+	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/her-redis" to the app "her-app": invalid response: Server failed to do its job.$`)
 }
 
 func (s *S) TestBindAppInstanceNotReady(c *check.C) {
@@ -361,7 +361,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
-	expectedMsg := `^Failed to bind the instance "redis/her-redis" to the unit "10.10.10.\d+": Server failed to do its job.$`
+	expectedMsg := `^Failed to bind the instance "redis/her-redis" to the unit "10.10.10.\d+": invalid response: Server failed to do its job.$`
 	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 
@@ -423,7 +423,7 @@ func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindApp(&instance, a)
 	c.Assert(err, check.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): Server failed to do its job.`
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): invalid response: Server failed to do its job.`
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
@@ -473,7 +473,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = client.UnbindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): invalid response: Server failed to do its job.`
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
@@ -494,19 +494,19 @@ func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
 func (s *S) TestBuildErrorMessageWithNilResponse(c *check.C) {
 	cli := Client{}
 	err := errors.New("epic fail")
-	c.Assert(cli.buildErrorMessage(err, nil), check.Equals, "epic fail")
+	c.Assert(cli.buildErrorMessage(err, nil), check.ErrorMatches, "epic fail")
 }
 
 func (s *S) TestBuildErrorMessageWithNilErrorAndNilResponse(c *check.C) {
 	cli := Client{}
-	c.Assert(cli.buildErrorMessage(nil, nil), check.Equals, "")
+	c.Assert(cli.buildErrorMessage(nil, nil), check.IsNil)
 }
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
 	cli := Client{}
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
-	c.Assert(cli.buildErrorMessage(nil, resp), check.Equals, "something went wrong")
+	c.Assert(cli.buildErrorMessage(nil, resp), check.ErrorMatches, "invalid response: something went wrong")
 }
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
@@ -514,7 +514,7 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
 	err := errors.New("epic fail")
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
-	c.Assert(cli.buildErrorMessage(err, resp), check.Equals, "epic fail")
+	c.Assert(cli.buildErrorMessage(err, resp), check.ErrorMatches, "epic fail")
 }
 
 func (s *S) TestStatus(c *check.C) {

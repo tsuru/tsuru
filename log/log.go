@@ -68,11 +68,11 @@ func (t *Target) SetLogger(l Logger) {
 
 // Error writes the given values to the Target
 // logger.
-func (t *Target) Error(v string) {
+func (t *Target) Error(v error) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
-		t.logger.Error(v)
+		t.logger.Errorf("%+v", v)
 	}
 }
 
@@ -149,7 +149,7 @@ func (t *Target) GetStdLogger() *log.Logger {
 var DefaultTarget = new(Target)
 
 // Error is a wrapper for DefaultTarget.Error.
-func Error(v string) {
+func Error(v error) {
 	DefaultTarget.Error(v)
 }
 
@@ -190,7 +190,7 @@ func SetLogger(logger Logger) {
 
 func WrapError(err error) error {
 	if err != nil {
-		Error(err.Error())
+		Error(err)
 	}
 	return err
 }

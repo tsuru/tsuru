@@ -6,7 +6,6 @@ package nodecontainer
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -76,9 +75,8 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 		fmt.Fprintf(w, "relaunching node container %q in the node %s [%s]\n", confName, node.Address, pool)
 		confErr = create(containerConfig, node, pool, p, relaunch)
 		if confErr != nil {
-			msg := fmt.Sprintf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
-			log.Error(msg)
-			errChan <- errors.New(msg)
+			confErr = fmt.Errorf("[node containers] failed to create container in %s [%s]: %s", node.Address, pool, confErr)
+			errChan <- log.WrapError(confErr)
 		}
 	}
 	for i := range nodes {

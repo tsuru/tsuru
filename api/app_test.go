@@ -3672,12 +3672,13 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
-	c.Assert(recorder.Body.String(), check.Equals, `my-mysql api is down.`+"\n")
+	errRegex := `Failed to bind app "painkiller" to service instance "mysql/my-mysql":.*`
+	c.Assert(recorder.Body.String(), check.Matches, errRegex+"\n")
 	c.Assert(eventtest.EventDesc{
 		Target:       appTarget(a.Name),
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.bind",
-		ErrorMatches: `my-mysql api is down\.`,
+		ErrorMatches: errRegex,
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": a.Name},
 			{"name": ":instance", "value": instance.Name},

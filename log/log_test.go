@@ -6,6 +6,7 @@ package log
 
 import (
 	"bytes"
+	stderrors "errors"
 	"log"
 	"testing"
 
@@ -32,8 +33,18 @@ func newFakeLogger() *bytes.Buffer {
 func (s *S) TestLogError(c *check.C) {
 	buf := newFakeLogger()
 	defer buf.Reset()
-	Error("log anything")
-	c.Assert(buf.String(), check.Equals, "ERROR: log anything\n")
+	err := stderrors.New("no stack")
+	Error(err)
+	c.Assert(buf.String(), check.Equals, "ERROR: no stack\n")
+}
+
+func (s *S) TestLogErrorWithStack(c *check.C) {
+	buf := newFakeLogger()
+	defer buf.Reset()
+	err := errors.New("with stack")
+	Error(err)
+	c.Assert(buf.String(), check.Matches,
+		`(?s)ERROR: with stack\ngithub.com/tsuru/tsuru/log.\(\*S\).TestLogError.*`)
 }
 
 func (s *S) TestLogErrorf(c *check.C) {
@@ -57,7 +68,7 @@ func (s *S) TestLogErrorWithoutTarget(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	Error("log anything")
+	Error(stderrors.New("log anything"))
 }
 
 func (s *S) TestLogErrorfWithoutTarget(c *check.C) {

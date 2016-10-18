@@ -416,7 +416,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	}
 	ctx := action.FWContext{Params: []interface{}{&args}}
 	_, err = unbindUnits.Forward(ctx)
-	c.Assert(err.Error(), check.Equals, `Failed to unbind ("/resources/my-mysql/bind"): my error`)
+	c.Assert(err.Error(), check.Equals, `Failed to unbind ("/resources/my-mysql/bind"): invalid response: my error`)
 	c.Assert(reqs, check.HasLen, 24)
 	for i, req := range reqs {
 		if i < 10 {

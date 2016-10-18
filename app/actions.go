@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"regexp"
 
 	"github.com/tsuru/config"
@@ -497,8 +496,7 @@ var restartApp = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		w, ok := ctx.Params[2].(io.Writer)
 		if !ok {
-			log.Error("third parameter must be an io.Writer")
-			w = ioutil.Discard
+			return nil, errors.New("third parameter must be an io.Writer")
 		}
 		result, ok := ctx.Previous.(*changePlanPipelineResult)
 		if !ok {
@@ -602,7 +600,7 @@ var setNewCNamesToProvisioner = action.Action{
 		}
 		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			log.Error("BACKWARD set cnames - router doesn't support cname change.")
+			log.Errorf("BACKWARD set cnames - router doesn't support cname change.")
 			return
 		}
 		for _, cname := range cnames {
@@ -732,7 +730,7 @@ var unsetCNameFromProvisioner = action.Action{
 		}
 		cnameRouter, ok := r.(router.CNameRouter)
 		if !ok {
-			log.Error("BACKWARD unset cname - router doesn't support cname change.")
+			log.Errorf("BACKWARD unset cname - router doesn't support cname change.")
 			return
 		}
 		for _, cname := range cnames {

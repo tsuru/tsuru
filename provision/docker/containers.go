@@ -68,9 +68,9 @@ var containerMovementErr = errors.New("Error moving some containers.")
 func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Writer) error {
 	hasError := false
 	for err := range moveErrors {
-		errMsg := fmt.Sprintf("Error moving container: %s", err.Error())
-		log.Error(errMsg)
-		fmt.Fprintf(writer, "%s\n", errMsg)
+		err = fmt.Errorf("Error moving container: %s", err)
+		log.Error(err)
+		fmt.Fprintf(writer, "%s\n", err)
 		hasError = true
 	}
 	if hasError {
