@@ -5,11 +5,13 @@
 package dockermachine
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/log"
 )
 
 var errDriverNotSet = errors.Errorf("driver is mandatory")
@@ -63,22 +65,28 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	} else {
 		delete(params, "name")
 	}
+	driverOpts := i.buildDriverOpts(params)
+	buf := &bytes.Buffer{}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
 		CaPath:                 caPath,
 		InsecureRegistry:       insecureRegistry,
 		DockerEngineInstallURL: dockerEngineInstallURL,
+		OutWriter:              buf,
+		ErrWriter:              buf,
 	})
 	if err != nil {
 		return nil, err
 	}
-	defer dockerMachine.Close()
-	driverOpts := i.buildDriverOpts(params)
+	defer func() {
+		dockerMachine.Close()
+		log.Debug(buf.String())
+	}()
 	m, err := dockerMachine.CreateMachine(machineName, driverName, driverOpts)
 	if err != nil {
 		if m != nil {
 			errRem := dockerMachine.DeleteMachine(m)
 			if errRem != nil {
-				return nil, tsuruErrors.NewMultiError(err, errors.WithMessage(errRem, "failed to remove machine after error"))
+				err = tsuruErrors.NewMultiError(err, errors.WithMessage(errRem, "failed to remove machine after error"))
 			}
 		}
 		return nil, err
@@ -105,11 +113,18 @@ func (i *dockerMachineIaaS) buildDriverOpts(params map[string]string) map[string
 }
 
 func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
-	dockerMachine, err := i.apiFactory(DockerMachineConfig{})
+	buf := &bytes.Buffer{}
+	dockerMachine, err := i.apiFactory(DockerMachineConfig{
+		OutWriter: buf,
+		ErrWriter: buf,
+	})
 	if err != nil {
 		return err
 	}
-	defer dockerMachine.Close()
+	defer func() {
+		dockerMachine.Close()
+		log.Debug(buf.String())
+	}()
 	return dockerMachine.DeleteMachine(m)
 }
 
