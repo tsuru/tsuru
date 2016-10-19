@@ -52,9 +52,15 @@ func renderHistoryTable(history []HealingEvent, filter string, ctx *cmd.Context)
 				data[1] = data[1][:10]
 			}
 		}
+		var endTime string
+		if event.EndTime.IsZero() {
+			endTime = "in progress"
+		} else {
+			endTime = event.EndTime.Local().Format(time.Stamp)
+		}
 		t.AddRow(cmd.Row([]string{
 			event.StartTime.Local().Format(time.Stamp),
-			event.EndTime.Local().Format(time.Stamp),
+			endTime,
 			fmt.Sprintf("%t", event.Successful),
 			data[0],
 			data[1],

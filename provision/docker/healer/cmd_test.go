@@ -205,3 +205,37 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *check.C) {
 `, startTStr06, endTStr06, startTStr08, endTStr08, startTStr02, endTStr02)
 	c.Assert(buf.String(), check.Equals, expected)
 }
+
+func (s *S) TestListHealingHistoryInProgressCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	msg := fmt.Sprintf(`[{
+  	"StartTime": "2014-10-23T08:00:00.000Z",
+  	"EndTime": "%s",
+  	"Successful": true,
+  	"Action": "container-healing",
+    "FailingContainer": {"ID": "123456789012"},
+    "CreatedContainer": {"ID": "923456789012"},
+  	"Error": ""
+  }]`, time.Time{}.Format(time.RFC3339))
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: msg, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/1.0/docker/healing" && req.URL.RawQuery == "filter=container"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := &ListHealingHistoryCmd{}
+	cmd.Flags().Parse(true, []string{"--container"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := fmt.Sprintf(`Container:
++-----------------+-------------+---------+------------+------------+-------+
+| Start           | Finish      | Success | Failing    | Created    | Error |
++-----------------+-------------+---------+------------+------------+-------+
+| %s | in progress | true    | 1234567890 | 9234567890 |       |
++-----------------+-------------+---------+------------+------------+-------+
+`, startTStr08)
+	c.Assert(buf.String(), check.Equals, expected)
+}
