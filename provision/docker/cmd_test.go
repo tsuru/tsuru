@@ -454,11 +454,14 @@ func (s *S) TestAutoScaleHistoryInProgressEndTimeCmdRun(c *check.C) {
 	autoscale := &listAutoScaleHistoryCmd{}
 	err := autoscale.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	expected := `+-----------------+-------------+---------+----------+--------+--------+-------+
+	timeFormat, err := time.Parse(time.RFC3339, "2015-10-23T08:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	startTime := timeFormat.Local().Format(time.Stamp)
+	expected := fmt.Sprintf(`+-----------------+-------------+---------+----------+--------+--------+-------+
 | Start           | Finish      | Success | Metadata | Action | Reason | Error |
 +-----------------+-------------+---------+----------+--------+--------+-------+
-| Oct 23 06:00:00 | in progress | true    | poolx    | add    |        |       |
+| %s | in progress | true    | poolx    | add    |        |       |
 +-----------------+-------------+---------+----------+--------+--------+-------+
-`
+`, startTime)
 	c.Assert(buf.String(), check.Equals, expected)
 }

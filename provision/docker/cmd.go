@@ -84,7 +84,7 @@ func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 
 func checkEndOfEvent(event *autoScaleEvent) string {
 	if event.EndTime.IsZero() {
-		return fmt.Sprint("in progress")
+		return "in progress"
 	}
 	return event.EndTime.Local().Format(time.Stamp)
 }
