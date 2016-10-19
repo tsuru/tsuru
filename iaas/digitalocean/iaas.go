@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/digitalocean/godo"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
 	"golang.org/x/oauth2"

@@ -5,6 +5,7 @@
 package auth
 
 import "github.com/pkg/errors"
+
 type SchemeInfo map[string]interface{}
 
 type Scheme interface {

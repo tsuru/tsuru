@@ -5,6 +5,7 @@
 package cmdtest
 
 import "github.com/pkg/errors"
+
 // FakeGuesser represents a fake implementation of the Guesser described in the
 // cmd package.
 type FakeGuesser struct {

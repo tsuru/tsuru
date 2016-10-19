@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
