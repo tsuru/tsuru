@@ -13,23 +13,24 @@ function check_go {
 }
 
 function missing_handlers {
-    go get golang.org/x/tools/cmd/guru
+    go get -u github.com/tsuru/tsuru-api-docs
 
-    pos=$(cat ./api/handler.go  | grep -ob "fn AuthorizationRequiredHandler" | egrep -o "^[0-9]+")
-    allhandlers=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud pointsto ./api/handler.go:#$pos | tail -n+2 | awk '{print $2}' | sort)
+    allhandlers=$(tsuru-api-docs -search . | sort)
 
-    pos=$(($(cat ./permission/permission.go | grep -ob "func Check(" | egrep -o "^[0-9]+")+5))
-    okhandlers1=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud callers ./permission/permission.go:#$pos | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
-
-    pos=$(($(cat ./permission/permission.go | grep -ob "func ContextsForPermission" | egrep -o "^[0-9]+")+5))
-    okhandlers2=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud callers ./permission/permission.go:#$pos | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
-
-    pos=$(($(cat ./permission/permission.go | grep -ob "func CheckFromPermList" | egrep -o "^[0-9]+")+5))
-    okhandlers3=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud callers ./permission/permission.go:#$pos | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
+    okhandlers1=$(tsuru-api-docs -search 'permission.Check\(')
+    okhandlers2=$(tsuru-api-docs -search 'permission.ContextsForPermission\(')
+    okhandlers3=$(tsuru-api-docs -search 'permission.CheckFromPermList\(')
 
     okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") <(echo "$okhandlers3") | sort | uniq)
 
     ignored=$(cat <<EOF
+github.com/tsuru/tsuru/api.authScheme
+github.com/tsuru/tsuru/api.healthcheck
+github.com/tsuru/tsuru/api.index
+github.com/tsuru/tsuru/api.info
+github.com/tsuru/tsuru/api.resetPassword
+github.com/tsuru/tsuru/api.samlCallbackLogin
+github.com/tsuru/tsuru/api.samlMetadata
 github.com/tsuru/tsuru/api.addKeyToUser
 github.com/tsuru/tsuru/api.listPlans
 github.com/tsuru/tsuru/api.login
