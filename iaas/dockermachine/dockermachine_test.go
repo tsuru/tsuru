@@ -97,6 +97,39 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")
 }
 
+func (s *S) TestCreateHost(c *check.C) {
+	fakeAPI := &fakeLibMachineAPI{}
+	dmAPI, err := NewDockerMachine(DockerMachineConfig{
+		InsecureRegistry:       "registry.com",
+		DockerEngineInstallURL: "https://getdocker2.com",
+	})
+	c.Assert(err, check.IsNil)
+	defer dmAPI.Close()
+	dm := dmAPI.(*DockerMachine)
+	dm.client = fakeAPI
+	driverOpts := map[string]interface{}{
+		"amazonec2-access-key": "access-key",
+		"amazonec2-secret-key": "secret-key",
+		"amazonec2-subnet-id":  "subnet-id",
+	}
+	opts := CreateHostOpts{
+		Name:       "my-machine",
+		DriverName: "amazonec2",
+		Params:     driverOpts,
+	}
+	h, err := dm.CreateHost(opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(fakeAPI.Hosts), check.Equals, 1)
+	c.Assert(h, check.DeepEquals, fakeAPI.Hosts[0])
+	c.Assert(fakeAPI.driverName, check.Equals, "amazonec2")
+	c.Assert(fakeAPI.ec2Driver.AccessKey, check.Equals, "access-key")
+	c.Assert(fakeAPI.ec2Driver.SecretKey, check.Equals, "secret-key")
+	c.Assert(fakeAPI.ec2Driver.SubnetId, check.Equals, "subnet-id")
+	engineOpts := fakeAPI.Hosts[0].HostOptions.EngineOptions
+	c.Assert(engineOpts.InsecureRegistry, check.DeepEquals, []string{"registry.com"})
+	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")
+}
+
 func (s *S) TestDeleteMachine(c *check.C) {
 	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{})

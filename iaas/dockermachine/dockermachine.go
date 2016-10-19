@@ -15,6 +15,7 @@ import (
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/drivers/rpc"
 	"github.com/docker/machine/libmachine/engine"
+	"github.com/docker/machine/libmachine/host"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
@@ -81,33 +82,15 @@ func (d *DockerMachine) Close() error {
 }
 
 func (d *DockerMachine) CreateMachine(name, driver string, params map[string]interface{}) (*iaas.Machine, error) {
-	rawDriver, err := json.Marshal(&drivers.BaseDriver{
-		MachineName: name,
-		StorePath:   d.path,
+	host, err := d.CreateHost(CreateHostOpts{
+		Name:       name,
+		DriverName: driver,
+		Params:     params,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal base driver")
+		return nil, err
 	}
-	host, err := d.client.NewHost(driver, rawDriver)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize host")
-	}
-	err = configureDriver(host.Driver, params)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to configure driver")
-	}
-	engineOpts := host.HostOptions.EngineOptions
-	if d.config.InsecureRegistry != "" {
-		engineOpts.InsecureRegistry = []string{d.config.InsecureRegistry}
-	}
-	if d.config.DockerEngineInstallURL != "" {
-		engineOpts.InstallURL = d.config.DockerEngineInstallURL
-	}
-	err = d.client.Create(host)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create host")
-	}
-	rawDriver, err = json.Marshal(host.Driver)
+	rawDriver, err := json.Marshal(host.Driver)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal host driver")
 	}
@@ -141,6 +124,42 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 		}
 	}
 	return m, nil
+}
+
+type CreateHostOpts struct {
+	Name       string
+	DriverName string
+	Params     map[string]interface{}
+}
+
+func (d *DockerMachine) CreateHost(opts CreateHostOpts) (*host.Host, error) {
+	rawDriver, err := json.Marshal(&drivers.BaseDriver{
+		MachineName: opts.Name,
+		StorePath:   d.path,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal base driver")
+	}
+	host, err := d.client.NewHost(opts.DriverName, rawDriver)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize host")
+	}
+	err = configureDriver(host.Driver, opts.Params)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to configure driver")
+	}
+	engineOpts := host.HostOptions.EngineOptions
+	if d.config.InsecureRegistry != "" {
+		engineOpts.InsecureRegistry = []string{d.config.InsecureRegistry}
+	}
+	if d.config.DockerEngineInstallURL != "" {
+		engineOpts.InstallURL = d.config.DockerEngineInstallURL
+	}
+	err = d.client.Create(host)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create host")
+	}
+	return host, nil
 }
 
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
