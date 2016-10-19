@@ -12,6 +12,7 @@ import (
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/install"
 	"github.com/tsuru/tsuru/permission"
 )
@@ -24,12 +25,12 @@ import (
 // responses:
 //   201: Host added
 //   401: Unauthorized
-func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowed := permission.Check(t, permission.PermInstallUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err := r.ParseForm()
+	err = r.ParseForm()
 	if err != nil {
 		return err
 	}
@@ -41,6 +42,17 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeInstallHost, Value: host.Name},
+		Kind:       permission.PermInstallUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermInstallRead),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	var rawDriver map[string]interface{}
 	err = json.Unmarshal([]byte(r.Form.Get("driver")), &rawDriver)
 	if err != nil {

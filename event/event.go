@@ -68,6 +68,7 @@ var (
 	TargetTypePlatform        = TargetType("platform")
 	TargetTypePlan            = TargetType("plan")
 	TargetTypeNodeContainer   = TargetType("node-container")
+	TargetTypeInstallHost     = TargetType("install-host")
 )
 
 const (
