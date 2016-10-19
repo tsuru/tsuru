@@ -69,7 +69,7 @@ func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 		event := &history[i]
 		t.AddRow(cmd.Row([]string{
 			event.StartTime.Local().Format(time.Stamp),
-			event.EndTime.Local().Format(time.Stamp),
+			checkEndOfEvent(event),
 			fmt.Sprintf("%t", event.Successful),
 			event.MetadataValue,
 			event.Action,
@@ -80,6 +80,13 @@ func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	t.LineSeparator = true
 	ctx.Stdout.Write(t.Bytes())
 	return nil
+}
+
+func checkEndOfEvent(event *autoScaleEvent) string {
+	if event.EndTime.IsZero() {
+		return fmt.Sprint("in progress")
+	}
+	return event.EndTime.Local().Format(time.Stamp)
 }
 
 func (c *listAutoScaleHistoryCmd) Flags() *gnuflag.FlagSet {

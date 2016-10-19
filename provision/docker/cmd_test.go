@@ -430,3 +430,35 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 	expected = fmt.Sprintf(expected, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), check.Equals, expected)
 }
+
+func (s *S) TestAutoScaleHistoryInProgressEndTimeCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	msg := fmt.Sprintf(`[{
+	"StartTime": "2015-10-23T08:00:00.000Z",
+	"EndTime": "%s",
+	"Successful": true,
+	"Action": "add",
+	"Reason": "",
+	"MetadataValue": "poolx",
+	"Error": ""
+}]`, time.Time{}.Format(time.RFC3339))
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: msg, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/1.0/docker/autoscale"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	autoscale := &listAutoScaleHistoryCmd{}
+	err := autoscale.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `+-----------------+-------------+---------+----------+--------+--------+-------+
+| Start           | Finish      | Success | Metadata | Action | Reason | Error |
++-----------------+-------------+---------+----------+--------+--------+-------+
+| Oct 23 06:00:00 | in progress | true    | poolx    | add    |        |       |
++-----------------+-------------+---------+----------+--------+--------+-------+
+`
+	c.Assert(buf.String(), check.Equals, expected)
+}
