@@ -1,3 +1,7 @@
+#!/bin/bash
+
+set -e
+
 function check_go {
     set +e
     version=$(go version | grep -o 'go1.5')
@@ -9,19 +13,19 @@ function check_go {
 }
 
 function missing_handlers {
-    go get golang.org/x/tools/cmd/oracle
+    go get golang.org/x/tools/cmd/guru
 
     pos=$(cat ./api/handler.go  | grep -ob "fn AuthorizationRequiredHandler" | egrep -o "^[0-9]+")
-    allhandlers=$(oracle -pos=./api/handler.go:#$pos pointsto github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | awk '{print $2}' | sort)
+    allhandlers=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud pointsto ./api/handler.go:#$pos | tail -n+2 | awk '{print $2}' | sort)
 
     pos=$(($(cat ./permission/permission.go | grep -ob "func Check(" | egrep -o "^[0-9]+")+5))
-    okhandlers1=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
+    okhandlers1=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud callers ./permission/permission.go:#$pos | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
 
     pos=$(($(cat ./permission/permission.go | grep -ob "func ContextsForPermission" | egrep -o "^[0-9]+")+5))
-    okhandlers2=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
+    okhandlers2=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud callers ./permission/permission.go:#$pos | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
 
     pos=$(($(cat ./permission/permission.go | grep -ob "func CheckFromPermList" | egrep -o "^[0-9]+")+5))
-    okhandlers3=$(oracle -pos=./permission/permission.go:#$pos callers github.com/tsuru/tsuru/cmd/tsurud | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
+    okhandlers3=$(guru -scope github.com/tsuru/tsuru/cmd/tsurud callers ./permission/permission.go:#$pos | tail -n+2 | egrep -o " github.*" | awk '{print $1}' | sort)
 
     okhandlers=$(cat <(echo "$okhandlers1") <(echo "$okhandlers2") <(echo "$okhandlers3") | sort | uniq)
 

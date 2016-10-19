@@ -36,7 +36,8 @@ script:
   - while true; do echo .; sleep 30; done &
   - make metalint
   - go get golang.org/x/net/http2/...
-  - ./check-handlers.sh
+  - ./misc/check-handlers.sh
+  - ./misc/check-events.sh
   - make check-api-doc
   - CGO_ENABLED=0 go build ./cmd/tsurud/
 after_success:
