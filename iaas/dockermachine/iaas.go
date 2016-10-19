@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 )
 
@@ -77,7 +78,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		if m != nil {
 			errRem := dockerMachine.DeleteMachine(m)
 			if errRem != nil {
-				return nil, errors.Wrapf(errRem, "failed to remove failed machine: %s", err)
+				return nil, tsuruErrors.NewMultiError(err, errors.WithMessage(errRem, "failed to remove machine after error"))
 			}
 		}
 		return nil, err

@@ -51,11 +51,11 @@ func NewDockerMachine(config DockerMachineConfig) (dockerMachineAPI, error) {
 	if config.CaPath != "" {
 		err = copy(filepath.Join(config.CaPath, "ca.pem"), filepath.Join(path, "ca.pem"))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to copy ca file")
+			return nil, errors.WithMessage(err, "failed to copy ca file")
 		}
 		err = copy(filepath.Join(config.CaPath, "ca-key.pem"), filepath.Join(path, "ca-key.pem"))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to copy ca key file")
+			return nil, errors.WithMessage(err, "failed to copy ca key file")
 		}
 	}
 	if config.OutWriter != nil {
@@ -94,7 +94,7 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	}
 	err = configureDriver(host.Driver, params)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to configure driver")
+		return nil, errors.WithMessage(err, "failed to configure driver")
 	}
 	engineOpts := host.HostOptions.EngineOptions
 	if d.config.InsecureRegistry != "" {
