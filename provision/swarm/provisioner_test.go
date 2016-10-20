@@ -46,6 +46,7 @@ func (s *S) TestInitialize(c *check.C) {
 func (s *S) TestAddNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -94,6 +95,7 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 func (s *S) TestListNodes(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -119,6 +121,7 @@ func (s *S) TestListNodesEmpty(c *check.C) {
 func (s *S) TestRestart(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -149,6 +152,7 @@ func (s *S) TestRestart(c *check.C) {
 func (s *S) TestRestartExisting(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -181,6 +185,7 @@ func (s *S) TestRestartExisting(c *check.C) {
 func (s *S) TestStopStart(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -216,6 +221,7 @@ func (s *S) TestStopStart(c *check.C) {
 func (s *S) TestStopStartSingleProcess(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -258,6 +264,7 @@ func (s *S) TestStopStartSingleProcess(c *check.C) {
 func (s *S) TestAddUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -288,6 +295,7 @@ func (s *S) TestAddUnits(c *check.C) {
 func (s *S) TestAddUnitsMultipleProcesses(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -319,6 +327,7 @@ func (s *S) TestAddUnitsMultipleProcesses(c *check.C) {
 func (s *S) TestAddUnitsNoDeploys(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -341,6 +350,7 @@ func (s *S) TestAddUnitsNoDeploys(c *check.C) {
 func (s *S) TestAddUnitsNoProcessWithMultiple(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -364,6 +374,7 @@ func (s *S) TestAddUnitsNoProcessWithMultiple(c *check.C) {
 func (s *S) TestAddUnitsNoImage(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -377,6 +388,7 @@ func (s *S) TestAddUnitsNoImage(c *check.C) {
 func (s *S) TestAddUnitsZeroUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -399,6 +411,7 @@ func (s *S) TestAddUnitsZeroUnits(c *check.C) {
 func (s *S) TestRemoveUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -436,6 +449,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 func (s *S) TestGetNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -459,6 +473,7 @@ func (s *S) TestGetNodeNotFound(c *check.C) {
 func (s *S) TestRemoveNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -512,6 +527,7 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 func (s *S) TestUpdateNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -536,6 +552,7 @@ func (s *S) TestUpdateNode(c *check.C) {
 func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -575,6 +592,7 @@ func (s *S) TestUpdateNodeNotFound(c *check.C) {
 func (s *S) TestRegisterUnit(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -609,6 +627,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -642,6 +661,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
@@ -672,6 +692,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 func (s *S) TestArchiveDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	attached := s.attachRegister(c, srv, true)
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
@@ -714,6 +735,7 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Skip("no support for service bind in the provisioner just yet")
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	attached := s.attachRegister(c, srv, true)
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
@@ -764,6 +786,7 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 func (s *S) TestImageDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	attached := s.attachRegister(c, srv, false)
 	imageName := "myimg:v1"
 	srv.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
