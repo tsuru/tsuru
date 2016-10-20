@@ -89,7 +89,7 @@ func changeUnits(a provision.App, units int, processName string, w io.Writer) er
 			return errors.WithStack(err)
 		}
 	}
-	return deployProcesses(client, a, imageId, processSpec{processName: units})
+	return deployProcesses(client, a, imageId, processSpec{processName: processCounts{increment: units}})
 }
 
 func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) ([]provision.Unit, error) {
@@ -112,12 +112,70 @@ func (p *swarmProvisioner) Restart(provision.App, string, io.Writer) error {
 	return errNotImplemented
 }
 
-func (p *swarmProvisioner) Start(provision.App, string) error {
-	return errNotImplemented
+func (p *swarmProvisioner) Start(a provision.App, process string) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	var processes []string
+	if process == "" {
+		processes, err = allAppProcesses(a.GetName())
+		if err != nil {
+			return err
+		}
+	} else {
+		processes = []string{process}
+	}
+	imgID, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	spec := processSpec{}
+	for _, procName := range processes {
+		spec[procName] = processCounts{start: true}
+	}
+	return deployProcesses(client, a, imgID, spec)
 }
 
-func (p *swarmProvisioner) Stop(provision.App, string) error {
-	return errNotImplemented
+func (p *swarmProvisioner) Stop(a provision.App, process string) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	var processes []string
+	if process == "" {
+		processes, err = allAppProcesses(a.GetName())
+		if err != nil {
+			return err
+		}
+	} else {
+		processes = []string{process}
+	}
+	imgID, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	spec := processSpec{}
+	for _, p := range processes {
+		spec[p] = processCounts{stop: true}
+	}
+	return deployProcesses(client, a, imgID, spec)
+}
+
+func allAppProcesses(appName string) ([]string, error) {
+	var processes []string
+	imgID, err := image.AppCurrentImageName(appName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	data, err := image.GetImageCustomData(imgID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for procName := range data.Processes {
+		processes = append(processes, procName)
+	}
+	return processes, nil
 }
 
 func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
@@ -497,7 +555,7 @@ func deployProcesses(client *docker.Client, a provision.App, newImg string, upda
 	}
 	currentSpec := processSpec{}
 	for p := range currentImageData.Processes {
-		currentSpec[p] = 0
+		currentSpec[p] = processCounts{}
 	}
 	newImageData, err := image.GetImageCustomData(newImg)
 	if err != nil {
@@ -508,7 +566,7 @@ func deployProcesses(client *docker.Client, a provision.App, newImg string, upda
 	}
 	newSpec := processSpec{}
 	for p := range newImageData.Processes {
-		newSpec[p] = 0
+		newSpec[p] = processCounts{start: true}
 		if updateSpec != nil {
 			newSpec[p] = updateSpec[p]
 		}
@@ -537,7 +595,7 @@ func removeService(client *docker.Client, a provision.App, process string) error
 	return nil
 }
 
-func deploy(client *docker.Client, a provision.App, process string, count int, imgID string) error {
+func deploy(client *docker.Client, a provision.App, process string, pCounts processCounts, imgID string) error {
 	srvName := serviceNameForApp(a, process)
 	srv, err := client.InspectService(srvName)
 	if err != nil {
@@ -550,25 +608,15 @@ func deploy(client *docker.Client, a provision.App, process string, count int, i
 		baseSpec = &srv.Spec
 	}
 	spec, err := serviceSpecForApp(tsuruServiceOpts{
-		app:      a,
-		process:  process,
-		image:    imgID,
-		baseSpec: baseSpec,
+		app:           a,
+		process:       process,
+		image:         imgID,
+		baseSpec:      baseSpec,
+		processCounts: pCounts,
 	})
 	if err != nil {
 		return err
 	}
-	replicas := int(*spec.Mode.Replicated.Replicas)
-	if count != 0 {
-		replicas += count
-		if replicas < 0 {
-			return errors.New("cannot have less than 0 units")
-		}
-	} else if replicas == 0 {
-		replicas = 1
-	}
-	uReplicas := uint64(replicas)
-	spec.Mode.Replicated.Replicas = &uReplicas
 	if srv == nil {
 		_, err = client.CreateService(docker.CreateServiceOptions{
 			ServiceSpec: *spec,
@@ -601,8 +649,6 @@ func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, img
 	}
 	spec.TaskTemplate.ContainerSpec.Command = cmds
 	spec.TaskTemplate.RestartPolicy.Condition = swarm.RestartPolicyConditionNone
-	replicas := uint64(1)
-	spec.Mode.Replicated.Replicas = &replicas
 	srv, err := client.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: *spec,
 	})

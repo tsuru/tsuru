@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -115,6 +116,81 @@ func (s *S) TestListNodesEmpty(c *check.C) {
 	c.Assert(nodes, check.HasLen, 0)
 }
 
+func (s *S) TestStopStart(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+	err = s.p.Stop(a, "")
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+}
+
+func (s *S) TestStopStartSingleProcess(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python myworker.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 1, "worker", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
+	err = s.p.Stop(a, "worker")
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units[0].ProcessName, check.Equals, "web")
+	err = s.p.Start(a, "worker")
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
+	procs := []string{units[0].ProcessName, units[1].ProcessName}
+	sort.Strings(procs)
+	c.Assert(procs, check.DeepEquals, []string{"web", "worker"})
+}
+
 func (s *S) TestAddUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -136,9 +212,40 @@ func (s *S) TestAddUnits(c *check.C) {
 	units, err := s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
-	units, err = s.p.AddUnits(a, 2, "web", nil)
+	units, err = s.p.AddUnits(a, 2, "", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 5)
+}
+
+func (s *S) TestAddUnitsMultipleProcesses(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python myworker.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	_, err = s.p.AddUnits(a, 1, "worker", nil)
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
 }
 
 func (s *S) TestAddUnitsNoDeploys(c *check.C) {
@@ -161,6 +268,29 @@ func (s *S) TestAddUnitsNoDeploys(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.ErrorMatches, `units can only be modified after the first deploy`)
+}
+
+func (s *S) TestAddUnitsNoProcessWithMultiple(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python myworker.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(a, 3, "", nil)
+	c.Assert(err, check.ErrorMatches, `process error: no process name specified and more than one declared in Procfile`)
 }
 
 func (s *S) TestAddUnitsNoImage(c *check.C) {

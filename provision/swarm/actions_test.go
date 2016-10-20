@@ -43,7 +43,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 		client:           cli,
 		app:              a,
 		newImage:         imgName,
-		newImageSpec:     processSpec{"web": 0},
+		newImageSpec:     processSpec{"web": processCounts{}},
 		currentImageSpec: processSpec{},
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
@@ -82,7 +82,7 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 		client:           cli,
 		app:              a,
 		newImage:         imgName,
-		newImageSpec:     processSpec{"web": 5},
+		newImageSpec:     processSpec{"web": processCounts{increment: 5}},
 		currentImageSpec: processSpec{},
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
@@ -137,7 +137,7 @@ func (s *S) TestActionUpdateServicesForwardUpdateExisting(c *check.C) {
 		client:           cli,
 		app:              a,
 		newImage:         imgName,
-		newImageSpec:     processSpec{"web": 0},
+		newImageSpec:     processSpec{"web": processCounts{}},
 		currentImageSpec: processSpec{},
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
@@ -211,7 +211,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("bad error"))
 	}))
-	spec := processSpec{"web": 0, "worker": 0}
+	spec := processSpec{"web": processCounts{}, "worker": processCounts{}}
 	args := &pipelineArgs{
 		client:           cli,
 		app:              a,
@@ -257,7 +257,7 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	spec := processSpec{"web": 0}
+	spec := processSpec{"web": processCounts{}}
 	args := &pipelineArgs{
 		client:           cli,
 		app:              a,
@@ -315,7 +315,7 @@ func (s *S) TestActionUpdateServicesBackwardNotInCurrent(c *check.C) {
 		client:           cli,
 		app:              a,
 		currentImage:     imgName,
-		newImageSpec:     processSpec{"web": 0},
+		newImageSpec:     processSpec{"web": processCounts{}},
 		currentImageSpec: processSpec{},
 	}
 	updateServices.Backward(action.BWContext{

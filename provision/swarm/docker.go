@@ -42,6 +42,7 @@ var (
 	labelServiceBuildImage = tsuruLabel("tsuru.service.buildImage")
 	labelAppName           = tsuruLabel("tsuru.app.name")
 	labelAppProcess        = tsuruLabel("tsuru.app.process")
+	labelProcessReplicas   = tsuruLabel("tsuru.app.process.replicas")
 	labelAppPlatform       = tsuruLabel("tsuru.app.platform")
 	labelRouterName        = tsuruLabel("tsuru.router.name")
 	labelRouterType        = tsuruLabel("tsuru.router.type")
@@ -233,12 +234,13 @@ func serviceNameForApp(a provision.App, process string) string {
 }
 
 type tsuruServiceOpts struct {
-	app        provision.App
-	process    string
-	image      string
-	buildImage string
-	baseSpec   *swarm.ServiceSpec
-	isDeploy   bool
+	app           provision.App
+	process       string
+	image         string
+	buildImage    string
+	baseSpec      *swarm.ServiceSpec
+	isDeploy      bool
+	processCounts processCounts
 }
 
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
@@ -264,9 +266,23 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			return nil, errors.WithStack(err)
 		}
 	}
-	var unitCount uint64 = 0
-	if opts.baseSpec != nil && opts.baseSpec.Mode.Replicated != nil {
-		unitCount = *opts.baseSpec.Mode.Replicated.Replicas
+	replicas := 0
+	if opts.baseSpec != nil {
+		var replicasLabel int64
+		replicasLabel, err = strconv.ParseInt(opts.baseSpec.Labels[labelProcessReplicas.String()], 10, 32)
+		if err == nil {
+			replicas = int(replicasLabel)
+		} else if opts.baseSpec.Mode.Replicated != nil {
+			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
+		}
+	}
+	if opts.processCounts.increment != 0 {
+		replicas += opts.processCounts.increment
+		if replicas < 0 {
+			return nil, errors.New("cannot have less than 0 units")
+		}
+	} else if replicas == 0 && opts.processCounts.start {
+		replicas = 1
 	}
 	routerName, err := opts.app.GetRouter()
 	if err != nil {
@@ -278,7 +294,12 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	srvName := serviceNameForApp(opts.app, opts.process)
 	if opts.isDeploy {
+		replicas = 1
 		srvName = fmt.Sprintf("%s-build", srvName)
+	}
+	uReplicas := uint64(replicas)
+	if opts.processCounts.stop {
+		uReplicas = 0
 	}
 	labels := map[string]string{
 		labelService.String():           strconv.FormatBool(true),
@@ -289,6 +310,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		labelAppPlatform.String():       opts.app.GetPlatform(),
 		labelRouterName.String():        routerName,
 		labelRouterType.String():        routerType,
+		labelProcessReplicas.String():   strconv.FormatInt(int64(replicas), 10),
 	}
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
@@ -317,7 +339,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		},
 		Mode: swarm.ServiceMode{
 			Replicated: &swarm.ReplicatedService{
-				Replicas: &unitCount,
+				Replicas: &uReplicas,
 			},
 		},
 	}

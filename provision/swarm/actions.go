@@ -16,7 +16,13 @@ import (
 	"github.com/tsuru/tsuru/set"
 )
 
-type processSpec map[string]int
+type processCounts struct {
+	stop      bool
+	start     bool
+	increment int
+}
+
+type processSpec map[string]processCounts
 
 type pipelineArgs struct {
 	client           *docker.Client
