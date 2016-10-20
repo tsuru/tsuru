@@ -699,7 +699,10 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
 	si := []service.ServiceInstance{
 		{
 			Name:        "foo-instance",
@@ -825,7 +828,10 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithUnbindA
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -875,7 +881,10 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysqlremove",
@@ -923,8 +932,12 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	c.Assert(err, check.IsNil)
 	err = app.CreateApp(&ab, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
-	units, _ = s.provisioner.AddUnits(&ab, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(&ab, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&ab)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysqlremove",

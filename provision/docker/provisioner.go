@@ -813,12 +813,12 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	return result, nil
 }
 
-func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string, w io.Writer) ([]provision.Unit, error) {
+func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string, w io.Writer) error {
 	if a.GetDeploys() == 0 {
-		return nil, errors.New("New units can only be added after the first deployment")
+		return errors.New("New units can only be added after the first deployment")
 	}
 	if units == 0 {
-		return nil, errors.New("Cannot add 0 units")
+		return errors.New("Cannot add 0 units")
 	}
 	if w == nil {
 		w = ioutil.Discard
@@ -826,21 +826,14 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	imageId, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
-		return nil, err
+		return err
 	}
 	imageData, err := image.GetImageCustomData(imageId)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]provision.Unit, len(conts))
-	for i, c := range conts {
-		result[i] = c.AsUnit(a)
-	}
-	return result, nil
+	_, err = p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
+	return err
 }
 
 func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {

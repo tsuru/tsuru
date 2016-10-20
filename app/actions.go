@@ -386,11 +386,7 @@ var provisionAddUnits = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		units, err := prov.AddUnits(app, uint(n), process, w)
-		if err != nil {
-			return nil, err
-		}
-		return units, nil
+		return nil, prov.AddUnits(app, uint(n), process, w)
 	},
 	MinParams: 1,
 }

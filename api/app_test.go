@@ -4019,7 +4019,10 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -4113,7 +4116,10 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -4211,8 +4217,10 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
-
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
 	instances := []service.ServiceInstance{
 		{
 			Name:        "my-mysql",
@@ -4950,7 +4958,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -5015,7 +5023,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)

@@ -881,8 +881,9 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w io.Writer) ([]provision.Unit, error) {
-	return p.AddUnitsToNode(app, n, process, w, "")
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w io.Writer) error {
+	_, err := p.AddUnitsToNode(app, n, process, w, "")
+	return err
 }
 
 func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process string, w io.Writer, nodeAddr string) ([]provision.Unit, error) {

@@ -572,7 +572,7 @@ func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	err = p.Provision(app)
 	c.Assert(err, check.IsNil)
-	_, err = p.AddUnits(app, 1, "web", nil)
+	err = p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()

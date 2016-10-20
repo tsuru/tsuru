@@ -92,12 +92,8 @@ func changeUnits(a provision.App, units int, processName string, w io.Writer) er
 	return deployProcesses(client, a, imageId, processSpec{processName: processCounts{increment: units}})
 }
 
-func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) ([]provision.Unit, error) {
-	err := changeUnits(a, int(units), processName, w)
-	if err != nil {
-		return nil, err
-	}
-	return p.Units(a)
+func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
+	return changeUnits(a, int(units), processName, w)
 }
 
 func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {

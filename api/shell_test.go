@@ -27,7 +27,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)
@@ -67,7 +67,7 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)
@@ -107,7 +107,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnits(&a, 5, "web", nil)
+	err = s.provisioner.AddUnits(&a, 5, "web", nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
@@ -155,7 +155,7 @@ func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnits(&a, 1, "web", nil)
+	err = s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	m := RunServer(true)
 	server := httptest.NewServer(m)

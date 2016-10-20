@@ -311,7 +311,7 @@ type Provisioner interface {
 	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
-	AddUnits(App, uint, string, io.Writer) ([]Unit, error)
+	AddUnits(App, uint, string, io.Writer) error
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.

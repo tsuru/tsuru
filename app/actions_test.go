@@ -11,7 +11,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -554,12 +553,10 @@ func (s *S) TestProvisionAddUnits(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
-	fwresult, err := provisionAddUnits.Forward(ctx)
+	_, err = provisionAddUnits.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	units, ok := fwresult.([]provision.Unit)
-	c.Assert(ok, check.Equals, true)
+	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, check.HasLen, 3)
-	c.Assert(units, check.DeepEquals, s.provisioner.GetUnits(&app))
 }
 
 func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {

@@ -38,8 +38,8 @@ func (p *mesosProvisioner) Destroy(provision.App) error {
 	return errNotImplemented
 }
 
-func (p *mesosProvisioner) AddUnits(provision.App, uint, string, io.Writer) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+func (p *mesosProvisioner) AddUnits(provision.App, uint, string, io.Writer) error {
+	return errNotImplemented
 }
 
 func (p *mesosProvisioner) RemoveUnits(provision.App, uint, string, io.Writer) error {

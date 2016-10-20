@@ -46,8 +46,8 @@ func (p *kubernetesProvisioner) Destroy(provision.App) error {
 	return errNotImplemented
 }
 
-func (p *kubernetesProvisioner) AddUnits(provision.App, uint, string, io.Writer) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+func (p *kubernetesProvisioner) AddUnits(provision.App, uint, string, io.Writer) error {
+	return errNotImplemented
 }
 
 func (p *kubernetesProvisioner) RemoveUnits(provision.App, uint, string, io.Writer) error {
