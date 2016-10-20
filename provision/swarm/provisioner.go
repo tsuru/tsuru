@@ -89,7 +89,7 @@ func changeUnits(a provision.App, units int, processName string, w io.Writer) er
 			return errors.WithStack(err)
 		}
 	}
-	return deployProcesses(client, a, imageId, processSpec{processName: processCounts{increment: units}})
+	return deployProcesses(client, a, imageId, processSpec{processName: processState{increment: units}})
 }
 
 func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
@@ -101,14 +101,10 @@ func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName 
 }
 
 func (p *swarmProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
-	return errNotImplemented
+	return nil
 }
 
-func (p *swarmProvisioner) Restart(provision.App, string, io.Writer) error {
-	return errNotImplemented
-}
-
-func (p *swarmProvisioner) Start(a provision.App, process string) error {
+func changeAppState(a provision.App, process string, state processState) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
@@ -128,34 +124,21 @@ func (p *swarmProvisioner) Start(a provision.App, process string) error {
 	}
 	spec := processSpec{}
 	for _, procName := range processes {
-		spec[procName] = processCounts{start: true}
+		spec[procName] = state
 	}
 	return deployProcesses(client, a, imgID, spec)
 }
 
+func (p *swarmProvisioner) Restart(a provision.App, process string, w io.Writer) error {
+	return changeAppState(a, process, processState{start: true, restart: true})
+}
+
+func (p *swarmProvisioner) Start(a provision.App, process string) error {
+	return changeAppState(a, process, processState{start: true})
+}
+
 func (p *swarmProvisioner) Stop(a provision.App, process string) error {
-	client, err := chooseDBSwarmNode()
-	if err != nil {
-		return err
-	}
-	var processes []string
-	if process == "" {
-		processes, err = allAppProcesses(a.GetName())
-		if err != nil {
-			return err
-		}
-	} else {
-		processes = []string{process}
-	}
-	imgID, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	spec := processSpec{}
-	for _, p := range processes {
-		spec[p] = processCounts{stop: true}
-	}
-	return deployProcesses(client, a, imgID, spec)
+	return changeAppState(a, process, processState{stop: true})
 }
 
 func allAppProcesses(appName string) ([]string, error) {
@@ -551,7 +534,7 @@ func deployProcesses(client *docker.Client, a provision.App, newImg string, upda
 	}
 	currentSpec := processSpec{}
 	for p := range currentImageData.Processes {
-		currentSpec[p] = processCounts{}
+		currentSpec[p] = processState{}
 	}
 	newImageData, err := image.GetImageCustomData(newImg)
 	if err != nil {
@@ -562,7 +545,7 @@ func deployProcesses(client *docker.Client, a provision.App, newImg string, upda
 	}
 	newSpec := processSpec{}
 	for p := range newImageData.Processes {
-		newSpec[p] = processCounts{start: true}
+		newSpec[p] = processState{start: true}
 		if updateSpec != nil {
 			newSpec[p] = updateSpec[p]
 		}
@@ -591,7 +574,7 @@ func removeService(client *docker.Client, a provision.App, process string) error
 	return nil
 }
 
-func deploy(client *docker.Client, a provision.App, process string, pCounts processCounts, imgID string) error {
+func deploy(client *docker.Client, a provision.App, process string, pState processState, imgID string) error {
 	srvName := serviceNameForApp(a, process)
 	srv, err := client.InspectService(srvName)
 	if err != nil {
@@ -604,11 +587,11 @@ func deploy(client *docker.Client, a provision.App, process string, pCounts proc
 		baseSpec = &srv.Spec
 	}
 	spec, err := serviceSpecForApp(tsuruServiceOpts{
-		app:           a,
-		process:       process,
-		image:         imgID,
-		baseSpec:      baseSpec,
-		processCounts: pCounts,
+		app:          a,
+		process:      process,
+		image:        imgID,
+		baseSpec:     baseSpec,
+		processState: pState,
 	})
 	if err != nil {
 		return err

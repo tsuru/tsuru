@@ -40,6 +40,7 @@ var (
 	labelService           = tsuruLabel("tsuru.service")
 	labelServiceDeploy     = tsuruLabel("tsuru.service.deploy")
 	labelServiceBuildImage = tsuruLabel("tsuru.service.buildImage")
+	labelServiceRestart    = tsuruLabel("tsuru.service.restart")
 	labelAppName           = tsuruLabel("tsuru.app.name")
 	labelAppProcess        = tsuruLabel("tsuru.app.process")
 	labelProcessReplicas   = tsuruLabel("tsuru.app.process.replicas")
@@ -234,13 +235,13 @@ func serviceNameForApp(a provision.App, process string) string {
 }
 
 type tsuruServiceOpts struct {
-	app           provision.App
-	process       string
-	image         string
-	buildImage    string
-	baseSpec      *swarm.ServiceSpec
-	isDeploy      bool
-	processCounts processCounts
+	app          provision.App
+	process      string
+	image        string
+	buildImage   string
+	baseSpec     *swarm.ServiceSpec
+	isDeploy     bool
+	processState processState
 }
 
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
@@ -266,19 +267,21 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			return nil, errors.WithStack(err)
 		}
 	}
+	restartCount := 0
 	replicas := 0
 	if opts.baseSpec != nil {
 		replicas, err = strconv.Atoi(opts.baseSpec.Labels[labelProcessReplicas.String()])
 		if err != nil && opts.baseSpec.Mode.Replicated != nil {
 			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
 		}
+		restartCount, _ = strconv.Atoi(opts.baseSpec.Labels[labelServiceRestart.String()])
 	}
-	if opts.processCounts.increment != 0 {
-		replicas += opts.processCounts.increment
+	if opts.processState.increment != 0 {
+		replicas += opts.processState.increment
 		if replicas < 0 {
 			return nil, errors.New("cannot have less than 0 units")
 		}
-	} else if replicas == 0 && opts.processCounts.start {
+	} else if replicas == 0 && opts.processState.start {
 		replicas = 1
 	}
 	routerName, err := opts.app.GetRouter()
@@ -295,8 +298,11 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		srvName = fmt.Sprintf("%s-build", srvName)
 	}
 	uReplicas := uint64(replicas)
-	if opts.processCounts.stop {
+	if opts.processState.stop {
 		uReplicas = 0
+	}
+	if opts.processState.restart {
+		restartCount++
 	}
 	labels := map[string]string{
 		labelService.String():           strconv.FormatBool(true),
@@ -308,6 +314,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		labelRouterName.String():        routerName,
 		labelRouterType.String():        routerType,
 		labelProcessReplicas.String():   strconv.Itoa(replicas),
+		labelServiceRestart.String():    strconv.Itoa(restartCount),
 	}
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
