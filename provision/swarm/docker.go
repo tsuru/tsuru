@@ -268,11 +268,8 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	replicas := 0
 	if opts.baseSpec != nil {
-		var replicasLabel int64
-		replicasLabel, err = strconv.ParseInt(opts.baseSpec.Labels[labelProcessReplicas.String()], 10, 32)
-		if err == nil {
-			replicas = int(replicasLabel)
-		} else if opts.baseSpec.Mode.Replicated != nil {
+		replicas, err = strconv.Atoi(opts.baseSpec.Labels[labelProcessReplicas.String()])
+		if err != nil && opts.baseSpec.Mode.Replicated != nil {
 			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
 		}
 	}
@@ -310,7 +307,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		labelAppPlatform.String():       opts.app.GetPlatform(),
 		labelRouterName.String():        routerName,
 		labelRouterType.String():        routerType,
-		labelProcessReplicas.String():   strconv.FormatInt(int64(replicas), 10),
+		labelProcessReplicas.String():   strconv.Itoa(replicas),
 	}
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
