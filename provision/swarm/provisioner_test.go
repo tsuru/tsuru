@@ -309,6 +309,69 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
 }
 
+func (s *S) TestUpdateNode(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address:  srv.URL(),
+		Metadata: map[string]string{"m1": "v2", "m2": "v3"},
+	})
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode(srv.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"m1":   "v2",
+		"m2":   "v3",
+		"pool": "p1",
+	})
+}
+
+func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: srv.URL(),
+		Disable: true,
+	})
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode(srv.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
+		"m1":   "v1",
+		"pool": "p1",
+	})
+	c.Assert(node.Status(), check.Equals, "ready (pause)")
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: srv.URL(),
+		Enable:  true,
+	})
+	c.Assert(err, check.IsNil)
+	node, err = s.p.GetNode(srv.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Status(), check.Equals, "ready")
+}
+
+func (s *S) TestUpdateNodeNotFound(c *check.C) {
+	err := s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "localhost:1000",
+	})
+	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+}
+
 func (s *S) TestRegisterUnit(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

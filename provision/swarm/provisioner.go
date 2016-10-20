@@ -350,8 +350,36 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 	return updateDBSwarmNodes(client)
 }
 
-func (p *swarmProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
-	return errNotImplemented
+func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	node, err := p.GetNode(opts.Address)
+	if err != nil {
+		return err
+	}
+	swarmNode := node.(*swarmNodeWrapper).Node
+	if opts.Disable {
+		swarmNode.Spec.Availability = swarm.NodeAvailabilityPause
+	} else if opts.Enable {
+		swarmNode.Spec.Availability = swarm.NodeAvailabilityActive
+	}
+	for k, v := range opts.Metadata {
+		if v == "" {
+			delete(swarmNode.Spec.Annotations.Labels, k)
+		} else {
+			swarmNode.Spec.Annotations.Labels[k] = v
+		}
+	}
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	err = client.UpdateNode(swarmNode.ID, docker.UpdateNodeOptions{
+		NodeSpec: swarmNode.Spec,
+		Version:  swarmNode.Version.Index,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {

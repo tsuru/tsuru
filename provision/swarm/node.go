@@ -28,7 +28,10 @@ func (n *swarmNodeWrapper) Address() string {
 func (n *swarmNodeWrapper) Status() string {
 	base := string(n.Node.Status.State)
 	if n.Node.Status.Message != "" {
-		return fmt.Sprintf("%s (%s)", base, n.Node.Status.Message)
+		base = fmt.Sprintf("%s (%s)", base, n.Node.Status.Message)
+	}
+	if n.Node.Spec.Availability != "" && n.Node.Spec.Availability != swarm.NodeAvailabilityActive {
+		base = fmt.Sprintf("%s (%s)", base, n.Node.Spec.Availability)
 	}
 	return base
 }
