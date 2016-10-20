@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/image"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -64,8 +65,29 @@ func (p *swarmProvisioner) Provision(provision.App) error {
 	return nil
 }
 
-func (p *swarmProvisioner) Destroy(provision.App) error {
-	return errNotImplemented
+func (p *swarmProvisioner) Destroy(a provision.App) error {
+	processes, err := allAppProcesses(a.GetName())
+	if err != nil {
+		return err
+	}
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	multiErrors := tsuruErrors.NewMultiError()
+	for _, p := range processes {
+		name := serviceNameForApp(a, p)
+		err = client.RemoveService(docker.RemoveServiceOptions{
+			ID: name,
+		})
+		if err != nil {
+			multiErrors.Add(errors.WithStack(err))
+		}
+	}
+	if multiErrors.Len() > 0 {
+		return multiErrors
+	}
+	return nil
 }
 
 func changeUnits(a provision.App, units int, processName string, w io.Writer) error {
