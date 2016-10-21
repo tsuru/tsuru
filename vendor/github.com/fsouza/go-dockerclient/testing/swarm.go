@@ -7,6 +7,7 @@ package testing
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -48,6 +49,20 @@ func (s *swarmServer) URL() string {
 		return ""
 	}
 	return "http://" + s.listener.Addr().String() + "/"
+}
+
+// MutateTask changes a task, returning an error if the given id does not match
+// to any task in the server.
+func (s *DockerServer) MutateTask(id string, newTask swarm.Task) error {
+	s.swarmMut.Lock()
+	defer s.swarmMut.Unlock()
+	for i, task := range s.tasks {
+		if task.ID == id {
+			s.tasks[i] = &newTask
+			return nil
+		}
+	}
+	return errors.New("task not found")
 }
 
 func (s *DockerServer) swarmInit(w http.ResponseWriter, r *http.Request) {
