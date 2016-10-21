@@ -51,8 +51,8 @@ func (s *S) TestCreateMachineIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.DeepEquals, expectedMachine)
 	c.Assert(fakeDM.closed, check.Equals, true)
-	c.Assert(fakeDM.config.InsecureRegistry, check.Equals, "registry.com")
-	c.Assert(fakeDM.config.DockerEngineInstallURL, check.Equals, "http://getdocker.com")
+	c.Assert(fakeDM.hostOpts.InsecureRegistry, check.Equals, "registry.com")
+	c.Assert(fakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "http://getdocker.com")
 }
 
 func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
@@ -74,7 +74,7 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	}
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.DeepEquals, expectedMachine)
-	c.Assert(fakeDM.config.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
+	c.Assert(fakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
 }
 
 func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {

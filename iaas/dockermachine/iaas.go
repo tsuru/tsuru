@@ -22,7 +22,7 @@ func init() {
 
 type dockerMachineIaaS struct {
 	base       iaas.NamedIaaS
-	apiFactory func(DockerMachineConfig) (dockerMachineAPI, error)
+	apiFactory func(DockerMachineConfig) (DockerMachineAPI, error)
 }
 
 func newDockerMachineIaaS(name string) iaas.IaaS {
@@ -50,10 +50,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		driverName = name
 		params["driver"] = driverName
 	}
-	dockerEngineInstallURL, err := i.getParamOrConfigString("docker-install-url", params)
-	if err != nil {
-		dockerEngineInstallURL = ""
-	}
+	dockerEngineInstallURL, _ := i.getParamOrConfigString("docker-install-url", params)
 	insecureRegistry, _ := i.getParamOrConfigString("insecure-registry", params)
 	machineName, ok := params["name"]
 	if !ok {
@@ -68,11 +65,9 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	driverOpts := i.buildDriverOpts(params)
 	buf := &bytes.Buffer{}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
-		CaPath:                 caPath,
-		InsecureRegistry:       insecureRegistry,
-		DockerEngineInstallURL: dockerEngineInstallURL,
-		OutWriter:              buf,
-		ErrWriter:              buf,
+		CaPath:    caPath,
+		OutWriter: buf,
+		ErrWriter: buf,
 	})
 	if err != nil {
 		return nil, err
@@ -81,18 +76,24 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		dockerMachine.Close()
 		log.Debug(buf.String())
 	}()
-	m, err := dockerMachine.CreateMachine(machineName, driverName, driverOpts)
+	m, err := dockerMachine.CreateMachine(CreateMachineOpts{
+		Name:                   machineName,
+		DriverName:             driverName,
+		Params:                 driverOpts,
+		InsecureRegistry:       insecureRegistry,
+		DockerEngineInstallURL: dockerEngineInstallURL,
+	})
 	if err != nil {
 		if m != nil {
-			errRem := dockerMachine.DeleteMachine(m)
+			errRem := dockerMachine.DeleteMachine(m.Base)
 			if errRem != nil {
 				err = tsuruErrors.NewMultiError(err, errors.WithMessage(errRem, "failed to remove machine after error"))
 			}
 		}
 		return nil, err
 	}
-	m.CreationParams = params
-	return m, nil
+	m.Base.CreationParams = params
+	return m.Base, nil
 }
 
 func (i *dockerMachineIaaS) buildDriverOpts(params map[string]string) map[string]interface{} {

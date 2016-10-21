@@ -25,36 +25,60 @@ var defaultWriter = ioutil.Discard
 
 type DockerMachine struct {
 	io.Closer
-	client libmachine.API
-	config *DockerMachineConfig
-	path   string
+	client    libmachine.API
+	StorePath string
+	CertsPath string
+	temp      bool
 }
 
 type DockerMachineConfig struct {
-	CaPath                 string
-	InsecureRegistry       string
-	DockerEngineInstallURL string
-	OutWriter              io.Writer
-	ErrWriter              io.Writer
+	CaPath    string
+	OutWriter io.Writer
+	ErrWriter io.Writer
+	StorePath string
 }
 
-type dockerMachineAPI interface {
+type DockerMachineAPI interface {
 	io.Closer
-	CreateMachine(string, string, map[string]interface{}) (*iaas.Machine, error)
+	CreateMachine(CreateMachineOpts) (*Machine, error)
 	DeleteMachine(*iaas.Machine) error
 }
 
-func NewDockerMachine(config DockerMachineConfig) (dockerMachineAPI, error) {
-	path, err := ioutil.TempDir("", "")
+type CreateMachineOpts struct {
+	Name                   string
+	DriverName             string
+	Params                 map[string]interface{}
+	InsecureRegistry       string
+	DockerEngineInstallURL string
+}
+
+type Machine struct {
+	Base *iaas.Machine
+	Host *host.Host
+}
+
+func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
+	storePath := config.StorePath
+	temp := false
+	if storePath == "" {
+		tempPath, err := ioutil.TempDir("", "")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create temp dir")
+		}
+		storePath = tempPath
+		temp = true
+	}
+	certsPath := filepath.Join(storePath, "certs")
+	err := os.Mkdir(certsPath, 0700)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create temp dir")
+		return nil, errors.WithMessage(err, "failed to create certs dir")
 	}
 	if config.CaPath != "" {
-		err = copy(filepath.Join(config.CaPath, "ca.pem"), filepath.Join(path, "ca.pem"))
+		err := copy(filepath.Join(config.CaPath, "ca.pem"), filepath.Join(certsPath, "ca.pem"))
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to copy ca file")
 		}
-		err = copy(filepath.Join(config.CaPath, "ca-key.pem"), filepath.Join(path, "ca-key.pem"))
+		err = copy(filepath.Join(config.CaPath, "ca-key.pem"), filepath.Join(certsPath, "ca-key.pem"))
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to copy ca key file")
 		}
@@ -70,27 +94,48 @@ func NewDockerMachine(config DockerMachineConfig) (dockerMachineAPI, error) {
 		log.SetOutWriter(defaultWriter)
 	}
 	return &DockerMachine{
-		path:   path,
-		client: libmachine.NewClient(path, path),
-		config: &config,
+		StorePath: storePath,
+		CertsPath: certsPath,
+		client:    libmachine.NewClient(storePath, certsPath),
+		temp:      temp,
 	}, nil
 }
 
 func (d *DockerMachine) Close() error {
-	os.RemoveAll(d.path)
+	if d.temp {
+		os.RemoveAll(d.StorePath)
+	}
 	return d.client.Close()
 }
 
-func (d *DockerMachine) CreateMachine(name, driver string, params map[string]interface{}) (*iaas.Machine, error) {
-	host, err := d.CreateHost(CreateHostOpts{
-		Name:       name,
-		DriverName: driver,
-		Params:     params,
+func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) {
+	rawDriver, err := json.Marshal(&drivers.BaseDriver{
+		MachineName: opts.Name,
+		StorePath:   d.StorePath,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to marshal base driver")
 	}
-	rawDriver, err := json.Marshal(host.Driver)
+	h, err := d.client.NewHost(opts.DriverName, rawDriver)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize host")
+	}
+	err = configureDriver(h.Driver, opts.Params)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to configure driver")
+	}
+	engineOpts := h.HostOptions.EngineOptions
+	if opts.InsecureRegistry != "" {
+		engineOpts.InsecureRegistry = []string{opts.InsecureRegistry}
+	}
+	if opts.DockerEngineInstallURL != "" {
+		engineOpts.InstallURL = opts.DockerEngineInstallURL
+	}
+	err = d.client.Create(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create host")
+	}
+	rawDriver, err = json.Marshal(h.Driver)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal host driver")
 	}
@@ -99,67 +144,34 @@ func (d *DockerMachine) CreateMachine(name, driver string, params map[string]int
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal host driver")
 	}
-	m := &iaas.Machine{
-		Id:         host.Name,
-		Port:       engine.DefaultPort,
-		Protocol:   "https",
-		CustomData: driverData,
+	m := &Machine{
+		Base: &iaas.Machine{
+			Id:         h.Name,
+			Port:       engine.DefaultPort,
+			Protocol:   "https",
+			CustomData: driverData,
+		},
+		Host: h,
 	}
-	m.Address, err = host.Driver.GetIP()
+	m.Base.Address, err = h.Driver.GetIP()
 	if err != nil {
 		return m, errors.Wrap(err, "failed to retrive host ip")
 	}
-	if host.AuthOptions() != nil {
-		m.CaCert, err = ioutil.ReadFile(host.AuthOptions().CaCertPath)
+	if h.AuthOptions() != nil {
+		m.Base.CaCert, err = ioutil.ReadFile(h.AuthOptions().CaCertPath)
 		if err != nil {
 			return m, errors.Wrap(err, "failed to read host ca cert")
 		}
-		m.ClientCert, err = ioutil.ReadFile(host.AuthOptions().ClientCertPath)
+		m.Base.ClientCert, err = ioutil.ReadFile(h.AuthOptions().ClientCertPath)
 		if err != nil {
 			return m, errors.Wrap(err, "failed to read host client cert")
 		}
-		m.ClientKey, err = ioutil.ReadFile(host.AuthOptions().ClientKeyPath)
+		m.Base.ClientKey, err = ioutil.ReadFile(h.AuthOptions().ClientKeyPath)
 		if err != nil {
 			return m, errors.Wrap(err, "failed to read host client key")
 		}
 	}
 	return m, nil
-}
-
-type CreateHostOpts struct {
-	Name       string
-	DriverName string
-	Params     map[string]interface{}
-}
-
-func (d *DockerMachine) CreateHost(opts CreateHostOpts) (*host.Host, error) {
-	rawDriver, err := json.Marshal(&drivers.BaseDriver{
-		MachineName: opts.Name,
-		StorePath:   d.path,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal base driver")
-	}
-	host, err := d.client.NewHost(opts.DriverName, rawDriver)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize host")
-	}
-	err = configureDriver(host.Driver, opts.Params)
-	if err != nil {
-		return nil, errors.WithMessage(err, "failed to configure driver")
-	}
-	engineOpts := host.HostOptions.EngineOptions
-	if d.config.InsecureRegistry != "" {
-		engineOpts.InsecureRegistry = []string{d.config.InsecureRegistry}
-	}
-	if d.config.DockerEngineInstallURL != "" {
-		engineOpts.InstallURL = d.config.DockerEngineInstallURL
-	}
-	err = d.client.Create(host)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create host")
-	}
-	return host, nil
 }
 
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {

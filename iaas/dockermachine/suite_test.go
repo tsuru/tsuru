@@ -126,13 +126,14 @@ func (f *fakeLibMachineAPI) GetMachinesDir() string {
 type fakeDockerMachine struct {
 	closed         bool
 	deletedMachine *iaas.Machine
-	createdMachine *iaas.Machine
+	createdMachine *Machine
 	config         DockerMachineConfig
+	hostOpts       CreateMachineOpts
 }
 
 var fakeDM = &fakeDockerMachine{}
 
-func newFakeDockerMachine(c DockerMachineConfig) (dockerMachineAPI, error) {
+func newFakeDockerMachine(c DockerMachineConfig) (DockerMachineAPI, error) {
 	fakeDM.deletedMachine = nil
 	fakeDM.createdMachine = nil
 	fakeDM.config = c
@@ -145,14 +146,17 @@ func (f *fakeDockerMachine) Close() error {
 	return nil
 }
 
-func (f *fakeDockerMachine) CreateMachine(name, driver string, driverOpts map[string]interface{}) (*iaas.Machine, error) {
-	f.createdMachine = &iaas.Machine{
-		Id: name,
+func (f *fakeDockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) {
+	f.createdMachine = &Machine{
+		Base: &iaas.Machine{
+			Id: opts.Name,
+		},
 	}
 	var errCreate error
-	if v, ok := driverOpts["error"]; ok {
+	if v, ok := opts.Params["error"]; ok {
 		errCreate = errors.New(v.(string))
 	}
+	f.hostOpts = opts
 	return f.createdMachine, errCreate
 }
 
