@@ -123,7 +123,7 @@ func (f *fakeLibMachineAPI) GetMachinesDir() string {
 	return ""
 }
 
-type fakeDockerMachine struct {
+type FakeDockerMachineAPI struct {
 	closed         bool
 	deletedMachine *iaas.Machine
 	createdMachine *Machine
@@ -131,7 +131,7 @@ type fakeDockerMachine struct {
 	hostOpts       CreateMachineOpts
 }
 
-var fakeDM = &fakeDockerMachine{}
+var fakeDM = &FakeDockerMachineAPI{}
 
 func newFakeDockerMachine(c DockerMachineConfig) (DockerMachineAPI, error) {
 	fakeDM.deletedMachine = nil
@@ -141,12 +141,12 @@ func newFakeDockerMachine(c DockerMachineConfig) (DockerMachineAPI, error) {
 	return fakeDM, nil
 }
 
-func (f *fakeDockerMachine) Close() error {
+func (f *FakeDockerMachineAPI) Close() error {
 	f.closed = true
 	return nil
 }
 
-func (f *fakeDockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) {
+func (f *FakeDockerMachineAPI) CreateMachine(opts CreateMachineOpts) (*Machine, error) {
 	f.createdMachine = &Machine{
 		Base: &iaas.Machine{
 			Id: opts.Name,
@@ -160,11 +160,11 @@ func (f *fakeDockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, err
 	return f.createdMachine, errCreate
 }
 
-func (f *fakeDockerMachine) DeleteMachine(m *iaas.Machine) error {
+func (f *FakeDockerMachineAPI) DeleteMachine(m *iaas.Machine) error {
 	f.deletedMachine = m
 	return nil
 }
 
-func (f *fakeDockerMachine) DeleteAll() error {
+func (f *FakeDockerMachineAPI) DeleteAll() error {
 	return nil
 }
