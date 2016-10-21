@@ -33,7 +33,7 @@ func (s *S) TestCreateMachineIaaS(c *check.C) {
 	defer config.Unset("iaas:dockermachine:ca-path")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
+	dmIaas.apiFactory = NewFakeDockerMachine
 	m, err := dmIaas.CreateMachine(map[string]string{
 		"insecure-registry":  "registry.com",
 		"name":               "host-name",
@@ -50,9 +50,9 @@ func (s *S) TestCreateMachineIaaS(c *check.C) {
 	}
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.DeepEquals, expectedMachine)
-	c.Assert(fakeDM.closed, check.Equals, true)
-	c.Assert(fakeDM.hostOpts.InsecureRegistry, check.Equals, "registry.com")
-	c.Assert(fakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "http://getdocker.com")
+	c.Assert(FakeDM.closed, check.Equals, true)
+	c.Assert(FakeDM.hostOpts.InsecureRegistry, check.Equals, "registry.com")
+	c.Assert(FakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "http://getdocker.com")
 }
 
 func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
@@ -64,7 +64,7 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	defer config.Unset("iaas:dockermachine:docker-install-url")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
+	dmIaas.apiFactory = NewFakeDockerMachine
 	m, err := dmIaas.CreateMachine(map[string]string{
 		"name": "host-name",
 	})
@@ -74,7 +74,7 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	}
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.DeepEquals, expectedMachine)
-	c.Assert(fakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
+	c.Assert(FakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
 }
 
 func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {
@@ -83,7 +83,7 @@ func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {
 	defer config.Unset("iaas:dockermachine:ca-path")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
+	dmIaas.apiFactory = NewFakeDockerMachine
 	m, err := dmIaas.CreateMachine(map[string]string{
 		"name": "host-name",
 	})
@@ -98,7 +98,7 @@ func (s *S) TestCreateMachineGeneratesName(c *check.C) {
 	defer config.Unset("iaas:dockermachine:ca-path")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
+	dmIaas.apiFactory = NewFakeDockerMachine
 	m, err := dmIaas.CreateMachine(map[string]string{
 		"pool":   "theonepool",
 		"driver": "driver-name",
@@ -112,7 +112,7 @@ func (s *S) TestCreateMachineDeletesMachineWithError(c *check.C) {
 	defer config.Unset("iaas:dockermachine:ca-path")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
+	dmIaas.apiFactory = NewFakeDockerMachine
 	m, err := dmIaas.CreateMachine(map[string]string{
 		"pool":   "theonepool",
 		"driver": "driver-name",
@@ -121,16 +121,16 @@ func (s *S) TestCreateMachineDeletesMachineWithError(c *check.C) {
 	})
 	c.Assert(err, check.NotNil)
 	c.Assert(m, check.IsNil)
-	c.Assert(fakeDM.deletedMachine.Id, check.Equals, "my-machine")
+	c.Assert(FakeDM.deletedMachine.Id, check.Equals, "my-machine")
 }
 
 func (s *S) TestDeleteMachineIaaS(c *check.C) {
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
-	dmIaas.apiFactory = newFakeDockerMachine
+	dmIaas.apiFactory = NewFakeDockerMachine
 	m := &iaas.Machine{Id: "machine-id"}
 	err := dmIaas.DeleteMachine(m)
 	c.Assert(err, check.IsNil)
-	c.Assert(fakeDM.deletedMachine, check.DeepEquals, m)
-	c.Assert(fakeDM.closed, check.Equals, true)
+	c.Assert(FakeDM.deletedMachine, check.DeepEquals, m)
+	c.Assert(FakeDM.closed, check.Equals, true)
 }

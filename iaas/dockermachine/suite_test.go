@@ -6,7 +6,6 @@ package dockermachine
 
 import (
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -21,7 +20,6 @@ import (
 	"github.com/docker/machine/libmachine/host"
 	"github.com/docker/machine/libmachine/persist/persisttest"
 	"github.com/docker/machine/libmachine/state"
-	"github.com/tsuru/tsuru/iaas"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -121,50 +119,4 @@ func (f *fakeLibMachineAPI) Close() error {
 
 func (f *fakeLibMachineAPI) GetMachinesDir() string {
 	return ""
-}
-
-type FakeDockerMachineAPI struct {
-	closed         bool
-	deletedMachine *iaas.Machine
-	createdMachine *Machine
-	config         DockerMachineConfig
-	hostOpts       CreateMachineOpts
-}
-
-var fakeDM = &FakeDockerMachineAPI{}
-
-func newFakeDockerMachine(c DockerMachineConfig) (DockerMachineAPI, error) {
-	fakeDM.deletedMachine = nil
-	fakeDM.createdMachine = nil
-	fakeDM.config = c
-	fakeDM.closed = false
-	return fakeDM, nil
-}
-
-func (f *FakeDockerMachineAPI) Close() error {
-	f.closed = true
-	return nil
-}
-
-func (f *FakeDockerMachineAPI) CreateMachine(opts CreateMachineOpts) (*Machine, error) {
-	f.createdMachine = &Machine{
-		Base: &iaas.Machine{
-			Id: opts.Name,
-		},
-	}
-	var errCreate error
-	if v, ok := opts.Params["error"]; ok {
-		errCreate = errors.New(v.(string))
-	}
-	f.hostOpts = opts
-	return f.createdMachine, errCreate
-}
-
-func (f *FakeDockerMachineAPI) DeleteMachine(m *iaas.Machine) error {
-	f.deletedMachine = m
-	return nil
-}
-
-func (f *FakeDockerMachineAPI) DeleteAll() error {
-	return nil
 }
