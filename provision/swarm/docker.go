@@ -118,6 +118,9 @@ func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr str
 	}
 	err = newClient.JoinSwarm(opts)
 	if err != nil {
+		if err == docker.ErrNodeAlreadyInSwarm {
+			return nil
+		}
 		return errors.WithStack(err)
 	}
 	return nil

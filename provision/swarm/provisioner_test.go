@@ -69,6 +69,36 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{srv.URL()})
 }
 
+func (s *S) TestAddNodeAlreadyInSwarm(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = initSwarm(cli, srv.URL())
+	c.Assert(err, check.IsNil)
+	metadata := map[string]string{"m1": "v1", "m2": "v2", labelNodePoolName.String(): "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode(srv.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, srv.URL())
+	c.Assert(node.Metadata(), check.DeepEquals, metadata)
+	c.Assert(node.Pool(), check.Equals, "p1")
+	c.Assert(node.Status(), check.Equals, "ready")
+	coll, err := nodeAddrCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	var nodeAddrs NodeAddrs
+	err = coll.FindId(uniqueDocumentID).One(&nodeAddrs)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodeAddrs.Addresses, check.DeepEquals, []string{srv.URL()})
+}
+
 func (s *S) TestAddNodeMultiple(c *check.C) {
 	for i := 0; i < 5; i++ {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -86,8 +116,8 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 	c.Assert(nodes, check.HasLen, 5)
 	for i, n := range nodes {
 		c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-			"count": fmt.Sprintf("%d", i),
-			labelNodePoolName.String():  "p1",
+			"count":                    fmt.Sprintf("%d", i),
+			labelNodePoolName.String(): "p1",
 		})
 	}
 }
@@ -543,8 +573,8 @@ func (s *S) TestUpdateNode(c *check.C) {
 	node, err := s.p.GetNode(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"m1":   "v2",
-		"m2":   "v3",
+		"m1": "v2",
+		"m2": "v3",
 		labelNodePoolName.String(): "p1",
 	})
 }
@@ -568,7 +598,7 @@ func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	node, err := s.p.GetNode(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"m1":   "v1",
+		"m1": "v1",
 		labelNodePoolName.String(): "p1",
 	})
 	c.Assert(node.Status(), check.Equals, "ready (pause)")
@@ -861,6 +891,23 @@ func (s *S) TestDestroy(c *check.C) {
 	err = image.AppendAppImageName(a.GetName(), imgName)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = s.p.Destroy(a)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+}
+
+func (s *S) TestDestroyServiceNotFound(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)

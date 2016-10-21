@@ -77,7 +77,9 @@ func (p *swarmProvisioner) Destroy(a provision.App) error {
 			ID: name,
 		})
 		if err != nil {
-			multiErrors.Add(errors.WithStack(err))
+			if _, notFound := err.(*docker.NoSuchService); !notFound {
+				multiErrors.Add(errors.WithStack(err))
+			}
 		}
 	}
 	if multiErrors.Len() > 0 {
