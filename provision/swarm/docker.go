@@ -364,5 +364,5 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return newClient(node.Spec.Annotations.Labels[labelDockerAddr])
+	return newClient(node.Spec.Annotations.Labels[labelNodeDockerAddr.String()])
 }

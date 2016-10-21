@@ -18,9 +18,9 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 		Spec: swarm.NodeSpec{
 			Annotations: swarm.Annotations{
 				Labels: map[string]string{
-					labelDockerAddr: "myaddr:1234",
-					"pool":          "p1",
-					"l1":            "v1",
+					labelNodeDockerAddr.String(): "myaddr:1234",
+					labelNodePoolName.String():   "p1",
+					"l1": "v1",
 				},
 			},
 		},
@@ -30,7 +30,7 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	}
 	node := swarmNodeWrapper{Node: swarmNode}
 	c.Assert(node.Address(), check.Equals, "myaddr:1234")
-	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{"pool": "p1", "l1": "v1"})
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{labelNodePoolName.String(): "p1", "l1": "v1"})
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
 	swarmNode.Status.Message = "msg1"

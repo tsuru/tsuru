@@ -27,9 +27,6 @@ import (
 
 const (
 	provisionerName = "swarm"
-
-	labelInternalPrefix = "tsuru-internal-"
-	labelDockerAddr     = labelInternalPrefix + "docker-addr"
 )
 
 type swarmProvisioner struct{}
@@ -208,7 +205,7 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 			appsMap[appName] = a
 		}
 		platform := appsMap[appName].GetPlatform()
-		addr := nodeMap[t.NodeID].Spec.Labels[labelDockerAddr]
+		addr := nodeMap[t.NodeID].Spec.Labels[labelNodeDockerAddr.String()]
 		host := tsuruNet.URLToHost(addr)
 		var pubPort uint32
 		if len(service.Endpoint.Ports) > 0 {
@@ -375,7 +372,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return errors.WithStack(err)
 	}
 	nodeData.Spec.Annotations.Labels = map[string]string{
-		labelDockerAddr: opts.Address,
+		labelNodeDockerAddr.String(): opts.Address,
 	}
 	for k, v := range opts.Metadata {
 		nodeData.Spec.Annotations.Labels[k] = v

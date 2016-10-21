@@ -14,17 +14,26 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
+const (
+	labelNodeInternalPrefix = "tsuru.internal."
+)
+
+var (
+	labelNodeDockerAddr = tsuruLabel(labelNodeInternalPrefix + "docker-addr")
+	labelNodePoolName   = tsuruLabel("pool")
+)
+
 type swarmNodeWrapper struct {
 	*swarm.Node
 	provisioner *swarmProvisioner
 }
 
 func (n *swarmNodeWrapper) Pool() string {
-	return n.Node.Spec.Annotations.Labels["pool"]
+	return n.Node.Spec.Annotations.Labels[labelNodePoolName.String()]
 }
 
 func (n *swarmNodeWrapper) Address() string {
-	return n.Node.Spec.Annotations.Labels[labelDockerAddr]
+	return n.Node.Spec.Annotations.Labels[labelNodeDockerAddr.String()]
 }
 
 func (n *swarmNodeWrapper) Status() string {
@@ -41,7 +50,7 @@ func (n *swarmNodeWrapper) Status() string {
 func (n *swarmNodeWrapper) Metadata() map[string]string {
 	metadata := map[string]string{}
 	for k, v := range n.Node.Spec.Annotations.Labels {
-		if strings.HasPrefix(k, labelInternalPrefix) {
+		if strings.HasPrefix(k, labelNodeInternalPrefix) {
 			continue
 		}
 		metadata[k] = v
