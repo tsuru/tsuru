@@ -32,8 +32,6 @@ const (
 	labelDockerAddr     = labelInternalPrefix + "docker-addr"
 )
 
-var errNotImplemented = errors.New("not implemented")
-
 type swarmProvisioner struct{}
 
 func init() {
