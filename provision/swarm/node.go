@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -48,7 +50,19 @@ func (n *swarmNodeWrapper) Metadata() map[string]string {
 }
 
 func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
-	return nil, errNotImplemented
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return nil, err
+	}
+	tasks, err := client.ListTasks(docker.ListTasksOptions{
+		Filters: map[string][]string{
+			"node": {n.ID},
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return tasksToUnits(client, tasks)
 }
 
 func (n *swarmNodeWrapper) Provisioner() provision.NodeProvisioner {

@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -179,6 +180,58 @@ func allAppProcesses(appName string) ([]string, error) {
 	return processes, nil
 }
 
+func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, error) {
+	nodeMap := map[string]*swarm.Node{}
+	serviceMap := map[string]*swarm.Service{}
+	appsMap := map[string]provision.App{}
+	units := make([]provision.Unit, len(tasks))
+	for i, t := range tasks {
+		if _, ok := nodeMap[t.NodeID]; !ok {
+			node, err := client.InspectNode(t.NodeID)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			nodeMap[t.NodeID] = node
+		}
+		if _, ok := serviceMap[t.ServiceID]; !ok {
+			service, err := client.InspectService(t.ServiceID)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			serviceMap[t.ServiceID] = service
+		}
+		service := serviceMap[t.ServiceID]
+		appName := service.Spec.Annotations.Labels[labelAppName.String()]
+		if _, ok := appsMap[appName]; !ok {
+			a, err := app.GetByName(appName)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			appsMap[appName] = a
+		}
+		platform := appsMap[appName].GetPlatform()
+		addr := nodeMap[t.NodeID].Spec.Labels[labelDockerAddr]
+		host := tsuruNet.URLToHost(addr)
+		var pubPort uint32
+		if len(service.Endpoint.Ports) > 0 {
+			pubPort = service.Endpoint.Ports[0].PublishedPort
+		}
+		units[i] = provision.Unit{
+			ID:          t.Status.ContainerStatus.ContainerID,
+			AppName:     appName,
+			ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
+			Type:        platform,
+			Ip:          host,
+			Status:      provision.StatusStarted,
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("%s:%d", host, pubPort),
+			},
+		}
+	}
+	return units, nil
+}
+
 func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
@@ -192,47 +245,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	nodeMap := map[string]*swarm.Node{}
-	serviceMap := map[string]*swarm.Service{}
-	units := make([]provision.Unit, len(tasks))
-	for i, t := range tasks {
-		if _, ok := nodeMap[t.NodeID]; !ok {
-			var node *swarm.Node
-			node, err = client.InspectNode(t.NodeID)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			nodeMap[t.NodeID] = node
-		}
-		if _, ok := serviceMap[t.ServiceID]; !ok {
-			var service *swarm.Service
-			service, err = client.InspectService(t.ServiceID)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			serviceMap[t.ServiceID] = service
-		}
-		addr := nodeMap[t.NodeID].Spec.Labels[labelDockerAddr]
-		service := serviceMap[t.ServiceID]
-		host := tsuruNet.URLToHost(addr)
-		var pubPort uint32
-		if len(service.Endpoint.Ports) > 0 {
-			pubPort = service.Endpoint.Ports[0].PublishedPort
-		}
-		units[i] = provision.Unit{
-			ID:          t.Status.ContainerStatus.ContainerID,
-			AppName:     app.GetName(),
-			ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
-			Type:        app.GetPlatform(),
-			Ip:          host,
-			Status:      provision.StatusStarted,
-			Address: &url.URL{
-				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", host, pubPort),
-			},
-		}
-	}
-	return units, nil
+	return tasksToUnits(client, tasks)
 }
 
 func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
