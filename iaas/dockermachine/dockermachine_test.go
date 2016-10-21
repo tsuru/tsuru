@@ -79,6 +79,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 		Params:                 driverOpts,
 		InsecureRegistry:       "registry.com",
 		DockerEngineInstallURL: "https://getdocker2.com",
+		RegistryMirror:         "http://registry-mirror.com",
 	}
 	m, err := dm.CreateMachine(opts)
 	c.Assert(err, check.IsNil)
@@ -98,6 +99,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 	engineOpts := fakeAPI.Hosts[0].HostOptions.EngineOptions
 	c.Assert(engineOpts.InsecureRegistry, check.DeepEquals, []string{"registry.com"})
 	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")
+	c.Assert(engineOpts.RegistryMirror, check.DeepEquals, []string{"http://registry-mirror.com"})
 	c.Assert(m.Host, check.DeepEquals, fakeAPI.Hosts[0])
 }
 

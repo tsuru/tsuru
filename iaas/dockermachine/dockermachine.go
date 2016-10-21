@@ -50,6 +50,7 @@ type CreateMachineOpts struct {
 	Params                 map[string]interface{}
 	InsecureRegistry       string
 	DockerEngineInstallURL string
+	RegistryMirror         string
 }
 
 type Machine struct {
@@ -130,6 +131,9 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 	}
 	if opts.DockerEngineInstallURL != "" {
 		engineOpts.InstallURL = opts.DockerEngineInstallURL
+	}
+	if opts.RegistryMirror != "" {
+		engineOpts.RegistryMirror = []string{opts.RegistryMirror}
 	}
 	err = d.client.Create(h)
 	if err != nil {
