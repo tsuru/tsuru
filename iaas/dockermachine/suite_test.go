@@ -164,3 +164,7 @@ func (f *fakeDockerMachine) DeleteMachine(m *iaas.Machine) error {
 	f.deletedMachine = m
 	return nil
 }
+
+func (f *fakeDockerMachine) DeleteAll() error {
+	return nil
+}

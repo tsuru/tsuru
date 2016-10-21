@@ -154,3 +154,26 @@ func (s *S) TestCopy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(string(contents), check.Equals, "file contents")
 }
+
+func (s *S) TestDeleteAll(c *check.C) {
+	fakeAPI := &fakeLibMachineAPI{}
+	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
+	c.Assert(err, check.IsNil)
+	defer dmAPI.Close()
+	dm := dmAPI.(*DockerMachine)
+	dm.client = fakeAPI
+	_, err = dm.CreateMachine(CreateMachineOpts{
+		Name:       "my-machine",
+		DriverName: "fakedriver",
+		Params:     map[string]interface{}{},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = dm.CreateMachine(CreateMachineOpts{
+		Name:       "my-machine-2",
+		DriverName: "fakedriver",
+		Params:     map[string]interface{}{},
+	})
+	c.Assert(err, check.IsNil)
+	err = dm.DeleteAll()
+	c.Assert(err, check.IsNil)
+}

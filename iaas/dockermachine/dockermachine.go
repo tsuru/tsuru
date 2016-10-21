@@ -42,6 +42,7 @@ type DockerMachineAPI interface {
 	io.Closer
 	CreateMachine(CreateMachineOpts) (*Machine, error)
 	DeleteMachine(*iaas.Machine) error
+	DeleteAll() error
 }
 
 type CreateMachineOpts struct {
@@ -192,6 +193,28 @@ func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
 		return errors.Wrap(err, "failed to remove host")
 	}
 	return d.client.Remove(m.Id)
+}
+
+func (d *DockerMachine) DeleteAll() error {
+	hosts, err := d.client.List()
+	if err != nil {
+		return err
+	}
+	for _, n := range hosts {
+		h, errLoad := d.client.Load(n)
+		if errLoad != nil {
+			return errLoad
+		}
+		err = h.Driver.Remove()
+		if err != nil {
+			return err
+		}
+	}
+	err = os.RemoveAll(d.StorePath)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) error {
