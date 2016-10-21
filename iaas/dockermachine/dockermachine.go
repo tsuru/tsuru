@@ -212,11 +212,7 @@ func (d *DockerMachine) DeleteAll() error {
 			return err
 		}
 	}
-	err = os.RemoveAll(d.StorePath)
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.RemoveAll(d.StorePath)
 }
 
 func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) error {
