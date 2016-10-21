@@ -177,12 +177,31 @@ func allAppProcesses(appName string) ([]string, error) {
 	return processes, nil
 }
 
+var stateMap = map[swarm.TaskState]provision.Status{
+	swarm.TaskStateNew:       provision.StatusCreated,
+	swarm.TaskStateAllocated: provision.StatusStarting,
+	swarm.TaskStatePending:   provision.StatusStarting,
+	swarm.TaskStateAssigned:  provision.StatusStarting,
+	swarm.TaskStateAccepted:  provision.StatusStarting,
+	swarm.TaskStatePreparing: provision.StatusStarting,
+	swarm.TaskStateReady:     provision.StatusStarting,
+	swarm.TaskStateStarting:  provision.StatusStarting,
+	swarm.TaskStateRunning:   provision.StatusStarted,
+	swarm.TaskStateComplete:  provision.StatusStopped,
+	swarm.TaskStateShutdown:  provision.StatusStopped,
+	swarm.TaskStateFailed:    provision.StatusError,
+	swarm.TaskStateRejected:  provision.StatusError,
+}
+
 func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, error) {
 	nodeMap := map[string]*swarm.Node{}
 	serviceMap := map[string]*swarm.Service{}
 	appsMap := map[string]provision.App{}
-	units := make([]provision.Unit, len(tasks))
-	for i, t := range tasks {
+	units := []provision.Unit{}
+	for _, t := range tasks {
+		if t.DesiredState == swarm.TaskStateShutdown {
+			continue
+		}
 		if _, ok := nodeMap[t.NodeID]; !ok {
 			node, err := client.InspectNode(t.NodeID)
 			if err != nil {
@@ -213,18 +232,18 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 		if len(service.Endpoint.Ports) > 0 {
 			pubPort = service.Endpoint.Ports[0].PublishedPort
 		}
-		units[i] = provision.Unit{
+		units = append(units, provision.Unit{
 			ID:          t.Status.ContainerStatus.ContainerID,
 			AppName:     appName,
 			ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
 			Type:        platform,
 			Ip:          host,
-			Status:      provision.StatusStarted,
+			Status:      stateMap[t.Status.State],
 			Address: &url.URL{
 				Scheme: "http",
 				Host:   fmt.Sprintf("%s:%d", host, pubPort),
 			},
-		}
+		})
 	}
 	return units, nil
 }

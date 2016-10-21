@@ -291,6 +291,69 @@ func (s *S) TestStopStartSingleProcess(c *check.C) {
 	c.Assert(procs, check.DeepEquals, []string{"web", "worker"})
 }
 
+func (s *S) TestUnits(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	expected := []provision.Unit{
+		{ID: units[0].ID, Name: "", AppName: "myapp", ProcessName: "web", Type: "", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+	}
+	c.Assert(units, check.DeepEquals, expected)
+}
+
+func (s *S) TestUnitsWithShutdownTasks(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	cli, err := newClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
+	c.Assert(err, check.IsNil)
+	tasks[0].DesiredState = swarm.TaskStateShutdown
+	err = srv.MutateTask(tasks[0].ID, tasks[0])
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+}
+
 func (s *S) TestAddUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -748,7 +811,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
 	})
 	cli, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
@@ -798,7 +861,7 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
 	})
 	cli, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
@@ -857,7 +920,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, ProcessName: "web", Ip: "127.0.0.1", Status: "started", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
+		{ID: units[0].ID, AppName: a.Name, ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{Scheme: "http", Host: "127.0.0.1:0"}},
 	})
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)

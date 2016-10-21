@@ -162,6 +162,10 @@ func safeAttachWaitContainer(client *docker.Client, opts docker.AttachToContaine
 
 var waitForTaskTimeout = 30 * time.Second
 
+func taskStatusMsg(status swarm.TaskStatus) string {
+	return fmt.Sprintf("state: %q, err: %q, msg: %q, container exit: %d", status.State, status.Err, status.Message, status.ContainerStatus.ExitCode)
+}
+
 func waitForTasks(client *docker.Client, serviceID string, wantedState swarm.TaskState) ([]swarm.Task, error) {
 	timeout := time.After(waitForTaskTimeout)
 	for {
@@ -179,7 +183,7 @@ func waitForTasks(client *docker.Client, serviceID string, wantedState swarm.Tas
 				inStateCount++
 			}
 			if t.Status.State == swarm.TaskStateFailed || t.Status.State == swarm.TaskStateRejected {
-				return nil, errors.Errorf("invalid task state for service %q: %s", serviceID, t.Status.State)
+				return nil, errors.Errorf("invalid task state for service %q: %s", serviceID, taskStatusMsg(t.Status))
 			}
 		}
 		if len(tasks) > 0 && inStateCount == len(tasks) {
