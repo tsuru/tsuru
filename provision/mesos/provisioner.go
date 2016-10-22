@@ -76,7 +76,25 @@ func (p *mesosProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 }
 
 func (p *mesosProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	return nil, errNotImplemented
+	coll, err := nodeAddrCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var data mesosNodeWrapper
+	err = coll.FindId(uniqueDocumentID).One(&data)
+	if err != nil {
+		return []provision.Node{}, nil
+	}
+	if len(addressFilter) > 0 {
+		for _, addr := range addressFilter {
+			if addr == data.Address() {
+				return []provision.Node{&data}, nil
+			}
+		}
+		return []provision.Node{}, nil
+	}
+	return []provision.Node{&data}, nil
 }
 
 func (p *mesosProvisioner) GetNode(address string) (provision.Node, error) {

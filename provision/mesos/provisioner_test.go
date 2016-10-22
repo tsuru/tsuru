@@ -1,0 +1,57 @@
+// Copyright 2016 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package mesos
+
+import (
+	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/check.v1"
+)
+
+func (s *S) TestAddNode(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	node := nodes[0]
+	c.Assert(node.Address(), check.Equals, url)
+}
+
+func (s *S) TestListNodes(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, url)
+}
+
+func (s *S) TestListNodesWithoutNodes(c *check.C) {
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
+func (s *S) TestListNodesFilteringByAddress(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	nodes, err := s.p.ListNodes([]string{"https://192.168.99.101"})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
