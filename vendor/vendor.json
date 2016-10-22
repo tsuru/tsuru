@@ -791,6 +791,12 @@
 			"revisionTime": "2016-10-21T20:30:18Z"
 		},
 		{
+			"checksumSHA1": "nJYT8dNFeMl0lkIYM9z9OzxP15M=",
+			"path": "github.com/gambol99/go-marathon",
+			"revision": "a9a7bc12777b95cff48f675bc7173c6e6c530082",
+			"revisionTime": "2016-10-14T15:23:29Z"
+		},
+		{
 			"checksumSHA1": "17vYJDDMJO63/G/tRFIUuSlMCbE=",
 			"origin": "k8s.io/kubernetes/vendor/github.com/ghodss/yaml",
 			"path": "github.com/ghodss/yaml",

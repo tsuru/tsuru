@@ -5,8 +5,11 @@
 package mesos
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
+	"github.com/gambol99/go-marathon"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
@@ -32,7 +35,7 @@ func (p *mesosProvisioner) GetName() string {
 }
 
 func (p *mesosProvisioner) Provision(provision.App) error {
-	return errNotImplemented
+	return nil
 }
 
 func (p *mesosProvisioner) Destroy(provision.App) error {
@@ -64,7 +67,7 @@ func (p *mesosProvisioner) Stop(provision.App, string) error {
 }
 
 func (p *mesosProvisioner) Units(app provision.App) ([]provision.Unit, error) {
-	return nil, errNotImplemented
+	return nil, nil
 }
 
 func (p *mesosProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
@@ -137,5 +140,22 @@ func (p *mesosProvisioner) ArchiveDeploy(app provision.App, archiveURL string, e
 }
 
 func (p *mesosProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
-	return "", errNotImplemented
+	hosts, err := p.ListNodes(nil)
+	if err != nil {
+		return "", err
+	}
+	marathonURL := hosts[0].Address()
+	config := marathon.NewDefaultConfig()
+	config.URL = marathonURL
+	client, err := marathon.NewClient(config)
+	if err != nil {
+		return "", err
+	}
+	application := marathon.NewDockerApplication().Name(a.GetName()).CPU(0.1).Memory(64).Count(1)
+	if !strings.Contains(imgID, ":") {
+		imgID = fmt.Sprintf("%s:latest", imgID)
+	}
+	application.Container.Docker.Container(imgID)
+	_, err = client.CreateApplication(application)
+	return "", err
 }

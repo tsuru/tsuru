@@ -5,6 +5,9 @@
 package mesos
 
 import (
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
@@ -71,4 +74,26 @@ func (s *S) TestGetNode(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	c.Assert(node, check.IsNil)
+}
+
+func (s *S) TestImageDeploy(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.p.ImageDeploy(a, "imageName", evt)
+	c.Assert(err, check.IsNil)
 }
