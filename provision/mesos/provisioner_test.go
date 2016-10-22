@@ -55,3 +55,20 @@ func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 }
+
+func (s *S) TestGetNode(c *check.C) {
+	url := "https://192.168.99.100:8443"
+	opts := provision.AddNodeOptions{
+		Address: url,
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	node, err := s.p.GetNode(url)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, url)
+	node, err = s.p.GetNode("http://doesnotexist.com")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+	c.Assert(node, check.IsNil)
+}

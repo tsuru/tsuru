@@ -98,7 +98,16 @@ func (p *mesosProvisioner) ListNodes(addressFilter []string) ([]provision.Node, 
 }
 
 func (p *mesosProvisioner) GetNode(address string) (provision.Node, error) {
-	return nil, errNotImplemented
+	nodes, err := p.ListNodes(nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range nodes {
+		if address == n.Address() {
+			return n, nil
+		}
+	}
+	return nil, provision.ErrNodeNotFound
 }
 
 func (p *mesosProvisioner) AddNode(opts provision.AddNodeOptions) error {
