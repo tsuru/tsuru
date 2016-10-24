@@ -758,6 +758,12 @@
 			"revisionTime": "2016-09-28T17:57:05-07:00"
 		},
 		{
+			"checksumSHA1": "O/eUfUoi7lWgZiipUP939AAdKk4=",
+			"path": "github.com/donovanhide/eventsource",
+			"revision": "fd1de70867126402be23c306e1ce32828455d85b",
+			"revisionTime": "2016-05-25T20:46:10Z"
+		},
+		{
 			"checksumSHA1": "jyYz6OqzmWw6CAfSc8WwjDB1S3k=",
 			"origin": "k8s.io/kubernetes/vendor/github.com/emicklei/go-restful",
 			"path": "github.com/emicklei/go-restful",
