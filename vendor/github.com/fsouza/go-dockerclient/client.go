@@ -4,7 +4,7 @@
 
 // Package docker provides a client for the Docker remote API.
 //
-// See https://goo.gl/G3plxW for more details on the remote API.
+// See https://goo.gl/o2v3rk for more details on the remote API.
 package docker
 
 import (
@@ -31,6 +31,7 @@ import (
 
 	"github.com/docker/docker/opts"
 	"github.com/docker/docker/pkg/homedir"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hashicorp/go-cleanhttp"
 	"golang.org/x/net/context"
@@ -371,7 +372,7 @@ func (c *Client) Endpoint() string {
 
 // Ping pings the docker server
 //
-// See https://goo.gl/kQCfJj for more details.
+// See https://goo.gl/wYfgY1 for more details.
 func (c *Client) Ping() error {
 	path := "/_ping"
 	resp, err := c.do("GET", path, doOptions{})
@@ -611,26 +612,16 @@ func handleStreamResponse(resp *http.Response, streamOptions *streamOptions) err
 		_, err = io.Copy(streamOptions.stdout, resp.Body)
 		return err
 	}
-	dec := json.NewDecoder(resp.Body)
-	for {
-		var m jsonMessage
-		if err := dec.Decode(&m); err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		if m.Stream != "" {
-			fmt.Fprint(streamOptions.stdout, m.Stream)
-		} else if m.Progress != "" {
-			fmt.Fprintf(streamOptions.stdout, "%s %s\r", m.Status, m.Progress)
-		} else if m.Error != "" {
-			return errors.New(m.Error)
-		}
-		if m.Status != "" {
-			fmt.Fprintln(streamOptions.stdout, m.Status)
-		}
+	if st, ok := streamOptions.stdout.(interface {
+		io.Writer
+		FD() uintptr
+		IsTerminal() bool
+	}); ok {
+		err = jsonmessage.DisplayJSONMessagesToStream(resp.Body, st, nil)
+	} else {
+		err = jsonmessage.DisplayJSONMessagesStream(resp.Body, streamOptions.stdout, 0, false, nil)
 	}
-	return nil
+	return err
 }
 
 type proxyWriter struct {
