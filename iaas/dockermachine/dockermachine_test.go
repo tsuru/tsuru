@@ -25,6 +25,23 @@ func (s *S) TestNewDockerMachine(c *check.C) {
 	c.Assert(pathInfo.IsDir(), check.Equals, true)
 }
 
+func (s *S) TestNewDockerMachineCreatesStoreIfDefinedAndDoesNotExists(c *check.C) {
+	storePath, err := ioutil.TempDir("", "")
+	c.Assert(err, check.IsNil)
+	err = os.RemoveAll(storePath)
+	c.Assert(err, check.IsNil)
+	dmAPI, err := NewDockerMachine(DockerMachineConfig{StorePath: storePath})
+	c.Assert(err, check.IsNil)
+	defer dmAPI.Close()
+	dm := dmAPI.(*DockerMachine)
+	pathInfo, err := os.Stat(dm.StorePath)
+	c.Assert(err, check.IsNil)
+	c.Assert(pathInfo.IsDir(), check.Equals, true)
+	pathInfo, err = os.Stat(dm.CertsPath)
+	c.Assert(err, check.IsNil)
+	c.Assert(pathInfo.IsDir(), check.Equals, true)
+}
+
 func (s *S) TestNewDockerMachineCopyCaFiles(c *check.C) {
 	caPath, err := ioutil.TempDir("", "")
 	c.Assert(err, check.IsNil)
