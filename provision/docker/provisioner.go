@@ -1057,6 +1057,7 @@ func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w
 		InputStream:       inputStream,
 		OutputStream:      w,
 		InactivityTimeout: net.StreamInactivityTimeout,
+		RawJSONStream:     true,
 	}
 	err := cluster.BuildImage(buildOptions)
 	if err != nil {
