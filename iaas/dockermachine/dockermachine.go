@@ -72,7 +72,7 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 	}
 	certsPath := filepath.Join(storePath, "certs")
 	if _, err := os.Stat(certsPath); os.IsNotExist(err) {
-		err := os.Mkdir(certsPath, 0700)
+		err := os.MkdirAll(certsPath, 0700)
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to create certs dir")
 		}
