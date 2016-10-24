@@ -7,9 +7,13 @@ package io
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type streamWriter struct {
@@ -26,7 +30,7 @@ type Formatter interface {
 
 func NewStreamWriter(w io.Writer, formatter Formatter) *streamWriter {
 	if formatter == nil {
-		formatter = SimpleJsonMessageFormatter{}
+		formatter = &SimpleJsonMessageFormatter{}
 	}
 	return &streamWriter{w: w, formatter: formatter}
 }
@@ -46,7 +50,7 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 				if len(parts) == 1 {
 					return writtenCount, nil
 				} else {
-					err = errors.Errorf("Unparseable chunk: %q", parts[0])
+					err = fmt.Errorf("Unparseable chunk: %q", parts[0])
 				}
 			}
 			return writtenCount, err
@@ -65,10 +69,27 @@ type SimpleJsonMessage struct {
 	Error   string `json:",omitempty"`
 }
 
-type SimpleJsonMessageFormatter struct{}
+type SimpleJsonMessageFormatter struct {
+	once       sync.Once
+	pipeReader io.Reader
+	pipeWriter io.WriteCloser
+}
 
-func (SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
-	if len(data) == 1 && data[0] == '\n' {
+func likeJSON(str string) bool {
+	data := bytes.TrimSpace([]byte(str))
+	return len(data) > 1 && data[0] == '{' && data[len(data)-1] == '}'
+}
+
+type withFd interface {
+	Fd() uintptr
+}
+
+type withFD interface {
+	FD() uintptr
+}
+
+func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
+	if len(data) == 0 || (len(data) == 1 && data[0] == '\n') {
 		return nil
 	}
 	var msg SimpleJsonMessage
@@ -79,7 +100,27 @@ func (SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	if msg.Error != "" {
 		return errors.New(msg.Error)
 	}
-	out.Write([]byte(msg.Message))
+	if likeJSON(msg.Message) {
+		f.once.Do(func() {
+			f.pipeReader, f.pipeWriter = io.Pipe()
+			var fd uintptr
+			switch v := out.(type) {
+			case withFd:
+				fd = v.Fd()
+			case withFD:
+				fd = v.FD()
+			}
+			isTerm := terminal.IsTerminal(int(fd))
+			go jsonmessage.DisplayJSONMessagesStream(f.pipeReader, out, fd, isTerm, nil)
+		})
+		f.pipeWriter.Write([]byte(msg.Message))
+	} else {
+		if f.pipeWriter != nil {
+			f.pipeWriter.Close()
+			f.once = sync.Once{}
+		}
+		out.Write([]byte(msg.Message))
+	}
 	return nil
 }
 
