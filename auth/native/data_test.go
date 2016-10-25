@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"strings"
 
-	"gopkg.in/check.v1"
-
 	"github.com/tsuru/config"
+	"gopkg.in/check.v1"
 )
 
 const resetDefaultContent = "Someone, hopefully you, requested to reset your password on tsuru"
