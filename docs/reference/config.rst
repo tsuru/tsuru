@@ -132,6 +132,34 @@ This setting is optional. When ``index-page-template`` is not defined, tsuru
 will use the `default template
 <https://github.com/tsuru/tsuru/blob/master/api/index_templates.go>`_.
 
+reset-password-template
++++++++++++++++++++
+
+``reset-password-template`` is the template that will be used to "password reset" email.
+It must use the `Go template syntax <http://golang.org/pkg/text/template/>`_,
+and tsuru will provide the following variables in the context of the template:
+
+    - ``Token``: a string, the id of password reset request
+    - ``UserEmail``: a string, the user email
+    - ``Creation``: a time, when password reset was requested
+    - ``Used``: a boolean, reset-password was done or not
+
+This setting is optional. When ``reset-password-template`` is not defined, tsuru
+will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`_.
+
+reset-password-successfully-template
++++++++++++++++++++
+
+``reset-password-successfully-template`` is the template that will be used to email with new password, after reset.
+It must use the `Go template syntax <http://golang.org/pkg/text/template/>`_,
+and tsuru will provide the following variables in the context of the template:
+
+    - ``password``: a string, the new password
+    - ``email``: a string, the user email
+
+This setting is optional. When ``reset-password-template`` is not defined, tsuru
+will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`_.
+
 Database access
 ---------------
 
