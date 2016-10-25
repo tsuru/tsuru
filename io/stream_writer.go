@@ -22,6 +22,17 @@ type streamWriter struct {
 	formatter Formatter
 }
 
+type syncWriter struct {
+	w  io.Writer
+	mu sync.Mutex
+}
+
+func (w *syncWriter) Write(b []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Write(b)
+}
+
 var ErrInvalidStreamChunk = errors.New("invalid stream chunk")
 
 type Formatter interface {
@@ -32,7 +43,7 @@ func NewStreamWriter(w io.Writer, formatter Formatter) *streamWriter {
 	if formatter == nil {
 		formatter = &SimpleJsonMessageFormatter{}
 	}
-	return &streamWriter{w: w, formatter: formatter}
+	return &streamWriter{w: &syncWriter{w: w}, formatter: formatter}
 }
 
 func (w *streamWriter) Remaining() []byte {
@@ -70,7 +81,6 @@ type SimpleJsonMessage struct {
 }
 
 type SimpleJsonMessageFormatter struct {
-	once       sync.Once
 	pipeReader io.Reader
 	pipeWriter io.WriteCloser
 }
@@ -101,7 +111,7 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 		return errors.New(msg.Error)
 	}
 	if likeJSON(msg.Message) {
-		f.once.Do(func() {
+		if f.pipeWriter == nil {
 			f.pipeReader, f.pipeWriter = io.Pipe()
 			var fd uintptr
 			switch v := out.(type) {
@@ -112,12 +122,13 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 			}
 			isTerm := terminal.IsTerminal(int(fd))
 			go jsonmessage.DisplayJSONMessagesStream(f.pipeReader, out, fd, isTerm, nil)
-		})
+		}
 		f.pipeWriter.Write([]byte(msg.Message))
 	} else {
 		if f.pipeWriter != nil {
 			f.pipeWriter.Close()
-			f.once = sync.Once{}
+			f.pipeWriter = nil
+			f.pipeReader = nil
 		}
 		out.Write([]byte(msg.Message))
 	}

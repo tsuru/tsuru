@@ -241,11 +241,8 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 	parts = append([][]byte{[]byte(`{"message":"no json 1\n"}`)}, parts...)
 	parts = append(parts, []byte(`{"message":"no json 2\n"}`))
 	outBuf := bytes.Buffer{}
-	formatter := SimpleJsonMessageFormatter{}
-	for _, part := range parts {
-		err := formatter.Format(&outBuf, part)
-		c.Assert(err, check.IsNil)
-	}
+	streamWriter := NewStreamWriter(&outBuf, nil)
+	streamWriter.Write(bytes.Join(parts, []byte("\n")))
 	c.Assert(outBuf.String(), check.Equals, "no json 1\n"+
 		"latest: Pulling from tsuru/static\n"+
 		"a6aa3b66376f: Already exists\n"+
