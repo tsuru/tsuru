@@ -160,7 +160,8 @@ func (s *S) TestStartPasswordReset(c *check.C) {
 	c.Assert(m.From, check.Equals, "root")
 	c.Assert(m.To, check.DeepEquals, []string{u.Email})
 	var buf bytes.Buffer
-	template := getEmailResetPasswordTemplate()
+	template, err := getEmailResetPasswordTemplate()
+	c.Assert(err, check.IsNil)
 	err = template.Execute(&buf, token)
 	c.Assert(err, check.IsNil)
 	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"
@@ -203,7 +204,8 @@ func (s *S) TestResetPassword(c *check.C) {
 	c.Assert(m.From, check.Equals, "root")
 	c.Assert(m.To, check.DeepEquals, []string{u.Email})
 	var buf bytes.Buffer
-	template := getEmailResetPasswordSucessfullyTemplate()
+	template, err := getEmailResetPasswordSucessfullyTemplate()
+	c.Assert(err, check.IsNil)
 	err = template.Execute(&buf, map[string]string{"email": u.Email, "password": ""})
 	c.Assert(err, check.IsNil)
 	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"

@@ -18,9 +18,13 @@ import (
 )
 
 func sendResetPassword(u *auth.User, t *passwordToken) {
+	template, err := getEmailResetPasswordTemplate()
+	if err != nil {
+		log.Errorf("Failed to load email template: %s", err)
+		return
+	}
 	var body bytes.Buffer
-	template := getEmailResetPasswordTemplate()
-	err := template.Execute(&body, t)
+	err = template.Execute(&body, t)
 	if err != nil {
 		log.Errorf("Failed to send password token to user %q: %s", u.Email, err)
 		return
@@ -32,13 +36,17 @@ func sendResetPassword(u *auth.User, t *passwordToken) {
 }
 
 func sendNewPassword(u *auth.User, password string) {
+	template, err := getEmailResetPasswordSucessfullyTemplate()
+	if err != nil {
+		log.Errorf("Failed to load email template: %s", err)
+		return
+	}
 	m := map[string]string{
 		"password": password,
 		"email":    u.Email,
 	}
 	var body bytes.Buffer
-	template := getEmailResetPasswordSucessfullyTemplate()
-	err := template.Execute(&body, m)
+	err = template.Execute(&body, m)
 	if err != nil {
 		log.Errorf("Failed to send new password to user %q: %s", u.Email, err)
 		return
