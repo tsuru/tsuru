@@ -4305,11 +4305,10 @@ func (q *Query) Apply(change Change, result interface{}) (info *ChangeInfo, err 
 	var doc valueResult
 	for i := 0; i < maxUpsertRetries; i++ {
 		err = session.DB(dbname).Run(&cmd, &doc)
-
 		if err == nil {
 			break
 		}
-		if change.Upsert && IsDup(err) {
+		if change.Upsert && IsDup(err) && i+1 < maxUpsertRetries {
 			// Retry duplicate key errors on upserts.
 			// https://docs.mongodb.com/v3.2/reference/method/db.collection.update/#use-unique-indexes
 			continue

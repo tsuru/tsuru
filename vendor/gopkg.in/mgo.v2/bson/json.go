@@ -317,7 +317,7 @@ func jencNumberLong(v interface{}) ([]byte, error) {
 func jencInt(v interface{}) ([]byte, error) {
 	n := v.(int)
 	f := `{"$numberLong":"%d"}`
-	if n <= 1<<53 {
+	if int64(n) <= 1<<53 {
 		f = `%d`
 	}
 	return fbytes(f, n), nil
