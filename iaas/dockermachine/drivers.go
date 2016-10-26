@@ -61,3 +61,16 @@ func RunDriver(driverName string) error {
 	}
 	return nil
 }
+
+func DefaultParamsForDriver(driverName string) map[string]interface{} {
+	params := make(map[string]interface{})
+	switch driverName {
+	case "amazonec2":
+		params["amazonec2-use-private-address"] = true
+	case "azure":
+		params["azure-use-private-ip"] = true
+	case "google":
+		params["google-use-internal-ip"] = true
+	}
+	return params
+}
