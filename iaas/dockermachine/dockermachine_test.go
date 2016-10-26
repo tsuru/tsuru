@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/docker/machine/drivers/amazonec2"
+	"github.com/tsuru/tsuru/iaas"
 
 	check "gopkg.in/check.v1"
 )
@@ -193,4 +194,40 @@ func (s *S) TestDeleteAll(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = dm.DeleteAll()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRegisterMachine(c *check.C) {
+	fakeAPI := &fakeLibMachineAPI{}
+	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
+	c.Assert(err, check.IsNil)
+	defer dmAPI.Close()
+	dm := dmAPI.(*DockerMachine)
+	dm.client = fakeAPI
+	base := &iaas.Machine{
+		CustomData: map[string]interface{}{
+			"MachineName": "my-machine",
+		},
+		CaCert:     []byte("ca cert content"),
+		ClientCert: []byte("client cert content"),
+		ClientKey:  []byte("client key content"),
+	}
+	m, err := dm.RegisterMachine(RegisterMachineOpts{
+		Base:          base,
+		DriverName:    "amazonec2",
+		SSHPrivateKey: []byte("private-key"),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Base, check.DeepEquals, base)
+	caCert, err := ioutil.ReadFile(m.Host.AuthOptions().CaCertPath)
+	c.Assert(err, check.IsNil)
+	c.Assert(caCert, check.DeepEquals, base.CaCert)
+	clientCert, err := ioutil.ReadFile(m.Host.AuthOptions().ClientCertPath)
+	c.Assert(err, check.IsNil)
+	c.Assert(clientCert, check.DeepEquals, base.ClientCert)
+	clientKey, err := ioutil.ReadFile(m.Host.AuthOptions().ClientKeyPath)
+	c.Assert(err, check.IsNil)
+	c.Assert(clientKey, check.DeepEquals, base.ClientKey)
+	sshKey, err := ioutil.ReadFile(m.Host.Driver.GetSSHKeyPath())
+	c.Assert(err, check.IsNil)
+	c.Assert(sshKey, check.DeepEquals, []byte("private-key"))
 }

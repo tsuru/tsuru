@@ -43,6 +43,11 @@ func (f *fakeLibMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.
 	var driver drivers.Driver
 	if driverName == "amazonec2" {
 		driver = amazonec2.NewDriver("", "")
+		sshKey, err := createTempFile("private ssh key")
+		if err != nil {
+			return nil, err
+		}
+		driver.(*amazonec2.Driver).SSHKeyPath = sshKey.Name()
 	} else {
 		driver = &fakedriver.Driver{}
 	}
@@ -65,7 +70,11 @@ func (f *fakeLibMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.
 		return nil, err
 	}
 	f.tempFiles = append(f.tempFiles, caFile, certFile, keyFile)
-
+	if f.FakeStore == nil {
+		f.FakeStore = &persisttest.FakeStore{
+			Hosts: make([]*host.Host, 0),
+		}
+	}
 	return &host.Host{
 		Name:   name,
 		Driver: driver,
@@ -79,6 +88,7 @@ func (f *fakeLibMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.
 		},
 	}, nil
 }
+
 func createTempFile(content string) (*os.File, error) {
 	file, err := ioutil.TempFile("", "")
 	if err != nil {
@@ -99,11 +109,6 @@ func (f *fakeLibMachineAPI) Create(h *host.Host) error {
 		MockName:  h.Name,
 		MockState: state.Running,
 		MockIP:    "192.168.10.3",
-	}
-	if f.FakeStore == nil {
-		f.FakeStore = &persisttest.FakeStore{
-			Hosts: make([]*host.Host, 0),
-		}
 	}
 	f.Save(h)
 	return nil

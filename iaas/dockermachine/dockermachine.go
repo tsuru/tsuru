@@ -42,6 +42,7 @@ type DockerMachineAPI interface {
 	io.Closer
 	CreateMachine(CreateMachineOpts) (*Machine, error)
 	DeleteMachine(*iaas.Machine) error
+	RegisterMachine(RegisterMachineOpts) (*Machine, error)
 	DeleteAll() error
 }
 
@@ -52,6 +53,12 @@ type CreateMachineOpts struct {
 	InsecureRegistry       string
 	DockerEngineInstallURL string
 	RegistryMirror         string
+}
+
+type RegisterMachineOpts struct {
+	Base          *iaas.Machine
+	DriverName    string
+	SSHPrivateKey []byte
 }
 
 type Machine struct {
@@ -97,10 +104,17 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 	} else {
 		log.SetOutWriter(defaultWriter)
 	}
+	client := libmachine.NewClient(storePath, certsPath)
+	if _, err := os.Stat(client.GetMachinesDir()); os.IsNotExist(err) {
+		err := os.MkdirAll(client.GetMachinesDir(), 0700)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to create machines dir")
+		}
+	}
 	return &DockerMachine{
 		StorePath: storePath,
 		CertsPath: certsPath,
-		client:    libmachine.NewClient(storePath, certsPath),
+		client:    client,
 		temp:      temp,
 	}, nil
 }
@@ -178,7 +192,7 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 			return m, errors.Wrap(err, "failed to read host client key")
 		}
 	}
-	return m, nil
+	return m, err
 }
 
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
@@ -213,6 +227,55 @@ func (d *DockerMachine) DeleteAll() error {
 		}
 	}
 	return os.RemoveAll(d.StorePath)
+}
+
+// RegisterMachine registers an iaas.Machine as an Machine and a host on
+// the current running DockerMachine. It expects all data needed to Marshal
+// the host/driver to be available on CustomData.
+func (d *DockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, error) {
+	if d.temp == false {
+		return nil, errors.New("register is only available without user defined StorePath")
+	}
+	if opts.Base.CustomData == nil {
+		return nil, errors.New("custom data is required")
+	}
+	opts.Base.CustomData["SSHKeyPath"] = filepath.Join(d.client.GetMachinesDir(), opts.Base.Id, "id_rsa")
+	rawDriver, err := json.Marshal(opts.Base.CustomData)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to marshal driver data")
+	}
+	h, err := d.client.NewHost(opts.DriverName, rawDriver)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	err = ioutil.WriteFile(h.Driver.GetSSHKeyPath(), opts.SSHPrivateKey, 0700)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	err = ioutil.WriteFile(h.AuthOptions().CaCertPath, opts.Base.CaCert, 0700)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	err = ioutil.WriteFile(h.AuthOptions().ClientCertPath, opts.Base.ClientCert, 0700)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	err = ioutil.WriteFile(h.AuthOptions().ClientKeyPath, opts.Base.ClientKey, 0700)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	err = d.client.Save(h)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	savedHost, err := d.client.Load(h.Name)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return &Machine{
+		Base: opts.Base,
+		Host: savedHost,
+	}, nil
 }
 
 func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) error {

@@ -55,3 +55,7 @@ func (f *FakeDockerMachine) DeleteMachine(m *iaas.Machine) error {
 func (f *FakeDockerMachine) DeleteAll() error {
 	return nil
 }
+
+func (f *FakeDockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, error) {
+	return nil, nil
+}
