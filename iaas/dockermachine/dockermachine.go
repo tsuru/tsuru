@@ -233,7 +233,7 @@ func (d *DockerMachine) DeleteAll() error {
 // the current running DockerMachine. It expects all data needed to Marshal
 // the host/driver to be available on CustomData.
 func (d *DockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, error) {
-	if d.temp == false {
+	if !d.temp {
 		return nil, errors.New("register is only available without user defined StorePath")
 	}
 	if opts.Base.CustomData == nil {
