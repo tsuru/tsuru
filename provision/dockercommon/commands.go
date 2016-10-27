@@ -71,6 +71,10 @@ func ProcessCmdForImage(processName, imageId string) (string, string, error) {
 }
 
 func LeanContainerCmds(processName, imageId string, app provision.App) ([]string, string, error) {
+	return LeanContainerCmdsWithExtra(processName, imageId, app, nil)
+}
+
+func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, extraCmds []string) ([]string, string, error) {
 	processCmd, processName, err := ProcessCmdForImage(processName, imageId)
 	if err != nil {
 		return nil, "", err
@@ -86,7 +90,8 @@ func LeanContainerCmds(processName, imageId string, app provision.App) ([]string
 	if err != nil {
 		return nil, "", err
 	}
-	before := strings.Join(yamlData.Hooks.Restart.Before, " && ")
+	extraCmds = append(extraCmds, yamlData.Hooks.Restart.Before...)
+	before := strings.Join(extraCmds, " && ")
 	if before != "" {
 		before += " && "
 	}
