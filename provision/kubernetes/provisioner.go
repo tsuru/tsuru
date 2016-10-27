@@ -55,7 +55,7 @@ func (p *kubernetesProvisioner) RemoveUnits(provision.App, uint, string, io.Writ
 }
 
 func (p *kubernetesProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
-	return errNotImplemented
+	return nil
 }
 
 func (p *kubernetesProvisioner) Restart(provision.App, string, io.Writer) error {
@@ -154,7 +154,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 }
 
 func (p *kubernetesProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
-	return errNotImplemented
+	return nil
 }
 
 func (p *kubernetesProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {
