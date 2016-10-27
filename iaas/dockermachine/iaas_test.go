@@ -20,12 +20,16 @@ func (s *S) TestBuildDriverOpts(c *check.C) {
 	})
 	defer config.Unset("iaas:dockermachine:driver:options")
 	dm := newDockerMachineIaaS("dockermachine")
-	driverOpts := dm.(*dockerMachineIaaS).buildDriverOpts(map[string]string{
+	driverOpts := dm.(*dockerMachineIaaS).buildDriverOpts("amazonec2", map[string]string{
 		"options2": "new2",
 	})
-	c.Assert(driverOpts["options1"], check.Equals, 1)
-	c.Assert(driverOpts["options2"], check.Equals, "new2")
-	c.Assert(driverOpts["options3"], check.Equals, "3")
+	expectedOpts := map[string]interface{}{
+		"options1":                      1,
+		"options2":                      "new2",
+		"options3":                      "3",
+		"amazonec2-use-private-address": true,
+	}
+	c.Assert(driverOpts, check.DeepEquals, expectedOpts)
 }
 
 func (s *S) TestCreateMachineIaaS(c *check.C) {

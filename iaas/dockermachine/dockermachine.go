@@ -279,11 +279,7 @@ func (d *DockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, err
 }
 
 func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) error {
-	params := DefaultParamsForDriver(driver.DriverName())
-	for k, v := range driverOpts {
-		params[k] = v
-	}
-	opts := &rpcdriver.RPCFlags{Values: params}
+	opts := &rpcdriver.RPCFlags{Values: driverOpts}
 	for _, c := range driver.GetCreateFlags() {
 		_, ok := opts.Values[c.String()]
 		if !ok {

@@ -114,7 +114,6 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(fakeAPI.ec2Driver.AccessKey, check.Equals, "access-key")
 	c.Assert(fakeAPI.ec2Driver.SecretKey, check.Equals, "secret-key")
 	c.Assert(fakeAPI.ec2Driver.SubnetId, check.Equals, "subnet-id")
-	c.Assert(fakeAPI.ec2Driver.UsePrivateIP, check.Equals, true)
 	engineOpts := fakeAPI.Hosts[0].HostOptions.EngineOptions
 	c.Assert(engineOpts.InsecureRegistry, check.DeepEquals, []string{"registry.com"})
 	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")

@@ -62,7 +62,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	} else {
 		delete(params, "name")
 	}
-	driverOpts := i.buildDriverOpts(params)
+	driverOpts := i.buildDriverOpts(driverName, params)
 	buf := &bytes.Buffer{}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
 		CaPath:    caPath,
@@ -96,8 +96,8 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	return m.Base, nil
 }
 
-func (i *dockerMachineIaaS) buildDriverOpts(params map[string]string) map[string]interface{} {
-	driverOpts := make(map[string]interface{})
+func (i *dockerMachineIaaS) buildDriverOpts(driverName string, params map[string]string) map[string]interface{} {
+	driverOpts := DefaultParamsForDriver(driverName)
 	config, _ := i.base.GetConfig("driver:options")
 	if config != nil {
 		for k, v := range config.(map[interface{}]interface{}) {
