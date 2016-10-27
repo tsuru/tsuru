@@ -190,14 +190,14 @@ func (s *DockerServer) buildMuxer() {
 	s.mux.Path("/images/{id:.*}/get").Methods("GET").HandlerFunc(s.handlerWrapper(s.getImage))
 	s.mux.Path("/networks").Methods("GET").HandlerFunc(s.handlerWrapper(s.listNetworks))
 	s.mux.Path("/networks/{id:.*}").Methods("GET").HandlerFunc(s.handlerWrapper(s.networkInfo))
-	s.mux.Path("/networks").Methods("POST").HandlerFunc(s.handlerWrapper(s.createNetwork))
+	s.mux.Path("/networks/{id:.*}").Methods("DELETE").HandlerFunc(s.handlerWrapper(s.removeNetwork))
+	s.mux.Path("/networks/create").Methods("POST").HandlerFunc(s.handlerWrapper(s.createNetwork))
 	s.mux.Path("/volumes").Methods("GET").HandlerFunc(s.handlerWrapper(s.listVolumes))
 	s.mux.Path("/volumes/create").Methods("POST").HandlerFunc(s.handlerWrapper(s.createVolume))
 	s.mux.Path("/volumes/{name:.*}").Methods("GET").HandlerFunc(s.handlerWrapper(s.inspectVolume))
 	s.mux.Path("/volumes/{name:.*}").Methods("DELETE").HandlerFunc(s.handlerWrapper(s.removeVolume))
 	s.mux.Path("/info").Methods("GET").HandlerFunc(s.handlerWrapper(s.infoDocker))
 	s.mux.Path("/version").Methods("GET").HandlerFunc(s.handlerWrapper(s.versionDocker))
-	s.mux.Path("/networks/create").Methods("POST").HandlerFunc(s.handlerWrapper(s.networkCreate))
 	s.mux.Path("/swarm/init").Methods("POST").HandlerFunc(s.handlerWrapper(s.swarmInit))
 	s.mux.Path("/swarm").Methods("GET").HandlerFunc(s.handlerWrapper(s.swarmInspect))
 	s.mux.Path("/swarm/join").Methods("POST").HandlerFunc(s.handlerWrapper(s.swarmJoin))
@@ -1235,6 +1235,20 @@ func (s *DockerServer) createNetwork(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(c)
 }
 
+func (s *DockerServer) removeNetwork(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	_, index, err := s.findNetwork(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	s.netMut.Lock()
+	defer s.netMut.Unlock()
+	s.networks[index] = s.networks[len(s.networks)-1]
+	s.networks = s.networks[:len(s.networks)-1]
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *DockerServer) listVolumes(w http.ResponseWriter, r *http.Request) {
 	s.volMut.RLock()
 	result := make([]docker.Volume, 0, len(s.volStore))
@@ -1480,15 +1494,4 @@ func (s *DockerServer) initSwarmNode(listenAddr, advertiseAddr string) (swarm.No
 			Addr: fmt.Sprintf("%s:%s", hostPart, portPart),
 		},
 	}, nil
-}
-
-func (s *DockerServer) networkCreate(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	type createNetworkResponse struct {
-		ID string
-	}
-	cnr := createNetworkResponse{
-		ID: s.generateID(),
-	}
-	json.NewEncoder(w).Encode(cnr)
 }
