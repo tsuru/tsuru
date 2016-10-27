@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/docker/docker/api/types/swarm"
@@ -52,7 +53,12 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
-		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+		"/bin/sh",
+		"-lc",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
+			extraRegisterCmds(a),
+		),
 	})
 }
 
@@ -91,7 +97,12 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
-		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+		"/bin/sh",
+		"-lc",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
+			extraRegisterCmds(a),
+		),
 	})
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
@@ -146,7 +157,12 @@ func (s *S) TestActionUpdateServicesForwardUpdateExisting(c *check.C) {
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
-		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+		"/bin/sh",
+		"-lc",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
+			extraRegisterCmds(a),
+		),
 	})
 }
 
@@ -226,7 +242,12 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
-		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec old1",
+		"/bin/sh",
+		"-lc",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec old1",
+			extraRegisterCmds(a),
+		),
 	})
 	service, err = cli.InspectService("myapp-worker")
 	c.Assert(err, check.IsNil)
@@ -272,7 +293,12 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Command, check.DeepEquals, []string{
-		"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+		"/bin/sh",
+		"-lc",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
+			extraRegisterCmds(a),
+		),
 	})
 }
 

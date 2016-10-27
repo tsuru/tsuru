@@ -43,6 +43,25 @@ func (s *S) TestInitialize(c *check.C) {
 	// TODO(cezarsa): check TLSConfig loading
 }
 
+func (s *S) TestProvision(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	cli, err := newClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	nets, err := cli.ListNetworks()
+	c.Assert(err, check.IsNil)
+	c.Assert(nets, check.HasLen, 1)
+	expected := docker.Network{ID: nets[0].ID, Name: "app-myapp-overlay", Driver: "overlay"}
+	c.Assert(nets, check.DeepEquals, []docker.Network{expected})
+}
+
 func (s *S) TestAddNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -693,6 +712,14 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
+			TaskTemplate: swarm.TaskSpec{
+				ContainerSpec: swarm.ContainerSpec{
+					Labels: map[string]string{
+						labelServiceDeploy.String():     "true",
+						labelServiceBuildImage.String(): "app:v1",
+					},
+				},
+			},
 			Annotations: swarm.Annotations{
 				Name: "myapp-web",
 				Labels: map[string]string{
@@ -706,7 +733,21 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	conts, err := cli.ListContainers(docker.ListContainersOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
-	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID}, map[string]interface{}{
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	err = s.p.RegisterUnit(provision.Unit{
+		ID:      conts[0].ID,
+		AppName: a.GetName(),
+		Ip:      "somewhere",
+	}, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
@@ -715,6 +756,8 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	data, err := image.GetImageCustomData("app:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data.Processes, check.DeepEquals, map[string]string{"web": "python myapp.py"})
+	c.Assert(serviceBodies, check.HasLen, 1)
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host=somewhere")
 }
 
 func (s *S) TestRegisterUnitNotBuild(c *check.C) {
@@ -728,6 +771,13 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
+			TaskTemplate: swarm.TaskSpec{
+				ContainerSpec: swarm.ContainerSpec{
+					Labels: map[string]string{
+						labelServiceBuildImage.String(): "notset:v1",
+					},
+				},
+			},
 			Annotations: swarm.Annotations{
 				Name: "myapp-web",
 				Labels: map[string]string{
@@ -740,7 +790,21 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	conts, err := cli.ListContainers(docker.ListContainersOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
-	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID}, map[string]interface{}{
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	err = s.p.RegisterUnit(provision.Unit{
+		ID:      conts[0].ID,
+		AppName: a.GetName(),
+		Ip:      "somewhere",
+	}, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
@@ -749,6 +813,8 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	data, err := image.GetImageCustomData("notset:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, image.ImageMetadata{})
+	c.Assert(serviceBodies, check.HasLen, 1)
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host=somewhere")
 }
 
 func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
@@ -762,6 +828,13 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
+			TaskTemplate: swarm.TaskSpec{
+				ContainerSpec: swarm.ContainerSpec{
+					Labels: map[string]string{
+						labelServiceDeploy.String(): "true",
+					},
+				},
+			},
 			Annotations: swarm.Annotations{
 				Name: "myapp-web",
 				Labels: map[string]string{
@@ -771,28 +844,31 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
 	conts, err := cli.ListContainers(docker.ListContainersOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
-	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID}, map[string]interface{}{
+	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID, AppName: a.GetName()}, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
 	})
-	c.Assert(err, check.ErrorMatches, `invalid build image label for build service: .*`)
+	c.Assert(err, check.ErrorMatches, `invalid build image label for build task: .*`)
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	attached := s.attachRegister(c, srv, true)
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, true, a)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -820,7 +896,10 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
+			extraRegisterCmds(a),
+		),
 	})
 }
 
@@ -829,13 +908,13 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	attached := s.attachRegister(c, srv, true)
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, true, a)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
@@ -870,7 +949,10 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
+			extraRegisterCmds(a),
+		),
 	})
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
@@ -880,7 +962,6 @@ func (s *S) TestImageDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	attached := s.attachRegister(c, srv, false)
 	imageName := "myimg:v1"
 	srv.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
@@ -905,6 +986,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, false, a)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -930,7 +1012,10 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; exec /bin/sh \"-c\" \"python test.py\"",
+		fmt.Sprintf(
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec /bin/sh \"-c\" \"python test.py\"",
+			extraRegisterCmds(a),
+		),
 	})
 }
 
@@ -979,13 +1064,13 @@ func (s *S) TestDestroyServiceNotFound(c *check.C) {
 	c.Assert(units, check.HasLen, 0)
 }
 
-func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool) <-chan bool {
+func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
 	chAttached := make(chan bool, 1)
 	srv.CustomHandler("/containers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.URL.Path, "/")
 		if len(parts) == 4 && parts[3] == "attach" {
 			if register {
-				err := s.p.RegisterUnit(provision.Unit{ID: parts[2]}, map[string]interface{}{
+				err := s.p.RegisterUnit(provision.Unit{ID: parts[2], AppName: a.GetName()}, map[string]interface{}{
 					"processes": map[string]interface{}{
 						"web": "python myapp.py",
 					},

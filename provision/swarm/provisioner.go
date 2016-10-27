@@ -57,20 +57,39 @@ func (p *swarmProvisioner) GetName() string {
 	return provisionerName
 }
 
-func (p *swarmProvisioner) Provision(provision.App) error {
+func (p *swarmProvisioner) Provision(a provision.App) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	_, err = client.CreateNetwork(docker.CreateNetworkOptions{
+		Name:           networkNameForApp(a),
+		Driver:         "overlay",
+		CheckDuplicate: true,
+		IPAM: docker.IPAMOptions{
+			Driver: "default",
+		},
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }
 
 func (p *swarmProvisioner) Destroy(a provision.App) error {
-	processes, err := allAppProcesses(a.GetName())
-	if err != nil {
-		return err
-	}
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
 	}
 	multiErrors := tsuruErrors.NewMultiError()
+	err = client.RemoveNetwork(networkNameForApp(a))
+	if err != nil {
+		multiErrors.Add(errors.WithStack(err))
+	}
+	processes, err := allAppProcesses(a.GetName())
+	if err != nil {
+		multiErrors.Add(err)
+	}
 	for _, p := range processes {
 		name := serviceNameForApp(a, p)
 		err = client.RemoveService(docker.RemoveServiceOptions{
@@ -193,6 +212,27 @@ var stateMap = map[swarm.TaskState]provision.Status{
 	swarm.TaskStateRejected:  provision.StatusError,
 }
 
+func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a provision.App) provision.Unit {
+	addr := node.Spec.Labels[labelNodeDockerAddr.String()]
+	host := tsuruNet.URLToHost(addr)
+	var pubPort uint32
+	if len(service.Endpoint.Ports) > 0 {
+		pubPort = service.Endpoint.Ports[0].PublishedPort
+	}
+	return provision.Unit{
+		ID:          task.Status.ContainerStatus.ContainerID,
+		AppName:     a.GetName(),
+		ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
+		Type:        a.GetPlatform(),
+		Ip:          host,
+		Status:      stateMap[task.Status.State],
+		Address: &url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("%s:%d", host, pubPort),
+		},
+	}
+}
+
 func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, error) {
 	nodeMap := map[string]*swarm.Node{}
 	serviceMap := map[string]*swarm.Service{}
@@ -225,25 +265,7 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 			}
 			appsMap[appName] = a
 		}
-		platform := appsMap[appName].GetPlatform()
-		addr := nodeMap[t.NodeID].Spec.Labels[labelNodeDockerAddr.String()]
-		host := tsuruNet.URLToHost(addr)
-		var pubPort uint32
-		if len(service.Endpoint.Ports) > 0 {
-			pubPort = service.Endpoint.Ports[0].PublishedPort
-		}
-		units = append(units, provision.Unit{
-			ID:          t.Status.ContainerStatus.ContainerID,
-			AppName:     appName,
-			ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
-			Type:        platform,
-			Ip:          host,
-			Status:      stateMap[t.Status.State],
-			Address: &url.URL{
-				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", host, pubPort),
-			},
-		})
+		units = append(units, taskToUnit(&t, serviceMap[t.ServiceID], nodeMap[t.NodeID], appsMap[appName]))
 	}
 	return units, nil
 }
@@ -286,13 +308,38 @@ func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, e
 	return units, nil
 }
 
-func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
-	if customData == nil {
-		return nil
+func findTaskFromContainer(tasks []swarm.Task, contID string) *swarm.Task {
+	for i, t := range tasks {
+		if strings.HasPrefix(t.Status.ContainerStatus.ContainerID, contID) {
+			return &tasks[i]
+		}
 	}
+	return nil
+}
+
+func bindUnit(client *docker.Client, unit *provision.Unit) error {
+	a, err := app.GetByName(unit.AppName)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = a.BindUnit(unit)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
+	}
+	err = bindUnit(client, &unit)
+	if err != nil {
+		return err
+	}
+	if customData == nil {
+		return nil
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
@@ -302,23 +349,13 @@ func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	var foundTask *swarm.Task
-	for i, t := range tasks {
-		if t.Status.ContainerStatus.ContainerID == unit.ID {
-			foundTask = &tasks[i]
-			break
-		}
-	}
-	if foundTask == nil {
+	task := findTaskFromContainer(tasks, unit.ID)
+	if task == nil {
 		return nil
 	}
-	srv, err := client.InspectService(foundTask.ServiceID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	buildingImage := srv.Spec.Annotations.Labels[labelServiceBuildImage.String()]
+	buildingImage := task.Spec.ContainerSpec.Labels[labelServiceBuildImage.String()]
 	if buildingImage == "" {
-		return errors.Errorf("invalid build image label for build service: %#v", srv)
+		return errors.Errorf("invalid build image label for build task: %#v", task)
 	}
 	return image.SaveImageCustomData(buildingImage, customData)
 }

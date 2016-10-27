@@ -241,6 +241,10 @@ func serviceNameForApp(a provision.App, process string) string {
 	return fmt.Sprintf("%s-%s", a.GetName(), process)
 }
 
+func networkNameForApp(a provision.App) string {
+	return fmt.Sprintf("app-%s-overlay", a.GetName())
+}
+
 type tsuruServiceOpts struct {
 	app          provision.App
 	process      string
@@ -249,6 +253,18 @@ type tsuruServiceOpts struct {
 	baseSpec     *swarm.ServiceSpec
 	isDeploy     bool
 	processState processState
+}
+
+func extraRegisterCmds(app provision.App) string {
+	host, _ := config.GetString("host")
+	if !strings.HasPrefix(host, "http") {
+		host = "http://" + host
+	}
+	if !strings.HasSuffix(host, "/") {
+		host += "/"
+	}
+	token := app.Envs()["TSURU_APP_TOKEN"].Value
+	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register`, token, host, app.GetName())
 }
 
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
@@ -269,7 +285,8 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		ports = []swarm.PortConfig{
 			{TargetPort: 8888, PublishedPort: 0},
 		}
-		cmds, _, err = dockercommon.LeanContainerCmds(opts.process, opts.image, opts.app)
+		extra := []string{extraRegisterCmds(opts.app)}
+		cmds, _, err = dockercommon.LeanContainerCmdsWithExtra(opts.process, opts.image, opts.app, extra)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -323,6 +340,9 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		labelProcessReplicas.String():   strconv.Itoa(replicas),
 		labelServiceRestart.String():    strconv.Itoa(restartCount),
 	}
+	networks := []swarm.NetworkAttachmentConfig{
+		{Target: networkNameForApp(opts.app)},
+	}
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -331,6 +351,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 				Labels:  labels,
 				Command: cmds,
 			},
+			Networks: networks,
 			RestartPolicy: &swarm.RestartPolicy{
 				Condition: swarm.RestartPolicyConditionAny,
 			},
@@ -340,6 +361,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 				},
 			},
 		},
+		Networks: networks,
 		EndpointSpec: &swarm.EndpointSpec{
 			Mode:  swarm.ResolutionModeVIP,
 			Ports: ports,
