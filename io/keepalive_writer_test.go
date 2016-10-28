@@ -46,16 +46,19 @@ func (b *closableBuffer) String() string {
 func (s *S) TestKeepAliveWriter(c *check.C) {
 	var buf closableBuffer
 	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "...")
-	time.Sleep(150 * time.Millisecond)
+	w.writeLock.Lock()
+	w.testCh = make(chan struct{})
+	w.writeLock.Unlock()
+	<-w.testCh
 	c.Check(buf.String(), check.Equals, "\n...\n")
 	count, err := w.Write([]byte("xxx"))
 	c.Check(err, check.IsNil)
 	c.Check(count, check.Equals, 3)
 	c.Check(buf.String(), check.Equals, "\n...\nxxx")
-	time.Sleep(150 * time.Millisecond)
+	<-w.testCh
 	c.Check(buf.String(), check.Equals, "\n...\nxxx\n...\n")
 	buf.Close()
-	time.Sleep(300 * time.Millisecond)
+	<-w.testCh
 	c.Check(buf.String(), check.Equals, "\n...\nxxx\n...\n")
 	c.Check(buf.callCount, check.Equals, 4)
 }
@@ -63,12 +66,15 @@ func (s *S) TestKeepAliveWriter(c *check.C) {
 func (s *S) TestKeepAliveWriterDoesntWriteMultipleNewlines(c *check.C) {
 	var buf closableBuffer
 	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "---")
+	w.writeLock.Lock()
+	w.testCh = make(chan struct{})
+	w.writeLock.Unlock()
 	count, err := w.Write([]byte("xxx\n"))
 	c.Check(err, check.IsNil)
 	c.Check(count, check.Equals, 4)
-	time.Sleep(120 * time.Millisecond)
+	<-w.testCh
 	c.Check(buf.String(), check.Equals, "xxx\n---\n")
-	time.Sleep(120 * time.Millisecond)
+	<-w.testCh
 	c.Check(buf.String(), check.Equals, "xxx\n---\n---\n")
 }
 
