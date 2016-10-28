@@ -108,7 +108,7 @@ release:
 	@echo "$(version) released!"
 
 install:
-	go install $(GO_EXTRAFLAGS) $(TSR_PKGS) ../tsuru-client/...
+	go install $(GO_EXTRAFLAGS) $(TSR_PKGS) $$(go list ../tsuru-client/... | grep -v /vendor/)
 
 serve: run-tsurud-api
 
