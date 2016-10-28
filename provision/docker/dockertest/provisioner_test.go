@@ -87,7 +87,7 @@ func (s *S) TestDestroy(c *check.C) {
 	c.Assert(err, check.NotNil)
 	e, ok := err.(cluster.DockerNodeError)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.BaseError(), check.ErrorMatches, "cannot connect to Docker endpoint")
+	c.Assert(e.BaseError(), check.ErrorMatches, "(cannot connect to Docker endpoint)|(.*connection reset by peer)")
 }
 
 func (s *S) TestServers(c *check.C) {
