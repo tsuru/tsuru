@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -316,8 +315,13 @@ func (p *dockerProvisioner) rebalanceContainers(writer io.Writer, dryRun bool) e
 	return err
 }
 
-func (p *dockerProvisioner) runCommandInContainer(image string, command string, app provision.App) (bytes.Buffer, error) {
-	var output bytes.Buffer
+func (p *dockerProvisioner) runCommandInContainer(image string, command string, app provision.App, stdout, stderr io.Writer) error {
+	if stdout == nil {
+		stdout = ioutil.Discard
+	}
+	if stderr == nil {
+		stderr = ioutil.Discard
+	}
 	createOptions := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -338,7 +342,7 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 		schedOpts.LimiterDone()
 	}
 	if err != nil {
-		return output, err
+		return err
 	}
 	defer func() {
 		done := p.ActionLimiter().Start(hostAddr)
@@ -347,14 +351,16 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	}()
 	attachOptions := docker.AttachToContainerOptions{
 		Container:    cont.ID,
-		OutputStream: &output,
+		OutputStream: stdout,
+		ErrorStream:  stderr,
 		Stream:       true,
 		Stdout:       true,
+		Stderr:       true,
 		Success:      make(chan struct{}),
 	}
 	waiter, err := cluster.AttachToContainerNonBlocking(attachOptions)
 	if err != nil {
-		return output, err
+		return err
 	}
 	<-attachOptions.Success
 	close(attachOptions.Success)
@@ -362,8 +368,8 @@ func (p *dockerProvisioner) runCommandInContainer(image string, command string, 
 	err = cluster.StartContainer(cont.ID, nil)
 	done()
 	if err != nil {
-		return output, err
+		return err
 	}
 	waiter.Wait()
-	return output, nil
+	return nil
 }

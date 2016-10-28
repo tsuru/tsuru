@@ -1980,7 +1980,6 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("almah", "static", 1)
 	var stdout, stderr bytes.Buffer
-	var executed bool
 	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -1996,14 +1995,14 @@ func (s *S) TestProvisionerExecuteCommandIsolated(c *check.C) {
 		}
 		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
 		fmt.Fprintf(outStream, "test")
-		executed = true
-
+		errStream := stdcopy.NewStdWriter(conn, stdcopy.Stderr)
+		fmt.Fprintf(errStream, "errtest")
 		conn.Close()
 	}))
 	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
 	c.Assert(err, check.IsNil)
-	c.Assert(executed, check.Equals, true)
 	c.Assert(stdout.String(), check.Equals, "test")
+	c.Assert(stderr.String(), check.Equals, "errtest")
 }
 
 func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {

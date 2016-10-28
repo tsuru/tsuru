@@ -432,8 +432,12 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *
 	}
 	fmt.Fprintln(w, "---- Getting process from image ----")
 	cmd := "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"
-	output, _ := p.runCommandInContainer(imageId, cmd, app)
-	procfile := image.GetProcessesFromProcfile(output.String())
+	var outBuf bytes.Buffer
+	err = p.runCommandInContainer(imageId, cmd, app, &outBuf, nil)
+	if err != nil {
+		return "", err
+	}
+	procfile := image.GetProcessesFromProcfile(outBuf.String())
 	imageInspect, err := cluster.InspectImage(imageId)
 	if err != nil {
 		return "", err
@@ -969,12 +973,7 @@ func (p *dockerProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, app
 	if err != nil {
 		return err
 	}
-	output, err := p.runCommandInContainer(imageID, cmd, app)
-	if err != nil {
-		return err
-	}
-	stdout.Write(output.Bytes())
-	return nil
+	return p.runCommandInContainer(imageID, cmd, app, stdout, stderr)
 }
 
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
