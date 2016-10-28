@@ -43,6 +43,7 @@ type DockerMachineAPI interface {
 	CreateMachine(CreateMachineOpts) (*Machine, error)
 	DeleteMachine(*iaas.Machine) error
 	RegisterMachine(RegisterMachineOpts) (*Machine, error)
+	List() ([]*Machine, error)
 	DeleteAll() error
 }
 
@@ -156,43 +157,7 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create host")
 	}
-	rawDriver, err = json.Marshal(h.Driver)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal host driver")
-	}
-	var driverData map[string]interface{}
-	err = json.Unmarshal(rawDriver, &driverData)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal host driver")
-	}
-	m := &Machine{
-		Base: &iaas.Machine{
-			Id:         h.Name,
-			Port:       engine.DefaultPort,
-			Protocol:   "https",
-			CustomData: driverData,
-		},
-		Host: h,
-	}
-	m.Base.Address, err = h.Driver.GetIP()
-	if err != nil {
-		return m, errors.Wrap(err, "failed to retrive host ip")
-	}
-	if h.AuthOptions() != nil {
-		m.Base.CaCert, err = ioutil.ReadFile(h.AuthOptions().CaCertPath)
-		if err != nil {
-			return m, errors.Wrap(err, "failed to read host ca cert")
-		}
-		m.Base.ClientCert, err = ioutil.ReadFile(h.AuthOptions().ClientCertPath)
-		if err != nil {
-			return m, errors.Wrap(err, "failed to read host client cert")
-		}
-		m.Base.ClientKey, err = ioutil.ReadFile(h.AuthOptions().ClientKeyPath)
-		if err != nil {
-			return m, errors.Wrap(err, "failed to read host client key")
-		}
-	}
-	return m, err
+	return newMachine(h)
 }
 
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
@@ -276,6 +241,67 @@ func (d *DockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, err
 		Base: opts.Base,
 		Host: savedHost,
 	}, nil
+}
+
+func (d *DockerMachine) List() ([]*Machine, error) {
+	names, err := d.client.List()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var machines []*Machine
+	for _, n := range names {
+		h, err := d.client.Load(n)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		m, err := newMachine(h)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		machines = append(machines, m)
+	}
+	return machines, nil
+}
+
+func newMachine(h *host.Host) (*Machine, error) {
+	rawDriver, err := json.Marshal(h.Driver)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal host driver")
+	}
+	var driverData map[string]interface{}
+	err = json.Unmarshal(rawDriver, &driverData)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal host driver")
+	}
+	m := &Machine{
+		Base: &iaas.Machine{
+			Id:         h.Name,
+			Port:       engine.DefaultPort,
+			Protocol:   "https",
+			CustomData: driverData,
+		},
+		Host: h,
+	}
+	address, err := h.Driver.GetIP()
+	if err != nil {
+		return m, errors.Wrap(err, "failed to retrive host ip")
+	}
+	m.Base.Address = address
+	if h.AuthOptions() != nil {
+		m.Base.CaCert, err = ioutil.ReadFile(h.AuthOptions().CaCertPath)
+		if err != nil {
+			return m, errors.Wrap(err, "failed to read host ca cert")
+		}
+		m.Base.ClientCert, err = ioutil.ReadFile(h.AuthOptions().ClientCertPath)
+		if err != nil {
+			return m, errors.Wrap(err, "failed to read host client cert")
+		}
+		m.Base.ClientKey, err = ioutil.ReadFile(h.AuthOptions().ClientKeyPath)
+		if err != nil {
+			return m, errors.Wrap(err, "failed to read host client key")
+		}
+	}
+	return m, nil
 }
 
 func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) error {

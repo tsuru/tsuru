@@ -231,3 +231,31 @@ func (s *S) TestRegisterMachine(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(sshKey, check.DeepEquals, []byte("private-key"))
 }
+
+func (s *S) TestList(c *check.C) {
+	fakeAPI := &fakeLibMachineAPI{}
+	dmAPI, err := NewDockerMachine(DockerMachineConfig{})
+	c.Assert(err, check.IsNil)
+	defer dmAPI.Close()
+	dm := dmAPI.(*DockerMachine)
+	dm.client = fakeAPI
+	m, err := dm.CreateMachine(CreateMachineOpts{
+		Name:                   "my-machine-1",
+		DriverName:             "fakedriver",
+		InsecureRegistry:       "registry.com",
+		DockerEngineInstallURL: "https://getdocker2.com",
+		RegistryMirror:         "http://registry-mirror.com",
+	})
+	c.Assert(err, check.IsNil)
+	m2, err := dm.CreateMachine(CreateMachineOpts{
+		Name:                   "my-machine-2",
+		DriverName:             "fakedriver",
+		InsecureRegistry:       "registry.com",
+		DockerEngineInstallURL: "https://getdocker2.com",
+		RegistryMirror:         "http://registry-mirror.com",
+	})
+	c.Assert(err, check.IsNil)
+	machines, err := dm.List()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.DeepEquals, []*Machine{m, m2})
+}

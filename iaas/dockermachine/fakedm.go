@@ -59,3 +59,7 @@ func (f *FakeDockerMachine) DeleteAll() error {
 func (f *FakeDockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, error) {
 	return nil, nil
 }
+
+func (f *FakeDockerMachine) List() ([]*Machine, error) {
+	return nil, nil
+}
