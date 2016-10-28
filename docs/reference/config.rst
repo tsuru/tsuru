@@ -130,7 +130,7 @@ It will also include a function used for querying configuration values, named
 
 This setting is optional. When ``index-page-template`` is not defined, tsuru
 will use the `default template
-<https://github.com/tsuru/tsuru/blob/master/api/index_templates.go>`_.
+<https://github.com/tsuru/tsuru/blob/master/api/index_templates.go>`__.
 
 reset-password-template
 +++++++++++++++++++++++
@@ -145,7 +145,7 @@ and tsuru will provide the following variables in the context of the template:
     - ``Used``: a boolean, reset-password was done or not
 
 This setting is optional. When ``reset-password-template`` is not defined, tsuru
-will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`_.
+will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`__.
 
 reset-password-successfully-template
 ++++++++++++++++++++++++++++++++++++
@@ -158,7 +158,7 @@ and tsuru will provide the following variables in the context of the template:
     - ``email``: a string, the user email
 
 This setting is optional. When ``reset-password-template`` is not defined, tsuru
-will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`_.
+will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`__.
 
 Database access
 ---------------
