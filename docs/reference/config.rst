@@ -133,7 +133,7 @@ will use the `default template
 <https://github.com/tsuru/tsuru/blob/master/api/index_templates.go>`_.
 
 reset-password-template
-+++++++++++++++++++
++++++++++++++++++++++++
 
 ``reset-password-template`` is the template that will be used to "password reset" email.
 It must use the `Go template syntax <http://golang.org/pkg/text/template/>`_,
@@ -148,7 +148,7 @@ This setting is optional. When ``reset-password-template`` is not defined, tsuru
 will use the `default template <https://github.com/tsuru/tsuru/blob/master/auth/native/data.go>`_.
 
 reset-password-successfully-template
-+++++++++++++++++++
+++++++++++++++++++++++++++++++++++++
 
 ``reset-password-successfully-template`` is the template that will be used to email with new password, after reset.
 It must use the `Go template syntax <http://golang.org/pkg/text/template/>`_,
