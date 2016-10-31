@@ -306,7 +306,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	}
 	nodes, err := client.ListNodes(docker.ListNodesOptions{
 		Filters: map[string][]string{
-			"labels": []string{labelNodePoolName.String() + "=" + a.GetPool()},
+			"labels": {labelNodePoolName.String() + "=" + a.GetPool()},
 		},
 	})
 	if err != nil {
