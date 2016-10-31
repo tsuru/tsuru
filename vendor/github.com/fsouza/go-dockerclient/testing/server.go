@@ -71,6 +71,7 @@ type DockerServer struct {
 	tasks          []*swarm.Task
 	services       []*swarm.Service
 	nodeRR         int
+	servicePorts   int
 }
 
 type volumeCounter struct {
