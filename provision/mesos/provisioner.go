@@ -7,6 +7,7 @@ package mesos
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/gambol99/go-marathon"
@@ -70,7 +71,7 @@ func (p *mesosProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	return nil, nil
 }
 
-func (p *mesosProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+func (p *mesosProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
 	return nil, errNotImplemented
 }
 

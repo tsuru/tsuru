@@ -339,8 +339,8 @@ type Provisioner interface {
 	// Units returns information about units by App.
 	Units(App) ([]Unit, error)
 
-	// RoutableUnits returns information about routable units by App.
-	RoutableUnits(App) ([]Unit, error)
+	// RoutableAddresses returns the addresses used to access an application.
+	RoutableAddresses(App) ([]url.URL, error)
 
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error

@@ -1114,10 +1114,15 @@ func (p *FakeProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	return p.apps[app.GetName()].units, nil
 }
 
-func (p *FakeProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+func (p *FakeProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	return p.apps[app.GetName()].units, nil
+	units := p.apps[app.GetName()].units
+	addrs := make([]url.URL, len(units))
+	for i := range units {
+		addrs[i] = *units[i].Address
+	}
+	return addrs, nil
 }
 
 func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {

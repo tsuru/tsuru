@@ -286,7 +286,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	return tasksToUnits(client, tasks)
 }
 
-func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+func (p *swarmProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
 	imgID, err := image.AppCurrentImageName(app.GetName())
 	if err != nil && err != image.ErrNoImagesAvailable {
 		return nil, err
@@ -299,13 +299,13 @@ func (p *swarmProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, e
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < len(units); i++ {
-		if units[i].ProcessName != webProcessName {
-			units = append(units[:i], units[i+1:]...)
-			i--
+	addrs := make([]url.URL, 0, len(units))
+	for i := range units {
+		if units[i].ProcessName == webProcessName {
+			addrs = append(addrs, *units[i].Address)
 		}
 	}
-	return units, nil
+	return addrs, nil
 }
 
 func findTaskFromContainer(tasks []swarm.Task, contID string) *swarm.Task {

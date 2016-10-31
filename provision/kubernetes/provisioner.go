@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -74,7 +75,7 @@ func (p *kubernetesProvisioner) Units(app provision.App) ([]provision.Unit, erro
 	return nil, nil
 }
 
-func (p *kubernetesProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
 	return nil, errNotImplemented
 }
 

@@ -20,7 +20,7 @@ type RebuildApp interface {
 	GetName() string
 	GetCname() []string
 	Router() (router.Router, error)
-	RoutableUnits() ([]*url.URL, error)
+	RoutableAddresses() ([]url.URL, error)
 	UpdateAddr() error
 	InternalLock(string) (bool, error)
 	Unlock()
@@ -56,12 +56,12 @@ func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
 		return nil, err
 	}
 	expectedMap := make(map[string]*url.URL)
-	addresses, err := app.RoutableUnits()
+	addresses, err := app.RoutableAddresses()
 	if err != nil {
 		return nil, err
 	}
-	for _, addr := range addresses {
-		expectedMap[addr.Host] = addr
+	for i, addr := range addresses {
+		expectedMap[addr.Host] = &addresses[i]
 	}
 	var toRemove []*url.URL
 	for _, url := range oldRoutes {

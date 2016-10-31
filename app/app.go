@@ -1721,20 +1721,12 @@ func (app *App) UpdateAddr() error {
 	return nil
 }
 
-func (app *App) RoutableUnits() ([]*url.URL, error) {
+func (app *App) RoutableAddresses() ([]url.URL, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
-	units, err := prov.RoutableUnits(app)
-	if err != nil {
-		return nil, err
-	}
-	urls := make([]*url.URL, len(units))
-	for i := range units {
-		urls[i] = units[i].Address
-	}
-	return urls, nil
+	return prov.RoutableAddresses(app)
 }
 
 func (app *App) InternalLock(reason string) (bool, error) {

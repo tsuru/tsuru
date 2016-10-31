@@ -1111,7 +1111,7 @@ func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	return units, nil
 }
 
-func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
 	imageId, err := image.AppCurrentImageName(app.GetName())
 	if err != nil && err != image.ErrNoImagesAvailable {
 		return nil, err
@@ -1124,13 +1124,13 @@ func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, 
 	if err != nil {
 		return nil, err
 	}
-	units := make([]provision.Unit, 0, len(containers))
+	addrs := make([]url.URL, 0, len(containers))
 	for _, container := range containers {
 		if container.ProcessName == webProcessName && container.ValidAddr() {
-			units = append(units, container.AsUnit(app))
+			addrs = append(addrs, *container.Address())
 		}
 	}
-	return units, nil
+	return addrs, nil
 }
 
 func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {

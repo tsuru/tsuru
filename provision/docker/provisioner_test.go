@@ -3086,19 +3086,19 @@ func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {
 	c.Assert(msg, check.Equals, "")
 }
 
-func (s *S) TestProvisionerRoutableUnits(c *check.C) {
+func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
-	routes, err := s.p.RoutableUnits(fakeApp)
+	routes, err := s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []provision.Unit{})
+	c.Assert(routes, check.DeepEquals, []url.URL{})
 	err = image.AppendAppImageName(appName, "myimg")
 	c.Assert(err, check.IsNil)
 	err = image.PullAppImageNames(appName, []string{"myimg"})
 	c.Assert(err, check.IsNil)
-	routes, err = s.p.RoutableUnits(fakeApp)
+	routes, err = s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []provision.Unit{})
+	c.Assert(routes, check.DeepEquals, []url.URL{})
 	err = image.AppendAppImageName(appName, "myimg")
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(s.p, "myimg", nil)
@@ -3111,14 +3111,14 @@ func (s *S) TestProvisionerRoutableUnits(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(conts, check.HasLen, 1)
-	routes, err = s.p.RoutableUnits(fakeApp)
+	routes, err = s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []provision.Unit{
-		conts[0].AsUnit(fakeApp),
+	c.Assert(routes, check.DeepEquals, []url.URL{
+		*conts[0].Address(),
 	})
 }
 
-func (s *S) TestProvisionerRoutableUnitsInvalidContainers(c *check.C) {
+func (s *S) TestProvisionerRoutableAddressesInvalidContainers(c *check.C) {
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	err := image.AppendAppImageName(appName, "myimg")
@@ -3141,10 +3141,10 @@ func (s *S) TestProvisionerRoutableUnitsInvalidContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = coll.Update(bson.M{"id": conts[1].ID}, conts[1])
 	c.Assert(err, check.IsNil)
-	routes, err := s.p.RoutableUnits(fakeApp)
+	routes, err := s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []provision.Unit{
-		conts[2].AsUnit(fakeApp),
+	c.Assert(routes, check.DeepEquals, []url.URL{
+		*conts[2].Address(),
 	})
 }
 
