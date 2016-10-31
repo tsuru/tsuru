@@ -368,28 +368,46 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
-			"checksumSHA1": "lEiwS/Vd4Nm8EARk4RZxeinDWmo=",
+			"checksumSHA1": "jVJDbe0IcyjoKc2xbohwzQr+FF0=",
+			"path": "github.com/docker/docker/api/types/blkiodev",
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
+		},
+		{
+			"checksumSHA1": "cBc6w9s4YFHOF3MB1rO6ovmz04E=",
+			"path": "github.com/docker/docker/api/types/container",
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
+		},
+		{
+			"checksumSHA1": "oNOnELdnOaqMJgiFsS85fHecBy0=",
 			"path": "github.com/docker/docker/api/types/filters",
-			"revision": "5e072a25f80f13028fdb86df4179a8ee60cbde90",
-			"revisionTime": "2016-10-04T13:29:59Z"
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
 		},
 		{
-			"checksumSHA1": "Qk4+xBppOaeKObZoN98MalFuw6g=",
+			"checksumSHA1": "4rxOgOCSZleDDi5HKWnhwR+PnK4=",
 			"path": "github.com/docker/docker/api/types/mount",
-			"revision": "5e072a25f80f13028fdb86df4179a8ee60cbde90",
-			"revisionTime": "2016-10-04T13:29:59Z"
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
 		},
 		{
-			"checksumSHA1": "rr85dgAi6P2X5AlID3La84ek83U=",
+			"checksumSHA1": "VTxWyFud/RedrpllGdQonVtGM/A=",
+			"path": "github.com/docker/docker/api/types/strslice",
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
+		},
+		{
+			"checksumSHA1": "frkRi0XIPRR+IL1sWusP4dsQfdY=",
 			"path": "github.com/docker/docker/api/types/swarm",
-			"revision": "5e072a25f80f13028fdb86df4179a8ee60cbde90",
-			"revisionTime": "2016-10-04T13:29:59Z"
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
 		},
 		{
 			"checksumSHA1": "iRarXGLKK2hKs5sdktWlAcP6adM=",
 			"path": "github.com/docker/docker/api/types/versions",
-			"revision": "5e072a25f80f13028fdb86df4179a8ee60cbde90",
-			"revisionTime": "2016-10-04T13:29:59Z"
+			"revision": "0cdcb9ea7350b1e0a024bf40c8cf60e541f2c69f",
+			"revisionTime": "2016-10-31T15:50:26Z"
 		},
 		{
 			"checksumSHA1": "/yKp5z1PWaYXpGd6r7lY2gAyeVs=",
