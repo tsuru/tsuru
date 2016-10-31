@@ -26,7 +26,7 @@ import (
 //   201: Host added
 //   401: Unauthorized
 func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermInstallUpdate)
+	allowed := permission.Check(t, permission.PermInstallManage)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -44,10 +44,10 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeInstallHost, Value: host.Name},
-		Kind:       permission.PermInstallUpdate,
+		Kind:       permission.PermInstallManage,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermInstallRead),
+		Allowed:    event.Allowed(permission.PermInstallManage),
 	})
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not Found
 func installHostInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowed := permission.Check(t, permission.PermInstallRead)
+	allowed := permission.Check(t, permission.PermInstallManage)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -99,7 +99,7 @@ func installHostInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //   200: OK
 //   401: Unauthorized
 func installHostList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowed := permission.Check(t, permission.PermInstallRead)
+	allowed := permission.Check(t, permission.PermInstallManage)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}

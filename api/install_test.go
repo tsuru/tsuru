@@ -18,7 +18,7 @@ import (
 
 func (s *S) TestInstallHostAdd(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermInstallUpdate,
+		Scheme:  permission.PermInstallManage,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	recorder := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func (s *S) TestInstallHostReturnsForbiddenIfNoPermissions(c *check.C) {
 
 func (s *S) TestInstallHostInfo(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermInstallRead,
+		Scheme:  permission.PermInstallManage,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	expectedHost := &install.Host{Name: "my-host", DriverName: "amazonec2", Driver: make(map[string]interface{})}
@@ -97,7 +97,7 @@ func (s *S) TestInstallHostInfoReturnsForbiddenIfNoPermissions(c *check.C) {
 
 func (s *S) TestInstallHostInfoReturnsNotFoundWhenHostDoesNotExist(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermInstallRead,
+		Scheme:  permission.PermInstallManage,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	recorder := httptest.NewRecorder()
@@ -113,7 +113,7 @@ func (s *S) TestInstallHostInfoReturnsNotFoundWhenHostDoesNotExist(c *check.C) {
 
 func (s *S) TestInstallHostList(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermInstallRead,
+		Scheme:  permission.PermInstallManage,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	host1 := &install.Host{Name: "my-host-1", DriverName: "amazonec2", Driver: make(map[string]interface{})}

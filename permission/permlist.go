@@ -175,6 +175,5 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"nodecontainer.update.upgrade",
 	"nodecontainer.delete",
 ).add(
-	"install.update",
-	"install.read",
+	"install.manage",
 )
