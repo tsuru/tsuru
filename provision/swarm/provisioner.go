@@ -215,10 +215,6 @@ var stateMap = map[swarm.TaskState]provision.Status{
 func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a provision.App) provision.Unit {
 	addr := node.Spec.Labels[labelNodeDockerAddr.String()]
 	host := tsuruNet.URLToHost(addr)
-	var pubPort uint32
-	if len(service.Endpoint.Ports) > 0 {
-		pubPort = service.Endpoint.Ports[0].PublishedPort
-	}
 	return provision.Unit{
 		ID:          task.Status.ContainerStatus.ContainerID,
 		AppName:     a.GetName(),
@@ -226,10 +222,7 @@ func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a pr
 		Type:        a.GetPlatform(),
 		Ip:          host,
 		Status:      stateMap[task.Status.State],
-		Address: &url.URL{
-			Scheme: "http",
-			Host:   fmt.Sprintf("%s:%d", host, pubPort),
-		},
+		Address:     nil,
 	}
 }
 
@@ -286,8 +279,12 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	return tasksToUnits(client, tasks)
 }
 
-func (p *swarmProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
-	imgID, err := image.AppCurrentImageName(app.GetName())
+func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return nil, err
+	}
+	imgID, err := image.AppCurrentImageName(a.GetName())
 	if err != nil && err != image.ErrNoImagesAvailable {
 		return nil, err
 	}
@@ -295,14 +292,33 @@ func (p *swarmProvisioner) RoutableAddresses(app provision.App) ([]url.URL, erro
 	if err != nil {
 		return nil, err
 	}
-	units, err := p.Units(app)
+	srvName := serviceNameForApp(a, webProcessName)
+	srv, err := client.InspectService(srvName)
 	if err != nil {
 		return nil, err
 	}
-	addrs := make([]url.URL, 0, len(units))
-	for i := range units {
-		if units[i].ProcessName == webProcessName {
-			addrs = append(addrs, *units[i].Address)
+	var pubPort uint32
+	if len(srv.Endpoint.Ports) > 0 {
+		pubPort = srv.Endpoint.Ports[0].PublishedPort
+	}
+	if pubPort == 0 {
+		return nil, nil
+	}
+	nodes, err := client.ListNodes(docker.ListNodesOptions{
+		Filters: map[string][]string{
+			"labels": []string{labelNodePoolName.String() + "=" + a.GetPool()},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	addrs := make([]url.URL, len(nodes))
+	for i, n := range nodes {
+		addr := n.Spec.Labels[labelNodeDockerAddr.String()]
+		host := tsuruNet.URLToHost(addr)
+		addrs[i] = url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("%s:%d", host, pubPort),
 		}
 	}
 	return addrs, nil
