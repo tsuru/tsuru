@@ -45,13 +45,9 @@ docker:
   collection: docker_containers
   repository-namespace: tsuru
   router: hipache
-  deploy-cmd: /var/lib/tsuru/deploy
   cluster:
     mongo-url: mongodb://localhost:27017
     mongo-database: docker-cluster
-  run-cmd:
-    bin: /var/lib/tsuru/start
-    port: 8888
   ssh:
     user: ubuntu
 `
