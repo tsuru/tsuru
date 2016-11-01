@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -112,12 +113,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	var exposedPorts map[docker.Port]struct{}
 	if !args.Deploy {
 		if c.ExposedPort == "" {
-			port, portErr := getPort()
-			if portErr != nil {
-				log.Errorf("error on getting port for container %s - %s", c.AppName, port)
-				return portErr
-			}
-			c.ExposedPort = port + "/tcp"
+			c.ExposedPort = dockercommon.WebProcessDefaultPort() + "/tcp"
 		}
 		exposedPorts = map[docker.Port]struct{}{
 			docker.Port(c.ExposedPort): {},
@@ -578,14 +574,6 @@ func (c *Container) AsUnit(a provision.App) provision.Unit {
 
 func (c *Container) ValidAddr() bool {
 	return c.HostAddr != "" && c.HostPort != "" && c.HostPort != "0"
-}
-
-func getPort() (string, error) {
-	port, err := config.Get("docker:run-cmd:port")
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprint(port), nil
 }
 
 type waitResult struct {

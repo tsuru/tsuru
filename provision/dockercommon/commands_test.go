@@ -31,8 +31,6 @@ func Test(t *testing.T) {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_dockercommon_tests_s")
-	config.Set("docker:run-cmd:bin", "runcmd")
-	config.Set("docker:deploy-cmd", "deploycmd")
 	config.Set("docker:registry", "my.registry")
 	var err error
 	s.conn, err = db.Conn()
@@ -58,10 +56,8 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(tokenEnv)
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	c.Assert(err, check.IsNil)
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
-	expectedPart1 := fmt.Sprintf("%s archive %s", deployCmd, archiveURL)
+	expectedPart1 := fmt.Sprintf("/var/lib/tsuru/deploy archive %s", archiveURL)
 	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
 	cmds := ArchiveDeployCmds(app, archiveURL)
 	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
@@ -77,11 +73,9 @@ func (s *S) TestRunWithAgentCmds(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(tokenEnv)
-	runCmd, err := config.GetString("docker:run-cmd:bin")
-	c.Assert(err, check.IsNil)
 	cmds, err := runWithAgentCmds(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(cmds, check.DeepEquals, []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", runCmd})
+	c.Assert(cmds, check.DeepEquals, []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", "/var/lib/tsuru/start"})
 }
 
 func (s *S) TestRunLeanContainersCmd(c *check.C) {
@@ -138,9 +132,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	cmds, process, err := LeanContainerCmds("", imageId, app)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "")
-	runCmd, err := config.GetString("docker:run-cmd:bin")
-	c.Assert(err, check.IsNil)
-	expected := []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", runCmd}
+	expected := []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", "/var/lib/tsuru/start"}
 	c.Assert(cmds, check.DeepEquals, expected)
 }
 
@@ -219,4 +211,16 @@ func (s *S) TestLeanContainerCmdsManyCmds(c *check.C) {
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec $0 \"$@\"", "python", "web.py"}
 	c.Assert(cmds, check.DeepEquals, expected)
+}
+
+func (s *S) TestWebProcessDefaultPort(c *check.C) {
+	port := WebProcessDefaultPort()
+	c.Assert(port, check.Equals, "8888")
+}
+
+func (s *S) TestWebProcessDefaultPortWithConfig(c *check.C) {
+	config.Set("docker:run-cmd:port", "9191")
+	defer config.Unset("docker:run-cmd:port")
+	port := WebProcessDefaultPort()
+	c.Assert(port, check.Equals, "9191")
 }

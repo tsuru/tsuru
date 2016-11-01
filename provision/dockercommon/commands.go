@@ -40,7 +40,7 @@ func DeployCmds(app provision.App, params ...string) []string {
 func runWithAgentCmds(app provision.App) ([]string, error) {
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
-		return nil, err
+		runCmd = "/var/lib/tsuru/start"
 	}
 	host, _ := config.GetString("host")
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
@@ -110,4 +110,12 @@ func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, 
 		allCmds[len(allCmds)-1] += "exec " + processCmd[0]
 	}
 	return allCmds, processName, nil
+}
+
+func WebProcessDefaultPort() string {
+	port, err := config.Get("docker:run-cmd:port")
+	if err != nil {
+		return "8888"
+	}
+	return fmt.Sprint(port)
 }
