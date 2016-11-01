@@ -47,25 +47,25 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }
 
-func ProcessCmdForImage(processName, imageId string) (string, string, error) {
+func ProcessCmdForImage(processName, imageId string) ([]string, string, error) {
 	data, err := image.GetImageCustomData(imageId)
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 	if processName == "" {
 		if len(data.Processes) == 0 {
-			return "", "", nil
+			return nil, "", nil
 		}
 		if len(data.Processes) > 1 {
-			return "", "", provision.InvalidProcessError{Msg: "no process name specified and more than one declared in Procfile"}
+			return nil, "", provision.InvalidProcessError{Msg: "no process name specified and more than one declared in Procfile"}
 		}
 		for name := range data.Processes {
 			processName = name
 		}
 	}
 	processCmd := data.Processes[processName]
-	if processCmd == "" {
-		return "", "", provision.InvalidProcessError{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
+	if len(processCmd) == 0 {
+		return nil, "", provision.InvalidProcessError{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
 	}
 	return processCmd, processName, nil
 }
@@ -79,7 +79,7 @@ func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, 
 	if err != nil {
 		return nil, "", err
 	}
-	if processCmd == "" {
+	if len(processCmd) == 0 {
 		// Legacy support, no processes are yet registered for this app's
 		// containers.
 		var cmds []string
@@ -98,9 +98,16 @@ func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, 
 	if processName == "" {
 		processName = "web"
 	}
-	return []string{
+	allCmds := []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; " + before + "exec " + processCmd,
-	}, processName, nil
+		"[ -d /home/application/current ] && cd /home/application/current; " + before,
+	}
+	if len(processCmd) > 1 {
+		allCmds[len(allCmds)-1] += "exec $0 \"$@\""
+		allCmds = append(allCmds, processCmd...)
+	} else {
+		allCmds[len(allCmds)-1] += "exec " + processCmd[0]
+	}
+	return allCmds, processName, nil
 }

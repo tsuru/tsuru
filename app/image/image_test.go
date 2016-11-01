@@ -290,3 +290,90 @@ func (s *S) TestSavePortInImageCustomData(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 }
+
+func (s *S) TestSaveImageCustomData(c *check.C) {
+	img1 := "tsuru/app-myapp:v1"
+	customData1 := map[string]interface{}{
+		"exposedPort": "3434",
+		"processes": map[string]interface{}{
+			"worker1": "python myapp.py",
+			"worker2": "someworker",
+		},
+	}
+	err := image.SaveImageCustomData(img1, customData1)
+	c.Assert(err, check.IsNil)
+	imageMetaData, err := image.GetImageCustomData(img1)
+	c.Check(err, check.IsNil)
+	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
+	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
+		"worker1": {"python myapp.py"},
+		"worker2": {"someworker"},
+	})
+}
+
+func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
+	img1 := "tsuru/app-myapp:v1"
+	customData1 := map[string]interface{}{
+		"exposedPort": "3434",
+		"procfile":    "worker1: python myapp.py\nworker2: someworker",
+	}
+	err := image.SaveImageCustomData(img1, customData1)
+	c.Assert(err, check.IsNil)
+	imageMetaData, err := image.GetImageCustomData(img1)
+	c.Check(err, check.IsNil)
+	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
+	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
+		"worker1": {"python myapp.py"},
+		"worker2": {"someworker"},
+	})
+}
+
+func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
+	img1 := "tsuru/app-myapp:v1"
+	customData1 := map[string]interface{}{
+		"exposedPort": "3434",
+		"processes": map[string]interface{}{
+			"worker1": "python myapp.py",
+			"worker2": []string{"worker", "arg", "arg2"},
+		},
+	}
+	err := image.SaveImageCustomData(img1, customData1)
+	c.Assert(err, check.IsNil)
+	imageMetaData, err := image.GetImageCustomData(img1)
+	c.Check(err, check.IsNil)
+	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
+	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
+		"worker1": {"python myapp.py"},
+		"worker2": {"worker", "arg", "arg2"},
+	})
+}
+
+func (s *S) TestGetProcessesFromProcfile(c *check.C) {
+	tests := []struct {
+		procfile string
+		expected map[string][]string
+	}{
+		{procfile: "", expected: map[string][]string{}},
+		{procfile: "invalid", expected: map[string][]string{}},
+		{procfile: "web: a b c", expected: map[string][]string{
+			"web": {"a b c"},
+		}},
+		{procfile: "web: a b c\nworker: \t  x y z \r  ", expected: map[string][]string{
+			"web":    {"a b c"},
+			"worker": {"x y z"},
+		}},
+		{procfile: "web:abc\nworker:xyz", expected: map[string][]string{
+			"web":    {"abc"},
+			"worker": {"xyz"},
+		}},
+		{procfile: "web: a b c\r\nworker:x\r\nworker2: z\r\n", expected: map[string][]string{
+			"web":     {"a b c"},
+			"worker":  {"x"},
+			"worker2": {"z"},
+		}},
+	}
+	for i, t := range tests {
+		v := image.GetProcessesFromProcfile(t.procfile)
+		c.Check(v, check.DeepEquals, t.expected, check.Commentf("failed test %d", i))
+	}
+}

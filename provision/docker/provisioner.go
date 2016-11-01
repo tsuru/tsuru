@@ -53,8 +53,7 @@ import (
 var (
 	mainDockerProvisioner *dockerProvisioner
 
-	ErrEntrypointOrProcfileNotFound = errors.New("You should provide a entrypoint in image or a Procfile in the following locations: /home/application/current or /app/user or /.")
-	ErrDeployCanceled               = errors.New("deploy canceled by user action")
+	ErrDeployCanceled = errors.New("deploy canceled by user action")
 )
 
 const provisionerName = "docker"
@@ -437,58 +436,14 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *
 	if err != nil {
 		return "", err
 	}
-	procfile := image.GetProcessesFromProcfile(outBuf.String())
-	imageInspect, err := cluster.InspectImage(imageId)
-	if err != nil {
-		return "", err
-	}
-	if len(procfile) == 0 {
-		fmt.Fprintln(w, "  ---> Procfile not found, trying to get entrypoint")
-		if len(imageInspect.Config.Entrypoint) == 0 {
-			return "", ErrEntrypointOrProcfileNotFound
-		}
-		webProcess := imageInspect.Config.Entrypoint[0]
-		for _, c := range imageInspect.Config.Entrypoint[1:] {
-			webProcess += fmt.Sprintf(" %q", c)
-		}
-		procfile["web"] = webProcess
-	}
-	for k, v := range procfile {
-		fmt.Fprintf(w, "  ---> Process %s found with command: %v\n", k, v)
-	}
-	newImage, err := image.AppNewImageName(app.GetName())
-	if err != nil {
-		return "", err
-	}
-	imageInfo := strings.Split(newImage, ":")
-	err = cluster.TagImage(imageId, docker.TagImageOptions{Repo: strings.Join(imageInfo[:len(imageInfo)-1], ":"), Tag: imageInfo[len(imageInfo)-1], Force: true})
-	if err != nil {
-		return "", err
-	}
-	registry, err := config.GetString("docker:registry")
-	if err != nil {
-		return "", err
-	}
-	fmt.Fprintln(w, "---- Pushing image to tsuru ----")
-	pushOpts := docker.PushImageOptions{
-		Name:              strings.Join(imageInfo[:len(imageInfo)-1], ":"),
-		Tag:               imageInfo[len(imageInfo)-1],
-		Registry:          registry,
-		OutputStream:      w,
-		InactivityTimeout: net.StreamInactivityTimeout,
-	}
-	err = cluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
-	if err != nil {
-		return "", err
-	}
-	imageData := image.CreateImageMetadata(newImage, procfile)
-	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.New("Too many ports. You should especify which one you want to.")
-	}
-	for k := range imageInspect.Config.ExposedPorts {
-		imageData.CustomData["exposedPort"] = string(k)
-	}
-	err = image.SaveImageCustomData(newImage, imageData.CustomData)
+	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
+		Client:      cluster,
+		App:         app,
+		ProcfileRaw: outBuf.String(),
+		ImageId:     imageId,
+		AuthConfig:  p.RegistryAuthConfig(),
+		Out:         w,
+	})
 	if err != nil {
 		return "", err
 	}

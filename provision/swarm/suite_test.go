@@ -44,6 +44,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_swarm_tests_s")
 	config.Set("routers:fake:type", "fake")
+	config.Set("docker:registry", "registry.tsuru.io")
 	config.Set("host", "http://tsuruhost")
 	var err error
 	s.conn, err = db.Conn()

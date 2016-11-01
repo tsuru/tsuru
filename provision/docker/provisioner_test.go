@@ -1059,9 +1059,10 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
+	c.Assert(err, check.IsNil)
 	imd, err := image.GetImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
-	expectedProcesses := map[string]string{"web": "/bin/sh \"-c\" \"python test.py\""}
+	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 	updatedApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1130,13 +1131,14 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
+	c.Assert(err, check.IsNil)
 	imd, err := image.GetImageCustomData(appCurrentImage)
 	c.Assert(err, check.IsNil)
-	expectedProcesses := map[string]string{"web": "test.sh"}
+	expectedProcesses := map[string][]string{"web": {"test.sh"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
-func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
+func (s *S) TestImageDeployWithEntrypointAndCmd(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
@@ -1164,7 +1166,8 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := docker.Image{
 			Config: &docker.Config{
-				Entrypoint: []string{},
+				Entrypoint: []string{"/bin/sh", "-c"},
+				Cmd:        []string{"python test.py"},
 			},
 		}
 		j, _ := json.Marshal(response)
@@ -1203,8 +1206,16 @@ func (s *S) TestImageDeployShouldHaveAnEntrypoint(c *check.C) {
 		Image:        imageName,
 		Event:        evt,
 	})
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrEntrypointOrProcfileNotFound)
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	imd, err := image.GetImageCustomData(appCurrentImage)
+	c.Assert(err, check.IsNil)
+	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
+	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
@@ -2796,7 +2807,7 @@ func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 	image, err := image.GetImageCustomData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(image.CustomData, check.DeepEquals, data)
-	expectedProcesses := map[string]string{"web": "python myapp.py"}
+	expectedProcesses := map[string][]string{"web": {"python myapp.py"}}
 	c.Assert(image.Processes, check.DeepEquals, expectedProcesses)
 }
 
@@ -2826,7 +2837,7 @@ func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
 	image, err := image.GetImageCustomData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(image.CustomData, check.DeepEquals, data)
-	expectedProcesses := map[string]string{"web": "python web.py", "worker": "python worker.py"}
+	expectedProcesses := map[string][]string{"web": {"python web.py"}, "worker": {"python worker.py"}}
 	c.Assert(image.Processes, check.DeepEquals, expectedProcesses)
 }
 
@@ -2843,7 +2854,7 @@ func (s *S) TestRegisterUnitInvalidProcfile(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py\nworker:python worker.py"}
+	data := map[string]interface{}{"mydata": "value", "procfile": "aaaaaaaaaaaaaaaaaaaaaa"}
 	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "invalid Procfile")

@@ -522,7 +522,7 @@ func (s *S) TestAddUnitsNoImage(c *check.C) {
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 3, "web", nil)
-	c.Assert(err, check.ErrorMatches, `no process information found deploying image "tsuru/app-myapp"`)
+	c.Assert(err, check.ErrorMatches, `no process information found deploying image "registry.tsuru.io/tsuru/app-myapp"`)
 }
 
 func (s *S) TestAddUnitsZeroUnits(c *check.C) {
@@ -783,7 +783,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	data, err := image.GetImageCustomData("app:v1")
 	c.Assert(err, check.IsNil)
-	c.Assert(data.Processes, check.DeepEquals, map[string]string{"web": "python myapp.py"})
+	c.Assert(data.Processes, check.DeepEquals, map[string][]string{"web": {"python myapp.py"}})
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host=somewhere")
 }
@@ -907,10 +907,10 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	imgID, err := s.p.ArchiveDeploy(a, "http://server/myfile.tgz", evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(dbImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -960,10 +960,10 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	imgID, err := s.p.ArchiveDeploy(a, "http://server/myfile.tgz", evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
-	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(dbImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -1025,7 +1025,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	deployedImg, err := s.p.ImageDeploy(a, imageName, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
-	c.Assert(deployedImg, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(deployedImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -1034,16 +1034,17 @@ func (s *S) TestImageDeploy(c *check.C) {
 	})
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(dbImg, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(dbImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	cont, err := cli.InspectContainer(units[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
 		fmt.Sprintf(
-			"[ -d /home/application/current ] && cd /home/application/current; %s && exec /bin/sh \"-c\" \"python test.py\"",
+			"[ -d /home/application/current ] && cd /home/application/current; %s && exec $0 \"$@\"",
 			extraRegisterCmds(a),
 		),
+		"/bin/sh", "-c", "python test.py",
 	})
 }
 

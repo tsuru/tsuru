@@ -17,13 +17,12 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v1"
 )
 
 type ImageMetadata struct {
 	Name        string `bson:"_id"`
 	CustomData  map[string]interface{}
-	Processes   map[string]string
+	Processes   map[string][]string
 	ExposedPort string
 }
 
@@ -31,6 +30,18 @@ type appImages struct {
 	AppName string `bson:"_id"`
 	Images  []string
 	Count   int
+}
+
+func (i *ImageMetadata) Save() error {
+	if i.Name == "" {
+		return errors.New("image name is mandatory")
+	}
+	coll, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	return coll.Insert(i)
 }
 
 var procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
@@ -53,39 +64,54 @@ func GetBuildImage(app provision.App) string {
 	return appImageName
 }
 
-func SaveImageCustomData(imageName string, customData map[string]interface{}) error {
-	coll, err := imageCustomDataColl()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	var processes map[string]string
+func customDataToImageMetadata(imageName string, customData map[string]interface{}) (*ImageMetadata, error) {
+	var processes map[string][]string
 	if data, ok := customData["processes"]; ok {
 		procs := data.(map[string]interface{})
-		processes = make(map[string]string, len(procs))
+		processes = make(map[string][]string, len(procs))
 		for name, command := range procs {
-			processes[name] = command.(string)
+			switch cmdType := command.(type) {
+			case string:
+				processes[name] = []string{cmdType}
+			case []string:
+				processes[name] = cmdType
+			case []interface{}:
+				for _, v := range cmdType {
+					if vStr, ok := v.(string); ok {
+						processes[name] = append(processes[name], vStr)
+					}
+				}
+			default:
+				return nil, fmt.Errorf("invalid type for process entry for image %q: %T", imageName, cmdType)
+			}
 		}
 		delete(customData, "processes")
 		delete(customData, "procfile")
 	}
 	if data, ok := customData["procfile"]; ok {
-		procfile := data.(string)
-		err := yaml.Unmarshal([]byte(procfile), &processes)
-		if err != nil || len(processes) == 0 {
-			return errors.New("invalid Procfile")
+		processes = GetProcessesFromProcfile(data.(string))
+		if len(processes) == 0 {
+			return nil, errors.New("invalid Procfile")
 		}
 		delete(customData, "procfile")
 	}
 	data := ImageMetadata{
 		Name:       imageName,
-		CustomData: customData,
 		Processes:  processes,
+		CustomData: customData,
 	}
 	if exposedPort, ok := customData["exposedPort"]; ok {
 		data.ExposedPort = exposedPort.(string)
 	}
-	return coll.Insert(data)
+	return &data, nil
+}
+
+func SaveImageCustomData(imageName string, customData map[string]interface{}) error {
+	data, err := customDataToImageMetadata(imageName, customData)
+	if err != nil {
+		return err
+	}
+	return data.Save()
 }
 
 func GetImageCustomData(imageName string) (ImageMetadata, error) {
@@ -276,26 +302,15 @@ func PlatformImageName(platformName string) string {
 	return fmt.Sprintf("%s/%s:latest", basicImageName(), platformName)
 }
 
-func GetProcessesFromProcfile(strProcfile string) map[string]string {
-	processes := map[string]string{}
+func GetProcessesFromProcfile(strProcfile string) map[string][]string {
 	procfile := strings.Split(strProcfile, "\n")
+	processes := make(map[string][]string, len(procfile))
 	for _, process := range procfile {
 		if p := procfileRegex.FindStringSubmatch(process); p != nil {
-			processes[p[1]] = strings.Trim(p[2], " ")
+			processes[p[1]] = []string{strings.TrimSpace(p[2])}
 		}
 	}
 	return processes
-}
-
-func CreateImageMetadata(imageName string, processes map[string]string) ImageMetadata {
-	customProcesses := map[string]interface{}{}
-	for k, v := range processes {
-		customProcesses[k] = v
-	}
-	customData := map[string]interface{}{
-		"processes": customProcesses,
-	}
-	return ImageMetadata{Name: imageName, CustomData: customData, Processes: processes}
 }
 
 func appBasicImageName(appName string) string {

@@ -560,14 +560,10 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	if !strings.Contains(imgID, ":") {
 		imgID = fmt.Sprintf("%s:latest", imgID)
 	}
-	newImage, err := image.AppNewImageName(a.GetName())
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
 	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
 	var buf bytes.Buffer
 	cmds := []string{"/bin/bash", "-c", "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"}
-	srvID, task, err := runOnceBuildCmds(client, a, cmds, imgID, newImage, &buf)
+	srvID, task, err := runOnceBuildCmds(client, a, cmds, imgID, "", &buf)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
@@ -578,46 +574,15 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	if err != nil {
 		return "", err
 	}
-	procfileData := buf.String()
-	procfile := image.GetProcessesFromProcfile(procfileData)
-	imageInspect, err := client.InspectImage(imgID)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	if len(procfile) == 0 {
-		fmt.Fprintln(evt, "  ---> Procfile not found, trying to get entrypoint")
-		if len(imageInspect.Config.Entrypoint) == 0 {
-			return "", errors.New("no procfile or entrypoint found in image")
-		}
-		webProcess := imageInspect.Config.Entrypoint[0]
-		for _, c := range imageInspect.Config.Entrypoint[1:] {
-			webProcess += fmt.Sprintf(" %q", c)
-		}
-		procfile["web"] = webProcess
-	}
-	for k, v := range procfile {
-		fmt.Fprintf(evt, "  ---> Process %s found with command: %v\n", k, v)
-	}
-	imageInfo := strings.Split(newImage, ":")
-	repo, tag := strings.Join(imageInfo[:len(imageInfo)-1], ":"), imageInfo[len(imageInfo)-1]
-	err = client.TagImage(imgID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	err = pushImage(client, repo, tag)
+	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
+		Client:      client,
+		App:         a,
+		ProcfileRaw: buf.String(),
+		ImageId:     imgID,
+		Out:         evt,
+	})
 	if err != nil {
 		return "", err
-	}
-	imageData := image.CreateImageMetadata(newImage, procfile)
-	if len(imageInspect.Config.ExposedPorts) > 1 {
-		return "", errors.New("Too many ports. You should especify which one you want to.")
-	}
-	for k := range imageInspect.Config.ExposedPorts {
-		imageData.CustomData["exposedPort"] = string(k)
-	}
-	err = image.SaveImageCustomData(newImage, imageData.CustomData)
-	if err != nil {
-		return "", errors.WithStack(err)
 	}
 	a.SetUpdatePlatform(true)
 	err = deployProcesses(client, a, newImage, nil)

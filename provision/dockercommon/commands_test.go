@@ -33,6 +33,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "provision_dockercommon_tests_s")
 	config.Set("docker:run-cmd:bin", "runcmd")
 	config.Set("docker:deploy-cmd", "deploycmd")
+	config.Set("docker:registry", "my.registry")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -202,4 +203,20 @@ func (s *S) TestRunLeanContainersCmdNoImageMetadata(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `.*no command declared in Procfile for process "web"`)
 	c.Assert(process, check.Equals, "")
 	c.Assert(cmds, check.IsNil)
+}
+
+func (s *S) TestLeanContainerCmdsManyCmds(c *check.C) {
+	imageId := "tsuru/app-sample"
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": []string{"python", "web.py"},
+		},
+	}
+	err := image.SaveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
+	cmds, process, err := LeanContainerCmds("", imageId, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(process, check.Equals, "web")
+	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec $0 \"$@\"", "python", "web.py"}
+	c.Assert(cmds, check.DeepEquals, expected)
 }
