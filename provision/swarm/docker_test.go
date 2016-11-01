@@ -31,6 +31,9 @@ func (s *S) TestNewClientTLSConfig(c *check.C) {
 	swarmConfig.tlsConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
+	defer func() {
+		swarmConfig.tlsConfig = nil
+	}()
 	cli, err := newClient(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(cli.TLSConfig, check.DeepEquals, swarmConfig.tlsConfig)
