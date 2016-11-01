@@ -583,6 +583,72 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 	return newImage, nil
 }
 
+func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	filters := map[string][]string{
+		"label":         {fmt.Sprintf("%s=%s", labelAppName, opts.App.GetName())},
+		"desired-state": {"running"},
+	}
+	if opts.Unit != "" {
+		filters["id"] = []string{opts.Unit}
+	}
+	tasks, err := client.ListTasks(docker.ListTasksOptions{Filters: filters})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if len(tasks) == 0 {
+		if opts.Unit != "" {
+			return &provision.UnitNotFoundError{ID: opts.Unit}
+		}
+		return provision.ErrEmptyApp
+	}
+	nodeClient, err := clientForNode(client, tasks[0].NodeID)
+	if err != nil {
+		return err
+	}
+	cmds := []string{"/usr/bin/env", "TERM=" + opts.Term, "bash", "-l"}
+	execCreateOpts := docker.CreateExecOptions{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmds,
+		Container:    tasks[0].Status.ContainerStatus.ContainerID,
+		Tty:          true,
+	}
+	exec, err := nodeClient.CreateExec(execCreateOpts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	startExecOptions := docker.StartExecOptions{
+		InputStream:  opts.Conn,
+		OutputStream: opts.Conn,
+		ErrorStream:  opts.Conn,
+		Tty:          true,
+		RawTerminal:  true,
+	}
+	errs := make(chan error, 1)
+	go func() {
+		errs <- nodeClient.StartExec(exec.ID, startExecOptions)
+	}()
+	execInfo, err := nodeClient.InspectExec(exec.ID)
+	for !execInfo.Running && err == nil {
+		select {
+		case startErr := <-errs:
+			return startErr
+		default:
+			execInfo, err = nodeClient.InspectExec(exec.ID)
+		}
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	nodeClient.ResizeExecTTY(exec.ID, opts.Height, opts.Width)
+	return <-errs
+}
+
 func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
 	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {

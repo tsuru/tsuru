@@ -24,6 +24,8 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 )
 
@@ -1095,6 +1097,62 @@ func (s *S) TestDestroyServiceNotFound(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
+}
+
+func (s *S) TestShellToAnAppByAppName(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10}
+	err = s.p.Shell(opts)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestShellToAnAppByTaskID(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10, Unit: units[0].ID}
+	err = s.p.Shell(opts)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
