@@ -47,9 +47,10 @@ Pushed
 	imd, err := image.GetImageCustomData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
-		Name:       "my.registry/tsuru/app-myapp:v1",
-		Processes:  map[string][]string{"web": {"myapp run"}},
-		CustomData: map[string]interface{}{},
+		Name:            "my.registry/tsuru/app-myapp:v1",
+		Processes:       map[string][]string{"web": {"myapp run"}},
+		CustomData:      map[string]interface{}{},
+		LegacyProcesses: map[string]string{},
 	})
 }
 
@@ -95,9 +96,10 @@ Pushed
 	imd, err := image.GetImageCustomData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
-		Name:        "my.registry/tsuru/app-myapp:v1",
-		Processes:   map[string][]string{"web": {"/bin/sh", "python", "test file.py"}},
-		CustomData:  map[string]interface{}{},
-		ExposedPort: "3000/tcp",
+		Name:            "my.registry/tsuru/app-myapp:v1",
+		Processes:       map[string][]string{"web": {"/bin/sh", "python", "test file.py"}},
+		CustomData:      map[string]interface{}{},
+		LegacyProcesses: map[string]string{},
+		ExposedPort:     "3000/tcp",
 	})
 }
