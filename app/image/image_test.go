@@ -377,3 +377,32 @@ func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 		c.Check(v, check.DeepEquals, t.expected, check.Commentf("failed test %d", i))
 	}
 }
+
+func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
+	data := image.ImageMetadata{
+		Name: "tsuru/app-myapp:v1",
+		LegacyProcesses: map[string]string{
+			"worker1": "python myapp.py",
+			"worker2": "worker2",
+		},
+	}
+	err := data.Save()
+	c.Assert(err, check.IsNil)
+	dbMetadata, err := image.GetImageCustomData(data.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
+		"worker1": {"python myapp.py"},
+		"worker2": {"worker2"},
+	})
+	data.Name = "tsuru/app-myapp:v2"
+	data.Processes = map[string][]string{
+		"w1": {"has", "priority"},
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	dbMetadata, err = image.GetImageCustomData(data.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
+		"w1": {"has", "priority"},
+	})
+}

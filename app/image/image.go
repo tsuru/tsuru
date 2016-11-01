@@ -20,10 +20,11 @@ import (
 )
 
 type ImageMetadata struct {
-	Name        string `bson:"_id"`
-	CustomData  map[string]interface{}
-	Processes   map[string][]string
-	ExposedPort string
+	Name            string `bson:"_id"`
+	CustomData      map[string]interface{}
+	LegacyProcesses map[string]string   `bson:"processes"`
+	Processes       map[string][]string `bson:"processes_list"`
+	ExposedPort     string
 }
 
 type appImages struct {
@@ -125,6 +126,12 @@ func GetImageCustomData(imageName string) (ImageMetadata, error) {
 	if err == mgo.ErrNotFound {
 		// Return empty data for compatibillity with really old apps.
 		return data, nil
+	}
+	if len(data.Processes) == 0 {
+		data.Processes = make(map[string][]string, len(data.LegacyProcesses))
+		for k, v := range data.LegacyProcesses {
+			data.Processes[k] = []string{v}
+		}
 	}
 	return data, err
 }
