@@ -216,7 +216,7 @@ func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a pr
 	addr := node.Spec.Labels[labelNodeDockerAddr.String()]
 	host := tsuruNet.URLToHost(addr)
 	return provision.Unit{
-		ID:          task.Status.ContainerStatus.ContainerID,
+		ID:          task.ID,
 		AppName:     a.GetName(),
 		ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
 		Type:        a.GetPlatform(),
@@ -324,15 +324,6 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	return addrs, nil
 }
 
-func findTaskFromContainer(tasks []swarm.Task, contID string) *swarm.Task {
-	for i, t := range tasks {
-		if strings.HasPrefix(t.Status.ContainerStatus.ContainerID, contID) {
-			return &tasks[i]
-		}
-	}
-	return nil
-}
-
 func bindUnit(client *docker.Client, unit *provision.Unit) error {
 	a, err := app.GetByName(unit.AppName)
 	if err != nil {
@@ -360,18 +351,18 @@ func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[stri
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"label": {labelServiceDeploy.String() + "=true"},
+			"id":    {unit.ID},
 		},
 	})
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	task := findTaskFromContainer(tasks, unit.ID)
-	if task == nil {
+	if len(tasks) == 0 {
 		return nil
 	}
-	buildingImage := task.Spec.ContainerSpec.Labels[labelServiceBuildImage.String()]
+	buildingImage := tasks[0].Spec.ContainerSpec.Labels[labelServiceBuildImage.String()]
 	if buildingImage == "" {
-		return errors.Errorf("invalid build image label for build task: %#v", task)
+		return errors.Errorf("invalid build image label for build task: %#v", tasks[0])
 	}
 	return image.SaveImageCustomData(buildingImage, customData)
 }

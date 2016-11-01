@@ -758,9 +758,9 @@ func (s *S) TestRegisterUnit(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	conts, err := cli.ListContainers(docker.ListContainersOptions{})
+	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(conts, check.HasLen, 1)
+	c.Assert(tasks, check.HasLen, 1)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -772,7 +772,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	})
 	defer rollback()
 	err = s.p.RegisterUnit(provision.Unit{
-		ID:      conts[0].ID,
+		ID:      tasks[0].ID,
 		AppName: a.GetName(),
 		Ip:      "somewhere",
 	}, map[string]interface{}{
@@ -875,10 +875,10 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	conts, err := cli.ListContainers(docker.ListContainersOptions{})
+	tasks, err := cli.ListTasks(docker.ListTasksOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(conts, check.HasLen, 1)
-	err = s.p.RegisterUnit(provision.Unit{ID: conts[0].ID, AppName: a.GetName()}, map[string]interface{}{
+	c.Assert(tasks, check.HasLen, 1)
+	err = s.p.RegisterUnit(provision.Unit{ID: tasks[0].ID, AppName: a.GetName()}, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
 		},
@@ -919,7 +919,9 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	})
 	cli, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
-	cont, err := cli.InspectContainer(units[0].ID)
+	task, err := cli.InspectTask(units[0].ID)
+	c.Assert(err, check.IsNil)
+	cont, err := cli.InspectContainer(task.Status.ContainerStatus.ContainerID)
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
 		"/bin/sh",
@@ -1035,7 +1037,9 @@ func (s *S) TestImageDeploy(c *check.C) {
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(dbImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
-	cont, err := cli.InspectContainer(units[0].ID)
+	task, err := cli.InspectTask(units[0].ID)
+	c.Assert(err, check.IsNil)
+	cont, err := cli.InspectContainer(task.Status.ContainerStatus.ContainerID)
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
 		"/bin/sh",
