@@ -133,6 +133,23 @@ func GetTarget() (string, error) {
 	return prefix + target, nil
 }
 
+func GetTargetLabel() (string, error) {
+	target, err := GetTarget()
+	if err != nil {
+		return "", err
+	}
+	targets, err := getTargets()
+	if err != nil {
+		return "", err
+	}
+	for k, v := range targets {
+		if v == target {
+			return k, nil
+		}
+	}
+	return "", errors.New("label for target not found")
+}
+
 func GetURLVersion(version, path string) (string, error) {
 	target, err := GetTarget()
 	if err != nil {

@@ -145,6 +145,42 @@ func (s *S) TestGetTarget(c *check.C) {
 	}
 }
 
+func (s *S) TestGetTargetLabel(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\nsecond\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+		os.Unsetenv("TSURU_TARGET")
+	}()
+	var tests = []struct {
+		expected string
+		target   string
+	}{
+		{"first", "http://tsuru.io/"},
+		{"second", "http://tsuru.google.com"},
+	}
+	for _, t := range tests {
+		os.Setenv("TSURU_TARGET", t.target)
+		got, err := GetTargetLabel()
+		c.Check(err, check.IsNil)
+		c.Check(got, check.Equals, t.expected)
+	}
+}
+
+func (s *S) TestGetTargetLabelNotFound(c *check.C) {
+	os.Setenv("TSURU_TARGET", "http://notfound.io")
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\nsecond\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+		os.Unsetenv("TSURU_TARGET")
+	}()
+	got, err := GetTargetLabel()
+	c.Check(err, check.NotNil)
+	c.Check(got, check.Equals, "")
+}
+
 func (s *S) TestGetURLVersion(c *check.C) {
 	os.Unsetenv("TSURU_TARGET")
 	var tests = []struct {
