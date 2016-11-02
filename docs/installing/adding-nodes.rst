@@ -102,3 +102,10 @@ about how to install docker on your node, please refer to `Docker documentation
     $ tsuru-admin docker-node-add pool=mypoolname --register address=http://node.address.com:2375
 
 
+To enable the new unmanaged node run this command:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-update http://node.address.com:2375 --enable
