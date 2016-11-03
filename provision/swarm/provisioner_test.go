@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -1121,9 +1122,34 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10}
+	opts := provision.ShellOptions{App: a, Conn: conn, Width: 140, Height: 38, Term: "xterm"}
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	client, _ := docker.NewClient(srv.URL())
+	task, err := client.InspectTask(units[0].ID)
+	c.Assert(err, check.IsNil)
+	task.DesiredState = swarm.TaskStateRunning
+	err = srv.MutateTask(task.ID, *task)
+	c.Assert(err, check.IsNil)
+	var urls []url.URL
+	srv.PrepareExec("*", func() {
+		time.Sleep(500e6)
+	})
+	srv.SetHook(func(r *http.Request) {
+		urls = append(urls, *r.URL)
+	})
 	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
+	resizeURL := urls[len(urls)-2]
+	execResizeRegexp := regexp.MustCompile(`^.*/exec/(.*)/resize$`)
+	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
+	c.Assert(matches, check.HasLen, 2)
+	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
+	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
+	exec, err := client.InspectExec(matches[1])
+	c.Assert(err, check.IsNil)
+	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
+	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
 }
 
 func (s *S) TestShellToAnAppByTaskID(c *check.C) {
@@ -1144,15 +1170,39 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName(a.GetName(), imgName)
 	c.Assert(err, check.IsNil)
-	err = s.p.AddUnits(a, 1, "web", nil)
+	err = s.p.AddUnits(a, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	opts := provision.ShellOptions{App: a, Conn: conn, Width: 10, Height: 10, Unit: units[0].ID}
+	opts := provision.ShellOptions{App: a, Conn: conn, Width: 140, Height: 38, Unit: units[1].ID, Term: "xterm"}
+	client, _ := docker.NewClient(srv.URL())
+	task, err := client.InspectTask(units[1].ID)
+	c.Assert(err, check.IsNil)
+	task.DesiredState = swarm.TaskStateRunning
+	err = srv.MutateTask(task.ID, *task)
+	c.Assert(err, check.IsNil)
+	var urls []url.URL
+	srv.PrepareExec("*", func() {
+		time.Sleep(500e6)
+	})
+	srv.SetHook(func(r *http.Request) {
+		urls = append(urls, *r.URL)
+	})
 	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
+	resizeURL := urls[len(urls)-2]
+	execResizeRegexp := regexp.MustCompile(`^.*/exec/(.*)/resize$`)
+	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
+	c.Assert(matches, check.HasLen, 2)
+	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
+	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
+	exec, err := client.InspectExec(matches[1])
+	c.Assert(err, check.IsNil)
+	c.Assert(exec.Container.ID, check.Equals, task.Status.ContainerStatus.ContainerID)
+	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
+	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
 }
 
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
@@ -1161,7 +1211,9 @@ func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool,
 		parts := strings.Split(r.URL.Path, "/")
 		if len(parts) == 4 && parts[3] == "attach" {
 			if register {
-				err := s.p.RegisterUnit(provision.Unit{ID: parts[2], AppName: a.GetName()}, map[string]interface{}{
+				task := s.taskForContainer(c, srv, parts[2])
+				c.Assert(task, check.NotNil)
+				err := s.p.RegisterUnit(provision.Unit{ID: task.ID, AppName: a.GetName()}, map[string]interface{}{
 					"processes": map[string]interface{}{
 						"web": "python myapp.py",
 					},
@@ -1174,4 +1226,17 @@ func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool,
 		srv.DefaultHandler().ServeHTTP(w, r)
 	}))
 	return chAttached
+}
+
+func (s *S) taskForContainer(c *check.C, srv *testing.DockerServer, contID string) *swarm.Task {
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	tasks, err := client.ListTasks(docker.ListTasksOptions{})
+	c.Assert(err, check.IsNil)
+	for _, t := range tasks {
+		if t.Status.ContainerStatus.ContainerID == contID {
+			return &t
+		}
+	}
+	return nil
 }
