@@ -6,6 +6,7 @@ package swarm
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -394,4 +395,53 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 		return nil, errors.WithStack(err)
 	}
 	return newClient(node.Spec.Annotations.Labels[labelNodeDockerAddr.String()])
+}
+
+func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
+	filters := map[string][]string{
+		"label":         {fmt.Sprintf("%s=%s", labelAppName, a.GetName())},
+		"desired-state": {string(swarm.TaskStateRunning)},
+	}
+	if taskID != "" {
+		filters["id"] = []string{taskID}
+	}
+	tasks, err := client.ListTasks(docker.ListTasksOptions{Filters: filters})
+	return tasks, errors.WithStack(err)
+}
+
+func execInTaskContainer(c *docker.Client, t *swarm.Task, stdout, stderr io.Writer, cmd string, args ...string) error {
+	nodeClient, err := clientForNode(c, t.NodeID)
+	if err != nil {
+		return err
+	}
+	cmds := []string{"/bin/bash", "-lc", cmd}
+	cmds = append(cmds, args...)
+	execCreateOpts := docker.CreateExecOptions{
+		AttachStdin:  false,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          false,
+		Cmd:          cmds,
+		Container:    t.Status.ContainerStatus.ContainerID,
+	}
+	exec, err := nodeClient.CreateExec(execCreateOpts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	startExecOptions := docker.StartExecOptions{
+		OutputStream: stdout,
+		ErrorStream:  stderr,
+	}
+	err = nodeClient.StartExec(exec.ID, startExecOptions)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	execData, err := nodeClient.InspectExec(exec.ID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if execData.ExitCode != 0 {
+		return fmt.Errorf("unexpected exit code: %d", execData.ExitCode)
+	}
+	return nil
 }

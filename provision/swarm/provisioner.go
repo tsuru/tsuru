@@ -588,16 +588,9 @@ func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
 	if err != nil {
 		return err
 	}
-	filters := map[string][]string{
-		"label":         {fmt.Sprintf("%s=%s", labelAppName, opts.App.GetName())},
-		"desired-state": {"running"},
-	}
-	if opts.Unit != "" {
-		filters["id"] = []string{opts.Unit}
-	}
-	tasks, err := client.ListTasks(docker.ListTasksOptions{Filters: filters})
+	tasks, err := runningTasksForApp(client, opts.App, opts.Unit)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	if len(tasks) == 0 {
 		if opts.Unit != "" {
@@ -647,6 +640,42 @@ func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
 	}
 	nodeClient.ResizeExecTTY(exec.ID, opts.Height, opts.Width)
 	return <-errs
+}
+
+func (p *swarmProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	tasks, err := runningTasksForApp(client, app, "")
+	if err != nil {
+		return err
+	}
+	if len(tasks) == 0 {
+		return provision.ErrEmptyApp
+	}
+	for _, t := range tasks {
+		err := execInTaskContainer(client, &t, stdout, stderr, cmd, args...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *swarmProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	tasks, err := runningTasksForApp(client, app, "")
+	if err != nil {
+		return err
+	}
+	if len(tasks) == 0 {
+		return provision.ErrEmptyApp
+	}
+	return execInTaskContainer(client, &tasks[0], stdout, stderr, cmd, args...)
 }
 
 func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {

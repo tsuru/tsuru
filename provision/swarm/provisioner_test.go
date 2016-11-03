@@ -5,6 +5,7 @@
 package swarm
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -1203,6 +1204,146 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 	c.Assert(exec.Container.ID, check.Equals, task.Status.ContainerStatus.ContainerID)
 	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
 	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
+}
+
+func (s *S) TestExecuteCommand(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	client, _ := docker.NewClient(srv.URL())
+	task, err := client.InspectTask(units[0].ID)
+	c.Assert(err, check.IsNil)
+	task.DesiredState = swarm.TaskStateRunning
+	err = srv.MutateTask(task.ID, *task)
+	c.Assert(err, check.IsNil)
+	task, err = client.InspectTask(units[2].ID)
+	c.Assert(err, check.IsNil)
+	task.DesiredState = swarm.TaskStateRunning
+	err = srv.MutateTask(task.ID, *task)
+	c.Assert(err, check.IsNil)
+	var executed int
+	srv.SetHook(func(r *http.Request) {
+		srv.PrepareExec("*", func() {
+			executed++
+		})
+	})
+	var stdout, stderr bytes.Buffer
+	err = s.p.ExecuteCommand(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.IsNil)
+	c.Assert(executed, check.Equals, 2)
+}
+
+func (s *S) TestExecuteCommandNoRunningTask(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	err = s.p.ExecuteCommand(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.DeepEquals, provision.ErrEmptyApp)
+}
+
+func (s *S) TestExecuteCommandOnce(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	client, _ := docker.NewClient(srv.URL())
+	task, err := client.InspectTask(units[0].ID)
+	c.Assert(err, check.IsNil)
+	task.DesiredState = swarm.TaskStateRunning
+	err = srv.MutateTask(task.ID, *task)
+	c.Assert(err, check.IsNil)
+	task, err = client.InspectTask(units[2].ID)
+	c.Assert(err, check.IsNil)
+	task.DesiredState = swarm.TaskStateRunning
+	err = srv.MutateTask(task.ID, *task)
+	c.Assert(err, check.IsNil)
+	var executed int
+	srv.SetHook(func(r *http.Request) {
+		srv.PrepareExec("*", func() {
+			executed++
+		})
+	})
+	var stdout, stderr bytes.Buffer
+	err = s.p.ExecuteCommandOnce(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.IsNil)
+	c.Assert(executed, check.Equals, 1)
+}
+
+func (s *S) TestExecuteCommandOnceNoRunningTask(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	err = s.p.ExecuteCommandOnce(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.DeepEquals, provision.ErrEmptyApp)
 }
 
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
