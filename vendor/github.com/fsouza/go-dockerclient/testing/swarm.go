@@ -332,7 +332,7 @@ func (s *DockerServer) serviceList(w http.ResponseWriter, r *http.Request) {
 	}
 	var ret []*swarm.Service
 	for i, srv := range s.services {
-		if inFilter(filters["id"], srv.ID) ||
+		if inFilter(filters["id"], srv.ID) &&
 			inFilter(filters["name"], srv.Spec.Name) {
 			ret = append(ret, s.services[i])
 		}
@@ -366,11 +366,11 @@ func (s *DockerServer) taskList(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "service not found", http.StatusNotFound)
 			return
 		}
-		if inFilter(filters["id"], task.ID) ||
-			inFilter(filters["service"], task.ServiceID) ||
-			inFilter(filters["service"], srv.Spec.Name) ||
-			inFilter(filters["node"], task.NodeID) ||
-			inFilter(filters["desired-state"], string(task.DesiredState)) ||
+		if inFilter(filters["id"], task.ID) &&
+			(inFilter(filters["service"], task.ServiceID) ||
+				inFilter(filters["service"], srv.Spec.Annotations.Name)) &&
+			inFilter(filters["node"], task.NodeID) &&
+			inFilter(filters["desired-state"], string(task.DesiredState)) &&
 			inLabelFilter(filters["label"], srv.Spec.Annotations.Labels) {
 			ret = append(ret, s.tasks[i])
 		}
@@ -379,6 +379,9 @@ func (s *DockerServer) taskList(w http.ResponseWriter, r *http.Request) {
 }
 
 func inLabelFilter(list []string, labels map[string]string) bool {
+	if len(list) == 0 {
+		return true
+	}
 	for _, item := range list {
 		parts := strings.Split(item, "=")
 		key := parts[0]
@@ -393,6 +396,9 @@ func inLabelFilter(list []string, labels map[string]string) bool {
 }
 
 func inFilter(list []string, wanted string) bool {
+	if len(list) == 0 {
+		return true
+	}
 	for _, item := range list {
 		if item == wanted {
 			return true
