@@ -38,16 +38,17 @@ func (l tsuruLabel) String() string {
 }
 
 var (
-	labelService           = tsuruLabel("tsuru.service")
-	labelServiceDeploy     = tsuruLabel("tsuru.service.deploy")
-	labelServiceBuildImage = tsuruLabel("tsuru.service.buildImage")
-	labelServiceRestart    = tsuruLabel("tsuru.service.restart")
-	labelAppName           = tsuruLabel("tsuru.app.name")
-	labelAppProcess        = tsuruLabel("tsuru.app.process")
-	labelProcessReplicas   = tsuruLabel("tsuru.app.process.replicas")
-	labelAppPlatform       = tsuruLabel("tsuru.app.platform")
-	labelRouterName        = tsuruLabel("tsuru.router.name")
-	labelRouterType        = tsuruLabel("tsuru.router.type")
+	labelService            = tsuruLabel("tsuru.service")
+	labelServiceDeploy      = tsuruLabel("tsuru.service.deploy")
+	labelServiceIsolatedRun = tsuruLabel("tsuru.service.isolated.run")
+	labelServiceBuildImage  = tsuruLabel("tsuru.service.buildImage")
+	labelServiceRestart     = tsuruLabel("tsuru.service.restart")
+	labelAppName            = tsuruLabel("tsuru.app.name")
+	labelAppProcess         = tsuruLabel("tsuru.app.process")
+	labelProcessReplicas    = tsuruLabel("tsuru.app.process.replicas")
+	labelAppPlatform        = tsuruLabel("tsuru.app.platform")
+	labelRouterName         = tsuruLabel("tsuru.router.name")
+	labelRouterType         = tsuruLabel("tsuru.router.type")
 )
 
 func newClient(address string) (*docker.Client, error) {
@@ -247,13 +248,14 @@ func networkNameForApp(a provision.App) string {
 }
 
 type tsuruServiceOpts struct {
-	app          provision.App
-	process      string
-	image        string
-	buildImage   string
-	baseSpec     *swarm.ServiceSpec
-	isDeploy     bool
-	processState processState
+	app           provision.App
+	process       string
+	image         string
+	buildImage    string
+	baseSpec      *swarm.ServiceSpec
+	isDeploy      bool
+	isIsolatedRun bool
+	processState  processState
 }
 
 func extraRegisterCmds(app provision.App) string {
@@ -278,7 +280,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	var ports []swarm.PortConfig
 	var cmds []string
 	var err error
-	if !opts.isDeploy {
+	if !opts.isDeploy && !opts.isIsolatedRun {
 		envs = append(envs, []string{
 			fmt.Sprintf("%s=%s", "port", "8888"),
 			fmt.Sprintf("%s=%s", "PORT", "8888"),
@@ -322,6 +324,10 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		replicas = 1
 		srvName = fmt.Sprintf("%s-build", srvName)
 	}
+	if opts.isIsolatedRun {
+		replicas = 1
+		srvName = fmt.Sprintf("%sisolated-run", srvName)
+	}
 	uReplicas := uint64(replicas)
 	if opts.processState.stop {
 		uReplicas = 0
@@ -330,16 +336,17 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		restartCount++
 	}
 	labels := map[string]string{
-		labelService.String():           strconv.FormatBool(true),
-		labelServiceDeploy.String():     strconv.FormatBool(opts.isDeploy),
-		labelServiceBuildImage.String(): opts.buildImage,
-		labelAppName.String():           opts.app.GetName(),
-		labelAppProcess.String():        opts.process,
-		labelAppPlatform.String():       opts.app.GetPlatform(),
-		labelRouterName.String():        routerName,
-		labelRouterType.String():        routerType,
-		labelProcessReplicas.String():   strconv.Itoa(replicas),
-		labelServiceRestart.String():    strconv.Itoa(restartCount),
+		labelService.String():            strconv.FormatBool(true),
+		labelServiceDeploy.String():      strconv.FormatBool(opts.isDeploy),
+		labelServiceIsolatedRun.String(): strconv.FormatBool(opts.isIsolatedRun),
+		labelServiceBuildImage.String():  opts.buildImage,
+		labelAppName.String():            opts.app.GetName(),
+		labelAppProcess.String():         opts.process,
+		labelAppPlatform.String():        opts.app.GetPlatform(),
+		labelRouterName.String():         routerName,
+		labelRouterType.String():         routerType,
+		labelProcessReplicas.String():    strconv.Itoa(replicas),
+		labelServiceRestart.String():     strconv.Itoa(restartCount),
 	}
 	networks := []swarm.NetworkAttachmentConfig{
 		{Target: networkNameForApp(opts.app)},

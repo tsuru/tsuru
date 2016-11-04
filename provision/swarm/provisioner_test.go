@@ -1346,6 +1346,55 @@ func (s *S) TestExecuteCommandOnceNoRunningTask(c *check.C) {
 	c.Assert(err, check.DeepEquals, provision.ErrEmptyApp)
 }
 
+func (s *S) TestExecuteCommandIsolated(c *check.C) {
+	containerChan := make(chan *docker.Container, 1)
+	srv, err := testing.NewServer("127.0.0.1:0", containerChan, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	attached := s.attachRegister(c, srv, false, a)
+	var stdout, stderr bytes.Buffer
+	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.IsNil)
+	c.Assert(<-attached, check.Equals, true)
+	cont := <-containerChan
+	c.Assert(cont.Image, check.Equals, "myapp:v1")
+	task := s.taskForContainer(c, srv, cont.ID)
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	service, err := client.InspectService(task.ServiceID)
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.Name, check.Equals, "myapp-isolated-run")
+	c.Assert(service.Spec.Labels[labelServiceIsolatedRun.String()], check.Equals, "true")
+}
+
+func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp-2", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	var stdout, stderr bytes.Buffer
+	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
+	c.Assert(err, check.ErrorMatches, "*deploy*")
+}
+
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
 	chAttached := make(chan bool, 1)
 	srv.CustomHandler("/containers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

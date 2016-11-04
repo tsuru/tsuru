@@ -678,6 +678,29 @@ func (p *swarmProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app prov
 	return execInTaskContainer(client, &tasks[0], stdout, stderr, cmd, args...)
 }
 
+func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
+	if a.GetDeploys() == 0 {
+		return errors.New("commands can only be executed after the first deploy")
+	}
+	img, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return err
+	}
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	opts := tsuruServiceOpts{
+		app:           a,
+		image:         img,
+		isIsolatedRun: true,
+	}
+	cmds := []string{"/bin/bash", "-lc", cmd}
+	cmds = append(cmds, args...)
+	_, _, err = runOnceCmds(client, opts, cmds, stdout, stderr)
+	return err
+}
+
 func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
 	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
@@ -772,12 +795,17 @@ func deploy(client *docker.Client, a provision.App, process string, pState proce
 }
 
 func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, imgID, buildingImage string, w io.Writer) (string, *swarm.Task, error) {
-	spec, err := serviceSpecForApp(tsuruServiceOpts{
+	opts := tsuruServiceOpts{
 		app:        a,
 		image:      imgID,
 		isDeploy:   true,
 		buildImage: buildingImage,
-	})
+	}
+	return runOnceCmds(client, opts, cmds, w, w)
+}
+
+func runOnceCmds(client *docker.Client, opts tsuruServiceOpts, cmds []string, stdout, stderr io.Writer) (string, *swarm.Task, error) {
+	spec, err := serviceSpecForApp(opts)
 	if err != nil {
 		return "", nil, err
 	}
@@ -801,8 +829,8 @@ func runOnceBuildCmds(client *docker.Client, a provision.App, cmds []string, img
 	contID := tasks[0].Status.ContainerStatus.ContainerID
 	attachOpts := docker.AttachToContainerOptions{
 		Container:    contID,
-		OutputStream: w,
-		ErrorStream:  w,
+		OutputStream: stdout,
+		ErrorStream:  stderr,
 		Logs:         true,
 		Stdout:       true,
 		Stderr:       true,
