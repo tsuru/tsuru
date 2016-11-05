@@ -223,7 +223,7 @@ including the dashboard.
 DigitalOcean basic configuration
 -----------------------------------------------
 
-For example, to install tsuru on amazon DigitalOcean, one could create the following file:
+For example, to install tsuru on DigitalOcean, one could create the following file:
 
 .. highlight:: yaml
 
