@@ -220,6 +220,29 @@ including the dashboard.
             generic-ssh-port: 2222
             generic-ssh-user: ubuntu
 
+DigitalOcean basic configuration
+-----------------------------------------------
+
+For example, to install tsuru on amazon DigitalOcean, one could create the following file:
+
+.. highlight:: yaml
+
+::
+
+    driver:
+        name: digitalocean
+        options:
+            digitalocean-access-token: -
+            digitalocean-image: ubuntu-15-10-x64
+            digitalocean-region: nyc3
+            digitalocean-size: 512mb
+            digitalocean-ipv6: false
+            digitalocean-private-networking: false
+            digitalocean-backups: false
+            digitalocean-ssh-user: root
+            digitalocean-ssh-port: 22
+            digitalocean-ssh-key-fingerprint: -
+
 Configuration reference
 ============================
 
