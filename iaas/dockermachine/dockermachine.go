@@ -153,11 +153,12 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 	if opts.RegistryMirror != "" {
 		engineOpts.RegistryMirror = []string{opts.RegistryMirror}
 	}
-	err = d.client.Create(h)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create host")
+	errCreate := d.client.Create(h)
+	machine, err := newMachine(h)
+	if errCreate != nil {
+		return machine, errors.Wrap(errCreate, "failed to create host")
 	}
-	return newMachine(h)
+	return machine, errors.Wrap(err, "failed to create machine")
 }
 
 func (d *DockerMachine) DeleteMachine(m *iaas.Machine) error {
