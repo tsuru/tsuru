@@ -161,18 +161,6 @@ func (s *S) TestConfigureDriver(c *check.C) {
 	c.Assert(driver.Tags, check.Equals, "my-tag1")
 }
 
-func (s *S) TestCopy(c *check.C) {
-	path, err := ioutil.TempDir("", "")
-	c.Assert(err, check.IsNil)
-	err = ioutil.WriteFile(filepath.Join(path, "src"), []byte("file contents"), 0700)
-	c.Assert(err, check.IsNil)
-	err = copy(filepath.Join(path, "src"), filepath.Join(path, "dst"))
-	c.Assert(err, check.IsNil)
-	contents, err := ioutil.ReadFile(filepath.Join(path, "dst"))
-	c.Assert(err, check.IsNil)
-	c.Assert(string(contents), check.Equals, "file contents")
-}
-
 func (s *S) TestDeleteAll(c *check.C) {
 	fakeAPI := &fakeLibMachineAPI{}
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{})

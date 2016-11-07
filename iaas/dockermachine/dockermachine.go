@@ -17,6 +17,7 @@ import (
 	"github.com/docker/machine/libmachine/engine"
 	"github.com/docker/machine/libmachine/host"
 	"github.com/docker/machine/libmachine/log"
+	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
 )
@@ -84,13 +85,13 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 		}
 	}
 	if config.CaPath != "" {
-		err := copy(filepath.Join(config.CaPath, "ca.pem"), filepath.Join(certsPath, "ca.pem"))
+		err := mcnutils.CopyFile(filepath.Join(config.CaPath, "ca.pem"), filepath.Join(certsPath, "ca.pem"))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to copy ca file")
+			return nil, errors.Wrap(err, "failed to copy ca file")
 		}
-		err = copy(filepath.Join(config.CaPath, "ca-key.pem"), filepath.Join(certsPath, "ca-key.pem"))
+		err = mcnutils.CopyFile(filepath.Join(config.CaPath, "ca-key.pem"), filepath.Join(certsPath, "ca-key.pem"))
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to copy ca key file")
+			return nil, errors.Wrap(err, "failed to copy ca key file")
 		}
 	}
 	if config.OutWriter != nil {
@@ -319,13 +320,4 @@ func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) e
 	}
 	err := driver.SetConfigFromFlags(opts)
 	return errors.Wrap(err, "failed to set driver configuration")
-}
-
-func copy(src, dst string) error {
-	fileSrc, err := ioutil.ReadFile(src)
-	if err != nil {
-		return errors.Wrapf(err, "failed to read %s", src)
-	}
-	err = ioutil.WriteFile(dst, fileSrc, 0644)
-	return errors.Wrapf(err, "failed to write %s", dst)
 }
