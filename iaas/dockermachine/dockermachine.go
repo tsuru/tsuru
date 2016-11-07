@@ -21,8 +21,6 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 )
 
-var defaultWriter = ioutil.Discard
-
 type DockerMachine struct {
 	io.Closer
 	client    libmachine.API
@@ -98,12 +96,12 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 	if config.OutWriter != nil {
 		log.SetOutWriter(config.OutWriter)
 	} else {
-		log.SetOutWriter(defaultWriter)
+		log.SetOutWriter(ioutil.Discard)
 	}
 	if config.ErrWriter != nil {
 		log.SetOutWriter(config.ErrWriter)
 	} else {
-		log.SetOutWriter(defaultWriter)
+		log.SetOutWriter(ioutil.Discard)
 	}
 	client := libmachine.NewClient(storePath, certsPath)
 	if _, err := os.Stat(client.GetMachinesDir()); os.IsNotExist(err) {
