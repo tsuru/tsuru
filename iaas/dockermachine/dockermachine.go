@@ -280,6 +280,9 @@ func newMachine(h *host.Host) (*Machine, error) {
 			Port:       engine.DefaultPort,
 			Protocol:   "https",
 			CustomData: driverData,
+			CreationParams: map[string]string{
+				"driver": h.DriverName,
+			},
 		},
 		Host: h,
 	}
