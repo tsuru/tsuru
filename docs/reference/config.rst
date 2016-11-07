@@ -1186,6 +1186,13 @@ iaas:dockermachine:driver:name
 The name of the docker machine driver to be used for machine provisioning. Can be
 any of the `core drivers <https://docs.docker.com/machine/drivers/>`_ or a 3rd party driver (available on the $PATH).
 
+iaas:dockermachine:driver:user-data-file-param
+++++++++++++++++++++++++++++++++++++++++++++++
+
+The name of the driver parameter that accepts a local file to be used as userdata. The remote file provided
+as iaas:dockermachine:user-data will be copied to a local file and feeded into the driver as the value of
+the provided parameter.
+
 iaas:dockermachine:driver:options
 +++++++++++++++++++++++++++++++++
 

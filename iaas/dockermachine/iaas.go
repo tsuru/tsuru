@@ -7,6 +7,8 @@ package dockermachine
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -21,13 +23,13 @@ func init() {
 }
 
 type dockerMachineIaaS struct {
-	base       iaas.NamedIaaS
+	base       iaas.UserDataIaaS
 	apiFactory func(DockerMachineConfig) (DockerMachineAPI, error)
 }
 
 func newDockerMachineIaaS(name string) iaas.IaaS {
 	return &dockerMachineIaaS{
-		base:       iaas.NamedIaaS{BaseIaaSName: "dockermachine", IaaSName: name},
+		base:       iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "dockermachine", IaaSName: name}},
 		apiFactory: NewDockerMachine,
 	}
 }
@@ -61,6 +63,23 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		machineName = fmt.Sprintf("%s-%d", params["pool"], len(machines)+1)
 	} else {
 		delete(params, "name")
+	}
+	userDataFileParam, err := i.base.GetConfigString("driver:user-data-file-param")
+	if err == nil {
+		f, errTemp := ioutil.TempFile("", "")
+		if errTemp != nil {
+			return nil, errors.Wrap(errTemp, "failed to create userdata file")
+		}
+		defer os.RemoveAll(f.Name())
+		userData, errData := i.base.ReadUserData()
+		if errData != nil {
+			return nil, errors.WithMessage(errData, "failed to read userdata")
+		}
+		_, errWrite := f.WriteString(userData)
+		if errWrite != nil {
+			return nil, errors.Wrap(errWrite, "failed to write local userdata file")
+		}
+		params[userDataFileParam] = f.Name()
 	}
 	driverOpts := i.buildDriverOpts(driverName, params)
 	buf := &bytes.Buffer{}
