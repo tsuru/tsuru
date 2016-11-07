@@ -152,7 +152,7 @@ func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
 }
 
 func generateRandomID() (string, error) {
-	id := make([]byte, 32)
+	id := make([]byte, 16)
 	if _, err := io.ReadFull(rand.Reader, id); err != nil {
 		return "", errors.Wrap(err, "failed to generate random id")
 	}
