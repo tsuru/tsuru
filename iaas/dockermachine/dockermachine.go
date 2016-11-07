@@ -152,6 +152,9 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 	if opts.RegistryMirror != "" {
 		engineOpts.RegistryMirror = []string{opts.RegistryMirror}
 	}
+	if h.AuthOptions() != nil {
+		h.AuthOptions().StorePath = d.StorePath
+	}
 	errCreate := d.client.Create(h)
 	machine, err := newMachine(h)
 	if errCreate != nil {
