@@ -6,7 +6,10 @@ package dockermachine
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -56,11 +59,11 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	insecureRegistry, _ := i.getParamOrConfigString("insecure-registry", params)
 	machineName, ok := params["name"]
 	if !ok {
-		machines, errList := iaas.ListMachines()
-		if errList != nil {
-			return nil, errors.Wrap(errList, "failed to list machines")
+		id, err := generateRandomID()
+		if err != nil {
+			return nil, err
 		}
-		machineName = fmt.Sprintf("%s-%d", params["pool"], len(machines)+1)
+		machineName = fmt.Sprintf("%s-%s", params["pool"], id)
 	} else {
 		delete(params, "name")
 	}
@@ -146,6 +149,14 @@ func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
 		log.Debug(buf.String())
 	}()
 	return dockerMachine.DeleteMachine(m)
+}
+
+func generateRandomID() (string, error) {
+	id := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, id); err != nil {
+		return "", errors.Wrap(err, "failed to generate random id")
+	}
+	return hex.EncodeToString(id), nil
 }
 
 func (i *dockerMachineIaaS) Describe() string {

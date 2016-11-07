@@ -96,10 +96,6 @@ func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {
 }
 
 func (s *S) TestCreateMachineGeneratesName(c *check.C) {
-	machines, err := iaas.ListMachines()
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:dockermachine:ca-path", "/etc/ca-path")
-	defer config.Unset("iaas:dockermachine:ca-path")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
 	dmIaas.apiFactory = NewFakeDockerMachine
@@ -108,7 +104,7 @@ func (s *S) TestCreateMachineGeneratesName(c *check.C) {
 		"driver": "driver-name",
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(m.Id, check.Equals, fmt.Sprintf("theonepool-%d", len(machines)+1))
+	c.Assert(m.Id, check.Matches, fmt.Sprintf("theonepool-.*"))
 }
 
 func (s *S) TestCreateMachineDeletesMachineWithError(c *check.C) {
