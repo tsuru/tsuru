@@ -313,6 +313,7 @@ func (s *GandalfSuite) TestRemoveKey(c *check.C) {
 	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
 	c.Assert(err, check.IsNil)
 	err = manager.RemoveKey("myuser", repository.Key{Name: "mykey"})
+	c.Assert(err, check.IsNil)
 	keys, err := s.server.Keys("myuser")
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
