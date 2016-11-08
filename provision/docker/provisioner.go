@@ -557,6 +557,9 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	done = p.ActionLimiter().Start(hostAddr)
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
 	done()
+	if err != nil {
+		return "", err
+	}
 	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, evt)
 	if err != nil {
 		return "", err

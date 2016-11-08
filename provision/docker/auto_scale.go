@@ -289,6 +289,9 @@ func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes
 	if !sResult.ToRebalance {
 		// No action yet, check if we need rebalance
 		_, gap, err := a.provisioner.containerGapInNodes(nodes)
+		if err != nil {
+			return errors.Wrapf(err, "unable to obtain container gap in nodes")
+		}
 		buf := safe.NewBuffer(nil)
 		dryProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
 		if err != nil {

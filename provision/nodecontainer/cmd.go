@@ -131,6 +131,9 @@ func (c *dockerCmd) flags(fs *gnuflag.FlagSet) {
 
 func (c *dockerCmd) toValues() (url.Values, error) {
 	ports, portBindings, err := nat.ParsePortSpecs(c.ports)
+	if err != nil {
+		return nil, err
+	}
 	c.config.Config.ExposedPorts = map[docker.Port]struct{}{}
 	for k, v := range ports {
 		c.config.Config.ExposedPorts[docker.Port(k)] = v
