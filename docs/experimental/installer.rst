@@ -126,13 +126,12 @@ For example, to install tsuru on amazon ec2, one could create the following file
 ::
 
     driver:
-        name: amazonec2
+      name: amazonec2
         options:
-            amazonec2-access-key: myAmazonAccessKey
-            amazonec2-secret-key: myAmazonSecretKey
-            amazonec2-vpc-id: vpc-abc1234
-            amazonec2-subnet-id: subnet-abc1234
-
+          amazonec2-access-key: myAmazonAccessKey
+          amazonec2-secret-key: myAmazonSecretKey
+          amazonec2-vpc-id: vpc-abc1234
+          amazonec2-subnet-id: subnet-abc1234
 
 And pass it to the install command as:
 
@@ -221,7 +220,7 @@ including the dashboard.
             generic-ssh-user: ubuntu
 
 DigitalOcean basic configuration
------------------------------------------------
+--------------------------------
 
 For example, to install tsuru on DigitalOcean, one could create the following file:
 
@@ -229,22 +228,22 @@ For example, to install tsuru on DigitalOcean, one could create the following fi
 
 ::
 
-    driver:
-        name: digitalocean
-        options:
-            digitalocean-access-token: -
-            digitalocean-image: ubuntu-15-10-x64
-            digitalocean-region: nyc3
-            digitalocean-size: 512mb
-            digitalocean-ipv6: false
-            digitalocean-private-networking: false
-            digitalocean-backups: false
-            digitalocean-ssh-user: root
-            digitalocean-ssh-port: 22
-            digitalocean-ssh-key-fingerprint: -
+  driver:
+    name: digitalocean
+    options:
+      digitalocean-access-token: your-token
+      digitalocean-image: ubuntu-15-10-x64
+      digitalocean-region: nyc3
+      digitalocean-size: 512mb
+      digitalocean-ipv6: false
+      digitalocean-private-networking: false
+      digitalocean-backups: false
+      digitalocean-ssh-user: root
+      digitalocean-ssh-port: 22
+      digitalocean-ssh-key-fingerprint: the-ssh-key-fingerprint
 
 Configuration reference
-============================
+=======================
 
 .. note::
 
