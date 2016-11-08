@@ -918,6 +918,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C
 		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node1)
+	c.Assert(err, check.IsNil)
 	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", dockertest.URLPort(s.node3.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
@@ -1037,6 +1038,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 		"totalMem": "25165824",
 	}}
 	err := s.p.cluster.Register(node1)
+	c.Assert(err, check.IsNil)
 	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", dockertest.URLPort(s.node3.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",

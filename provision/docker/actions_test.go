@@ -162,6 +162,7 @@ func (s *S) TestUpdateContainerInDBForward(c *check.C) {
 		provisioner: s.p,
 	}}}
 	r, err := updateContainerInDB.Forward(context)
+	c.Assert(err, check.IsNil)
 	c.Assert(r, check.FitsTypeOf, container.Container{})
 	retrieved, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
@@ -261,6 +262,7 @@ func (s *S) TestSetContainerIDForward(c *check.C) {
 		provisioner: s.p,
 	}}}
 	r, err := setContainerID.Forward(context)
+	c.Assert(err, check.IsNil)
 	c.Assert(r, check.FitsTypeOf, container.Container{})
 	retrieved, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)

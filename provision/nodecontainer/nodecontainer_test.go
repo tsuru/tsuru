@@ -176,6 +176,7 @@ func (s *S) TestResetImage(c *check.C) {
 		Name:        "c1",
 		PinnedImage: "img1@2",
 	})
+	c.Assert(err, check.IsNil)
 	err = AddNewContainer("p2", &NodeContainerConfig{
 		Name: "c1",
 	})

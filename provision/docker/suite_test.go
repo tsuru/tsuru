@@ -195,7 +195,7 @@ func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error)
 	if err != nil {
 		return nil, err
 	}
-	otherUrl := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
+	otherURL := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
 	err = p.Initialize()
 	if err != nil {
@@ -203,13 +203,19 @@ func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error)
 	}
 	opts := provision.AddPoolOptions{Name: "pool1", Public: true}
 	err = provision.AddPool(opts)
+	if err != nil {
+		return nil, err
+	}
 	opts = provision.AddPoolOptions{Name: "pool2", Public: true}
 	err = provision.AddPool(opts)
+	if err != nil {
+		return nil, err
+	}
 	p.storage = &cluster.MapStorage{}
 	sched := segregatedScheduler{provisioner: &p}
 	p.cluster, err = cluster.New(&sched, p.storage,
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool2"}},
+		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "pool2"}},
 	)
 	if err != nil {
 		return nil, err

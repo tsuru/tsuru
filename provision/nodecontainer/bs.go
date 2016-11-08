@@ -33,7 +33,7 @@ func InitializeBS() (bool, error) {
 	}
 	token := tokenData.GetValue()
 	conf := configFor(BsDefaultName)
-	isSet, err := conf.SetFieldAtomic("", "Config.Env", []string{
+	isSet, _ := conf.SetFieldAtomic("", "Config.Env", []string{
 		"TSURU_TOKEN=" + token,
 	})
 	if !isSet {

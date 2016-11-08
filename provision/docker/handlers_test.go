@@ -429,6 +429,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 		Allowed:      event.Allowed(permission.PermPool),
 	})
+	c.Assert(err, check.IsNil)
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
 	evt3, err := event.NewInternal(&event.Opts{
@@ -437,6 +438,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 		CustomData:   container.Container{ID: "1234"},
 		Allowed:      event.Allowed(permission.PermApp),
 	})
+	c.Assert(err, check.IsNil)
 	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing", nil)
@@ -486,6 +488,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 		Allowed:      event.Allowed(permission.PermPool),
 	})
+	c.Assert(err, check.IsNil)
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
 	evt3, err := event.NewInternal(&event.Opts{
@@ -494,6 +497,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 		CustomData:   container.Container{ID: "1234"},
 		Allowed:      event.Allowed(permission.PermApp),
 	})
+	c.Assert(err, check.IsNil)
 	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
@@ -530,6 +534,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
 		Allowed:      event.Allowed(permission.PermPool),
 	})
+	c.Assert(err, check.IsNil)
 	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
 	time.Sleep(10 * time.Millisecond)
 	evt3, err := event.NewInternal(&event.Opts{
@@ -538,6 +543,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 		CustomData:   container.Container{ID: "1234"},
 		Allowed:      event.Allowed(permission.PermApp),
 	})
+	c.Assert(err, check.IsNil)
 	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
