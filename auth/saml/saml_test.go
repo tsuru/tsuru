@@ -377,10 +377,11 @@ func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 	response, err := scheme.Parse(b64Xml)
 	c.Assert(err, check.IsNil)
 	c.Assert(response, check.NotNil)
-	requestId, err := getRequestIdFromResponse(response)
-	c.Assert(requestId, check.Equals, r.ID)
+	requestID, err := getRequestIdFromResponse(response)
+	c.Assert(err, check.IsNil)
+	c.Assert(requestID, check.Equals, r.ID)
 	req := request{}
-	err = req.getById(requestId)
+	err = req.getById(requestID)
 	c.Assert(err, check.IsNil)
 	c.Assert(req, check.NotNil)
 	email, err := getUserIdentity(response)
@@ -391,6 +392,7 @@ func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 func (s *S) TestSamlAuthLoginValidRequestIdUserNotAuthed(c *check.C) {
 	scheme := SAMLAuthScheme{}
 	info, err := scheme.Info()
+	c.Assert(err, check.IsNil)
 	params := make(map[string]string)
 	params["request_id"] = info["request_id"].(string)
 	_, err = scheme.Login(params)

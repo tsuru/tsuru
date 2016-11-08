@@ -222,6 +222,7 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
 	t2 := t1
 	t2.Token += "aa"
 	err = s.conn.Tokens().Insert(t1, t2)
+	c.Assert(err, check.IsNil)
 	_, err = createToken(&u, "123456")
 	c.Assert(err, check.IsNil)
 	ok := make(chan bool, 1)

@@ -183,6 +183,7 @@ func (s *S) TestResetPassword(c *check.C) {
 		defer s.server.RUnlock()
 		return len(s.server.MailBox) == 1
 	})
+	c.Assert(err, check.IsNil)
 	var token passwordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, check.IsNil)
