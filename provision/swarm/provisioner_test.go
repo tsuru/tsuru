@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/swarm"
@@ -1132,16 +1133,23 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	task.DesiredState = swarm.TaskStateRunning
 	err = srv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
-	var urls []url.URL
+	var urls struct {
+		items []url.URL
+		sync.Mutex
+	}
 	srv.PrepareExec("*", func() {
 		time.Sleep(500e6)
 	})
 	srv.SetHook(func(r *http.Request) {
-		urls = append(urls, *r.URL)
+		urls.Lock()
+		urls.items = append(urls.items, *r.URL)
+		urls.Unlock()
 	})
 	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
-	resizeURL := urls[len(urls)-2]
+	urls.Lock()
+	resizeURL := urls.items[len(urls.items)-2]
+	urls.Unlock()
 	execResizeRegexp := regexp.MustCompile(`^.*/exec/(.*)/resize$`)
 	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
 	c.Assert(matches, check.HasLen, 2)
@@ -1184,16 +1192,23 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 	task.DesiredState = swarm.TaskStateRunning
 	err = srv.MutateTask(task.ID, *task)
 	c.Assert(err, check.IsNil)
-	var urls []url.URL
+	var urls struct {
+		items []url.URL
+		sync.Mutex
+	}
 	srv.PrepareExec("*", func() {
 		time.Sleep(500e6)
 	})
 	srv.SetHook(func(r *http.Request) {
-		urls = append(urls, *r.URL)
+		urls.Lock()
+		urls.items = append(urls.items, *r.URL)
+		urls.Unlock()
 	})
 	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
-	resizeURL := urls[len(urls)-2]
+	urls.Lock()
+	resizeURL := urls.items[len(urls.items)-2]
+	urls.Unlock()
 	execResizeRegexp := regexp.MustCompile(`^.*/exec/(.*)/resize$`)
 	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
 	c.Assert(matches, check.HasLen, 2)
