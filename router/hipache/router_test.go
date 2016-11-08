@@ -533,6 +533,7 @@ func (s *S) TestSetCNameSetsMultipleCNames(c *check.C) {
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("myothercname.com", "myapp")
+	c.Assert(err, check.IsNil)
 	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
 	cname, err := conn.LRange("frontend:mycname.com", 0, -1).Result()

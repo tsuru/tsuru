@@ -121,6 +121,7 @@ func (s *S) TestSwapBackendName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer Remove("appname2")
 	err = swapBackendName("appname", "appname2")
+	c.Assert(err, check.IsNil)
 	name, err := Retrieve("appname")
 	c.Assert(err, check.IsNil)
 	c.Assert(name, check.Equals, "routername2")
