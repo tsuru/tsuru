@@ -382,6 +382,7 @@ func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
 	err = repository.Manager().GrantAccess(a.Name, user.Email)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()

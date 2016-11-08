@@ -250,6 +250,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
 	app := &app.App{
 		Name:  "shangrila",
 		Quota: quota.Quota{Limit: 4, InUse: 2},

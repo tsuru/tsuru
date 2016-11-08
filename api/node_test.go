@@ -39,6 +39,7 @@ func (s *S) TestValidateNodeAddress(c *check.C) {
 func (s *S) TestAddNodeHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	serverAddr := "http://mysrv1"
 	params := provision.AddNodeOptions{
@@ -81,6 +82,7 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	serverAddr := "http://mysrv1"
 	params := provision.AddNodeOptions{
@@ -117,6 +119,7 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	params := provision.AddNodeOptions{
 		Register: false,
@@ -337,6 +340,7 @@ func (s *S) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	c.Assert(rec.Body.String(), check.Equals, "rebalancing...remove done!")
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	nodes, err := s.provisioner.ListNodes(nil)
+	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	dbM, err := iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.IsNil)
@@ -361,6 +365,7 @@ func (s *S) TestRemoveNodeHandlerWithRemoveIaaS(c *check.C) {
 	c.Assert(rec.Body.String(), check.Equals, "rebalancing...remove done!")
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	nodes, err := s.provisioner.ListNodes(nil)
+	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	_, err = iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
@@ -394,6 +399,7 @@ func (s *S) TestListNodeHandler(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node", nil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	req.Header.Set("Authorization", s.token.GetValue())
 	m := RunServer(true)
@@ -452,6 +458,7 @@ func (s *S) TestListUnitsByHostHandler(c *check.C) {
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/http://node1.company:4243/containers", nil)
+	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	server := RunServer(true)
@@ -507,6 +514,7 @@ func (s *S) TestListUnitsByAppHandler(c *check.C) {
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
+	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	server := RunServer(true)
@@ -539,6 +547,7 @@ func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
+	c.Assert(err, check.IsNil)
 	t := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
@@ -641,6 +650,7 @@ func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost2:1999",
@@ -678,6 +688,7 @@ func (s *S) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
@@ -707,6 +718,7 @@ func (s *S) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
@@ -736,6 +748,7 @@ func (s *S) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",

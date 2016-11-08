@@ -163,6 +163,7 @@ func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer wsConn.Close()
 	_, err = wsConn.Write([]byte("a"))
+	c.Assert(err, check.IsNil)
 	buffer := make([]byte, 1024)
 	n, err := wsConn.Read(buffer)
 	c.Assert(err, check.IsNil)

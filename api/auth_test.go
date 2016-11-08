@@ -94,6 +94,7 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	})
 	var err error
 	s.user, err = s.token.User()
+	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam"}
 	s.team2 = &auth.Team{Name: "tsuruteam2"}
 	conn, _ := db.Conn()
@@ -143,6 +144,7 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
@@ -296,6 +298,7 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
+	c.Assert(err, check.IsNil)
 	var recorderJSON map[string]string
 	json.Unmarshal(recorder.Body.Bytes(), &recorderJSON)
 	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()

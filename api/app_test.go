@@ -384,6 +384,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	u, _ := token.User()
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err = app.CreateApp(&app1, u)
+	c.Assert(err, check.IsNil)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, u)
 	c.Assert(err, check.IsNil)
@@ -592,6 +593,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -635,6 +637,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
@@ -749,6 +752,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -794,6 +798,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
@@ -839,6 +844,7 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": appName}).One(&gotApp)
@@ -883,6 +889,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
@@ -1041,6 +1048,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
 	c.Assert(obtained, check.DeepEquals, expected)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
@@ -4564,7 +4572,6 @@ func (s *S) TestAddLog(c *check.C) {
 	withSourceRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	withSourceRequest.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = addLog(recorder, request, token)
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
