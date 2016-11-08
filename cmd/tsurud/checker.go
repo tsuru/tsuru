@@ -19,8 +19,8 @@ func checkBasicConfig() error {
 }
 
 func checkGandalf() error {
-	if value, err := config.GetString("repo-manager"); value == "gandalf" || value == "" {
-		_, err = config.Get("git:api-server")
+	if value, _ := config.GetString("repo-manager"); value == "gandalf" || value == "" {
+		_, err := config.Get("git:api-server")
 		if err != nil {
 			return errors.Errorf("config error: you must define the %q config key", "git:api-server")
 		}

@@ -413,6 +413,9 @@ func (t *targetSet) Run(ctx *Context, client *Client) error {
 	}
 	targetLabelToSet := strings.TrimSpace(ctx.Args[0])
 	labelExist, err := CheckIfTargetLabelExists(targetLabelToSet)
+	if err != nil {
+		return err
+	}
 	if !labelExist {
 		return errors.New("Target not found")
 	}

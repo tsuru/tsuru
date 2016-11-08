@@ -41,8 +41,11 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	appInfoUrl, err := GetURL(fmt.Sprintf("/apps/%s", appName))
-	request, err := http.NewRequest("GET", appInfoUrl, nil)
+	appInfoURL, err := GetURL(fmt.Sprintf("/apps/%s", appName))
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", appInfoURL, nil)
 	if err != nil {
 		return err
 	}
