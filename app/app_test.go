@@ -271,6 +271,7 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.IsNil)
@@ -3517,6 +3518,7 @@ func (s *S) TestAppValidateTeamOwner(c *check.C) {
 func (s *S) TestAppValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	err := CreateApp(&a, s.user)
+	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 	err = a.validateTeamOwner()
 	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
 }
@@ -3705,6 +3707,7 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	team := &auth.Team{Name: "newowner"}
 	err = s.conn.Teams().Insert(team)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	updateData := App{Name: "example", TeamOwner: "newowner"}
 	err = app.Update(updateData, new(bytes.Buffer))

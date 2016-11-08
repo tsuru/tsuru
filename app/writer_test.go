@@ -48,6 +48,7 @@ func (s *WriterSuite) TestLogWriter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, string(data))
@@ -65,6 +66,7 @@ func (s *WriterSuite) TestLogWriterCustomSource(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, string(data))
@@ -100,6 +102,7 @@ func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, "ble")
@@ -138,6 +141,7 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
 	logs, err := instance.LastLogs(100, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 100)
@@ -184,6 +188,7 @@ func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
@@ -203,6 +208,7 @@ func (s *WriterSuite) TestLogWriterWriteClosed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
