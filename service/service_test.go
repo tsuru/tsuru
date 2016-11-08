@@ -232,6 +232,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 	err = deletedService.Create()
 	c.Assert(err, check.IsNil)
 	err = deletedService.Delete()
+	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(err, check.IsNil)
