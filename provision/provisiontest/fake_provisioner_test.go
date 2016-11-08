@@ -330,7 +330,7 @@ func (s *S) TestProvisioned(c *check.C) {
 
 func (s *S) TestRestarts(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, restarts: map[string]int{"": 10, "web": 2}},
@@ -344,7 +344,7 @@ func (s *S) TestRestarts(c *check.C) {
 
 func (s *S) TestStarts(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
@@ -358,7 +358,7 @@ func (s *S) TestStarts(c *check.C) {
 
 func (s *S) TestStops(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
@@ -372,7 +372,7 @@ func (s *S) TestStops(c *check.C) {
 
 func (s *S) TestSleeps(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
 		app1.GetName(): {app: app1, sleeps: map[string]int{"web": 10, "worker": 1}},
@@ -1327,7 +1327,7 @@ func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app1)
 	c.Assert(err, check.IsNil)
@@ -1335,7 +1335,7 @@ func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting}
 	p.AddUnit(app1, unit)
-	unit = provision.Unit{AppName: "unfairy-tale", ID: "unit/2", Status: provision.StatusStarting}
+	unit = provision.Unit{AppName: "unfairly-tale", ID: "unit/2", Status: provision.StatusStarting}
 	p.AddUnit(app2, unit)
 	err = p.SetUnitStatus(unit, provision.StatusError)
 	c.Assert(err, check.IsNil)

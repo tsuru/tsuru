@@ -176,7 +176,7 @@ func (s *S) TestRecordingFsHasAction(c *check.C) {
 	fs := RecordingFs{actions: []string{"torn", "shade of my soul"}}
 	c.Assert(fs.HasAction("torn"), check.Equals, true)
 	c.Assert(fs.HasAction("shade of my soul"), check.Equals, true)
-	c.Assert(fs.HasAction("meaningles world"), check.Equals, false)
+	c.Assert(fs.HasAction("meaningless world"), check.Equals, false)
 }
 
 func (s *S) TestRecordingFsCreate(c *check.C) {
