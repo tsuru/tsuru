@@ -39,9 +39,9 @@ Assuming you're using EC2, the configuration will be something like:
       secret-key: yyyyyyyyyyyyy
 
 After you have everything configured, adding a new Docker node is done by
-calling `docker-node-add
-<http://tsuru-admin.readthedocs.org/en/stable/#docker-node-add>`_ in
-:doc:`tsuru-admin </reference/tsuru-admin>` command. This command will receive
+calling `node-add
+<http://tsuru-client.readthedocs.io/en/latest/reference.html#add-a-new-node>`_ in
+:doc:`tsuru </reference/tsuru-client>` command. This command will receive
 a map of key=value params which are IaaS dependent. A list of possible key
 params can be seen calling:
 
@@ -49,7 +49,7 @@ params can be seen calling:
 
 ::
 
-    $ tsuru-admin docker-node-add iaas=ec2
+    $ tsuru node-add docker iaas=ec2
 
     EC2 IaaS required params:
       image=<image id>         Image AMI ID
@@ -62,15 +62,15 @@ params can be seen calling:
 
 
 Every key=value pair will be added as a metadata to the Node and you can send
-After registering your node, you can list it calling `tsuru-admin docker-node-list <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-list>`_
+After registering your node, you can list it calling `tsuru node-list <http://tsuru-client.readthedocs.io/en/latest/reference.html#list-nodes-in-cluster>`_
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin docker-node-add iaas=ec2 image=ami-dc5387b4 region=us-east-1 type=m1.small securityGroup=my-sec-group keyName=my-key
+    $ tsuru node-add docker iaas=ec2 image=ami-dc5387b4 region=us-east-1 type=m1.small securityGroup=my-sec-group keyName=my-key
     Node successfully registered.
-    $ tsuru-admin docker-node-list
+    $ tsuru node-list
     +-------------------------------------------------------+------------+---------+----------------------------+
     | Address                                               | IaaS ID    | Status  | Metadata                   |
     +-------------------------------------------------------+------------+---------+----------------------------+
@@ -85,8 +85,8 @@ After registering your node, you can list it calling `tsuru-admin docker-node-li
 Unmanaged nodes
 ===============
 
-To add a previously provisioned node you call the `tsuru-admin docker-node-add
-<http://tsuru-admin.readthedocs.org/en/latest/#docker-node-add>`_ with the
+To add a previously provisioned node you call the `tsuru node-add
+<http://tsuru-client.readthedocs.io/en/latest/reference.html#add-a-new-node>`_ with the
 ``--register`` flag and setting the address key with the URL of the Docker API
 in the remote node and specify the pool of the node with ``pool=mypoolname``.
 
@@ -99,7 +99,7 @@ about how to install docker on your node, please refer to `Docker documentation
 
 ::
 
-    $ tsuru-admin docker-node-add pool=mypoolname --register address=http://node.address.com:2375
+    $ tsuru node-add docker pool=mypoolname --register address=http://node.address.com:2375
 
 
 To enable the new unmanaged node run this command:
@@ -108,4 +108,4 @@ To enable the new unmanaged node run this command:
 
 ::
 
-    $ tsuru-admin docker-node-update http://node.address.com:2375 --enable
+    $ tsuru node-update http://node.address.com:2375 --enable

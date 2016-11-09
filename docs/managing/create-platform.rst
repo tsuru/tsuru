@@ -101,14 +101,13 @@ Now, we can move on and add our newly created platform.
 Adding your platform to tsuru
 =============================
 
-After creating you platform as a Dockerfile, you can add it to tsuru using
-``tsuru-admin``:
+After creating you platform as a Dockerfile, you can add it to tsuru using the client:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin platform-add your-platform-name --dockerfile http://url-to-dockerfile
+    $ tsuru platform-add your-platform-name --dockerfile http://url-to-dockerfile
 
 If you push your image to an Docker Registry, you can use:
 
@@ -116,4 +115,4 @@ If you push your image to an Docker Registry, you can use:
 
 ::
 
-    $ tsuru-admin platform-add your-platform-name -i your-user/image-name
+    $ tsuru platform-add your-platform-name -i your-user/image-name

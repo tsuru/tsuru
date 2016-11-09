@@ -76,8 +76,8 @@ Direct
 ======
 
 tsuru can be configured to completely bypass bs when sending logs. This can be
-done using the ``tsuru-admin docker-log-update`` command. See the command
-`reference documentation <https://tsuru-admin.readthedocs.org/en/latest/reference.html#application-logging>`_ 
+done using the ``tsuru docker-log-update`` command. See the command
+`reference documentation <https://tsuru-client.readthedocs.org/en/latest/reference.html#application-logging>`_
 for more details.
 
 When a ``log-driver`` different from ``bs`` is chosen, the logs will be similar

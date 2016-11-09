@@ -514,7 +514,7 @@ tsuru can, optionally, manage quotas. Currently, there are two available
 quotas: apps per user and units per app.
 
 tsuru administrators can control the default quota for new users and new apps
-in the configuration file, and use ``tsuru-admin`` command to change quotas for
+in the configuration file, and use ``tsuru`` command to change quotas for
 users or apps. Quota management is disabled by default, to enable it, just set
 the desired quota to a positive integer.
 
@@ -765,13 +765,13 @@ docker:bs:image
 +++++++++++++++
 
 This setting is deprecated in favor of dynamically configuring with
-``tsuru-admin docker-node-update big-sibling --image <image>``.
+``tsuru node-container-update big-sibling --image <image>``.
 
 docker:bs:socket
 ++++++++++++++++
 
 This setting is deprecated in favor of dynamically configuring with
-``tsuru-admin docker-node-update big-sibling --volume <local>:<remote> --env
+``tsuru node-container-update big-sibling --volume <local>:<remote> --env
 DOCKER_ENDPOINT=<remote>``.
 
 docker:bs:syslog-port
@@ -780,8 +780,8 @@ docker:bs:syslog-port
 ``docker:bs:syslog-port`` is the port in the Docker node that will be used by
 the bs container for collecting logs. The default value is 1514.
 
-If this value is changed bs node containers must be update with ``tsuru-admin
-docker-node-update big-sibling --env
+If this value is changed bs node containers must be update with ``tsuru
+node-container-update big-sibling --env
 SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:<port>``.
 
 docker:max-workers
@@ -998,22 +998,21 @@ docker:auto-scale:metadata-filter
 +++++++++++++++++++++++++++++++++
 
 The name of a pool where auto scale will be enabled. Leave unset to allow
-dynamically configuring with ``tsuru-admin docker-autoscale-rule-set``.
+dynamically configuring with ``tsuru docker-autoscale-rule-set``.
 
 docker:auto-scale:max-container-count
 +++++++++++++++++++++++++++++++++++++
 
 Maximum number of containers per node, for count based scaling. See :doc:`node
 auto scaling </advanced_topics/node_scaling>` for more details. Leave unset to
-allow dynamically configuring with ``tsuru-admin docker-autoscale-rule-set``.
+allow dynamically configuring with ``tsuru docker-autoscale-rule-set``.
 
 docker:auto-scale:prevent-rebalance
 +++++++++++++++++++++++++++++++++++
 
 Prevent rebalancing from happening when adding new nodes, or if a rebalance is
 needed. See :doc:`node auto scaling </advanced_topics/node_scaling>` for more
-details. Leave unset to allow dynamically configuring with ``tsuru-admin
-docker-autoscale-rule-set``.
+details. Leave unset to allow dynamically configuring with ``tsuru docker-autoscale-rule-set``.
 
 docker:auto-scale:run-interval
 ++++++++++++++++++++++++++++++
@@ -1026,7 +1025,7 @@ docker:auto-scale:scale-down-ratio
 
 Ratio used when scaling down. Must be greater than 1.0. See :doc:`node auto
 scaling </advanced_topics/node_scaling>` for more details. Defaults to 1.33.
-Leave unset to allow dynamically configuring with ``tsuru-admin
+Leave unset to allow dynamically configuring with ``tsuru
 docker-autoscale-rule-set``.
 
 .. _docker_limit:
@@ -1227,7 +1226,7 @@ iaas:custom:<name>:<any_other_option>
 
 This will overwrite the value of ``iaas:<provider>:<any_other_option>`` for this
 IaaS. As an example, having the configuration below would allow you to call
-``tsuru-admin docker-node-add iaas=region1_cloudstack ...``:
+``tsuru node-add iaas=region1_cloudstack ...``:
 
 .. highlight:: yaml
 

@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -28,11 +28,11 @@ A way to upgrade with no downtime is to move all containers from the node that
 you want to upgrade to another node, upgrade the node and then move the
 containers back.
 
-You can do it using the command `tsuru-admin containers-move
-<http://tsuru-admin.readthedocs.org/en/latest/#containers-move>`_:
+You can do it using the command `tsuru containers-move
+<http://tsuru-client.readthedocs.io/en/latest/reference.html#moves-all-containers-from-on-node>`_:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin containers-move <from host> <to host>
+    $ tsuru containers-move <from host> <to host>

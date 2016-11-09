@@ -30,7 +30,7 @@ as :math:`nodes`, and the total number of containers in all cluster's nodes as
 .. math::
 
     free = max * nodes - total
-    
+
 If :math:`free < 0` then a new node will be added and tsuru will rebalance
 containers using the new node.
 
@@ -100,11 +100,10 @@ Each time tsuru tries to run an auto scale action (add, remove, or rebalance). I
 will create an auto scale event. This event will record the result of the auto
 scale action and possible errors that occurred during its execution.
 
-You can list auto scale events with `tsuru-admin docker-autoscale-list`
+You can list auto scale events with `tsuru docker-autoscale-list`
 
 Running auto scale once
 -----------------------
 
 Even if you have `docker:auto-scale:enabled` set to false, you can make tsuru
-trigger the execution of the auto scale algorithm by running `tsuru-admin docker-
-autoscale-run`.
+trigger the execution of the auto scale algorithm by running `tsuru docker-autoscale-run`.

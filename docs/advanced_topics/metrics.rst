@@ -36,7 +36,7 @@ Configuring bs
 
 We need to configure big-sibling, to send metrics to our logstash.
 
-You should use `tsuru-admin node-container-update big-sibling --env NAME=VALUE`
+You should use `tsuru node-container-update big-sibling --env NAME=VALUE`
 to define the config values.
 
 The available configs are:

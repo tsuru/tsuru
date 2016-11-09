@@ -31,7 +31,7 @@ the Python platform, which can be easily installed with:
 
 ::
 
-    tsuru-admin platform-add python
+    tsuru platform-add python
 
 This will install the default Python platform. Please refer to :doc:`add platform </managing/add-platform>`
 for more details.

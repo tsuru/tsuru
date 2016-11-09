@@ -12,7 +12,6 @@ Managing
 
 .. toctree::
 
-    install-tsuru-admin
     add-platform
     create-platform
     using-pools

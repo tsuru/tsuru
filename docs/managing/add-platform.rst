@@ -31,8 +31,8 @@ Platforms are defined as Dockerfiles and tsuru already have a number of supporte
 
 These platforms don't come pre-installed in tsuru, you have to add them to your
 server using the `platform-add
-<http://tsuru-admin.readthedocs.io/en/latest/reference.html#add-a-new-platform>`_ command in
-:doc:`tsuru-admin </reference/tsuru-admin>`.
+<http://tsuru-client.readthedocs.io/en/latest/reference.html#add-a-new-platform>`_ command in
+:doc:`tsuru </reference/tsuru-client>`.
 
 For example, to install the Python platform from tsuru's platforms repository
 you simply have to call:
@@ -41,7 +41,7 @@ you simply have to call:
 
 ::
 
-    tsuru-admin platform-add python
+    tsuru platform-add python
 
 
 If your application is not currently supported by the platforms above,

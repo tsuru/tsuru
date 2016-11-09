@@ -1,4 +1,4 @@
-.. Copyright 2015 tsuru authors. All rights reserved.
+.. Copyright 2016 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -30,11 +30,11 @@ the application pool.
 Registering a node with pool metadata
 -------------------------------------
 
-You can use the ``tsuru-admin`` with ``docker-node-add`` to register or create
+You can use the ``tsuru`` client with ``node-add`` to register or create
 nodes with the pool metadata:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin docker-node-add --register address=http://localhost:2375 pool=pool1
+    $ tsuru node-add docker --register address=http://localhost:2375 pool=pool1

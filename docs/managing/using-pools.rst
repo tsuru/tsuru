@@ -30,13 +30,13 @@ fallback pool, but with a explicit flag.
 Adding a pool
 -------------
 
-In order to create a pool, you should invoke `tsuru-admin pool-add`:
+In order to create a pool, you should invoke `tsuru pool-add`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin pool-add pool1
+    $ tsuru pool-add pool1
 
 If you want to create a public pool you can do:
 
@@ -44,7 +44,7 @@ If you want to create a public pool you can do:
 
 ::
 
-    $ tsuru-admin pool-add pool1 -p
+    $ tsuru pool-add pool1 -p
 
 If you want a default pool, you can create it with:
 
@@ -52,7 +52,7 @@ If you want a default pool, you can create it with:
 
 ::
 
-    $ tsuru-admin pool-add pool1 -d
+    $ tsuru pool-add pool1 -d
 
 You can overwrite default pool by setting the flag `-f`:
 
@@ -60,21 +60,21 @@ You can overwrite default pool by setting the flag `-f`:
 
 ::
 
-    $ tsuru-admin pool-add new-default-pool -d -f
+    $ tsuru pool-add new-default-pool -d -f
 
 Adding teams to a pool
 ----------------------
 
-Then you can use `tsuru-admin pool-teams-add` to add teams to the pool that
+Then you can use `tsuru pool-teams-add` to add teams to the pool that
 you've just created:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin pool-teams-add pool1 team1 team2
+    $ tsuru pool-teams-add pool1 team1 team2
 
-    $ tsuru-admin pool-teams-add pool2 team3
+    $ tsuru pool-teams-add pool2 team3
 
 Listing pools
 -------------
@@ -96,25 +96,24 @@ To list pools you do:
 Removing a pool
 ---------------
 
-If you want to remove a pool, use `tsuru-admin pool-remove`:
+If you want to remove a pool, use `tsuru pool-remove`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin pool-remove pool1
+    $ tsuru pool-remove pool1
 
 
 Removing teams from a pool
 --------------------------
 
-You can remove one or more teams from a pool using the command `tsuru-admin
-pool-teams-remove`:
+You can remove one or more teams from a pool using the command `tsuru pool-teams-remove`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin pool-teams-remove pool1 team1
+    $ tsuru pool-teams-remove pool1 team1
 
-    $ tsuru-admin pool-teams-remove pool1 team1 team2 team3
+    $ tsuru pool-teams-remove pool1 team1 team2 team3
