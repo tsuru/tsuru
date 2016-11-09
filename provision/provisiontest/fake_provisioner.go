@@ -1260,7 +1260,7 @@ func (p *FakeProvisioner) RegisterUnit(a provision.App, unitId string, customDat
 			return nil
 		}
 	}
-	return errors.New("unit not found")
+	return &provision.UnitNotFoundError{ID: unitId}
 }
 
 func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {

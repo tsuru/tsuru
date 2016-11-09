@@ -1193,7 +1193,7 @@ func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	err = p.RegisterUnit(app, unit.ID, nil)
-	c.Assert(err, check.ErrorMatches, "unit not found")
+	c.Assert(err, check.ErrorMatches, "unit \"unit/1\" not found")
 }
 
 func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
