@@ -357,6 +357,9 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 			"label": {labelAppName.String() + "=" + a.GetName()},
 		},
 	})
+	if err != nil {
+		return err
+	}
 	task, err := findTaskByContainerId(tasks, unitId)
 	if err != nil {
 		return err
