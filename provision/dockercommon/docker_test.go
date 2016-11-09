@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -102,4 +103,29 @@ Pushed
 		LegacyProcesses: map[string]string{},
 		ExposedPort:     "3000/tcp",
 	})
+}
+
+func (s *S) TestUploadToContainer(c *check.C) {
+	srv, err := testing.NewServer("0.0.0.0:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	baseImgName := "baseImg"
+	err = cli.PullImage(docker.PullImageOptions{Repository: baseImgName}, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
+	cont, err := cli.CreateContainer(docker.CreateContainerOptions{
+		Config: &docker.Config{
+			Image: baseImgName,
+		},
+		HostConfig: &docker.HostConfig{},
+	})
+	c.Assert(err, check.IsNil)
+	err = cli.StartContainer(cont.ID, nil)
+	c.Assert(err, check.IsNil)
+	buf := strings.NewReader("my data")
+	imgId, path, err := UploadToContainer(cli, cont.ID, buf, int64(buf.Len()))
+	c.Assert(err, check.IsNil)
+	c.Assert(imgId, check.Matches, "^img-.{32}$")
+	c.Assert(path, check.Equals, "file:///home/application/archive.tar.gz")
 }

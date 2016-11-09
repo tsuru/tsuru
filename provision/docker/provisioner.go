@@ -463,8 +463,6 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if build {
 		return "", errors.New("running UploadDeploy with build=true is not yet supported")
 	}
-	dirPath := "/home/application/"
-	filePath := fmt.Sprintf("%sarchive.tar.gz", dirPath)
 	user, err := config.GetString("docker:user")
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
@@ -507,60 +505,17 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if err != nil {
 		return "", err
 	}
-	reader, writer := io.Pipe()
-	tarball := tar.NewWriter(writer)
-	if err != nil {
-		return "", err
-	}
-	go func() {
-		header := tar.Header{
-			Name: "archive.tar.gz",
-			Mode: 0666,
-			Size: fileSize,
-		}
-		tarball.WriteHeader(&header)
-		n, tarErr := io.Copy(tarball, archiveFile)
-		if tarErr != nil {
-			log.Errorf("upload-deploy: unable to copy archive to tarball: %s", tarErr)
-			writer.CloseWithError(tarErr)
-			tarball.Close()
-			return
-		}
-		if n != fileSize {
-			msg := "upload-deploy: short-write copying to tarball"
-			log.Errorf(msg)
-			tarErr = errors.New(msg)
-			writer.CloseWithError(tarErr)
-			tarball.Close()
-			return
-		}
-		tarErr = tarball.Close()
-		if tarErr != nil {
-			writer.CloseWithError(tarErr)
-		}
-		writer.Close()
-	}()
-	uploadOpts := docker.UploadToContainerOptions{
-		InputStream: reader,
-		Path:        dirPath,
-	}
-	err = cluster.UploadToContainer(cont.ID, uploadOpts)
-	if err != nil {
-		return "", err
-	}
+	intermediateImageID, fileURI, err := dockercommon.UploadToContainer(cluster, cont.ID, archiveFile, fileSize)
 	done = p.ActionLimiter().Start(hostAddr)
-	err = cluster.StopContainer(cont.ID, 10)
+	stopErr := cluster.StopContainer(cont.ID, 10)
 	done()
+	if stopErr != nil {
+		return "", stopErr
+	}
 	if err != nil {
 		return "", err
 	}
-	done = p.ActionLimiter().Start(hostAddr)
-	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
-	done()
-	if err != nil {
-		return "", err
-	}
-	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, evt)
+	imageId, err := p.archiveDeploy(app, intermediateImageID, fileURI, evt)
 	if err != nil {
 		return "", err
 	}
