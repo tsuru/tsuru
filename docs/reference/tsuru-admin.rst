@@ -6,6 +6,7 @@
 tsuru-admin usage
 +++++++++++++++++
 
-tsuru-admin command supports administrative operations on a tsuru server.
+.. warning::
 
-See the tsuru-admin documentation for a full reference: http://tsuru-admin.readthedocs.org.
+  Since tsuru version 1.2 the ``tsuru-admin`` client was fully replaced by
+  the :doc:`tsuru client</reference/tsuru-client>`.
