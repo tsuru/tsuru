@@ -222,7 +222,7 @@ func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a pr
 		Type:        a.GetPlatform(),
 		Ip:          host,
 		Status:      stateMap[task.Status.State],
-		Address:     nil,
+		Address:     &url.URL{},
 	}
 }
 
@@ -312,7 +312,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	}
 	nodes, err := client.ListNodes(docker.ListNodesOptions{
 		Filters: map[string][]string{
-			"labels": {labelNodePoolName.String() + "=" + a.GetPool()},
+			"label": {labelNodePoolName.String() + "=" + a.GetPool()},
 		},
 	})
 	if err != nil {
@@ -529,29 +529,29 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
-func (p *swarmProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {
-	baseImage := image.GetBuildImage(app)
-	buildingImage, err := image.AppNewImageName(app.GetName())
+func (p *swarmProvisioner) ArchiveDeploy(a provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {
+	baseImage := image.GetBuildImage(a)
+	buildingImage, err := image.AppNewImageName(a.GetName())
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	cmds := dockercommon.ArchiveDeployCmds(app, archiveURL)
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
 	}
-	srvID, task, err := runOnceBuildCmds(client, app, cmds, baseImage, buildingImage, evt)
+	cmds := dockercommon.ArchiveDeployCmds(a, archiveURL)
+	srvID, task, err := runOnceBuildCmds(client, a, cmds, baseImage, buildingImage, evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
 	if err != nil {
 		return "", err
 	}
-	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, app)
+	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, a)
 	if err != nil {
 		return "", err
 	}
-	err = deployProcesses(client, app, buildingImage, nil)
+	err = deployProcesses(client, a, buildingImage, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -596,6 +596,84 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 		return "", err
 	}
 	return newImage, nil
+}
+
+func (p *swarmProvisioner) UploadDeploy(a provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
+	defer archiveFile.Close()
+	if build {
+		return "", errors.New("running UploadDeploy with build=true is not yet supported")
+	}
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return "", err
+	}
+	baseImage := image.GetBuildImage(a)
+	buildingImage, err := image.AppNewImageName(a.GetName())
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	spec, err := serviceSpecForApp(tsuruServiceOpts{
+		app:        a,
+		image:      baseImage,
+		isDeploy:   true,
+		buildImage: buildingImage,
+	})
+	if err != nil {
+		return "", err
+	}
+	spec.TaskTemplate.ContainerSpec.Command = []string{"/usr/bin/tail", "-f", "/dev/null"}
+	spec.TaskTemplate.RestartPolicy.Condition = swarm.RestartPolicyConditionNone
+	srv, err := client.CreateService(docker.CreateServiceOptions{
+		ServiceSpec: *spec,
+	})
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	tasks, err := waitForTasks(client, srv.ID, swarm.TaskStateRunning)
+	if err != nil {
+		return "", err
+	}
+	client, err = clientForNode(client, tasks[0].NodeID)
+	if err != nil {
+		return "", err
+	}
+	contID := tasks[0].Status.ContainerStatus.ContainerID
+	imageID, fileURI, err := dockercommon.UploadToContainer(client, contID, archiveFile, fileSize)
+	removeErr := client.RemoveService(docker.RemoveServiceOptions{
+		ID: srv.ID,
+	})
+	if removeErr != nil {
+		return "", errors.WithStack(removeErr)
+	}
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	cmds := dockercommon.ArchiveDeployCmds(a, fileURI)
+	opts := tsuruServiceOpts{
+		app:        a,
+		image:      imageID,
+		isDeploy:   true,
+		buildImage: buildingImage,
+		constraints: []string{
+			fmt.Sprintf("node.id == %s", tasks[0].NodeID),
+		},
+	}
+	srvID, task, err := runOnceCmds(client, opts, cmds, evt, evt)
+	if srvID != "" {
+		defer removeServiceAndLog(client, srvID)
+	}
+	if err != nil {
+		return "", err
+	}
+	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, a)
+	if err != nil {
+		return "", err
+	}
+	err = deployProcesses(client, a, buildingImage, nil)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return buildingImage, nil
 }
 
 func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {

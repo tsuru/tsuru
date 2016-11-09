@@ -256,6 +256,7 @@ type tsuruServiceOpts struct {
 	isDeploy      bool
 	isIsolatedRun bool
 	processState  processState
+	constraints   []string
 }
 
 func extraRegisterCmds(app provision.App) string {
@@ -277,16 +278,23 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	host, _ := config.GetString("host")
 	envs = append(envs, fmt.Sprintf("%s=%s", "TSURU_HOST", host))
-	var ports []swarm.PortConfig
 	var cmds []string
 	var err error
+	var endpointSpec *swarm.EndpointSpec
+	var networks []swarm.NetworkAttachmentConfig
 	if !opts.isDeploy && !opts.isIsolatedRun {
 		envs = append(envs, []string{
 			fmt.Sprintf("%s=%s", "port", "8888"),
 			fmt.Sprintf("%s=%s", "PORT", "8888"),
 		}...)
-		ports = []swarm.PortConfig{
-			{TargetPort: 8888, PublishedPort: 0},
+		endpointSpec = &swarm.EndpointSpec{
+			Mode: swarm.ResolutionModeVIP,
+			Ports: []swarm.PortConfig{
+				{TargetPort: 8888, PublishedPort: 0},
+			},
+		}
+		networks = []swarm.NetworkAttachmentConfig{
+			{Target: networkNameForApp(opts.app)},
 		}
 		extra := []string{extraRegisterCmds(opts.app)}
 		cmds, _, err = dockercommon.LeanContainerCmdsWithExtra(opts.process, opts.image, opts.app, extra)
@@ -348,9 +356,11 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		labelProcessReplicas.String():    strconv.Itoa(replicas),
 		labelServiceRestart.String():     strconv.Itoa(restartCount),
 	}
-	networks := []swarm.NetworkAttachmentConfig{
-		{Target: networkNameForApp(opts.app)},
+	user, err := config.GetString("docker:user")
+	if err != nil {
+		user, _ = config.GetString("docker:ssh:user")
 	}
+	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.pool == %s", opts.app.GetPool()))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -358,22 +368,18 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 				Env:     envs,
 				Labels:  labels,
 				Command: cmds,
+				User:    user,
 			},
 			Networks: networks,
 			RestartPolicy: &swarm.RestartPolicy{
 				Condition: swarm.RestartPolicyConditionAny,
 			},
 			Placement: &swarm.Placement{
-				Constraints: []string{
-					fmt.Sprintf("node.labels.pool == %s", opts.app.GetPool()),
-				},
+				Constraints: opts.constraints,
 			},
 		},
-		Networks: networks,
-		EndpointSpec: &swarm.EndpointSpec{
-			Mode:  swarm.ResolutionModeVIP,
-			Ports: ports,
-		},
+		Networks:     networks,
+		EndpointSpec: endpointSpec,
 		Annotations: swarm.Annotations{
 			Name:   srvName,
 			Labels: labels,
