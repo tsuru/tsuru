@@ -1179,7 +1179,7 @@ func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	ip := units[0].Ip
-	err = p.RegisterUnit(unit, nil)
+	err = p.RegisterUnit(app, unit.ID, nil)
 	c.Assert(err, check.IsNil)
 	units, err = p.Units(app)
 	c.Assert(err, check.IsNil)
@@ -1192,7 +1192,7 @@ func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	err = p.RegisterUnit(unit, nil)
+	err = p.RegisterUnit(app, unit.ID, nil)
 	c.Assert(err, check.ErrorMatches, "unit not found")
 }
 
@@ -1207,7 +1207,7 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ip := units[0].Ip
 	data := map[string]interface{}{"my": "data"}
-	err = p.RegisterUnit(unit, data)
+	err = p.RegisterUnit(app, unit.ID, data)
 	c.Assert(err, check.IsNil)
 	units, err = p.Units(app)
 	c.Assert(err, check.IsNil)

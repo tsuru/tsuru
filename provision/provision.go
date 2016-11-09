@@ -343,7 +343,7 @@ type Provisioner interface {
 	RoutableAddresses(App) ([]url.URL, error)
 
 	// Register a unit after the container has been created or restarted.
-	RegisterUnit(Unit, map[string]interface{}) error
+	RegisterUnit(App, string, map[string]interface{}) error
 }
 
 // MetricsProvisioner is a provisioner that exposes environment variables

@@ -270,7 +270,7 @@ func (s *S) TestArchiveDeployRegisterRace(c *check.C) {
 		go func(path string) {
 			parts := strings.Split(path, "/")
 			if len(parts) == 4 && parts[3] == "start" {
-				registerErr := p.RegisterUnit(provision.Unit{ID: parts[2]}, nil)
+				registerErr := p.RegisterUnit(nil, parts[2], nil)
 				if registerErr == nil {
 					atomic.AddInt64(&registerCount, 1)
 				}

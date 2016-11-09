@@ -1244,19 +1244,19 @@ func (p *FakeProvisioner) Sleep(app provision.App, process string) error {
 	return nil
 }
 
-func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
+func (p *FakeProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	a, ok := p.apps[unit.AppName]
+	pa, ok := p.apps[a.GetName()]
 	if !ok {
 		return errors.New("app not found")
 	}
-	a.lastData = customData
-	for i, u := range a.units {
-		if u.ID == unit.ID {
+	pa.lastData = customData
+	for i, u := range pa.units {
+		if u.ID == unitId {
 			u.Ip = u.Ip + "-updated"
-			a.units[i] = u
-			p.apps[unit.AppName] = a
+			pa.units[i] = u
+			p.apps[a.GetName()] = pa
 			return nil
 		}
 	}

@@ -75,7 +75,7 @@ func (p *mesosProvisioner) RoutableAddresses(app provision.App) ([]url.URL, erro
 	return nil, errNotImplemented
 }
 
-func (p *mesosProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
+func (p *mesosProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
 	return errNotImplemented
 }
 

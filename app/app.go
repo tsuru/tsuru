@@ -1635,20 +1635,11 @@ func (app *App) GetUpdatePlatform() bool {
 }
 
 func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) error {
-	units, err := app.Units()
+	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
-	for _, unit := range units {
-		if strings.HasPrefix(unit.ID, unitId) {
-			prov, err := app.getProvisioner()
-			if err != nil {
-				return err
-			}
-			return prov.RegisterUnit(unit, customData)
-		}
-	}
-	return &provision.UnitNotFoundError{ID: unitId}
+	return prov.RegisterUnit(app, unitId, customData)
 }
 
 func (app *App) GetRouter() (string, error) {

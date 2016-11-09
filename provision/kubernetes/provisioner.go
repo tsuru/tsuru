@@ -79,7 +79,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(app provision.App) ([]url.URL,
 	return nil, errNotImplemented
 }
 
-func (p *kubernetesProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
+func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
 	return errNotImplemented
 }
 

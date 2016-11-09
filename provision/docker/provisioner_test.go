@@ -2749,7 +2749,8 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {
-	err := s.storage.Apps().Insert(&app.App{Name: "myawesomeapp"})
+	a := &app.App{Name: "myawesomeapp"}
+	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -2762,7 +2763,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, nil)
+	err = s.p.RegisterUnit(a, container.ID, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -2771,9 +2772,10 @@ func (s *S) TestRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
+	a := &app.App{Name: "myawesomeapp"}
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: a.Name}
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -2782,7 +2784,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, nil)
+	err = s.p.RegisterUnit(a, container.ID, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -2791,9 +2793,10 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
+	a := &app.App{Name: "myawesomeapp"}
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: a.Name}
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -2804,7 +2807,7 @@ func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
 	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py"}
-	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
+	err = s.p.RegisterUnit(a, container.ID, data)
 	c.Assert(err, check.IsNil)
 	image, err := image.GetImageCustomData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
@@ -2814,9 +2817,10 @@ func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
+	a := &app.App{Name: "myawesomeapp"}
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: a.Name}
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -2834,7 +2838,7 @@ func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
 			"worker": "python worker.py",
 		},
 	}
-	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
+	err = s.p.RegisterUnit(a, container.ID, data)
 	c.Assert(err, check.IsNil)
 	image, err := image.GetImageCustomData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
@@ -2844,9 +2848,10 @@ func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitInvalidProcfile(c *check.C) {
+	a := &app.App{Name: "myawesomeapp"}
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: a.Name}
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -2857,7 +2862,7 @@ func (s *S) TestRegisterUnitInvalidProcfile(c *check.C) {
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
 	data := map[string]interface{}{"mydata": "value", "procfile": "aaaaaaaaaaaaaaaaaaaaaa"}
-	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
+	err = s.p.RegisterUnit(a, container.ID, data)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "invalid Procfile")
 }

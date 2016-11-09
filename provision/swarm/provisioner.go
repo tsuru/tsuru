@@ -285,12 +285,18 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 		return nil, err
 	}
 	imgID, err := image.AppCurrentImageName(a.GetName())
-	if err != nil && err != image.ErrNoImagesAvailable {
-		return nil, err
+	if err != nil {
+		if err != image.ErrNoImagesAvailable {
+			return nil, err
+		}
+		return nil, nil
 	}
 	webProcessName, err := image.GetImageWebProcessName(imgID)
 	if err != nil {
 		return nil, err
+	}
+	if webProcessName == "" {
+		return nil, nil
 	}
 	srvName := serviceNameForApp(a, webProcessName)
 	srv, err := client.InspectService(srvName)
@@ -324,45 +330,54 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	return addrs, nil
 }
 
-func bindUnit(client *docker.Client, unit *provision.Unit) error {
-	a, err := app.GetByName(unit.AppName)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	err = a.BindUnit(unit)
+func bindUnit(a provision.App, unit *provision.Unit) error {
+	err := a.BindUnit(unit)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func (p *swarmProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
+func findTaskByContainerId(tasks []swarm.Task, unitId string) (*swarm.Task, error) {
+	for i, t := range tasks {
+		if strings.HasPrefix(t.Status.ContainerStatus.ContainerID, unitId) {
+			return &tasks[i], nil
+		}
+	}
+	return nil, &provision.UnitNotFoundError{ID: unitId}
+}
+
+func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
 	}
-	err = bindUnit(client, &unit)
+	tasks, err := client.ListTasks(docker.ListTasksOptions{
+		Filters: map[string][]string{
+			"label": {labelAppName.String() + "=" + a.GetName()},
+		},
+	})
+	task, err := findTaskByContainerId(tasks, unitId)
+	if err != nil {
+		return err
+	}
+	units, err := tasksToUnits(client, []swarm.Task{*task})
+	if err != nil {
+		return err
+	}
+	err = bindUnit(a, &units[0])
 	if err != nil {
 		return err
 	}
 	if customData == nil {
 		return nil
 	}
-	tasks, err := client.ListTasks(docker.ListTasksOptions{
-		Filters: map[string][]string{
-			"label": {labelServiceDeploy.String() + "=true"},
-			"id":    {unit.ID},
-		},
-	})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if len(tasks) == 0 {
+	if task.Spec.ContainerSpec.Labels[labelServiceDeploy.String()] != "true" {
 		return nil
 	}
-	buildingImage := tasks[0].Spec.ContainerSpec.Labels[labelServiceBuildImage.String()]
+	buildingImage := task.Spec.ContainerSpec.Labels[labelServiceBuildImage.String()]
 	if buildingImage == "" {
-		return errors.Errorf("invalid build image label for build task: %#v", tasks[0])
+		return errors.Errorf("invalid build image label for build task: %#v", task)
 	}
 	return image.SaveImageCustomData(buildingImage, customData)
 }

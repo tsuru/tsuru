@@ -1091,8 +1091,8 @@ func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]url.URL, err
 	return addrs, nil
 }
 
-func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
-	cont, err := p.GetContainer(unit.ID)
+func (p *dockerProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
+	cont, err := p.GetContainer(unitId)
 	if err != nil {
 		return err
 	}
