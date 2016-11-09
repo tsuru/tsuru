@@ -310,13 +310,15 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	if pubPort == 0 {
 		return nil, nil
 	}
-	nodes, err := client.ListNodes(docker.ListNodesOptions{
-		Filters: map[string][]string{
-			"label": {labelNodePoolName.String() + "=" + a.GetPool()},
-		},
-	})
+	nodes, err := client.ListNodes(docker.ListNodesOptions{})
 	if err != nil {
 		return nil, err
+	}
+	for i := len(nodes) - 1; i >= 0; i-- {
+		if nodes[i].Spec.Annotations.Labels[labelNodePoolName.String()] != a.GetPool() {
+			nodes[i], nodes[len(nodes)-1] = nodes[len(nodes)-1], nodes[i]
+			nodes = nodes[:len(nodes)-1]
+		}
 	}
 	addrs := make([]url.URL, len(nodes))
 	for i, n := range nodes {

@@ -382,10 +382,12 @@ func (s *S) TestRoutableUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
+	opts := provision.AddNodeOptions{Address: srv.URL(), Metadata: map[string]string{"pool": "px"}}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = provision.AddPool(provision.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1, Pool: "px"}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	imgName := "myapp:v1"
@@ -404,6 +406,34 @@ func (s *S) TestRoutableUnits(c *check.C) {
 	c.Assert(addrs, check.DeepEquals, []url.URL{
 		{Scheme: "http", Host: "127.0.0.1:30000"},
 	})
+}
+
+func (s *S) TestRoutableUnitsNoNodesInPool(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL(), Metadata: map[string]string{"pool": "py"}}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	err = provision.AddPool(provision.AddPoolOptions{Name: "px", Public: true, Provisioner: "swarm"})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1, Pool: "px"}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 10, "web", nil)
+	c.Assert(err, check.IsNil)
+	addrs, err := s.p.RoutableAddresses(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.DeepEquals, []url.URL{})
 }
 
 func (s *S) TestAddUnits(c *check.C) {
