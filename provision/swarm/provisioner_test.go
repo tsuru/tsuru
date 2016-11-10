@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -583,6 +584,48 @@ func (s *S) TestAddUnitsZeroUnits(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `cannot change 0 units`)
 }
 
+func (s *S) TestAddUnitsWithHealthcheck(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+		"healthcheck": provision.TsuruYamlHealthcheck{
+			Path: "/hc",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	service, err := cli.InspectService(serviceNameForApp(a, "web"))
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Healthcheck, check.DeepEquals, &container.HealthConfig{
+		Test: []string{
+			"CMD-SHELL",
+			"curl -XGET -fsSL http://localhost:8888/hc -o/dev/null -w '%{http_code}' | grep 200",
+		},
+		Timeout:  120 * time.Second,
+		Retries:  1,
+		Interval: 3 * time.Second,
+	})
+}
+
 func (s *S) TestRemoveUnits(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -1015,7 +1058,6 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 }
 
 func (s *S) TestDeployServiceBind(c *check.C) {
-	c.Skip("no support for service bind in the provisioner just yet")
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
@@ -1055,9 +1097,9 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	})
 	cli, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
-	cont, err := cli.InspectContainer(units[0].ID)
+	task, err := cli.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
+	c.Assert(task.Spec.ContainerSpec.Command, check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
 		fmt.Sprintf(

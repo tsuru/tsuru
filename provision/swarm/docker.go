@@ -13,10 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -282,15 +284,18 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	var err error
 	var endpointSpec *swarm.EndpointSpec
 	var networks []swarm.NetworkAttachmentConfig
+	var healthConfig *container.HealthConfig
+	port := dockercommon.WebProcessDefaultPort()
+	portInt, _ := strconv.Atoi(port)
 	if !opts.isDeploy && !opts.isIsolatedRun {
 		envs = append(envs, []string{
-			fmt.Sprintf("%s=%s", "port", "8888"),
-			fmt.Sprintf("%s=%s", "PORT", "8888"),
+			fmt.Sprintf("%s=%s", "port", port),
+			fmt.Sprintf("%s=%s", "PORT", port),
 		}...)
 		endpointSpec = &swarm.EndpointSpec{
 			Mode: swarm.ResolutionModeVIP,
 			Ports: []swarm.PortConfig{
-				{TargetPort: 8888, PublishedPort: 0},
+				{TargetPort: uint32(portInt), PublishedPort: 0},
 			},
 		}
 		networks = []swarm.NetworkAttachmentConfig{
@@ -301,6 +306,12 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
+		var yamlData provision.TsuruYamlData
+		yamlData, err = image.GetImageTsuruYamlData(opts.image)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		healthConfig = toHealthConfig(yamlData.Healthcheck, portInt)
 	}
 	restartCount := 0
 	replicas := 0
@@ -364,11 +375,12 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
-				Image:   opts.image,
-				Env:     envs,
-				Labels:  labels,
-				Command: cmds,
-				User:    user,
+				Image:       opts.image,
+				Env:         envs,
+				Labels:      labels,
+				Command:     cmds,
+				User:        user,
+				Healthcheck: healthConfig,
 			},
 			Networks: networks,
 			RestartPolicy: &swarm.RestartPolicy{
