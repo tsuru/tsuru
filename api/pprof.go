@@ -67,3 +67,17 @@ func symbolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pprof.Symbol(w, r)
 	return nil
 }
+
+// title: profile trace handler
+// path: /debug/pprof/trace
+// method: GET
+// responses:
+//   200: Ok
+//   401: Unauthorized
+func traceHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermDebug) {
+		return permission.ErrUnauthorized
+	}
+	pprof.Trace(w, r)
+	return nil
+}

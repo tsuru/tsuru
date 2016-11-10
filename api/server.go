@@ -255,6 +255,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/debug/pprof/goroutine", AuthorizationRequiredHandler(indexHandler))
 	m.Add("1.0", "Get", "/debug/pprof/threadcreate", AuthorizationRequiredHandler(indexHandler))
 	m.Add("1.0", "Get", "/debug/pprof/block", AuthorizationRequiredHandler(indexHandler))
+	m.Add("1.0", "Get", "/debug/pprof/trace", AuthorizationRequiredHandler(traceHandler))
 
 	m.Add("1.2", "GET", "/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.2", "GET", "/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
