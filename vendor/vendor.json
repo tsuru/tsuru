@@ -674,10 +674,10 @@
 			"revisionTime": "2016-09-28T17:57:05-07:00"
 		},
 		{
-			"checksumSHA1": "v3bUrIqveSmuSQd4g7zmgzQHXAE=",
+			"checksumSHA1": "2hNSE9dzQg/RLX17++mtfCQ3Wgs=",
 			"path": "github.com/docker/machine/libmachine/drivers/plugin/localbinary",
-			"revision": "382d228a2485dc8ca8ed12c487817ac4465310eb",
-			"revisionTime": "2016-09-28T17:57:05-07:00"
+			"revision": "32185d47d2b8ad336a602d8a52645b99d6514796",
+			"revisionTime": "2016-11-11T11:28:06-08:00"
 		},
 		{
 			"checksumSHA1": "xVMjFOjdcs/Mhhc4BDnq8hM47FE=",
