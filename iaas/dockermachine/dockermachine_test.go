@@ -87,9 +87,10 @@ func (s *S) TestCreateMachine(c *check.C) {
 	dm := dmAPI.(*DockerMachine)
 	dm.client = fakeAPI
 	driverOpts := map[string]interface{}{
-		"amazonec2-access-key": "access-key",
-		"amazonec2-secret-key": "secret-key",
-		"amazonec2-subnet-id":  "subnet-id",
+		"amazonec2-access-key":     "access-key",
+		"amazonec2-secret-key":     "secret-key",
+		"amazonec2-subnet-id":      "subnet-id",
+		"amazonec2-security-group": "sg1,sg2",
 	}
 	opts := CreateMachineOpts{
 		Name:                   "my-machine",
@@ -114,6 +115,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(fakeAPI.ec2Driver.AccessKey, check.Equals, "access-key")
 	c.Assert(fakeAPI.ec2Driver.SecretKey, check.Equals, "secret-key")
 	c.Assert(fakeAPI.ec2Driver.SubnetId, check.Equals, "subnet-id")
+	c.Assert(fakeAPI.ec2Driver.SecurityGroupNames, check.DeepEquals, []string{"sg1", "sg2"})
 	engineOpts := fakeAPI.Hosts[0].HostOptions.EngineOptions
 	c.Assert(engineOpts.InsecureRegistry, check.DeepEquals, []string{"registry.com"})
 	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")

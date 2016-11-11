@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/machine/libmachine"
 	"github.com/docker/machine/libmachine/drivers"
@@ -17,6 +18,7 @@ import (
 	"github.com/docker/machine/libmachine/engine"
 	"github.com/docker/machine/libmachine/host"
 	"github.com/docker/machine/libmachine/log"
+	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
@@ -313,11 +315,17 @@ func newMachine(h *host.Host) (*Machine, error) {
 func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) error {
 	opts := &rpcdriver.RPCFlags{Values: driverOpts}
 	for _, c := range driver.GetCreateFlags() {
-		_, ok := opts.Values[c.String()]
+		val, ok := opts.Values[c.String()]
 		if !ok {
 			opts.Values[c.String()] = c.Default()
 			if c.Default() == nil {
 				opts.Values[c.String()] = false
+			}
+		} else {
+			if _, ok := c.(mcnflag.StringSliceFlag); ok {
+				if strVal, ok := val.(string); ok {
+					opts.Values[c.String()] = strings.Split(strVal, ",")
+				}
 			}
 		}
 	}
