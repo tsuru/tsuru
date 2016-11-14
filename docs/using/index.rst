@@ -19,6 +19,7 @@ Using
     go
     java
     php
+    docker-image
     buildpacks
     services
     recovery
