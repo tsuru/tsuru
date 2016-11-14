@@ -2,15 +2,14 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++++++++++++++++++++++++++++++++++++
-Deploying Docker Image applications in tsuru
-++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++
+Deploying Docker Image applications
++++++++++++++++++++++++++++++++++++
 
 Overview
 ========
 
-This document is a hands-on guide to deploying a simple Docker Image web application in
-tsuru.
+This document is a hands-on guide to deploying a simple Docker Image web application.
 
 Creating the app within tsuru
 =============================
@@ -130,12 +129,12 @@ After push your image to your Docker image registry, you can do the deploy using
 
 ::
 
-    tsuru app-deploy -i registry.myserver.com/image-name
+    tsuru app-deploy -i registry.myserver.com/image-name -a helloworld
 
 
 .. note::
 
-    This image should be in a registry and be accessible by tsuru api. 
+    This image should be in a registry and be accessible by the nodes. 
     Image should also have a Entrypoint or a Procfile at given paths, / or /app/user/ or /home/application/current
 
 
