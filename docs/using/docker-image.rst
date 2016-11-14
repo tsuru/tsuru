@@ -11,8 +11,8 @@ Overview
 
 This document is a hands-on guide to deploying a simple Docker Image web application.
 
-Creating the app within tsuru
-=============================
+Creating the app
+================
 
 To create an app, you use the command `app-create`:
 
@@ -49,7 +49,7 @@ You can see all your applications using the command  `app-list`:
 Application code
 ================
 
-A simples `Dockerfile`:
+A simple `Dockerfile`:
 
 .. highligth:: Dockerfile
 
@@ -108,9 +108,9 @@ Buildind the image
     docker build -t registry.myserver.com/image-name .
 
 
-Don't forgot the dot(.) at the end of the command, this indicates where the Dockerfile stay
+Don't forget the dot(.) at the end of the command, this indicates where the Dockerfile is placed
 
-Sending the image for regitry
+Sending the image to registry
 =============================
 
 .. highlight:: bash
@@ -123,7 +123,7 @@ Sending the image for regitry
 Docker Image deployment
 =======================
 
-After push your image to your Docker image registry, you can do the deploy using the command `tsuru app-deploy -i`.
+After pushing your image to your Docker image registry, you can do the deploy using the command `tsuru app-deploy -i`.
 
 .. highlight:: bash
 
