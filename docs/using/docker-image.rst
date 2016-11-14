@@ -9,7 +9,7 @@ Deploying Docker Image applications
 Overview
 ========
 
-This document is a hands-on guide to deploying a simple Docker Image web application.
+This document is a hands-on guide to deploy a simple Docker Image web application.
 
 Creating the app
 ================
@@ -22,7 +22,7 @@ To create an app, you use the command `app-create`:
 
     $ tsuru app-create <app-name> <app-platform>
 
-For Docker Images, not exists one specific platform, but we can use ``static``! Let's be over creative and develop a hello
+For Docker Images, doesn't exist a specific platform, but we can use ``static``! Let's be over creative and develop a hello
 world tutorial-app, let's call it "helloworld":
 
 .. highlight:: bash
@@ -96,7 +96,7 @@ A simple web application in Go `main.go`:
     }
 
 
-Buildind the image
+Building the image
 ==================
 
 .. highlight:: bash
