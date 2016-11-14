@@ -51,7 +51,7 @@ Application code
 
 A simple `Dockerfile`:
 
-.. highligth:: Dockerfile
+.. highlight:: Dockerfile
 
 ::
 
@@ -134,7 +134,7 @@ After pushing your image to your Docker image registry, you can do the deploy us
 
 .. note::
 
-    This image should be in a registry and be accessible by the nodes. 
+    This image should be in a registry and be accessible by the nodes.
     Image should also have a Entrypoint or a Procfile at given paths, / or /app/user/ or /home/application/current
 
 
