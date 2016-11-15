@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	_ "github.com/tsuru/tsuru/provision/docker"
 	_ "github.com/tsuru/tsuru/provision/kubernetes"
+	_ "github.com/tsuru/tsuru/provision/mesos"
 	_ "github.com/tsuru/tsuru/provision/swarm"
 	_ "github.com/tsuru/tsuru/repository/gandalf"
 )
