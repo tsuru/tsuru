@@ -5,6 +5,7 @@
 package dockermachine
 
 import (
+	cloudstack "github.com/andrestc/docker-machine-driver-cloudstack"
 	"github.com/docker/machine/drivers/amazonec2"
 	"github.com/docker/machine/drivers/azure"
 	"github.com/docker/machine/drivers/digitalocean"
@@ -21,8 +22,13 @@ import (
 	"github.com/docker/machine/drivers/vmwarevcloudair"
 	"github.com/docker/machine/drivers/vmwarevsphere"
 	"github.com/docker/machine/libmachine/drivers/plugin"
+	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
 	"github.com/pkg/errors"
 )
+
+func init() {
+	localbinary.CoreDrivers = append(localbinary.CoreDrivers, "cloudstack")
+}
 
 func RunDriver(driverName string) error {
 	switch driverName {
@@ -56,6 +62,8 @@ func RunDriver(driverName string) error {
 		plugin.RegisterDriver(vmwarevcloudair.NewDriver("", ""))
 	case "vmwarevsphere":
 		plugin.RegisterDriver(vmwarevsphere.NewDriver("", ""))
+	case "cloudstack":
+		plugin.RegisterDriver(cloudstack.NewDriver("", ""))
 	default:
 		return errors.Errorf("Unsupported driver: %s\n", driverName)
 	}
