@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -57,6 +58,10 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	}
 	dockerEngineInstallURL, _ := i.getParamOrConfigString("docker-install-url", params)
 	insecureRegistry, _ := i.getParamOrConfigString("insecure-registry", params)
+	var engineFlags []string
+	if f, err := i.getParamOrConfigString("docker-flags", params); err == nil {
+		engineFlags = strings.Split(f, ",")
+	}
 	machineName, ok := params["name"]
 	if !ok {
 		id, err := generateRandomID()
@@ -107,6 +112,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		Params:                 driverOpts,
 		InsecureRegistry:       insecureRegistry,
 		DockerEngineInstallURL: dockerEngineInstallURL,
+		ArbitraryFlags:         engineFlags,
 	})
 	if err != nil {
 		if m != nil {

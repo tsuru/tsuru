@@ -99,6 +99,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 		InsecureRegistry:       "registry.com",
 		DockerEngineInstallURL: "https://getdocker2.com",
 		RegistryMirror:         "http://registry-mirror.com",
+		ArbitraryFlags:         []string{"flag1", "flag2"},
 	}
 	m, err := dm.CreateMachine(opts)
 	c.Assert(err, check.IsNil)
@@ -121,6 +122,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")
 	c.Assert(engineOpts.RegistryMirror, check.DeepEquals, []string{"http://registry-mirror.com"})
 	c.Assert(m.Host, check.DeepEquals, fakeAPI.Hosts[0])
+	c.Assert(engineOpts.ArbitraryFlags, check.DeepEquals, []string{"flag1", "flag2"})
 }
 
 func (s *S) TestDeleteMachine(c *check.C) {
