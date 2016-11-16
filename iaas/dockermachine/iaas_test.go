@@ -77,7 +77,8 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.DeepEquals, "host-name")
 	c.Assert(m.CreationParams["driver"], check.Equals, "driver-name")
-	c.Assert(m.CreationParams["driver-userdata"], check.Not(check.Equals), "")
+	c.Assert(FakeDM.hostOpts.Params["driver-userdata"], check.Not(check.Equals), "")
+	c.Assert(m.CreationParams["driver-userdata"], check.Equals, "")
 	c.Assert(FakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
 }
 

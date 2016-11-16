@@ -85,6 +85,9 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		params[userDataFileParam] = f.Name()
 	}
 	driverOpts := i.buildDriverOpts(driverName, params)
+	if userDataFileParam != "" {
+		delete(params, userDataFileParam)
+	}
 	buf := &bytes.Buffer{}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
 		CaPath:    caPath,
