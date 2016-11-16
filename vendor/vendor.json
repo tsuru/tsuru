@@ -140,6 +140,12 @@
 			"revisionTime": "2016-04-29T22:15:17Z"
 		},
 		{
+			"checksumSHA1": "NQbAond1ilQhVamuFD9IpveUZag=",
+			"path": "github.com/andrestc/docker-machine-driver-cloudstack",
+			"revision": "d2db7727aec240810c12a7fd153a47a61f27346b",
+			"revisionTime": "2016-11-11T14:01:54-02:00"
+		},
+		{
 			"checksumSHA1": "8wY0Od/oZMtYxA/sUC2J/OTw2j8=",
 			"origin": "github.com/luizbafilho/fusis/vendor/github.com/asaskevich/govalidator",
 			"path": "github.com/asaskevich/govalidator",
@@ -1681,6 +1687,12 @@
 			"path": "github.com/vulcand/vulcand/supervisor",
 			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
 			"revisionTime": "2015-12-17T12:44:27-08:00"
+		},
+		{
+			"checksumSHA1": "0Vk+goBsAM1B/Yoam1HAl9bt4rs=",
+			"path": "github.com/xanzy/go-cloudstack/cloudstack",
+			"revision": "5686bcde5af20565d8c7a3f66b5441430ac54186",
+			"revisionTime": "2016-05-18T14:33:22+02:00"
 		},
 		{
 			"path": "golang.org/x/crypto/bcrypt",
