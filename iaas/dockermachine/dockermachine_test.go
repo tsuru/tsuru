@@ -91,6 +91,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 		"amazonec2-secret-key":     "secret-key",
 		"amazonec2-subnet-id":      "subnet-id",
 		"amazonec2-security-group": "sg1,sg2",
+		"amazonec2-root-size":      "10",
 	}
 	opts := CreateMachineOpts{
 		Name:                   "my-machine",
@@ -117,6 +118,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(fakeAPI.ec2Driver.SecretKey, check.Equals, "secret-key")
 	c.Assert(fakeAPI.ec2Driver.SubnetId, check.Equals, "subnet-id")
 	c.Assert(fakeAPI.ec2Driver.SecurityGroupNames, check.DeepEquals, []string{"sg1", "sg2"})
+	c.Assert(fakeAPI.ec2Driver.RootSize, check.Equals, int64(10))
 	engineOpts := fakeAPI.Hosts[0].HostOptions.EngineOptions
 	c.Assert(engineOpts.InsecureRegistry, check.DeepEquals, []string{"registry.com"})
 	c.Assert(engineOpts.InstallURL, check.Equals, "https://getdocker2.com")
@@ -150,6 +152,7 @@ func (s *S) TestConfigureDriver(c *check.C) {
 		"amazonec2-access-key":     "abc",
 		"amazonec2-subnet-id":      "net",
 		"amazonec2-security-group": []string{"sg-123", "sg-456"},
+		"amazonec2-root-size":      "100",
 	}
 	driver := amazonec2.NewDriver("", "")
 	err := configureDriver(driver, opts)
@@ -163,6 +166,7 @@ func (s *S) TestConfigureDriver(c *check.C) {
 	c.Assert(driver.AccessKey, check.Equals, "abc")
 	c.Assert(driver.RetryCount, check.Equals, 5)
 	c.Assert(driver.Tags, check.Equals, "my-tag1")
+	c.Assert(driver.RootSize, check.Equals, int64(100))
 }
 
 func (s *S) TestDeleteAll(c *check.C) {

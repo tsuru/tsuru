@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/docker/machine/libmachine"
@@ -324,9 +325,18 @@ func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) e
 				opts.Values[c.String()] = false
 			}
 		} else {
-			if _, ok := c.(mcnflag.StringSliceFlag); ok {
+			switch c.(type) {
+			case *mcnflag.StringSliceFlag, mcnflag.StringSliceFlag:
 				if strVal, ok := val.(string); ok {
 					opts.Values[c.String()] = strings.Split(strVal, ",")
+				}
+			case *mcnflag.IntFlag, mcnflag.IntFlag:
+				if strVal, ok := val.(string); ok {
+					v, err := strconv.Atoi(strVal)
+					if err != nil {
+						return errors.Wrap(err, "failed to parse int")
+					}
+					opts.Values[c.String()] = v
 				}
 			}
 		}
