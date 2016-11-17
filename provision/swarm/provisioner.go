@@ -82,10 +82,6 @@ func (p *swarmProvisioner) Destroy(a provision.App) error {
 		return err
 	}
 	multiErrors := tsuruErrors.NewMultiError()
-	err = client.RemoveNetwork(networkNameForApp(a))
-	if err != nil {
-		multiErrors.Add(errors.WithStack(err))
-	}
 	processes, err := allAppProcesses(a.GetName())
 	if err != nil {
 		multiErrors.Add(err)
@@ -100,6 +96,10 @@ func (p *swarmProvisioner) Destroy(a provision.App) error {
 				multiErrors.Add(errors.WithStack(err))
 			}
 		}
+	}
+	err = client.RemoveNetwork(networkNameForApp(a))
+	if err != nil {
+		multiErrors.Add(errors.WithStack(err))
 	}
 	if multiErrors.Len() > 0 {
 		return multiErrors
