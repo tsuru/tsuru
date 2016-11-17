@@ -125,9 +125,12 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
-		Address:  newAddr,
-		Metadata: newNodeMetadata,
-		WaitTO:   h.waitTimeNewMachine,
+		Address:    newAddr,
+		Metadata:   newNodeMetadata,
+		WaitTO:     h.waitTimeNewMachine,
+		CaCert:     machine.CaCert,
+		ClientCert: machine.ClientCert,
+		ClientKey:  machine.ClientKey,
 	}
 	err = node.Provisioner().AddNode(createOpts)
 	if err != nil {
