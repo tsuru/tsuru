@@ -148,11 +148,12 @@ func (s *S) TestDeleteMachine(c *check.C) {
 
 func (s *S) TestConfigureDriver(c *check.C) {
 	opts := map[string]interface{}{
-		"amazonec2-tags":           "my-tag1",
-		"amazonec2-access-key":     "abc",
-		"amazonec2-subnet-id":      "net",
-		"amazonec2-security-group": []string{"sg-123", "sg-456"},
-		"amazonec2-root-size":      "100",
+		"amazonec2-tags":                  "my-tag1",
+		"amazonec2-access-key":            "abc",
+		"amazonec2-subnet-id":             "net",
+		"amazonec2-security-group":        []string{"sg-123", "sg-456"},
+		"amazonec2-root-size":             "100",
+		"amazonec2-request-spot-instance": "true",
 	}
 	driver := amazonec2.NewDriver("", "")
 	err := configureDriver(driver, opts)
@@ -167,6 +168,7 @@ func (s *S) TestConfigureDriver(c *check.C) {
 	c.Assert(driver.RetryCount, check.Equals, 5)
 	c.Assert(driver.Tags, check.Equals, "my-tag1")
 	c.Assert(driver.RootSize, check.Equals, int64(100))
+	c.Assert(driver.RequestSpotInstance, check.Equals, true)
 }
 
 func (s *S) TestDeleteAll(c *check.C) {

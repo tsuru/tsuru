@@ -325,16 +325,20 @@ func configureDriver(driver drivers.Driver, driverOpts map[string]interface{}) e
 				opts.Values[c.String()] = false
 			}
 		} else {
-			switch c.(type) {
-			case *mcnflag.StringSliceFlag, mcnflag.StringSliceFlag:
-				if strVal, ok := val.(string); ok {
+			if strVal, ok := val.(string); ok {
+				switch c.(type) {
+				case *mcnflag.StringSliceFlag, mcnflag.StringSliceFlag:
 					opts.Values[c.String()] = strings.Split(strVal, ",")
-				}
-			case *mcnflag.IntFlag, mcnflag.IntFlag:
-				if strVal, ok := val.(string); ok {
+				case *mcnflag.IntFlag, mcnflag.IntFlag:
 					v, err := strconv.Atoi(strVal)
 					if err != nil {
-						return errors.Wrap(err, "failed to parse int")
+						return errors.Wrapf(err, "failed to set %s flag: %s is not an int", c.String(), strVal)
+					}
+					opts.Values[c.String()] = v
+				case *mcnflag.BoolFlag, mcnflag.BoolFlag:
+					v, err := strconv.ParseBool(strVal)
+					if err != nil {
+						return errors.Wrapf(err, "failed to set %s flag: %s is not a bool", c.String(), strVal)
 					}
 					opts.Values[c.String()] = v
 				}
