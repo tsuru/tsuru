@@ -720,6 +720,47 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
+	a := app.App{Name: "someapp"}
+	data := "name=someapp&platform=zend"
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
+	var appIP string
+	appIP, err = s.provisioner.Addr(&gotApp)
+	c.Assert(err, check.IsNil)
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             appIP,
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(obtained, check.DeepEquals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("someapp"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": a.Name},
+			{"name": "platform", "value": "zend"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	a := app.App{Name: "someapp"}
 	expectedPlan := app.Plan{

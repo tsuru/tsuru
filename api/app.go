@@ -262,7 +262,17 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
 		if err != nil {
-			return err
+			if err != permission.ErrTooManyTeams {
+				return err
+			}
+			teams, listErr := auth.ListTeams()
+			if listErr != nil {
+				return listErr
+			}
+			if len(teams) != 1 {
+				return err
+			}
+			a.TeamOwner = teams[0].Name
 		}
 	}
 	canCreate := permission.Check(t, permission.PermAppCreate,
