@@ -16,16 +16,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/provision/docker/nodecontainer"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2"
 )
@@ -364,33 +362,25 @@ func (a *autoScaleConfig) addNode(evt *event.Event, modelNodes []*cluster.Node) 
 	}
 	newAddr := machine.FormatNodeAddress()
 	evt.Logf("new machine created: %s - Waiting for docker to start...", newAddr)
-	createdNode := cluster.Node{
-		Address:        newAddr,
-		Metadata:       metadata,
-		CreationStatus: cluster.NodeCreationStatusPending,
+	createOpts := provision.AddNodeOptions{
+		Address:    newAddr,
+		Metadata:   metadata,
+		WaitTO:     a.WaitTimeNewMachine,
+		CaCert:     machine.CaCert,
+		ClientCert: machine.ClientCert,
+		ClientKey:  machine.ClientKey,
 	}
-	err = a.provisioner.Cluster().Register(createdNode)
-	if err != nil {
-		machine.Destroy()
-		return nil, errors.Wrapf(err, "error registering new node %s", newAddr)
-	}
-	q, err := queue.Queue()
-	if err == nil {
-		jobParams := monsterqueue.JobParams{
-			"endpoint": createdNode.Address,
-			"machine":  machine.Id,
-			"metadata": createdNode.Metadata,
-		}
-		var job monsterqueue.Job
-		job, err = q.EnqueueWait(nodecontainer.QueueTaskName, jobParams, a.WaitTimeNewMachine)
-		if err == nil {
-			_, err = job.Result()
-		}
-	}
+	err = a.provisioner.AddNode(createOpts)
 	if err != nil {
 		machine.Destroy()
 		a.provisioner.Cluster().Unregister(newAddr)
-		return nil, errors.Wrap(err, "error running bs task")
+		return nil, errors.Wrapf(err, "error adding new node %s", newAddr)
+	}
+	createdNode, err := a.provisioner.Cluster().GetNode(newAddr)
+	if err != nil {
+		machine.Destroy()
+		a.provisioner.Cluster().Unregister(newAddr)
+		return nil, errors.Wrapf(err, "error retrieving new node %s", newAddr)
 	}
 	evt.Logf("new machine created: %s - started!", newAddr)
 	return &createdNode, nil

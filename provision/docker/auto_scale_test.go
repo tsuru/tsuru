@@ -474,7 +474,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 			"result.reason":      "number of free slots is -4",
 			"nodes":              bson.M{"$size": 1},
 		},
-		LogMatches: `(?s).*not all required nodes were created: error running bs task: API error.*`,
+		LogMatches: `(?s).*not all required nodes were created: error adding new node*`,
 	}, eventtest.HasEvent)
 	containers1, err := s.p.listContainersByHost(net.URLToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
