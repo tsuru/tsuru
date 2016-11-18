@@ -65,6 +65,7 @@ type Driver struct {
 	Project              string
 	ProjectID            string
 	Tags                 []string
+	DisplayName          string
 }
 
 // GetCreateFlags registers the flags this driver adds to
@@ -186,6 +187,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "cloudstack-delete-volumes",
 			Usage: "Whether or not to delete data volumes associated with the machine upon removal",
 		},
+		mcnflag.StringFlag{
+			Name:  "cloudstack-displayname",
+			Usage: "Cloudstack virtual machine displayname",
+		},
 	}
 }
 
@@ -232,7 +237,9 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Tags = flags.StringSlice("cloudstack-resource-tag")
 	d.DeleteVolumes = flags.Bool("cloudstack-delete-volumes")
 	d.DiskSize = flags.Int("cloudstack-disk-size")
-
+	d.DisplayName = flags.String("cloudstack-displayname")
+	d.SwarmMaster = flags.Bool("swarm-master")
+	d.SwarmDiscovery = flags.String("swarm-discovery")
 	if err := d.setProject(flags.String("cloudstack-project"), flags.String("cloudstack-project-id")); err != nil {
 		return err
 	}
@@ -257,42 +264,32 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if err := d.setDiskOffering(flags.String("cloudstack-disk-offering"), flags.String("cloudstack-disk-offering-id")); err != nil {
 		return err
 	}
-
-	d.SwarmMaster = flags.Bool("swarm-master")
-	d.SwarmDiscovery = flags.String("swarm-discovery")
-
+	if d.DisplayName == "" {
+		d.DisplayName = d.MachineName
+	}
 	d.SSHKeyPair = d.MachineName
-
 	if d.ApiURL == "" {
 		return &configError{option: "api-url"}
 	}
-
 	if d.ApiKey == "" {
 		return &configError{option: "api-key"}
 	}
-
 	if d.SecretKey == "" {
 		return &configError{option: "secret-key"}
 	}
-
 	if d.Template == "" {
 		return &configError{option: "template"}
 	}
-
 	if d.ServiceOffering == "" {
 		return &configError{option: "service-offering"}
 	}
-
 	if d.Zone == "" {
 		return &configError{option: "zone"}
 	}
-
 	if len(d.CIDRList) == 0 {
 		d.CIDRList = []string{"0.0.0.0/0"}
 	}
-
 	d.DisassociatePublicIP = false
-
 	return nil
 }
 
@@ -369,68 +366,54 @@ func (d *Driver) PreCreateCheck() error {
 // Create a host using the driver's config
 func (d *Driver) Create() error {
 	cs := d.getClient()
-
 	if err := d.createKeyPair(); err != nil {
 		return err
 	}
-
 	p := cs.VirtualMachine.NewDeployVirtualMachineParams(
 		d.ServiceOfferingID, d.TemplateID, d.ZoneID)
 	p.SetName(d.MachineName)
-	p.SetDisplayname(d.MachineName)
+	p.SetDisplayname(d.DisplayName)
 	p.SetKeypair(d.SSHKeyPair)
-
 	if d.UserData != "" {
 		p.SetUserdata(d.UserData)
 	}
-
 	if d.NetworkID != "" {
 		p.SetNetworkids([]string{d.NetworkID})
 	}
-
 	if d.ProjectID != "" {
 		p.SetProjectid(d.ProjectID)
 	}
-
 	if d.DiskOfferingID != "" {
 		p.SetDiskofferingid(d.DiskOfferingID)
 		if d.DiskSize != 0 {
 			p.SetSize(int64(d.DiskSize))
 		}
 	}
-
 	if d.NetworkType == "Basic" {
 		if err := d.createSecurityGroup(); err != nil {
 			return err
 		}
 		p.SetSecuritygroupnames([]string{d.MachineName})
 	}
-
-	// Create the machine
 	log.Info("Creating CloudStack instance...")
 	vm, err := cs.VirtualMachine.DeployVirtualMachine(p)
 	if err != nil {
 		return err
 	}
-
 	d.Id = vm.Id
-
 	d.PrivateIP = vm.Nic[0].Ipaddress
 	if d.NetworkType == "Basic" {
 		d.PublicIP = d.PrivateIP
 	}
-
 	if d.NetworkType == "Advanced" && !d.UsePrivateIP {
 		if d.PublicIPID == "" {
 			if err := d.associatePublicIP(); err != nil {
 				return err
 			}
 		}
-
 		if err := d.configureFirewallRules(); err != nil {
 			return err
 		}
-
 		if d.UsePortForward {
 			if err := d.configurePortForwardingRules(); err != nil {
 				return err
@@ -441,13 +424,11 @@ func (d *Driver) Create() error {
 			}
 		}
 	}
-
 	if len(d.Tags) > 0 {
 		if err := d.createTags(); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 

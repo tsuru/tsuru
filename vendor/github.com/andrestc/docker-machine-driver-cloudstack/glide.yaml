@@ -1,4 +1,4 @@
-package: github.com/atsaki/docker-machine-driver-cloudstack
+package: github.com/andrestc/docker-machine-driver-cloudstack
 import:
   - package: github.com/docker/docker
     ref:     a8a31eff10544860d2188dddabdee4d727545796
