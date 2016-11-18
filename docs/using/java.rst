@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++++++++++++++++++++++++++++
-Deploying Java applications on tsuru
-++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++
+Deploying Java applications
++++++++++++++++++++++++++++
 
 Overview
 ========
@@ -23,8 +23,8 @@ You can also deploy any other Java application you have on a tsuru server.
 Another alternative is to just download the code available at GitHub:
 https://github.com/tsuru/tsuru-java-sample.
 
-Creating the app within tsuru
-=============================
+Creating the app
+================
 
 To create an app, you use the command `app-create`:
 

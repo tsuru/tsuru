@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++++++++++++++++++++++++++++
-Deploying Ruby applications in tsuru
-++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++
+Deploying Ruby applications
++++++++++++++++++++++++++++
 
 Overview
 ========
@@ -13,8 +13,8 @@ This document is a hands-on guide to deploying a simple Ruby application in
 tsuru. The example application will be a very simple Rails project associated
 to a MySQL service.
 
-Creating the app within tsuru
-=============================
+Creating the app
+================
 
 To create an app, you use the command `app-create`:
 

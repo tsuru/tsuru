@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++++++++++++++++++++++++++
-Deploying Go applications in tsuru
-++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++
+Deploying Go applications
++++++++++++++++++++++++++
 
 Overview
 ========
@@ -12,8 +12,8 @@ Overview
 This document is a hands-on guide to deploying a simple Go web application in
 tsuru.
 
-Creating the app within tsuru
-=============================
+Creating the app
+================
 
 To create an app, you use the command `app-create`:
 

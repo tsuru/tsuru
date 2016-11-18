@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++++++++++++++++++++++++++++++
-Deploying PHP applications in tsuru
-++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++
+Deploying PHP applications
+++++++++++++++++++++++++++
 
 Overview
 ========
@@ -14,8 +14,8 @@ tsuru. The example application will be a very simple Wordpress project
 associated to a MySQL service. It's applicable to any php over apache
 application.
 
-Creating the app in tsuru
-=========================
+Creating the app
+================
 
 To create an app, you use the command `app-create`:
 
