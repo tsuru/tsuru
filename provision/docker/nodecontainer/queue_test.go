@@ -5,6 +5,8 @@
 package nodecontainer
 
 import (
+	"net/http"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -20,6 +22,12 @@ func (s *S) TestWaitDocker(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = task.waitDocker(client)
 	c.Assert(err, check.IsNil)
+	server.CustomHandler("/_ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}))
+	err = task.waitDocker(client)
+	c.Assert(err, check.NotNil)
 	config.Set("docker:api-timeout", 1)
 	defer config.Unset("docker:api-timeout")
 	client, err = docker.NewClient("http://169.254.169.254:2375/")
