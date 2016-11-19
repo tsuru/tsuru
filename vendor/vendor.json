@@ -141,7 +141,6 @@
 		},
 		{
 			"checksumSHA1": "4OkTII7MaEP9Kz9znl600yx/L4E=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/andrestc/docker-machine-driver-cloudstack",
 			"path": "github.com/andrestc/docker-machine-driver-cloudstack",
 			"revision": "4ff4f4a658c175ebe61bd1d5650ed72a7aae8c05",
 			"revisionTime": "2016-11-18T09:05:12-02:00"
@@ -823,14 +822,12 @@
 		},
 		{
 			"checksumSHA1": "kLTUIiLtAwXwqZ7f8AVxsdsPaXQ=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient",
 			"path": "github.com/fsouza/go-dockerclient",
 			"revision": "5cfde1d138cd2cdc13e4aa36af631beb19dcbe9c",
 			"revisionTime": "2016-11-01T20:40:33-04:00"
 		},
 		{
 			"checksumSHA1": "Do7K+1ZZwwMedwsWDDjLH4/Oqkc=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/testing",
 			"path": "github.com/fsouza/go-dockerclient/testing",
 			"revision": "5cfde1d138cd2cdc13e4aa36af631beb19dcbe9c",
 			"revisionTime": "2016-11-01T20:40:33-04:00"
@@ -945,6 +942,12 @@
 			"path": "github.com/google/gofuzz",
 			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
 			"revisionTime": "2016-10-05T22:38:25Z"
+		},
+		{
+			"checksumSHA1": "aJJh978zAGvXfrBsfnyy5DrRi8g=",
+			"path": "github.com/google/gops",
+			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
+			"revisionTime": "2016-11-16T20:38:16Z"
 		},
 		{
 			"path": "github.com/gorilla/context",
