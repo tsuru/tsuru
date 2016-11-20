@@ -141,7 +141,6 @@
 		},
 		{
 			"checksumSHA1": "4OkTII7MaEP9Kz9znl600yx/L4E=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/andrestc/docker-machine-driver-cloudstack",
 			"path": "github.com/andrestc/docker-machine-driver-cloudstack",
 			"revision": "4ff4f4a658c175ebe61bd1d5650ed72a7aae8c05",
 			"revisionTime": "2016-11-18T09:05:12-02:00"
@@ -823,14 +822,12 @@
 		},
 		{
 			"checksumSHA1": "kLTUIiLtAwXwqZ7f8AVxsdsPaXQ=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient",
 			"path": "github.com/fsouza/go-dockerclient",
 			"revision": "5cfde1d138cd2cdc13e4aa36af631beb19dcbe9c",
 			"revisionTime": "2016-11-01T20:40:33-04:00"
 		},
 		{
 			"checksumSHA1": "Do7K+1ZZwwMedwsWDDjLH4/Oqkc=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/fsouza/go-dockerclient/testing",
 			"path": "github.com/fsouza/go-dockerclient/testing",
 			"revision": "5cfde1d138cd2cdc13e4aa36af631beb19dcbe9c",
 			"revisionTime": "2016-11-01T20:40:33-04:00"
@@ -947,6 +944,36 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
+			"checksumSHA1": "aJJh978zAGvXfrBsfnyy5DrRi8g=",
+			"path": "github.com/google/gops",
+			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
+			"revisionTime": "2016-11-16T20:38:16Z"
+		},
+		{
+			"checksumSHA1": "71xiIdzjt20tMg480jmk0y+H5lU=",
+			"path": "github.com/google/gops/agent",
+			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
+			"revisionTime": "2016-11-16T20:38:16Z"
+		},
+		{
+			"checksumSHA1": "3g2I6SO8+P3f+6Ky/151G3GsTys=",
+			"path": "github.com/google/gops/internal",
+			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
+			"revisionTime": "2016-11-16T20:38:16Z"
+		},
+		{
+			"checksumSHA1": "i07e2AyEXOLCpDlkaHzq5a7TnuQ=",
+			"path": "github.com/google/gops/internal/objfile",
+			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
+			"revisionTime": "2016-11-16T20:38:16Z"
+		},
+		{
+			"checksumSHA1": "NjcFAJaeZgay0ZOr+H7y8nJYHxU=",
+			"path": "github.com/google/gops/signal",
+			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
+			"revisionTime": "2016-11-16T20:38:16Z"
+		},
+		{
 			"path": "github.com/gorilla/context",
 			"revision": "708054d61e5a2918b9f4e9700000ee611dcf03f5",
 			"revisionTime": "2013-05-30T20:21:01-07:00"
@@ -1003,6 +1030,18 @@
 			"path": "github.com/kardianos/osext",
 			"revision": "10da29423eb9a6269092eebdc2be32209612d9d2",
 			"revisionTime": "2015-11-24T09:03:42-08:00"
+		},
+		{
+			"checksumSHA1": "59BwJlcQLSn/4yKRL8R2xhKCwog=",
+			"path": "github.com/keybase/go-ps",
+			"revision": "668c8856d9992f97248b3177d45743d2cc1068db",
+			"revisionTime": "2016-10-05T17:59:11Z"
+		},
+		{
+			"checksumSHA1": "KNf4CdZexyFjpEugzBv3b7YJs4U=",
+			"path": "github.com/keybase/go-ps/darwincgo",
+			"revision": "668c8856d9992f97248b3177d45743d2cc1068db",
+			"revisionTime": "2016-10-05T17:59:11Z"
 		},
 		{
 			"checksumSHA1": "gysU1muo7UXwANQW7zch9fTtA+g=",
@@ -1694,6 +1733,24 @@
 			"path": "github.com/xanzy/go-cloudstack/cloudstack",
 			"revision": "5686bcde5af20565d8c7a3f66b5441430ac54186",
 			"revisionTime": "2016-05-18T14:33:22+02:00"
+		},
+		{
+			"checksumSHA1": "W5XS2bA1YmKJZi0v6QMXQTpKJQc=",
+			"path": "golang.org/x/arch/arm/armasm",
+			"revision": "c49399feb886d517c56e0647781d1c4aee30a77b",
+			"revisionTime": "2016-11-15T18:14:56Z"
+		},
+		{
+			"checksumSHA1": "ypRIcqXM/DXKexvzu1GgsU9ZGRA=",
+			"path": "golang.org/x/arch/ppc64/ppc64asm",
+			"revision": "c49399feb886d517c56e0647781d1c4aee30a77b",
+			"revisionTime": "2016-11-15T18:14:56Z"
+		},
+		{
+			"checksumSHA1": "5iNOoQKXdSAnTtrCT4s2UVb/Vcs=",
+			"path": "golang.org/x/arch/x86/x86asm",
+			"revision": "c49399feb886d517c56e0647781d1c4aee30a77b",
+			"revisionTime": "2016-11-15T18:14:56Z"
 		},
 		{
 			"path": "golang.org/x/crypto/bcrypt",

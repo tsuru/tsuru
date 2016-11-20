@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
+	"github.com/google/gops/agent"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
@@ -61,6 +62,9 @@ func inDockerMachineDriverMode() bool {
 }
 
 func main() {
+	if err := agent.Start(); err != nil {
+		log.Fatalf("Unable to start a Gops agent %s", err)
+	}
 	if inDockerMachineDriverMode() {
 		err := dockermachine.RunDriver(os.Getenv(localbinary.PluginEnvDriverName))
 		if err != nil {
