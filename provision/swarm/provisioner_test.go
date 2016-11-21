@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -173,6 +174,40 @@ func (s *S) TestAddNodeMultipleRoleCheck(c *check.C) {
 		}
 	}
 	c.Assert(managers, check.Equals, 7)
+}
+
+func (s *S) TestAddNodeTLS(c *check.C) {
+	caPath := tmpFileWith(c, testCA)
+	certPath := tmpFileWith(c, testServerCert)
+	keyPath := tmpFileWith(c, testServerKey)
+	defer os.Remove(certPath)
+	defer os.Remove(keyPath)
+	defer os.Remove(caPath)
+	srv, err := testing.NewTLSServer("127.0.0.1:0", nil, nil, testing.TLSConfig{
+		RootCAPath:  caPath,
+		CertPath:    certPath,
+		CertKeyPath: keyPath,
+	})
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	url := srv.URL()
+	url = strings.Replace(url, "http://", "https://", 1)
+	metadata := map[string]string{"m1": "v1", "m2": "v2", labelNodePoolName.String(): "p1"}
+	opts := provision.AddNodeOptions{
+		Address:    url,
+		Metadata:   metadata,
+		CaCert:     testCA,
+		ClientCert: testCert,
+		ClientKey:  testKey,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode(url)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, url)
+	c.Assert(node.Metadata(), check.DeepEquals, metadata)
+	c.Assert(node.Pool(), check.Equals, "p1")
+	c.Assert(node.Status(), check.Equals, "ready")
 }
 
 func (s *S) TestListNodes(c *check.C) {

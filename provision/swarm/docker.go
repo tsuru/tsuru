@@ -55,6 +55,10 @@ var (
 )
 
 func newClient(address string) (*docker.Client, error) {
+	tlsConfig, err := getNodeCredentials(address)
+	if err != nil {
+		return nil, err
+	}
 	client, err := docker.NewClient(address)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -66,7 +70,7 @@ func newClient(address string) (*docker.Client, error) {
 	transport := http.Transport{
 		Dial:                dialer.Dial,
 		TLSHandshakeTimeout: dockerDialTimeout,
-		TLSClientConfig:     swarmConfig.tlsConfig,
+		TLSClientConfig:     tlsConfig,
 		// No connection pooling so that we have reliable dial timeouts. Slower
 		// but safer.
 		DisableKeepAlives:   true,
@@ -78,7 +82,7 @@ func newClient(address string) (*docker.Client, error) {
 	}
 	client.HTTPClient = httpClient
 	client.Dialer = dialer
-	client.TLSConfig = swarmConfig.tlsConfig
+	client.TLSConfig = tlsConfig
 	return client, nil
 }
 

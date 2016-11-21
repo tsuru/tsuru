@@ -29,7 +29,13 @@ const (
 	provisionerName = "swarm"
 )
 
+var swarmConfig swarmProvisionerConfig
+
 type swarmProvisioner struct{}
+
+type swarmProvisionerConfig struct {
+	swarmPort int
+}
 
 func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
@@ -42,13 +48,6 @@ func (p *swarmProvisioner) Initialize() error {
 	swarmConfig.swarmPort, err = config.GetInt("swarm:swarm-port")
 	if err != nil {
 		swarmConfig.swarmPort = 2377
-	}
-	caPath, _ := config.GetString("swarm:tls:root-path")
-	if caPath != "" {
-		swarmConfig.tlsConfig, err = readTLSConfig(caPath)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -434,6 +433,10 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	existingClient, err := chooseDBSwarmNode()
 	if err != nil && errors.Cause(err) != errNoSwarmNode {
+		return err
+	}
+	err = addNodeCredentials(opts)
+	if err != nil {
 		return err
 	}
 	newClient, err := newClient(opts.Address)

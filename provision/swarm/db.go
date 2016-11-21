@@ -7,10 +7,13 @@ package swarm
 import (
 	"math/rand"
 
+	"crypto/tls"
+	"crypto/x509"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -24,9 +27,10 @@ func (e notFoundError) NotFound() bool {
 var errNoSwarmNode = notFoundError{errors.New("no swarm nodes available")}
 
 const (
-	uniqueDocumentID    = "swarm"
-	swarmCollectionName = "swarmnodes"
-	nodeRetryCount      = 3
+	uniqueDocumentID       = "swarm"
+	swarmCollectionName    = "swarmnodes"
+	swarmSecCollectionName = "swarmsec"
+	nodeRetryCount         = 3
 )
 
 type NodeAddrs struct {
@@ -100,10 +104,71 @@ func updateDBSwarmNodes(client *docker.Client) error {
 	return nil
 }
 
+type NodeSec struct {
+	Address    string `bson:"_id"`
+	CaCert     []byte
+	ClientCert []byte
+	ClientKey  []byte
+}
+
+func addNodeCredentials(opts provision.AddNodeOptions) error {
+	if opts.CaCert == nil && opts.ClientCert == nil && opts.ClientKey == nil {
+		return nil
+	}
+	secColl, err := nodeSecurityCollection()
+	if err != nil {
+		return err
+	}
+	defer secColl.Close()
+	data := NodeSec{
+		Address:    opts.Address,
+		CaCert:     opts.CaCert,
+		ClientCert: opts.ClientCert,
+		ClientKey:  opts.ClientKey,
+	}
+	_, err = secColl.UpsertId(data.Address, data)
+	return errors.WithStack(err)
+}
+
+func getNodeCredentials(address string) (*tls.Config, error) {
+	secColl, err := nodeSecurityCollection()
+	if err != nil {
+		return nil, err
+	}
+	var data NodeSec
+	err = secColl.FindId(address).One(&data)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
+		return nil, errors.WithStack(err)
+	}
+	tlsCert, err := tls.X509KeyPair(data.ClientCert, data.ClientKey)
+	if err != nil {
+		return nil, err
+	}
+	caPool := x509.NewCertPool()
+	if !caPool.AppendCertsFromPEM(data.CaCert) {
+		return nil, errors.New("could not add RootCA pem")
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+		RootCAs:      caPool,
+	}, nil
+}
+
 func nodeAddrCollection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return conn.Collection(swarmCollectionName), nil
+}
+
+func nodeSecurityCollection() (*storage.Collection, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return conn.Collection(swarmSecCollectionName), nil
 }
