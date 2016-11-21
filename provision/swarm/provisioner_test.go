@@ -128,6 +128,7 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 	for i := 0; i < 5; i++ {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
+		defer srv.Stop()
 		metadata := map[string]string{"count": fmt.Sprintf("%d", i), labelNodePoolName.String(): "p1"}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
@@ -145,6 +146,33 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 			labelNodePoolName.String(): "p1",
 		})
 	}
+}
+
+func (s *S) TestAddNodeMultipleRoleCheck(c *check.C) {
+	for i := 0; i < 15; i++ {
+		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+		c.Assert(err, check.IsNil)
+		defer srv.Stop()
+		metadata := map[string]string{labelNodePoolName.String(): "p1"}
+		opts := provision.AddNodeOptions{
+			Address:  srv.URL(),
+			Metadata: metadata,
+		}
+		err = s.p.AddNode(opts)
+		c.Assert(err, check.IsNil, check.Commentf("server %d", i))
+	}
+	cli, err := chooseDBSwarmNode()
+	c.Assert(err, check.IsNil)
+	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 15)
+	managers := 0
+	for _, n := range nodes {
+		if n.Spec.Role == swarm.NodeRoleManager {
+			managers++
+		}
+	}
+	c.Assert(managers, check.Equals, 7)
 }
 
 func (s *S) TestListNodes(c *check.C) {

@@ -31,6 +31,7 @@ const (
 	dockerDialTimeout  = 5 * time.Second
 	dockerFullTimeout  = time.Minute
 	dockerTCPKeepALive = 30 * time.Second
+	maxSwarmManagers   = 7
 )
 
 type tsuruLabel string
@@ -116,16 +117,42 @@ func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr str
 		JoinRequest: swarm.JoinRequest{
 			ListenAddr:    fmt.Sprintf("0.0.0.0:%d", swarmConfig.swarmPort),
 			AdvertiseAddr: host,
-			JoinToken:     swarmInfo.JoinTokens.Manager,
+			JoinToken:     swarmInfo.JoinTokens.Worker,
 			RemoteAddrs:   addrs,
 		},
 	}
 	err = newClient.JoinSwarm(opts)
-	if err != nil {
-		if err == docker.ErrNodeAlreadyInSwarm {
-			return nil
-		}
+	if err != nil && err != docker.ErrNodeAlreadyInSwarm {
 		return errors.WithStack(err)
+	}
+	return redistributeManagers(newClient)
+}
+
+func redistributeManagers(cli *docker.Client) error {
+	// TODO(cezarsa): distribute managers across nodes with different metadata
+	// (use splitMetadata from node autoscale after it's been moved from
+	// provision/docker)
+	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
+	if err != nil {
+		return err
+	}
+	total := len(nodes)
+	if total > maxSwarmManagers {
+		total = maxSwarmManagers
+	}
+	for i := 0; i < total; i++ {
+		n := &nodes[i]
+		if n.Spec.Role == swarm.NodeRoleManager {
+			continue
+		}
+		n.Spec.Role = swarm.NodeRoleManager
+		err = cli.UpdateNode(n.ID, docker.UpdateNodeOptions{
+			NodeSpec: n.Spec,
+			Version:  n.Version.Index,
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
