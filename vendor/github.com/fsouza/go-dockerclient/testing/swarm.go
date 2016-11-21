@@ -139,19 +139,22 @@ func (s *DockerServer) swarmJoin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = s.runNodeOperation(fmt.Sprintf("http://%s", req.RemoteAddrs[0]), nodeOperation{
-		Op:   "add",
-		Node: node,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	s.swarm = &swarm.Swarm{
 		JoinTokens: swarm.JoinTokens{
 			Manager: s.generateID(),
 			Worker:  s.generateID(),
 		},
+	}
+	s.swarmMut.Unlock()
+	err = s.runNodeOperation(fmt.Sprintf("http://%s", req.RemoteAddrs[0]), nodeOperation{
+		Op:        "add",
+		Node:      node,
+		forceLock: true,
+	})
+	s.swarmMut.Lock()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
@@ -226,6 +229,11 @@ func (s *DockerServer) serviceCreate(w http.ResponseWriter, r *http.Request) {
 	s.setServiceEndpoint(&service)
 	s.addTasks(&service, false)
 	s.services = append(s.services, &service)
+	err = s.runNodeOperation(s.swarmServer.URL(), nodeOperation{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(service)
 }
@@ -441,6 +449,11 @@ func (s *DockerServer) serviceDelete(w http.ResponseWriter, r *http.Request) {
 			i--
 		}
 	}
+	err := s.runNodeOperation(s.swarmServer.URL(), nodeOperation{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
@@ -484,6 +497,11 @@ func (s *DockerServer) serviceUpdate(w http.ResponseWriter, r *http.Request) {
 		i--
 	}
 	s.addTasks(toUpdate, true)
+	err = s.runNodeOperation(s.swarmServer.URL(), nodeOperation{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *DockerServer) nodeUpdate(w http.ResponseWriter, r *http.Request) {
@@ -576,8 +594,11 @@ func (s *DockerServer) nodeList(w http.ResponseWriter, r *http.Request) {
 }
 
 type nodeOperation struct {
-	Op   string
-	Node swarm.Node
+	Op        string
+	Node      swarm.Node
+	Tasks     []*swarm.Task
+	Services  []*swarm.Service
+	forceLock bool
 }
 
 func (s *DockerServer) runNodeOperation(dst string, nodeOp nodeOperation) error {
@@ -586,6 +607,9 @@ func (s *DockerServer) runNodeOperation(dst string, nodeOp nodeOperation) error 
 		return err
 	}
 	url := fmt.Sprintf("%s/internal/updatenodes", strings.TrimRight(dst, "/"))
+	if nodeOp.forceLock {
+		url += "?forcelock=1"
+	}
 	rsp, err := http.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return err
@@ -598,7 +622,7 @@ func (s *DockerServer) runNodeOperation(dst string, nodeOp nodeOperation) error 
 
 func (s *DockerServer) internalUpdateNodes(w http.ResponseWriter, r *http.Request) {
 	propagate := r.URL.Query().Get("propagate") != "0"
-	if !propagate {
+	if !propagate || r.URL.Query().Get("forcelock") != "" {
 		s.swarmMut.Lock()
 		defer s.swarmMut.Unlock()
 	}
@@ -612,19 +636,6 @@ func (s *DockerServer) internalUpdateNodes(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	if propagate {
-		for _, node := range s.nodes {
-			if s.nodeID == node.ID {
-				continue
-			}
-			url := fmt.Sprintf("http://%s/internal/updatenodes?propagate=0", node.ManagerStatus.Addr)
-			_, err = http.Post(url, "application/json", bytes.NewReader(data))
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
 	}
 	switch nodeOp.Op {
 	case "add":
@@ -643,6 +654,28 @@ func (s *DockerServer) internalUpdateNodes(w http.ResponseWriter, r *http.Reques
 				break
 			}
 		}
+	}
+	if propagate {
+		nodeOp.Services = s.services
+		nodeOp.Tasks = s.tasks
+		data, _ = json.Marshal(nodeOp)
+		for _, node := range s.nodes {
+			if s.nodeID == node.ID {
+				continue
+			}
+			url := fmt.Sprintf("http://%s/internal/updatenodes?propagate=0", node.ManagerStatus.Addr)
+			_, err = http.Post(url, "application/json", bytes.NewReader(data))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+	if nodeOp.Services != nil {
+		s.services = nodeOp.Services
+	}
+	if nodeOp.Tasks != nil {
+		s.tasks = nodeOp.Tasks
 	}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(s.nodes)
