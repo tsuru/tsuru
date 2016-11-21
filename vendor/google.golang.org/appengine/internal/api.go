@@ -32,13 +32,15 @@ import (
 )
 
 const (
-	apiPath = "/rpc_http"
+	apiPath             = "/rpc_http"
+	defaultTicketSuffix = "/default.20150612t184001.0"
 )
 
 var (
 	// Incoming headers.
 	ticketHeader       = http.CanonicalHeaderKey("X-AppEngine-API-Ticket")
 	dapperHeader       = http.CanonicalHeaderKey("X-Google-DapperTraceInfo")
+	traceHeader        = http.CanonicalHeaderKey("X-Cloud-Trace-Context")
 	curNamespaceHeader = http.CanonicalHeaderKey("X-AppEngine-Current-Namespace")
 	userIPHeader       = http.CanonicalHeaderKey("X-AppEngine-User-IP")
 	remoteAddrHeader   = http.CanonicalHeaderKey("X-AppEngine-Remote-Addr")
@@ -59,6 +61,9 @@ var (
 			Dial:  limitDial,
 		},
 	}
+
+	defaultTicketOnce sync.Once
+	defaultTicket     string
 )
 
 func apiURL() *url.URL {
@@ -230,7 +235,7 @@ func fromContext(ctx netcontext.Context) *context {
 func withContext(parent netcontext.Context, c *context) netcontext.Context {
 	ctx := netcontext.WithValue(parent, &contextKey, c)
 	if ns := c.req.Header.Get(curNamespaceHeader); ns != "" {
-		ctx = WithNamespace(ctx, ns)
+		ctx = withNamespace(ctx, ns)
 	}
 	return ctx
 }
@@ -265,6 +270,24 @@ func WithContext(parent netcontext.Context, req *http.Request) netcontext.Contex
 	return withContext(parent, c)
 }
 
+// DefaultTicket returns a ticket used for background context or dev_appserver.
+func DefaultTicket() string {
+	defaultTicketOnce.Do(func() {
+		if IsDevAppServer() {
+			defaultTicket = "testapp" + defaultTicketSuffix
+			return
+		}
+		appID := partitionlessAppID()
+		escAppID := strings.Replace(strings.Replace(appID, ":", "_", -1), ".", "_", -1)
+		majVersion := VersionID(nil)
+		if i := strings.Index(majVersion, "."); i > 0 {
+			majVersion = majVersion[:i]
+		}
+		defaultTicket = fmt.Sprintf("%s/%s.%s.%s", escAppID, ModuleName(nil), majVersion, InstanceID())
+	})
+	return defaultTicket
+}
+
 func BackgroundContext() netcontext.Context {
 	ctxs.Lock()
 	defer ctxs.Unlock()
@@ -274,13 +297,7 @@ func BackgroundContext() netcontext.Context {
 	}
 
 	// Compute background security ticket.
-	appID := partitionlessAppID()
-	escAppID := strings.Replace(strings.Replace(appID, ":", "_", -1), ".", "_", -1)
-	majVersion := VersionID(nil)
-	if i := strings.Index(majVersion, "."); i > 0 {
-		majVersion = majVersion[:i]
-	}
-	ticket := fmt.Sprintf("%s/%s.%s.%s", escAppID, ModuleName(nil), majVersion, InstanceID())
+	ticket := DefaultTicket()
 
 	ctxs.bg = &context{
 		req: &http.Request{
@@ -387,6 +404,9 @@ func (c *context) post(body []byte, timeout time.Duration) (b []byte, err error)
 	if info := c.req.Header.Get(dapperHeader); info != "" {
 		hreq.Header.Set(dapperHeader, info)
 	}
+	if info := c.req.Header.Get(traceHeader); info != "" {
+		hreq.Header.Set(traceHeader, info)
+	}
 
 	tr := apiHTTPClient.Transport.(*http.Transport)
 
@@ -428,8 +448,21 @@ func (c *context) post(body []byte, timeout time.Duration) (b []byte, err error)
 }
 
 func Call(ctx netcontext.Context, service, method string, in, out proto.Message) error {
+	if ns := NamespaceFromContext(ctx); ns != "" {
+		if fn, ok := NamespaceMods[service]; ok {
+			fn(in, ns)
+		}
+	}
+
 	if f, ctx, ok := callOverrideFromContext(ctx); ok {
 		return f(ctx, service, method, in, out)
+	}
+
+	// Handle already-done contexts quickly.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
 	}
 
 	c := fromContext(ctx)
@@ -458,6 +491,16 @@ func Call(ctx netcontext.Context, service, method string, in, out proto.Message)
 	}
 
 	ticket := c.req.Header.Get(ticketHeader)
+	// Use a test ticket under test environment.
+	if ticket == "" {
+		if appid := ctx.Value(&appIDOverrideKey); appid != nil {
+			ticket = appid.(string) + defaultTicketSuffix
+		}
+	}
+	// Fall back to use background ticket when the request ticket is not available in Flex or dev_appserver.
+	if ticket == "" {
+		ticket = DefaultTicket()
+	}
 	req := &remotepb.Request{
 		ServiceName: &service,
 		Method:      &method,
@@ -533,6 +576,9 @@ var logLevelName = map[int64]string{
 }
 
 func logf(c *context, level int64, format string, args ...interface{}) {
+	if c == nil {
+		panic("not an App Engine context")
+	}
 	s := fmt.Sprintf(format, args...)
 	s = strings.TrimRight(s, "\n") // Remove any trailing newline characters.
 	c.addLogLine(&logpb.UserAppLogLine{

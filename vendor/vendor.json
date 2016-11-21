@@ -103,10 +103,10 @@
 			"revisionTime": "2016-04-25T12:02:41-07:00"
 		},
 		{
-			"checksumSHA1": "vzPNBiOJFecKT9FA6aAtmOjRlgs=",
+			"checksumSHA1": "utsk76v3n6/BmQo/iD1xw7Wf1h8=",
 			"path": "github.com/Microsoft/go-winio",
-			"revision": "ce2922f643c8fd76b46cadc7f404a06282678b34",
-			"revisionTime": "2016-06-21T21:14:38Z"
+			"revision": "d8f60f2dd117cd64c2825143a89ecb6f158ad743",
+			"revisionTime": "2016-11-21T20:05:53Z"
 		},
 		{
 			"checksumSHA1": "9Ob5JNGzi/pGXYMuHclig69IHPk=",
@@ -141,7 +141,6 @@
 		},
 		{
 			"checksumSHA1": "eel0+unu5UnUjLv9Ar/6BaOkpJI=",
-			"origin": "github.com/tsuru/tsuru/vendor/github.com/andrestc/docker-machine-driver-cloudstack",
 			"path": "github.com/andrestc/docker-machine-driver-cloudstack",
 			"revision": "7afe7eebe3c58d48e2be9e7d77f5d65da71f5390",
 			"revisionTime": "2016-11-21T14:49:28-02:00"
@@ -1959,57 +1958,64 @@
 			"revisionTime": "2016-09-27T13:03:17+10:00"
 		},
 		{
-			"checksumSHA1": "1yUzgyT9GMuIysXs8sGHhICDEKc=",
+			"checksumSHA1": "BYNXzv50n5HWU4OpKBw9JlrKIRI=",
 			"path": "google.golang.org/appengine",
-			"revision": "12d5545dc1cfa6047a286d5e853841b6471f4c19",
-			"revisionTime": "2016-03-01T02:50:00Z"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "gYHoPrPncGO926bN0jr1rzDxBQU=",
 			"path": "google.golang.org/appengine/internal",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
 			"checksumSHA1": "x6Thdfyasqd68dWZWqzWWeIfAfI=",
 			"path": "google.golang.org/appengine/internal/app_identity",
-			"revision": "12d5545dc1cfa6047a286d5e853841b6471f4c19",
-			"revisionTime": "2016-03-01T02:50:00Z"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "TsNO8P0xUlLNyh3Ic/tzSp/fDWM=",
 			"path": "google.golang.org/appengine/internal/base",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "5QsV5oLGSfKZqTCVXP6NRz5T4Tw=",
 			"path": "google.golang.org/appengine/internal/datastore",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "Gep2T9zmVYV8qZfK2gu3zrmG6QE=",
 			"path": "google.golang.org/appengine/internal/log",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
 			"checksumSHA1": "eLZVX1EHLclFtQnjDIszsdyWRHo=",
 			"path": "google.golang.org/appengine/internal/modules",
-			"revision": "12d5545dc1cfa6047a286d5e853841b6471f4c19",
-			"revisionTime": "2016-03-01T02:50:00Z"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "a1XY7rz3BieOVqVI2Et6rKiwQCk=",
 			"path": "google.golang.org/appengine/internal/remote_api",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "QtAbHtHmDzcf6vOV9eqlCpKgjiw=",
 			"path": "google.golang.org/appengine/internal/urlfetch",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
+			"checksumSHA1": "akOV9pYnCbcPA8wJUutSQVibdyg=",
 			"path": "google.golang.org/appengine/urlfetch",
-			"revision": "75a29a66d4850a15c19eb6d70a31f5c453572be0",
-			"revisionTime": "2015-10-06T11:15:13+11:00"
+			"revision": "ca59ef35f409df61fa4a5f8290ff289b37eccfb8",
+			"revisionTime": "2016-11-15T22:01:06Z"
 		},
 		{
 			"checksumSHA1": "QneJE5GLhQlbsB03OMBxxHI8w18=",
