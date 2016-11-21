@@ -60,6 +60,7 @@ func (s *S) TestCreateMachineIaaS(c *check.C) {
 	c.Assert(FakeDM.hostOpts.InsecureRegistry, check.Equals, "registry.com")
 	c.Assert(FakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "http://getdocker.com")
 	c.Assert(FakeDM.hostOpts.ArbitraryFlags, check.DeepEquals, []string{"flag1", "flag2"})
+	c.Assert(FakeDM.config.IsDebug, check.Equals, false)
 }
 
 func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
@@ -68,6 +69,7 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	config.Set("iaas:dockermachine:driver:name", "driver-name")
 	config.Set("iaas:dockermachine:driver:user-data-file-param", "driver-userdata")
 	config.Set("iaas:dockermachine:docker-flags", "flag1,flag2")
+	config.Set("iaas:dockermachine:debug", "true")
 	defer config.Unset("iaas:dockermachine")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
@@ -82,6 +84,7 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	c.Assert(m.CreationParams["driver-userdata"], check.Equals, "")
 	c.Assert(FakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
 	c.Assert(FakeDM.hostOpts.ArbitraryFlags, check.DeepEquals, []string{"flag1", "flag2"})
+	c.Assert(FakeDM.config.IsDebug, check.Equals, true)
 }
 
 func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {

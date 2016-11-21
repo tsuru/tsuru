@@ -38,6 +38,7 @@ type DockerMachineConfig struct {
 	OutWriter io.Writer
 	ErrWriter io.Writer
 	StorePath string
+	IsDebug   bool
 }
 
 type DockerMachineAPI interface {
@@ -109,6 +110,7 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 		log.SetOutWriter(ioutil.Discard)
 	}
 	client := libmachine.NewClient(storePath, certsPath)
+	client.IsDebug = config.IsDebug
 	if _, err := os.Stat(client.GetMachinesDir()); os.IsNotExist(err) {
 		err := os.MkdirAll(client.GetMachinesDir(), 0700)
 		if err != nil {

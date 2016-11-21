@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -94,10 +95,19 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		delete(params, userDataFileParam)
 	}
 	buf := &bytes.Buffer{}
+	debugConf, _ := i.base.GetConfigString("debug")
+	if debugConf == "" {
+		debugConf = "false"
+	}
+	isDebug, err := strconv.ParseBool(debugConf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse debug config")
+	}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
 		CaPath:    caPath,
 		OutWriter: buf,
 		ErrWriter: buf,
+		IsDebug:   isDebug,
 	})
 	if err != nil {
 		return nil, err
