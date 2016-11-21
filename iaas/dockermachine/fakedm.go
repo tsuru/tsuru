@@ -11,11 +11,11 @@ import (
 )
 
 type FakeDockerMachine struct {
-	closed         bool
 	deletedMachine *iaas.Machine
 	createdMachine *Machine
-	config         DockerMachineConfig
-	hostOpts       CreateMachineOpts
+	config         *DockerMachineConfig
+	hostOpts       *CreateMachineOpts
+	closed         bool
 }
 
 var FakeDM = &FakeDockerMachine{}
@@ -23,7 +23,7 @@ var FakeDM = &FakeDockerMachine{}
 func NewFakeDockerMachine(c DockerMachineConfig) (DockerMachineAPI, error) {
 	FakeDM.deletedMachine = nil
 	FakeDM.createdMachine = nil
-	FakeDM.config = c
+	FakeDM.config = &c
 	FakeDM.closed = false
 	return FakeDM, nil
 }
@@ -43,7 +43,7 @@ func (f *FakeDockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, err
 	if v, ok := opts.Params["error"]; ok {
 		errCreate = errors.New(v.(string))
 	}
-	f.hostOpts = opts
+	f.hostOpts = &opts
 	return f.createdMachine, errCreate
 }
 
