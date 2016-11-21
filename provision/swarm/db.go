@@ -5,10 +5,10 @@
 package swarm
 
 import (
-	"math/rand"
-
 	"crypto/tls"
 	"crypto/x509"
+	"math/rand"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
