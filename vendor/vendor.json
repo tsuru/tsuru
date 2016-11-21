@@ -140,10 +140,11 @@
 			"revisionTime": "2016-04-29T22:15:17Z"
 		},
 		{
-			"checksumSHA1": "4OkTII7MaEP9Kz9znl600yx/L4E=",
+			"checksumSHA1": "eel0+unu5UnUjLv9Ar/6BaOkpJI=",
+			"origin": "github.com/tsuru/tsuru/vendor/github.com/andrestc/docker-machine-driver-cloudstack",
 			"path": "github.com/andrestc/docker-machine-driver-cloudstack",
-			"revision": "4ff4f4a658c175ebe61bd1d5650ed72a7aae8c05",
-			"revisionTime": "2016-11-18T09:05:12-02:00"
+			"revision": "7afe7eebe3c58d48e2be9e7d77f5d65da71f5390",
+			"revisionTime": "2016-11-21T14:49:28-02:00"
 		},
 		{
 			"checksumSHA1": "8wY0Od/oZMtYxA/sUC2J/OTw2j8=",

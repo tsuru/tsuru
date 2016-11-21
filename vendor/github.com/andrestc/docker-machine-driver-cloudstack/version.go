@@ -1,3 +1,3 @@
 package cloudstack
 
-const Version string = "v0.3.0"
+const Version string = "v0.4.0"

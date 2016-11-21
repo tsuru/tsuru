@@ -437,15 +437,15 @@ func (d *Driver) Remove() error {
 	cs := d.getClient()
 	p := cs.VirtualMachine.NewDestroyVirtualMachineParams(d.Id)
 	p.SetExpunge(d.Expunge)
-
 	if err := d.deleteFirewallRules(); err != nil {
 		return err
 	}
-
 	if err := d.disassociatePublicIP(); err != nil {
 		return err
 	}
-
+	if err := d.deleteKeyPair(); err != nil {
+		return err
+	}
 	log.Info("Removing CloudStack instance...")
 	if _, err := cs.VirtualMachine.DestroyVirtualMachine(p); err != nil {
 		return err
@@ -455,17 +455,11 @@ func (d *Driver) Remove() error {
 			return err
 		}
 	}
-
-	if err := d.deleteKeyPair(); err != nil {
-		return err
-	}
-
 	if d.DeleteVolumes {
 		if err := d.deleteVolumes(); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
