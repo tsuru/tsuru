@@ -109,6 +109,7 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 	} else {
 		log.SetOutWriter(ioutil.Discard)
 	}
+	log.SetDebug(config.IsDebug)
 	client := libmachine.NewClient(storePath, certsPath)
 	client.IsDebug = config.IsDebug
 	if _, err := os.Stat(client.GetMachinesDir()); os.IsNotExist(err) {
