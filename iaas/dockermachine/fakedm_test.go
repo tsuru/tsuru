@@ -49,5 +49,5 @@ func (s *S) TestCreateMachineErrorFake(c *check.C) {
 	c.Assert(m.Base.Id, check.Equals, "my-machine")
 	dm := d.(*FakeDockerMachine)
 	c.Assert(dm.createdMachine, check.DeepEquals, m)
-	c.Assert(dm.hostOpts, check.DeepEquals, opts)
+	c.Assert(dm.hostOpts, check.DeepEquals, &opts)
 }

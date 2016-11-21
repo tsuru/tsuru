@@ -131,6 +131,8 @@ func (s *S) TestCreateMachineDeletesMachineWithError(c *check.C) {
 }
 
 func (s *S) TestDeleteMachineIaaS(c *check.C) {
+	config.Set("iaas:dockermachine:debug", "true")
+	defer config.Unset("iaas:dockermachine:debug")
 	i := newDockerMachineIaaS("dockermachine")
 	dmIaas := i.(*dockerMachineIaaS)
 	dmIaas.apiFactory = NewFakeDockerMachine
@@ -139,4 +141,5 @@ func (s *S) TestDeleteMachineIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(FakeDM.deletedMachine, check.DeepEquals, m)
 	c.Assert(FakeDM.closed, check.Equals, true)
+	c.Assert(FakeDM.config.IsDebug, check.Equals, true)
 }

@@ -156,9 +156,18 @@ func (i *dockerMachineIaaS) buildDriverOpts(driverName string, params map[string
 
 func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
 	buf := &bytes.Buffer{}
+	debugConf, _ := i.base.GetConfigString("debug")
+	if debugConf == "" {
+		debugConf = "false"
+	}
+	isDebug, err := strconv.ParseBool(debugConf)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse debug config")
+	}
 	dockerMachine, err := i.apiFactory(DockerMachineConfig{
 		OutWriter: buf,
 		ErrWriter: buf,
+		IsDebug:   isDebug,
 	})
 	if err != nil {
 		return err
