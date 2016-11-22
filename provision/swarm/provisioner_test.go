@@ -214,6 +214,9 @@ func (s *S) TestListNodes(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
+	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv2.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -221,7 +224,13 @@ func (s *S) TestListNodes(c *check.C) {
 	}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
+	opts.Address = srv2.URL()
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	nodes, err = s.p.ListNodes([]string{srv.URL()})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, srv.URL())
