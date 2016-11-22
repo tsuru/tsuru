@@ -814,6 +814,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNode(provision.RemoveNodeOptions{
 		Address: srv.URL(),
 	})
