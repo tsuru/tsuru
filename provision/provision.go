@@ -317,9 +317,6 @@ type Provisioner interface {
 	// from the app.
 	RemoveUnits(App, uint, string, io.Writer) error
 
-	// SetUnitStatus changes the status of a unit.
-	SetUnitStatus(Unit, Status) error
-
 	// Restart restarts the units of the application, with an optional
 	// string parameter represeting the name of the process to start. When
 	// the process is empty, Restart will restart all units of the
@@ -394,11 +391,18 @@ type InitializableProvisioner interface {
 	Initialize() error
 }
 
-// Provisioners can implement this interface to optionaly disable logs for a
-// given app.
+// OptionalLogsProvisioner is a provisioner that allows optionally disabling
+// logs for a given app.
 type OptionalLogsProvisioner interface {
 	// Checks if logs are enabled for given app.
 	LogsEnabled(App) (bool, string, error)
+}
+
+// UnitStatusProvisioner is a provisioner that receive notifications about unit
+// status changes.
+type UnitStatusProvisioner interface {
+	// SetUnitStatus changes the status of a unit.
+	SetUnitStatus(Unit, Status) error
 }
 
 type AddNodeOptions struct {
@@ -439,6 +443,9 @@ type NodeProvisioner interface {
 
 	// UpdateNode can be used to enable/disable a node and update its metadata.
 	UpdateNode(UpdateNodeOptions) error
+
+	// NodeForNodeData finds a node matching the received NodeStatusData.
+	NodeForNodeData(NodeStatusData) (Node, error)
 }
 
 type NodeContainerProvisioner interface {

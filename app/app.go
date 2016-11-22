@@ -593,7 +593,11 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 			if err != nil {
 				return err
 			}
-			return prov.SetUnitStatus(unit, status)
+			unitProv, ok := prov.(provision.UnitStatusProvisioner)
+			if !ok {
+				return nil
+			}
+			return unitProv.SetUnitStatus(unit, status)
 		}
 	}
 	return &provision.UnitNotFoundError{ID: unitName}
@@ -606,31 +610,45 @@ type UpdateUnitsResult struct {
 
 // UpdateNodeStatus updates the status of the given node and its units,
 // returning a map which units were found during the update.
-func UpdateNodeStatus(node provision.NodeStatusData) ([]UpdateUnitsResult, error) {
+func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
 	provisioners, err := provision.Registry()
 	if err != nil {
 		return nil, err
 	}
-	result := make([]UpdateUnitsResult, len(node.Units))
-	for i, unitData := range node.Units {
-		for _, p := range provisioners {
-			unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
-			err = p.SetUnitStatus(unit, unitData.Status)
-			_, isNotFound := err.(*provision.UnitNotFoundError)
-			if err != nil && !isNotFound {
-				return nil, err
-			}
-			result[i] = UpdateUnitsResult{ID: unitData.ID, Found: !isNotFound}
-			if result[i].Found {
+	var node provision.Node
+	for _, p := range provisioners {
+		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
+			node, err = nodeProv.NodeForNodeData(nodeData)
+			if err == nil {
 				break
+			}
+			if errors.Cause(err) != provision.ErrNodeNotFound {
+				return nil, err
 			}
 		}
 	}
+	if node == nil {
+		return nil, provision.ErrNodeNotFound
+	}
 	if healer.HealerInstance != nil {
-		err = healer.HealerInstance.UpdateNodeData(node)
+		err = healer.HealerInstance.UpdateNodeData(node, nodeData.Checks)
 		if err != nil {
-			log.Errorf("unable to set node status: %s", err)
+			log.Errorf("unable to set node status in healer: %s", err)
 		}
+	}
+	unitProv, ok := node.Provisioner().(provision.UnitStatusProvisioner)
+	if !ok {
+		return []UpdateUnitsResult{}, nil
+	}
+	result := make([]UpdateUnitsResult, len(nodeData.Units))
+	for i, unitData := range nodeData.Units {
+		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
+		err = unitProv.SetUnitStatus(unit, unitData.Status)
+		_, isNotFound := err.(*provision.UnitNotFoundError)
+		if err != nil && !isNotFound {
+			return nil, err
+		}
+		result[i] = UpdateUnitsResult{ID: unitData.ID, Found: !isNotFound}
 	}
 	return result, nil
 }

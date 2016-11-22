@@ -12,12 +12,23 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type ProvisionSuite struct{}
+type ProvisionSuite struct {
+	oldProv map[string]provisionerFactory
+}
 
 var _ = check.Suite(ProvisionSuite{})
 
 func Test(t *testing.T) {
 	check.TestingT(t)
+}
+
+func (s ProvisionSuite) SetUpTest(c *check.C) {
+	s.oldProv = provisioners
+	provisioners = make(map[string]provisionerFactory)
+}
+
+func (s ProvisionSuite) TearDownTest(c *check.C) {
+	provisioners = s.oldProv
 }
 
 func (ProvisionSuite) TestRegisterAndGetProvisioner(c *check.C) {

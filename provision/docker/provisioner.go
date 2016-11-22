@@ -860,8 +860,7 @@ func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app pro
 	if len(containers) == 0 {
 		return provision.ErrEmptyApp
 	}
-	container := containers[0]
-	return container.Exec(p, stdout, stderr, cmd, args...)
+	return containers[0].Exec(p, stdout, stderr, cmd, args...)
 }
 
 func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
@@ -1259,6 +1258,45 @@ func (p *dockerProvisioner) ListNodes(addressFilter []string) ([]provision.Node,
 		result = append(result, &clusterNodeWrapper{Node: n, prov: p})
 	}
 	return result, nil
+}
+
+func (p *dockerProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+	nodes, err := p.Cluster().UnfilteredNodes()
+	if err != nil {
+		return nil, err
+	}
+	nodeSet := map[string]*cluster.Node{}
+	for i := range nodes {
+		nodeSet[net.URLToHost(nodes[i].Address)] = &nodes[i]
+	}
+	containerIDs := make([]string, 0, len(nodeData.Units))
+	containerNames := make([]string, 0, len(nodeData.Units))
+	for _, u := range nodeData.Units {
+		if u.ID != "" {
+			containerIDs = append(containerIDs, u.ID)
+		}
+		if u.Name != "" {
+			containerNames = append(containerNames, u.Name)
+		}
+	}
+	containersForNode, err := p.listContainersWithIDOrName(containerIDs, containerNames)
+	if err != nil {
+		return nil, err
+	}
+	var node *cluster.Node
+	for _, c := range containersForNode {
+		n := nodeSet[c.HostAddr]
+		if n != nil {
+			if node != nil && node.Address != n.Address {
+				return nil, errors.Errorf("containers match multiple nodes: %s and %s", node.Address, n.Address)
+			}
+			node = n
+		}
+	}
+	if node != nil {
+		return &clusterNodeWrapper{Node: node, prov: p}, nil
+	}
+	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *dockerProvisioner) GetName() string {

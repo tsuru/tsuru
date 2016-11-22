@@ -272,59 +272,9 @@ func allNodes() ([]provision.Node, error) {
 	return nodes, nil
 }
 
-func (h *NodeHealer) findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
-	nodes, err := allNodes()
-	if err != nil {
-		return nil, err
-	}
-	nodeMap := map[string]provision.Node{}
-	idsSet := map[string]struct{}{}
-	var node provision.Node
-	for _, u := range nodeData.Units {
-		idsSet[u.ID] = struct{}{}
-		idsSet[u.Name] = struct{}{}
-	}
-out:
-	for i := range nodes {
-		nodeMap[net.URLToHost(nodes[i].Address())] = nodes[i]
-		var units []provision.Unit
-		units, err = nodes[i].Units()
-		if err != nil {
-			return nil, err
-		}
-		for _, u := range units {
-			if _, ok := idsSet[u.ID]; ok {
-				node = nodes[i]
-				break out
-			}
-		}
-	}
-	if node != nil {
-		return node, nil
-	}
-	// Node not found through containers, try finding using addrs.
-	for _, addr := range nodeData.Addrs {
-		n := nodeMap[net.URLToHost(addr)]
-		if n != nil {
-			if node != nil {
-				return nil, errors.Errorf("addrs match multiple nodes: %v", nodeData.Addrs)
-			}
-			node = n
-		}
-	}
-	if node == nil {
-		return nil, errors.Errorf("node not found for addrs: %v", nodeData.Addrs)
-	}
-	return node, nil
-}
-
-func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
-	node, err := h.findNodeForNodeData(nodeData)
-	if err != nil {
-		return errors.Wrap(err, "[node healer update]")
-	}
+func (h *NodeHealer) UpdateNodeData(node provision.Node, checks []provision.NodeCheckResult) error {
 	isSuccess := true
-	for _, c := range nodeData.Checks {
+	for _, c := range checks {
 		isSuccess = c.Successful
 		if !isSuccess {
 			break
@@ -346,7 +296,7 @@ func (h *NodeHealer) UpdateNodeData(nodeData provision.NodeStatusData) error {
 		"$set": toInsert,
 		"$push": bson.M{
 			"checks": bson.D([]bson.DocElem{
-				{Name: "$each", Value: []NodeChecks{{Time: now, Checks: nodeData.Checks}}},
+				{Name: "$each", Value: []NodeChecks{{Time: now, Checks: checks}}},
 				{Name: "$slice", Value: -10},
 			}),
 		},

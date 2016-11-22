@@ -747,8 +747,11 @@ func (s *S) TestUpdateNodeStatus(c *check.C) {
 	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units, err := a.Units()
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "addr1",
+	})
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
 	c.Assert(err, check.IsNil)
 	unitStates := []provision.UnitStatusData{
 		{ID: units[0].ID, Status: provision.Status("started")},
@@ -756,7 +759,7 @@ func (s *S) TestUpdateNodeStatus(c *check.C) {
 		{ID: units[2].ID, Status: provision.Status("error")},
 		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
 	}
-	result, err := UpdateNodeStatus(provision.NodeStatusData{Units: unitStates})
+	result, err := UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitStates})
 	c.Assert(err, check.IsNil)
 	expected := []UpdateUnitsResult{
 		{ID: units[0].ID, Found: true},
@@ -765,6 +768,22 @@ func (s *S) TestUpdateNodeStatus(c *check.C) {
 		{ID: units[2].ID + "-not-found", Found: false},
 	}
 	c.Assert(result, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {
+	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
+	c.Assert(err, check.IsNil)
+	unitStates := []provision.UnitStatusData{
+		{ID: units[0].ID, Status: provision.Status("started")},
+		{ID: units[1].ID, Status: provision.Status("stopped")},
+		{ID: units[2].ID, Status: provision.Status("error")},
+		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
+	}
+	_, err = UpdateNodeStatus(provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitStates})
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
 func (s *S) TestGrantAccess(c *check.C) {

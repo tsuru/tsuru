@@ -138,10 +138,6 @@ func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName 
 	return changeUnits(a, -int(units), processName, w)
 }
 
-func (p *swarmProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
-	return nil
-}
-
 func changeAppState(a provision.App, process string, state processState) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
@@ -428,6 +424,40 @@ func (p *swarmProvisioner) GetNode(address string) (provision.Node, error) {
 		return nil, provision.ErrNodeNotFound
 	}
 	return nodes[0], nil
+}
+
+func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		if errors.Cause(err) == errNoSwarmNode {
+			return nil, provision.ErrNodeNotFound
+		}
+	}
+	tasks, err := client.ListTasks(docker.ListTasksOptions{})
+	if err != nil {
+		return nil, err
+	}
+	var task *swarm.Task
+	for _, unitData := range nodeData.Units {
+		task, err = findTaskByContainerId(tasks, unitData.ID)
+		if err == nil {
+			break
+		}
+		if _, isNotFound := errors.Cause(err).(*provision.UnitNotFoundError); !isNotFound {
+			return nil, err
+		}
+	}
+	if task != nil {
+		node, err := client.InspectNode(task.NodeID)
+		if err != nil {
+			if _, notFound := err.(*docker.NoSuchNode); notFound {
+				return nil, provision.ErrNodeNotFound
+			}
+			return nil, err
+		}
+		return &swarmNodeWrapper{Node: node, provisioner: p}, nil
+	}
+	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {

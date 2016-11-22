@@ -3589,3 +3589,42 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	c.Assert(parts, check.HasLen, 6)
 	c.Assert(parts[0], check.Equals, "Moving 2 units...")
 }
+
+func (s *S) TestNodeForNodeData(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	s.p.Provision(appInstance)
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	data := provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: conts[0].ID},
+		},
+	}
+	node, err := s.p.NodeForNodeData(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, s.server.URL())
+	data = provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{Name: conts[0].Name},
+		},
+	}
+	node, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, s.server.URL())
+	data = provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: "invalidid"},
+		},
+	}
+	_, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}

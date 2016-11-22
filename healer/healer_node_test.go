@@ -234,6 +234,8 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 
 	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
@@ -244,11 +246,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)
@@ -304,6 +302,8 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 
 	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
@@ -314,11 +314,7 @@ func (s *S) TestHealerHandleErrorFailureEvent(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)
@@ -416,6 +412,8 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
@@ -425,11 +423,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)
@@ -466,16 +460,15 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
-	data := provision.NodeStatusData{
-		Addrs: []string{"addr1"},
-		Checks: []provision.NodeCheckResult{
-			{Name: "ok1", Successful: true},
-			{Name: "ok2", Successful: true},
-		},
+	checks := []provision.NodeCheckResult{
+		{Name: "ok1", Successful: true},
+		{Name: "ok2", Successful: true},
 	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, checks)
 	c.Assert(err, check.IsNil)
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
@@ -491,7 +484,7 @@ func (s *S) TestHealerUpdateNodeData(c *check.C) {
 	result.Checks[0].Time = time.Time{}
 	c.Assert(result, check.DeepEquals, NodeStatusData{
 		Address: nodeAddr,
-		Checks:  []NodeChecks{{Checks: data.Checks}},
+		Checks:  []NodeChecks{{Checks: checks}},
 	})
 }
 
@@ -502,17 +495,15 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	for i := 0; i < 20; i++ {
-		data := provision.NodeStatusData{
-			Addrs: []string{"addr1"},
-			Checks: []provision.NodeCheckResult{
-				{Name: fmt.Sprintf("ok1-%d", i), Successful: true},
-				{Name: fmt.Sprintf("ok2-%d", i), Successful: true},
-			},
-		}
-		err = healer.UpdateNodeData(data)
+		err = healer.UpdateNodeData(node, []provision.NodeCheckResult{
+			{Name: fmt.Sprintf("ok1-%d", i), Successful: true},
+			{Name: fmt.Sprintf("ok2-%d", i), Successful: true},
+		})
 		c.Assert(err, check.IsNil)
 	}
 	coll, err := nodeDataCollection()
@@ -540,98 +531,6 @@ func (s *S) TestHealerUpdateNodeDataSavesLast10Checks(c *check.C) {
 		Address: nodeAddr,
 		Checks:  expectedChecks,
 	})
-}
-
-func (s *S) TestHealerUpdateNodeDataNodeAddrNotFound(c *check.C) {
-	p := provisiontest.ProvisionerInstance
-	nodeAddr := "http://addr1:1"
-	err := p.AddNode(provision.AddNodeOptions{
-		Address: nodeAddr,
-	})
-	c.Assert(err, check.IsNil)
-	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
-	data := provision.NodeStatusData{
-		Addrs: []string{"10.0.0.1"},
-		Checks: []provision.NodeCheckResult{
-			{Name: "ok1", Successful: true},
-			{Name: "ok2", Successful: true},
-		},
-	}
-	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[node healer update\]: node not found for addrs: \[10.0.0.1\]`)
-}
-
-func (s *S) TestHealerUpdateNodeDataNodeFromUnits(c *check.C) {
-	p := provisiontest.ProvisionerInstance
-	nodeAddr := "http://addr1:1"
-	err := p.AddNode(provision.AddNodeOptions{
-		Address: nodeAddr,
-	})
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	err = p.Provision(app)
-	c.Assert(err, check.IsNil)
-	err = p.AddUnits(app, 1, "web", nil)
-	c.Assert(err, check.IsNil)
-	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
-	units, err := p.Units(app)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	data := provision.NodeStatusData{
-		Units: []provision.UnitStatusData{
-			{ID: units[0].ID},
-		},
-		Addrs: []string{"10.0.0.1"},
-		Checks: []provision.NodeCheckResult{
-			{Name: "ok1", Successful: true},
-			{Name: "ok2", Successful: true},
-		},
-	}
-	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.IsNil)
-	coll, err := nodeDataCollection()
-	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	var result NodeStatusData
-	err = coll.FindId(nodeAddr).One(&result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result.LastSuccess.IsZero(), check.Equals, false)
-	c.Assert(result.LastUpdate.IsZero(), check.Equals, false)
-	c.Assert(result.Checks[0].Time.IsZero(), check.Equals, false)
-	result.LastUpdate = time.Time{}
-	result.LastSuccess = time.Time{}
-	result.Checks[0].Time = time.Time{}
-	c.Assert(result, check.DeepEquals, NodeStatusData{
-		Address: nodeAddr,
-		Checks:  []NodeChecks{{Checks: data.Checks}},
-	})
-}
-
-func (s *S) TestHealerUpdateNodeDataAmbiguousAddrs(c *check.C) {
-	p := provisiontest.ProvisionerInstance
-	nodeAddr1 := "http://addr1:1"
-	err := p.AddNode(provision.AddNodeOptions{
-		Address: nodeAddr1,
-	})
-	c.Assert(err, check.IsNil)
-	nodeAddr2 := "http://addr2:2"
-	err = p.AddNode(provision.AddNodeOptions{
-		Address: nodeAddr2,
-	})
-	c.Assert(err, check.IsNil)
-	healer := newNodeHealer(nodeHealerArgs{})
-	healer.Shutdown()
-	data := provision.NodeStatusData{
-		Addrs: []string{"addr1", "addr2"},
-		Checks: []provision.NodeCheckResult{
-			{Name: "ok1", Successful: true},
-			{Name: "ok2", Successful: true},
-		},
-	}
-	err = healer.UpdateNodeData(data)
-	c.Assert(err, check.ErrorMatches, `\[node healer update\]: addrs match multiple nodes: \[.*? .*?\]`)
 }
 
 func (s *S) TestFindNodesForHealingNoNodes(c *check.C) {
@@ -686,14 +585,12 @@ func (s *S) TestFindNodesForHealingLastUpdateDefault(c *check.C) {
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
 	healer.started = time.Now().Add(-3 * time.Second)
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
@@ -716,13 +613,11 @@ func (s *S) TestFindNodesForHealingLastUpdateWithRecentStarted(c *check.C) {
 		Address: nodeAddr,
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{})
 	healer.Shutdown()
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, nodesMap, err := healer.findNodesForHealing()
@@ -755,6 +650,8 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 
 	healer := newNodeHealer(nodeHealerArgs{
 		WaitTimeNewMachine: time.Minute,
@@ -762,11 +659,7 @@ func (s *S) TestCheckActiveHealing(c *check.C) {
 	healer.Shutdown()
 	healer.started = time.Now().Add(-3 * time.Second)
 
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 
@@ -823,6 +716,8 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 		Metadata: map[string]string{"iaas": "my-healer-iaas"},
 	})
 	c.Assert(err, check.IsNil)
+	node, err := p.GetNode("http://addr1:1")
+	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
@@ -831,11 +726,7 @@ func (s *S) TestTryHealingNodeConcurrent(c *check.C) {
 	conf := healerConfig()
 	err = conf.SaveBase(NodeHealerConfig{Enabled: boolPtr(true), MaxUnresponsiveTime: intPtr(1)})
 	c.Assert(err, check.IsNil)
-	data := provision.NodeStatusData{
-		Addrs:  []string{"addr1"},
-		Checks: []provision.NodeCheckResult{},
-	}
-	err = healer.UpdateNodeData(data)
+	err = healer.UpdateNodeData(node, []provision.NodeCheckResult{})
 	c.Assert(err, check.IsNil)
 	time.Sleep(1200 * time.Millisecond)
 	nodes, err := p.ListNodes(nil)

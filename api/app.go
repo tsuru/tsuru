@@ -599,6 +599,9 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	result, err := app.UpdateNodeStatus(hostInput)
 	if err != nil {
+		if err == provision.ErrNodeNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
 		return err
 	}
 	w.Header().Add("Content-Type", "application/json")

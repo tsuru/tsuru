@@ -1683,6 +1683,49 @@ func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "*deploy*")
 }
 
+func (s *S) TestNodeForNodeData(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Deploys: 1}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	cli, err := newClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	conts, err := cli.ListContainers(docker.ListContainersOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 1)
+	data := provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: conts[0].ID},
+		},
+	}
+	node, err := s.p.NodeForNodeData(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(node.Address(), check.Equals, srv.URL())
+	data = provision.NodeStatusData{
+		Units: []provision.UnitStatusData{
+			{ID: "invalidid"},
+		},
+	}
+	_, err = s.p.NodeForNodeData(data)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
 func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool, a provision.App) <-chan bool {
 	chAttached := make(chan bool, 1)
 	srv.CustomHandler("/containers", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

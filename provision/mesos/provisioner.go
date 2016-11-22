@@ -51,10 +51,6 @@ func (p *mesosProvisioner) RemoveUnits(provision.App, uint, string, io.Writer) e
 	return errNotImplemented
 }
 
-func (p *mesosProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
-	return errNotImplemented
-}
-
 func (p *mesosProvisioner) Restart(provision.App, string, io.Writer) error {
 	return errNotImplemented
 }
@@ -134,6 +130,10 @@ func (p *mesosProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 
 func (p *mesosProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
 	return errNotImplemented
+}
+
+func (p *mesosProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *mesosProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {

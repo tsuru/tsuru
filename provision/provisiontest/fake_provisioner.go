@@ -554,6 +554,10 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 	return result, nil
 }
 
+func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+	return provision.FindNodeByAddrs(p, nodeData.Addrs)
+}
+
 // MetricEnvs returns the metric envs for the app
 func (p *FakeProvisioner) MetricEnvs(app provision.App) map[string]string {
 	return map[string]string{

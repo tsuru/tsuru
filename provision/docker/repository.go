@@ -121,6 +121,15 @@ func (p *dockerProvisioner) listAllContainers() ([]container.Container, error) {
 	return p.ListContainers(nil)
 }
 
+func (p *dockerProvisioner) listContainersWithIDOrName(ids []string, names []string) ([]container.Container, error) {
+	return p.ListContainers(bson.M{
+		"$or": []bson.M{
+			{"name": bson.M{"$in": names}},
+			{"id": bson.M{"$in": ids}},
+		},
+	})
+}
+
 func (p *dockerProvisioner) listAppsForNodes(nodes []*cluster.Node) ([]string, error) {
 	coll := p.Collection()
 	defer coll.Close()

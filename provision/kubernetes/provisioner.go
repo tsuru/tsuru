@@ -55,10 +55,6 @@ func (p *kubernetesProvisioner) RemoveUnits(provision.App, uint, string, io.Writ
 	return errNotImplemented
 }
 
-func (p *kubernetesProvisioner) SetUnitStatus(provision.Unit, provision.Status) error {
-	return nil
-}
-
 func (p *kubernetesProvisioner) Restart(provision.App, string, io.Writer) error {
 	return errNotImplemented
 }
@@ -152,6 +148,10 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 	defer coll.Close()
 	err = coll.RemoveId(uniqueDocumentID)
 	return err
+}
+
+func (p *kubernetesProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
 func (p *kubernetesProvisioner) UpdateNode(provision.UpdateNodeOptions) error {

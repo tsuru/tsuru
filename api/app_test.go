@@ -1758,8 +1758,11 @@ func (s *S) TestSetNodeStatus(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units, err := a.Units()
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "addr1",
+	})
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
 	c.Assert(err, check.IsNil)
 	status := []string{"started", "error", "stopped"}
 	unitsStatus := []provision.UnitStatusData{
@@ -1769,7 +1772,7 @@ func (s *S) TestSetNodeStatus(c *check.C) {
 		{ID: "not-found1", Status: "error"},
 		{ID: "not-found2", Status: "started"},
 	}
-	nodeStatus := provision.NodeStatusData{Units: unitsStatus}
+	nodeStatus := provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitsStatus}
 	v, err := form.EncodeToValues(&nodeStatus)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(v.Encode())
@@ -1800,6 +1803,37 @@ func (s *S) TestSetNodeStatus(c *check.C) {
 	sort.Sort(&got)
 	sort.Sort(&expected)
 	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *S) TestSetNodeStatusNotFound(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
+	c.Assert(err, check.IsNil)
+	unitsStatus := []provision.UnitStatusData{
+		{ID: units[0].ID, Status: "started"},
+		{ID: units[1].ID, Status: "error"},
+		{ID: units[2].ID, Status: "stopped"},
+		{ID: "not-found1", Status: "error"},
+		{ID: "not-found2", Status: "started"},
+	}
+	nodeStatus := provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitsStatus}
+	v, err := form.EncodeToValues(&nodeStatus)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", "/node/status", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestSetNodeStatusNonInternalToken(c *check.C) {
