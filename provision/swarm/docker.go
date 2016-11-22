@@ -209,7 +209,7 @@ func safeAttachWaitContainer(client *docker.Client, opts docker.AttachToContaine
 	}
 }
 
-var waitForTaskTimeout = 30 * time.Second
+var waitForTaskTimeout = 5 * time.Minute
 
 func taskStatusMsg(status swarm.TaskStatus) string {
 	return fmt.Sprintf("state: %q, err: %q, msg: %q, container exit: %d", status.State, status.Err, status.Message, status.ContainerStatus.ExitCode)
