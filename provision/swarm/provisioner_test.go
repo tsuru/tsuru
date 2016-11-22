@@ -799,6 +799,38 @@ func (s *S) TestRemoveNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
+	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv2.Stop()
+	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	opts = provision.AddNodeOptions{
+		Address:  srv2.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	err = s.p.RemoveNode(provision.RemoveNodeOptions{
+		Address: srv.URL(),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.GetNode(srv.URL())
+	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestRemoveLastNodeLeaveSwarm(c *check.C) {
+	left := false
+	srv, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		if r.URL.Path == "/swarm/leave" {
+			left = true
+		}
+	})
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -812,6 +844,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.GetNode(srv.URL())
 	c.Assert(errors.Cause(err), check.Equals, provision.ErrNodeNotFound)
+	c.Assert(left, check.Equals, true)
 }
 
 func (s *S) TestRemoveNodeRebalance(c *check.C) {
@@ -822,9 +855,23 @@ func (s *S) TestRemoveNodeRebalance(c *check.C) {
 		}
 	})
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	srv2, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/nodes/") {
+			reqs = append(reqs, r)
+		}
+	})
+	c.Assert(err, check.IsNil)
+	defer srv2.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	opts = provision.AddNodeOptions{
+		Address:  srv2.URL(),
 		Metadata: metadata,
 	}
 	err = s.p.AddNode(opts)

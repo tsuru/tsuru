@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
+	mgo "gopkg.in/mgo.v2"
 )
 
 func (s *S) TestChooseDBSwarmNode(c *check.C) {
@@ -59,4 +60,23 @@ func (s *S) TestChooseDBSwarmNodeEmpty(c *check.C) {
 	cli, err := chooseDBSwarmNode()
 	c.Assert(errors.Cause(err), check.Equals, errNoSwarmNode)
 	c.Assert(cli, check.IsNil)
+}
+
+func (s *S) TestRemoveDBSwarmNodes(c *check.C) {
+	coll, err := nodeAddrCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	err = coll.Insert(NodeAddrs{UniqueID: uniqueDocumentID, Addresses: []string{"node1", "node2"}})
+	c.Assert(err, check.IsNil)
+	err = removeDBSwarmNodes()
+	c.Assert(err, check.IsNil)
+	var addrs NodeAddrs
+	err = coll.FindId(uniqueDocumentID).One(&addrs)
+	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(len(addrs.Addresses), check.Equals, 0)
+}
+
+func (s *S) TestRemoveDBSwarmNodesEmpty(c *check.C) {
+	err := removeDBSwarmNodes()
+	c.Assert(err, check.IsNil)
 }

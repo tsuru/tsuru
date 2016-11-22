@@ -495,6 +495,17 @@ func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 			return errors.WithStack(err)
 		}
 	}
+	nodes, err := listValidNodes(client)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if len(nodes) == 1 {
+		err = client.LeaveSwarm(docker.LeaveSwarmOptions{Force: true})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return removeDBSwarmNodes()
+	}
 	err = client.RemoveNode(docker.RemoveNodeOptions{
 		ID:    swarmNode.ID,
 		Force: true,

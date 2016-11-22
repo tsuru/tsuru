@@ -104,6 +104,19 @@ func updateDBSwarmNodes(client *docker.Client) error {
 	return nil
 }
 
+func removeDBSwarmNodes() error {
+	coll, err := nodeAddrCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.RemoveId(uniqueDocumentID)
+	if err != nil && err != mgo.ErrNotFound {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 type NodeSec struct {
 	Address    string `bson:"_id"`
 	CaCert     []byte
