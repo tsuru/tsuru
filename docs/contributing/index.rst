@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++++++++++++++++++
-Contributing to tsuru
-+++++++++++++++++++++
+++++++++++++
+Contributing
+++++++++++++
 
 We really are open to any contributions, in the form of code, documentation,
 feature proposal etc.
