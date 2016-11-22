@@ -309,7 +309,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	if pubPort == 0 {
 		return nil, nil
 	}
-	nodes, err := client.ListNodes(docker.ListNodesOptions{})
+	nodes, err := listValidNodes(client)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +394,7 @@ func (p *swarmProvisioner) ListNodes(addressFilter []string) ([]provision.Node, 
 		}
 		return nil, err
 	}
-	nodes, err := client.ListNodes(docker.ListNodesOptions{})
+	nodes, err := listValidNodes(client)
 	if err != nil {
 		return nil, err
 	}

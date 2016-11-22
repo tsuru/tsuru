@@ -230,6 +230,41 @@ func (s *S) TestListNodes(c *check.C) {
 	c.Assert(nodes[0].Status(), check.DeepEquals, "ready")
 }
 
+func (s *S) TestListNodesOnlyValid(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	opts := provision.AddNodeOptions{
+		Address:  srv.URL(),
+		Metadata: metadata,
+	}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	cli2, err := docker.NewClient(srv2.URL())
+	c.Assert(err, check.IsNil)
+	err = joinSwarm(cli, cli2, srv2.URL())
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, srv.URL())
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, metadata)
+	c.Assert(nodes[0].Pool(), check.DeepEquals, "p1")
+	c.Assert(nodes[0].Status(), check.DeepEquals, "ready")
+	err = s.p.RemoveNode(provision.RemoveNodeOptions{
+		Address: srv.URL(),
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err = s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
 func (s *S) TestListNodesEmpty(c *check.C) {
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)

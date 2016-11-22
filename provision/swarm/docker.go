@@ -136,7 +136,7 @@ func redistributeManagers(cli *docker.Client) error {
 	// TODO(cezarsa): distribute managers across nodes with different metadata
 	// (use splitMetadata from node autoscale after it's been moved from
 	// provision/docker)
-	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
+	nodes, err := listValidNodes(cli)
 	if err != nil {
 		return err
 	}
@@ -159,6 +159,20 @@ func redistributeManagers(cli *docker.Client) error {
 		}
 	}
 	return nil
+}
+
+func listValidNodes(cli *docker.Client) ([]swarm.Node, error) {
+	nodes, err := cli.ListNodes(docker.ListNodesOptions{})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for i := 0; i < len(nodes); i++ {
+		if _, ok := nodes[i].Spec.Annotations.Labels[labelNodeDockerAddr.String()]; !ok {
+			nodes[i] = nodes[len(nodes)-1]
+			nodes = nodes[:len(nodes)-1]
+		}
+	}
+	return nodes, nil
 }
 
 type waitResult struct {

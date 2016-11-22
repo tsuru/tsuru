@@ -77,7 +77,7 @@ func chooseDBSwarmNode() (*docker.Client, error) {
 }
 
 func updateDBSwarmNodes(client *docker.Client) error {
-	nodes, err := client.ListNodes(docker.ListNodesOptions{})
+	nodes, err := listValidNodes(client)
 	if err != nil {
 		return errors.WithStack(err)
 	}
