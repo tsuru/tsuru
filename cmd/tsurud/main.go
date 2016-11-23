@@ -62,9 +62,13 @@ func inDockerMachineDriverMode() bool {
 }
 
 func main() {
-	if err := agent.Start(); err != nil {
+	gopsAgent := agent.Agent{
+		HandleSignals: false,
+	}
+	if err := gopsAgent.Start(); err != nil {
 		log.Fatalf("Unable to start a Gops agent %s", err)
 	}
+	defer gopsAgent.Stop()
 	if inDockerMachineDriverMode() {
 		err := dockermachine.RunDriver(os.Getenv(localbinary.PluginEnvDriverName))
 		if err != nil {
