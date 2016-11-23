@@ -170,6 +170,7 @@ func listValidNodes(cli *docker.Client) ([]swarm.Node, error) {
 		if _, ok := nodes[i].Spec.Annotations.Labels[labelNodeDockerAddr.String()]; !ok {
 			nodes[i] = nodes[len(nodes)-1]
 			nodes = nodes[:len(nodes)-1]
+			i--
 		}
 	}
 	return nodes, nil

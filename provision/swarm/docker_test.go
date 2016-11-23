@@ -9,7 +9,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"encoding/json"
+	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
@@ -170,6 +173,49 @@ func (s *S) TestNewClientTLSConfig(c *check.C) {
 	c.Assert(cli.TLSConfig.RootCAs, check.NotNil)
 	err = cli.Ping()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestListValidNodes(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	mockNodes := []swarm.Node{
+		{},
+		{},
+		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{labelNodeDockerAddr.String(): "myaddr"}}}},
+		{},
+	}
+	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(mockNodes)
+	}))
+	cli, err := newClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	nodes, err := listValidNodes(cli)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	nodes[0].CreatedAt = time.Time{}
+	nodes[0].UpdatedAt = time.Time{}
+	c.Assert(nodes, check.DeepEquals, []swarm.Node{mockNodes[2]})
+}
+
+func (s *S) TestListValidNodesNoneValid(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	mockNodes := []swarm.Node{
+		{},
+		{},
+		{},
+		{},
+	}
+	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(mockNodes)
+	}))
+	cli, err := newClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	nodes, err := listValidNodes(cli)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.DeepEquals, []swarm.Node{})
 }
 
 func tmpFileWith(c *check.C, contents []byte) string {
