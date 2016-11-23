@@ -5,13 +5,13 @@
 package swarm
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"encoding/json"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
