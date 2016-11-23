@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tsuru/config"
 	apiRouter "github.com/tsuru/tsuru/api/router"
 	"github.com/tsuru/tsuru/api/shutdown"
@@ -278,6 +279,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "GET", "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.3", "POST", "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.3", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
+
+	m.Add("1.3", "GET", "/metrics", promhttp.Handler())
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
