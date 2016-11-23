@@ -475,6 +475,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	}
 	if existingClient == nil {
 		err = initSwarm(newClient, opts.Address)
+		existingClient = newClient
 	} else {
 		err = joinSwarm(existingClient, newClient, opts.Address)
 	}
@@ -485,7 +486,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	nodeData, err := newClient.InspectNode(dockerInfo.Swarm.NodeID)
+	nodeData, err := existingClient.InspectNode(dockerInfo.Swarm.NodeID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -495,14 +496,14 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	for k, v := range opts.Metadata {
 		nodeData.Spec.Annotations.Labels[k] = v
 	}
-	err = newClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
+	err = existingClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,
 	})
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return updateDBSwarmNodes(newClient)
+	return updateDBSwarmNodes(existingClient)
 }
 
 func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
