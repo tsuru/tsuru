@@ -950,34 +950,34 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
-			"checksumSHA1": "aJJh978zAGvXfrBsfnyy5DrRi8g=",
+			"checksumSHA1": "WY0pQ4Dz9CYaN7j8uI/pDye7InQ=",
 			"path": "github.com/google/gops",
-			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
-			"revisionTime": "2016-11-16T20:38:16Z"
+			"revision": "5afe28e74dcfa91fb8becc4f91c5fd25fe335f91",
+			"revisionTime": "2016-11-23T21:43:51Z"
 		},
 		{
-			"checksumSHA1": "71xiIdzjt20tMg480jmk0y+H5lU=",
+			"checksumSHA1": "uJjqF1fP5JxUu1a2npEI5Uck4pw=",
 			"path": "github.com/google/gops/agent",
-			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
-			"revisionTime": "2016-11-16T20:38:16Z"
+			"revision": "5afe28e74dcfa91fb8becc4f91c5fd25fe335f91",
+			"revisionTime": "2016-11-23T21:43:51Z"
 		},
 		{
 			"checksumSHA1": "3g2I6SO8+P3f+6Ky/151G3GsTys=",
 			"path": "github.com/google/gops/internal",
-			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
-			"revisionTime": "2016-11-16T20:38:16Z"
+			"revision": "5afe28e74dcfa91fb8becc4f91c5fd25fe335f91",
+			"revisionTime": "2016-11-23T21:43:51Z"
 		},
 		{
 			"checksumSHA1": "i07e2AyEXOLCpDlkaHzq5a7TnuQ=",
 			"path": "github.com/google/gops/internal/objfile",
-			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
-			"revisionTime": "2016-11-16T20:38:16Z"
+			"revision": "5afe28e74dcfa91fb8becc4f91c5fd25fe335f91",
+			"revisionTime": "2016-11-23T21:43:51Z"
 		},
 		{
 			"checksumSHA1": "NjcFAJaeZgay0ZOr+H7y8nJYHxU=",
 			"path": "github.com/google/gops/signal",
-			"revision": "282d5a56fb3a8df4c61f2a5078ed7828a81ef422",
-			"revisionTime": "2016-11-16T20:38:16Z"
+			"revision": "5afe28e74dcfa91fb8becc4f91c5fd25fe335f91",
+			"revisionTime": "2016-11-23T21:43:51Z"
 		},
 		{
 			"path": "github.com/gorilla/context",
