@@ -129,7 +129,7 @@ func joinSwarm(existingClient *docker.Client, newClient *docker.Client, addr str
 	if err != nil && err != docker.ErrNodeAlreadyInSwarm {
 		return errors.WithStack(err)
 	}
-	return redistributeManagers(newClient)
+	return redistributeManagers(existingClient)
 }
 
 func redistributeManagers(cli *docker.Client) error {
