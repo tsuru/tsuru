@@ -227,6 +227,9 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 	appsMap := map[string]provision.App{}
 	units := []provision.Unit{}
 	for _, t := range tasks {
+		if t.Spec.ContainerSpec.Labels[labelService.String()] != "true" {
+			continue
+		}
 		if t.DesiredState == swarm.TaskStateShutdown {
 			continue
 		}

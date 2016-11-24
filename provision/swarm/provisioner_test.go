@@ -980,6 +980,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 				ContainerSpec: swarm.ContainerSpec{
 					Labels: map[string]string{
 						labelAppName.String():           a.Name,
+						labelService.String():           "true",
 						labelServiceDeploy.String():     "true",
 						labelServiceBuildImage.String(): "app:v1",
 					},
@@ -989,6 +990,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 				Name: "myapp-web",
 				Labels: map[string]string{
 					labelAppName.String():           a.Name,
+					labelService.String():           "true",
 					labelServiceDeploy.String():     "true",
 					labelServiceBuildImage.String(): "app:v1",
 				},
@@ -1037,6 +1039,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 				ContainerSpec: swarm.ContainerSpec{
 					Labels: map[string]string{
 						labelAppName.String():           a.Name,
+						labelService.String():           "true",
 						labelServiceBuildImage.String(): "notset:v1",
 					},
 				},
@@ -1045,6 +1048,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 				Name: "myapp-web",
 				Labels: map[string]string{
 					labelAppName.String():           a.Name,
+					labelService.String():           "true",
 					labelServiceBuildImage.String(): "notset:v1",
 				},
 			},
@@ -1092,6 +1096,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 				ContainerSpec: swarm.ContainerSpec{
 					Labels: map[string]string{
 						labelAppName.String():       a.Name,
+						labelService.String():       "true",
 						labelServiceDeploy.String(): "true",
 					},
 				},
@@ -1100,6 +1105,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 				Name: "myapp-web",
 				Labels: map[string]string{
 					labelAppName.String():       a.Name,
+					labelService.String():       "true",
 					labelServiceDeploy.String(): "true",
 				},
 			},
