@@ -50,7 +50,7 @@ lint: metalint
 metalint:
 	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
 		go get -u github.com/alecthomas/gometalinter; \
-		gometalinter --install --update; \
+		gometalinter --install; \
 		for pkg in $$(go list ./...); do go install $$pkg; done; \
 		go list ./... | grep -v vendor/ | sed -e "s;^;$$GOPATH/src/;" | xargs gometalinter $(LINTER_ARGS); \
 	fi
