@@ -74,8 +74,16 @@ supported drivers
 can be used to add managed nodes to tsuru. This is huge and adds support for
 big names like Azure, Google Compute Engine, among others.
 
+Docker TLS support for provisioners
+-----------------------------------
+
+In this version we added support for orchestrating containers on docker nodes
+configured with TLS. TLS is mandatory for nodes created using the newly
+introduced Docker Machine IaaS and can be also configured for nonmanaged and nodes
+provisioned with other IaaS providers. Both provisioners, native and swarm, support
+docker with TLS.
+
 .. _bug-1.2.0:
 
 Bug fixes
 =========
-
