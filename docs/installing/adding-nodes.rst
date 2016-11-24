@@ -18,6 +18,8 @@ The managed option is preferred starting with tsuru-server 0.6.0. There are
 advantages like automatically healing and scaling of Nodes. The sections below
 describe how to add managed and unmanaged nodes.
 
+.. _installing_managed_nodes:
+
 Managed nodes
 =============
 

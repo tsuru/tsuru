@@ -16,6 +16,9 @@ fixes <bug-1.2.0>`.
 New features
 ============
 
+Multiple provisioners
+---------------------
+
 **Experimental** support for multiple provisioners. This release of tsuru is
 the first in a long time to support multiple provisioners. The provisioners in
 tsuru are responsible for, among other things, schedule containers on different
@@ -54,6 +57,22 @@ should be considered as highly **experimental** and may be removed from tsuru
 in the future. Because of that we cannot recommend them for production
 environments just yet. That said, please do play and report any bugs found
 while using them.
+
+IaaS integration with Docker Machine
+------------------------------------
+
+Apart from containers orchestration one thing that sets tsuru apart is the
+ability to also orchestrate virtual machines. This is acomplished using tsuru
+:ref:`managed nodes <installing_managed_nodes>`. Previously we had support for
+only 3 IaaS providers: Amazon EC2, Digital Ocean and Cloudstack.
+
+Starting on this version we added a new IaaS provider that uses Docker Machine
+as a backend, this means all drivers `supported by Docker Machine
+<https://github.com/docker/machine/tree/master/drivers>`_ and also `community
+supported drivers
+<https://github.com/docker/docker.github.io/blob/master/machine/AVAILABLE_DRIVER_PLUGINS.md>`_
+can be used to add managed nodes to tsuru. This is huge and adds support for
+big names like Azure, Google Compute Engine, among others.
 
 .. _bug-1.2.0:
 
