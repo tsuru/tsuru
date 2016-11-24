@@ -272,15 +272,15 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "POST", "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
 	m.Add("1.2", "POST", "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
 
-	m.Add("1.3", "POST", "/install/hosts", AuthorizationRequiredHandler(installHostAdd))
-	m.Add("1.3", "GET", "/install/hosts", AuthorizationRequiredHandler(installHostList))
-	m.Add("1.3", "GET", "/install/hosts/{name}", AuthorizationRequiredHandler(installHostInfo))
+	m.Add("1.2", "POST", "/install/hosts", AuthorizationRequiredHandler(installHostAdd))
+	m.Add("1.2", "GET", "/install/hosts", AuthorizationRequiredHandler(installHostList))
+	m.Add("1.2", "GET", "/install/hosts/{name}", AuthorizationRequiredHandler(installHostInfo))
 
-	m.Add("1.3", "GET", "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
-	m.Add("1.3", "POST", "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
-	m.Add("1.3", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
+	m.Add("1.2", "GET", "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
+	m.Add("1.2", "POST", "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
+	m.Add("1.2", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
 
-	m.Add("1.3", "GET", "/metrics", promhttp.Handler())
+	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
