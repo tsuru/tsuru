@@ -1,0 +1,62 @@
+.. Copyright 2016 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+==========================
+tsurud 1.2.0 release notes
+==========================
+
+Welcome to tsurud 1.2.0!
+
+These release notes cover the :ref:`new features <new-1.2.0>` and :ref:`bug
+fixes <bug-1.2.0>`.
+
+.. _new-1.2.0:
+
+New features
+============
+
+**Experimental** support for multiple provisioners. This release of tsuru is
+the first in a long time to support multiple provisioners. The provisioners in
+tsuru are responsible for, among other things, schedule containers on different
+nodes and handle moving containers in case of failures.
+
+Our default provisioner implementation remains the same, it includes a
+battle-tested containers scheduler and healer and has been in production for
+over 3 years, managing thousands of containers every day.
+
+However, the scenario has changed a lot since tsuru first started 3 years ago.
+Where the options for container orchestration/scheduling were few and imature,
+now they are plenty and (in some cases) stable. Because of this change we
+thought it would be nice to experiment on how to integrate other container
+schedulers as tsuru provisioners. These experiments have the potential of
+motivating us to change the default provisioner used in tsuru and remove a
+whole bunch of code from tsuru.
+
+To allow a seemless experience, first, a ``provisioner`` attribute was added to
+pools. It can be set using ``tsuru pool-add --provisioner`` and ``tsuru
+pool-update --provisioner``. This allows changing the provisioner of single
+pool, you can also set the default provisioner in the :ref:`config file
+<config_provisioner>`.
+
+Over the course of the next tsuru releases we intend to add **experimental**
+support as provisioners for:
+
+* `Docker Swarm mode <https://docs.docker.com/engine/swarm/>`_ (``swarm``
+  provisioner)
+* `Mesos/Marathon <https://mesosphere.github.io/marathon/>`_ (``mesos``
+  provisioner)
+* `Kubernetes <http://kubernetes.io/>`_ (``kubernetes`` provisioner)
+
+This release focused on adding support for the ``swarm`` provisioner. Please
+note that as much as we'd love feedback on the new added provisioners, they
+should be considered as highly **experimental** and may be removed from tsuru
+in the future. Because of that we cannot recommend them for production
+environments just yet. That said, please do play and report any bugs found
+while using them.
+
+.. _bug-1.2.0:
+
+Bug fixes
+=========
+
