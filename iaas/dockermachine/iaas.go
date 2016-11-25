@@ -65,11 +65,11 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	}
 	machineName, ok := params["name"]
 	if !ok {
-		id, err := generateRandomID()
+		name, err := generateMachineName(params["pool"])
 		if err != nil {
 			return nil, err
 		}
-		machineName = fmt.Sprintf("%s-%s", params["pool"], id)
+		machineName = name
 	} else {
 		delete(params, "name")
 	}
@@ -177,6 +177,21 @@ func (i *dockerMachineIaaS) DeleteMachine(m *iaas.Machine) error {
 		log.Debug(buf.String())
 	}()
 	return dockerMachine.DeleteMachine(m)
+}
+
+func generateMachineName(prefix string) (string, error) {
+	r := strings.NewReplacer("_", "-", " ", "-")
+	prefix = r.Replace(prefix)
+	prefix = strings.TrimPrefix(prefix, "-")
+	id, err := generateRandomID()
+	if err != nil {
+		return "", err
+	}
+	name := fmt.Sprintf("%s-%s", prefix, id)
+	if len(name) > 63 {
+		name = name[:63]
+	}
+	return name, nil
 }
 
 func generateRandomID() (string, error) {

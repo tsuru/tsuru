@@ -6,6 +6,7 @@ package dockermachine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
@@ -142,4 +143,30 @@ func (s *S) TestDeleteMachineIaaS(c *check.C) {
 	c.Assert(FakeDM.deletedMachine, check.DeepEquals, m)
 	c.Assert(FakeDM.closed, check.Equals, true)
 	c.Assert(FakeDM.config.IsDebug, check.Equals, true)
+}
+
+func (s *S) TestGenerateMachineName(c *check.C) {
+	tt := []struct {
+		prefix         string
+		expectedPrefix string
+		expectedLength int
+	}{
+		{"-abc", "abc", 36},
+		{"a b c", "a-b-c", 38},
+		{"a_b_c", "a-b-c", 38},
+		{"a_b c", "a-b-c", 38},
+		{"-a b_c", "a-b-c", 38},
+		{strings.Repeat("a", 80), strings.Repeat("a", 63), 63},
+	}
+	for _, t := range tt {
+		name, err := generateMachineName(t.prefix)
+		c.Assert(err, check.IsNil)
+		idx := strings.LastIndex(name, "-")
+		gotPrefix := name
+		if idx > 0 {
+			gotPrefix = name[:idx]
+		}
+		c.Assert(gotPrefix, check.Equals, t.expectedPrefix)
+		c.Assert(len(name), check.Equals, t.expectedLength)
+	}
 }
