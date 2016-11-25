@@ -1210,6 +1210,11 @@ iaas:dockermachine:insecure-registry
 
 Registry to be added as insecure registry to the docker engine.
 
+iaas:dockermachine:docker-flags
+++++++++++++++++++++++++++++++++++++
+
+Additional flags to be set on the docker engine.
+
 Custom IaaS
 -----------
 
