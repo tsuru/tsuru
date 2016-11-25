@@ -83,6 +83,14 @@ introduced Docker Machine IaaS and can be also configured for nonmanaged and nod
 provisioned with other IaaS providers. Both provisioners, native and swarm, support
 docker with TLS.
 
+App Run Isolated
+----------------
+
+The `app-run` command now supports a new flag `-i/--isolated`. When this flag is set,
+tsuru will spin up a new unit that will only live as long as the provided command is
+running. Since this unit won't be routable, this is a nice way to run commands without affecting
+your users.
+
 .. _bug-1.2.0:
 
 Bug fixes
