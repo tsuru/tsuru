@@ -50,7 +50,7 @@ func MigrateImages() error {
 			return err
 		}
 		if registry != "" {
-			pushOpts := docker.PushImageOptions{Name: newImage, InactivityTimeout: net.StreamInactivityTimeout}
+			pushOpts := docker.PushImageOptions{Name: newImage, InactivityTimeout: net.StreamInactivityTimeout, RawJSONStream: true}
 			err = dcluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 			if err != nil {
 				return err

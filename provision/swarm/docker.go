@@ -269,7 +269,12 @@ func commitPushBuildImage(client *docker.Client, img, contID string, app provisi
 func pushImage(client *docker.Client, repo, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
-		pushOpts := docker.PushImageOptions{Name: repo, Tag: tag, OutputStream: &buf, InactivityTimeout: tsuruNet.StreamInactivityTimeout}
+		pushOpts := docker.PushImageOptions{Name: repo,
+			Tag:               tag,
+			OutputStream:      &buf,
+			InactivityTimeout: tsuruNet.StreamInactivityTimeout,
+			RawJSONStream:     true,
+		}
 		err = client.PushImage(pushOpts, registryAuthConfig())
 		if err != nil {
 			return errors.WithStack(err)
