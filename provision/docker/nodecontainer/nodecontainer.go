@@ -58,7 +58,7 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 			return err
 		}
 	}
-	errChan := make(chan error, len(nodes))
+	errChan := make(chan error, len(nodes)*len(names))
 	wg := sync.WaitGroup{}
 	log.Debugf("[node containers] recreating %d containers", len(nodes))
 	recreateContainer := func(node *cluster.Node, confName string) {
