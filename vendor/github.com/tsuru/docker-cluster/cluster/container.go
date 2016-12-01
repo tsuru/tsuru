@@ -99,6 +99,7 @@ func (c *Cluster) createContainerInNode(opts docker.CreateContainerOptions, inac
 		err := c.PullImage(docker.PullImageOptions{
 			Repository:        opts.Config.Image,
 			InactivityTimeout: inactivityTimeout,
+			RawJSONStream:     true,
 		}, docker.AuthConfiguration{}, nodeAddress)
 		if err != nil {
 			return nil, err
