@@ -57,7 +57,7 @@ iaas'. The installer comes bundled with all `docker machine core drivers <https:
 and also supports the 3rd party ones; just make sure they are available in your $PATH.
 
 For a list of 3rd party plugins supported by the community
-check `here <https://github.com/docker/machine/blob/master/docs/AVAILABLE_DRIVER_PLUGINS.md>`_.
+check `here <https://github.com/docker/docker.github.io/blob/master/machine/AVAILABLE_DRIVER_PLUGINS.md>`_.
 
 Swarm Mode
 ----------
