@@ -13,6 +13,7 @@ Using
 .. toctree::
 
     install-client
+    deploying
     quickstart
     python
     ruby
