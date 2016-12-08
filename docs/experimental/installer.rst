@@ -103,13 +103,13 @@ Security
 ========
 
 The installer needs to issue commands to the tsuru api during the installation and,
-to do so, the host is configured to have the 8080/tcp port opened to the internet.
-This is probably not recommended and should be changed as soon as possible after
-the installation.
+to do so, it uses the ``--<driver-name>-open-port 8080/tcp`` driver flag, configuring the host
+to have the 8080/tcp port opened to the internet. This is probably not recommended and should be changed as soon as possible after
+the installation. For drivers that do not support this parameter, the port needs to be opened manually or
+the corresponding driver flag must be set on the installation configuration file.
 
 It is also recommended to change the root user login and password that the installer
 uses to bootstrap the installation.
-
 
 .. _customize:
 
