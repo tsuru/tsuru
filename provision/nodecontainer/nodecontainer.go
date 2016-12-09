@@ -123,6 +123,7 @@ func RemoveContainer(pool string, name string) error {
 }
 
 func ResetImage(pool string, name string) error {
+	conf := configFor(name)
 	var poolsToReset []string
 	if pool == "" {
 		poolMap, err := LoadNodeContainersForPools(name)
@@ -133,9 +134,15 @@ func ResetImage(pool string, name string) error {
 			poolsToReset = append(poolsToReset, poolName)
 		}
 	} else {
+		hasEntry, err := conf.HasEntry(pool)
+		if err != nil {
+			return err
+		}
+		if !hasEntry {
+			return ErrNodeContainerNotFound
+		}
 		poolsToReset = []string{pool}
 	}
-	conf := configFor(name)
 	for _, pool = range poolsToReset {
 		var poolResult, base NodeContainerConfig
 		err := conf.LoadWithBase(pool, &base, &poolResult)

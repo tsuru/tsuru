@@ -173,13 +173,16 @@ func (s *S) TestNodeContainerUpgradeRun(c *check.C) {
 	trans := &cmdtest.ConditionalTransport{
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/1.0/docker/nodecontainers/n1/upgrade" && req.Method == "POST"
+			err := req.ParseForm()
+			c.Assert(err, check.IsNil)
+			poolName := req.FormValue("pool")
+			return req.URL.Path == "/1.0/docker/nodecontainers/n1/upgrade" && req.Method == "POST" && poolName == "theonepool"
 		},
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	command := NodeContainerUpgrade{}
-	command.Flags().Parse(true, []string{"-y"})
+	command.Flags().Parse(true, []string{"-p", "theonepool", "-y"})
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "")

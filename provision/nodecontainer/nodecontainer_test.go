@@ -226,4 +226,17 @@ func (s *S) TestResetImage(c *check.C) {
 		"p1": {Name: "c1"},
 		"p2": {Name: "c1"},
 	})
+
+}
+
+func (s *S) TestResetImageNotFound(c *check.C) {
+	err := AddNewContainer("p2", &NodeContainerConfig{
+		Name: "c2",
+		Config: docker.Config{
+			Image: "img1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = ResetImage("p1", "c2")
+	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
 }

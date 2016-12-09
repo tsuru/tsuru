@@ -265,6 +265,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   404: Not found
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	poolName := r.FormValue("pool")
 	var ctxs []permission.PermissionContext

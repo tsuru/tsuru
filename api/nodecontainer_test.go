@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -546,9 +547,12 @@ func (s *S) TestNodeContainerUpgrade(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", nil)
+	form := url.Values{}
+	form.Set("pool", "theonepool")
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", strings.NewReader(form.Encode()))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -566,16 +570,40 @@ func (s *S) TestNodeContainerUpgrade(c *check.C) {
 		Kind:   "nodecontainer.update.upgrade",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":name", "value": "c1"},
+			{"name": "pool", "value": "theonepool"},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestNodeContainerUpgradeNotFound(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", nil)
+	err := nodecontainer.AddNewContainer("otherpool", &nodecontainer.NodeContainerConfig{
+		Name:        "c2",
+		PinnedImage: "tsuru/c1@sha256:abcef384829283eff",
+		Config: docker.Config{
+			Image: "img1",
+			Env:   []string{"A=1"},
+		},
+	})
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	tt := []struct {
+		name string
+		pool string
+	}{
+		{"c1", ""},
+		{"c2", "theonepool"},
+	}
 	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	for _, t := range tt {
+		recorder := httptest.NewRecorder()
+		form := url.Values{}
+		if t.pool != "" {
+			form.Set("pool", t.pool)
+		}
+		request, errReq := http.NewRequest("POST", "/docker/nodecontainers/"+t.name+"/upgrade", strings.NewReader(form.Encode()))
+		c.Assert(errReq, check.IsNil)
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		server.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	}
 }
