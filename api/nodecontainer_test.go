@@ -547,9 +547,7 @@ func (s *S) TestNodeContainerUpgrade(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	form := url.Values{}
-	form.Set("pool", "theonepool")
-	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", strings.NewReader(form.Encode()))
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -570,7 +568,45 @@ func (s *S) TestNodeContainerUpgrade(c *check.C) {
 		Kind:   "nodecontainer.update.upgrade",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":name", "value": "c1"},
-			{"name": "pool", "value": "theonepool"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestNodeContainerUpgradeLimited(c *check.C) {
+	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name:        "c1",
+		PinnedImage: "tsuru/c1@sha256:abcef384829283eff",
+		Config: docker.Config{
+			Image: "img1",
+			Env:   []string{"A=1"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	form := url.Values{}
+	form.Set("pool", "p1")
+	request, err := http.NewRequest("POST", "/docker/nodecontainers/c1/upgrade", strings.NewReader(form.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	all, err := nodecontainer.AllNodeContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{
+		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
+			"p1": {Name: "c1", Config: docker.Config{Env: []string{"A=1"}, Image: "img1"}},
+		}},
+	})
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeNodeContainer, Value: "c1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "nodecontainer.update.upgrade",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": "c1"},
+			{"name": "pool", "value": "p1"},
 		},
 	}, eventtest.HasEvent)
 }
