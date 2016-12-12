@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -1687,6 +1688,89 @@ func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
 	c.Assert(err, check.ErrorMatches, "*deploy*")
+}
+
+func (s *S) TestUpgradeNodeContainerCreatesBaseService(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	service, err := client.InspectService("node-container-bs-all")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string(nil))
+}
+
+func (s *S) TestUpgradeNodeContainerCreatesLimitedService(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "p1", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "p1", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	service, err := client.InspectService("node-container-bs-all")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool != p1"})
+	service, err = client.InspectService("node-container-bs-p1")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+}
+
+func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	c1.Config.Image = "bs:v2"
+	err = nodecontainer.UpdateContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	service, err := client.InspectService("node-container-bs-all")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Image, check.Equals, "bs:v2")
 }
 
 func (s *S) TestNodeForNodeData(c *check.C) {

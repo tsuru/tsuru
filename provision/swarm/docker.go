@@ -23,6 +23,7 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
 )
@@ -52,6 +53,7 @@ var (
 	labelAppPlatform        = tsuruLabel("tsuru.app.platform")
 	labelRouterName         = tsuruLabel("tsuru.router.name")
 	labelRouterType         = tsuruLabel("tsuru.router.type")
+	labelNodeContainerName  = tsuruLabel("tsuru.nodecontainer.name")
 )
 
 func newClient(address string) (*docker.Client, error) {
@@ -422,7 +424,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
 	}
-	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.pool == %s", opts.app.GetPool()))
+	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, opts.app.GetPool()))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -520,4 +522,52 @@ func execInTaskContainer(c *docker.Client, t *swarm.Task, stdout, stderr io.Writ
 		return fmt.Errorf("unexpected exit code: %d", execData.ExitCode)
 	}
 	return nil
+}
+
+func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) {
+	config, err := nodecontainer.LoadNodeContainer(pool, name)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var constraints []string
+	if pool == "" {
+		otherConfigs, err := nodecontainer.LoadNodeContainersForPools(name)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		for p := range otherConfigs {
+			if p != "" {
+				constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", labelNodePoolName, p))
+			}
+		}
+	} else {
+		constraints = []string{fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, pool)}
+	}
+	service := &swarm.ServiceSpec{
+		Annotations: swarm.Annotations{
+			Name:   nodeContainerServiceName(name, pool),
+			Labels: map[string]string{labelNodeContainerName.String(): name},
+		},
+		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
+		TaskTemplate: swarm.TaskSpec{
+			ContainerSpec: swarm.ContainerSpec{
+				Image:   config.Image(),
+				Labels:  config.Config.Labels,
+				Command: config.Config.Cmd,
+				Env:     config.Config.Env,
+				Dir:     config.Config.WorkingDir,
+				User:    config.Config.User,
+				TTY:     config.Config.Tty,
+			},
+			Placement: &swarm.Placement{Constraints: constraints},
+		},
+	}
+	return service, nil
+}
+
+func nodeContainerServiceName(name, pool string) string {
+	if pool == "" {
+		return fmt.Sprintf("node-container-%s-all", name)
+	}
+	return fmt.Sprintf("node-container-%s-%s", name, pool)
 }

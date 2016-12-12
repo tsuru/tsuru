@@ -9,12 +9,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/swarm"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"gopkg.in/check.v1"
 )
 
@@ -216,6 +219,59 @@ func (s *S) TestListValidNodesNoneValid(c *check.C) {
 	nodes, err := listValidNodes(cli)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.DeepEquals, []swarm.Node{})
+}
+
+func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "swarmbs",
+		Config: docker.Config{
+			Image: "bsimg",
+			Env: []string{
+				"A=1",
+				"B=2",
+			},
+			Labels: map[string]string{"label1": "val1"},
+		},
+		HostConfig: docker.HostConfig{
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			Binds:         []string{"/xyz:/abc:rw"},
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	serviceSpec, err := serviceSpecForNodeContainer("swarmbs", "")
+	c.Assert(err, check.IsNil)
+	expected := &swarm.ServiceSpec{
+		Annotations: swarm.Annotations{
+			Name: "node-container-swarmbs-all",
+			Labels: map[string]string{
+				"tsuru.nodecontainer.name": "swarmbs",
+			},
+		},
+		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
+		TaskTemplate: swarm.TaskSpec{
+			ContainerSpec: swarm.ContainerSpec{
+				Image:  "bsimg",
+				Env:    []string{"A=1", "B=2"},
+				Labels: map[string]string{"label1": "val1"},
+			},
+			Placement: &swarm.Placement{Constraints: []string(nil)},
+		},
+	}
+	c.Assert(serviceSpec, check.DeepEquals, expected)
+	err = nodecontainer.AddNewContainer("p1", &c1)
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p2", &c1)
+	c.Assert(err, check.IsNil)
+	serviceSpec, err = serviceSpecForNodeContainer("swarmbs", "p1")
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceSpec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+	serviceSpec, err = serviceSpecForNodeContainer("swarmbs", "")
+	c.Assert(err, check.IsNil)
+	constraints := sort.StringSlice(serviceSpec.TaskTemplate.Placement.Constraints)
+	constraints.Sort()
+	c.Assert([]string(constraints), check.DeepEquals, []string{"node.labels.pool != p1", "node.labels.pool != p2"})
 }
 
 func tmpFileWith(c *check.C, contents []byte) string {

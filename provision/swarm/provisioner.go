@@ -847,6 +847,34 @@ func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a pr
 	return err
 }
 
+func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	serviceSpec, err := serviceSpecForNodeContainer(name, pool)
+	if err != nil {
+		return err
+	}
+	service, err := client.InspectService(nodeContainerServiceName(name, pool))
+	if err != nil {
+		if _, ok := err.(*docker.NoSuchService); !ok {
+			return errors.WithStack(err)
+		}
+		opts := docker.CreateServiceOptions{ServiceSpec: *serviceSpec}
+		_, errCreate := client.CreateService(opts)
+		if errCreate != nil {
+			return errors.WithStack(errCreate)
+		}
+		if pool != "" {
+			return p.UpgradeNodeContainer(name, "", writer)
+		}
+		return nil
+	}
+	opts := docker.UpdateServiceOptions{ServiceSpec: *serviceSpec}
+	return errors.WithStack(client.UpdateService(service.ID, opts))
+}
+
 func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
 	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
