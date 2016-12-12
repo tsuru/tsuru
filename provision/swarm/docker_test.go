@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/swarm"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -235,7 +236,7 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 		HostConfig: docker.HostConfig{
 			RestartPolicy: docker.AlwaysRestart(),
 			Privileged:    true,
-			Binds:         []string{"/xyz:/abc:rw"},
+			Binds:         []string{"/xyz:/abc:ro"},
 		},
 	}
 	err := nodecontainer.AddNewContainer("", &c1)
@@ -255,6 +256,14 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 				Image:  "bsimg",
 				Env:    []string{"A=1", "B=2"},
 				Labels: map[string]string{"label1": "val1"},
+				Mounts: []mount.Mount{
+					{
+						Type:     mount.TypeBind,
+						Source:   "/xyz",
+						Target:   "/abc",
+						ReadOnly: true,
+					},
+				},
 			},
 			Placement: &swarm.Placement{Constraints: []string(nil)},
 		},

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -524,6 +525,13 @@ func execInTaskContainer(c *docker.Client, t *swarm.Task, stdout, stderr io.Writ
 	return nil
 }
 
+/*
+	Args            []string                `json:",omitempty"`
+	Groups          []string                `json:",omitempty"`
+	Mounts          []mount.Mount           `json:",omitempty"`
+	StopGracePeriod *time.Duration          `json:",omitempty"`
+	Healthcheck     *container.HealthConfig `json:",omitempty"`
+*/
 func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) {
 	config, err := nodecontainer.LoadNodeContainer(pool, name)
 	if err != nil {
@@ -543,6 +551,16 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 	} else {
 		constraints = []string{fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, pool)}
 	}
+	var mounts []mount.Mount
+	for _, b := range config.HostConfig.Binds {
+		parts := strings.SplitN(b, ":", 3)
+		mounts = append(mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   parts[0],
+			Target:   parts[1],
+			ReadOnly: parts[2] == "ro",
+		})
+	}
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   nodeContainerServiceName(name, pool),
@@ -558,6 +576,7 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 				Dir:     config.Config.WorkingDir,
 				User:    config.Config.User,
 				TTY:     config.Config.Tty,
+				Mounts:  mounts,
 			},
 			Placement: &swarm.Placement{Constraints: constraints},
 		},
