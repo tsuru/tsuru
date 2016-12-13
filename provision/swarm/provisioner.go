@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -867,11 +868,14 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 	if err != nil {
 		return err
 	}
-	service, err := client.InspectService(nodeContainerServiceName(name, pool))
+	serviceName := nodeContainerServiceName(name, pool)
+	service, err := client.InspectService(serviceName)
 	if err != nil {
 		if _, ok := err.(*docker.NoSuchService); !ok {
 			return errors.WithStack(err)
 		}
+		log.Debugf("[node containers] creating service %q for node container %s [%s]", serviceName, name, pool)
+		fmt.Fprintf(writer, "creating service %q for node container %q [%s]\n", serviceName, name, pool)
 		opts := docker.CreateServiceOptions{ServiceSpec: *serviceSpec}
 		_, errCreate := client.CreateService(opts)
 		if errCreate != nil {
@@ -888,7 +892,12 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		}
 		return nil
 	}
-	opts := docker.UpdateServiceOptions{ServiceSpec: *serviceSpec}
+	log.Debugf("[node containers] updating service %q for node container %q [%s]", serviceName, name, pool)
+	fmt.Fprintf(writer, "updating service %q for node container %q [%s]\n", serviceName, name, pool)
+	opts := docker.UpdateServiceOptions{
+		ServiceSpec: *serviceSpec,
+		Version:     service.Version.Index + 1,
+	}
 	return errors.WithStack(client.UpdateService(service.ID, opts))
 }
 
