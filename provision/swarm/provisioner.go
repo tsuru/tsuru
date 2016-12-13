@@ -892,6 +892,15 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 	return errors.WithStack(client.UpdateService(service.ID, opts))
 }
 
+func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	err = client.RemoveService(docker.RemoveServiceOptions{ID: nodeContainerServiceName(name, pool)})
+	return errors.WithStack(err)
+}
+
 func (p *swarmProvisioner) ensureNodeContainersCreated() error {
 	names, err := nodecontainer.AllNodeContainersNames()
 	if err != nil {

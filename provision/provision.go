@@ -450,6 +450,7 @@ type NodeProvisioner interface {
 
 type NodeContainerProvisioner interface {
 	UpgradeNodeContainer(name string, pool string, writer io.Writer) error
+	RemoveNodeContainer(name string, pool string, writer io.Writer) error
 }
 
 // UnitFinderProvisioner is a provisioner that allows finding a specific unit by

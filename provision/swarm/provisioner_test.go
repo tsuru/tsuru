@@ -1806,6 +1806,34 @@ func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {
 	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Image, check.Equals, "bs:v2")
 }
 
+func (s *S) TestRemoveNodeContainerRemovesService(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	services, err := client.ListServices(docker.ListServicesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(services), check.Equals, 1)
+	err = s.p.RemoveNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	services, err = client.ListServices(docker.ListServicesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(services), check.Equals, 0)
+}
+
 func (s *S) TestNodeForNodeData(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

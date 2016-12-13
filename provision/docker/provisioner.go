@@ -1389,3 +1389,7 @@ func (p *dockerProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 func (p *dockerProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
 	return internalNodeContainer.RecreateNamedContainers(p, writer, name)
 }
+
+func (p *dockerProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
+	return nil
+}
