@@ -158,7 +158,7 @@ func (r *fakeRouter) RemoveBackend(name string) error {
 		}
 	}
 	delete(r.backends, backendName)
-	return router.Remove(backendName)
+	return nil
 }
 
 func (r *fakeRouter) AddRoutes(name string, addresses []*url.URL) error {

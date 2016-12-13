@@ -146,8 +146,10 @@ func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
 	c.Assert(routes, HostEquals, []*url.URL{})
 	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.IsNil)
-	_, err = s.Router.Routes(testBackend1)
+	err = s.Router.RemoveBackend(testBackend1)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+	routes, _ = s.Router.Routes(testBackend1)
+	c.Assert(routes, check.HasLen, 0)
 }
 
 func (s *RouterSuite) TestRouteRemoveRouteOtherScheme(c *check.C) {

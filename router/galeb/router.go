@@ -293,6 +293,9 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	rule := r.ruleName(backendName)
 	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
 	if err != nil {
+		if _, ok := err.(galebClient.ErrItemNotFound); ok {
+			return router.ErrBackendNotFound
+		}
 		return err
 	}
 	for _, virtualhost := range virtualhosts {
@@ -316,11 +319,7 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	for _, target := range targets {
 		r.client.RemoveBackendByID(target.FullId())
 	}
-	err = r.client.RemoveBackendPool(r.poolName(backendName))
-	if err != nil {
-		return err
-	}
-	return router.Remove(backendName)
+	return r.client.RemoveBackendPool(r.poolName(backendName))
 }
 
 func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) error {

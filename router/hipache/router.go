@@ -123,13 +123,12 @@ func (r *hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return &router.RouterError{Op: "remove", Err: err}
 	}
-	err = conn.Del(frontend).Err()
+	deleted, err := conn.Del(frontend).Result()
 	if err != nil {
 		return &router.RouterError{Op: "remove", Err: err}
 	}
-	err = router.Remove(backendName)
-	if err != nil {
-		return &router.RouterError{Op: "remove", Err: err}
+	if deleted == 0 {
+		return router.ErrBackendNotFound
 	}
 	cnames, err := r.getCNames(backendName)
 	if err != nil {

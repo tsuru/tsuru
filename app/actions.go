@@ -419,7 +419,10 @@ var moveRouterUnits = action.Action{
 		}
 		result := changePlanPipelineResult{oldPlan: oldPlan, app: app, oldIp: app.Ip}
 		if newRouter != oldRouter {
-			rebuild.RoutesRebuildOrEnqueue(app.Name)
+			_, err = rebuild.RebuildRoutes(app)
+			if err != nil {
+				return nil, err
+			}
 			result.changedRouter = true
 		}
 		return &result, nil

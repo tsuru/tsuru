@@ -92,6 +92,30 @@ func (s *S) TestStore(c *check.C) {
 	c.Assert(name, check.Equals, "routername")
 	err = Remove("appname")
 	c.Assert(err, check.IsNil)
+	_, err = Retrieve("appname")
+	c.Assert(err, check.Equals, ErrBackendNotFound)
+}
+
+func (s *S) TestStoreUpdatesEntry(c *check.C) {
+	err := Store("appname", "routername", "fake")
+	c.Assert(err, check.IsNil)
+	err = Store("appname", "routername2", "fake2")
+	c.Assert(err, check.IsNil)
+	name, err := Retrieve("appname")
+	c.Assert(err, check.IsNil)
+	c.Assert(name, check.Equals, "routername2")
+	data, err := retrieveRouterData("appname")
+	c.Assert(err, check.IsNil)
+	delete(data, "_id")
+	c.Assert(data, check.DeepEquals, map[string]string{
+		"app":    "appname",
+		"router": "routername2",
+		"kind":   "fake2",
+	})
+	err = Remove("appname")
+	c.Assert(err, check.IsNil)
+	_, err = Retrieve("appname")
+	c.Assert(err, check.Equals, ErrBackendNotFound)
 }
 
 func (s *S) TestRetrieveWithoutKind(c *check.C) {

@@ -435,6 +435,10 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		logErr("Failed to remove router backend", err)
 	}
+	err = router.Remove(app.Name)
+	if err != nil {
+		logErr("Failed to remove router backend from database", err)
+	}
 	err = app.unbind()
 	if err != nil {
 		logErr("Unable to unbind app", err)

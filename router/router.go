@@ -135,7 +135,12 @@ func collection() (*storage.Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return conn.Collection("routers"), nil
+	coll := conn.Collection("routers")
+	err = coll.EnsureIndex(mgo.Index{Key: []string{"app"}, Unique: true})
+	if err != nil {
+		return nil, err
+	}
+	return coll, nil
 }
 
 // Store stores the app name related with the
@@ -151,7 +156,8 @@ func Store(appName, routerName, kind string) error {
 		"router": routerName,
 		"kind":   kind,
 	}
-	return coll.Insert(&data)
+	_, err = coll.Upsert(bson.M{"app": appName}, data)
+	return err
 }
 
 func retrieveRouterData(appName string) (map[string]string, error) {

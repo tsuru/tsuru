@@ -153,7 +153,7 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 		}
 		return &router.RouterError{Err: err, Op: "remove-backend"}
 	}
-	return router.Remove(usedName)
+	return nil
 }
 
 func (r *vulcandRouter) AddRoute(name string, address *url.URL) error {
