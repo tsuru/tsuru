@@ -798,3 +798,48 @@ func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, nodecontainer.BsDefaultName)
 }
+
+func (s *S) TestRemoveNamedContainers(c *check.C) {
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	_, err := nodecontainer.InitializeBS()
+	c.Assert(err, check.IsNil)
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	nodes, err := p.Cluster().Nodes()
+	c.Assert(err, check.IsNil)
+	for i, n := range nodes {
+		n.Metadata["pool"] = fmt.Sprintf("p-%d", i)
+		_, err = p.Cluster().UpdateNode(n)
+		c.Assert(err, check.IsNil)
+	}
+	server := p.Servers()[0]
+	var paths []string
+	server.CustomHandler("/containers/.*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.Method+" "+r.URL.Path+"?"+r.URL.RawQuery)
+		server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	server2 := p.Servers()[1]
+	var paths2 []string
+	server2.CustomHandler("/containers/.*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths2 = append(paths2, r.Method+" "+r.URL.Path+"?"+r.URL.RawQuery)
+		server2.DefaultHandler().ServeHTTP(w, r)
+	}))
+	err = ensureContainersStarted(p, ioutil.Discard, true, nil)
+	c.Assert(err, check.IsNil)
+	paths = nil
+	paths2 = nil
+	expectedPaths := []string{"POST /containers/big-sibling/stop?t=10", "DELETE /containers/big-sibling?force=1"}
+	err = RemoveNamedContainers(p, ioutil.Discard, "big-sibling", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(paths, check.DeepEquals, expectedPaths)
+	c.Assert(paths2, check.DeepEquals, expectedPaths)
+	err = ensureContainersStarted(p, ioutil.Discard, true, nil)
+	c.Assert(err, check.IsNil)
+	paths = nil
+	paths2 = nil
+	err = RemoveNamedContainers(p, ioutil.Discard, "big-sibling", "p-1")
+	c.Assert(err, check.IsNil)
+	c.Assert(paths, check.DeepEquals, []string(nil))
+	c.Assert(paths2, check.DeepEquals, expectedPaths)
+}

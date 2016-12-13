@@ -189,6 +189,66 @@ func pullWithRetry(client *docker.Client, p DockerProvisioner, image string, max
 	return "", err
 }
 
+func RemoveNamedContainers(p DockerProvisioner, w io.Writer, name string, pool string) error {
+	var nodes []cluster.Node
+	var err error
+	if pool == "" {
+		nodes, err = p.Cluster().UnfilteredNodes()
+	} else {
+		nodes, err = p.Cluster().UnfilteredNodesForMetadata(map[string]string{"pool": pool})
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	errChan := make(chan error, len(nodes))
+	wg := sync.WaitGroup{}
+	removeContainer := func(node *cluster.Node) {
+		pool := node.Metadata["pool"]
+		client, err := node.Client()
+		if err != nil {
+			errChan <- err
+			return
+		}
+		err = client.StopContainer(name, 10)
+		if err != nil {
+			if _, ok := err.(*docker.NoSuchContainer); ok {
+				log.Debugf("[node containers] no such container %q in %s [%s]", name, node.Address, pool)
+				fmt.Fprintf(w, "no such node container %q in the node %s [%s]\n", name, node.Address, pool)
+				return
+			}
+			if _, ok := err.(*docker.ContainerNotRunning); !ok {
+				err = errors.Wrapf(err, "[node containers] failed to stop container in %s [%s]", node.Address, pool)
+				errChan <- err
+				return
+			}
+		}
+		log.Debugf("[node containers] removing container %q in %s [%s]", name, node.Address, pool)
+		fmt.Fprintf(w, "removing node container %q in the node %s [%s]\n", name, node.Address, pool)
+		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: name, Force: true})
+		if err != nil {
+			err = errors.Wrapf(err, "[node containers] failed to remove container in %s [%s]", node.Address, pool)
+			errChan <- err
+		}
+	}
+	for i := range nodes {
+		wg.Add(1)
+		go func(node *cluster.Node) {
+			removeContainer(node)
+			wg.Done()
+		}(&nodes[i])
+	}
+	wg.Wait()
+	close(errChan)
+	var allErrors []error
+	for err := range errChan {
+		allErrors = append(allErrors, err)
+	}
+	if len(allErrors) == 0 {
+		return nil
+	}
+	return tsuruErrors.NewMultiError(allErrors...)
+}
+
 type ClusterHook struct {
 	Provisioner DockerProvisioner
 }

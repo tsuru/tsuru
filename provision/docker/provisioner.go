@@ -1391,5 +1391,5 @@ func (p *dockerProvisioner) UpgradeNodeContainer(name string, pool string, write
 }
 
 func (p *dockerProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
-	return nil
+	return internalNodeContainer.RemoveNamedContainers(p, writer, name, pool)
 }
