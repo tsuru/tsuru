@@ -525,13 +525,6 @@ func execInTaskContainer(c *docker.Client, t *swarm.Task, stdout, stderr io.Writ
 	return nil
 }
 
-/*
-	Args            []string                `json:",omitempty"`
-	Groups          []string                `json:",omitempty"`
-	Mounts          []mount.Mount           `json:",omitempty"`
-	StopGracePeriod *time.Duration          `json:",omitempty"`
-	Healthcheck     *container.HealthConfig `json:",omitempty"`
-*/
 func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) {
 	config, err := nodecontainer.LoadNodeContainer(pool, name)
 	if err != nil {
@@ -561,6 +554,15 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 			ReadOnly: parts[2] == "ro",
 		})
 	}
+	var healthcheck *container.HealthConfig
+	if config.Config.Healthcheck != nil {
+		healthcheck = &container.HealthConfig{
+			Test:     config.Config.Healthcheck.Test,
+			Interval: config.Config.Healthcheck.Interval,
+			Timeout:  config.Config.Healthcheck.Timeout,
+			Retries:  config.Config.Healthcheck.Retries,
+		}
+	}
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   nodeContainerServiceName(name, pool),
@@ -569,14 +571,15 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
-				Image:   config.Image(),
-				Labels:  config.Config.Labels,
-				Command: config.Config.Cmd,
-				Env:     config.Config.Env,
-				Dir:     config.Config.WorkingDir,
-				User:    config.Config.User,
-				TTY:     config.Config.Tty,
-				Mounts:  mounts,
+				Image:       config.Image(),
+				Labels:      config.Config.Labels,
+				Command:     config.Config.Cmd,
+				Env:         config.Config.Env,
+				Dir:         config.Config.WorkingDir,
+				User:        config.Config.User,
+				TTY:         config.Config.Tty,
+				Mounts:      mounts,
+				Healthcheck: healthcheck,
 			},
 			Placement: &swarm.Placement{Constraints: constraints},
 		},
