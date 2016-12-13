@@ -1928,16 +1928,3 @@ func (s *S) attachRegister(c *check.C, srv *testing.DockerServer, register bool,
 	}))
 	return chAttached
 }
-
-func (s *S) taskForContainer(c *check.C, srv *testing.DockerServer, contID string) *swarm.Task {
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	tasks, err := client.ListTasks(docker.ListTasksOptions{})
-	c.Assert(err, check.IsNil)
-	for _, t := range tasks {
-		if t.Status.ContainerStatus.ContainerID == contID {
-			return &t
-		}
-	}
-	return nil
-}
