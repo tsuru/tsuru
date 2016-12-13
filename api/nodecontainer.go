@@ -251,7 +251,32 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 			Message: fmt.Sprintf("node container %q not found for pool %q", name, poolName),
 		}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	provs, err := provision.Registry()
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	var allErrors []string
+	for _, prov := range provs {
+		ncProv, ok := prov.(provision.NodeContainerProvisioner)
+		if !ok {
+			continue
+		}
+		err = ncProv.RemoveNodeContainer(name, poolName, writer)
+		if err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+	if len(allErrors) > 0 {
+		return errors.Errorf("multiple errors removing node container: %s", strings.Join(allErrors, "; "))
+	}
+	return nil
 }
 
 // title: node container upgrade
