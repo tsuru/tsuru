@@ -52,7 +52,7 @@ func runRoutesRebuildOnce(appName string, lock bool) bool {
 	}
 	a, err := appFinder(appName)
 	if err != nil {
-		log.Errorf("[routes-rebuild-task] error getting app: %s", err)
+		log.Errorf("[routes-rebuild-task] error getting app %q: %s", appName, err)
 		return false
 	}
 	if a == nil {
@@ -67,12 +67,12 @@ func runRoutesRebuildOnce(appName string, lock bool) bool {
 		defer a.Unlock()
 	}
 	if err != nil {
-		log.Errorf("[routes-rebuild-task] error getting app: %s", err)
+		log.Errorf("[routes-rebuild-task] error getting app %q: %s", appName, err)
 		return false
 	}
 	_, err = RebuildRoutes(a)
 	if err != nil {
-		log.Errorf("[routes-rebuild-task] error rebuilding: %s", err)
+		log.Errorf("[routes-rebuild-task] error rebuilding app %q: %s", appName, err)
 		return false
 	}
 	return true
