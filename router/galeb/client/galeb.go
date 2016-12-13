@@ -20,11 +20,31 @@ import (
 	"github.com/tsuru/tsuru/net"
 )
 
-var (
-	ErrItemNotFound      = errors.New("item not found")
-	ErrItemAlreadyExists = errors.New("item already exists")
-	ErrAmbiguousSearch   = errors.New("more than one item returned in search")
-)
+type ErrItemNotFound struct {
+	path string
+}
+
+func (e ErrItemNotFound) Error() string {
+	return fmt.Sprintf("item not found: %s", e.path)
+}
+
+type ErrItemAlreadyExists struct {
+	path   string
+	params interface{}
+}
+
+func (e ErrItemAlreadyExists) Error() string {
+	return fmt.Sprintf("item already exists: %s - %#v", e.path, e.params)
+}
+
+type ErrAmbiguousSearch struct {
+	path  string
+	items []commonPostResponse
+}
+
+func (e ErrAmbiguousSearch) Error() string {
+	return fmt.Sprintf("more than one item returned in search: %s - %#v", e.path, e.items)
+}
 
 type GalebClient struct {
 	ApiUrl        string
@@ -91,7 +111,7 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 		return "", err
 	}
 	if rsp.StatusCode == http.StatusConflict {
-		return "", ErrItemAlreadyExists
+		return "", ErrItemAlreadyExists{path: path, params: params}
 	}
 	if rsp.StatusCode != http.StatusCreated {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
@@ -220,7 +240,7 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
 			params.BackendPool = poolID
 			resource, cerr := c.doCreateResource("/target", &params)
 			if cerr != nil {
-				if cerr == ErrItemAlreadyExists {
+				if _, ok := cerr.(ErrItemAlreadyExists); ok {
 					return
 				}
 				errCh <- cerr
@@ -449,14 +469,14 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	}
 	itemList := rspObj.Embedded[item]
 	if len(itemList) == 0 {
-		return "", ErrItemNotFound
+		return "", ErrItemNotFound{path: path}
 	}
 	if len(itemList) > 1 {
-		return "", ErrAmbiguousSearch
+		return "", ErrAmbiguousSearch{path: path, items: itemList}
 	}
 	id := rspObj.Embedded[item][0].FullId()
 	if id == "" {
-		return "", ErrItemNotFound
+		return "", ErrItemNotFound{path: path}
 	}
 	return id, nil
 }
