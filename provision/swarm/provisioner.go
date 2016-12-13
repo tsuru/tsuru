@@ -930,6 +930,26 @@ func (p *swarmProvisioner) ensureNodeContainersCreated() error {
 	return nil
 }
 
+func (p *swarmProvisioner) StartupMessage() (string, error) {
+	out := "Swarm provisioner reports the following nodes:\n"
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		if errors.Cause(err) != errNoSwarmNode {
+			return "", err
+		}
+		return out + "    No Swarm node available.\n", nil
+	}
+	nodeList, err := client.ListNodes(docker.ListNodesOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, node := range nodeList {
+		addr := node.Spec.Labels[labelNodeDockerAddr.String()]
+		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", addr, node.Status.State, node.Spec.Role)
+	}
+	return out, nil
+}
+
 func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
 	curImg, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
