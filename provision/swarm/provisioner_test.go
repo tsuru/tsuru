@@ -211,6 +211,39 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	c.Assert(node.Status(), check.Equals, "ready")
 }
 
+func (s *S) TestAddNodeFirstNodeStartsNodeContainers(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv2.Stop()
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &c1)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddNodeOptions{Address: srv.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	services, err := client.ListServices(docker.ListServicesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(services), check.Equals, 2)
+	opts = provision.AddNodeOptions{Address: srv2.URL()}
+	err = s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	services, err = client.ListServices(docker.ListServicesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(services), check.Equals, 2)
+}
+
 func (s *S) TestListNodes(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

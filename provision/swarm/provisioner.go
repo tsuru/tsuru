@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"strings"
 
@@ -23,6 +24,7 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 )
 
 const (
@@ -464,6 +466,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 }
 
 func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
+	init := false
 	existingClient, err := chooseDBSwarmNode()
 	if err != nil && errors.Cause(err) != errNoSwarmNode {
 		return err
@@ -479,6 +482,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if existingClient == nil {
 		err = initSwarm(newClient, opts.Address)
 		existingClient = newClient
+		init = true
 	} else {
 		err = joinSwarm(existingClient, newClient, opts.Address)
 	}
@@ -506,7 +510,14 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return updateDBSwarmNodes(existingClient)
+	err = updateDBSwarmNodes(existingClient)
+	if err != nil {
+		return err
+	}
+	if init {
+		return p.ensureNodeContainersCreated()
+	}
+	return nil
 }
 
 func (p *swarmProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
@@ -867,12 +878,38 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 			return errors.WithStack(errCreate)
 		}
 		if pool != "" {
-			return p.UpgradeNodeContainer(name, "", writer)
+			_, errInspect := client.InspectService(nodeContainerServiceName(name, ""))
+			if _, ok := errInspect.(*docker.NoSuchService); !ok {
+				return p.UpgradeNodeContainer(name, "", writer)
+			}
+			if errInspect != nil {
+				return errors.WithStack(errInspect)
+			}
 		}
 		return nil
 	}
 	opts := docker.UpdateServiceOptions{ServiceSpec: *serviceSpec}
 	return errors.WithStack(client.UpdateService(service.ID, opts))
+}
+
+func (p *swarmProvisioner) ensureNodeContainersCreated() error {
+	names, err := nodecontainer.AllNodeContainersNames()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	for _, n := range names {
+		poolMap, err := nodecontainer.LoadNodeContainersForPools(n)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		for pool := range poolMap {
+			err = p.UpgradeNodeContainer(n, pool, ioutil.Discard)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
