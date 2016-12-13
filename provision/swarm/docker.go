@@ -600,6 +600,26 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 	return service, nil
 }
 
+func upsertService(spec *swarm.ServiceSpec, client *docker.Client) error {
+	currService, err := client.InspectService(spec.Name)
+	if err != nil {
+		if _, ok := err.(*docker.NoSuchService); !ok {
+			return errors.WithStack(err)
+		}
+		opts := docker.CreateServiceOptions{ServiceSpec: *spec}
+		_, errCreate := client.CreateService(opts)
+		if errCreate != nil {
+			return errors.WithStack(errCreate)
+		}
+		return nil
+	}
+	opts := docker.UpdateServiceOptions{
+		ServiceSpec: *spec,
+		Version:     currService.Version.Index + 1,
+	}
+	return errors.WithStack(client.UpdateService(currService.ID, opts))
+}
+
 func nodeContainerServiceName(name, pool string) string {
 	if pool == "" {
 		return fmt.Sprintf("node-container-%s-all", name)

@@ -1778,6 +1778,34 @@ func (s *S) TestUpgradeNodeContainerCreatesLimitedService(c *check.C) {
 	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
 }
 
+func (s *S) TestUpgradeNodeContainerBaseUpgradesSpecifics(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err = nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	err = nodecontainer.AddNewContainer("p1", &c1)
+	c.Assert(err, check.IsNil)
+	err = s.p.UpgradeNodeContainer("bs", "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	service, err := client.InspectService("node-container-bs-all")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool != p1"})
+	service, err = client.InspectService("node-container-bs-p1")
+	c.Assert(err, check.IsNil)
+	c.Assert(service.Spec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
+}
+
 func (s *S) TestUpgradeNodeContainerUpdatesExistingService(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)

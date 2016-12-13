@@ -864,41 +864,48 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 	if err != nil {
 		return err
 	}
-	serviceSpec, err := serviceSpecForNodeContainer(name, pool)
-	if err != nil {
-		return err
+	poolsToRun := []string{""}
+	if pool == "" {
+		poolMap, errLoad := nodecontainer.LoadNodeContainersForPools(name)
+		if errLoad != nil {
+			return errors.WithStack(errLoad)
+		}
+		for k := range poolMap {
+			if k != "" {
+				poolsToRun = append([]string{k}, poolsToRun...)
+			}
+		}
+	} else {
+		poolsToRun = []string{pool}
 	}
-	serviceName := nodeContainerServiceName(name, pool)
-	service, err := client.InspectService(serviceName)
-	if err != nil {
-		if _, ok := err.(*docker.NoSuchService); !ok {
+	for _, v := range poolsToRun {
+		serviceSpec, errUpsert := serviceSpecForNodeContainer(name, v)
+		if errUpsert != nil {
+			return errUpsert
+		}
+		log.Debugf("[node containers] upserting service %q for node container %s [%s]", serviceSpec.Name, name, v)
+		fmt.Fprintf(writer, "upserting service %q for node container %q [%s]\n", serviceSpec.Name, name, v)
+		errUpsert = upsertService(serviceSpec, client)
+		if errUpsert != nil {
+			return errUpsert
+		}
+	}
+	if pool != "" {
+		baseSpec, err := client.InspectService(nodeContainerServiceName(name, ""))
+		if err != nil {
 			return errors.WithStack(err)
 		}
-		log.Debugf("[node containers] creating service %q for node container %s [%s]", serviceName, name, pool)
-		fmt.Fprintf(writer, "creating service %q for node container %q [%s]\n", serviceName, name, pool)
-		opts := docker.CreateServiceOptions{ServiceSpec: *serviceSpec}
-		_, errCreate := client.CreateService(opts)
-		if errCreate != nil {
-			return errors.WithStack(errCreate)
+		newBaseSpec, err := serviceSpecForNodeContainer(name, "")
+		if err != nil {
+			return err
 		}
-		if pool != "" {
-			_, errInspect := client.InspectService(nodeContainerServiceName(name, ""))
-			if _, ok := errInspect.(*docker.NoSuchService); !ok {
-				return p.UpgradeNodeContainer(name, "", writer)
-			}
-			if errInspect != nil {
-				return errors.WithStack(errInspect)
-			}
+		baseSpec.Spec.TaskTemplate.Placement = newBaseSpec.TaskTemplate.Placement
+		err = upsertService(&baseSpec.Spec, client)
+		if err != nil {
+			return err
 		}
-		return nil
 	}
-	log.Debugf("[node containers] updating service %q for node container %q [%s]", serviceName, name, pool)
-	fmt.Fprintf(writer, "updating service %q for node container %q [%s]\n", serviceName, name, pool)
-	opts := docker.UpdateServiceOptions{
-		ServiceSpec: *serviceSpec,
-		Version:     service.Version.Index + 1,
-	}
-	return errors.WithStack(client.UpdateService(service.ID, opts))
+	return nil
 }
 
 func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
