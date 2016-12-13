@@ -54,7 +54,10 @@ var (
 	labelAppPlatform        = tsuruLabel("tsuru.app.platform")
 	labelRouterName         = tsuruLabel("tsuru.router.name")
 	labelRouterType         = tsuruLabel("tsuru.router.type")
+	labelNodeContainer      = tsuruLabel("tsuru.nodecontainer")
 	labelNodeContainerName  = tsuruLabel("tsuru.nodecontainer.name")
+	labelPoolName           = tsuruLabel("tsuru.node.pool")
+	labelProvisionerName    = tsuruLabel("tsuru.node.provisioner")
 )
 
 func newClient(address string) (*docker.Client, error) {
@@ -420,6 +423,8 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		labelRouterType.String():         routerType,
 		labelProcessReplicas.String():    strconv.Itoa(replicas),
 		labelServiceRestart.String():     strconv.Itoa(restartCount),
+		labelPoolName.String():           opts.app.GetPool(),
+		labelProvisionerName.String():    "swarm",
 	}
 	user, err := config.GetString("docker:user")
 	if err != nil {
@@ -563,16 +568,24 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 			Retries:  config.Config.Healthcheck.Retries,
 		}
 	}
+	labels := config.Config.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[labelNodeContainer.String()] = strconv.FormatBool(true)
+	labels[labelNodeContainerName.String()] = name
+	labels[labelPoolName.String()] = pool
+	labels[labelProvisionerName.String()] = "swarm"
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   nodeContainerServiceName(name, pool),
-			Labels: map[string]string{labelNodeContainerName.String(): name},
+			Labels: labels,
 		},
 		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
 				Image:       config.Image(),
-				Labels:      config.Config.Labels,
+				Labels:      labels,
 				Command:     config.Config.Cmd,
 				Env:         config.Config.Env,
 				Dir:         config.Config.WorkingDir,

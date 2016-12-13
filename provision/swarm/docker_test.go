@@ -243,19 +243,24 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	serviceSpec, err := serviceSpecForNodeContainer("swarmbs", "")
 	c.Assert(err, check.IsNil)
+	expectedLabels := map[string]string{
+		"label1":                   "val1",
+		"tsuru.nodecontainer.name": "swarmbs",
+		"tsuru.nodecontainer":      "true",
+		"tsuru.node.pool":          "",
+		"tsuru.node.provisioner":   "swarm",
+	}
 	expected := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
-			Name: "node-container-swarmbs-all",
-			Labels: map[string]string{
-				"tsuru.nodecontainer.name": "swarmbs",
-			},
+			Name:   "node-container-swarmbs-all",
+			Labels: expectedLabels,
 		},
 		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
 				Image:  "bsimg",
 				Env:    []string{"A=1", "B=2"},
-				Labels: map[string]string{"label1": "val1"},
+				Labels: expectedLabels,
 				Mounts: []mount.Mount{
 					{
 						Type:     mount.TypeBind,
