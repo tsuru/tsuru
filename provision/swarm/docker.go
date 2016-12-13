@@ -615,7 +615,7 @@ func upsertService(spec *swarm.ServiceSpec, client *docker.Client) error {
 	}
 	opts := docker.UpdateServiceOptions{
 		ServiceSpec: *spec,
-		Version:     currService.Version.Index + 1,
+		Version:     currService.Version.Index,
 	}
 	return errors.WithStack(client.UpdateService(currService.ID, opts))
 }
