@@ -1695,17 +1695,20 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(err, check.IsNil)
 	attached := s.attachRegister(c, srv, false, a)
 	var stdout, stderr bytes.Buffer
+	var service *swarm.Service
+	client, _ := docker.NewClient(srv.URL())
+	srv.CustomHandler("/services/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv.DefaultHandler().ServeHTTP(w, r)
+		service, err = client.InspectService("myapp-isolated-run")
+		c.Assert(err, check.IsNil)
+	}))
 	err = s.p.ExecuteCommandIsolated(&stdout, &stderr, a, "ls", "-l")
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
 	cont := <-containerChan
 	c.Assert(cont.Image, check.Equals, "myapp:v1")
-	task := s.taskForContainer(c, srv, cont.ID)
-	client, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	service, err := client.InspectService(task.ServiceID)
-	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.Name, check.Equals, "myapp-isolated-run")
+	_, err = client.InspectService("myapp-isolated-run")
+	c.Assert(err, check.DeepEquals, &docker.NoSuchService{ID: "myapp-isolated-run"})
 	c.Assert(service.Spec.Labels[labelServiceIsolatedRun.String()], check.Equals, "true")
 }
 

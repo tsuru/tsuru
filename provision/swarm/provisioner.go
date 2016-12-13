@@ -855,7 +855,10 @@ func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a pr
 	}
 	cmds := []string{"/bin/bash", "-lc", cmd}
 	cmds = append(cmds, args...)
-	_, _, err = runOnceCmds(client, opts, cmds, stdout, stderr)
+	serviceID, _, err := runOnceCmds(client, opts, cmds, stdout, stderr)
+	if serviceID != "" {
+		removeServiceAndLog(client, serviceID)
+	}
 	return err
 }
 
