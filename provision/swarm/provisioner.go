@@ -864,16 +864,22 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 	if err != nil {
 		return err
 	}
-	poolsToRun := []string{""}
+	var poolsToRun []string
 	if pool == "" {
 		poolMap, errLoad := nodecontainer.LoadNodeContainersForPools(name)
 		if errLoad != nil {
 			return errors.WithStack(errLoad)
 		}
+		hasBase := false
 		for k := range poolMap {
-			if k != "" {
-				poolsToRun = append([]string{k}, poolsToRun...)
+			if k == "" {
+				hasBase = true
+				continue
 			}
+			poolsToRun = append(poolsToRun, k)
+		}
+		if hasBase {
+			poolsToRun = append(poolsToRun, "")
 		}
 	} else {
 		poolsToRun = []string{pool}
@@ -893,6 +899,9 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 	if pool != "" {
 		baseSpec, err := client.InspectService(nodeContainerServiceName(name, ""))
 		if err != nil {
+			if _, ok := err.(*docker.NoSuchService); ok {
+				return nil
+			}
 			return errors.WithStack(err)
 		}
 		newBaseSpec, err := serviceSpecForNodeContainer(name, "")
