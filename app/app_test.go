@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
@@ -82,6 +83,8 @@ func (s *S) TestDelete(c *check.C) {
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
+	_, err = router.Retrieve(a.Name)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestDeleteWithEvents(c *check.C) {

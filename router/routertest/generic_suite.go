@@ -596,6 +596,21 @@ func (s *RouterSuite) TestRemoveBackendWithoutRemoveRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *RouterSuite) TestRemoveBackendKeepsInRouter(c *check.C) {
+	_, err := router.Retrieve(testBackend1)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+	err = s.Router.AddBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+	name, err := router.Retrieve(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(name, check.Equals, testBackend1)
+	err = s.Router.RemoveBackend(testBackend1)
+	c.Assert(err, check.IsNil)
+	name, err = router.Retrieve(testBackend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(name, check.Equals, testBackend1)
+}
+
 func (s *RouterSuite) TestSetHealthcheck(c *check.C) {
 	hcRouter, ok := s.Router.(router.CustomHealthcheckRouter)
 	if !ok {
