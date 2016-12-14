@@ -37,7 +37,17 @@ func recreateContainers(p DockerProvisioner, w io.Writer, nodes ...cluster.Node)
 	return ensureContainersStarted(p, w, true, nil, nodes...)
 }
 
-func RecreateNamedContainers(p DockerProvisioner, w io.Writer, name string, nodes ...cluster.Node) error {
+func RecreateNamedContainers(p DockerProvisioner, w io.Writer, name string, pool string) error {
+	var nodes []cluster.Node
+	var err error
+	if pool == "" {
+		nodes, err = p.Cluster().UnfilteredNodes()
+	} else {
+		nodes, err = p.Cluster().UnfilteredNodesForMetadata(map[string]string{"pool": pool})
+	}
+	if err != nil || len(nodes) == 0 {
+		return err
+	}
 	return ensureContainersStarted(p, w, true, []string{name}, nodes...)
 }
 
