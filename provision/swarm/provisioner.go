@@ -888,6 +888,7 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		}
 	}
 	var allErrors []error
+	created := false
 	for _, v := range poolsToRun {
 		serviceSpec, errUpsert := serviceSpecForNodeContainer(name, v)
 		if errUpsert != nil {
@@ -896,13 +897,13 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		}
 		log.Debugf("[node containers] upserting service %q for node container %s [%s]", serviceSpec.Name, name, v)
 		fmt.Fprintf(writer, "upserting service %q for node container %q [%s]\n", serviceSpec.Name, name, v)
-		errUpsert = upsertService(serviceSpec, client)
+		errUpsert, created = upsertService(serviceSpec, client)
 		if errUpsert != nil {
 			errUpsert = errors.Wrapf(errUpsert, "[node containers] failed upsert service %q for node container %q [%s]", serviceSpec.Name, name, v)
 			allErrors = append(allErrors, errUpsert)
 		}
 	}
-	if pool != "" {
+	if pool != "" && created {
 		serviceName := nodeContainerServiceName(name, "")
 		baseSpec, err := client.InspectService(serviceName)
 		if err != nil {
@@ -920,7 +921,7 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		baseSpec.Spec.TaskTemplate.Placement = newBaseSpec.TaskTemplate.Placement
 		log.Debugf("[node containers] updating base service %q for node container %s constraints", serviceName, name)
 		fmt.Fprintf(writer, "updating base service %q for node container %s constraints\n", serviceName, name)
-		err = upsertService(&baseSpec.Spec, client)
+		err, _ = upsertService(&baseSpec.Spec, client)
 		if err != nil {
 			err = errors.Wrapf(err, "[node containers] failed update base service %q for node container %q", serviceName, name)
 			allErrors = append(allErrors, err)
