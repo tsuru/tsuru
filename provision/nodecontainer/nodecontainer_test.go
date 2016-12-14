@@ -138,6 +138,36 @@ func (s *S) TestUpdateContainerInvalid(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestUpgradeContainerCreatesConfigEntry(c *check.C) {
+	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{
+		Image: "img1",
+	}})
+	c.Assert(err, check.IsNil)
+	err = UpgradeContainer("p1", "x")
+	c.Assert(err, check.IsNil)
+	pools, err := LoadNodeContainersForPools("x")
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.DeepEquals, map[string]NodeContainerConfig{
+		"": NodeContainerConfig{Name: "x", Config: docker.Config{
+			Image: "img1",
+		}},
+		"p1": NodeContainerConfig{Name: "x", Config: docker.Config{
+			Image: "img1",
+		}},
+	})
+}
+
+func (s *S) TestUpgradeContainerNotFound(c *check.C) {
+	err := AddNewContainer("pool", &NodeContainerConfig{Name: "x", Config: docker.Config{
+		Image: "img1",
+	}})
+	c.Assert(err, check.IsNil)
+	err = UpgradeContainer("", "bs")
+	c.Assert(err, check.DeepEquals, ErrNodeContainerNotFound)
+	err = UpgradeContainer("otherpool", "x")
+	c.Assert(err, check.DeepEquals, ErrNodeContainerNotFound)
+}
+
 func (s *S) TestLoadNodeContainersForPools(c *check.C) {
 	err := AddNewContainer("p1", &NodeContainerConfig{
 		Name: "c1",
@@ -181,7 +211,7 @@ func (s *S) TestResetImage(c *check.C) {
 		Name: "c1",
 	})
 	c.Assert(err, check.IsNil)
-	err = ResetImage("p1", "c1")
+	err = resetImage("p1", "c1")
 	c.Assert(err, check.IsNil)
 	result, err := LoadNodeContainersForPools("c1")
 	c.Assert(err, check.IsNil)
@@ -196,7 +226,7 @@ func (s *S) TestResetImage(c *check.C) {
 		"p1": {Name: "c1"},
 		"p2": {Name: "c1"},
 	})
-	err = ResetImage("p2", "c1")
+	err = resetImage("p2", "c1")
 	c.Assert(err, check.IsNil)
 	result, err = LoadNodeContainersForPools("c1")
 	c.Assert(err, check.IsNil)
@@ -212,7 +242,7 @@ func (s *S) TestResetImage(c *check.C) {
 	})
 	err = UpdateContainer("p1", &NodeContainerConfig{Name: "c1", PinnedImage: "img1@1"})
 	c.Assert(err, check.IsNil)
-	err = ResetImage("", "c1")
+	err = resetImage("", "c1")
 	c.Assert(err, check.IsNil)
 	result, err = LoadNodeContainersForPools("c1")
 	c.Assert(err, check.IsNil)
@@ -227,16 +257,4 @@ func (s *S) TestResetImage(c *check.C) {
 		"p2": {Name: "c1"},
 	})
 
-}
-
-func (s *S) TestResetImageNotFound(c *check.C) {
-	err := AddNewContainer("p2", &NodeContainerConfig{
-		Name: "c2",
-		Config: docker.Config{
-			Image: "img1",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = ResetImage("p1", "c2")
-	c.Assert(err, check.Equals, ErrNodeContainerNotFound)
 }

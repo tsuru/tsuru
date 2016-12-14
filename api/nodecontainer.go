@@ -311,7 +311,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = nodecontainer.ResetImage(poolName, name)
+	err = nodecontainer.UpgradeContainer(poolName, name)
 	if err != nil {
 		if err == nodecontainer.ErrNodeContainerNotFound {
 			return &tsuruErrors.HTTP{
