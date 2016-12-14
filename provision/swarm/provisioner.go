@@ -875,7 +875,10 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		}
 		poolsToRun = make([]string, len(poolMap))
 		i := 0
-		for k := range poolMap {
+		for k, v := range poolMap {
+			if !v.Valid() {
+				continue
+			}
 			if k == "" {
 				poolsToRun[len(poolMap)-1] = k
 				continue
