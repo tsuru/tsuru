@@ -394,6 +394,9 @@ func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provisi
 	nodesPoolMap := map[string][]provision.Node{}
 	nodesAddrMap := map[string]provision.Node{}
 	for i, n := range nodes {
+		if _, ok := n.Provisioner().(provision.NodeContainerProvisioner); !ok {
+			continue
+		}
 		pool := n.Metadata()[poolMetadataName]
 		nodesPoolMap[pool] = append(nodesPoolMap[pool], nodes[i])
 		nodesAddrMap[n.Address()] = nodes[i]

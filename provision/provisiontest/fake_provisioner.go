@@ -28,9 +28,8 @@ import (
 var (
 	ProvisionerInstance *FakeProvisioner
 	ExtensibleInstance  *ExtensibleFakeProvisioner
-
-	errNotProvisioned       = &provision.Error{Reason: "App is not provisioned."}
-	uniqueIpCounter   int32 = 0
+	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
+	uniqueIpCounter     int32 = 0
 
 	_ provision.NodeProvisioner = &FakeProvisioner{}
 )
@@ -1310,6 +1309,14 @@ func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []
 
 func (p *FakeProvisioner) GetName() string {
 	return "fake"
+}
+
+func (p *FakeProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
+	return nil
+}
+
+func (p *FakeProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
+	return nil
 }
 
 func stringInArray(value string, array []string) bool {
