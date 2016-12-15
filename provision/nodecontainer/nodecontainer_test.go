@@ -148,10 +148,10 @@ func (s *S) TestUpgradeContainerCreatesConfigEntry(c *check.C) {
 	pools, err := LoadNodeContainersForPools("x")
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.DeepEquals, map[string]NodeContainerConfig{
-		"": NodeContainerConfig{Name: "x", Config: docker.Config{
+		"": {Name: "x", Config: docker.Config{
 			Image: "img1",
 		}},
-		"p1": NodeContainerConfig{Name: "x", Config: docker.Config{
+		"p1": {Name: "x", Config: docker.Config{
 			Image: "img1",
 		}},
 	})
