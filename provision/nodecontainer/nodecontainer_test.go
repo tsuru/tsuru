@@ -138,7 +138,7 @@ func (s *S) TestUpdateContainerInvalid(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestUpgradeContainerCreatesConfigEntry(c *check.C) {
+func (s *S) TestUpgradeContainerCreatesEmptyConfigEntry(c *check.C) {
 	err := AddNewContainer("", &NodeContainerConfig{Name: "x", Config: docker.Config{
 		Image: "img1",
 	}})
@@ -151,9 +151,7 @@ func (s *S) TestUpgradeContainerCreatesConfigEntry(c *check.C) {
 		"": {Name: "x", Config: docker.Config{
 			Image: "img1",
 		}},
-		"p1": {Name: "x", Config: docker.Config{
-			Image: "img1",
-		}},
+		"p1": {Name: "x"},
 	})
 }
 

@@ -137,11 +137,7 @@ func UpgradeContainer(pool string, name string) error {
 			return ErrNodeContainerNotFound
 		}
 		if pool != "" {
-			c, err := LoadNodeContainer(pool, name)
-			if err != nil {
-				return err
-			}
-			err = AddNewContainer(pool, c)
+			err = AddNewContainer(pool, &NodeContainerConfig{Name: name})
 			if err != nil {
 				return err
 			}
