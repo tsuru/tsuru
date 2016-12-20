@@ -115,6 +115,7 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	}
 	if rsp.StatusCode != http.StatusCreated {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
+		rsp.Body.Close()
 		return "", errors.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
 	}
 	location := rsp.Header.Get("Location")
@@ -202,6 +203,7 @@ func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPo
 	}
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
+		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return c.waitStatusOK(poolID)
@@ -280,6 +282,7 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 	}
 	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
+		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return c.waitStatusOK(ruleID)
@@ -379,6 +382,7 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("GET /target/search/findByParentName?name={parentName}: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
@@ -405,6 +409,7 @@ func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, er
 	if err != nil {
 		return nil, err
 	}
+	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("GET /rule/{id}/parents: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
@@ -426,6 +431,7 @@ func (c *GalebClient) Healthcheck() error {
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
 	data, _ := ioutil.ReadAll(rsp.Body)
 	dataStr := string(data)
 	if rsp.StatusCode != http.StatusOK {
@@ -443,6 +449,7 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusNoContent {
 		return errors.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
@@ -459,6 +466,7 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`
 	}
+	defer rsp.Body.Close()
 	rspData, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
 		return "", err
@@ -486,6 +494,7 @@ func (c *GalebClient) fetchPathStatus(path string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "GET %s: unable to make request", path)
 	}
+	defer rsp.Body.Close()
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
 		return "", errors.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
