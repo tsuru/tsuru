@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,6 +227,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	r.ParseForm()
 	name := r.URL.Query().Get(":name")
 	poolName := r.URL.Query().Get("pool")
+	kill, _ := strconv.ParseBool(r.URL.Query().Get("kill"))
 	var ctxs []permission.PermissionContext
 	if poolName != "" {
 		ctxs = append(ctxs, permission.Context(permission.CtxPool, poolName))
@@ -251,7 +253,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 			Message: fmt.Sprintf("node container %q not found for pool %q", name, poolName),
 		}
 	}
-	if err != nil {
+	if err != nil || !kill {
 		return err
 	}
 	provs, err := provision.Registry()

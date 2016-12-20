@@ -367,15 +367,16 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	cmds     []Cmd
-	cmdMut   sync.Mutex
-	outputs  chan []byte
-	failures chan failure
-	apps     map[string]provisionedApp
-	mut      sync.RWMutex
-	shells   map[string][]provision.ShellOptions
-	shellMut sync.Mutex
-	nodes    map[string]FakeNode
+	cmds           []Cmd
+	cmdMut         sync.Mutex
+	outputs        chan []byte
+	failures       chan failure
+	apps           map[string]provisionedApp
+	mut            sync.RWMutex
+	shells         map[string][]provision.ShellOptions
+	shellMut       sync.Mutex
+	nodes          map[string]FakeNode
+	nodeContainers map[string]int
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -385,6 +386,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.apps = make(map[string]provisionedApp)
 	p.shells = make(map[string][]provision.ShellOptions)
 	p.nodes = make(map[string]FakeNode)
+	p.nodeContainers = make(map[string]int)
 	return &p
 }
 
@@ -688,6 +690,8 @@ func (p *FakeProvisioner) Reset() {
 
 	p.nodes = make(map[string]FakeNode)
 	uniqueIpCounter = 0
+
+	p.nodeContainers = make(map[string]int)
 
 	for {
 		select {
@@ -1312,11 +1316,17 @@ func (p *FakeProvisioner) GetName() string {
 }
 
 func (p *FakeProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
+	p.nodeContainers[name+"-"+pool]++
 	return nil
 }
 
 func (p *FakeProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
+	p.nodeContainers[name+"-"+pool] = 0
 	return nil
+}
+
+func (p *FakeProvisioner) HasNodeContainer(name string, pool string) bool {
+	return p.nodeContainers[name+"-"+pool] > 0
 }
 
 func stringInArray(value string, array []string) bool {

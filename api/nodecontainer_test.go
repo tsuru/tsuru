@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -500,6 +501,7 @@ func (s *S) TestNodeContainerDelete(c *check.C) {
 			{"name": ":name", "value": "c1"},
 		},
 	}, eventtest.HasEvent)
+	s.provisioner.UpgradeNodeContainer("c1", "p1", ioutil.Discard)
 	request, err = http.NewRequest("DELETE", "/1.2/nodecontainers/c1?pool=p1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -509,9 +511,31 @@ func (s *S) TestNodeContainerDelete(c *check.C) {
 	all, err = nodecontainer.AllNodeContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(all, check.DeepEquals, []nodecontainer.NodeContainerConfigGroup{})
+	c.Assert(s.provisioner.HasNodeContainer("c1", "p1"), check.Equals, true)
 }
 
-func (s *S) TestNodeContainerDeleteNotFounc(c *check.C) {
+func (s *S) TestNodeContainerDeleteKillsRunningContainers(c *check.C) {
+	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
+		Name: "c1",
+		Config: docker.Config{
+			Image: "img",
+			Env:   []string{"A=2"},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	s.provisioner.UpgradeNodeContainer("c1", "p1", ioutil.Discard)
+	c.Assert(s.provisioner.HasNodeContainer("c1", "p1"), check.Equals, true)
+	request, err := http.NewRequest("DELETE", "/1.2/nodecontainers/c1?pool=p1&kill=1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(s.provisioner.HasNodeContainer("c1", "p1"), check.Equals, false)
+}
+
+func (s *S) TestNodeContainerDeleteNotFound(c *check.C) {
 	err := nodecontainer.AddNewContainer("p1", &nodecontainer.NodeContainerConfig{
 		Name: "c1",
 		Config: docker.Config{

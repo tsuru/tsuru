@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/ajg/form"
@@ -327,12 +328,13 @@ type NodeContainerDelete struct {
 	cmd.ConfirmationCommand
 	fs   *gnuflag.FlagSet
 	pool string
+	kill bool
 }
 
 func (c *NodeContainerDelete) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "node-container-delete",
-		Usage:   "node-container-delete <name> [-p/--pool poolname] [-y]",
+		Usage:   "node-container-delete <name> [-p/--pool poolname] [-k/--kill] [-y]",
 		Desc:    "Delete existing node container.",
 		MinArgs: 1,
 		MaxArgs: 1,
@@ -346,6 +348,7 @@ func (c *NodeContainerDelete) Run(context *cmd.Context, client *cmd.Client) erro
 	}
 	val := url.Values{}
 	val.Set("pool", c.pool)
+	val.Set("kill", strconv.FormatBool(c.kill))
 	u, err := cmd.GetURL(fmt.Sprintf("/docker/nodecontainers/%s?%s", context.Args[0], val.Encode()))
 	if err != nil {
 		return err
@@ -368,6 +371,8 @@ func (c *NodeContainerDelete) Flags() *gnuflag.FlagSet {
 		msg := "Pool to remove container config. If empty the default node container will be removed."
 		c.fs.StringVar(&c.pool, "p", "", msg)
 		c.fs.StringVar(&c.pool, "pool", "", msg)
+		c.fs.BoolVar(&c.kill, "k", false, "Kill running containers.")
+		c.fs.BoolVar(&c.kill, "kill", false, "Kill running containers.")
 	}
 	return c.fs
 }

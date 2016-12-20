@@ -1396,3 +1396,20 @@ func (s *S) TestFakeNodeHealthCheckerSetHealth(c *check.C) {
 	fakeNode.ResetFailures()
 	c.Assert(fakeNode.FailureCount(), check.Equals, 0)
 }
+
+func (s *S) TestFakeUpgradeNodeContainer(c *check.C) {
+	p := NewFakeProvisioner()
+	err := p.UpgradeNodeContainer("c1", "p1", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
+}
+
+func (s *S) TestFakeRemoveNodeContainer(c *check.C) {
+	p := NewFakeProvisioner()
+	err := p.UpgradeNodeContainer("c1", "p1", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
+	err = p.RemoveNodeContainer("c1", "p1", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, false)
+}
