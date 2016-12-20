@@ -1,6 +1,7 @@
 package exoscale
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -36,8 +37,8 @@ type Driver struct {
 const (
 	defaultInstanceProfile  = "small"
 	defaultDiskSize         = 50
-	defaultImage            = "ubuntu-15.10"
-	defaultAvailabilityZone = "ch-gva-2"
+	defaultImage            = "ubuntu-16.04"
+	defaultAvailabilityZone = "ch-dk-2"
 	defaultSSHUser          = "ubuntu"
 )
 
@@ -166,7 +167,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		d.URL = "https://api.exoscale.ch/compute"
 	}
 	if d.APIKey == "" || d.APISecretKey == "" {
-		return fmt.Errorf("Please specify an API key (--exoscale-api-key) and an API secret key (--exoscale-api-secret-key).")
+		return errors.New("missing an API key (--exoscale-api-key) or API secret key (--exoscale-api-secret-key)")
 	}
 
 	return nil

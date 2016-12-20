@@ -384,7 +384,7 @@ func (d *Driver) Create() error {
 		d.ctx.PublicIPAddressID, d.ctx.SubnetID, d.ctx.NetworkSecurityGroupID, d.PrivateIPAddr); err != nil {
 		return err
 	}
-	if err := c.CreateStorageAccount(d.ctx, d.ResourceGroup, d.Location, storage.AccountType(d.StorageType)); err != nil {
+	if err := c.CreateStorageAccount(d.ctx, d.ResourceGroup, d.Location, storage.SkuName(d.StorageType)); err != nil {
 		return err
 	}
 	if err := d.generateSSHKey(d.ctx); err != nil {
@@ -562,9 +562,9 @@ func (d *Driver) Kill() error {
 func (d *Driver) checkLegacyDriver(short bool) error {
 	if d.ResourceGroup == "" {
 		if short {
-			return errors.New("New azure driver cannot manage old VMs, downgrade to v0.6.0")
+			return errors.New("new azure driver cannot manage old VMs, downgrade to v0.6.0")
 		}
-		return errors.New("New azure driver uses the new Azure Resource Manager APIs and therefore cannot manage this existing machine created with old azure driver. Please downgrade to docker-machine 0.6.0 to continue using these machines or to remove them.")
+		return errors.New("new azure driver uses the new Azure Resource Manager APIs and therefore cannot manage this existing machine created with old azure driver. Please downgrade to docker-machine 0.6.0 to continue using these machines or to remove them")
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package amazonec2
 import (
 	"crypto/md5"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -27,19 +28,20 @@ import (
 )
 
 const (
-	driverName               = "amazonec2"
-	ipRange                  = "0.0.0.0/0"
-	machineSecurityGroupName = "docker-machine"
-	defaultAmiId             = "ami-c60b90d1"
-	defaultRegion            = "us-east-1"
-	defaultInstanceType      = "t2.micro"
-	defaultDeviceName        = "/dev/sda1"
-	defaultRootSize          = 16
-	defaultVolumeType        = "gp2"
-	defaultZone              = "a"
-	defaultSecurityGroup     = machineSecurityGroupName
-	defaultSSHUser           = "ubuntu"
-	defaultSpotPrice         = "0.50"
+	driverName                  = "amazonec2"
+	ipRange                     = "0.0.0.0/0"
+	machineSecurityGroupName    = "docker-machine"
+	defaultAmiId                = "ami-c60b90d1"
+	defaultRegion               = "us-east-1"
+	defaultInstanceType         = "t2.micro"
+	defaultDeviceName           = "/dev/sda1"
+	defaultRootSize             = 16
+	defaultVolumeType           = "gp2"
+	defaultZone                 = "a"
+	defaultSecurityGroup        = machineSecurityGroupName
+	defaultSSHUser              = "ubuntu"
+	defaultSpotPrice            = "0.50"
+	defaultBlockDurationMinutes = 0
 )
 
 const (
@@ -50,23 +52,23 @@ var (
 	dockerPort                           = 2376
 	swarmPort                            = 3376
 	errorNoPrivateSSHKey                 = errors.New("using --amazonec2-keypair-name also requires --amazonec2-ssh-keypath")
-	errorMissingAccessKeyOption          = errors.New("amazonec2 driver requires the --amazonec2-access-key option or proper credentials in ~/.aws/credentials")
-	errorMissingSecretKeyOption          = errors.New("amazonec2 driver requires the --amazonec2-secret-key option or proper credentials in ~/.aws/credentials")
+	errorMissingCredentials              = errors.New("amazonec2 driver requires AWS credentials configured with the --amazonec2-access-key and --amazonec2-secret-key options, environment variables, ~/.aws/credentials, or an instance role")
 	errorNoVPCIdFound                    = errors.New("amazonec2 driver requires either the --amazonec2-subnet-id or --amazonec2-vpc-id option or an AWS Account with a default vpc-id")
 	errorDisableSSLWithoutCustomEndpoint = errors.New("using --amazonec2-insecure-transport also requires --amazonec2-endpoint")
+	errorReadingUserData                 = errors.New("unable to read --amazonec2-userdata file")
 )
 
 type Driver struct {
 	*drivers.BaseDriver
-	clientFactory  func() Ec2Client
-	awsCredentials awsCredentials
-	Id             string
-	AccessKey      string
-	SecretKey      string
-	SessionToken   string
-	Region         string
-	AMI            string
-	SSHKeyID       int
+	clientFactory         func() Ec2Client
+	awsCredentialsFactory func() awsCredentials
+	Id                    string
+	AccessKey             string
+	SecretKey             string
+	SessionToken          string
+	Region                string
+	AMI                   string
+	SSHKeyID              int
 	// ExistingKey keeps track of whether the key was created by us or we used an existing one. If an existing one was used, we shouldn't delete it when the machine is deleted.
 	ExistingKey      bool
 	KeyName          string
@@ -95,6 +97,7 @@ type Driver struct {
 	keyPath                 string
 	RequestSpotInstance     bool
 	SpotPrice               string
+	BlockDurationMinutes    int64
 	PrivateIPOnly           bool
 	UsePrivateIP            bool
 	UseEbsOptimizedInstance bool
@@ -103,6 +106,7 @@ type Driver struct {
 	RetryCount              int
 	Endpoint                string
 	DisableSSL              bool
+	UserDataFile            string
 }
 
 type clientFactory interface {
@@ -212,6 +216,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage: "AWS spot instance bid price (in dollar)",
 			Value: defaultSpotPrice,
 		},
+		mcnflag.IntFlag{
+			Name:  "amazonec2-block-duration-minutes",
+			Usage: "AWS spot instance duration in minutes (60, 120, 180, 240, 300, or 360)",
+			Value: defaultBlockDurationMinutes,
+		},
 		mcnflag.BoolFlag{
 			Name:  "amazonec2-private-address-only",
 			Usage: "Only use a private IP address",
@@ -254,29 +263,35 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Disable SSL when sending requests",
 			EnvVar: "AWS_INSECURE_TRANSPORT",
 		},
+		mcnflag.StringFlag{
+			Name:   "amazonec2-userdata",
+			Usage:  "path to file with cloud-init user data",
+			EnvVar: "AWS_USERDATA",
+		},
 	}
 }
 
 func NewDriver(hostName, storePath string) *Driver {
 	id := generateId()
 	driver := &Driver{
-		Id:                 id,
-		AMI:                defaultAmiId,
-		Region:             defaultRegion,
-		InstanceType:       defaultInstanceType,
-		RootSize:           defaultRootSize,
-		Zone:               defaultZone,
-		SecurityGroupNames: []string{defaultSecurityGroup},
-		SpotPrice:          defaultSpotPrice,
+		Id:                   id,
+		AMI:                  defaultAmiId,
+		Region:               defaultRegion,
+		InstanceType:         defaultInstanceType,
+		RootSize:             defaultRootSize,
+		Zone:                 defaultZone,
+		SecurityGroupNames:   []string{defaultSecurityGroup},
+		SpotPrice:            defaultSpotPrice,
+		BlockDurationMinutes: defaultBlockDurationMinutes,
 		BaseDriver: &drivers.BaseDriver{
 			SSHUser:     defaultSSHUser,
 			MachineName: hostName,
 			StorePath:   storePath,
 		},
-		awsCredentials: &defaultAWSCredentials{},
 	}
 
 	driver.clientFactory = driver.buildClient
+	driver.awsCredentialsFactory = driver.buildCredentials
 
 	return driver
 }
@@ -285,7 +300,7 @@ func (d *Driver) buildClient() Ec2Client {
 	config := aws.NewConfig()
 	alogger := AwsLogger()
 	config = config.WithRegion(d.Region)
-	config = config.WithCredentials(d.awsCredentials.NewStaticCredentials(d.AccessKey, d.SecretKey, d.SessionToken))
+	config = config.WithCredentials(d.awsCredentialsFactory().Credentials())
 	config = config.WithLogger(alogger)
 	config = config.WithLogLevel(aws.LogDebugWithHTTPBody)
 	config = config.WithMaxRetries(d.RetryCount)
@@ -294,6 +309,10 @@ func (d *Driver) buildClient() Ec2Client {
 		config = config.WithDisableSSL(d.DisableSSL)
 	}
 	return ec2.New(session.New(config))
+}
+
+func (d *Driver) buildCredentials() awsCredentials {
+	return NewAWSCredentials(d.AccessKey, d.SecretKey, d.SessionToken)
 }
 
 func (d *Driver) getClient() Ec2Client {
@@ -320,6 +339,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.AMI = image
 	d.RequestSpotInstance = flags.Bool("amazonec2-request-spot-instance")
 	d.SpotPrice = flags.String("amazonec2-spot-price")
+	d.BlockDurationMinutes = int64(flags.Int("amazonec2-block-duration-minutes"))
 	d.InstanceType = flags.String("amazonec2-instance-type")
 	d.VpcId = flags.String("amazonec2-vpc-id")
 	d.SubnetId = flags.String("amazonec2-subnet-id")
@@ -343,6 +363,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.SetSwarmConfigFromFlags(flags)
 	d.RetryCount = flags.Int("amazonec2-retries")
 	d.OpenPorts = flags.StringSlice("amazonec2-open-port")
+	d.UserDataFile = flags.String("amazonec2-userdata")
 
 	d.DisableSSL = flags.Bool("amazonec2-insecure-transport")
 
@@ -354,24 +375,9 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		return errorNoPrivateSSHKey
 	}
 
-	if d.AccessKey == "" && d.SecretKey == "" {
-		credentials, err := d.awsCredentials.NewSharedCredentials("", "").Get()
-		if err != nil {
-			log.Debug("Could not load credentials from ~/.aws/credentials")
-		} else {
-			log.Debug("Successfully loaded credentials from ~/.aws/credentials")
-			d.AccessKey = credentials.AccessKeyID
-			d.SecretKey = credentials.SecretAccessKey
-			d.SessionToken = credentials.SessionToken
-		}
-	}
-
-	if d.AccessKey == "" {
-		return errorMissingAccessKeyOption
-	}
-
-	if d.SecretKey == "" {
-		return errorMissingSecretKeyOption
+	_, err = d.awsCredentialsFactory().Credentials().Get()
+	if err != nil {
+		return errorMissingCredentials
 	}
 
 	if d.VpcId == "" {
@@ -543,6 +549,18 @@ func (d *Driver) securityGroupIds() (ids []string) {
 	return migrateStringToSlice(d.SecurityGroupId, d.SecurityGroupIds)
 }
 
+func (d *Driver) Base64UserData() (userdata string, err error) {
+	if d.UserDataFile != "" {
+		buf, ioerr := ioutil.ReadFile(d.UserDataFile)
+		if ioerr != nil {
+			err = errorReadingUserData
+			return
+		}
+		userdata = base64.StdEncoding.EncodeToString(buf)
+	}
+	return
+}
+
 func (d *Driver) Create() error {
 	if err := d.checkPrereqs(); err != nil {
 		return err
@@ -556,6 +574,13 @@ func (d *Driver) Create() error {
 
 	if err := d.configureSecurityGroups(d.securityGroupNames()); err != nil {
 		return err
+	}
+
+	var userdata string
+	if b64, err := d.Base64UserData(); err != nil {
+		return err
+	} else {
+		userdata = b64
 	}
 
 	bdm := &ec2.BlockDeviceMapping{
@@ -579,7 +604,7 @@ func (d *Driver) Create() error {
 	var instance *ec2.Instance
 
 	if d.RequestSpotInstance {
-		spotInstanceRequest, err := d.getClient().RequestSpotInstances(&ec2.RequestSpotInstancesInput{
+		req := ec2.RequestSpotInstancesInput{
 			LaunchSpecification: &ec2.RequestSpotLaunchSpecification{
 				ImageId: &d.AMI,
 				Placement: &ec2.SpotPlacement{
@@ -594,10 +619,16 @@ func (d *Driver) Create() error {
 				},
 				EbsOptimized:        &d.UseEbsOptimizedInstance,
 				BlockDeviceMappings: []*ec2.BlockDeviceMapping{bdm},
+				UserData:            &userdata,
 			},
 			InstanceCount: aws.Int64(1),
 			SpotPrice:     &d.SpotPrice,
-		})
+		}
+		if d.BlockDurationMinutes != 0 {
+			req.BlockDurationMinutes = &d.BlockDurationMinutes
+		}
+
+		spotInstanceRequest, err := d.getClient().RequestSpotInstances(&req)
 		if err != nil {
 			return fmt.Errorf("Error request spot instance: %s", err)
 		}
@@ -660,6 +691,7 @@ func (d *Driver) Create() error {
 			},
 			EbsOptimized:        &d.UseEbsOptimizedInstance,
 			BlockDeviceMappings: []*ec2.BlockDeviceMapping{bdm},
+			UserData:            &userdata,
 		})
 
 		if err != nil {
