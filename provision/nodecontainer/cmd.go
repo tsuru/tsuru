@@ -343,7 +343,17 @@ func (c *NodeContainerDelete) Info() *cmd.Info {
 
 func (c *NodeContainerDelete) Run(context *cmd.Context, client *cmd.Client) error {
 	context.RawOutput()
-	if !c.Confirm(context, "Are you sure you want to remove node container?") {
+	msg := fmt.Sprintf("Are you sure you want to remove node container %q", context.Args[0])
+	if c.pool != "" {
+		msg += fmt.Sprintf(" from pool %q", c.pool)
+	} else {
+		msg += " from ALL pools"
+	}
+	if c.kill {
+		msg += " and KILL it"
+	}
+	msg += "?"
+	if !c.Confirm(context, msg) {
 		return nil
 	}
 	val := url.Values{}
@@ -357,7 +367,12 @@ func (c *NodeContainerDelete) Run(context *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	rsp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+	err = cmd.StreamJSONResponse(context.Stdout, rsp)
 	if err != nil {
 		return err
 	}
