@@ -865,6 +865,9 @@ func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a pr
 func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
+		if errors.Cause(err) == errNoSwarmNode {
+			return nil
+		}
 		return err
 	}
 	poolsToRun := []string{pool}
@@ -936,6 +939,9 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
+		if errors.Cause(err) == errNoSwarmNode {
+			return nil
+		}
 		return err
 	}
 	err = client.RemoveService(docker.RemoveServiceOptions{ID: nodeContainerServiceName(name, pool)})
