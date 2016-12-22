@@ -267,6 +267,9 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
+		if errors.Cause(err) == errNoSwarmNode {
+			return []provision.Unit{}, nil
+		}
 		return nil, err
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
