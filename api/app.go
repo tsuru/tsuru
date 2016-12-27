@@ -1451,6 +1451,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
+	defer func() { evt1.Done(err) }()
 	evt2, err := event.New(&event.Opts{
 		Target:     appTarget(app2Name),
 		Kind:       permission.PermAppUpdateSwap,
@@ -1461,7 +1462,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt1.Done(err); evt2.Done(err) }()
+	defer func() { evt2.Done(err) }()
 	// compare apps by platform type and number of units
 	if forceSwap == "false" {
 		if app1.Platform != app2.Platform {
