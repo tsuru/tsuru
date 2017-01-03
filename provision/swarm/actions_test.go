@@ -21,6 +21,7 @@ import (
 func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -65,6 +66,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -112,6 +114,7 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 func (s *S) TestActionUpdateServicesForwardUpdateExisting(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -169,6 +172,7 @@ func (s *S) TestActionUpdateServicesForwardUpdateExisting(c *check.C) {
 func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -259,6 +263,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
@@ -305,6 +310,7 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 func (s *S) TestActionUpdateServicesBackwardNotInCurrent(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer srv.Stop()
 	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
