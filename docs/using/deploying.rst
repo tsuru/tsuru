@@ -17,7 +17,7 @@ should not works as expected with more than one `unit`.
 Select a deployment process
 ---------------------------
 
-tsuru supports three ways of deployment:
+tsuru supports three ways of deployment (git, app-deploy, Docker image):
 
 Git
 +++
