@@ -148,6 +148,7 @@ func getNodeCredentials(address string) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer secColl.Close()
 	var data NodeSec
 	err = secColl.FindId(address).One(&data)
 	if err != nil {
