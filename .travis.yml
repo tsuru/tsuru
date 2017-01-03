@@ -34,7 +34,7 @@ before_install:
 script:
   - make test
   - while true; do echo .; sleep 30; done &
-  - make metalint
+  - make lint
   - go get golang.org/x/net/http2/...
   - ./misc/check-handlers.sh
   - ./misc/check-events.sh
