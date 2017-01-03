@@ -23,7 +23,7 @@ Git
 +++
 
 Git deployments are based on tsuru `platforms` and are useful if you want to
-track the diference betwen the deployments.
+track the difference between the deployments.
 
 :doc:`Learn how to deploy applications using Git </using/quickstart>`.
 
@@ -31,7 +31,7 @@ app-deploy
 ++++++++++
 
 The `app-deploy` deployments are based on tsuru `platforms` and are useful for
-automated deploymens.
+automated deployments.
 
 Docker image
 ++++++++++++
