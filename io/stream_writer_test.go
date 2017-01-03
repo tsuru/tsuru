@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -242,7 +242,9 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 	parts = append(parts, []byte(`{"message":"no json 2\n"}`))
 	outBuf := bytes.Buffer{}
 	streamWriter := NewStreamWriter(&outBuf, nil)
-	streamWriter.Write(bytes.Join(parts, []byte("\n")))
+	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
+	c.Assert(err, check.IsNil)
+	c.Assert(written, check.Equals, 4612)
 	c.Assert(outBuf.String(), check.Equals, "no json 1\n"+
 		"latest: Pulling from tsuru/static\n"+
 		"a6aa3b66376f: Already exists\n"+
