@@ -79,7 +79,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 }
 
 // title: add node
-// path: /{provisioner}/node
+// path: /node
 // method: POST
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
