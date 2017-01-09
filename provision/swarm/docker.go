@@ -586,7 +586,8 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 			ContainerSpec: swarm.ContainerSpec{
 				Image:       config.Image(),
 				Labels:      labels,
-				Command:     config.Config.Cmd,
+				Command:     config.Config.Entrypoint,
+				Args:        config.Config.Cmd,
 				Env:         config.Config.Env,
 				Dir:         config.Config.WorkingDir,
 				User:        config.Config.User,
