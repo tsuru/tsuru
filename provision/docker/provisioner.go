@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -907,9 +907,9 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&nodecontainer.NodeContainerUpdate{},
 		&nodecontainer.NodeContainerDelete{},
 		&nodecontainer.NodeContainerUpgrade{},
-		&cmd.RemovedCommand{Name: "bs-env-set", Help: "You should use `tsuru-admin node-container-update big-sibling` instead."},
-		&cmd.RemovedCommand{Name: "bs-info", Help: "You should use `tsuru-admin node-container-info big-sibling` instead."},
-		&cmd.RemovedCommand{Name: "bs-upgrade", Help: "You should use `tsuru-admin node-container-upgrade big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-env-set", Help: "You should use `tsuru node-container-update big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-info", Help: "You should use `tsuru node-container-info big-sibling` instead."},
+		&cmd.RemovedCommand{Name: "bs-upgrade", Help: "You should use `tsuru node-container-upgrade big-sibling` instead."},
 	}
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -116,7 +116,7 @@ func (s *CheckerSuite) TestCheckSchedulerConfig(c *check.C) {
 func (s *CheckerSuite) TestCheckDockerServersError(c *check.C) {
 	config.Set("docker:servers", []string{"srv1", "srv2"})
 	err := checkScheduler()
-	c.Assert(err, check.ErrorMatches, `Using docker:servers is deprecated, please remove it your config and use "tsuru-admin docker-node-add" do add docker nodes.`)
+	c.Assert(err, check.ErrorMatches, `Using docker:servers is deprecated, please remove it your config and use "tsuru docker-node-add" do add docker nodes.`)
 }
 
 func (s *CheckerSuite) TestCheckSchedulerConfigSegregate(c *check.C) {

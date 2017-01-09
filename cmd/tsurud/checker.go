@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -61,7 +61,7 @@ func checkPubSub() error {
 func checkQueue() error {
 	queueConfig, _ := config.GetString("queue:mongo-url")
 	if queueConfig == "" {
-		return config.NewWarning(`Config entry "queue:mongo-url" is not set, default "localhost" will be used. Running "tsuru-admin docker-node-{add,remove}" commands might not work.`)
+		return config.NewWarning(`Config entry "queue:mongo-url" is not set, default "localhost" will be used. Running "tsuru docker-node-{add,remove}" commands might not work.`)
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func checkCluster() error {
 // It verifies your scheduler configuration and validates related confs.
 func checkScheduler() error {
 	if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
-		return errors.Errorf(`Using docker:servers is deprecated, please remove it your config and use "tsuru-admin docker-node-add" do add docker nodes.`)
+		return errors.Errorf(`Using docker:servers is deprecated, please remove it your config and use "tsuru docker-node-add" do add docker nodes.`)
 	}
 	isSegregate, err := config.GetBool("docker:segregate")
 	if err == nil {

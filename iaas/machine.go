@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -195,7 +195,7 @@ func collectionEnsureIdx() (*storage.Collection, error) {
 		coll.Close()
 		return nil, errors.Errorf(`Could not create index on address for machines collection.
 This can be caused by multiple machines with the same address, please run
-"tsuru-admin machine-list" to check for duplicated entries and "tsuru-admin
+"tsuru machine-list" to check for duplicated entries and "tsuru
 machine-destroy" to remove them.
 original error: %s`, err)
 	}
