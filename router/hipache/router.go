@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,7 @@
 // router.Get.
 //
 // In order to use this router, you need to define the "routers:<name>:type =
-// hipache" in your config.
+// hipache" or "routers:<name>:type = planb" in your config.
 package hipache
 
 import (
@@ -37,14 +37,18 @@ var (
 )
 
 func init() {
-	router.Register(routerType, createRouter)
-	router.Register("planb", createRouter)
+	router.Register(routerType, createHipacheRouter)
+	router.Register("planb", createPlanbRouter)
 	hc.AddChecker("Router Hipache", router.BuildHealthCheck("hipache"))
 	hc.AddChecker("Router Planb", router.BuildHealthCheck("planb"))
 }
 
-func createRouter(routerName, configPrefix string) (router.Router, error) {
+func createHipacheRouter(routerName, configPrefix string) (router.Router, error) {
 	return &hipacheRouter{prefix: configPrefix}, nil
+}
+
+func createPlanbRouter(routerName, configPrefix string) (router.Router, error) {
+	return &planbRouter{hipacheRouter{prefix: configPrefix}}, nil
 }
 
 func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
@@ -601,6 +605,37 @@ func (r *hipacheRouter) SetHealthcheck(name string, data router.HealthcheckData)
 	}).Err()
 	if err != nil {
 		return &router.RouterError{Op: "setHealthcheck", Err: err}
+	}
+	return nil
+}
+
+type planbRouter struct {
+	hipacheRouter
+}
+
+func (r *planbRouter) AddCertificate(cname, cert, key string) error {
+	conn, err := r.connect()
+	if err != nil {
+		return &router.RouterError{Op: "addCertificate", Err: err}
+	}
+	err = conn.HMSetMap("tls:"+cname, map[string]string{
+		"certificate": cert,
+		"key":         key,
+	}).Err()
+	if err != nil {
+		return &router.RouterError{Op: "addCertificate", Err: err}
+	}
+	return nil
+}
+
+func (r *planbRouter) RemoveCertificate(cname string) error {
+	conn, err := r.connect()
+	if err != nil {
+		return &router.RouterError{Op: "removeCertificate", Err: err}
+	}
+	err = conn.Del("tls:" + cname).Err()
+	if err != nil {
+		return &router.RouterError{Op: "removeCertificate", Err: err}
 	}
 	return nil
 }

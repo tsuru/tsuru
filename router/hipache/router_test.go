@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -171,7 +171,7 @@ func (s *S) TestShouldBeRegisteredAsPlanb(c *check.C) {
 	defer config.Unset("routers:myplanb:type")
 	r, err := router.Get("myplanb")
 	c.Assert(err, check.IsNil)
-	_, ok := r.(*hipacheRouter)
+	_, ok := r.(*planbRouter)
 	c.Assert(ok, check.Equals, true)
 }
 
@@ -695,4 +695,30 @@ func (s *S) TestAddRouteAfterCorruptedRedis(c *check.C) {
 	addr1, _ := url.Parse("http://127.0.0.1")
 	err = r.AddRoute(backend1, addr1)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+}
+
+func (s *S) TestAddCertificate(c *check.C) {
+	r := planbRouter{hipacheRouter{prefix: "planb"}}
+	r.AddCertificate("www.example.com", "cert-content", "key-content")
+	redisConn, err := r.connect()
+	c.Assert(err, check.IsNil)
+	data, err := redisConn.HMGet("tls:www.example.com", "certificate", "key").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(data, check.NotNil)
+	c.Assert(data[0].(string), check.Equals, "cert-content")
+	c.Assert(data[1].(string), check.Equals, "key-content")
+}
+
+func (s *S) TestRemoveCertificate(c *check.C) {
+	r := planbRouter{hipacheRouter{prefix: "planb"}}
+	r.AddCertificate("www.example.com", "cert-content", "key-content")
+	redisConn, err := r.connect()
+	c.Assert(err, check.IsNil)
+	data, err := redisConn.HMGet("tls:www.example.com", "certificate", "key").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(data, check.NotNil)
+	r.RemoveCertificate("www.example.com")
+	exists, err := redisConn.Exists("tls:www.example.com").Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(exists, check.Equals, false)
 }
