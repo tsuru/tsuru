@@ -32,6 +32,7 @@ type baseClient interface {
 	Select(index int64) *redis.StatusCmd
 	Keys(pattern string) *redis.StringSliceCmd
 	LLen(key string) *redis.IntCmd
+	HMGet(key string, fields ...string) *redis.SliceCmd
 	HMSetMap(key string, fields map[string]string) *redis.StatusCmd
 	HLen(key string) *redis.IntCmd
 	Close() error
