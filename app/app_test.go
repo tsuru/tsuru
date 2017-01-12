@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -3697,6 +3698,127 @@ func (s *S) TestShellToAnApp(c *check.C) {
 	expected := []provision.ShellOptions{opts}
 	expected[0].App = &a
 	c.Assert(s.provisioner.Shells(unit.ID), check.DeepEquals, expected)
+}
+
+func (s *S) TestSetCertificateForApp(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	cname := "app.io"
+	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := ioutil.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Ip = "app.io"
+	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.Ip}})
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(cname, string(cert), string(key))
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, string(cert))
+	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, string(key))
+}
+
+func (s *S) TestSetCertificateForAppCName(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	cname := "app.io"
+	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := ioutil.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan, CName: []string{cname}}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(cname, string(cert), string(key))
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, string(cert))
+	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, string(key))
+}
+
+func (s *S) TestSetCertificateNonTLSRouter(c *check.C) {
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate("app.io", "cert", "key")
+	c.Assert(err, check.ErrorMatches, "router does not support tls")
+}
+
+func (s *S) TestSetCertificateInvalidCName(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate("example.com", "cert", "key")
+	c.Assert(err, check.ErrorMatches, "invalid name")
+	c.Assert(routertest.TLSRouter.Certs["example.com"], check.Equals, "")
+	c.Assert(routertest.TLSRouter.Keys["example.com"], check.Equals, "")
+}
+
+func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	cname := "example.io"
+	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := ioutil.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan, CName: []string{cname}}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(cname, string(cert), string(key))
+	c.Assert(err, check.ErrorMatches, "*certificate is valid for app.io, not example.io*")
+	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
+	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
+}
+
+func (s *S) TestRemoveCertificate(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	cname := "app.io"
+	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := ioutil.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Ip = "app.io"
+	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.Ip}})
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(cname, string(cert), string(key))
+	c.Assert(err, check.IsNil)
+	err = a.RemoveCertificate(cname)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
+	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
+}
+
+func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	cname := "app.io"
+	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := ioutil.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan, CName: []string{cname}}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(cname, string(cert), string(key))
+	c.Assert(err, check.IsNil)
+	err = a.RemoveCertificate(cname)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
+	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
 }
 
 func (s *S) TestAppMetricEnvs(c *check.C) {

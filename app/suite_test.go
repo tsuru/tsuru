@@ -108,6 +108,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-database", "queue_app_pkg_tests")
 	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("docker:registry", "registry.somewhere")
+	config.Set("routers:fake-tls:type", "fake-tls")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
@@ -135,9 +136,11 @@ func (s *S) SetUpTest(c *check.C) {
 	// will remove any routes added by executed queue tasks.
 	routertest.FakeRouter.Reset()
 	routertest.HCRouter.Reset()
+	routertest.TLSRouter.Reset()
 	queue.ResetQueue()
 	routertest.FakeRouter.Reset()
 	routertest.HCRouter.Reset()
+	routertest.TLSRouter.Reset()
 	err := rebuild.RegisterTask(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(appName)
 		if err == ErrAppNotFound {
