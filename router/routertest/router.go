@@ -18,11 +18,18 @@ var FakeRouter = newFakeRouter()
 
 var HCRouter = hcRouter{fakeRouter: newFakeRouter()}
 
+var TLSRouter = tlsRouter{
+	fakeRouter: newFakeRouter(),
+	Certs:      make(map[string]string),
+	Keys:       make(map[string]string),
+}
+
 var ErrForcedFailure = errors.New("Forced failure")
 
 func init() {
 	router.Register("fake", createRouter)
 	router.Register("fake-hc", createHCRouter)
+	router.Register("fake-tls", createTLSRouter)
 }
 
 func createRouter(name, prefix string) (router.Router, error) {
@@ -31,6 +38,10 @@ func createRouter(name, prefix string) (router.Router, error) {
 
 func createHCRouter(name, prefix string) (router.Router, error) {
 	return &HCRouter, nil
+}
+
+func createTLSRouter(name, prefix string) (router.Router, error) {
+	return &TLSRouter, nil
 }
 
 func newFakeRouter() fakeRouter {
@@ -382,5 +393,23 @@ func (r *fakeRouter) SetHealthcheck(name string, data router.HealthcheckData) er
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.healthcheck[backendName] = data
+	return nil
+}
+
+type tlsRouter struct {
+	fakeRouter
+	Certs map[string]string
+	Keys  map[string]string
+}
+
+func (r *tlsRouter) AddCertificate(cname, certificate, key string) error {
+	r.Certs[cname] = certificate
+	r.Keys[cname] = key
+	return nil
+}
+
+func (r *tlsRouter) RemoveCertificate(cname string) error {
+	delete(r.Certs, cname)
+	delete(r.Keys, cname)
 	return nil
 }

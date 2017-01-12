@@ -256,3 +256,21 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "b1.fakerouter.com")
 }
+
+func (s *S) TestAddCertificate(c *check.C) {
+	r := TLSRouter
+	err := r.AddCertificate("example.com", "cert", "key")
+	c.Assert(err, check.IsNil)
+	c.Assert(r.Certs["example.com"], check.DeepEquals, "cert")
+	c.Assert(r.Keys["example.com"], check.DeepEquals, "key")
+}
+
+func (s *S) TestRemoveCertificate(c *check.C) {
+	r := TLSRouter
+	err := r.AddCertificate("example.com", "cert", "key")
+	c.Assert(err, check.IsNil)
+	err = r.RemoveCertificate("example.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(r.Certs["example.com"], check.Equals, "")
+	c.Assert(r.Keys["example.com"], check.Equals, "")
+}
