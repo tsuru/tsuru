@@ -115,6 +115,13 @@ type OptsRouter interface {
 	AddBackendOpts(name string, opts map[string]string) error
 }
 
+// TLSRouter is a router that supports adding and removing
+// certificates for a given cname
+type TLSRouter interface {
+	AddCertificate(cname, certificate, key string) error
+	RemoveCertificate(cname string) error
+}
+
 type HealthcheckData struct {
 	Path   string
 	Status int
