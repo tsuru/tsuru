@@ -273,6 +273,7 @@ func (s *S) TestRoutersList(c *check.C) {
 	recorder := httptest.NewRecorder()
 	expected := []router.PlanRouter{
 		{Name: "fake", Type: "fake"},
+		{Name: "fake-tls", Type: "fake-tls"},
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},
 	}

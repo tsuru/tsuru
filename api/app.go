@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1717,6 +1717,54 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	return json.NewEncoder(w).Encode(&result)
+}
+
+// title: set app certificate
+// path: /apps/{app}/certificate
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
+func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateCertificateSet,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	err = r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	cname := r.FormValue("cname")
+	certificate := r.FormValue("certificate")
+	key := r.FormValue("key")
+	if cname == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(a.Name),
+		Kind:       permission.PermAppUpdateCertificateSet,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = a.SetCertificate(cname, certificate, key)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	return nil
 }
 
 func contextsForApp(a *app.App) []permission.PermissionContext {

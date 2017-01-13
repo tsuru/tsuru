@@ -90,7 +90,9 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	config.Set("docker:router", "fake")
+	config.Set("routers:fake-tls:type", "fake-tls")
 	routertest.FakeRouter.Reset()
+	routertest.TLSRouter.Reset()
 	repositorytest.Reset()
 	var err error
 	s.conn, err = db.Conn()

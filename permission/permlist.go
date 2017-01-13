@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -34,6 +34,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.bind",
 	"app.update.events",
 	"app.update.unbind",
+	"app.update.certificate.set",
+	"app.update.certificate.remove",
 	"app.deploy",
 	"app.deploy.archive-url",
 	"app.deploy.build",
