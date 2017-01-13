@@ -1767,6 +1767,52 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	return nil
 }
 
+// title: remove app certificate
+// path: /apps/{app}/certificate
+// method: DELETE
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
+func removeCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateCertificateRemove,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	err = r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	cname := r.FormValue("cname")
+	if cname == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(a.Name),
+		Kind:       permission.PermAppUpdateCertificateRemove,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = a.RemoveCertificate(cname)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	return nil
+}
+
 func contextsForApp(a *app.App) []permission.PermissionContext {
 	return append(permission.Contexts(permission.CtxTeam, a.Teams),
 		permission.Context(permission.CtxApp, a.Name),

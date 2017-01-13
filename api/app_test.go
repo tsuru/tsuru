@@ -5339,3 +5339,59 @@ func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "router does not support tls\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
+
+func (s *S) TestRemoveCertificate(c *check.C) {
+	config.Set("docker:router", "fake-tls")
+	defer config.Unset("docker:router")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate("app.io", testCert, testKey)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/myapp/certificate?cname=app.io", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRemoveCertificateWithoutCName(c *check.C) {
+	config.Set("docker:router", "fake-tls")
+	defer config.Unset("docker:router")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate("app.io", testCert, testKey)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/myapp/certificate", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide a cname.\n")
+}
+
+func (s *S) TestRemoveCertificateInvalidCName(c *check.C) {
+	config.Set("docker:router", "fake-tls")
+	defer config.Unset("docker:router")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate("app.io", testCert, testKey)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/myapp/certificate?cname=myapp.io", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid name\n")
+}
