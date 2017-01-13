@@ -1050,6 +1050,29 @@ In ``local`` mode tsuru will only limit simultaneous actions from the current
 tsurud process. ``global`` mode uses MongoDB to ensure all tsurud servers using
 respects the same limit.
 
+.. _docker_sharedfs:
+
+docker:sharedfs
++++++++++++++++
+
+Used to create shared volumes for apps.
+
+docker:sharedfs:hostdir
++++++++++++++++++++++++
+
+Directory on host machine to access shared data with instaled apps.
+
+docker:sharedfs:mountpoint
+++++++++++++++++++++++++++
+
+Directory inside the container that point to ``hostdir`` directory configured
+above.
+
+docker:sharedfs:app-isolation
++++++++++++++++++++++++++++++
+
+If true, the ``hostdir`` will have subdirectories for each app. All apps will still have access to a shared mount point, however they will be in completely isolated subdirectories. 
+
 .. _iaas_configuration:
 
 IaaS configuration
