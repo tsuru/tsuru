@@ -144,6 +144,14 @@ func (i *digitalOceanIaas) waitNetworkCreated(droplet *godo.Droplet) (*godo.Drop
 func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 	i.Auth()
 	machineId, _ := strconv.Atoi(m.Id)
+	_, _, err := i.client.DropletActions.Shutdown(machineId)
+	if err != nil {
+		// PowerOff force the shutdown
+		_, _, err = i.client.DropletActions.PowerOff(machineId)
+		if err != nil {
+			return err
+		}
+	}
 	resp, err := i.client.Droplets.Delete(machineId)
 	if err != nil {
 		return err
