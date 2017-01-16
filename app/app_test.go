@@ -6,7 +6,9 @@ package app
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -3819,6 +3821,41 @@ func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.TLSRouter.Certs[cname], check.Equals, "")
 	c.Assert(routertest.TLSRouter.Keys[cname], check.Equals, "")
+}
+
+func (s *S) TestGetCertificates(c *check.C) {
+	tlsPlan := Plan{Name: "tls", Router: "fake-tls"}
+	err := s.conn.Plans().Insert(tlsPlan)
+	c.Assert(err, check.IsNil)
+	cname := "app.io"
+	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	c.Assert(err, check.IsNil)
+	key, err := ioutil.ReadFile("testdata/private.key")
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Plan: tlsPlan, CName: []string{cname}}
+	err = CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate(cname, string(cert), string(key))
+	c.Assert(err, check.IsNil)
+	block, _ := pem.Decode(cert)
+	expectedCert, err := x509.ParseCertificate(block.Bytes)
+	c.Assert(err, check.IsNil)
+	expectedCerts := map[string]*x509.Certificate{
+		"app.io":                     expectedCert,
+		"my-test-app.fakerouter.com": nil,
+	}
+	certs, err := a.GetCertificates()
+	c.Assert(err, check.IsNil)
+	c.Assert(certs, check.DeepEquals, expectedCerts)
+}
+
+func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	certs, err := a.GetCertificates()
+	c.Assert(err, check.ErrorMatches, "router does not support tls")
+	c.Assert(certs, check.IsNil)
 }
 
 func (s *S) TestAppMetricEnvs(c *check.C) {

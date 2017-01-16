@@ -1749,6 +1749,27 @@ func (app *App) RemoveCertificate(name string) error {
 	return tlsRouter.RemoveCertificate(name)
 }
 
+func (app *App) GetCertificates() (map[string]*x509.Certificate, error) {
+	r, err := app.Router()
+	if err != nil {
+		return nil, err
+	}
+	tlsRouter, ok := r.(router.TLSRouter)
+	if !ok {
+		return nil, errors.New("router does not support tls")
+	}
+	names := append(app.CName, app.Ip)
+	certificates := make(map[string]*x509.Certificate)
+	for _, n := range names {
+		cert, err := tlsRouter.GetCertificate(n)
+		if err != nil && err != router.ErrCertificateNotFound {
+			return nil, err
+		}
+		certificates[n] = cert
+	}
+	return certificates, nil
+}
+
 type ProcfileError struct {
 	yamlErr error
 }
