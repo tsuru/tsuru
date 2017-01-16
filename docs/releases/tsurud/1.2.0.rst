@@ -94,6 +94,8 @@ only router that supports managing TLS certificates and HTTPs routing directly f
 Certificates should be configured for each app cname using ``tsuru certificate-set -a <app> -c <cname> cert.crt key.crt``
 and can be removed by ``tsuru certificate-unset -a <app> -c <cname>``.
 
+``tsuru certificate-list -a <app>`` may be used to list certificates bound to a particular app.
+
 App Run Isolated
 ----------------
 
