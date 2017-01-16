@@ -1767,7 +1767,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	return nil
 }
 
-// title: remove app certificate
+// title: unset app certificate
 // path: /apps/{app}/certificate
 // method: DELETE
 // consume: application/x-www-form-urlencoded
@@ -1776,7 +1776,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   400: Invalid data
 //   401: Unauthorized
 //   404: App not found
-func removeCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err

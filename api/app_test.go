@@ -5340,7 +5340,7 @@ func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestRemoveCertificate(c *check.C) {
+func (s *S) TestUnsetCertificate(c *check.C) {
 	config.Set("docker:router", "fake-tls")
 	defer config.Unset("docker:router")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
@@ -5358,7 +5358,7 @@ func (s *S) TestRemoveCertificate(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
-func (s *S) TestRemoveCertificateWithoutCName(c *check.C) {
+func (s *S) TestUnsetCertificateWithoutCName(c *check.C) {
 	config.Set("docker:router", "fake-tls")
 	defer config.Unset("docker:router")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
@@ -5377,7 +5377,7 @@ func (s *S) TestRemoveCertificateWithoutCName(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide a cname.\n")
 }
 
-func (s *S) TestRemoveCertificateInvalidCName(c *check.C) {
+func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
 	config.Set("docker:router", "fake-tls")
 	defer config.Unset("docker:router")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
