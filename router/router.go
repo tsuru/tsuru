@@ -7,7 +7,6 @@
 package router
 
 import (
-	"crypto/x509"
 	"fmt"
 	"net/url"
 	"sort"
@@ -122,7 +121,7 @@ type OptsRouter interface {
 type TLSRouter interface {
 	AddCertificate(cname, certificate, key string) error
 	RemoveCertificate(cname string) error
-	GetCertificate(cname string) (*x509.Certificate, error)
+	GetCertificate(cname string) (string, error)
 }
 
 type HealthcheckData struct {

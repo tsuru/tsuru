@@ -5,8 +5,6 @@
 package hipache
 
 import (
-	"crypto/x509"
-	"encoding/pem"
 	"net/url"
 	"reflect"
 	"sync"
@@ -748,21 +746,17 @@ ZBGdNK2/tDsQl5Wb+qnz5Ge9obybRLHHL2L5mrSwb+nC+nrC2nlfjJgVse9HhU9j
 Wx1oQV8UD5KLQQRy9Xew/KRHVzOpdkK66/i/hgV7GdREy4aKNAEBRpheOzjLDQyG
 YRLI1QVj1Q==
 -----END CERTIFICATE-----`
-	block, _ := pem.Decode([]byte(testCert))
-	c.Assert(block, check.NotNil)
-	expectedCert, err := x509.ParseCertificate(block.Bytes)
-	c.Assert(err, check.IsNil)
 	r := planbRouter{hipacheRouter{prefix: "planb"}}
-	err = r.AddCertificate("myapp.io", testCert, "key-content")
+	err := r.AddCertificate("myapp.io", testCert, "key-content")
 	c.Assert(err, check.IsNil)
 	cert, err := r.GetCertificate("myapp.io")
 	c.Assert(err, check.IsNil)
-	c.Assert(cert, check.DeepEquals, expectedCert)
+	c.Assert(cert, check.DeepEquals, testCert)
 }
 
 func (s *S) TestGetCertificateNotFound(c *check.C) {
 	r := planbRouter{hipacheRouter{prefix: "planb"}}
 	cert, err := r.GetCertificate("otherapp")
 	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
-	c.Assert(cert, check.IsNil)
+	c.Assert(cert, check.Equals, "")
 }

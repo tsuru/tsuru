@@ -6,9 +6,7 @@ package app
 
 import (
 	"bytes"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -3837,12 +3835,9 @@ func (s *S) TestGetCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
-	block, _ := pem.Decode(cert)
-	expectedCert, err := x509.ParseCertificate(block.Bytes)
-	c.Assert(err, check.IsNil)
-	expectedCerts := map[string]*x509.Certificate{
-		"app.io":                     expectedCert,
-		"my-test-app.fakerouter.com": nil,
+	expectedCerts := map[string]string{
+		"app.io":                     string(cert),
+		"my-test-app.fakerouter.com": "",
 	}
 	certs, err := a.GetCertificates()
 	c.Assert(err, check.IsNil)
