@@ -83,6 +83,17 @@ introduced Docker Machine IaaS and can be also configured for nonmanaged and nod
 provisioned with other IaaS providers. Both provisioners, native and swarm, support
 docker with TLS.
 
+HTTPS routing support for apps
+------------------------------
+
+In this version, we added support for configuring TLS certificates for applications.
+The certificate and private key are passed directly to the application router which is
+responsible for TLS termination. Currently, the `planB router <https://github.com/tsuru/planb>`_ is the
+only router that supports managing TLS certificates and HTTPs routing directly from tsuru.
+
+Certificates should be configured for each app cname using ``tsuru certificate-set -a <app> -c <cname> cert.crt key.crt``
+and can be removed by ``tsuru certificate-unset -a <app> -c <cname>``.
+
 App Run Isolated
 ----------------
 
