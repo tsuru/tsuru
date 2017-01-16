@@ -7,6 +7,7 @@
 package router
 
 import (
+	"crypto/x509"
 	"fmt"
 	"net/url"
 	"sort"
@@ -24,14 +25,15 @@ import (
 type routerFactory func(routerName, configPrefix string) (Router, error)
 
 var (
-	ErrBackendExists   = errors.New("Backend already exists")
-	ErrBackendNotFound = errors.New("Backend not found")
-	ErrBackendSwapped  = errors.New("Backend is swapped cannot remove")
-	ErrRouteExists     = errors.New("Route already exists")
-	ErrRouteNotFound   = errors.New("Route not found")
-	ErrCNameExists     = errors.New("CName already exists")
-	ErrCNameNotFound   = errors.New("CName not found")
-	ErrCNameNotAllowed = errors.New("CName as router subdomain not allowed")
+	ErrBackendExists       = errors.New("Backend already exists")
+	ErrBackendNotFound     = errors.New("Backend not found")
+	ErrBackendSwapped      = errors.New("Backend is swapped cannot remove")
+	ErrRouteExists         = errors.New("Route already exists")
+	ErrRouteNotFound       = errors.New("Route not found")
+	ErrCNameExists         = errors.New("CName already exists")
+	ErrCNameNotFound       = errors.New("CName not found")
+	ErrCNameNotAllowed     = errors.New("CName as router subdomain not allowed")
+	ErrCertificateNotFound = errors.New("Certificate not found")
 )
 
 const HttpScheme = "http"
@@ -120,6 +122,7 @@ type OptsRouter interface {
 type TLSRouter interface {
 	AddCertificate(cname, certificate, key string) error
 	RemoveCertificate(cname string) error
+	GetCertificate(cname string) (*x509.Certificate, error)
 }
 
 type HealthcheckData struct {

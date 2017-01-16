@@ -5,6 +5,8 @@
 package routertest
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net/url"
 	"strings"
@@ -412,4 +414,13 @@ func (r *tlsRouter) RemoveCertificate(cname string) error {
 	delete(r.Certs, cname)
 	delete(r.Keys, cname)
 	return nil
+}
+
+func (r *tlsRouter) GetCertificate(cname string) (*x509.Certificate, error) {
+	data, ok := r.Certs[cname]
+	if !ok {
+		return nil, router.ErrCertificateNotFound
+	}
+	block, _ := pem.Decode([]byte(data))
+	return x509.ParseCertificate(block.Bytes)
 }

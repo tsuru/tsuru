@@ -14,6 +14,8 @@
 package hipache
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -638,4 +640,27 @@ func (r *planbRouter) RemoveCertificate(cname string) error {
 		return &router.RouterError{Op: "removeCertificate", Err: err}
 	}
 	return nil
+}
+
+func (r *planbRouter) GetCertificate(cname string) (*x509.Certificate, error) {
+	conn, err := r.connect()
+	if err != nil {
+		return nil, &router.RouterError{Op: "getCertificate", Err: err}
+	}
+	result, err := conn.HMGet("tls:"+cname, "certificate").Result()
+	if err != nil {
+		return nil, &router.RouterError{Op: "getCertificate", Err: err}
+	}
+	if len(result) == 0 || result[0] == nil {
+		return nil, router.ErrCertificateNotFound
+	}
+	block, _ := pem.Decode([]byte(result[0].(string)))
+	if block == nil {
+		return nil, &router.RouterError{Op: "getCertificate", Err: fmt.Errorf("failed to decode certificate data")}
+	}
+	x509Cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, &router.RouterError{Op: "getCertificate", Err: err}
+	}
+	return x509Cert, nil
 }
