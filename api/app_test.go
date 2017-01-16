@@ -5274,6 +5274,16 @@ func (s *S) TestSetCertificate(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.certificate.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "cname", "value": "app.io"},
+			{"name": "certificate", "value": testCert},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestSetCertificateInvalidCname(c *check.C) {
@@ -5356,6 +5366,15 @@ func (s *S) TestUnsetCertificate(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.certificate.unset",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "cname", "value": "app.io"},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUnsetCertificateWithoutCName(c *check.C) {

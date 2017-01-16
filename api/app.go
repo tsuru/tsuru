@@ -1749,6 +1749,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if cname == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
 	}
+	r.Form.Del("key")
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateSet,
