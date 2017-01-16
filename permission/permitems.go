@@ -24,6 +24,7 @@ var (
 	PermAppDeployRollback                = PermissionRegistry.get("app.deploy.rollback")                 // [global app team pool]
 	PermAppDeployUpload                  = PermissionRegistry.get("app.deploy.upload")                   // [global app team pool]
 	PermAppRead                          = PermissionRegistry.get("app.read")                            // [global app team pool]
+	PermAppReadCertificate               = PermissionRegistry.get("app.read.certificate")                // [global app team pool]
 	PermAppReadDeploy                    = PermissionRegistry.get("app.read.deploy")                     // [global app team pool]
 	PermAppReadEnv                       = PermissionRegistry.get("app.read.env")                        // [global app team pool]
 	PermAppReadEvents                    = PermissionRegistry.get("app.read.events")                     // [global app team pool]

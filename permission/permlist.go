@@ -49,6 +49,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.read.events",
 	"app.read.metric",
 	"app.read.log",
+	"app.read.certificate",
 	"app.delete",
 	"app.run",
 	"app.run.shell",
