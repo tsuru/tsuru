@@ -1814,6 +1814,33 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	return nil
 }
 
+// title: list app certificates
+// path: /apps/{app}/certificate
+// method: GET
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
+func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppReadCertificate,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	w.Header().Set("Content-Type", "application/json")
+	result, err := a.GetCertificates()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(&result)
+}
+
 func contextsForApp(a *app.App) []permission.PermissionContext {
 	return append(permission.Contexts(permission.CtxTeam, a.Teams),
 		permission.Context(permission.CtxApp, a.Name),

@@ -5414,3 +5414,27 @@ func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "invalid name\n")
 }
+
+func (s *S) TestListCertificates(c *check.C) {
+	config.Set("docker:router", "fake-tls")
+	defer config.Unset("docker:router")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.SetCertificate("app.io", testCert, testKey)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps/myapp/certificate", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	certs := make(map[string]string)
+	err = json.Unmarshal(recorder.Body.Bytes(), &certs)
+	c.Assert(err, check.IsNil)
+	c.Assert(certs, check.DeepEquals, map[string]string{
+		"app.io":               testCert,
+		"myapp.fakerouter.com": "",
+	})
+}
