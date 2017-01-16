@@ -35,7 +35,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.events",
 	"app.update.unbind",
 	"app.update.certificate.set",
-	"app.update.certificate.remove",
+	"app.update.certificate.unset",
 	"app.deploy",
 	"app.deploy.archive-url",
 	"app.deploy.build",

@@ -1781,7 +1781,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateCertificateRemove,
+	allowed := permission.Check(t, permission.PermAppUpdateCertificateUnset,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1797,7 +1797,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
-		Kind:       permission.PermAppUpdateCertificateRemove,
+		Kind:       permission.PermAppUpdateCertificateUnset,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
