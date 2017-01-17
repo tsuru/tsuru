@@ -115,8 +115,13 @@ func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
 
 func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(204)
-		w.Header().Set("Content-type", "application/json")
+		if r.URL.Path == "/v2/droplets/503" {
+			w.WriteHeader(204)
+			w.Header().Set("Content-type", "application/json")
+		}
+		if r.URL.Path == "/v2/droplets/503/actions" {
+			fmt.Fprintln(w, `{"action":{"id": 123456, "status": "in-progress", "started_at": "2014-11-04T17:08:03Z", "resource_id": 503, "resource_type": "droplet"}}`)
+		}
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
@@ -128,8 +133,13 @@ func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
 
 func (s *digitaloceanSuite) TestDeleteMachineFailure(c *check.C) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		w.Header().Set("Content-type", "application/json")
+		if r.URL.Path == "/v2/droplets/13" {
+			w.WriteHeader(200)
+			w.Header().Set("Content-type", "application/json")
+		}
+		if r.URL.Path == "/v2/droplets/13/actions" {
+			fmt.Fprintln(w, `{"action":{"id": 123456, "status": "in-progress", "started_at": "2014-11-04T17:08:03Z", "resource_id": 13, "resource_type": "droplet"}}`)
+		}
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
