@@ -14,10 +14,11 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
 
 # -- General configuration -----------------------------------------------------
-
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
 
@@ -101,13 +102,12 @@ pygments_style = 'sphinx'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-# html_theme_path = ['theme']
+html_theme_path = ['theme']
 
-import os
-if not os.environ.get('READTHEDOCS', None):
-    import sphinx_rtd_theme
-    html_theme = 'sphinx_rtd_theme'
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+# if not os.environ.get('READTHEDOCS', None):
+# import sphinx_rtd_theme
+html_theme = 'sphinx_rtd_theme'
+# html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -248,3 +248,13 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+# tsuru releases
+try:
+    import releases
+except:
+    pass
+else:
+    html_context = {
+        'releases' : releases.RELEASES,
+    }
