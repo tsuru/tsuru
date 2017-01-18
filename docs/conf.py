@@ -106,7 +106,7 @@ html_theme_path = ['theme']
 
 # if not os.environ.get('READTHEDOCS', None):
 # import sphinx_rtd_theme
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_rtd_theme_ext'
 # html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
