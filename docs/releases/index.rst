@@ -1,4 +1,4 @@
-.. Copyright 2016 tsuru authors. All rights reserved.
+.. Copyright 2017 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -137,6 +137,11 @@ tsuru-admin
 `tsuru-admin` is the tsuru administrative client. For details on releases of
 tsuru-admin, check the release history in the `tsuru-admin repository at GitHub
 <https://github.com/tsuru/tsuru-admin/releases>`_.
+
+.. warning::
+
+  Since tsuru version 1.2 the ``tsuru-admin`` was fully replaced by
+  the :doc:`tsuru client</reference/tsuru-client>`.
 
 crane
 =====
