@@ -144,3 +144,8 @@ crane
 `crane` is the command line interface used by service providers. For details on
 releases of crane, check the release history in the `crane repository at GitHub
 <https://github.com/tsuru/crane/releases>`_.
+
+.. warning::
+
+  Since tsuru version 1.2 the ``crane`` was fully replaced by
+  the :doc:`tsuru client</reference/tsuru-client>`.

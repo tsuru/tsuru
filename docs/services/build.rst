@@ -1,4 +1,4 @@
-.. Copyright 2016 tsuru authors. All rights reserved.
+.. Copyright 2017 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -22,12 +22,6 @@ when a customer creates a new instance or binds a service instance with an app.
 You will also need to create a YAML document that will serve as the service
 manifest. We provide a command-line tool to help you to create this manifest
 and manage your service.
-
-Install crane
-=============
-
-`crane` is a command-line interface (CLI) used by service manager to manage
-services. Before start, make sure that you have `crane` installed: https://tsuru-crane.readthedocs.io/en/latest/#installing
 
 Creating your service API
 =========================
@@ -340,13 +334,13 @@ The final code for our "fake API" developed in Flask is:
 Creating a service manifest
 ===========================
 
-Using crane you can create a manifest template:
+Using tsuru-client you can create a manifest template:
 
 .. highlight:: bash
 
 ::
 
-    $ crane template
+    $ tsuru service-template
 
 This will create a manifest.yaml in your current path with this content:
 
@@ -359,7 +353,7 @@ This will create a manifest.yaml in your current path with this content:
     endpoint:
         production: production-endpoint.com
 
-The manifest.yaml is used by crane to defined the ID, the password and the
+The manifest.yaml is used to defined the ID, the password and the
 production endpoint of your service.
 
 Change these information in the created manifest, and the `submit your
@@ -387,7 +381,7 @@ To submit your service, you can run:
 
 ::
 
-    $ crane create manifest.yaml
+    $ tsuru service-create manifest.yaml
 
 For more details, check the :doc:`service API workflow </services/api>` and the
-:doc:`crane usage guide </services/usage>`.
+`tsuru-client service management reference <https://tsuru-client.readthedocs.io/en/latest/reference.html#service-management>`_.
