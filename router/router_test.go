@@ -106,11 +106,11 @@ func (s *S) TestStoreUpdatesEntry(c *check.C) {
 	c.Assert(name, check.Equals, "routername2")
 	data, err := retrieveRouterData("appname")
 	c.Assert(err, check.IsNil)
-	delete(data, "_id")
-	c.Assert(data, check.DeepEquals, map[string]string{
-		"app":    "appname",
-		"router": "routername2",
-		"kind":   "fake2",
+	data.ID = ""
+	c.Assert(data, check.DeepEquals, routerAppEntry{
+		App:    "appname",
+		Router: "routername2",
+		Kind:   "fake2",
 	})
 	err = Remove("appname")
 	c.Assert(err, check.IsNil)
@@ -123,11 +123,11 @@ func (s *S) TestRetrieveWithoutKind(c *check.C) {
 	c.Assert(err, check.IsNil)
 	data, err := retrieveRouterData("appname")
 	c.Assert(err, check.IsNil)
-	delete(data, "_id")
-	c.Assert(data, check.DeepEquals, map[string]string{
-		"app":    "appname",
-		"router": "routername",
-		"kind":   "hipache",
+	data.ID = ""
+	c.Assert(data, check.DeepEquals, routerAppEntry{
+		App:    "appname",
+		Router: "routername",
+		Kind:   "hipache",
 	})
 }
 

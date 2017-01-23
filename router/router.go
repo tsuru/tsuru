@@ -152,6 +152,13 @@ func collection() (*storage.Collection, error) {
 	return coll, nil
 }
 
+type routerAppEntry struct {
+	ID     bson.ObjectId `bson:"_id,omitempty"`
+	App    string        `bson:"app"`
+	Router string        `bson:"router"`
+	Kind   string        `bson:"kind"`
+}
+
 // Store stores the app name related with the
 // router name.
 func Store(appName, routerName, kind string) error {
@@ -160,17 +167,17 @@ func Store(appName, routerName, kind string) error {
 		return err
 	}
 	defer coll.Close()
-	data := map[string]string{
-		"app":    appName,
-		"router": routerName,
-		"kind":   kind,
+	data := routerAppEntry{
+		App:    appName,
+		Router: routerName,
+		Kind:   kind,
 	}
 	_, err = coll.Upsert(bson.M{"app": appName}, data)
 	return err
 }
 
-func retrieveRouterData(appName string) (map[string]string, error) {
-	data := map[string]string{}
+func retrieveRouterData(appName string) (routerAppEntry, error) {
+	var data routerAppEntry
 	coll, err := collection()
 	if err != nil {
 		return data, err
@@ -179,8 +186,8 @@ func retrieveRouterData(appName string) (map[string]string, error) {
 	err = coll.Find(bson.M{"app": appName}).One(&data)
 	// Avoid need for data migrations, before kind existed we only supported
 	// hipache as a router so we set is as default here.
-	if data["kind"] == "" {
-		data["kind"] = "hipache"
+	if data.Kind == "" {
+		data.Kind = "hipache"
 	}
 	return data, err
 }
@@ -193,7 +200,7 @@ func Retrieve(appName string) (string, error) {
 		}
 		return "", err
 	}
-	return data["router"], nil
+	return data.Router, nil
 }
 
 func Remove(appName string) error {
@@ -302,9 +309,9 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 	if err != nil {
 		return err
 	}
-	if data1["kind"] != data2["kind"] {
+	if data1.Kind != data2.Kind {
 		return errors.Errorf("swap is only allowed between routers of the same kind. %q uses %q, %q uses %q",
-			backend1, data1["kind"], backend2, data2["kind"])
+			backend1, data1.Kind, backend2, data2.Kind)
 	}
 	if cnameOnly {
 		return swapCnames(r, backend1, backend2)
