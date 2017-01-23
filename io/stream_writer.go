@@ -46,6 +46,13 @@ func NewStreamWriter(w io.Writer, formatter Formatter) *streamWriter {
 	return &streamWriter{w: &syncWriter{w: w}, formatter: formatter}
 }
 
+func (w *streamWriter) Close() error {
+	if closeable, ok := w.formatter.(io.Closer); ok {
+		return closeable.Close()
+	}
+	return nil
+}
+
 func (w *streamWriter) Remaining() []byte {
 	return w.b
 }
@@ -83,6 +90,7 @@ type SimpleJsonMessage struct {
 type SimpleJsonMessageFormatter struct {
 	pipeReader io.Reader
 	pipeWriter io.WriteCloser
+	done       chan struct{}
 }
 
 func likeJSON(str string) bool {
@@ -96,6 +104,16 @@ type withFd interface {
 
 type withFD interface {
 	FD() uintptr
+}
+
+func (f *SimpleJsonMessageFormatter) Close() error {
+	if f.pipeWriter != nil {
+		f.pipeWriter.Close()
+		f.pipeWriter = nil
+		f.pipeReader = nil
+		<-f.done
+	}
+	return nil
 }
 
 func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
@@ -113,23 +131,28 @@ func (f *SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
 	if likeJSON(msg.Message) {
 		if f.pipeWriter == nil {
 			f.pipeReader, f.pipeWriter = io.Pipe()
-			var fd uintptr
+			fd := -1
 			switch v := out.(type) {
 			case withFd:
-				fd = v.Fd()
+				fd = int(v.Fd())
 			case withFD:
-				fd = v.FD()
+				fd = int(v.FD())
 			}
-			isTerm := terminal.IsTerminal(int(fd))
-			go jsonmessage.DisplayJSONMessagesStream(f.pipeReader, out, fd, isTerm, nil)
+			var isTerm bool
+			var uintFD uintptr
+			if fd != -1 {
+				isTerm = terminal.IsTerminal(fd)
+				uintFD = uintptr(fd)
+			}
+			f.done = make(chan struct{})
+			go func() {
+				defer close(f.done)
+				jsonmessage.DisplayJSONMessagesStream(f.pipeReader, out, uintFD, isTerm, nil)
+			}()
 		}
 		f.pipeWriter.Write([]byte(msg.Message))
 	} else {
-		if f.pipeWriter != nil {
-			f.pipeWriter.Close()
-			f.pipeWriter = nil
-			f.pipeReader = nil
-		}
+		f.Close()
 		out.Write([]byte(msg.Message))
 	}
 	return nil

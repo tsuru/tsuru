@@ -42,6 +42,8 @@ func (s *S) TestStreamWriterUsesFormatter(c *check.C) {
 	var writer bytes.Buffer
 	w := NewStreamWriter(&writer, testFormatter{})
 	w.Write(data)
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	expected := "tsuru-Something happened\ntsuru-Something happened again\n"
 	c.Assert(writer.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
@@ -68,6 +70,8 @@ func (s *S) TestStreamWriterChukedWrite(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "")
 	_, err = w.Write(data[l/4*3:])
 	c.Assert(err, check.IsNil)
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	expected := "tsuru-\nSome\nthing\nhappened\n\ntsuru-Something happened again\n"
 	c.Assert(buf.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
@@ -85,6 +89,8 @@ func (s *S) TestStreamWriter(c *check.C) {
 	n, err := w.Write(b)
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, len(b))
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	expected := "tsuru-Something happened\ntsuru-Something happened again\n"
 	c.Assert(writer.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
@@ -102,6 +108,8 @@ func (s *S) TestStreamWriterMultipleChunksOneMessage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 2*len(b)+1)
 	expected := "tsuru-Something 1\ntsuru-Something 1\n"
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte{})
 }
@@ -118,6 +126,8 @@ func (s *S) TestStreamWriterInvalidDataNotRead(c *check.C) {
 	n, err := w.Write(toWrite)
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, len(toWrite))
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	expected := "tsuru-Something 1\n"
 	c.Assert(writer.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte("invalid data"))
@@ -136,6 +146,8 @@ func (s *S) TestStreamWriterInvalidDataNotReadInChunk(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"invalid data\\n\"")
 	c.Assert(n, check.Equals, len(toWrite))
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	expected := "tsuru-Something 1\n"
 	c.Assert(writer.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte("invalid data\n"))
@@ -148,6 +160,8 @@ func (s *S) TestStreamWriterOnlyInvalidMessage(c *check.C) {
 	n, err := w.Write(b)
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 5)
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "")
 	c.Assert(w.Remaining(), check.DeepEquals, []byte("-----"))
 }
@@ -160,6 +174,8 @@ func (s *S) TestStreamWriterOnlyInvalidMessageInChunk(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"-----\\n\"")
 	c.Assert(n, check.Equals, 6)
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "")
 	c.Assert(w.Remaining(), check.DeepEquals, []byte("-----\n"))
 }
@@ -177,6 +193,8 @@ func (s *S) TestStreamWriterInvalidDataNotReadInMultipleChunks(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Unparseable chunk: \"invalid data\\n\"")
 	c.Assert(n, check.Equals, len(toWrite))
+	err = w.Close()
+	c.Assert(err, check.IsNil)
 	expected := "tsuru-Something 1\n"
 	c.Assert(writer.String(), check.Equals, expected)
 	c.Assert(w.Remaining(), check.DeepEquals, []byte("invalid data\nmoreinvalid\nsomething"))
@@ -245,6 +263,8 @@ func (s *S) TestSimpleJsonMessageFormatterJsonInJson(c *check.C) {
 	written, err := streamWriter.Write(bytes.Join(parts, []byte("\n")))
 	c.Assert(err, check.IsNil)
 	c.Assert(written, check.Equals, 4612)
+	err = streamWriter.Close()
+	c.Assert(err, check.IsNil)
 	c.Assert(outBuf.String(), check.Equals, "no json 1\n"+
 		"latest: Pulling from tsuru/static\n"+
 		"a6aa3b66376f: Already exists\n"+
