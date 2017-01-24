@@ -79,30 +79,47 @@ Docker TLS support for provisioners
 
 In this version we added support for orchestrating containers on docker nodes
 configured with TLS. TLS is mandatory for nodes created using the newly
-introduced Docker Machine IaaS and can be also configured for nonmanaged and nodes
-provisioned with other IaaS providers. Both provisioners, native and swarm, support
-docker with TLS.
+introduced Docker Machine IaaS and can be also configured for nonmanaged and
+nodes provisioned with other IaaS providers. Both provisioners, native and
+swarm, support docker with TLS.
 
 HTTPS routing support for apps
 ------------------------------
 
-In this version, we added support for configuring TLS certificates for applications.
-The certificate and private key are passed directly to the application router which is
-responsible for TLS termination. Currently, the `planB router <https://github.com/tsuru/planb>`_ is the
-only router that supports managing TLS certificates and HTTPs routing directly from tsuru.
+In this version, we added support for configuring TLS certificates for
+applications. The certificate and private key are passed directly to the
+application router which is responsible for TLS termination. Currently, the
+`planB router <https://github.com/tsuru/planb>`_ is the only router that
+supports managing TLS certificates and HTTPs routing directly from tsuru.
 
-Certificates should be configured for each app cname using ``tsuru certificate-set -a <app> -c <cname> cert.crt key.crt``
-and can be removed by ``tsuru certificate-unset -a <app> -c <cname>``.
+Certificates should be configured for each app cname using ``tsuru
+certificate-set -a <app> -c <cname> cert.crt key.crt`` and can be removed by
+``tsuru certificate-unset -a <app> -c <cname>``.
 
-``tsuru certificate-list -a <app>`` may be used to list certificates bound to a particular app.
+``tsuru certificate-list -a <app>`` may be used to list certificates bound to a
+particular app.
 
 App Run Isolated
 ----------------
 
-The `app-run` command now supports a new flag `-i/--isolated`. When this flag is set,
-tsuru will spin up a new unit that will only live as long as the provided command is
-running. Since this unit won't be routable, this is a nice way to run commands without affecting
-your users.
+The `app-run` command now supports a new flag `-i/--isolated`. When this flag
+is set, tsuru will spin up a new unit that will only live as long as the
+provided command is running. Since this unit won't be routable, this is a nice
+way to run commands without affecting your users.
+
+Other improvements
+------------------
+
+* `gops <https://github.com/google/gops>`_ can be used to extract information
+  from tsurud process. `#1495 <https://github.com/tsuru/tsuru/issues/1495>`_
+* Basic support for prometheus style metrics on ``/metrics`` endpoint. `32c117
+  <https://github.com/tsuru/tsuru/commit/32c117b5c9d90d1244bbbeaffd7060ecbd6c33df>`_
+* Improved documentation on how to extract and process metrics from application
+  containers. `#1460 <https://github.com/tsuru/tsuru/issues/1460>`_
+* Improved documentation on how to install and use tsuru-dashboard. `#1444
+  <https://github.com/tsuru/tsuru/issues/1444>`_
+* When a single IaaS is configured tsuru will use it as default. `#1259
+  <https://github.com/tsuru/tsuru/issues/1259>`_
 
 .. _migrations-1.2.0:
 
@@ -121,3 +138,10 @@ Required migrations
 
 Bug fixes
 =========
+
+* Correctly using entrypoint and command in image deploys. `#1484
+  <https://github.com/tsuru/tsuru/issues/1484>`_
+* Removing healthcheck from hipache router when backend is removed. `#1450
+  <https://github.com/tsuru/tsuru/issues/1450>`_
+* Fixed error when listing nodes if there were no nodes registered. `#1436
+  <https://github.com/tsuru/tsuru/issues/1436>`_
