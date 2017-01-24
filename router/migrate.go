@@ -7,9 +7,11 @@ package router
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -27,6 +29,25 @@ func MigrateUniqueCollection() error {
 		return err
 	}
 	_, err = coll.RemoveAll(bson.M{"app": bson.M{"$nin": appNames}, "router": bson.M{"$nin": appNames}})
+	if err != nil {
+		return err
+	}
+	byAppMap, err := allDupEntries(coll)
+	if err != nil {
+		return err
+	}
+	var toRemove []bson.ObjectId
+	for appName, appEntries := range byAppMap {
+		toRemoveDups := checkAllDups(appEntries)
+		toRemove = append(toRemove, toRemoveDups...)
+		var toRemoveAddrs []bson.ObjectId
+		toRemoveAddrs, err = checkAppAddr(appColl, appName, appEntries)
+		if err != nil {
+			return err
+		}
+		toRemove = append(toRemove, toRemoveAddrs...)
+	}
+	_, err = coll.RemoveAll(bson.M{"_id": bson.M{"$in": toRemove}})
 	if err != nil {
 		return err
 	}
@@ -49,36 +70,7 @@ func MigrateUniqueCollection() error {
 			return err
 		}
 	}
-	var entries []routerAppEntry
-	err = coll.Find(nil).All(&entries)
-	if err != nil {
-		return err
-	}
-	byAppMap := map[string][]routerAppEntry{}
-	for _, r := range entries {
-		byAppMap[r.App] = append(byAppMap[r.App], r)
-	}
-	var toRemove []bson.ObjectId
-	for appName, appEntries := range byAppMap {
-		if len(appEntries) == 1 {
-			delete(byAppMap, appName)
-			continue
-		}
-		remove := true
-		var toRemoveApp []bson.ObjectId
-		for i := 1; i < len(appEntries); i++ {
-			toRemoveApp = append(toRemoveApp, appEntries[i].ID)
-			if appEntries[i].Router != appEntries[i-1].Router {
-				remove = false
-				break
-			}
-		}
-		if remove {
-			toRemove = append(toRemove, toRemoveApp...)
-			delete(byAppMap, appName)
-		}
-	}
-	_, err = coll.RemoveAll(bson.M{"_id": bson.M{"$in": toRemove}})
+	byAppMap, err = allDupEntries(coll)
 	if err != nil {
 		return err
 	}
@@ -87,11 +79,11 @@ func MigrateUniqueCollection() error {
 		return err
 	}
 	errBuf := bytes.NewBuffer(nil)
-	fmt.Fprintln(errBuf, `WARNING: The following entries in 'db.routers' collection have inconsistent
+	fmt.Fprintln(errBuf, `ERROR: The following entries in 'db.routers' collection have inconsistent
 duplicated entries that could not be fixed automatically. This could have
 happened after running app-swap due to a bug in previous tsuru versions. You'll
-have to manually check which if the apps are swapped or not and remove the
-duplicated entries accordingly:`)
+have to manually check if the apps are swapped or not and remove the duplicated
+entries accordingly:`)
 	for appName, entries := range byAppMap {
 		fmt.Fprintf(errBuf, "app %q:\n", appName)
 		for _, e := range entries {
@@ -99,4 +91,62 @@ duplicated entries accordingly:`)
 		}
 	}
 	return errors.New(errBuf.String())
+}
+
+func checkAllDups(appEntries []routerAppEntry) []bson.ObjectId {
+	remove := true
+	var toRemoveApp []bson.ObjectId
+	for i := 1; i < len(appEntries); i++ {
+		toRemoveApp = append(toRemoveApp, appEntries[i].ID)
+		if appEntries[i].Router != appEntries[i-1].Router {
+			remove = false
+			break
+		}
+	}
+	if remove {
+		return toRemoveApp
+	}
+	return nil
+}
+
+func checkAppAddr(appColl *storage.Collection, appName string, appEntries []routerAppEntry) ([]bson.ObjectId, error) {
+	var appAddr []string
+	err := appColl.Find(bson.M{"name": appName}).Distinct("ip", &appAddr)
+	if err != nil {
+		return nil, err
+	}
+	if len(appAddr) != 1 {
+		return nil, errors.Errorf("invalid app addr size %q: %d", appName, len(appAddr))
+	}
+	var tempToRemove []bson.ObjectId
+	allowRemoval := false
+	for _, entry := range appEntries {
+		if allowRemoval || !strings.HasPrefix(appAddr[0], entry.Router+".") {
+			tempToRemove = append(tempToRemove, entry.ID)
+		} else {
+			allowRemoval = true
+		}
+	}
+	if allowRemoval {
+		return tempToRemove, nil
+	}
+	return nil, nil
+}
+
+func allDupEntries(coll *storage.Collection) (map[string][]routerAppEntry, error) {
+	var entries []routerAppEntry
+	err := coll.Find(nil).All(&entries)
+	if err != nil {
+		return nil, err
+	}
+	byAppMap := map[string][]routerAppEntry{}
+	for _, r := range entries {
+		byAppMap[r.App] = append(byAppMap[r.App], r)
+	}
+	for appName, appEntries := range byAppMap {
+		if len(appEntries) == 1 {
+			delete(byAppMap, appName)
+		}
+	}
+	return byAppMap, nil
 }
