@@ -30,6 +30,25 @@ func MigrateUniqueCollection() error {
 	if err != nil {
 		return err
 	}
+	var routerAppNames []string
+	err = coll.Find(nil).Distinct("app", &routerAppNames)
+	if err != nil {
+		return err
+	}
+	var missingApps []string
+	err = appColl.Find(bson.M{"name": bson.M{"$nin": routerAppNames}}).Distinct("name", &missingApps)
+	if err != nil {
+		return err
+	}
+	for _, missingEntry := range missingApps {
+		err = coll.Insert(routerAppEntry{
+			App:    missingEntry,
+			Router: missingEntry,
+		})
+		if err != nil {
+			return err
+		}
+	}
 	var entries []routerAppEntry
 	err = coll.Find(nil).All(&entries)
 	if err != nil {

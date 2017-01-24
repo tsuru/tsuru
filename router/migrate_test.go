@@ -12,7 +12,7 @@ import (
 func (s *S) TestMigrateUniqueCollectionAllFixed(c *check.C) {
 	coll := s.conn.Collection("routers")
 	coll.DropIndex("app")
-	toInsertApps := []string{"a1", "a3", "a5"}
+	toInsertApps := []string{"a1", "a3", "a5", "a6"}
 	appColl := s.conn.Apps()
 	for _, aName := range toInsertApps {
 		err := appColl.Insert(bson.M{"_id": aName, "name": aName})
@@ -41,6 +41,7 @@ func (s *S) TestMigrateUniqueCollectionAllFixed(c *check.C) {
 		{App: "a1", Router: "r1"},
 		{App: "a3", Router: "r3"},
 		{App: "a5", Router: "r3"},
+		{App: "a6", Router: "a6"},
 	})
 	collWithIdx, err := collection()
 	c.Assert(err, check.IsNil)
@@ -52,7 +53,7 @@ func (s *S) TestMigrateUniqueCollectionAllFixed(c *check.C) {
 func (s *S) TestMigrateUniqueCollectionInvalid(c *check.C) {
 	coll := s.conn.Collection("routers")
 	coll.DropIndex("app")
-	toInsertApps := []string{"a1", "a2", "a3", "a5"}
+	toInsertApps := []string{"a1", "a2", "a3", "a5", "a6"}
 	appColl := s.conn.Apps()
 	for _, aName := range toInsertApps {
 		err := appColl.Insert(bson.M{"_id": aName, "name": aName})
@@ -87,5 +88,6 @@ func (s *S) TestMigrateUniqueCollectionInvalid(c *check.C) {
 		{App: "a2", Router: "r2"},
 		{App: "a3", Router: "r3"},
 		{App: "a5", Router: "r3"},
+		{App: "a6", Router: "a6"},
 	})
 }
