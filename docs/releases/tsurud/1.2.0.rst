@@ -99,14 +99,6 @@ certificate-set -a <app> -c <cname> cert.crt key.crt`` and can be removed by
 ``tsuru certificate-list -a <app>`` may be used to list certificates bound to a
 particular app.
 
-App Run Isolated
-----------------
-
-The `app-run` command now supports a new flag `-i/--isolated`. When this flag
-is set, tsuru will spin up a new unit that will only live as long as the
-provided command is running. Since this unit won't be routable, this is a nice
-way to run commands without affecting your users.
-
 Other improvements
 ------------------
 
