@@ -8,8 +8,8 @@ tsurud 1.2.0 release notes
 
 Welcome to tsurud 1.2.0!
 
-These release notes cover the :ref:`new features <new-1.2.0>` and :ref:`bug
-fixes <bug-1.2.0>`.
+These release notes cover the :ref:`new features <new-1.2.0>`, :ref:`bug fixes
+<bug-1.2.0>` and :ref:`required migrations <migrations-1.2.0>`.
 
 .. _new-1.2.0:
 
@@ -103,6 +103,19 @@ The `app-run` command now supports a new flag `-i/--isolated`. When this flag is
 tsuru will spin up a new unit that will only live as long as the provided command is
 running. Since this unit won't be routable, this is a nice way to run commands without affecting
 your users.
+
+.. _migrations-1.2.0:
+
+Required migrations
+===================
+
+* Due to a bug in tsuru, it was possible for duplicated entries to be added to
+  the ``db.routers`` collection in MongoDB. This collection keeps track of
+  swapped application routers when ``tsuru app-swap`` is used. To fix the
+  duplicated entries simply run ``tsurud migrate``. The migration will try its
+  best to fix the entries but it might fail in some extreme corner cases. In
+  case of failure it will print the offending entries that will have to be
+  manually fixed in MongoDB (i.e. removing one of the duplicated entries).
 
 .. _bug-1.2.0:
 
