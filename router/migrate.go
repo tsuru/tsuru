@@ -15,6 +15,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func Initialize() error {
+	_, err := collection()
+	return err
+}
+
+// MigrateUniqueCollection only exists because old versions of tsuru (<1.2.0)
+// allowed the insertion of incorrect duplicated entries in the db.routers
+// collection. This migration tries its best to fix the inconsistencies in this
+// collection and fails if that's not possible.
 func MigrateUniqueCollection() error {
 	conn, err := db.Conn()
 	if err != nil {

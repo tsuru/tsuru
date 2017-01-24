@@ -147,7 +147,7 @@ func collection() (*storage.Collection, error) {
 	coll := conn.Collection("routers")
 	err = coll.EnsureIndex(mgo.Index{Key: []string{"app"}, Unique: true})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Could not create index on db.routers. Please run `tsurud migrate` before starting the api server to fix this issue.")
 	}
 	return coll, nil
 }

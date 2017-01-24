@@ -391,6 +391,10 @@ func startServer(handler http.Handler) {
 		srv.Stop(srv.Timeout)
 	}()
 	var startupMessage string
+	err = router.Initialize()
+	if err != nil {
+		fatal(err)
+	}
 	routers, err := router.List()
 	if err != nil {
 		fatal(err)
