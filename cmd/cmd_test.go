@@ -101,6 +101,41 @@ func (s *S) TestRegisterTopicMultiple(c *check.C) {
 	c.Assert(mngr.topics, check.DeepEquals, expected)
 }
 
+type TopicCommand struct {
+	name string
+}
+
+func (c *TopicCommand) Info() *Info {
+	return &Info{
+		Name:  c.name,
+		Desc:  "desc " + c.name,
+		Usage: "usage",
+	}
+}
+
+func (c *TopicCommand) Run(context *Context, client *Client) error {
+	return nil
+}
+
+func (s *S) TestImplicitTopicsHelp(c *check.C) {
+	globalManager.Register(&TopicCommand{name: "foo-bar"})
+	globalManager.Register(&TopicCommand{name: "foo-baz"})
+	context := Context{[]string{"foo"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	command := help{manager: globalManager}
+	err := command.Run(&context, nil)
+	c.Assert(err, check.IsNil)
+	expected := `glb version 1.0.
+
+The following commands are available in the "foo" topic:
+
+  foo-bar              Desc foo-bar
+  foo-baz              Desc foo-baz
+
+Use glb help <commandname> to get more information about a command.
+`
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
 func (s *S) TestCustomLookup(c *check.C) {
 	lookup := func(ctx *Context) error {
 		fmt.Fprintf(ctx.Stdout, "test")
@@ -263,7 +298,7 @@ Available commands:
 Use glb help <commandname> to get more information about a command.
 
 Available topics:
-  target
+  target               Something
 
 Use glb help <topicname> to get more information about a topic.
 `
@@ -633,8 +668,7 @@ func (s *S) TestTargetTopicIsRegistered(c *check.C) {
 	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var exiter recordingExiter
 	mngr.e = &exiter
-	expected := fmt.Sprintf(targetTopic, "tsuru")
-	c.Assert(mngr.topics["target"], check.Equals, expected)
+	c.Assert(mngr.topics["target"], check.Equals, targetTopic)
 }
 
 func (s *S) TestVersionIsRegisteredByNewManager(c *check.C) {
@@ -652,7 +686,7 @@ func (s *S) TestUserInfoIsRegisteredByBaseManager(c *check.C) {
 	c.Assert(info, check.FitsTypeOf, userInfo{})
 }
 
-func (s *S) TestInvalidCommandFuzzyMatch01(c *check.C) {
+func (s *S) TestInvalidCommandTopicMatch(c *check.C) {
 	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var stdout, stderr bytes.Buffer
 	var exiter recordingExiter
@@ -660,18 +694,20 @@ func (s *S) TestInvalidCommandFuzzyMatch01(c *check.C) {
 	mngr.stdout = &stdout
 	mngr.stderr = &stderr
 	mngr.Run([]string{"target"})
-	expectedOutput := `.*: "target" is not a tsuru command. See "tsuru help".
+	expectedOutput := fmt.Sprintf(`%s
 
-Did you mean?
-	target-add
-	target-list
-	target-remove
-	target-set
-`
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
+The following commands are available in the "target" topic:
+
+  target-add           Adds a new entry to the list of available targets
+  target-list          Displays the list of targets, marking the current
+  target-remove        Remove a target from target-list (tsuru server)
+  target-set           Change current target (tsuru server)
+
+Use tsuru help <commandname> to get more information about a command.
+`, targetTopic)
+	c.Assert(stderr.String(), check.Equals, "")
+	c.Assert(stdout.String(), check.Equals, expectedOutput)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 0)
 }
 
 func (s *S) TestInvalidCommandFuzzyMatch02(c *check.C) {

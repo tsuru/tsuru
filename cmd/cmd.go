@@ -79,7 +79,7 @@ func BuildBaseManager(name, version, versionHeader string, lookup Lookup) *Manag
 	m.Register(&targetRemove{})
 	m.Register(&targetSet{})
 	m.Register(userInfo{})
-	m.RegisterTopic("target", fmt.Sprintf(targetTopic, name))
+	m.RegisterTopic("target", targetTopic)
 	return m
 }
 
@@ -172,6 +172,7 @@ func (m *Manager) Run(args []string) {
 		return
 	}
 	args = flagset.Args()
+	args = m.normalizeCommandArgs(args)
 	if displayHelp {
 		args = append([]string{"help"}, args...)
 	} else if displayVersion {
@@ -191,6 +192,10 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
+		if msg, isTopic := m.tryImplicitTopic(name); isTopic {
+			fmt.Fprint(m.stdout, msg)
+			return
+		}
 		msg := fmt.Sprintf("%s: %q is not a %s command. See %q.\n", m.name, name, m.name, m.name+" help")
 		var keys []string
 		for key := range m.Commands {
@@ -314,6 +319,119 @@ func (m *Manager) finisher() exiter {
 	return m.e
 }
 
+var topicRE = regexp.MustCompile(`(?s)^(.*)\n*$`)
+
+func (m *Manager) tryImplicitTopic(name string) (string, bool) {
+	var group []string
+	for k := range m.Commands {
+		if strings.HasPrefix(k, name+"-") {
+			group = append(group, k)
+		}
+	}
+	topic, isExplicit := m.topics[name]
+	if len(group) > 0 {
+		if len(topic) > 0 {
+			topic = topicRE.ReplaceAllString(topic, "$1\n\n")
+		}
+		topic += fmt.Sprintf("The following commands are available in the %q topic:\n\n", name)
+		topic += m.dumpCommands(group)
+	} else if !isExplicit {
+		return "", false
+	}
+	return topic, true
+}
+
+func formatDescriptionLine(label, description string, maxSize int) string {
+	description = strings.Split(description, "\n")[0]
+	description = strings.Split(description, ".")[0]
+	if len(description) > 2 {
+		description = strings.ToUpper(description[:1]) + description[1:]
+	}
+	fmtStr := fmt.Sprintf("  %%-%ds %%s\n", maxSize)
+	return fmt.Sprintf(fmtStr, label, description)
+}
+
+func maxLabelSize(labels []string) int {
+	maxLabelSize := 20
+	for _, label := range labels {
+		if len(label) > maxLabelSize {
+			maxLabelSize = len(label)
+		}
+	}
+	return maxLabelSize
+}
+
+func (m *Manager) dumpCommands(commands []string) string {
+	sort.Strings(commands)
+	var output string
+	maxCmdSize := maxLabelSize(commands)
+	for _, command := range commands {
+		output += formatDescriptionLine(command, m.Commands[command].Info().Desc, maxCmdSize)
+	}
+	output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", m.name)
+	return output
+}
+
+func (m *Manager) dumpTopics() string {
+	topics := m.discoverTopics()
+	sort.Strings(topics)
+	maxTopicSize := maxLabelSize(topics)
+	var output string
+	for _, topic := range topics {
+		output += formatDescriptionLine(topic, m.topics[topic], maxTopicSize)
+	}
+	output += fmt.Sprintf("\nUse %s help <topicname> to get more information about a topic.\n", m.name)
+	return output
+}
+
+func (m *Manager) normalizeCommandArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	name := args[0]
+	if _, ok := m.Commands[name]; ok {
+		return args
+	}
+	newArgs := []string{name}
+	var i int
+	for i = 1; i < len(args); i++ {
+		part := args[i]
+		newArgs[0] += "-" + part
+		if _, ok := m.Commands[newArgs[0]]; ok {
+			break
+		}
+	}
+	if i < len(args) {
+		newArgs = append(newArgs, args[i+1:]...)
+		return newArgs
+	}
+	return args
+}
+
+func (m *Manager) discoverTopics() []string {
+	freq := map[string]int{}
+	for cmdName, cmd := range m.Commands {
+		if _, isDeprecated := cmd.(*DeprecatedCommand); isDeprecated {
+			continue
+		}
+		idx := strings.Index(cmdName, "-")
+		if idx != -1 {
+			freq[cmdName[:idx]] += 1
+		}
+	}
+	for topic := range m.topics {
+		freq[topic] = 999
+	}
+	var result []string
+	for topic, count := range freq {
+		if count > 1 {
+			result = append(result, topic)
+		}
+	}
+	sort.Strings(result)
+	return result
+}
+
 type Command interface {
 	Info() *Info
 	Run(context *Context, client *Client) error
@@ -399,8 +517,8 @@ func (c *help) Run(context *Context, client *Client) error {
 				output += fmt.Sprintf("\nMaximum # of arguments: %d", info.MaxArgs)
 			}
 			output += fmt.Sprint("\n")
-		} else if topic, ok := c.manager.topics[context.Args[0]]; ok {
-			output += topic
+		} else if msg, ok := c.manager.tryImplicitTopic(context.Args[0]); ok {
+			output += msg
 		} else {
 			return errors.Errorf("command %q does not exist.", context.Args[0])
 		}
@@ -412,30 +530,10 @@ func (c *help) Run(context *Context, client *Client) error {
 				commands = append(commands, name)
 			}
 		}
-		sort.Strings(commands)
-		maxCmdSize := 20
-		for _, command := range commands {
-			if len(command) > maxCmdSize {
-				maxCmdSize = len(command)
-			}
-		}
-		for _, command := range commands {
-			description := c.manager.Commands[command].Info().Desc
-			description = strings.Split(description, "\n")[0]
-			description = strings.Split(description, ".")[0]
-			if len(description) > 2 {
-				description = strings.ToUpper(description[:1]) + description[1:]
-			}
-			fmtStr := fmt.Sprintf("  %%-%ds %%s\n", maxCmdSize)
-			output += fmt.Sprintf(fmtStr, command, description)
-		}
-		output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", c.manager.name)
+		output += c.manager.dumpCommands(commands)
 		if len(c.manager.topics) > 0 {
 			output += fmt.Sprintln("\nAvailable topics:")
-			for topic := range c.manager.topics {
-				output += fmt.Sprintf("  %s\n", topic)
-			}
-			output += fmt.Sprintf("\nUse %s help <topicname> to get more information about a topic.\n", c.manager.name)
+			output += c.manager.dumpTopics()
 		}
 	}
 	io.WriteString(context.Stdout, output)
