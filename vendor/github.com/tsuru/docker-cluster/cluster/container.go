@@ -1,4 +1,4 @@
-// Copyright 2014 docker-cluster authors. All rights reserved.
+// Copyright 2017 docker-cluster authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package cluster
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
 	"sync"
@@ -50,7 +51,7 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 			}
 			addr = node.Address
 		} else {
-			addr = nodes[0]
+			addr = nodes[rand.Intn(len(nodes))]
 		}
 		if addr == "" {
 			return addr, nil, errors.New("CreateContainer needs a non empty node addr")

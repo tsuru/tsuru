@@ -1,4 +1,4 @@
-// Copyright 2016 docker-cluster authors. All rights reserved.
+// Copyright 2017 docker-cluster authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -280,7 +281,7 @@ func (c *Cluster) BuildImage(buildOptions docker.BuildImageOptions) error {
 	if len(nodes) < 1 {
 		return errors.New("There is no docker node. Please list one in tsuru.conf or add one with `tsuru node-add`.")
 	}
-	nodeAddress := nodes[0].Address
+	nodeAddress := nodes[rand.Intn(len(nodes))].Address
 	node, err := c.getNodeByAddr(nodeAddress)
 	if err != nil {
 		return err
