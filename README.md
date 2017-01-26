@@ -23,3 +23,64 @@ Links:
 - How to Contribute: https://docs.tsuru.io/stable/contributing/
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
 - Talk to us on Gitter: https://gitter.im/tsuru/tsuru
+
+## Quick Start 
+
+With the purpose of test tsuru and/or for development, you can use [installer](https://docs.tsuru.io/master/experimental/installer.html) to have tsuru up and running. This is an experimental feature
+so **DON'T USE FOR PRODUCTION!**
+
+### From Binary
+
+#### Getting tsuru-client 
+
+Download the latest release for your platform at: https://github.com/tsuru/tsuru-client/releases/
+
+Example for release 1.1.1 and OS X.
+
+```
+$ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-1.1.1-darwin_amd64.tar.gz \
+  | tar xz
+```
+
+#### Call tsuru installer
+
+```
+$ tsuru install
+```
+
+### From Source
+
+#### Getting tsuru-client 
+
+You need to have [Go](https://golang.org/doc/install) properly installed in your machine.
+
+```
+$ git clone github.com/tsuru/tsuru-client $GOPATH/src/github.com/tsuru/tsuru-client
+$ cd $GOPATH/src/github.com/tsuru/tsuru-client
+$ make install
+```
+
+#### Create an installer config
+
+Create a file called local.yml with this content:
+
+```
+components:
+    tsuru:
+        version: latest
+```
+
+#### Call tsuru installer
+
+```
+$ tsuru install -c local.yml
+```
+
+### Testing
+
+If everything's gone well you have the tsuru running on a virtualbox. 
+Call app-list to see tsuru working, this command needs to return one app called tsuru-dashboard.
+
+```
+$ tsuru app-list
+```
