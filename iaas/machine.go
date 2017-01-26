@@ -8,8 +8,10 @@ package iaas
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -17,6 +19,39 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+var (
+	iaasDurationBuckets = append([]float64{10, 30}, prometheus.LinearBuckets(60, 60, 10)...)
+
+	machineCreateDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "tsuru_iaas_create_histogram_seconds",
+		Help:    "The machine creation latency distributions.",
+		Buckets: iaasDurationBuckets,
+	}, []string{"iaas"})
+
+	machineDestroyDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "tsuru_iaas_destroy_histogram_seconds",
+		Help:    "The machine destroy latency distributions.",
+		Buckets: iaasDurationBuckets,
+	}, []string{"iaas"})
+
+	machineCreateErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_iaas_create_errors_total",
+		Help: "The total number of machine creation errors.",
+	}, []string{"iaas"})
+
+	machineDestroyErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_iaas_destroy_errors_total",
+		Help: "The total number of machine destroy errors.",
+	}, []string{"iaas"})
+)
+
+func init() {
+	prometheus.MustRegister(machineCreateDuration)
+	prometheus.MustRegister(machineDestroyDuration)
+	prometheus.MustRegister(machineCreateErrors)
+	prometheus.MustRegister(machineDestroyErrors)
+}
 
 type Machine struct {
 	Id             string `bson:"_id"`
@@ -52,8 +87,11 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	if err != nil {
 		return nil, err
 	}
+	t0 := time.Now()
 	m, err := iaas.CreateMachine(params)
+	machineCreateDuration.WithLabelValues(iaasName).Observe(time.Since(t0).Seconds())
 	if err != nil {
+		machineCreateErrors.WithLabelValues(iaasName).Inc()
 		return nil, err
 	}
 	params["iaas-id"] = m.Id
@@ -124,8 +162,11 @@ func (m *Machine) Destroy() error {
 	if err != nil {
 		return err
 	}
+	t0 := time.Now()
 	err = iaas.DeleteMachine(m)
+	machineDestroyDuration.WithLabelValues(m.Iaas).Observe(time.Since(t0).Seconds())
 	if err != nil {
+		machineDestroyErrors.WithLabelValues(m.Iaas).Inc()
 		log.Errorf("failed to destroy machine in the IaaS: %s", err)
 	}
 	return m.removeFromDB()
