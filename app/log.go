@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,13 +9,50 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
 )
 
-var LogPubSubQueuePrefix = "pubsub:"
-var bulkMaxWaitTime = time.Second
+var (
+	LogPubSubQueuePrefix = "pubsub:"
+
+	bulkMaxWaitTime = time.Second
+
+	dispatchersCurrent = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tsuru_logs_dispatchers_current",
+		Help: "The current number of log dispatchers running.",
+	})
+
+	logsInQueue = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tsuru_logs_queue_current",
+		Help: "The current number of log entries in all queues.",
+	})
+
+	logsQueueBlockedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_logs_queue_blocked_seconds_total",
+		Help: "The total time spent blocked trying to add log to queue.",
+	})
+
+	logsQueueSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tsuru_logs_dispatcher_queue_size",
+		Help: "The max number of log entries in a dispatcher queue.",
+	})
+
+	logsWritten = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_logs_write_total",
+		Help: "The number of log entries written to mongo.",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(logsInQueue)
+	prometheus.MustRegister(dispatchersCurrent)
+	prometheus.MustRegister(logsQueueSize)
+	prometheus.MustRegister(logsWritten)
+	prometheus.MustRegister(logsQueueBlockedTotal)
+}
 
 type LogListener struct {
 	c <-chan Applog
@@ -115,12 +152,15 @@ func NewlogDispatcher(chanSize, numberGoroutines int) *logDispatcher {
 	for i := 0; i < numberGoroutines; i++ {
 		go d.runWriter()
 	}
+	logsQueueSize.Set(float64(chanSize))
+	dispatchersCurrent.Inc()
 	return d
 }
 
 func (d *logDispatcher) runWriter() {
 	notifyMessages := make([]interface{}, 1)
 	for msgWithDispatcher := range d.msgCh {
+		logsInQueue.Dec()
 		notifyMessages[0] = msgWithDispatcher.msg
 		notify(msgWithDispatcher.msg.AppName, notifyMessages)
 		select {
@@ -132,6 +172,7 @@ func (d *logDispatcher) runWriter() {
 }
 
 func (d *logDispatcher) Send(msg *Applog) {
+	logsInQueue.Inc()
 	appName := msg.AppName
 	appD, ok := d.dispatchers[appName]
 	if !ok {
@@ -139,7 +180,13 @@ func (d *logDispatcher) Send(msg *Applog) {
 		d.dispatchers[appName] = appD
 	}
 	msgWithDispatcher := &msgLog{dispatcher: appD, msg: msg}
-	d.msgCh <- msgWithDispatcher
+	select {
+	case d.msgCh <- msgWithDispatcher:
+	default:
+		t0 := time.Now()
+		d.msgCh <- msgWithDispatcher
+		logsQueueBlockedTotal.Add(time.Since(t0).Seconds())
+	}
 }
 
 func (d *logDispatcher) Stop() {
@@ -148,6 +195,7 @@ func (d *logDispatcher) Stop() {
 		close(appD.done)
 	}
 	close(d.msgCh)
+	dispatchersCurrent.Dec()
 }
 
 type appLogDispatcher struct {
@@ -201,6 +249,7 @@ func (d *appLogDispatcher) runFlusher() {
 				log.Errorf("[log flusher] unable to insert logs: %s", err)
 				continue
 			}
+			logsWritten.Add(float64(pos))
 			pos = 0
 		}
 	}
