@@ -448,6 +448,17 @@ type NodeProvisioner interface {
 	NodeForNodeData(NodeStatusData) (Node, error)
 }
 
+type RebalanceNodesOptions struct {
+	Force  bool
+	Writer io.Writer
+	Pool   string
+	Dry    bool
+}
+
+type NodeRebalanceProvisioner interface {
+	RebalanceNodes(RebalanceNodesOptions) (bool, error)
+}
+
 type NodeContainerProvisioner interface {
 	UpgradeNodeContainer(name string, pool string, writer io.Writer) error
 	RemoveNodeContainer(name string, pool string, writer io.Writer) error

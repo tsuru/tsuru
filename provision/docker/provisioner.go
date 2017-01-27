@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -48,6 +49,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
+	"github.com/tsuru/tsuru/safe"
 )
 
 var (
@@ -1392,4 +1394,50 @@ func (p *dockerProvisioner) UpgradeNodeContainer(name string, pool string, write
 
 func (p *dockerProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
 	return internalNodeContainer.RemoveNamedContainers(p, writer, name, pool)
+}
+
+func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+	var metadataFilter map[string]string
+	var nodes []cluster.Node
+	var err error
+	if opts.Pool != "" {
+		metadataFilter = map[string]string{poolMetadataName: opts.Pool}
+		nodes, err = p.Cluster().NodesForMetadata(metadataFilter)
+	} else {
+		nodes, err = p.Cluster().Nodes()
+	}
+	if err != nil {
+		return false, err
+	}
+	if opts.Force {
+		_, err := p.rebalanceContainersByFilter(opts.Writer, nil, metadataFilter, opts.Dry)
+		return true, err
+	}
+	ptrNodes := make([]*cluster.Node, len(nodes))
+	for i := range nodes {
+		ptrNodes[i] = &nodes[i]
+	}
+	// No action yet, check if we need rebalance
+	_, gap, err := p.containerGapInNodes(ptrNodes)
+	if err != nil {
+		return false, errors.Wrapf(err, "unable to obtain container gap in nodes")
+	}
+	buf := safe.NewBuffer(nil)
+	dryProvisioner, err := p.rebalanceContainersByFilter(buf, nil, metadataFilter, true)
+	if err != nil {
+		return false, errors.Wrapf(err, "unable to run dry rebalance to check if rebalance is needed. log: %s", buf.String())
+	}
+	if dryProvisioner == nil {
+		return false, nil
+	}
+	_, gapAfter, err := dryProvisioner.containerGapInNodes(ptrNodes)
+	if err != nil {
+		return false, errors.Wrap(err, "couldn't find containers from rebalanced nodes")
+	}
+	if math.Abs((float64)(gap-gapAfter)) > 2.0 {
+		fmt.Fprintf(opts.Writer, "Rebalancing as gap is %d, after rebalance gap will be %d\n", gap, gapAfter)
+		_, err := p.rebalanceContainersByFilter(opts.Writer, nil, metadataFilter, opts.Dry)
+		return true, err
+	}
+	return false, nil
 }

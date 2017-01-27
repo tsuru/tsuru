@@ -3628,3 +3628,173 @@ func (s *S) TestNodeForNodeData(c *check.C) {
 	_, err = s.p.NodeForNodeData(data)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
+
+func (s *S) TestRebalanceNodes(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+		Pool:     "test-default",
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer: buf,
+	})
+	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
+	c.Assert(toRebalance, check.Equals, true)
+	c.Assert(buf.String(), check.Matches, "(?s)^Rebalancing as gap is 4, after rebalance gap will be 0.*Moving unit.*Moved unit.*")
+	containers, err := p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+}
+
+func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	c1, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c2, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+		Pool:     "test-default",
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer: buf,
+	})
+	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
+	c.Assert(toRebalance, check.Equals, false)
+	c.Assert(buf.String(), check.Matches, "")
+	conts, err := p.ListContainers(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.Not(check.DeepEquals), append(c1, c2...))
+}
+
+func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	c1, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c2, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+		Pool:     "test-default",
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer: buf,
+		Force:  true,
+	})
+	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
+	c.Assert(toRebalance, check.Equals, true)
+	c.Assert(buf.String(), check.Matches, "(?s)^Rebalancing 4 units.*Moving unit.*Moved unit.*")
+	conts, err := p.ListContainers(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.Not(check.DeepEquals), append(c1, c2...))
+}
+
+func (s *S) TestRebalanceNodesDry(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	p.Provision(appInstance)
+	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+		Pool:     "test-default",
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	buf := safe.NewBuffer(nil)
+	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer: buf,
+		Dry:    true,
+	})
+	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
+	c.Assert(toRebalance, check.Equals, true)
+	c.Assert(buf.String(), check.Matches, "(?s)^Rebalancing as gap is 4, after rebalance gap will be 0.*Would move unit.*")
+	containers, err := p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 0)
+	containers, err = p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 4)
+}
