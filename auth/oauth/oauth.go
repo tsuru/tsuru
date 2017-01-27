@@ -139,7 +139,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	client := conf.Client(context.Background(), t)
 	t0 := time.Now()
 	response, err := client.Get(s.InfoUrl)
-	requestLatencies.Observe(float64(time.Since(t0).Seconds()))
+	requestLatencies.Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.Inc()
 		return nil, err
@@ -206,7 +206,7 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	client := config.Client(context.Background(), &token.Token)
 	t0 := time.Now()
 	rsp, err := client.Get(s.InfoUrl)
-	requestLatencies.Observe(float64(time.Since(t0).Seconds()))
+	requestLatencies.Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.Inc()
 		return nil, err
