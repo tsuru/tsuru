@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,8 +9,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -25,6 +27,15 @@ var (
 	ErrMissingCodeRedirectUrl = &tsuruErrors.ValidationError{Message: "You must provide the used redirect url to login"}
 	ErrEmptyAccessToken       = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
 	ErrEmptyUserEmail         = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
+
+	requestLatencies = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "tsuru_oath_request_duration_seconds",
+		Help: "The oath requests latency distributions.",
+	})
+	requestErrors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_oath_request_errors_total",
+		Help: "The total number of oath request errors.",
+	})
 )
 
 type OAuthParser interface {
@@ -40,6 +51,8 @@ type OAuthScheme struct {
 
 func init() {
 	auth.RegisterScheme("oauth", &OAuthScheme{})
+	prometheus.MustRegister(requestLatencies)
+	prometheus.MustRegister(requestErrors)
 }
 
 // This method loads basic config and returns a copy of the
@@ -124,8 +137,11 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 		return nil, err
 	}
 	client := conf.Client(context.Background(), t)
+	t0 := time.Now()
 	response, err := client.Get(s.InfoUrl)
+	requestLatencies.Observe(float64(time.Since(t0).Seconds()))
 	if err != nil {
+		requestErrors.Inc()
 		return nil, err
 	}
 	defer response.Body.Close()
@@ -188,8 +204,11 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 		return nil, err
 	}
 	client := config.Client(context.Background(), &token.Token)
+	t0 := time.Now()
 	rsp, err := client.Get(s.InfoUrl)
+	requestLatencies.Observe(float64(time.Since(t0).Seconds()))
 	if err != nil {
+		requestErrors.Inc()
 		return nil, err
 	}
 	defer rsp.Body.Close()
