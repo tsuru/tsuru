@@ -36,7 +36,6 @@ import (
 func init() {
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AuthorizationRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
-	api.RegisterHandler("/docker/containers/rebalance", "POST", api.AuthorizationRequiredHandler(rebalanceContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AuthorizationRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/config", "GET", api.AuthorizationRequiredHandler(autoScaleGetConfig))
@@ -307,66 +306,6 @@ func moveContainersPermissionContexts(from, to string) ([]permission.PermissionC
 		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
 	}
 	return permContexts, nil
-}
-
-type rebalanceOptions struct {
-	Dry            bool
-	MetadataFilter map[string]string
-	AppFilter      []string
-}
-
-// title: rebalance containers
-// path: /docker/containers/rebalance
-// method: POST
-// consume: application/x-www-form-urlencoded
-// produce: application/x-json-stream
-// responses:
-//   200: Ok
-//   204: No content
-//   400: Invalid data
-//   401: Unauthorized
-func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
-	var params rebalanceOptions
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&params, r.Form)
-	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	var permContexts []permission.PermissionContext
-	pool, ok := params.MetadataFilter["pool"]
-	if ok {
-		permContexts = append(permContexts, permission.Context(permission.CtxPool, pool))
-	}
-	if !permission.Check(t, permission.PermNodeUpdateRebalance, permContexts...) {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: pool},
-		Kind:        permission.PermNodeUpdateRebalance,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, permContexts...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	_, err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, params.Dry)
-	if err != nil {
-		return errors.Wrap(err, "Error trying to rebalance containers")
-	}
-	fmt.Fprintf(writer, "Containers successfully rebalanced!\n")
-	return nil
 }
 
 // title: list healing history

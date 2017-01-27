@@ -894,7 +894,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 	return []cmd.Command{
 		&moveContainerCmd{},
 		&moveContainersCmd{},
-		&rebalanceContainersCmd{},
 		&healer.ListHealingHistoryCmd{},
 		&autoScaleRunCmd{},
 		&listAutoScaleHistoryCmd{},
@@ -1397,21 +1396,14 @@ func (p *dockerProvisioner) RemoveNodeContainer(name string, pool string, writer
 }
 
 func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
-	var metadataFilter map[string]string
-	var nodes []cluster.Node
-	var err error
-	if opts.Pool != "" {
-		metadataFilter = map[string]string{poolMetadataName: opts.Pool}
-		nodes, err = p.Cluster().NodesForMetadata(metadataFilter)
-	} else {
-		nodes, err = p.Cluster().Nodes()
+	isOnlyPool := len(opts.MetadataFilter) == 1 && opts.MetadataFilter[poolMetadataName] != ""
+	if opts.Force || !isOnlyPool || len(opts.AppFilter) > 0 {
+		_, err := p.rebalanceContainersByFilter(opts.Writer, opts.AppFilter, opts.MetadataFilter, opts.Dry)
+		return true, err
 	}
+	nodes, err := p.Cluster().NodesForMetadata(opts.MetadataFilter)
 	if err != nil {
 		return false, err
-	}
-	if opts.Force {
-		_, err := p.rebalanceContainersByFilter(opts.Writer, nil, metadataFilter, opts.Dry)
-		return true, err
 	}
 	ptrNodes := make([]*cluster.Node, len(nodes))
 	for i := range nodes {
@@ -1423,7 +1415,7 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 		return false, errors.Wrapf(err, "unable to obtain container gap in nodes")
 	}
 	buf := safe.NewBuffer(nil)
-	dryProvisioner, err := p.rebalanceContainersByFilter(buf, nil, metadataFilter, true)
+	dryProvisioner, err := p.rebalanceContainersByFilter(buf, nil, opts.MetadataFilter, true)
 	if err != nil {
 		return false, errors.Wrapf(err, "unable to run dry rebalance to check if rebalance is needed. log: %s", buf.String())
 	}
@@ -1436,7 +1428,7 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 	}
 	if math.Abs((float64)(gap-gapAfter)) > 2.0 {
 		fmt.Fprintf(opts.Writer, "Rebalancing as gap is %d, after rebalance gap will be %d\n", gap, gapAfter)
-		_, err := p.rebalanceContainersByFilter(opts.Writer, nil, metadataFilter, opts.Dry)
+		_, err := p.rebalanceContainersByFilter(opts.Writer, nil, opts.MetadataFilter, opts.Dry)
 		return true, err
 	}
 	return false, nil

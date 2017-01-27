@@ -449,10 +449,11 @@ type NodeProvisioner interface {
 }
 
 type RebalanceNodesOptions struct {
-	Force  bool
-	Writer io.Writer
-	Pool   string
-	Dry    bool
+	Writer         io.Writer
+	MetadataFilter map[string]string
+	AppFilter      []string
+	Dry            bool
+	Force          bool
 }
 
 type NodeRebalanceProvisioner interface {

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -23,7 +22,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -40,7 +38,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func createToken(c *check.C) auth.Token {
@@ -220,187 +217,6 @@ func (s *HandlersSuite) TestMoveContainerNotFound(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
-	p, err := s.startMultipleServersCluster()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = p
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	coll := p.Collection()
-	defer coll.Close()
-	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
-	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:      "localhost",
-		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: p,
-	})
-	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-		Pool:     "test-default",
-	}
-	err = s.storage.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/containers/rebalance", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []tsuruIo.SimpleJsonMessage
-	err = json.Unmarshal([]byte(validJson), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 14)
-	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
-	c.Assert(result[1].Message, check.Matches, "(?s)Moving unit .*")
-	c.Assert(result[13].Message, check.Equals, "Containers successfully rebalanced!\n")
-}
-
-func (s *S) TestRebalanceContainersFilters(c *check.C) {
-	p, err := s.startMultipleServersClusterSeggregated()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = p
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	coll := p.Collection()
-	defer coll.Close()
-	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:      "localhost",
-		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: p,
-	})
-	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-	}
-	err = s.storage.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
-	c.Assert(err, check.IsNil)
-	opts := rebalanceOptions{
-		MetadataFilter: map[string]string{"pool": "pool1"},
-	}
-	v, err := form.EncodeToValues(&opts)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("POST", "/docker/containers/rebalance", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []tsuruIo.SimpleJsonMessage
-	err = json.Unmarshal([]byte(validJson), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 2)
-	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance\n")
-	c.Assert(result[1].Message, check.Equals, "Containers successfully rebalanced!\n")
-	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
-		Owner:  s.token.GetUserName(),
-		Kind:   "node.update.rebalance",
-		StartCustomData: []map[string]interface{}{
-			{"name": "MetadataFilter.pool", "value": "pool1"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
-	p, err := s.startMultipleServersCluster()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = p
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
-	c.Assert(err, check.IsNil)
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	coll := p.Collection()
-	defer coll.Close()
-	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
-	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:      "localhost",
-		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: p,
-	})
-	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-		Pool:     "test-default",
-	}
-	err = s.storage.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	err = s.storage.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	opts := rebalanceOptions{Dry: true}
-	v, err := form.EncodeToValues(&opts)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", "/docker/containers/rebalance", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []tsuruIo.SimpleJsonMessage
-	err = json.Unmarshal([]byte(validJson), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 8)
-	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
-	c.Assert(result[1].Message, check.Matches, "(?s)Would move unit .*")
-	c.Assert(result[7].Message, check.Equals, "Containers successfully rebalanced!\n")
 }
 
 func (s *HandlersSuite) TestHealingHistoryNoContent(c *check.C) {

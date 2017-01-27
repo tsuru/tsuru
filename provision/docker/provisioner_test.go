@@ -2035,7 +2035,6 @@ func (s *S) TestAdminCommands(c *check.C) {
 	expected := []cmd.Command{
 		&moveContainerCmd{},
 		&moveContainersCmd{},
-		&rebalanceContainersCmd{},
 		&healer.ListHealingHistoryCmd{},
 		&autoScaleRunCmd{},
 		&listAutoScaleHistoryCmd{},
@@ -3656,7 +3655,8 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer: buf,
+		Writer:         buf,
+		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
 	c.Assert(toRebalance, check.Equals, true)
@@ -3686,6 +3686,7 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 		imageId:     imageId,
 		provisioner: p,
 	})
+	c.Assert(err, check.IsNil)
 	c2, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
@@ -3703,7 +3704,8 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer: buf,
+		Writer:         buf,
+		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
 	c.Assert(toRebalance, check.Equals, false)
@@ -3730,6 +3732,7 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 		imageId:     imageId,
 		provisioner: p,
 	})
+	c.Assert(err, check.IsNil)
 	c2, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
@@ -3747,8 +3750,9 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer: buf,
-		Force:  true,
+		Writer:         buf,
+		Force:          true,
+		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
 	c.Assert(toRebalance, check.Equals, true)
@@ -3785,8 +3789,9 @@ func (s *S) TestRebalanceNodesDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
-		Writer: buf,
-		Dry:    true,
+		Writer:         buf,
+		Dry:            true,
+		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("Log: %s", buf.String()))
 	c.Assert(toRebalance, check.Equals, true)
