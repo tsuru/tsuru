@@ -24,13 +24,13 @@ var (
 	iaasDurationBuckets = append([]float64{10, 30}, prometheus.LinearBuckets(60, 60, 10)...)
 
 	machineCreateDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "tsuru_iaas_create_histogram_seconds",
+		Name:    "tsuru_iaas_create_duration_seconds",
 		Help:    "The machine creation latency distributions.",
 		Buckets: iaasDurationBuckets,
 	}, []string{"iaas"})
 
 	machineDestroyDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "tsuru_iaas_destroy_histogram_seconds",
+		Name:    "tsuru_iaas_destroy_duration_seconds",
 		Help:    "The machine destroy latency distributions.",
 		Buckets: iaasDurationBuckets,
 	}, []string{"iaas"})
