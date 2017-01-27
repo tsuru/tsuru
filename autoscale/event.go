@@ -60,7 +60,7 @@ func toAutoScaleEvent(evt *event.Event) (autoScaleEvent, error) {
 	return autoScaleEvt, nil
 }
 
-func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
+func ListAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
 	evts, err := event.List(&event.Filter{
 		Skip:     skip,
 		Limit:    limit,

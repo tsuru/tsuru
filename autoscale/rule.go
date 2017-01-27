@@ -52,7 +52,7 @@ func (r *autoScaleRule) normalize() error {
 	return nil
 }
 
-func (r *autoScaleRule) update() error {
+func (r *autoScaleRule) Update() error {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func autoScaleRuleCollection() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_auto_scale_rule", name)), nil
 }
 
-func listAutoScaleRules() ([]autoScaleRule, error) {
+func ListAutoScaleRules() ([]autoScaleRule, error) {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func listAutoScaleRules() ([]autoScaleRule, error) {
 	return rules, err
 }
 
-func deleteAutoScaleRule(metadataFilter string) error {
+func DeleteAutoScaleRule(metadataFilter string) error {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return err

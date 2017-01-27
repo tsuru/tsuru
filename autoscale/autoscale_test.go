@@ -25,10 +25,8 @@ func Test(t *testing.T) { check.TestingT(t) }
 var _ = check.Suite(&S{})
 
 type S struct {
-	testRepoRollback func()
-	appInstance      *provisiontest.FakeApp
-	imageId          string
-	p                *provisiontest.FakeProvisioner
+	appInstance *provisiontest.FakeApp
+	p           *provisiontest.FakeProvisioner
 }
 
 func (s *S) SetUpSuite(c *check.C) {

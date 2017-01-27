@@ -96,7 +96,7 @@ func (a *autoScaleConfig) scalerForRule(rule *autoScaleRule) (autoScaler, error)
 	return &memoryScaler{autoScaleConfig: a, rule: rule}, nil
 }
 
-func (a *autoScaleConfig) run() error {
+func (a *autoScaleConfig) Run() error {
 	a.initialize()
 	for {
 		err := a.runScaler()
