@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,8 +12,10 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/log"
@@ -24,12 +26,27 @@ var (
 	ErrInstanceAlreadyExistsInAPI = errors.New("instance already exists in the service API")
 	ErrInstanceNotFoundInAPI      = errors.New("instance does not exist in the service API")
 	ErrInstanceNotReady           = errors.New("instance is not ready yet")
+
+	requestLatencies = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "tsuru_service_request_duration_seconds",
+		Help: "The service requests latency distributions.",
+	}, []string{"service"})
+	requestErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tsuru_service_request_errors_total",
+		Help: "The total number of service request errors.",
+	}, []string{"service"})
 )
 
+func init() {
+	prometheus.MustRegister(requestLatencies)
+	prometheus.MustRegister(requestErrors)
+}
+
 type Client struct {
-	endpoint string
-	username string
-	password string
+	serviceName string
+	endpoint    string
+	username    string
+	password    string
 }
 
 func (c *Client) buildErrorMessage(err error, resp *http.Response) error {
@@ -76,7 +93,13 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	}
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
-	return net.Dial5Full300ClientNoKeepAlive.Do(req)
+	t0 := time.Now()
+	resp, err := net.Dial5Full300ClientNoKeepAlive.Do(req)
+	requestLatencies.WithLabelValues(c.serviceName).Observe(time.Since(t0).Seconds())
+	if err != nil {
+		requestErrors.WithLabelValues(c.serviceName).Inc()
+	}
+	return resp, err
 }
 
 func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {

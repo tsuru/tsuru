@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -79,7 +79,7 @@ func (s *Service) getClient(endpoint string) (cli *Client, err error) {
 		if p, _ := regexp.MatchString("^https?://", e); !p {
 			e = "http://" + e
 		}
-		cli = &Client{endpoint: e, username: s.GetUsername(), password: s.Password}
+		cli = &Client{serviceName: s.Name, endpoint: e, username: s.GetUsername(), password: s.Password}
 	} else {
 		err = errors.New("Unknown endpoint: " + endpoint)
 	}

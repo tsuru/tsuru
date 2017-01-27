@@ -71,9 +71,10 @@ func (s *S) TestGetClient(c *check.C) {
 	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
 	expected := &Client{
-		endpoint: endpoints["production"],
-		username: "redis",
-		password: "abcde",
+		serviceName: "redis",
+		endpoint:    endpoints["production"],
+		username:    "redis",
+		password:    "abcde",
 	}
 	c.Assert(err, check.IsNil)
 	c.Assert(cli, check.DeepEquals, expected)
@@ -86,9 +87,10 @@ func (s *S) TestGetClientWithServiceUsername(c *check.C) {
 	service := Service{Name: "redis", Username: "redis_test", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
 	expected := &Client{
-		endpoint: endpoints["production"],
-		username: "redis_test",
-		password: "abcde",
+		serviceName: "redis",
+		endpoint:    endpoints["production"],
+		username:    "redis_test",
+		password:    "abcde",
 	}
 	c.Assert(err, check.IsNil)
 	c.Assert(cli, check.DeepEquals, expected)
