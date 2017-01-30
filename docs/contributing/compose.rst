@@ -53,7 +53,7 @@ You need to create one pool of nodes and add node1 as a tsuru node.
 ::
 
     $ tsuru pool-add development -p -d
-    $ tsuru node-add --register address=http://172.42.0.20:2375 pool=development
+    $ tsuru node-add --register address=http://node1:2375 pool=development
 
 Everytime you change tsuru and want to test you need to run ``build-compose.sh`` to build tsurud, generate and run the new api.
 
