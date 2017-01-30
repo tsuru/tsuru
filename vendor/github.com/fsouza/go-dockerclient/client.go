@@ -230,17 +230,26 @@ func NewVersionnedTLSClient(endpoint string, cert, key, ca, apiVersionString str
 // NewVersionedTLSClient returns a Client instance ready for TLS communications with the givens
 // server endpoint, key and certificates, using a specific remote API version.
 func NewVersionedTLSClient(endpoint string, cert, key, ca, apiVersionString string) (*Client, error) {
-	certPEMBlock, err := ioutil.ReadFile(cert)
-	if err != nil {
-		return nil, err
+	var certPEMBlock []byte
+	var keyPEMBlock []byte
+	var caPEMCert []byte
+	if _, err := os.Stat(cert); !os.IsNotExist(err) {
+		certPEMBlock, err = ioutil.ReadFile(cert)
+		if err != nil {
+			return nil, err
+		}
 	}
-	keyPEMBlock, err := ioutil.ReadFile(key)
-	if err != nil {
-		return nil, err
+	if _, err := os.Stat(key); !os.IsNotExist(err) {
+		keyPEMBlock, err = ioutil.ReadFile(key)
+		if err != nil {
+			return nil, err
+		}
 	}
-	caPEMCert, err := ioutil.ReadFile(ca)
-	if err != nil {
-		return nil, err
+	if _, err := os.Stat(ca); !os.IsNotExist(err) {
+		caPEMCert, err = ioutil.ReadFile(ca)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return NewVersionedTLSClientFromBytes(endpoint, certPEMBlock, keyPEMBlock, caPEMCert, apiVersionString)
 }
@@ -299,14 +308,14 @@ func NewVersionedTLSClientFromBytes(endpoint string, certPEMBlock, keyPEMBlock, 
 			return nil, err
 		}
 	}
-	if certPEMBlock == nil || keyPEMBlock == nil {
-		return nil, errors.New("Both cert and key are required")
+	tlsConfig := &tls.Config{}
+	if certPEMBlock != nil && keyPEMBlock != nil {
+		tlsCert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.Certificates = []tls.Certificate{tlsCert}
 	}
-	tlsCert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return nil, err
-	}
-	tlsConfig := &tls.Config{Certificates: []tls.Certificate{tlsCert}}
 	if caPEMCert == nil {
 		tlsConfig.InsecureSkipVerify = true
 	} else {
