@@ -20,7 +20,7 @@ take some time:
 ::
 
     $ cd tsuru
-    $ sh build-compose.sh
+    $ ./build-compose.sh
 
 At the first time you run is possible that api and planb fails, just run ``docker-compose up -d`` to fix it.
 ::
@@ -48,19 +48,6 @@ Then configure the tsuru target:
 ::
 
     $ tsuru target-add development http://127.0.0.1:8080 -s
-
-
-And create roles for the admin user:
-
-::
-
-    $ tsuru role-add team-create global
-    $ tsuru role-permission-add team-create role.update team.create
-    $ tsuru role-add team-member team
-    $ tsuru role-permission-add team-member app service-instance team
-    $ tsuru role-default-add --team-create team-member
-    $ tsuru role-default-add --user-create team-create
-
 
 You need to create one pool of nodes and add node1 as a tsuru node.
 ::
