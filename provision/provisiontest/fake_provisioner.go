@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package provisiontest
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"sync"
 	"sync/atomic"
@@ -557,6 +558,38 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 
 func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	return provision.FindNodeByAddrs(p, nodeData.Addrs)
+}
+
+func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+	w := opts.Writer
+	opts.Writer = nil
+	if w == nil {
+		w = ioutil.Discard
+	}
+	fmt.Fprintf(w, "rebalancing - dry: %v, force: %v", opts.Dry, opts.Force)
+	if len(p.nodes) == 0 {
+		return false, nil
+	}
+	var nodeAddrs []string
+	for addr := range p.nodes {
+		nodeAddrs = append(nodeAddrs, addr)
+	}
+	gi := 0
+	for _, a := range p.apps {
+		nodeIdx := 0
+		for i := range a.units {
+			u := &a.units[i]
+			hostAddr := net.URLToHost(nodeAddrs[nodeIdx])
+			nodeIdx = (nodeIdx + 1) % len(nodeAddrs)
+			u.Ip = hostAddr
+			u.Address = &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("%s:%d", hostAddr, gi),
+			}
+			gi++
+		}
+	}
+	return true, nil
 }
 
 // MetricEnvs returns the metric envs for the app

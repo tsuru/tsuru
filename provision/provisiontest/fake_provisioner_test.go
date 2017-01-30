@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1323,6 +1323,35 @@ func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
 		&FakeNode{address: "mynode2", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
 	})
+}
+
+func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
+	p := NewFakeProvisioner()
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p.Provision(app)
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddUnitsToNode(app, 4, "web", nil, "mynode1")
+	w := bytes.Buffer{}
+	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer:         &w,
+		MetadataFilter: map[string]string{"pool": "p1"},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(isRebalance, check.Equals, true)
+	c.Assert(w.String(), check.Equals, "rebalancing - dry: false, force: false")
+	units, err := p.Units(app)
+	c.Assert(err, check.IsNil)
+	var addrs []string
+	for _, u := range units {
+		addrs = append(addrs, u.Ip)
+	}
+	sort.Strings(addrs)
+	c.Assert(addrs, check.DeepEquals, []string{"mynode1", "mynode1", "mynode2", "mynode2"})
 }
 
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
