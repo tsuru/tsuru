@@ -38,8 +38,13 @@ type baseClient interface {
 	Close() error
 }
 
+type poolStatsClient interface {
+	PoolStats() *redis.PoolStats
+}
+
 type Client interface {
 	baseClient
+	poolStatsClient
 	Pipeline() Pipeline
 }
 
@@ -150,7 +155,12 @@ func createServerList(addrs string) []string {
 	return parts
 }
 
-func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (Client, error) {
+func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (client Client, err error) {
+	defer func() {
+		if client != nil {
+			collector.Add(prefix, client)
+		}
+	}()
 	db, err := config.GetInt(prefix + ":redis-db")
 	if err != nil && defaultConfig.TryLegacy {
 		db, err = config.GetInt(prefix + ":db")
