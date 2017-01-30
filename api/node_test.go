@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -947,4 +947,75 @@ func boolPtr(b bool) *bool {
 
 func intPtr(i int) *int {
 	return &i
+}
+
+func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
+	err := s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "n1",
+	})
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "n2",
+	})
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1")
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/node/rebalance", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Matches, "(?s).*rebalancing - dry: false, force: true.*Units successfully rebalanced.*")
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
+	var nodes []string
+	for _, u := range units {
+		nodes = append(nodes, u.Ip)
+	}
+	sort.Strings(nodes)
+	c.Assert(nodes, check.DeepEquals, []string{"n1", "n1", "n2", "n2"})
+}
+
+func (s *S) TestNodeRebalanceFilters(c *check.C) {
+	poolOpts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(poolOpts)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "n1",
+	})
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddNode(provision.AddNodeOptions{
+		Address: "n2",
+	})
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1")
+	c.Assert(err, check.IsNil)
+	opts := provision.RebalanceNodesOptions{
+		MetadataFilter: map[string]string{"pool": "pool1"},
+		AppFilter:      []string{"myapp"},
+		Dry:            true,
+	}
+	v, err := form.EncodeToValues(&opts)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/node/rebalance", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*rebalancing - dry: true, force: true.*filtering apps: \[myapp\].*filtering metadata: map\[pool:pool1\].*`)
 }

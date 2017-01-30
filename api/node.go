@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -584,5 +585,88 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			return err
 		}
 	}
+	return nil
+}
+
+// title: rebalance units in nodes
+// path: /node/rebalance
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	r.ParseForm()
+	var params provision.RebalanceNodesOptions
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	err = dec.DecodeValues(&params, r.Form)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	params.Force = true
+	var permContexts []permission.PermissionContext
+	poolName, ok := params.MetadataFilter["pool"]
+	if ok {
+		permContexts = append(permContexts, permission.Context(permission.CtxPool, poolName))
+	}
+	if !permission.Check(t, permission.PermNodeUpdateRebalance, permContexts...) {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
+		Kind:        permission.PermNodeUpdateRebalance,
+		Owner:       t,
+		CustomData:  event.FormToCustomData(r.Form),
+		DisableLock: true,
+		Allowed:     event.Allowed(permission.PermPoolReadEvents, permContexts...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	params.Writer = writer
+	var provs []provision.Provisioner
+	if poolName != "" {
+		var pool *provision.Pool
+		var prov provision.Provisioner
+		pool, err = provision.GetPoolByName(poolName)
+		if err != nil {
+			return err
+		}
+		prov, err = pool.GetProvisioner()
+		if err != nil {
+			return err
+		}
+		if _, ok := prov.(provision.NodeRebalanceProvisioner); !ok {
+			return provision.ProvisionerNotSupported{Prov: prov, Action: "node rebalance operations"}
+		}
+		provs = append(provs, prov)
+	} else {
+		provs, err = provision.Registry()
+		if err != nil {
+			return err
+		}
+	}
+	for _, prov := range provs {
+		rebalanceProv, ok := prov.(provision.NodeRebalanceProvisioner)
+		if !ok {
+			continue
+		}
+		_, err = rebalanceProv.RebalanceNodes(params)
+		if err != nil {
+			return errors.Wrap(err, "Error trying to rebalance units in nodes")
+		}
+	}
+	fmt.Fprintf(writer, "Units successfully rebalanced!\n")
 	return nil
 }
