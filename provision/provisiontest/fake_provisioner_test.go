@@ -1343,7 +1343,7 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Equals, "rebalancing - dry: false, force: false")
+	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*filtering metadata: map\[pool:p1\].*`)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	var addrs []string

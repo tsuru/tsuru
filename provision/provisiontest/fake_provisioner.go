@@ -561,14 +561,23 @@ func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (pr
 }
 
 func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+	if err := p.getError("RebalanceNodes"); err != nil {
+		return true, err
+	}
 	w := opts.Writer
 	opts.Writer = nil
 	if w == nil {
 		w = ioutil.Discard
 	}
-	fmt.Fprintf(w, "rebalancing - dry: %v, force: %v", opts.Dry, opts.Force)
-	if len(p.nodes) == 0 {
-		return false, nil
+	fmt.Fprintf(w, "rebalancing - dry: %v, force: %v\n", opts.Dry, opts.Force)
+	if len(opts.AppFilter) != 0 {
+		fmt.Fprintf(w, "filtering apps: %v\n", opts.AppFilter)
+	}
+	if len(opts.MetadataFilter) != 0 {
+		fmt.Fprintf(w, "filtering metadata: %v\n", opts.MetadataFilter)
+	}
+	if len(p.nodes) == 0 || opts.Dry {
+		return true, nil
 	}
 	var nodeAddrs []string
 	for addr := range p.nodes {
