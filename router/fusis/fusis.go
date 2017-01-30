@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -23,12 +23,13 @@ const routerType = "fusis"
 var slugReplace = regexp.MustCompile(`[^\w\d]+`)
 
 type fusisRouter struct {
-	apiUrl    string
-	proto     string
-	port      uint16
-	scheduler string
-	mode      string
-	client    *fusisApi.Client
+	routerName string
+	apiUrl     string
+	proto      string
+	port       uint16
+	scheduler  string
+	mode       string
+	client     *fusisApi.Client
 }
 
 func init() {
@@ -51,12 +52,13 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	client := fusisApi.NewClient(apiUrl)
 	client.HttpClient = tsuruNet.Dial5Full60ClientNoKeepAlive
 	r := &fusisRouter{
-		apiUrl:    apiUrl,
-		client:    client,
-		proto:     "tcp",
-		port:      80,
-		scheduler: scheduler,
-		mode:      mode,
+		routerName: routerName,
+		apiUrl:     apiUrl,
+		client:     client,
+		proto:      "tcp",
+		port:       80,
+		scheduler:  scheduler,
+		mode:       mode,
 	}
 	return r, nil
 }
@@ -78,11 +80,20 @@ func (r *fusisRouter) addBackend(name string, proto string, port uint16) error {
 	return router.Store(name, name, routerType)
 }
 
-func (r *fusisRouter) AddBackend(name string) error {
-	return r.addBackend(name, r.proto, r.port)
+func (r *fusisRouter) AddBackend(name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
+	err = r.addBackend(name, r.proto, r.port)
+	return err
 }
 
-func (r *fusisRouter) AddBackendOpts(name string, opts map[string]string) error {
+func (r *fusisRouter) AddBackendOpts(name string, opts map[string]string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	if opts == nil {
 		return r.AddBackend(name)
 	}
@@ -101,13 +112,18 @@ func (r *fusisRouter) AddBackendOpts(name string, opts map[string]string) error 
 	return r.addBackend(name, proto, port)
 }
 
-func (r *fusisRouter) RemoveBackend(name string) error {
+func (r *fusisRouter) RemoveBackend(name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
 	}
 	if backendName != name {
-		return router.ErrBackendSwapped
+		err = router.ErrBackendSwapped
+		return err
 	}
 	err = r.client.DeleteService(backendName)
 	if err == fusisTypes.ErrServiceNotFound {
@@ -121,7 +137,11 @@ func (r *fusisRouter) routeName(name string, address *url.URL) string {
 	return fmt.Sprintf("%s_%s", name, addr)
 }
 
-func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
+func (r *fusisRouter) AddRoute(name string, address *url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -146,9 +166,12 @@ func (r *fusisRouter) AddRoute(name string, address *url.URL) error {
 	return err
 }
 
-func (r *fusisRouter) AddRoutes(name string, addresses []*url.URL) error {
+func (r *fusisRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	added := make([]*url.URL, 0, len(addresses))
-	var err error
 	for _, addr := range addresses {
 		err = r.AddRoute(name, addr)
 		if err == router.ErrRouteExists {
@@ -169,7 +192,11 @@ func (r *fusisRouter) AddRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
-func (r *fusisRouter) RemoveRoute(name string, address *url.URL) error {
+func (r *fusisRouter) RemoveRoute(name string, address *url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -181,9 +208,12 @@ func (r *fusisRouter) RemoveRoute(name string, address *url.URL) error {
 	return err
 }
 
-func (r *fusisRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+func (r *fusisRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	removed := make([]*url.URL, 0, len(addresses))
-	var err error
 	for _, addr := range addresses {
 		err = r.RemoveRoute(name, addr)
 		if err == router.ErrRouteNotFound {
@@ -219,7 +249,11 @@ func (r *fusisRouter) findService(name string) (*fusisTypes.Service, error) {
 	return srv, nil
 }
 
-func (r *fusisRouter) Addr(name string) (string, error) {
+func (r *fusisRouter) Addr(name string) (addr string, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	srv, err := r.findService(name)
 	if err != nil {
 		return "", err
@@ -227,16 +261,24 @@ func (r *fusisRouter) Addr(name string) (string, error) {
 	return fmt.Sprintf("%s:%d", srv.Host, srv.Port), nil
 }
 
-func (r *fusisRouter) Swap(backend1 string, backend2 string, cnameOnly bool) error {
+func (r *fusisRouter) Swap(backend1 string, backend2 string, cnameOnly bool) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
-func (r *fusisRouter) Routes(name string) ([]*url.URL, error) {
+func (r *fusisRouter) Routes(name string) (result []*url.URL, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	srv, err := r.findService(name)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*url.URL, len(srv.Destinations))
+	result = make([]*url.URL, len(srv.Destinations))
 	for i, d := range srv.Destinations {
 		var err error
 		result[i] = &url.URL{

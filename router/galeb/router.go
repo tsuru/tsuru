@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -90,7 +90,11 @@ func (r *galebRouter) virtualHostName(base string) string {
 	return fmt.Sprintf("%s.%s", base, r.domain)
 }
 
-func (r *galebRouter) AddBackend(name string) error {
+func (r *galebRouter) AddBackend(name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendPoolId, err := r.client.AddBackendPool(r.poolName(name))
 	if _, ok := errors.Cause(err).(galebClient.ErrItemAlreadyExists); ok {
 		return router.ErrBackendExists
@@ -113,7 +117,11 @@ func (r *galebRouter) AddBackend(name string) error {
 	return router.Store(name, name, routerType)
 }
 
-func (r *galebRouter) AddRoute(name string, address *url.URL) error {
+func (r *galebRouter) AddRoute(name string, address *url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -126,7 +134,11 @@ func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 	return err
 }
 
-func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) error {
+func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -137,7 +149,11 @@ func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) error {
 	return r.client.AddBackends(addresses, r.poolName(backendName))
 }
 
-func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
+func (r *galebRouter) RemoveRoute(name string, address *url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -158,7 +174,11 @@ func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 	return r.client.RemoveBackendByID(id)
 }
 
-func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -187,7 +207,11 @@ func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return r.client.RemoveBackendsByIDs(ids)
 }
 
-func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
+func (r *galebRouter) CNames(name string) (urls []*url.URL, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -197,7 +221,7 @@ func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	urls := []*url.URL{}
+	urls = []*url.URL{}
 	address, err := r.Addr(name)
 	if err != nil {
 		return nil, err
@@ -210,7 +234,11 @@ func (r *galebRouter) CNames(name string) ([]*url.URL, error) {
 	return urls, nil
 }
 
-func (r *galebRouter) SetCName(cname, name string) error {
+func (r *galebRouter) SetCName(cname, name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -228,7 +256,11 @@ func (r *galebRouter) SetCName(cname, name string) error {
 	return r.client.SetRuleVirtualHost(r.ruleName(backendName), cname)
 }
 
-func (r *galebRouter) UnsetCName(cname, name string) error {
+func (r *galebRouter) UnsetCName(cname, name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -243,7 +275,11 @@ func (r *galebRouter) UnsetCName(cname, name string) error {
 	return r.client.RemoveVirtualHost(cname)
 }
 
-func (r *galebRouter) Addr(name string) (string, error) {
+func (r *galebRouter) Addr(name string) (addr string, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return "", err
@@ -251,11 +287,19 @@ func (r *galebRouter) Addr(name string) (string, error) {
 	return r.virtualHostName(backendName), nil
 }
 
-func (r *galebRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+func (r *galebRouter) Swap(backend1, backend2 string, cnameOnly bool) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
-func (r *galebRouter) Routes(name string) ([]*url.URL, error) {
+func (r *galebRouter) Routes(name string) (urls []*url.URL, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -264,7 +308,7 @@ func (r *galebRouter) Routes(name string) ([]*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	urls := make([]*url.URL, len(targets))
+	urls = make([]*url.URL, len(targets))
 	for i, target := range targets {
 		urls[i], err = url.Parse(target.Name)
 		if err != nil {
@@ -278,11 +322,19 @@ func (r *galebRouter) StartupMessage() (string, error) {
 	return fmt.Sprintf("galeb router %q with API URL %q.", r.domain, r.client.ApiUrl), nil
 }
 
-func (r *galebRouter) HealthCheck() error {
+func (r *galebRouter) HealthCheck() (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	return r.client.Healthcheck()
 }
 
-func (r *galebRouter) RemoveBackend(name string) error {
+func (r *galebRouter) RemoveBackend(name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -322,7 +374,11 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	return r.client.RemoveBackendPool(r.poolName(backendName))
 }
 
-func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) error {
+func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err

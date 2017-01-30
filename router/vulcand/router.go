@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -29,9 +29,10 @@ func init() {
 }
 
 type vulcandRouter struct {
-	client *api.Client
-	prefix string
-	domain string
+	client     *api.Client
+	prefix     string
+	domain     string
+	routerName string
 }
 
 func createRouter(routerName, configPrefix string) (router.Router, error) {
@@ -45,9 +46,10 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	}
 	client := api.NewClient(vURL, registry.GetRegistry())
 	vRouter := &vulcandRouter{
-		client: client,
-		prefix: configPrefix,
-		domain: domain,
+		client:     client,
+		prefix:     configPrefix,
+		domain:     domain,
+		routerName: routerName,
 	}
 	return vRouter, nil
 }
@@ -68,7 +70,11 @@ func (r *vulcandRouter) serverName(address string) string {
 	return fmt.Sprintf("tsuru_%x", md5.Sum([]byte(address)))
 }
 
-func (r *vulcandRouter) AddBackend(name string) error {
+func (r *vulcandRouter) AddBackend(name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	backendName := r.backendName(name)
 	frontendName := r.frontendName(r.frontendHostname(name))
 	backendKey := engine.BackendKey{Id: backendName}
@@ -108,7 +114,11 @@ func (r *vulcandRouter) AddBackend(name string) error {
 	return router.Store(name, name, routerName)
 }
 
-func (r *vulcandRouter) RemoveBackend(name string) error {
+func (r *vulcandRouter) RemoveBackend(name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -156,7 +166,11 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 	return nil
 }
 
-func (r *vulcandRouter) AddRoute(name string, address *url.URL) error {
+func (r *vulcandRouter) AddRoute(name string, address *url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -179,7 +193,11 @@ func (r *vulcandRouter) AddRoute(name string, address *url.URL) error {
 	return nil
 }
 
-func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) error {
+func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -201,7 +219,11 @@ func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
-func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) error {
+func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -220,7 +242,11 @@ func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) error {
 	return nil
 }
 
-func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
+func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -241,7 +267,11 @@ func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
-func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
+func (r *vulcandRouter) CNames(name string) (urls []*url.URL, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	fes, err := r.client.GetFrontends()
 	if err != nil {
 		return nil, err
@@ -252,7 +282,7 @@ func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
 		return nil, err
 	}
 	address = r.backendName(address)
-	urls := []*url.URL{}
+	urls = []*url.URL{}
 	for _, f := range fes {
 		host := strings.Replace(f.Id, "tsuru_", "", 1)
 		if f.BackendId == backendName && f.Id != address {
@@ -262,7 +292,11 @@ func (r *vulcandRouter) CNames(name string) ([]*url.URL, error) {
 	return urls, nil
 }
 
-func (r *vulcandRouter) SetCName(cname, name string) error {
+func (r *vulcandRouter) SetCName(cname, name string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -291,9 +325,13 @@ func (r *vulcandRouter) SetCName(cname, name string) error {
 	return nil
 }
 
-func (r *vulcandRouter) UnsetCName(cname, _ string) error {
+func (r *vulcandRouter) UnsetCName(cname, _ string) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	frontendKey := engine.FrontendKey{Id: r.frontendName(cname)}
-	err := r.client.DeleteFrontend(frontendKey)
+	err = r.client.DeleteFrontend(frontendKey)
 	if err != nil {
 		if _, ok := err.(*engine.NotFoundError); ok {
 			return router.ErrCNameNotFound
@@ -303,24 +341,36 @@ func (r *vulcandRouter) UnsetCName(cname, _ string) error {
 	return nil
 }
 
-func (r *vulcandRouter) Addr(name string) (string, error) {
+func (r *vulcandRouter) Addr(name string) (addr string, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return "", err
 	}
-	frontendHostname := r.frontendHostname(usedName)
-	frontendKey := engine.FrontendKey{Id: r.frontendName(frontendHostname)}
+	addr = r.frontendHostname(usedName)
+	frontendKey := engine.FrontendKey{Id: r.frontendName(addr)}
 	if found, _ := r.client.GetFrontend(frontendKey); found == nil {
 		return "", router.ErrRouteNotFound
 	}
-	return frontendHostname, nil
+	return addr, nil
 }
 
-func (r *vulcandRouter) Swap(backend1, backend2 string, cnameOnly bool) error {
+func (r *vulcandRouter) Swap(backend1, backend2 string, cnameOnly bool) (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	return router.Swap(r, backend1, backend2, cnameOnly)
 }
 
-func (r *vulcandRouter) Routes(name string) ([]*url.URL, error) {
+func (r *vulcandRouter) Routes(name string) (routes []*url.URL, err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	usedName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -331,7 +381,7 @@ func (r *vulcandRouter) Routes(name string) ([]*url.URL, error) {
 	if err != nil {
 		return nil, &router.RouterError{Err: err, Op: "routes"}
 	}
-	routes := make([]*url.URL, len(servers))
+	routes = make([]*url.URL, len(servers))
 	for i, server := range servers {
 		parsedUrl, _ := url.Parse(server.URL)
 		routes[i] = parsedUrl
@@ -344,6 +394,10 @@ func (r *vulcandRouter) StartupMessage() (string, error) {
 	return message, nil
 }
 
-func (r *vulcandRouter) HealthCheck() error {
+func (r *vulcandRouter) HealthCheck() (err error) {
+	done := router.InstrumentRequest(r.routerName)
+	defer func() {
+		done(err)
+	}()
 	return r.client.GetStatus()
 }
