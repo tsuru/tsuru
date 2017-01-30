@@ -1,0 +1,56 @@
+version: "3"
+services:
+    mongo:
+        image: mongo
+        volumes:
+            - ./data/mongo:/data/db
+        networks:
+            - tsuru_net
+    redis:
+        image: redis
+        volumes:
+            - ./data/redis:/data
+        networks:
+            - tsuru_net
+    registry:
+        image: registry:2
+        environment: 
+            - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
+        volumes:
+            - ./data/registry:/var/lib/registry
+        networks:
+            - tsuru_net
+    planb:
+        image: tsuru/planb
+        command: --read-redis-host=redis --write-redis-host=redis
+        ports:
+            - 8989:8989
+        networks:
+            - tsuru_net
+    api:
+        build: 
+            context: .
+            dockerfile: Dockerfile.dev
+        ports:
+            - 8080:8080
+        networks:
+            tsuru_net:
+                ipv4_address: 172.42.0.10
+    node1:
+        image: docker:dind
+        privileged: true
+        command: --insecure-registry registry:5000
+        ports:
+            - "2375:2375"
+            - "32768-32772:32768-32772"
+        networks:
+            tsuru_net:
+                ipv4_address: 172.42.0.20
+
+networks:
+  tsuru_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.42.0.0/24

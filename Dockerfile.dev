@@ -1,0 +1,5 @@
+FROM alpine:3.4
+ADD build/tsurud /bin/tsurud
+ADD /etc/tsuru-compose.conf /etc/tsuru/tsuru.conf
+EXPOSE 8080
+ENTRYPOINT ["/bin/tsurud", "api"]

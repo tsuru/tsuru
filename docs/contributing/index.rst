@@ -60,8 +60,11 @@ Development environment
 
     coding-style
     vagrant
+    compose
 
 See this guide to :doc:`to setup a development environment using Vagrant </contributing/vagrant>`.
+
+See this guide to :doc:`to setup a development environment using Docker Compose </contributing/compose>`.
 
 And follow our :doc:`coding style guide </contributing/coding-style>`.
 
