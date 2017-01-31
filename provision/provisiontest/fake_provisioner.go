@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -469,6 +470,8 @@ func (n *FakeNode) SetHealth(failures int, hasSuccess bool) {
 }
 
 func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
 	if err := p.getError("AddNode"); err != nil {
 		return err
 	}
@@ -487,6 +490,8 @@ func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
 	if err := p.getError("GetNode"); err != nil {
 		return nil, err
 	}
@@ -497,6 +502,8 @@ func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
 }
 
 func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
 	if err := p.getError("RemoveNode"); err != nil {
 		return err
 	}
@@ -515,6 +522,8 @@ func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 }
 
 func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
 	if err := p.getError("UpdateNode"); err != nil {
 		return err
 	}
@@ -535,7 +544,15 @@ func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
+type nodeList []provision.Node
+
+func (l nodeList) Len() int           { return len(l) }
+func (l nodeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l nodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
+
 func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
 	if err := p.getError("ListNodes"); err != nil {
 		return nil, err
 	}
@@ -553,6 +570,7 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 			result = append(result, &n)
 		}
 	}
+	sort.Sort(nodeList(result))
 	return result, nil
 }
 
@@ -561,6 +579,8 @@ func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (pr
 }
 
 func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
 	if err := p.getError("RebalanceNodes"); err != nil {
 		return true, err
 	}
@@ -584,7 +604,9 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 	var nodeAddrs []string
 	for addr, n := range p.nodes {
 		nodeAddrs = append(nodeAddrs, addr)
+		p.mut.Unlock()
 		units, err := n.Units()
+		p.mut.Lock()
 		if err != nil {
 			return true, err
 		}
@@ -746,7 +768,9 @@ func (p *FakeProvisioner) Reset() {
 	p.shells = make(map[string][]provision.ShellOptions)
 	p.shellMut.Unlock()
 
+	p.mut.Lock()
 	p.nodes = make(map[string]FakeNode)
+	p.mut.Unlock()
 	uniqueIpCounter = 0
 
 	p.nodeContainers = make(map[string]int)
