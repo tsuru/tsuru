@@ -16,27 +16,46 @@ then
    exit $status
 fi
 
-curYear=$(date +"%Y")
-
-tofix=()
-for f in `git ls-files | grep -v vendor/ | grep -v check-license.sh | xargs -I{} bash -c "(egrep -o \"Copyright [0-9]+\" {} | grep -v ${curYear} >/dev/null) && echo {}"`
-do
-	date=`git log -1 --format="%ad" --date=short -- $f`
-	if [ `echo "$date" | grep "^${curYear}"` ]
-	then
-        tofix+=($f)
-		echo $f $date
-		status=1
-	fi
+tofix=
+addallyears=
+while [ "${1-}" != "" ]; do
+    case $1 in
+        "-f" | "--fix")
+            tofix=true
+            ;;
+        "--all")
+            addallyears=true
+            ;;
+    esac
+    shift
 done
 
-case $1 in
-    "-f" | "--fix")
-        for f in ${tofix[@]}; do
-            sed -E -i "" "s/Copyright [0-9]+/Copyright ${curYear}/g" $f
-        done
-        exit 0
-        ;;
-esac
+oldIFS=$IFS
+IFS=$(echo -en "\n\b")
+
+function join_space { 
+    IFS=" "
+    echo "$*"
+}
+
+for f in $(git ls-files | grep -v vendor/ | grep -v check-license.sh | xargs -I{} bash -c '(egrep -Ho "Copyright [0-9 ]+" {})')
+do
+    IFS=":" read file copyright <<< "$f"
+    IFS=" " read copy year <<< "$copyright"
+    if [ -z $addallyears ]; then
+        expectedYears=`git log --diff-filter=A --follow --format=%ad --date=format:%Y -1 -- $file`
+    else
+        expectedYears=$(join_space $(git log --follow --format=%ad --date=format:%Y -- $file | sort | uniq))
+    fi
+    if [[ $year != $expectedYears ]];
+    then
+        echo "$file - Copyright $year, created: $expectedYears"
+        if [ -z "$tofix" ]; then
+            status=1
+        else
+            sed -E -i "" "s/Copyright [0-9 ]+/Copyright ${expectedYears} /g" $file
+        fi
+    fi
+done
 
 exit $status
