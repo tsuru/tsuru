@@ -147,15 +147,36 @@ func (n *Node) updateSuccess() {
 	n.Metadata["LastSuccess"] = time.Now().Format(time.RFC3339)
 }
 
+var extraMetadataKeys = []string{
+	"Failures", "DisabledUntil", "LastError", "LastSuccess",
+}
+
+func isExtra(key string) bool {
+	for _, k := range extraMetadataKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
 func (n *Node) CleanMetadata() map[string]string {
 	paramsCopy := make(map[string]string)
 	for k, v := range n.Metadata {
-		paramsCopy[k] = v
+		if !isExtra(k) {
+			paramsCopy[k] = v
+		}
 	}
-	delete(paramsCopy, "Failures")
-	delete(paramsCopy, "DisabledUntil")
-	delete(paramsCopy, "LastError")
-	delete(paramsCopy, "LastSuccess")
+	return paramsCopy
+}
+
+func (n *Node) ExtraMetadata() map[string]string {
+	paramsCopy := make(map[string]string)
+	for k, v := range n.Metadata {
+		if isExtra(k) {
+			paramsCopy[k] = v
+		}
+	}
 	return paramsCopy
 }
 

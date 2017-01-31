@@ -78,7 +78,7 @@ func (c *Cluster) CreateContainerSchedulerOpts(opts docker.CreateContainerOption
 		if urlErr, ok := baseErr.(*url.Error); ok {
 			baseErr = urlErr.Err
 		}
-		_, isNetErr := baseErr.(*net.OpError)
+		_, isNetErr := baseErr.(net.Error)
 		if isNetErr || isCreateContainerErr || baseErr == docker.ErrConnectionRefused {
 			shouldIncrementFailures = true
 		}
