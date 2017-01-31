@@ -487,6 +487,10 @@ type Node interface {
 	Provisioner() NodeProvisioner
 }
 
+type NodeExtraData interface {
+	ExtraData() map[string]string
+}
+
 type NodeHealthChecker interface {
 	Node
 	FailureCount() int
@@ -503,9 +507,18 @@ type NodeSpec struct {
 }
 
 func NodeToSpec(n Node) NodeSpec {
+	metadata := map[string]string{}
+	if extra, ok := n.(NodeExtraData); ok {
+		for k, v := range extra.ExtraData() {
+			metadata[k] = v
+		}
+	}
+	for k, v := range n.Metadata() {
+		metadata[k] = v
+	}
 	return NodeSpec{
 		Address:  n.Address(),
-		Metadata: n.Metadata(),
+		Metadata: metadata,
 		Status:   n.Status(),
 		Pool:     n.Pool(),
 	}

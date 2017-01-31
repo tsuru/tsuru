@@ -1205,7 +1205,11 @@ func (n *clusterNodeWrapper) Pool() string {
 }
 
 func (n *clusterNodeWrapper) Metadata() map[string]string {
-	return n.Node.Metadata
+	return n.Node.CleanMetadata()
+}
+
+func (n *clusterNodeWrapper) ExtraData() map[string]string {
+	return n.Node.ExtraMetadata()
 }
 
 func (n *clusterNodeWrapper) Units() ([]provision.Unit, error) {
