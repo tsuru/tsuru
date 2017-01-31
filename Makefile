@@ -44,7 +44,6 @@ _tsurud_dry:
 test: _go_test _tsurud_dry
 
 lint: metalint
-	misc/check-license.sh
 	misc/check-contributors.sh
 
 metalint:
