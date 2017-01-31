@@ -280,26 +280,22 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []provision.Node) 
 	}
 }
 
-type NodeRebalanceProv interface {
-	RebalanceNodes(pool string, force bool, w io.Writer) (bool, error)
-}
-
 func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes []provision.Node, sResult *scalerResult) error {
 	if len(sResult.ToRemove) > 0 {
 		return nil
 	}
-	rebalanceProv, ok := a.provisioner.(NodeRebalanceProv)
+	rebalanceProv, ok := a.provisioner.(provision.NodeRebalanceProvisioner)
 	if !ok {
 		return nil
 	}
 	buf := safe.NewBuffer(nil)
 	writer := io.MultiWriter(buf, evt)
-	shouldRebalance, err := rebalanceProv.RebalanceNodes(pool, false, writer)
+	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
+		Force:          false,
+		MetadataFilter: map[string]string{"pool": pool},
+		Writer:         writer,
+	})
 	sResult.ToRebalance = shouldRebalance
-	if sResult.Reason == "" {
-		// TODO(cezarsa): reason if only rebalance was executed.
-		// sResult.Reason = fmt.Sprintf("gap is %d, after rebalance gap will be %d", gap, gapAfter)
-	}
 	if err != nil {
 		return errors.Wrapf(err, "unable to rebalance containers. log: %s", buf.String())
 	}
@@ -476,7 +472,10 @@ func cleanMetadata(n provision.Node) map[string]string {
 	// and having nodes with and without it would cause unbalanced metadata
 	// errors.
 	ignoredMetadata := []string{"iaas-id"}
-	metadata := n.Metadata()
+	metadata := map[string]string{}
+	for k, v := range n.Metadata() {
+		metadata[k] = v
+	}
 	for _, val := range ignoredMetadata {
 		delete(metadata, val)
 	}
@@ -554,32 +553,6 @@ func chooseMetadataFromNodes(modelNodes []provision.Node) (map[string]string, er
 	}
 	return baseMetadata, nil
 }
-
-// func runningContainersByNode(nodes []provision.Node) (map[string][]provision.Unit, error) {
-// 	appNames, err := p.listAppsForNodes(nodes)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	for _, appName := range appNames {
-// 		locked, err := app.AcquireApplicationLock(appName, app.InternalAppName, "node auto scale")
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		if !locked {
-// 			return nil, errAppNotLocked{app: appName}
-// 		}
-// 		defer app.ReleaseApplicationLock(appName)
-// 	}
-// 	result := map[string][]container.Container{}
-// 	for _, n := range nodes {
-// 		nodeConts, err := p.listRunningContainersByHost(net.URLToHost(n.Address))
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		result[n.Address] = nodeConts
-// 	}
-// 	return result, nil
-// }
 
 func unitsGapInNodes(nodes []provision.Node) (int, int, error) {
 	maxCount := 0
