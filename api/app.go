@@ -99,6 +99,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // faster and transmit less data.
 type miniApp struct {
 	Name  string            `json:"name"`
+	Pool  string            `json:"pool"`
 	Units []provision.Unit  `json:"units"`
 	CName []string          `json:"cname"`
 	Ip    string            `json:"ip"`
@@ -111,11 +112,12 @@ func minifyApp(app app.App) (miniApp, error) {
 		return miniApp{}, err
 	}
 	return miniApp{
-		Name:  app.GetName(),
+		Name:  app.Name,
+		Pool:  app.Pool,
 		Units: units,
-		CName: app.GetCname(),
-		Ip:    app.GetIp(),
-		Lock:  app.GetLock(),
+		CName: app.CName,
+		Ip:    app.Ip,
+		Lock:  &app.Lock,
 	}, nil
 }
 

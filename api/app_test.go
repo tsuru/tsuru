@@ -383,13 +383,19 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 }
 
 func (s *S) TestAppList(c *check.C) {
+	pool := provision.Pool{Name: "pool1", Public: true}
+	opts := provision.AddPoolOptions{Name: pool.Name, Public: pool.Public}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(pool.Name)
 	app1 := app.App{
 		Name:      "app1",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app1"},
+		Pool:      "pool1",
 	}
-	err := app.CreateApp(&app1, s.user)
+	err = app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := app.App{
@@ -397,6 +403,7 @@ func (s *S) TestAppList(c *check.C) {
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app2"},
+		Pool:      "pool1",
 		Lock: app.AppLock{
 			Locked:      true,
 			Reason:      "wanted",
@@ -422,9 +429,11 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
 	c.Assert(apps[0].Ip, check.Equals, app1.Ip)
+	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
 	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
+	c.Assert(apps[1].Pool, check.Equals, app2.Pool)
 }
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
