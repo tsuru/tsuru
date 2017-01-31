@@ -67,15 +67,15 @@ func (c *Cluster) removeImage(name string, ignoreLast bool) error {
 			if ignoreLast && imgId == image.LastId {
 				continue
 			}
-			err := n.RemoveImage(imgId)
-			_, isNetErr := err.(*net.OpError)
-			if err == nil || err == docker.ErrNoSuchImage || isNetErr {
-				err = stor.RemoveImage(name, imgId, n.addr)
-				if err != nil {
-					lastErr = err
+			removeErr := n.RemoveImage(imgId)
+			_, isNetErr := removeErr.(net.Error)
+			if removeErr == nil || removeErr == docker.ErrNoSuchImage || isNetErr {
+				removeErr = stor.RemoveImage(name, imgId, n.addr)
+				if removeErr != nil {
+					lastErr = removeErr
 				}
 			} else {
-				lastErr = err
+				lastErr = removeErr
 			}
 		}
 		return nil, lastErr
