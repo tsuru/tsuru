@@ -579,9 +579,25 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 	if len(p.nodes) == 0 || opts.Dry {
 		return true, nil
 	}
+	max := 0
+	min := -1
 	var nodeAddrs []string
-	for addr := range p.nodes {
+	for addr, n := range p.nodes {
 		nodeAddrs = append(nodeAddrs, addr)
+		units, err := n.Units()
+		if err != nil {
+			return true, err
+		}
+		unitCount := len(units)
+		if unitCount > max {
+			max = unitCount
+		}
+		if min == -1 || unitCount < min {
+			min = unitCount
+		}
+	}
+	if max-min < 2 && !opts.Force {
+		return false, nil
 	}
 	gi := 0
 	for _, a := range p.apps {

@@ -1354,6 +1354,27 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	c.Assert(addrs, check.DeepEquals, []string{"mynode1", "mynode1", "mynode2", "mynode2"})
 }
 
+func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
+	p := NewFakeProvisioner()
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p.Provision(app)
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddUnitsToNode(app, 2, "web", nil, "mynode1")
+	p.AddUnitsToNode(app, 2, "web", nil, "mynode2")
+	w := bytes.Buffer{}
+	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer:         &w,
+		MetadataFilter: map[string]string{"pool": "p1"},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(isRebalance, check.Equals, false)
+}
+
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
