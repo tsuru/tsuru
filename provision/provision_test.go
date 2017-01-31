@@ -167,5 +167,29 @@ func (ProvisionSuite) TestNodeToJson(c *check.C) {
 func (ProvisionSuite) TestNodeToSpec(c *check.C) {
 	n := testNode{}
 	spec := NodeToSpec(&n)
-	c.Assert(spec, check.DeepEquals, NodeSpec{Address: "b", Metadata: map[string]string{"d": "e"}, Status: "c", Pool: "a"})
+	c.Assert(spec, check.DeepEquals, NodeSpec{
+		Address:  "b",
+		Metadata: map[string]string{"d": "e"},
+		Status:   "c",
+		Pool:     "a",
+	})
+}
+
+type extraNode struct {
+	testNode
+}
+
+func (n *extraNode) ExtraData() map[string]string {
+	return map[string]string{"e1": "v1"}
+}
+
+func (ProvisionSuite) TestNodeToSpecExtraData(c *check.C) {
+	n := extraNode{}
+	spec := NodeToSpec(&n)
+	c.Assert(spec, check.DeepEquals, NodeSpec{
+		Address:  "b",
+		Metadata: map[string]string{"d": "e", "e1": "v1"},
+		Status:   "c",
+		Pool:     "a",
+	})
 }
