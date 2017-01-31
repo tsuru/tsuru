@@ -104,6 +104,10 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	}
 	if len(nodeList) == 0 {
 		autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
+		rule, _ := autoScaleRuleForMetadata(a.Pool)
+		if rule != nil {
+			autoScaleEnabled = rule.Enabled
+		}
 		errMsg := fmt.Sprintf("no nodes found with enough memory for container of %q: %0.4fMB",
 			a.Name, float64(a.Plan.Memory)/megabyte)
 		if autoScaleEnabled {

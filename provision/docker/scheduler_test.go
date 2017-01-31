@@ -325,6 +325,93 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	c.Assert(logBuf.String(), check.Matches, `(?s).*WARNING: no nodes found with enough memory for container of "oblivion": 0.0191MB.*`)
 }
 
+func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale:enabled")
+	rule := autoScaleRule{MetadataFilter: "mypool", Enabled: false}
+	err := rule.update()
+	c.Assert(err, check.IsNil)
+	defer deleteAutoScaleRule("mypool")
+	logBuf := bytes.NewBuffer(nil)
+	log.SetLogger(log.NewWriterLogger(logBuf, false))
+	defer log.SetLogger(nil)
+	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
+	err = s.storage.Apps().Insert(app1)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().Remove(bson.M{"name": app1.Name})
+	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
+	err = s.storage.Apps().Insert(app2)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
+	segSched := segregatedScheduler{
+		maxMemoryRatio:      0.8,
+		TotalMemoryMetadata: "totalMemory",
+		provisioner:         s.p,
+	}
+	o := provision.AddPoolOptions{Name: "mypool"}
+	err = provision.AddPool(o)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("mypool")
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server2.Stop()
+	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
+	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
+		cluster.Node{Address: server1.URL(), Metadata: map[string]string{
+			"totalMemory": "100000",
+			"pool":        "mypool",
+		}},
+		cluster.Node{Address: localURL, Metadata: map[string]string{
+			"totalMemory": "100000",
+			"pool":        "mypool",
+		}},
+	)
+	c.Assert(err, check.Equals, nil)
+	s.p.cluster = clusterInstance
+	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}
+	contColl := s.p.Collection()
+	defer contColl.Close()
+	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
+	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
+	err = contColl.Insert(cont1)
+	c.Assert(err, check.Equals, nil)
+	for i := 0; i < 5; i++ {
+		cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
+		err = contColl.Insert(cont)
+		c.Assert(err, check.IsNil)
+		opts := docker.CreateContainerOptions{
+			Name: cont.Name,
+		}
+		node, schedErr := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+		c.Assert(schedErr, check.IsNil)
+		c.Assert(node, check.NotNil)
+	}
+	n, err := contColl.Find(bson.M{"hostaddr": "127.0.0.1"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Check(n, check.Equals, 2)
+	n, err = contColl.Find(bson.M{"hostaddr": "localhost"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Check(n, check.Equals, 4)
+	n, err = contColl.Find(bson.M{"hostaddr": "127.0.0.1", "appname": "oblivion"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Check(n, check.Equals, 1)
+	n, err = contColl.Find(bson.M{"hostaddr": "localhost", "appname": "oblivion"}).Count()
+	c.Assert(err, check.Equals, nil)
+	c.Check(n, check.Equals, 4)
+	cont := container.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
+	err = contColl.Insert(cont)
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{
+		Name: cont.Name,
+	}
+	node, err := segSched.Schedule(clusterInstance, opts, &container.SchedulerOpts{AppName: cont.AppName, ProcessName: "web"})
+	c.Assert(err, check.ErrorMatches, `.*no nodes found with enough memory for container of "oblivion": 0.0191MB.*`)
+	c.Assert(node, check.DeepEquals, cluster.Node{})
+}
+
 func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
 	nodes := []cluster.Node{
