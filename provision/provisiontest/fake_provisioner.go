@@ -405,9 +405,9 @@ func (p *FakeProvisioner) getError(method string) error {
 }
 
 type FakeNode struct {
-	address    string
-	pool       string
-	metadata   map[string]string
+	Addr       string
+	PoolName   string
+	Meta       map[string]string
 	status     string
 	p          *FakeProvisioner
 	failures   int
@@ -415,19 +415,15 @@ type FakeNode struct {
 }
 
 func (n *FakeNode) Pool() string {
-	return n.pool
+	return n.PoolName
 }
 
 func (n *FakeNode) Address() string {
-	return n.address
+	return n.Addr
 }
 
 func (n *FakeNode) Metadata() map[string]string {
-	return n.metadata
-}
-
-func (n *FakeNode) CleanMetadata() map[string]string {
-	return n.metadata
+	return n.Meta
 }
 
 func (n *FakeNode) Units() ([]provision.Unit, error) {
@@ -436,7 +432,7 @@ func (n *FakeNode) Units() ([]provision.Unit, error) {
 	var units []provision.Unit
 	for _, a := range n.p.apps {
 		for _, u := range a.units {
-			if net.URLToHost(u.Address.String()) == net.URLToHost(n.address) {
+			if net.URLToHost(u.Address.String()) == net.URLToHost(n.Addr) {
 				units = append(units, u)
 			}
 		}
@@ -475,14 +471,17 @@ func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err := p.getError("AddNode"); err != nil {
 		return err
 	}
+	if err := p.getError("AddNode:" + opts.Address); err != nil {
+		return err
+	}
 	metadata := opts.Metadata
 	if metadata == nil {
 		metadata = map[string]string{}
 	}
 	p.nodes[opts.Address] = FakeNode{
-		address:  opts.Address,
-		pool:     metadata["pool"],
-		metadata: metadata,
+		Addr:     opts.Address,
+		PoolName: metadata["pool"],
+		Meta:     metadata,
 		p:        p,
 		status:   "enabled",
 	}
@@ -515,6 +514,11 @@ func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 	if opts.Writer != nil {
 		if opts.Rebalance {
 			opts.Writer.Write([]byte("rebalancing..."))
+			p.mut.Unlock()
+			p.RebalanceNodes(provision.RebalanceNodesOptions{
+				Force: true,
+			})
+			p.mut.Lock()
 		}
 		opts.Writer.Write([]byte("remove done!"))
 	}
@@ -532,7 +536,7 @@ func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 		return provision.ErrNodeNotFound
 	}
 	if opts.Metadata != nil {
-		n.metadata = opts.Metadata
+		n.Meta = opts.Metadata
 	}
 	if opts.Enable {
 		n.status = "enabled"
@@ -601,9 +605,9 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 	}
 	max := 0
 	min := -1
-	var nodeAddrs []string
-	for addr, n := range p.nodes {
-		nodeAddrs = append(nodeAddrs, addr)
+	var nodes []FakeNode
+	for _, n := range p.nodes {
+		nodes = append(nodes, n)
 		p.mut.Unlock()
 		units, err := n.Units()
 		p.mut.Lock()
@@ -626,8 +630,19 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 		nodeIdx := 0
 		for i := range a.units {
 			u := &a.units[i]
-			hostAddr := net.URLToHost(nodeAddrs[nodeIdx])
-			nodeIdx = (nodeIdx + 1) % len(nodeAddrs)
+			firstIdx := nodeIdx
+			var hostAddr string
+			for {
+				idx := nodeIdx
+				nodeIdx = (nodeIdx + 1) % len(nodes)
+				if nodes[idx].Pool() == a.app.GetPool() {
+					hostAddr = net.URLToHost(nodes[idx].Address())
+					break
+				}
+				if nodeIdx == firstIdx {
+					return true, errors.Errorf("unable to find node for pool %s", a.app.GetPool())
+				}
+			}
 			u.Ip = hostAddr
 			u.Address = &url.URL{
 				Scheme: "http",

@@ -1289,9 +1289,9 @@ func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 		"pool": "mypool",
 	}})
 	c.Assert(p.nodes, check.DeepEquals, map[string]FakeNode{"mynode": {
-		address:  "mynode",
-		pool:     "mypool",
-		metadata: map[string]string{"pool": "mypool"},
+		Addr:     "mynode",
+		PoolName: "mypool",
+		Meta:     map[string]string{"pool": "mypool"},
 		p:        p,
 		status:   "enabled",
 	}})
@@ -1315,19 +1315,20 @@ func (s *S) TestFakeProvisionerListNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Sort(NodeList(nodes))
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{address: "mynode1", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
-		&FakeNode{address: "mynode2", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"pool": "mypool"}, p: p},
 	})
 	nodes, err = p.ListNodes([]string{"mynode2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{address: "mynode2", status: "enabled", pool: "mypool", metadata: map[string]string{"pool": "mypool"}, p: p},
+		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"pool": "mypool"}, p: p},
 	})
 }
 
 func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	p := NewFakeProvisioner()
 	app := NewFakeApp("shine-on", "diamond", 1)
+	app.Pool = "mypool"
 	p.Provision(app)
 	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
 		"pool": "mypool",
@@ -1339,11 +1340,11 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	w := bytes.Buffer{}
 	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
 		Writer:         &w,
-		MetadataFilter: map[string]string{"pool": "p1"},
+		MetadataFilter: map[string]string{"pool": "mypool"},
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*filtering metadata: map\[pool:p1\].*`)
+	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*filtering metadata: map\[pool:mypool\].*`)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	var addrs []string
@@ -1354,9 +1355,47 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	c.Assert(addrs, check.DeepEquals, []string{"mynode1", "mynode1", "mynode2", "mynode2"})
 }
 
+func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
+	p := NewFakeProvisioner()
+	app1 := NewFakeApp("a1", "diamond", 1)
+	app1.Pool = "mypool"
+	p.Provision(app1)
+	app2 := NewFakeApp("a2", "diamond", 1)
+	app2.Pool = "mypool2"
+	p.Provision(app2)
+	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
+		"pool": "mypool",
+	}})
+	p.AddNode(provision.AddNodeOptions{Address: "mynode3", Metadata: map[string]string{
+		"pool": "mypool2",
+	}})
+	p.AddUnitsToNode(app1, 4, "web", nil, "mynode1")
+	p.AddUnitsToNode(app2, 4, "web", nil, "mynode3")
+	w := bytes.Buffer{}
+	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		Writer: &w,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(isRebalance, check.Equals, true)
+	c.Assert(w.String(), check.Matches, `(?s)rebalancing - dry: false, force: false.*`)
+	nodes, err := p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 3)
+	u0, _ := nodes[0].Units()
+	u1, _ := nodes[1].Units()
+	u2, _ := nodes[2].Units()
+	c.Assert(u0, check.HasLen, 2)
+	c.Assert(u1, check.HasLen, 2)
+	c.Assert(u2, check.HasLen, 4)
+}
+
 func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
 	p := NewFakeProvisioner()
 	app := NewFakeApp("shine-on", "diamond", 1)
+	app.Pool = "mypool"
 	p.Provision(app)
 	p.AddNode(provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
 		"pool": "mypool",
@@ -1369,7 +1408,7 @@ func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
 	w := bytes.Buffer{}
 	isRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
 		Writer:         &w,
-		MetadataFilter: map[string]string{"pool": "p1"},
+		MetadataFilter: map[string]string{"pool": "mypool"},
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(isRebalance, check.Equals, false)
