@@ -15,8 +15,8 @@ type countScaler struct {
 	rule *autoScaleRule
 }
 
-func (a *countScaler) scale(groupMetadata string, nodes []provision.Node) (*scalerResult, error) {
-	totalCount, _, err := unitsGapInNodes(nodes)
+func (a *countScaler) scale(pool string, nodes []provision.Node) (*scalerResult, error) {
+	totalCount, _, err := unitsGapInNodes(pool, nodes)
 	if err != nil {
 		return nil, err
 	}

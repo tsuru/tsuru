@@ -26,12 +26,12 @@ type nodeMemoryData struct {
 	containersMemory map[string]int64
 }
 
-func (a *memoryScaler) nodesMemoryData(nodes []provision.Node) (map[string]*nodeMemoryData, error) {
+func (a *memoryScaler) nodesMemoryData(pool string, nodes []provision.Node) (map[string]*nodeMemoryData, error) {
 	nodesMemoryData := make(map[string]*nodeMemoryData)
-	// containersMap, err := a.provisioner.runningContainersByNode(nodes)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	unitsMap, err := preciseUnitsByNode(pool, nodes)
+	if err != nil {
+		return nil, err
+	}
 	for _, node := range nodes {
 		metadata := node.Metadata()
 		totalMemory, _ := strconv.ParseFloat(metadata[a.TotalMemoryMetadata], 64)
@@ -45,11 +45,7 @@ func (a *memoryScaler) nodesMemoryData(nodes []provision.Node) (map[string]*node
 			maxMemory:        maxMemory,
 		}
 		nodesMemoryData[node.Address()] = data
-		units, err := node.Units()
-		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't find node units for %s", node.Address())
-		}
-		for _, unit := range units {
+		for _, unit := range unitsMap[node.Address()] {
 			a, err := app.GetByName(unit.AppName)
 			if err != nil {
 				return nil, errors.Wrapf(err, "couldn't find container app (%s)", unit.AppName)
@@ -62,8 +58,8 @@ func (a *memoryScaler) nodesMemoryData(nodes []provision.Node) (map[string]*node
 	return nodesMemoryData, nil
 }
 
-func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, groupMetadata string, nodes []provision.Node) ([]provision.Node, error) {
-	memoryData, err := a.nodesMemoryData(nodes)
+func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, pool string, nodes []provision.Node) ([]provision.Node, error) {
+	memoryData, err := a.nodesMemoryData(pool, nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +82,7 @@ func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, groupMetadata s
 	return chosenNodes, nil
 }
 
-func (a *memoryScaler) scale(groupMetadata string, nodes []provision.Node) (*scalerResult, error) {
+func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*scalerResult, error) {
 	plans, err := app.PlansList()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't list plans")
@@ -105,7 +101,7 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []provision.Node) (*sca
 		}
 		maxPlanMemory = defaultPlan.Memory
 	}
-	chosenNodes, err := a.chooseNodeForRemoval(maxPlanMemory, groupMetadata, nodes)
+	chosenNodes, err := a.chooseNodeForRemoval(maxPlanMemory, pool, nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +111,7 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []provision.Node) (*sca
 			Reason:   fmt.Sprintf("containers can be distributed in only %d nodes", len(nodes)-len(chosenNodes)),
 		}, nil
 	}
-	memoryData, err := a.nodesMemoryData(nodes)
+	memoryData, err := a.nodesMemoryData(pool, nodes)
 	if err != nil {
 		return nil, err
 	}

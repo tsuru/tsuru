@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/iaas"
@@ -554,15 +555,45 @@ func chooseMetadataFromNodes(modelNodes []provision.Node) (map[string]string, er
 	return baseMetadata, nil
 }
 
-func unitsGapInNodes(nodes []provision.Node) (int, int, error) {
+func preciseUnitsByNode(pool string, nodes []provision.Node) (map[string][]provision.Unit, error) {
+	appsInPool, err := app.List(&app.Filter{
+		Pool: pool,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range appsInPool {
+		var locked bool
+		locked, err = app.AcquireApplicationLock(a.Name, app.InternalAppName, "node auto scale")
+		if err != nil {
+			return nil, err
+		}
+		if !locked {
+			return nil, errAppNotLocked{app: a.Name}
+		}
+		defer app.ReleaseApplicationLock(a.Name)
+	}
+	unitsByNode := map[string][]provision.Unit{}
+	for _, node := range nodes {
+		var nodeUnits []provision.Unit
+		nodeUnits, err = node.Units()
+		if err != nil {
+			return nil, err
+		}
+		unitsByNode[node.Address()] = nodeUnits
+	}
+	return unitsByNode, err
+}
+
+func unitsGapInNodes(pool string, nodes []provision.Node) (int, int, error) {
 	maxCount := 0
 	minCount := -1
 	totalCount := 0
-	for _, node := range nodes {
-		units, err := node.Units()
-		if err != nil {
-			return 0, 0, err
-		}
+	unitsByNode, err := preciseUnitsByNode(pool, nodes)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, units := range unitsByNode {
 		unitCount := len(units)
 		if unitCount > maxCount {
 			maxCount = unitCount
