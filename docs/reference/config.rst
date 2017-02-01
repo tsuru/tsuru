@@ -793,6 +793,12 @@ Maximum amount of threads to be created when starting new containers, so tsuru
 doesn't start too much threads in the process of starting 1000 units, for
 instance. Defaults to 0 which means unlimited.
 
+docker:nodecontainer:max-workers
+++++++++++++++++++++++++++++++++
+
+Same as ``docker:max-workers`` but applies only to when starting new node containers.
+Defaults to 0 which means unlimited.
+
 .. _config_docker_router:
 
 docker:router
@@ -1071,7 +1077,7 @@ above.
 docker:sharedfs:app-isolation
 +++++++++++++++++++++++++++++
 
-If true, the ``hostdir`` will have subdirectories for each app. All apps will still have access to a shared mount point, however they will be in completely isolated subdirectories. 
+If true, the ``hostdir`` will have subdirectories for each app. All apps will still have access to a shared mount point, however they will be in completely isolated subdirectories.
 
 .. _iaas_configuration:
 
