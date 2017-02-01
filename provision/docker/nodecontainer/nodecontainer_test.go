@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -196,6 +197,48 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
+}
+
+func (s *S) TestEnsureContainersStartedMaxWorkers(c *check.C) {
+	config.Set("docker:nodecontainer:max-workers", 1)
+	defer config.Unset("docker:nodecontainer:max-workers")
+	c1 := nodecontainer.NodeContainerConfig{Name: "bs", Config: docker.Config{Image: "bsimg"}}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	p, err := dockertest.StartMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	done := make(chan struct{})
+	begin := make(chan struct{}, 2)
+	server := p.Servers()[0]
+	var calls int
+	server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		begin <- struct{}{}
+		server.DefaultHandler().ServeHTTP(w, r)
+		<-done
+	}))
+	server2 := p.Servers()[1]
+	server2.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		begin <- struct{}{}
+		server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	defer p.Destroy()
+	go ensureContainersStarted(p, nil, true, nil)
+	<-begin
+	select {
+	case <-begin:
+		c.Fatal("second call should only happen after first finishes")
+	case <-time.After(200 * time.Millisecond):
+	}
+	c.Assert(calls, check.Equals, 1)
+	done <- struct{}{}
+	select {
+	case <-time.After(1 * time.Second):
+		c.Fatal("second call should been triggered")
+	case <-begin:
+	}
+	c.Assert(calls, check.Equals, 2)
 }
 
 func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {

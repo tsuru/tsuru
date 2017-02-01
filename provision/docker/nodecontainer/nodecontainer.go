@@ -15,6 +15,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -68,11 +69,17 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 			return err
 		}
 	}
+	workers, _ := config.GetInt("docker:nodecontainer:max-workers")
+	if workers == 0 {
+		workers = len(nodes)
+	}
+	step := len(nodes) / workers
+	if len(nodes)%workers != 0 {
+		step++
+	}
 	errChan := make(chan error, len(nodes)*len(names))
-	wg := sync.WaitGroup{}
 	log.Debugf("[node containers] recreating %d containers", len(nodes)*len(names))
 	recreateContainer := func(node *cluster.Node, confName string) {
-		defer wg.Done()
 		pool := node.Metadata["pool"]
 		containerConfig, confErr := nodecontainer.LoadNodeContainer(pool, confName)
 		if confErr != nil {
@@ -90,15 +97,22 @@ func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, na
 			errChan <- log.WrapError(confErr)
 		}
 	}
-	for i := range nodes {
-		wg.Add(1)
-		go func(node *cluster.Node) {
-			defer wg.Done()
+	wg := sync.WaitGroup{}
+	splitWork := func(start, end int) {
+		for i := start; i < end; i++ {
 			for j := range names {
-				wg.Add(1)
-				go recreateContainer(node, names[j])
+				recreateContainer(&nodes[i], names[j])
 			}
-		}(&nodes[i])
+		}
+		wg.Done()
+	}
+	for i := 0; i < len(nodes); i += step {
+		end := i + step
+		if end > len(nodes) {
+			end = len(nodes)
+		}
+		wg.Add(1)
+		go splitWork(i, end)
 	}
 	wg.Wait()
 	close(errChan)
