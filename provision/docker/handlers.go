@@ -30,144 +30,17 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
-	"gopkg.in/mgo.v2"
 )
 
 func init() {
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AuthorizationRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AuthorizationRequiredHandler(healingHistoryHandler))
-	api.RegisterHandler("/docker/autoscale", "GET", api.AuthorizationRequiredHandler(autoScaleHistoryHandler))
-	api.RegisterHandler("/docker/autoscale/config", "GET", api.AuthorizationRequiredHandler(autoScaleGetConfig))
-	api.RegisterHandler("/docker/autoscale/run", "POST", api.AuthorizationRequiredHandler(autoScaleRunHandler))
-	api.RegisterHandler("/docker/autoscale/rules", "GET", api.AuthorizationRequiredHandler(autoScaleListRules))
-	api.RegisterHandler("/docker/autoscale/rules", "POST", api.AuthorizationRequiredHandler(autoScaleSetRule))
-	api.RegisterHandler("/docker/autoscale/rules", "DELETE", api.AuthorizationRequiredHandler(autoScaleDeleteRule))
-	api.RegisterHandler("/docker/autoscale/rules/{id}", "DELETE", api.AuthorizationRequiredHandler(autoScaleDeleteRule))
 	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AuthorizationRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AuthorizationRequiredHandler(bsEnvSetHandler))
 	api.RegisterHandler("/docker/bs", "GET", api.AuthorizationRequiredHandler(bsConfigGetHandler))
 	api.RegisterHandler("/docker/logs", "GET", api.AuthorizationRequiredHandler(logsConfigGetHandler))
 	api.RegisterHandler("/docker/logs", "POST", api.AuthorizationRequiredHandler(logsConfigSetHandler))
-}
-
-// title: get autoscale config
-// path: /docker/autoscale/config
-// method: GET
-// produce: application/json
-// responses:
-//   200: Ok
-//   401: Unauthorized
-func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedGetConfig := permission.Check(t, permission.PermNodeAutoscaleRead)
-	if !allowedGetConfig {
-		return permission.ErrUnauthorized
-	}
-	config := mainDockerProvisioner.initAutoScaleConfig()
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(config)
-}
-
-// title: autoscale rules list
-// path: /docker/autoscale/rules
-// method: GET
-// produce: application/json
-// responses:
-//   200: Ok
-//   204: No content
-//   401: Unauthorized
-func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	allowedListRule := permission.Check(t, permission.PermNodeAutoscaleRead)
-	if !allowedListRule {
-		return permission.ErrUnauthorized
-	}
-	rules, err := listAutoScaleRules()
-	if err != nil {
-		return err
-	}
-	if len(rules) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
-	return json.NewEncoder(w).Encode(&rules)
-}
-
-// title: autoscale set rule
-// path: /docker/autoscale/rules
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowedSetRule := permission.Check(t, permission.PermNodeAutoscaleUpdate)
-	if !allowedSetRule {
-		return permission.ErrUnauthorized
-	}
-	err = r.ParseForm()
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	var rule autoScaleRule
-	dec := form.NewDecoder(nil)
-	dec.IgnoreUnknownKeys(true)
-	err = dec.DecodeValues(&rule, r.Form)
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	var ctxs []permission.PermissionContext
-	if rule.MetadataFilter != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, rule.MetadataFilter))
-	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: rule.MetadataFilter},
-		Kind:       permission.PermNodeAutoscaleUpdate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	return rule.update()
-}
-
-// title: delete autoscale rule
-// path: /docker/autoscale/rules/{id}
-// method: DELETE
-// responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Not found
-func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
-	allowedDeleteRule := permission.Check(t, permission.PermNodeAutoscale)
-	if !allowedDeleteRule {
-		return permission.ErrUnauthorized
-	}
-	rulePool := r.URL.Query().Get(":id")
-	var ctxs []permission.PermissionContext
-	if rulePool != "" {
-		ctxs = append(ctxs, permission.Context(permission.CtxPool, rulePool))
-	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: rulePool},
-		Kind:       permission.PermNodeAutoscaleDelete,
-		Owner:      t,
-		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	err = deleteAutoScaleRule(rulePool)
-	if err == mgo.ErrNotFound {
-		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: "rule not found"}
-	}
-	return nil
 }
 
 // title: move container
@@ -338,68 +211,6 @@ func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(history)
-}
-
-// title: list autoscale history
-// path: /docker/healing
-// method: GET
-// produce: application/json
-// responses:
-//   200: Ok
-//   204: No content
-//   401: Unauthorized
-func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermNodeAutoscale) {
-		return permission.ErrUnauthorized
-	}
-	skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	history, err := listAutoScaleEvents(skip, limit)
-	if err != nil {
-		return err
-	}
-	if len(history) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(&history)
-}
-
-// title: autoscale run
-// path: /docker/autoscale/run
-// method: POST
-// produce: application/x-json-stream
-// responses:
-//   200: Ok
-//   401: Unauthorized
-func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	r.ParseForm()
-	if !permission.Check(t, permission.PermNodeAutoscaleUpdateRun) {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool},
-		Kind:        permission.PermNodeAutoscaleUpdateRun,
-		Owner:       t,
-		CustomData:  event.FormToCustomData(r.Form),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	w.Header().Set("Content-Type", "application/x-json-stream")
-	w.WriteHeader(http.StatusOK)
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(keepAliveWriter),
-	}
-	autoScaleConfig := mainDockerProvisioner.initAutoScaleConfig()
-	autoScaleConfig.writer = writer
-	return autoScaleConfig.runOnce()
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

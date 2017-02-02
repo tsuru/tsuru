@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -244,6 +245,12 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	config.Set("docker:auto-scale:enabled", true)
 	defer config.Unset("docker:auto-scale:enabled")
+	autoscale.Initialize()
+	defer func() {
+		cur, err := autoscale.CurrentConfig()
+		c.Assert(err, check.IsNil)
+		cur.Shutdown()
+	}()
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
@@ -328,10 +335,16 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool(c *check.C) {
 	config.Set("docker:auto-scale:enabled", true)
 	defer config.Unset("docker:auto-scale:enabled")
-	rule := autoScaleRule{MetadataFilter: "mypool", Enabled: false}
-	err := rule.update()
+	autoscale.Initialize()
+	defer func() {
+		cur, err := autoscale.CurrentConfig()
+		c.Assert(err, check.IsNil)
+		cur.Shutdown()
+	}()
+	rule := autoscale.Rule{MetadataFilter: "mypool", Enabled: false}
+	err := rule.Update()
 	c.Assert(err, check.IsNil)
-	defer deleteAutoScaleRule("mypool")
+	defer autoscale.DeleteRule("mypool")
 	logBuf := bytes.NewBuffer(nil)
 	log.SetLogger(log.NewWriterLogger(logBuf, false))
 	defer log.SetLogger(nil)
