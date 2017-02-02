@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
+	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/permission"
@@ -118,6 +119,10 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
+	cfg, _ := autoscale.CurrentConfig()
+	if cfg != nil {
+		cfg.Shutdown()
+	}
 	s.provisioner.Reset()
 	s.conn.Close()
 	s.logConn.Close()

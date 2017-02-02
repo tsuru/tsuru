@@ -24,6 +24,7 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/saml"
+	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/healer"
@@ -284,6 +285,14 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "POST", "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.2", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
 
+	m.Add("1.3", "GET", "/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
+	m.Add("1.3", "GET", "/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
+	m.Add("1.3", "POST", "/autoscale/run", AuthorizationRequiredHandler(autoScaleRunHandler))
+	m.Add("1.3", "GET", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleListRules))
+	m.Add("1.3", "POST", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
+	m.Add("1.3", "DELETE", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
+	m.Add("1.3", "DELETE", "/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
+
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
@@ -305,6 +314,14 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "GET", "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.0", "POST", "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.0", "DELETE", "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
+
+	m.Add("1.0", "GET", "/docker/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
+	m.Add("1.0", "GET", "/docker/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
+	m.Add("1.0", "POST", "/docker/autoscale/run", AuthorizationRequiredHandler(autoScaleRunHandler))
+	m.Add("1.0", "GET", "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleListRules))
+	m.Add("1.0", "POST", "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
+	m.Add("1.0", "DELETE", "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
+	m.Add("1.0", "DELETE", "/docker/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
@@ -442,6 +459,10 @@ func startServer(handler http.Handler) {
 		fatal(err)
 	}
 	_, err = healer.Initialize()
+	if err != nil {
+		fatal(err)
+	}
+	err = autoscale.Initialize()
 	if err != nil {
 		fatal(err)
 	}
