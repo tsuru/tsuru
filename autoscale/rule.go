@@ -15,7 +15,7 @@ import (
 	"gopkg.in/mgo.v2"
 )
 
-type autoScaleRule struct {
+type Rule struct {
 	MetadataFilter    string `bson:"_id"`
 	Error             string `bson:"-"`
 	MaxContainerCount int
@@ -25,13 +25,13 @@ type autoScaleRule struct {
 	PreventRebalance  bool
 }
 
-type autoScaleRuleList []autoScaleRule
+type ruleList []Rule
 
-func (l autoScaleRuleList) Len() int           { return len(l) }
-func (l autoScaleRuleList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l autoScaleRuleList) Less(i, j int) bool { return l[i].MetadataFilter < l[j].MetadataFilter }
+func (l ruleList) Len() int           { return len(l) }
+func (l ruleList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l ruleList) Less(i, j int) bool { return l[i].MetadataFilter < l[j].MetadataFilter }
 
-func (r *autoScaleRule) normalize() error {
+func (r *Rule) normalize() error {
 	if r.ScaleDownRatio == 0.0 {
 		r.ScaleDownRatio = 1.333
 	} else if r.ScaleDownRatio <= 1.0 {
@@ -52,7 +52,7 @@ func (r *autoScaleRule) normalize() error {
 	return nil
 }
 
-func (r *autoScaleRule) Update() error {
+func (r *Rule) Update() error {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return err
@@ -73,18 +73,18 @@ func autoScaleRuleCollection() (*storage.Collection, error) {
 	}
 	name, err := config.GetString("docker:collection")
 	if err != nil {
-		return nil, err
+		name = "docker"
 	}
 	return conn.Collection(fmt.Sprintf("%s_auto_scale_rule", name)), nil
 }
 
-func ListAutoScaleRules() ([]autoScaleRule, error) {
+func ListRules() ([]Rule, error) {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return nil, err
 	}
 	defer coll.Close()
-	var rules []autoScaleRule
+	var rules []Rule
 	err = coll.Find(nil).All(&rules)
 	if err != nil {
 		return nil, err
@@ -100,11 +100,11 @@ func ListAutoScaleRules() ([]autoScaleRule, error) {
 		legacyRule.normalize()
 		rules = append(rules, *legacyRule)
 	}
-	sort.Sort(autoScaleRuleList(rules))
+	sort.Sort(ruleList(rules))
 	return rules, err
 }
 
-func DeleteAutoScaleRule(metadataFilter string) error {
+func DeleteRule(metadataFilter string) error {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return err
@@ -113,12 +113,12 @@ func DeleteAutoScaleRule(metadataFilter string) error {
 	return coll.RemoveId(metadataFilter)
 }
 
-func legacyAutoScaleRule() *autoScaleRule {
+func legacyAutoScaleRule() *Rule {
 	metadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
 	maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
 	scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
 	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
-	return &autoScaleRule{
+	return &Rule{
 		MaxContainerCount: maxContainerCount,
 		MetadataFilter:    metadataFilter,
 		ScaleDownRatio:    float32(scaleDownRatio),
@@ -127,13 +127,13 @@ func legacyAutoScaleRule() *autoScaleRule {
 	}
 }
 
-func autoScaleRuleForMetadata(metadataFilter string) (*autoScaleRule, error) {
+func AutoScaleRuleForMetadata(metadataFilter string) (*Rule, error) {
 	coll, err := autoScaleRuleCollection()
 	if err != nil {
 		return nil, err
 	}
 	defer coll.Close()
-	var rule autoScaleRule
+	var rule Rule
 	err = coll.FindId(metadataFilter).One(&rule)
 	if err == mgo.ErrNotFound {
 		legacyRule := legacyAutoScaleRule()

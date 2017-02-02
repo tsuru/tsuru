@@ -14,8 +14,8 @@ import (
 )
 
 type memoryScaler struct {
-	*AutoScaleConfig
-	rule *autoScaleRule
+	*Config
+	rule *Rule
 }
 
 type nodeMemoryData struct {
@@ -82,7 +82,7 @@ func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, pool string, no
 	return chosenNodes, nil
 }
 
-func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*scalerResult, error) {
+func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*ScalerResult, error) {
 	plans, err := app.PlansList()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't list plans")
@@ -106,7 +106,7 @@ func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*scalerResult
 		return nil, err
 	}
 	if chosenNodes != nil {
-		return &scalerResult{
+		return &ScalerResult{
 			ToRemove: nodesToSpec(chosenNodes),
 			Reason:   fmt.Sprintf("containers can be distributed in only %d nodes", len(nodes)-len(chosenNodes)),
 		}, nil
@@ -130,13 +130,13 @@ func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*scalerResult
 		}
 	}
 	if canFitMax {
-		return &scalerResult{}, nil
+		return &ScalerResult{}, nil
 	}
 	nodesToAdd := int((totalReserved + maxPlanMemory) / totalMem)
 	if nodesToAdd == 0 {
-		return &scalerResult{}, nil
+		return &ScalerResult{}, nil
 	}
-	return &scalerResult{
+	return &ScalerResult{
 		ToAdd:  nodesToAdd,
 		Reason: fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory),
 	}, nil

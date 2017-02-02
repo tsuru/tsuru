@@ -17,7 +17,7 @@ const (
 	scaleActionRebalance = "rebalance"
 )
 
-type autoScaleEvent struct {
+type Event struct {
 	ID            interface{} `bson:"_id"`
 	MetadataValue string
 	Action        string // scaleActionAdd, scaleActionRemove, scaleActionRebalance
@@ -31,13 +31,13 @@ type autoScaleEvent struct {
 	Nodes         []provision.NodeSpec
 }
 
-func toAutoScaleEvent(evt *event.Event) (autoScaleEvent, error) {
-	var data evtCustomData
+func toAutoScaleEvent(evt *event.Event) (Event, error) {
+	var data EventCustomData
 	err := evt.EndData(&data)
 	if err != nil {
-		return autoScaleEvent{}, err
+		return Event{}, err
 	}
-	autoScaleEvt := autoScaleEvent{
+	autoScaleEvt := Event{
 		ID:            evt.UniqueID,
 		MetadataValue: evt.Target.Value,
 		Nodes:         data.Nodes,
@@ -60,16 +60,16 @@ func toAutoScaleEvent(evt *event.Event) (autoScaleEvent, error) {
 	return autoScaleEvt, nil
 }
 
-func ListAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
+func ListAutoScaleEvents(skip, limit int) ([]Event, error) {
 	evts, err := event.List(&event.Filter{
 		Skip:     skip,
 		Limit:    limit,
-		KindName: autoScaleEventKind,
+		KindName: EventKind,
 	})
 	if err != nil {
 		return nil, err
 	}
-	asEvts := make([]autoScaleEvent, len(evts))
+	asEvts := make([]Event, len(evts))
 	for i := range evts {
 		asEvts[i], err = toAutoScaleEvent(&evts[i])
 		if err != nil {

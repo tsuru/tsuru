@@ -42,7 +42,6 @@ type S struct {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "autoscale_tests_s")
-	config.Set("docker:collection", "docker")
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -74,7 +73,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n1:1",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -104,9 +103,7 @@ func (s *S) TearDownTest(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -120,7 +117,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(u1, check.HasLen, 2)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -156,9 +153,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
 	defer config.Unset("docker:auto-scale:prevent-rebalance")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -175,7 +170,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
-	a := AutoScaleConfig{
+	a := Config{
 		done: make(chan bool),
 	}
 	err := a.runOnce()
@@ -192,15 +187,13 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -214,7 +207,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 		"_id": removedAddr,
 	}}
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       0,
@@ -230,9 +223,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -242,7 +233,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(nodes[2].Address(), check.Equals, "http://n3:3")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -265,9 +256,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 5, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -277,7 +266,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(nodes[2].Address(), check.Equals, "http://n3:3")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -300,9 +289,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 3, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -311,7 +298,7 @@ func (s *S) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -333,9 +320,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	s.p.PrepareFailure("AddNode:http://n3:3", errors.New("error adding node"))
 	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
@@ -344,7 +329,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -366,7 +351,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -374,16 +359,14 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       0,
@@ -413,9 +396,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
@@ -431,7 +412,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n1:1",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -464,7 +445,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
-			a := AutoScaleConfig{
+			a := Config{
 				done: make(chan bool),
 			}
 			defer wg.Done()
@@ -479,7 +460,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -502,17 +483,15 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes, check.HasLen, 2, check.Commentf("log: %s", s.logBuf.String()))
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -547,9 +526,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 9, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
@@ -558,7 +535,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(nodes[2].Address(), check.Equals, "http://n3:3")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       2,
@@ -586,22 +563,20 @@ func (s *S) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *ch
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 1},
@@ -617,9 +592,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
@@ -627,7 +600,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
 	c.Assert(nodes[1].Address(), check.Equals, "http://n2:2")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -656,13 +629,11 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf, check.Matches, `(?s).*error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659.*`)
 	c.Assert(eventtest.EventDesc{
-		Target:       event.Target{Type: "pool", Value: "pool1"},
+		Target:       event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:         "autoscale",
 		ErrorMatches: `error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659`,
 	}, eventtest.HasEvent)
@@ -676,7 +647,7 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -686,12 +657,10 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 1},
@@ -713,7 +682,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -722,7 +691,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n3:3",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -734,12 +703,10 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 2},
@@ -763,7 +730,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -773,12 +740,10 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 1},
@@ -802,7 +767,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -811,7 +776,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	err = s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://n3:3",
 		Metadata: map[string]string{
-			"pool":     "pool1",
+			provision.PoolMetadataName: "pool1",
 			"iaas":     "my-scale-iaas",
 			"totalMem": "25165824",
 		},
@@ -823,12 +788,10 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toremove":    bson.M{"$size": 2},
@@ -871,9 +834,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
@@ -889,10 +850,8 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
 	s.logBuf.Reset()
+	a := newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
 	nodes, err := s.p.ListNodes(nil)
@@ -912,9 +871,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
 	nodes, err := s.p.ListNodes(nil)
@@ -931,22 +888,22 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	err := s.p.AddNode(provision.AddNodeOptions{
 		Address: "http://nx:9",
 		Metadata: map[string]string{
-			"iaas":     "my-scale-iaas",
-			"pool":     "pool2",
-			"totalMem": "25165824",
+			"iaas": "my-scale-iaas",
+			provision.PoolMetadataName: "pool2",
+			"totalMem":                 "25165824",
 		},
 	})
 	c.Assert(err, check.IsNil)
 	coll, err := autoScaleRuleCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	rule1 := autoScaleRule{
+	rule1 := Rule{
 		MetadataFilter:    "pool1",
 		Enabled:           true,
 		MaxContainerCount: 2,
 		ScaleDownRatio:    1.333,
 	}
-	rule2 := autoScaleRule{
+	rule2 := Rule{
 		MetadataFilter: "pool2",
 		Enabled:        true,
 		ScaleDownRatio: 1.333,
@@ -972,16 +929,14 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(appInstance2, 6, "web", nil, "nx:9")
 	c.Assert(err, check.IsNil)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 4, check.Commentf("log: %s", s.logBuf.String()))
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool2"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool2"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -991,7 +946,7 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: "pool", Value: "pool1"},
+		Target: event.Target{Type: provision.PoolMetadataName, Value: "pool1"},
 		Kind:   "autoscale",
 		EndCustomData: map[string]interface{}{
 			"result.toadd":       1,
@@ -1004,30 +959,24 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 0)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*invalid rule, either memory information or max container count must be set.*`)
 	config.Set("docker:auto-scale:max-container-count", 10)
 	config.Set("docker:auto-scale:scale-down-ratio", 0.9)
 	defer config.Unset("docker:auto-scale:scale-down-ratio")
-	a = AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a = newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*scale down ratio needs to be greater than 1.0, got .+`)
 }
 
 func (s *S) TestAutoScaleConfigRunDefaultValues(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 10)
-	a := AutoScaleConfig{
-		done: make(chan bool),
-	}
+	a := newConfig()
 	a.runOnce()
 	c.Assert(a.RunInterval, check.Equals, 1*time.Hour)
 	c.Assert(a.WaitTimeNewMachine, check.Equals, 5*time.Minute)
-	rule, err := autoScaleRuleForMetadata("")
+	rule, err := AutoScaleRuleForMetadata("")
 	c.Assert(err, check.IsNil)
 	c.Assert(rule.ScaleDownRatio > 1.332 && rule.ScaleDownRatio < 1.334, check.Equals, true)
 }
@@ -1036,7 +985,7 @@ func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 10)
 	config.Set("docker:auto-scale:scale-down-ratio", 1.5)
 	defer config.Unset("docker:auto-scale:scale-down-ratio")
-	a := AutoScaleConfig{
+	a := Config{
 		done:               make(chan bool),
 		RunInterval:        10 * time.Minute,
 		WaitTimeNewMachine: 7 * time.Minute,
@@ -1044,7 +993,7 @@ func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
 	a.runOnce()
 	c.Assert(a.RunInterval, check.Equals, 10*time.Minute)
 	c.Assert(a.WaitTimeNewMachine, check.Equals, 7*time.Minute)
-	rule, err := autoScaleRuleForMetadata("")
+	rule, err := AutoScaleRuleForMetadata("")
 	c.Assert(err, check.IsNil)
 	c.Assert(rule.ScaleDownRatio > 1.49 && rule.ScaleDownRatio < 1.51, check.Equals, true)
 }
@@ -1052,15 +1001,15 @@ func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
 func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
 	nodes := []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool2",
+			provision.PoolMetadataName: "pool2",
 			"zone": "zone2",
 		}},
 	}
@@ -1075,11 +1024,11 @@ func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
 	c.Assert(ok, check.Equals, false)
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 	}
@@ -1091,142 +1040,70 @@ func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestSplitMetadata(c *check.C) {
-	var err error
-	makeNode := func(addr string, metadata map[string]string) provision.Node {
-		return &provisiontest.FakeNode{Addr: addr, Meta: metadata}
-	}
-	params := []provision.Node{
-		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1"}),
-		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2"}),
-		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n3"}),
-		makeNode("n4", map[string]string{"1": "a", "2": "z3", "3": "n3"}),
-	}
-	exclusive, common, err := splitMetadata(params)
-	c.Assert(err, check.IsNil)
-	c.Assert(exclusive, check.DeepEquals, metaWithFrequencyList{
-		{metadata: map[string]string{"2": "z1", "3": "n1"}, nodes: []provision.Node{params[0]}},
-		{metadata: map[string]string{"2": "z2", "3": "n2"}, nodes: []provision.Node{params[1]}},
-		{metadata: map[string]string{"2": "z3", "3": "n3"}, nodes: []provision.Node{params[2], params[3]}},
-	})
-	c.Assert(common, check.DeepEquals, map[string]string{
-		"1": "a",
-	})
-	params = []provision.Node{
-		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
-		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
-	}
-	exclusive, common, err = splitMetadata(params)
-	c.Assert(err, check.IsNil)
-	c.Assert(exclusive, check.DeepEquals, metaWithFrequencyList{
-		{metadata: map[string]string{"2": "z1", "3": "n1"}, nodes: []provision.Node{params[0]}},
-		{metadata: map[string]string{"2": "z2", "3": "n2"}, nodes: []provision.Node{params[1]}},
-	})
-	c.Assert(common, check.DeepEquals, map[string]string{
-		"1": "a",
-		"4": "b",
-	})
-	params = []provision.Node{
-		makeNode("n1", map[string]string{"1": "a", "2": "b"}),
-		makeNode("n2", map[string]string{"1": "a", "2": "b"}),
-	}
-	exclusive, common, err = splitMetadata(params)
-	c.Assert(err, check.IsNil)
-	c.Assert(exclusive, check.IsNil)
-	c.Assert(common, check.DeepEquals, map[string]string{
-		"1": "a",
-		"2": "b",
-	})
-	exclusive, common, err = splitMetadata([]provision.Node{})
-	c.Assert(err, check.IsNil)
-	c.Assert(exclusive, check.IsNil)
-	c.Assert(common, check.DeepEquals, map[string]string{})
-	params = []provision.Node{
-		makeNode("n1", map[string]string{"1": "a"}),
-		makeNode("n2", map[string]string{}),
-	}
-	_, _, err = splitMetadata(params)
-	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
-	params = []provision.Node{
-		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
-		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
-		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n3", "4": "c"}),
-	}
-	_, _, err = splitMetadata(params)
-	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
-	params = []provision.Node{
-		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
-		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
-		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n1", "4": "b"}),
-	}
-	_, _, err = splitMetadata(params)
-	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
-}
-
 func (s *S) TestChooseMetadataFromNodes(c *check.C) {
 	nodes := []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 	}
 	metadata, err := chooseMetadataFromNodes(nodes)
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.DeepEquals, map[string]string{
-		"pool": "pool1",
+		provision.PoolMetadataName: "pool1",
 		"zone": "zone1",
 	})
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone2",
 		}},
 	}
 	metadata, err = chooseMetadataFromNodes(nodes)
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.DeepEquals, map[string]string{
-		"pool": "pool1",
+		provision.PoolMetadataName: "pool1",
 		"zone": "zone2",
 	})
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool2",
+			provision.PoolMetadataName: "pool2",
 			"zone": "zone2",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool2",
+			provision.PoolMetadataName: "pool2",
 			"zone": "zone2",
 		}},
 	}
 	metadata, err = chooseMetadataFromNodes(nodes)
 	c.Assert(err, check.IsNil)
 	c.Assert(metadata, check.DeepEquals, map[string]string{
-		"pool": "pool1",
+		provision.PoolMetadataName: "pool1",
 		"zone": "zone1",
 	})
 	nodes = []provision.Node{
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool1",
+			provision.PoolMetadataName: "pool1",
 			"zone": "zone1",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool2",
+			provision.PoolMetadataName: "pool2",
 			"zone": "zone2",
 		}},
 		&provisiontest.FakeNode{Addr: "", Meta: map[string]string{
-			"pool": "pool2",
+			provision.PoolMetadataName: "pool2",
 			"zone": "zone3",
 		}},
 	}

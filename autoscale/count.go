@@ -11,11 +11,11 @@ import (
 )
 
 type countScaler struct {
-	*AutoScaleConfig
-	rule *autoScaleRule
+	*Config
+	rule *Rule
 }
 
-func (a *countScaler) scale(pool string, nodes []provision.Node) (*scalerResult, error) {
+func (a *countScaler) scale(pool string, nodes []provision.Node) (*ScalerResult, error) {
 	totalCount, _, err := unitsGapInNodes(pool, nodes)
 	if err != nil {
 		return nil, err
@@ -28,21 +28,21 @@ func (a *countScaler) scale(pool string, nodes []provision.Node) (*scalerResult,
 		chosenNodes := chooseNodeForRemoval(nodes, toRemoveCount)
 		if len(chosenNodes) == 0 {
 			a.logDebug("would remove any node but can't due to metadata restrictions")
-			return &scalerResult{}, nil
+			return &ScalerResult{}, nil
 		}
-		return &scalerResult{
+		return &ScalerResult{
 			ToRemove: nodesToSpec(chosenNodes),
 			Reason:   reasonMsg,
 		}, nil
 	}
 	if freeSlots >= 0 {
-		return &scalerResult{}, nil
+		return &ScalerResult{}, nil
 	}
 	nodesToAdd := -freeSlots / a.rule.MaxContainerCount
 	if freeSlots%a.rule.MaxContainerCount != 0 {
 		nodesToAdd++
 	}
-	return &scalerResult{
+	return &ScalerResult{
 		ToAdd:  nodesToAdd,
 		Reason: reasonMsg,
 	}, nil

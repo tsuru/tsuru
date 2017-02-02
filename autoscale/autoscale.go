@@ -7,7 +7,6 @@ package autoscale
 import (
 	"fmt"
 	"io"
-	"sort"
 	"sync"
 	"time"
 
@@ -27,13 +26,12 @@ import (
 )
 
 const (
-	poolMetadataName   = "pool"
-	autoScaleEventKind = "autoscale"
+	EventKind = "autoscale"
 )
 
-var globalConfig *AutoScaleConfig
+var globalConfig *Config
 
-type AutoScaleConfig struct {
+type Config struct {
 	WaitTimeNewMachine  time.Duration
 	RunInterval         time.Duration
 	TotalMemoryMetadata string
@@ -42,31 +40,48 @@ type AutoScaleConfig struct {
 	writer              io.Writer
 }
 
-func BaseConfig() (AutoScaleConfig, error) {
+func CurrentConfig() (*Config, error) {
 	if globalConfig == nil {
-		return AutoScaleConfig{}, errors.New("autoscale not initialized")
+		return nil, errors.New("autoscale not initialized")
 	}
-	return *globalConfig, nil
+	return globalConfig, nil
 }
 
 func Initialize() error {
-	enabled, _ := config.GetBool("docker:auto-scale:enabled")
-	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
-	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
-	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
-	globalConfig = &AutoScaleConfig{
-		TotalMemoryMetadata: totalMemoryMetadata,
-		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
-		RunInterval:         time.Duration(runInterval) * time.Second,
-		Enabled:             enabled,
-		done:                make(chan bool),
-	}
+	globalConfig = newConfig()
 	if !globalConfig.Enabled {
 		return nil
 	}
 	shutdown.Register(globalConfig)
 	go globalConfig.run()
 	return nil
+}
+
+func RunOnce(w io.Writer) error {
+	conf := newConfig()
+	conf.writer = w
+	return conf.runOnce()
+}
+
+func newConfig() *Config {
+	enabled, _ := config.GetBool("docker:auto-scale:enabled")
+	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
+	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
+	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	c := &Config{
+		TotalMemoryMetadata: totalMemoryMetadata,
+		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
+		RunInterval:         time.Duration(runInterval) * time.Second,
+		Enabled:             enabled,
+		done:                make(chan bool),
+	}
+	if c.RunInterval == 0 {
+		c.RunInterval = time.Hour
+	}
+	if c.WaitTimeNewMachine == 0 {
+		c.WaitTimeNewMachine = 5 * time.Minute
+	}
+	return c
 }
 
 type errAppNotLocked struct {
@@ -77,57 +92,33 @@ func (e errAppNotLocked) Error() string {
 	return fmt.Sprintf("unable to lock app %q", e.app)
 }
 
-type scalerResult struct {
+type ScalerResult struct {
 	ToAdd       int
 	ToRemove    []provision.NodeSpec
 	ToRebalance bool
 	Reason      string
 }
 
-func (r *scalerResult) IsRebalanceOnly() bool {
+func (r *ScalerResult) IsRebalanceOnly() bool {
 	return r.ToAdd == 0 && len(r.ToRemove) == 0 && r.ToRebalance
 }
 
-func (r *scalerResult) NoAction() bool {
+func (r *ScalerResult) NoAction() bool {
 	return r.ToAdd == 0 && len(r.ToRemove) == 0 && !r.ToRebalance
 }
 
 type autoScaler interface {
-	scale(pool string, nodes []provision.Node) (*scalerResult, error)
+	scale(pool string, nodes []provision.Node) (*ScalerResult, error)
 }
 
-type metaWithFrequency struct {
-	metadata map[string]string
-	nodes    []provision.Node
-}
-
-type metaWithFrequencyList []metaWithFrequency
-
-func (l metaWithFrequencyList) Len() int           { return len(l) }
-func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l metaWithFrequencyList) Less(i, j int) bool { return len(l[i].nodes) < len(l[j].nodes) }
-
-func (a *AutoScaleConfig) initialize() {
-	if a.TotalMemoryMetadata == "" {
-		a.TotalMemoryMetadata, _ = config.GetString("docker:scheduler:total-memory-metadata")
-	}
-	if a.RunInterval == 0 {
-		a.RunInterval = time.Hour
-	}
-	if a.WaitTimeNewMachine == 0 {
-		a.WaitTimeNewMachine = 5 * time.Minute
-	}
-}
-
-func (a *AutoScaleConfig) scalerForRule(rule *autoScaleRule) (autoScaler, error) {
+func (a *Config) scalerForRule(rule *Rule) (autoScaler, error) {
 	if rule.MaxContainerCount > 0 {
-		return &countScaler{AutoScaleConfig: a, rule: rule}, nil
+		return &countScaler{Config: a, rule: rule}, nil
 	}
-	return &memoryScaler{AutoScaleConfig: a, rule: rule}, nil
+	return &memoryScaler{Config: a, rule: rule}, nil
 }
 
-func (a *AutoScaleConfig) run() error {
-	a.initialize()
+func (a *Config) run() error {
 	for {
 		err := a.runScaler()
 		if err != nil {
@@ -142,18 +133,17 @@ func (a *AutoScaleConfig) run() error {
 	}
 }
 
-func (a *AutoScaleConfig) logError(msg string, params ...interface{}) {
+func (a *Config) logError(msg string, params ...interface{}) {
 	msg = fmt.Sprintf("[node autoscale] %s", msg)
 	log.Errorf(msg, params...)
 }
 
-func (a *AutoScaleConfig) logDebug(msg string, params ...interface{}) {
+func (a *Config) logDebug(msg string, params ...interface{}) {
 	msg = fmt.Sprintf("[node autoscale] %s", msg)
 	log.Debugf(msg, params...)
 }
 
-func (a *AutoScaleConfig) runOnce() error {
-	a.initialize()
+func (a *Config) runOnce() error {
 	err := a.runScaler()
 	if err != nil {
 		a.logError(err.Error())
@@ -161,19 +151,22 @@ func (a *AutoScaleConfig) runOnce() error {
 	return err
 }
 
-func (a *AutoScaleConfig) stop() {
+func (a *Config) stop() {
 	a.done <- true
 }
 
-func (a *AutoScaleConfig) Shutdown() {
-	a.stop()
+func (a *Config) Shutdown() {
+	if a.Enabled {
+		a.stop()
+		a.Enabled = false
+	}
 }
 
-func (a *AutoScaleConfig) String() string {
+func (a *Config) String() string {
 	return "node auto scale"
 }
 
-func (a *AutoScaleConfig) runScaler() (retErr error) {
+func (a *Config) runScaler() (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = errors.Errorf("recovered panic, we can never stop! panic: %v", r)
@@ -215,10 +208,10 @@ func (a *AutoScaleConfig) runScaler() (retErr error) {
 	return
 }
 
-type evtCustomData struct {
-	Result *scalerResult
+type EventCustomData struct {
+	Result *ScalerResult
 	Nodes  []provision.NodeSpec
-	Rule   *autoScaleRule
+	Rule   *Rule
 }
 
 func nodesToSpec(nodes []provision.Node) []provision.NodeSpec {
@@ -229,10 +222,10 @@ func nodesToSpec(nodes []provision.Node) []provision.NodeSpec {
 	return nodeSpecs
 }
 
-func (a *AutoScaleConfig) runScalerInNodes(prov provision.NodeProvisioner, pool string, nodes []provision.Node) {
+func (a *Config) runScalerInNodes(prov provision.NodeProvisioner, pool string, nodes []provision.Node) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypePool, Value: pool},
-		InternalKind: autoScaleEventKind,
+		InternalKind: EventKind,
 		Allowed:      event.Allowed(permission.PermPoolReadEvents, permission.Context(permission.CtxPool, pool)),
 	})
 	if err != nil {
@@ -245,28 +238,27 @@ func (a *AutoScaleConfig) runScalerInNodes(prov provision.NodeProvisioner, pool 
 	}
 	evt.SetLogWriter(a.writer)
 	var retErr error
-	var sResult *scalerResult
+	var sResult *ScalerResult
 	var evtNodes []provision.NodeSpec
-	var rule *autoScaleRule
+	var rule *Rule
 	defer func() {
 		if retErr != nil {
 			evt.Logf(retErr.Error())
 		}
 		if (sResult == nil && retErr == nil) || (sResult != nil && sResult.NoAction()) {
-			evt.Logf("nothing to do for %q: %q", poolMetadataName, pool)
+			evt.Logf("nothing to do for %q: %q", provision.PoolMetadataName, pool)
 			evt.Abort()
 		} else {
-
-			evt.DoneCustomData(retErr, evtCustomData{
+			evt.DoneCustomData(retErr, EventCustomData{
 				Result: sResult,
 				Nodes:  evtNodes,
 				Rule:   rule,
 			})
 		}
 	}()
-	rule, err = autoScaleRuleForMetadata(pool)
+	rule, err = AutoScaleRuleForMetadata(pool)
 	if err == mgo.ErrNotFound {
-		rule, err = autoScaleRuleForMetadata("")
+		rule, err = AutoScaleRuleForMetadata("")
 	}
 	if err != nil {
 		if err != mgo.ErrNotFound {
@@ -285,7 +277,7 @@ func (a *AutoScaleConfig) runScalerInNodes(prov provision.NodeProvisioner, pool 
 		retErr = errors.Wrapf(err, "error getting scaler for %s", pool)
 		return
 	}
-	evt.Logf("running scaler %T for %q: %q", scaler, poolMetadataName, pool)
+	evt.Logf("running scaler %T for %q: %q", scaler, provision.PoolMetadataName, pool)
 	sResult, err = scaler.scale(pool, nodes)
 	if err != nil {
 		if _, ok := err.(errAppNotLocked); ok {
@@ -326,7 +318,7 @@ func (a *AutoScaleConfig) runScalerInNodes(prov provision.NodeProvisioner, pool 
 	}
 }
 
-func (a *AutoScaleConfig) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, sResult *scalerResult) error {
+func (a *Config) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, sResult *ScalerResult) error {
 	if len(sResult.ToRemove) > 0 {
 		return nil
 	}
@@ -338,7 +330,7 @@ func (a *AutoScaleConfig) rebalanceIfNeeded(evt *event.Event, prov provision.Nod
 	writer := io.MultiWriter(buf, evt)
 	shouldRebalance, err := rebalanceProv.RebalanceNodes(provision.RebalanceNodesOptions{
 		Force:          false,
-		MetadataFilter: map[string]string{"pool": pool},
+		MetadataFilter: map[string]string{provision.PoolMetadataName: pool},
 		Writer:         writer,
 	})
 	sResult.ToRebalance = shouldRebalance
@@ -348,7 +340,7 @@ func (a *AutoScaleConfig) rebalanceIfNeeded(evt *event.Event, prov provision.Nod
 	return nil
 }
 
-func (a *AutoScaleConfig) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
+func (a *Config) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(count)
 	nodesCh := make(chan provision.Node, count)
@@ -374,7 +366,7 @@ func (a *AutoScaleConfig) addMultipleNodes(evt *event.Event, prov provision.Node
 	return nodes, <-errCh
 }
 
-func (a *AutoScaleConfig) addNode(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node) (provision.Node, error) {
+func (a *Config) addNode(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node) (provision.Node, error) {
 	metadata, err := chooseMetadataFromNodes(modelNodes)
 	if err != nil {
 		return nil, err
@@ -409,7 +401,7 @@ func (a *AutoScaleConfig) addNode(evt *event.Event, prov provision.NodeProvision
 	return node, nil
 }
 
-func (a *AutoScaleConfig) removeMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, chosenNodes []provision.NodeSpec) error {
+func (a *Config) removeMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, chosenNodes []provision.NodeSpec) error {
 	nodeAddrs := make([]string, len(chosenNodes))
 	nodeHosts := make([]string, len(chosenNodes))
 	for i, node := range chosenNodes {
@@ -485,7 +477,7 @@ func canRemoveNode(chosenNode provision.Node, nodes []provision.Node) (bool, err
 	if len(nodes) == 1 {
 		return false, nil
 	}
-	exclusiveList, _, err := splitMetadata(nodes)
+	exclusiveList, _, err := provision.NodeList(nodes).SplitMetadata()
 	if err != nil {
 		return false, err
 	}
@@ -502,8 +494,8 @@ func canRemoveNode(chosenNode provision.Node, nodes []provision.Node) (bool, err
 		return true
 	}
 	for _, item := range exclusiveList {
-		if hasMetadata(chosenNode, item.metadata) {
-			if len(item.nodes) > 1 {
+		if hasMetadata(chosenNode, item.Metadata) {
+			if len(item.Nodes) > 1 {
 				return true, nil
 			}
 			return false, nil
@@ -512,86 +504,14 @@ func canRemoveNode(chosenNode provision.Node, nodes []provision.Node) (bool, err
 	return false, nil
 }
 
-func cleanMetadata(n provision.Node) map[string]string {
-	// iaas-id is ignored because it wasn't created in previous tsuru versions
-	// and having nodes with and without it would cause unbalanced metadata
-	// errors.
-	ignoredMetadata := []string{"iaas-id"}
-	metadata := map[string]string{}
-	for k, v := range n.Metadata() {
-		metadata[k] = v
-	}
-	for _, val := range ignoredMetadata {
-		delete(metadata, val)
-	}
-	return metadata
-}
-
-func splitMetadata(nodes []provision.Node) (metaWithFrequencyList, map[string]string, error) {
-	common := make(map[string]string)
-	exclusive := make([]map[string]string, len(nodes))
-	for i := range nodes {
-		metadata := cleanMetadata(nodes[i])
-		for k, v := range metadata {
-			isExclusive := false
-			for j := range nodes {
-				if i == j {
-					continue
-				}
-				otherMetadata := cleanMetadata(nodes[j])
-				if v != otherMetadata[k] {
-					isExclusive = true
-					break
-				}
-			}
-			if isExclusive {
-				if exclusive[i] == nil {
-					exclusive[i] = make(map[string]string)
-				}
-				exclusive[i][k] = v
-			} else {
-				common[k] = v
-			}
-		}
-	}
-	var group metaWithFrequencyList
-	sameMap := make(map[int]bool)
-	for i := range exclusive {
-		groupNodes := []provision.Node{nodes[i]}
-		for j := range exclusive {
-			if i == j {
-				continue
-			}
-			diffCount := 0
-			for k, v := range exclusive[i] {
-				if exclusive[j][k] != v {
-					diffCount++
-				}
-			}
-			if diffCount > 0 && (diffCount < len(exclusive[i]) || diffCount > len(exclusive[j])) {
-				return nil, nil, errors.Errorf("unbalanced metadata for node group: %v vs %v", exclusive[i], exclusive[j])
-			}
-			if diffCount == 0 {
-				sameMap[j] = true
-				groupNodes = append(groupNodes, nodes[j])
-			}
-		}
-		if !sameMap[i] && exclusive[i] != nil {
-			group = append(group, metaWithFrequency{metadata: exclusive[i], nodes: groupNodes})
-		}
-	}
-	return group, common, nil
-}
-
 func chooseMetadataFromNodes(modelNodes []provision.Node) (map[string]string, error) {
-	exclusiveList, baseMetadata, err := splitMetadata(modelNodes)
+	exclusiveList, baseMetadata, err := provision.NodeList(modelNodes).SplitMetadata()
 	if err != nil {
 		return nil, err
 	}
 	var chosenExclusive map[string]string
 	if exclusiveList != nil {
-		sort.Sort(exclusiveList)
-		chosenExclusive = exclusiveList[0].metadata
+		chosenExclusive = exclusiveList[0].Metadata
 	}
 	for k, v := range chosenExclusive {
 		baseMetadata[k] = v
