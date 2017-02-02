@@ -40,3 +40,75 @@ func (s *S) TestFindNodeByAddrsAmbiguous(c *check.C) {
 	_, err = provision.FindNodeByAddrs(p, []string{"addr1", "addr2"})
 	c.Assert(err, check.ErrorMatches, `addrs match multiple nodes: \[addr1 addr2\]`)
 }
+
+func (s *S) TestSplitMetadata(c *check.C) {
+	var err error
+	makeNode := func(addr string, metadata map[string]string) provision.Node {
+		return &provisiontest.FakeNode{Addr: addr, Meta: metadata}
+	}
+	params := []provision.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2"}),
+		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n3"}),
+		makeNode("n4", map[string]string{"1": "a", "2": "z3", "3": "n3"}),
+	}
+	exclusive, common, err := provision.NodeList(params).SplitMetadata()
+	c.Assert(err, check.IsNil)
+	c.Assert(exclusive, check.DeepEquals, provision.MetaWithFrequencyList{
+		{Metadata: map[string]string{"2": "z1", "3": "n1"}, Nodes: []provision.Node{params[0]}},
+		{Metadata: map[string]string{"2": "z2", "3": "n2"}, Nodes: []provision.Node{params[1]}},
+		{Metadata: map[string]string{"2": "z3", "3": "n3"}, Nodes: []provision.Node{params[2], params[3]}},
+	})
+	c.Assert(common, check.DeepEquals, map[string]string{
+		"1": "a",
+	})
+	params = []provision.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
+	}
+	exclusive, common, err = provision.NodeList(params).SplitMetadata()
+	c.Assert(err, check.IsNil)
+	c.Assert(exclusive, check.DeepEquals, provision.MetaWithFrequencyList{
+		{Metadata: map[string]string{"2": "z1", "3": "n1"}, Nodes: []provision.Node{params[0]}},
+		{Metadata: map[string]string{"2": "z2", "3": "n2"}, Nodes: []provision.Node{params[1]}},
+	})
+	c.Assert(common, check.DeepEquals, map[string]string{
+		"1": "a",
+		"4": "b",
+	})
+	params = []provision.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "b"}),
+	}
+	exclusive, common, err = provision.NodeList(params).SplitMetadata()
+	c.Assert(err, check.IsNil)
+	c.Assert(exclusive, check.IsNil)
+	c.Assert(common, check.DeepEquals, map[string]string{
+		"1": "a",
+		"2": "b",
+	})
+	exclusive, common, err = provision.NodeList([]provision.Node{}).SplitMetadata()
+	c.Assert(err, check.IsNil)
+	c.Assert(exclusive, check.IsNil)
+	c.Assert(common, check.DeepEquals, map[string]string{})
+	params = []provision.Node{
+		makeNode("n1", map[string]string{"1": "a"}),
+		makeNode("n2", map[string]string{}),
+	}
+	_, _, err = provision.NodeList(params).SplitMetadata()
+	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
+	params = []provision.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
+		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n3", "4": "c"}),
+	}
+	_, _, err = provision.NodeList(params).SplitMetadata()
+	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
+	params = []provision.Node{
+		makeNode("n1", map[string]string{"1": "a", "2": "z1", "3": "n1", "4": "b"}),
+		makeNode("n2", map[string]string{"1": "a", "2": "z2", "3": "n2", "4": "b"}),
+		makeNode("n3", map[string]string{"1": "a", "2": "z3", "3": "n1", "4": "b"}),
+	}
+	_, _, err = provision.NodeList(params).SplitMetadata()
+	c.Assert(err, check.ErrorMatches, "unbalanced metadata for node group:.*")
+}

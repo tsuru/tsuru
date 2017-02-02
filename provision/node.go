@@ -5,9 +5,26 @@
 package provision
 
 import (
+	"sort"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/net"
 )
+
+const PoolMetadataName = "pool"
+
+type MetaWithFrequency struct {
+	Metadata map[string]string
+	Nodes    []Node
+}
+
+type MetaWithFrequencyList []MetaWithFrequency
+
+func (l MetaWithFrequencyList) Len() int           { return len(l) }
+func (l MetaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l MetaWithFrequencyList) Less(i, j int) bool { return len(l[i].Nodes) < len(l[j].Nodes) }
+
+type NodeList []Node
 
 func FindNodeByAddrs(p NodeProvisioner, addrs []string) (Node, error) {
 	nodeAddrMap := map[string]Node{}
@@ -32,4 +49,76 @@ func FindNodeByAddrs(p NodeProvisioner, addrs []string) (Node, error) {
 		return nil, ErrNodeNotFound
 	}
 	return node, nil
+}
+
+func metadataNoIaasID(n Node) map[string]string {
+	// iaas-id is ignored because it wasn't created in previous tsuru versions
+	// and having nodes with and without it would cause unbalanced metadata
+	// errors.
+	ignoredMetadata := []string{"iaas-id"}
+	metadata := map[string]string{}
+	for k, v := range n.Metadata() {
+		metadata[k] = v
+	}
+	for _, val := range ignoredMetadata {
+		delete(metadata, val)
+	}
+	return metadata
+}
+
+func (nodes NodeList) SplitMetadata() (MetaWithFrequencyList, map[string]string, error) {
+	common := make(map[string]string)
+	exclusive := make([]map[string]string, len(nodes))
+	for i := range nodes {
+		metadata := metadataNoIaasID(nodes[i])
+		for k, v := range metadata {
+			isExclusive := false
+			for j := range nodes {
+				if i == j {
+					continue
+				}
+				otherMetadata := metadataNoIaasID(nodes[j])
+				if v != otherMetadata[k] {
+					isExclusive = true
+					break
+				}
+			}
+			if isExclusive {
+				if exclusive[i] == nil {
+					exclusive[i] = make(map[string]string)
+				}
+				exclusive[i][k] = v
+			} else {
+				common[k] = v
+			}
+		}
+	}
+	var group MetaWithFrequencyList
+	sameMap := make(map[int]bool)
+	for i := range exclusive {
+		groupNodes := []Node{nodes[i]}
+		for j := range exclusive {
+			if i == j {
+				continue
+			}
+			diffCount := 0
+			for k, v := range exclusive[i] {
+				if exclusive[j][k] != v {
+					diffCount++
+				}
+			}
+			if diffCount > 0 && (diffCount < len(exclusive[i]) || diffCount > len(exclusive[j])) {
+				return nil, nil, errors.Errorf("unbalanced metadata for node group: %v vs %v", exclusive[i], exclusive[j])
+			}
+			if diffCount == 0 {
+				sameMap[j] = true
+				groupNodes = append(groupNodes, nodes[j])
+			}
+		}
+		if !sameMap[i] && exclusive[i] != nil {
+			group = append(group, MetaWithFrequency{Metadata: exclusive[i], Nodes: groupNodes})
+		}
+	}
+	sort.Sort(group)
+	return group, common, nil
 }
