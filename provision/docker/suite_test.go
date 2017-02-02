@@ -239,18 +239,6 @@ func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn ht
 	return ret
 }
 
-func startTestRepositoryServer() func() {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	repoUrl := strings.Replace(server.URL, "http://", "", 1)
-	config.Set("docker:registry", repoUrl)
-	return func() {
-		config.Unset("docker:registry")
-		server.Close()
-	}
-}
-
 type unitSlice []provision.Unit
 
 func (s unitSlice) Len() int {

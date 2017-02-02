@@ -54,11 +54,11 @@ func (s *S) TestSplitMetadata(c *check.C) {
 	}
 	exclusive, common, err := provision.NodeList(params).SplitMetadata()
 	c.Assert(err, check.IsNil)
-	c.Assert(exclusive, check.DeepEquals, provision.MetaWithFrequencyList{
+	c.Assert(exclusive, check.DeepEquals, provision.MetaWithFrequencyList([]provision.MetaWithFrequency{
 		{Metadata: map[string]string{"2": "z1", "3": "n1"}, Nodes: []provision.Node{params[0]}},
 		{Metadata: map[string]string{"2": "z2", "3": "n2"}, Nodes: []provision.Node{params[1]}},
 		{Metadata: map[string]string{"2": "z3", "3": "n3"}, Nodes: []provision.Node{params[2], params[3]}},
-	})
+	}))
 	c.Assert(common, check.DeepEquals, map[string]string{
 		"1": "a",
 	})
@@ -68,10 +68,10 @@ func (s *S) TestSplitMetadata(c *check.C) {
 	}
 	exclusive, common, err = provision.NodeList(params).SplitMetadata()
 	c.Assert(err, check.IsNil)
-	c.Assert(exclusive, check.DeepEquals, provision.MetaWithFrequencyList{
+	c.Assert(exclusive, check.DeepEquals, provision.MetaWithFrequencyList([]provision.MetaWithFrequency{
 		{Metadata: map[string]string{"2": "z1", "3": "n1"}, Nodes: []provision.Node{params[0]}},
 		{Metadata: map[string]string{"2": "z2", "3": "n2"}, Nodes: []provision.Node{params[1]}},
-	})
+	}))
 	c.Assert(common, check.DeepEquals, map[string]string{
 		"1": "a",
 		"4": "b",

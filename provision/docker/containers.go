@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
@@ -243,23 +242,6 @@ func (p *dockerProvisioner) MoveContainers(fromHost, toHost string, writer io.Wr
 	}
 	fmt.Fprintf(writer, "Moving %d units...\n", len(containers))
 	return p.moveContainerList(containers, toHost, writer)
-}
-
-func (p *dockerProvisioner) moveContainersFromHosts(fromHosts []string, toHost string, writer io.Writer) error {
-	var allContainers []container.Container
-	for _, host := range fromHosts {
-		containers, err := p.listContainersByHost(host)
-		if err != nil {
-			return err
-		}
-		allContainers = append(allContainers, containers...)
-	}
-	if len(allContainers) == 0 {
-		fmt.Fprintf(writer, "No units to move in hosts %s\n", strings.Join(fromHosts, ", "))
-		return nil
-	}
-	fmt.Fprintf(writer, "Moving %d units...\n", len(allContainers))
-	return p.moveContainerList(allContainers, toHost, writer)
 }
 
 func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFilter []string, metadataFilter map[string]string, dryRun bool) (*dockerProvisioner, error) {
