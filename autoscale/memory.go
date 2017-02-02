@@ -14,7 +14,7 @@ import (
 )
 
 type memoryScaler struct {
-	*autoScaleConfig
+	*AutoScaleConfig
 	rule *autoScaleRule
 }
 

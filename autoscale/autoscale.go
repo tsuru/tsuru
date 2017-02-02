@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -30,22 +31,50 @@ const (
 	autoScaleEventKind = "autoscale"
 )
 
+var globalConfig *AutoScaleConfig
+
+type AutoScaleConfig struct {
+	WaitTimeNewMachine  time.Duration
+	RunInterval         time.Duration
+	TotalMemoryMetadata string
+	Enabled             bool
+	done                chan bool
+	writer              io.Writer
+}
+
+func BaseConfig() (AutoScaleConfig, error) {
+	if globalConfig == nil {
+		return AutoScaleConfig{}, errors.New("autoscale not initialized")
+	}
+	return *globalConfig, nil
+}
+
+func Initialize() error {
+	enabled, _ := config.GetBool("docker:auto-scale:enabled")
+	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
+	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
+	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	globalConfig = &AutoScaleConfig{
+		TotalMemoryMetadata: totalMemoryMetadata,
+		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
+		RunInterval:         time.Duration(runInterval) * time.Second,
+		Enabled:             enabled,
+		done:                make(chan bool),
+	}
+	if !globalConfig.Enabled {
+		return nil
+	}
+	shutdown.Register(globalConfig)
+	go globalConfig.run()
+	return nil
+}
+
 type errAppNotLocked struct {
 	app string
 }
 
 func (e errAppNotLocked) Error() string {
 	return fmt.Sprintf("unable to lock app %q", e.app)
-}
-
-type autoScaleConfig struct {
-	WaitTimeNewMachine  time.Duration
-	RunInterval         time.Duration
-	TotalMemoryMetadata string
-	Enabled             bool
-	provisioner         provision.NodeProvisioner
-	done                chan bool
-	writer              io.Writer
 }
 
 type scalerResult struct {
@@ -78,7 +107,7 @@ func (l metaWithFrequencyList) Len() int           { return len(l) }
 func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l metaWithFrequencyList) Less(i, j int) bool { return len(l[i].nodes) < len(l[j].nodes) }
 
-func (a *autoScaleConfig) initialize() {
+func (a *AutoScaleConfig) initialize() {
 	if a.TotalMemoryMetadata == "" {
 		a.TotalMemoryMetadata, _ = config.GetString("docker:scheduler:total-memory-metadata")
 	}
@@ -90,14 +119,14 @@ func (a *autoScaleConfig) initialize() {
 	}
 }
 
-func (a *autoScaleConfig) scalerForRule(rule *autoScaleRule) (autoScaler, error) {
+func (a *AutoScaleConfig) scalerForRule(rule *autoScaleRule) (autoScaler, error) {
 	if rule.MaxContainerCount > 0 {
-		return &countScaler{autoScaleConfig: a, rule: rule}, nil
+		return &countScaler{AutoScaleConfig: a, rule: rule}, nil
 	}
-	return &memoryScaler{autoScaleConfig: a, rule: rule}, nil
+	return &memoryScaler{AutoScaleConfig: a, rule: rule}, nil
 }
 
-func (a *autoScaleConfig) Run() error {
+func (a *AutoScaleConfig) run() error {
 	a.initialize()
 	for {
 		err := a.runScaler()
@@ -113,17 +142,17 @@ func (a *autoScaleConfig) Run() error {
 	}
 }
 
-func (a *autoScaleConfig) logError(msg string, params ...interface{}) {
+func (a *AutoScaleConfig) logError(msg string, params ...interface{}) {
 	msg = fmt.Sprintf("[node autoscale] %s", msg)
 	log.Errorf(msg, params...)
 }
 
-func (a *autoScaleConfig) logDebug(msg string, params ...interface{}) {
+func (a *AutoScaleConfig) logDebug(msg string, params ...interface{}) {
 	msg = fmt.Sprintf("[node autoscale] %s", msg)
 	log.Debugf(msg, params...)
 }
 
-func (a *autoScaleConfig) runOnce() error {
+func (a *AutoScaleConfig) runOnce() error {
 	a.initialize()
 	err := a.runScaler()
 	if err != nil {
@@ -132,31 +161,47 @@ func (a *autoScaleConfig) runOnce() error {
 	return err
 }
 
-func (a *autoScaleConfig) stop() {
+func (a *AutoScaleConfig) stop() {
 	a.done <- true
 }
 
-func (a *autoScaleConfig) Shutdown() {
+func (a *AutoScaleConfig) Shutdown() {
 	a.stop()
 }
 
-func (a *autoScaleConfig) String() string {
+func (a *AutoScaleConfig) String() string {
 	return "node auto scale"
 }
 
-func (a *autoScaleConfig) runScaler() (retErr error) {
+func (a *AutoScaleConfig) runScaler() (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = errors.Errorf("recovered panic, we can never stop! panic: %v", r)
 		}
 	}()
-	nodes, err := a.provisioner.ListNodes(nil)
+	provs, err := provision.Registry()
 	if err != nil {
-		retErr = errors.Wrap(err, "error getting nodes")
-		return
+		return errors.Wrap(err, "error getting provisioners")
+	}
+	provPoolMap := map[string]provision.NodeProvisioner{}
+	var allNodes []provision.Node
+	for _, prov := range provs {
+		nodeProv, ok := prov.(provision.NodeProvisioner)
+		if !ok {
+			continue
+		}
+		var nodes []provision.Node
+		nodes, err = nodeProv.ListNodes(nil)
+		if err != nil {
+			return errors.Wrap(err, "error getting nodes")
+		}
+		for _, n := range nodes {
+			provPoolMap[n.Pool()] = nodeProv
+		}
+		allNodes = append(allNodes, nodes...)
 	}
 	clusterMap := map[string][]provision.Node{}
-	for _, node := range nodes {
+	for _, node := range allNodes {
 		pool := node.Pool()
 		if pool == "" {
 			a.logDebug("skipped node %s, no pool value found.", node.Address)
@@ -165,7 +210,7 @@ func (a *autoScaleConfig) runScaler() (retErr error) {
 		clusterMap[pool] = append(clusterMap[pool], node)
 	}
 	for pool, nodes := range clusterMap {
-		a.runScalerInNodes(pool, nodes)
+		a.runScalerInNodes(provPoolMap[pool], pool, nodes)
 	}
 	return
 }
@@ -184,7 +229,7 @@ func nodesToSpec(nodes []provision.Node) []provision.NodeSpec {
 	return nodeSpecs
 }
 
-func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []provision.Node) {
+func (a *AutoScaleConfig) runScalerInNodes(prov provision.NodeProvisioner, pool string, nodes []provision.Node) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypePool, Value: pool},
 		InternalKind: autoScaleEventKind,
@@ -252,7 +297,7 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []provision.Node) 
 	}
 	if sResult.ToAdd > 0 {
 		evt.Logf("running event \"add\" for %q: %#v", pool, sResult)
-		evtNodes, err = a.addMultipleNodes(evt, nodes, sResult.ToAdd)
+		evtNodes, err = a.addMultipleNodes(evt, prov, nodes, sResult.ToAdd)
 		if err != nil {
 			if len(evtNodes) == 0 {
 				retErr = err
@@ -263,14 +308,14 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []provision.Node) 
 	} else if len(sResult.ToRemove) > 0 {
 		evt.Logf("running event \"remove\" for %q: %#v", pool, sResult)
 		evtNodes = sResult.ToRemove
-		err = a.removeMultipleNodes(evt, sResult.ToRemove)
+		err = a.removeMultipleNodes(evt, prov, sResult.ToRemove)
 		if err != nil {
 			retErr = err
 			return
 		}
 	}
 	if !rule.PreventRebalance {
-		err := a.rebalanceIfNeeded(evt, pool, nodes, sResult)
+		err := a.rebalanceIfNeeded(evt, prov, pool, nodes, sResult)
 		if err != nil {
 			if sResult.IsRebalanceOnly() {
 				retErr = err
@@ -281,11 +326,11 @@ func (a *autoScaleConfig) runScalerInNodes(pool string, nodes []provision.Node) 
 	}
 }
 
-func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes []provision.Node, sResult *scalerResult) error {
+func (a *AutoScaleConfig) rebalanceIfNeeded(evt *event.Event, prov provision.NodeProvisioner, pool string, nodes []provision.Node, sResult *scalerResult) error {
 	if len(sResult.ToRemove) > 0 {
 		return nil
 	}
-	rebalanceProv, ok := a.provisioner.(provision.NodeRebalanceProvisioner)
+	rebalanceProv, ok := prov.(provision.NodeRebalanceProvisioner)
 	if !ok {
 		return nil
 	}
@@ -303,7 +348,7 @@ func (a *autoScaleConfig) rebalanceIfNeeded(evt *event.Event, pool string, nodes
 	return nil
 }
 
-func (a *autoScaleConfig) addMultipleNodes(evt *event.Event, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
+func (a *AutoScaleConfig) addMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node, count int) ([]provision.NodeSpec, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(count)
 	nodesCh := make(chan provision.Node, count)
@@ -311,7 +356,7 @@ func (a *autoScaleConfig) addMultipleNodes(evt *event.Event, modelNodes []provis
 	for i := 0; i < count; i++ {
 		go func() {
 			defer wg.Done()
-			node, err := a.addNode(evt, modelNodes)
+			node, err := a.addNode(evt, prov, modelNodes)
 			if err != nil {
 				errCh <- err
 				return
@@ -329,7 +374,7 @@ func (a *autoScaleConfig) addMultipleNodes(evt *event.Event, modelNodes []provis
 	return nodes, <-errCh
 }
 
-func (a *autoScaleConfig) addNode(evt *event.Event, modelNodes []provision.Node) (provision.Node, error) {
+func (a *AutoScaleConfig) addNode(evt *event.Event, prov provision.NodeProvisioner, modelNodes []provision.Node) (provision.Node, error) {
 	metadata, err := chooseMetadataFromNodes(modelNodes)
 	if err != nil {
 		return nil, err
@@ -352,19 +397,19 @@ func (a *autoScaleConfig) addNode(evt *event.Event, modelNodes []provision.Node)
 		ClientCert: machine.ClientCert,
 		ClientKey:  machine.ClientKey,
 	}
-	err = a.provisioner.AddNode(createOpts)
+	err = prov.AddNode(createOpts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error adding new node %s", newAddr)
 	}
 	evt.Logf("new machine created: %s - started!", newAddr)
-	node, err := a.provisioner.GetNode(newAddr)
+	node, err := prov.GetNode(newAddr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting new node %s", newAddr)
 	}
 	return node, nil
 }
 
-func (a *autoScaleConfig) removeMultipleNodes(evt *event.Event, chosenNodes []provision.NodeSpec) error {
+func (a *AutoScaleConfig) removeMultipleNodes(evt *event.Event, prov provision.NodeProvisioner, chosenNodes []provision.NodeSpec) error {
 	nodeAddrs := make([]string, len(chosenNodes))
 	nodeHosts := make([]string, len(chosenNodes))
 	for i, node := range chosenNodes {
@@ -374,7 +419,6 @@ func (a *autoScaleConfig) removeMultipleNodes(evt *event.Event, chosenNodes []pr
 		}
 		nodeAddrs[i] = node.Address
 		nodeHosts[i] = net.URLToHost(node.Address)
-
 	}
 	errCh := make(chan error, len(chosenNodes))
 	wg := sync.WaitGroup{}
@@ -384,7 +428,7 @@ func (a *autoScaleConfig) removeMultipleNodes(evt *event.Event, chosenNodes []pr
 			defer wg.Done()
 			node := chosenNodes[i]
 			buf := safe.NewBuffer(nil)
-			err := a.provisioner.RemoveNode(provision.RemoveNodeOptions{
+			err := prov.RemoveNode(provision.RemoveNodeOptions{
 				Address:   node.Address,
 				Writer:    buf,
 				Rebalance: true,

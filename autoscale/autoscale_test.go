@@ -52,10 +52,12 @@ func (s *S) SetUpTest(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	opts := provision.AddPoolOptions{Name: "pool1"}
+	provision.Unregister("fake-extensible")
+	provisiontest.ProvisionerInstance.Reset()
+	s.p = provisiontest.ProvisionerInstance
+	opts := provision.AddPoolOptions{Name: "pool1", Provisioner: "fake"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	s.p = provisiontest.NewFakeProvisioner()
 	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
 	s.appInstance.Pool = "pool1"
 	s.p.Provision(s.appInstance)
@@ -102,15 +104,14 @@ func (s *S) TearDownTest(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes, check.HasLen, 2, check.Commentf("log: %s", s.logBuf.String()))
 	c.Assert(nodes[0].Address(), check.Not(check.Equals), nodes[1].Address())
 	u0, err := nodes[0].Units()
 	c.Assert(err, check.IsNil)
@@ -131,7 +132,8 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 		},
 		LogMatches: `(?s).*running scaler.*countScaler.*pool1.*new machine created.*`,
 	}, eventtest.HasEvent)
-	a.runOnce()
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
 	newNodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(newNodes, check.HasLen, 2)
@@ -154,9 +156,8 @@ func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
 	defer config.Unset("docker:auto-scale:prevent-rebalance")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -174,9 +175,8 @@ func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err := a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -198,9 +198,8 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -231,9 +230,8 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -267,9 +265,8 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 5, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -303,9 +300,8 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	_, err := s.p.AddUnitsToNode(s.appInstance, 3, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -337,9 +333,8 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	s.p.PrepareFailure("AddNode:http://n3:3", errors.New("error adding node"))
 	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -379,9 +374,8 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -419,9 +413,8 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
@@ -471,9 +464,8 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
-			a := autoScaleConfig{
-				done:        make(chan bool),
-				provisioner: s.p,
+			a := AutoScaleConfig{
+				done: make(chan bool),
 			}
 			defer wg.Done()
 			runErr := a.runOnce()
@@ -510,9 +502,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
@@ -556,9 +547,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 9, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
@@ -602,9 +592,8 @@ func (s *S) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *ch
 		},
 	})
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -628,9 +617,8 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	nodes, err := s.p.ListNodes(nil)
@@ -668,9 +656,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(s.logBuf, check.Matches, `(?s).*error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659.*`)
@@ -699,9 +686,8 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
@@ -748,9 +734,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
@@ -788,9 +773,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
@@ -839,9 +823,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(eventtest.EventDesc{
@@ -888,9 +871,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	evts, err := event.All()
@@ -907,9 +889,8 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	s.logBuf.Reset()
 	a.runOnce()
@@ -931,9 +912,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to lock app "myapp".*`)
@@ -992,9 +972,8 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnitsToNode(appInstance2, 6, "web", nil, "nx:9")
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -1025,18 +1004,16 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 0)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*invalid rule, either memory information or max container count must be set.*`)
 	config.Set("docker:auto-scale:max-container-count", 10)
 	config.Set("docker:auto-scale:scale-down-ratio", 0.9)
 	defer config.Unset("docker:auto-scale:scale-down-ratio")
-	a = autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a = AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*scale down ratio needs to be greater than 1.0, got .+`)
@@ -1044,9 +1021,8 @@ func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 
 func (s *S) TestAutoScaleConfigRunDefaultValues(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 10)
-	a := autoScaleConfig{
-		done:        make(chan bool),
-		provisioner: s.p,
+	a := AutoScaleConfig{
+		done: make(chan bool),
 	}
 	a.runOnce()
 	c.Assert(a.RunInterval, check.Equals, 1*time.Hour)
@@ -1060,9 +1036,8 @@ func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 10)
 	config.Set("docker:auto-scale:scale-down-ratio", 1.5)
 	defer config.Unset("docker:auto-scale:scale-down-ratio")
-	a := autoScaleConfig{
+	a := AutoScaleConfig{
 		done:               make(chan bool),
-		provisioner:        s.p,
 		RunInterval:        10 * time.Minute,
 		WaitTimeNewMachine: 7 * time.Minute,
 	}

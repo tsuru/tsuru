@@ -11,7 +11,7 @@ import (
 )
 
 type countScaler struct {
-	*autoScaleConfig
+	*AutoScaleConfig
 	rule *autoScaleRule
 }
 
