@@ -951,11 +951,13 @@ func intPtr(i int) *int {
 
 func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	err := s.provisioner.AddNode(provision.AddNodeOptions{
-		Address: "n1",
+		Address:  "n1",
+		Metadata: map[string]string{"pool": "test1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddNode(provision.AddNodeOptions{
-		Address: "n2",
+		Address:  "n2",
+		Metadata: map[string]string{"pool": "test1"},
 	})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
