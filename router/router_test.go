@@ -29,8 +29,7 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 	c.Assert(names, check.DeepEquals, []string{"mine"})
 	c.Assert(prefixes, check.DeepEquals, []string{"routers:mine"})
 	_, err = Get("unknown-router")
-	c.Assert(err, check.Not(check.IsNil))
-	c.Assert("config key 'routers:unknown-router:type' not found", check.Equals, err.Error())
+	c.Assert(err, check.DeepEquals, &ErrRouterNotFound{Name: "unknown-router"})
 	config.Set("routers:mine-unknown:type", "unknown")
 	defer config.Unset("routers:mine-unknown:type")
 	_, err = Get("mine-unknown")
@@ -46,7 +45,7 @@ func (s *S) TestRegisterAndType(c *check.C) {
 	c.Assert(rType, check.Equals, "myrouter")
 	c.Assert(prefix, check.Equals, "routers:mine")
 	_, err = Get("unknown-router")
-	c.Assert(err, check.ErrorMatches, `config key 'routers:unknown-router:type' not found`)
+	c.Assert(err, check.DeepEquals, &ErrRouterNotFound{Name: "unknown-router"})
 }
 
 func (s *S) TestRegisterAndTypeSpecialCase(c *check.C) {

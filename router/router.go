@@ -36,6 +36,14 @@ var (
 	ErrDefaultRouterNotFound = errors.New("No default router found")
 )
 
+type ErrRouterNotFound struct {
+	Name string
+}
+
+func (e *ErrRouterNotFound) Error() string {
+	return fmt.Sprintf("router %q not found", e.Name)
+}
+
 const HttpScheme = "http"
 
 var routers = make(map[string]routerFactory)
@@ -63,7 +71,7 @@ func Type(name string) (string, string, error) {
 func Get(name string) (Router, error) {
 	routerType, prefix, err := Type(name)
 	if err != nil {
-		return nil, err
+		return nil, &ErrRouterNotFound{Name: name}
 	}
 	factory, ok := routers[routerType]
 	if !ok {
