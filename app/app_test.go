@@ -4064,7 +4064,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(routesStr, check.DeepEquals, expected)
 }
 
-func (s *S) TestUpdateDescriptionPoolAndPlan(c *check.C) {
+func (s *S) TestUpdateDescriptionPoolPlanAndRouter(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test"}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
@@ -4110,4 +4110,46 @@ func (s *S) TestUpdateDescriptionPoolAndPlan(c *check.C) {
 	sort.Strings(routesStr)
 	sort.Strings(expected)
 	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateRouter(c *check.C) {
+	a := App{Name: "my-test-app", Router: "fake", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "my-test-app", Router: "fake-hc"}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Router, check.Equals, "fake-hc")
+	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, false)
+	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, true)
+	routes, err := routertest.HCRouter.Routes(dbApp.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units, err := dbApp.Units()
+	c.Assert(err, check.IsNil)
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateRouterNotFound(c *check.C) {
+	a := App{Name: "my-test-app", Router: "fake", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "my-test-app", Router: "invalid-router"}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.DeepEquals, &router.ErrRouterNotFound{Name: "invalid-router"})
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Router, check.Equals, "fake")
 }
