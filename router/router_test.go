@@ -240,6 +240,22 @@ func (s *S) TestListIncludesOnlyLegacyHipacheRouter(c *check.C) {
 	c.Assert(routers, check.DeepEquals, expected)
 }
 
+func (s *S) TestListDefaultDockerRouter(c *check.C) {
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	config.Set("docker:router", "router2")
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
+	defer config.Unset("docker:router")
+	expected := []PlanRouter{
+		{Name: "router1", Type: "foo", Default: false},
+		{Name: "router2", Type: "bar", Default: true},
+	}
+	routers, err := List()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
+
 func (s *S) TestRouteError(c *check.C) {
 	err := &RouterError{Op: "add", Err: errors.New("Fatal error.")}
 	c.Assert(err.Error(), check.Equals, "[router add] Fatal error.")

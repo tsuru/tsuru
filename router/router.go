@@ -373,6 +373,7 @@ func List() ([]PlanRouter, error) {
 	if topLevelHipacheConfig != nil {
 		keys = append(keys, "hipache")
 	}
+	dockerRouter, _ := config.GetString("docker:router")
 	sort.Strings(keys)
 	for _, value := range keys {
 		var routerType string
@@ -384,6 +385,9 @@ func List() ([]PlanRouter, error) {
 		}
 		if routerType == "" {
 			routerType = value
+		}
+		if !defaultFlag {
+			defaultFlag = value == dockerRouter
 		}
 		routersList = append(routersList, PlanRouter{Name: value, Type: routerType, Default: defaultFlag})
 	}
