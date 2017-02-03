@@ -391,7 +391,7 @@ var provisionAddUnits = action.Action{
 	MinParams: 1,
 }
 
-type changePlanPipelineResult struct {
+type updateAppPipelineResult struct {
 	changedRouter bool
 	oldPlan       *Plan
 	oldIp         string
@@ -400,7 +400,7 @@ type changePlanPipelineResult struct {
 }
 
 var moveRouterUnits = action.Action{
-	Name: "change-plan-move-router-units",
+	Name: "update-app-move-router-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app, ok := ctx.Params[0].(*App)
 		if !ok {
@@ -415,7 +415,7 @@ var moveRouterUnits = action.Action{
 			return nil, errors.New("third parameter must be a string")
 		}
 		newRouter := app.Router
-		result := changePlanPipelineResult{oldPlan: oldPlan, oldRouter: oldRouter, app: app, oldIp: app.Ip}
+		result := updateAppPipelineResult{oldPlan: oldPlan, oldRouter: oldRouter, app: app, oldIp: app.Ip}
 		if newRouter != oldRouter {
 			_, err := rebuild.RebuildRoutes(app)
 			if err != nil {
@@ -426,7 +426,7 @@ var moveRouterUnits = action.Action{
 		return &result, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		result := ctx.FWResult.(*changePlanPipelineResult)
+		result := ctx.FWResult.(*updateAppPipelineResult)
 		defer func() {
 			result.app.Plan = *result.oldPlan
 			result.app.Router = result.oldRouter
@@ -455,9 +455,9 @@ var moveRouterUnits = action.Action{
 }
 
 var saveApp = action.Action{
-	Name: "change-plan-save-app",
+	Name: "update-app-save-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		result, ok := ctx.Previous.(*updateAppPipelineResult)
 		if !ok {
 			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
 		}
@@ -474,7 +474,7 @@ var saveApp = action.Action{
 		return result, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		result := ctx.FWResult.(*changePlanPipelineResult)
+		result := ctx.FWResult.(*updateAppPipelineResult)
 		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to get database connection: %s", err)
@@ -490,13 +490,13 @@ var saveApp = action.Action{
 }
 
 var restartApp = action.Action{
-	Name: "change-plan-restart-app",
+	Name: "update-app-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		w, ok := ctx.Params[3].(io.Writer)
 		if !ok {
 			return nil, errors.New("forth parameter must be an io.Writer")
 		}
-		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		result, ok := ctx.Previous.(*updateAppPipelineResult)
 		if !ok {
 			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
 		}
@@ -510,9 +510,9 @@ var restartApp = action.Action{
 
 // removeOldBackend never fails because restartApp is not undoable.
 var removeOldBackend = action.Action{
-	Name: "change-plan-remove-old-backend",
+	Name: "update-app-remove-old-backend",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		result, ok := ctx.Previous.(*updateAppPipelineResult)
 		if !ok {
 			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
 		}
