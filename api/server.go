@@ -229,7 +229,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/plans", AuthorizationRequiredHandler(listPlans))
 	m.Add("1.0", "Post", "/plans", AuthorizationRequiredHandler(addPlan))
 	m.Add("1.0", "Delete", "/plans/{planname}", AuthorizationRequiredHandler(removePlan))
-	m.Add("1.0", "Get", "/plans/routers", AuthorizationRequiredHandler(listRouters))
 
 	m.Add("1.0", "Get", "/pools", AuthorizationRequiredHandler(poolList))
 	m.Add("1.0", "Post", "/pools", AuthorizationRequiredHandler(addPoolHandler))
@@ -293,6 +292,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "DELETE", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
 	m.Add("1.3", "DELETE", "/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
 
+	m.Add("1.3", "Get", "/routers", AuthorizationRequiredHandler(listRouters))
+
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
@@ -322,6 +323,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "POST", "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
 	m.Add("1.0", "DELETE", "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
 	m.Add("1.0", "DELETE", "/docker/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
+
+	m.Add("1.0", "Get", "/plans/routers", AuthorizationRequiredHandler(listRouters))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
