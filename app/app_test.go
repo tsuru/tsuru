@@ -2460,6 +2460,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Description: "description",
 		Plan:        Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner:   "myteam",
+		Router:      "fake",
 	}
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -2480,7 +2481,9 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
+			"router":   "fake",
 		},
+		"router": "fake",
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2503,6 +2506,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		Description: "description",
 		Plan:        Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner:   "myteam",
+		Router:      "fake",
 	}
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -2523,7 +2527,9 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
+			"router":   "fake",
 		},
+		"router": "fake",
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)

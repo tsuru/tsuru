@@ -181,7 +181,14 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["description"] = app.Description
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
-	result["plan"] = app.Plan
+	result["plan"] = map[string]interface{}{
+		"name":     app.Plan.Name,
+		"memory":   app.Plan.Memory,
+		"swap":     app.Plan.Swap,
+		"cpushare": app.Plan.CpuShare,
+		"router":   app.Router,
+	}
+	result["router"] = app.Router
 	result["lock"] = app.Lock
 	return json.Marshal(&result)
 }
