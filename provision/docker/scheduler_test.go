@@ -608,7 +608,7 @@ func (s *S) TestChooseContainerToBeRemovedMultipleProcesses(c *check.C) {
 	c.Assert(containerID == "pre5" || containerID == "pre6", check.Equals, true)
 }
 
-func (s *S) TestGetContainerFromHost(c *check.C) {
+func (s *S) TestGetContainerPreferablyFromHost(c *check.C) {
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
@@ -621,18 +621,27 @@ func (s *S) TestGetContainerFromHost(c *check.C) {
 	}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
+	cont2 := container.Container{
+		ID:          "pre2",
+		Name:        "existingUnit2",
+		AppName:     "coolapp9",
+		HostAddr:    "serverX",
+		ProcessName: "some",
+	}
+	err = contColl.Insert(cont2)
+	c.Assert(err, check.Equals, nil)
 	scheduler := segregatedScheduler{provisioner: s.p}
-	id, err := scheduler.getContainerFromHost("server1", "coolapp9", "some")
+	id, err := scheduler.getContainerPreferablyFromHost("server1", "coolapp9", "some")
 	c.Assert(err, check.IsNil)
 	c.Assert(id, check.Equals, "pre1")
-	_, err = scheduler.getContainerFromHost("server2", "coolapp9", "some")
-	c.Assert(err, check.ErrorMatches, `Container of app "coolapp9" with process "some" was not found in server "server2"`)
-	_, err = scheduler.getContainerFromHost("server1", "coolapp9", "other")
-	c.Assert(err, check.ErrorMatches, `Container of app "coolapp9" with process "other" was not found in server "server1"`)
-
+	id, err = scheduler.getContainerPreferablyFromHost("server2", "coolapp9", "some")
+	c.Assert(err, check.IsNil)
+	c.Assert(id == "pre1" || id == "pre2", check.Equals, true, check.Commentf("id: %s", id))
+	_, err = scheduler.getContainerPreferablyFromHost("server1", "coolapp9", "other")
+	c.Assert(err, check.ErrorMatches, `Container of app "coolapp9" with process "other" was not found in any servers`)
 }
 
-func (s *S) TestGetContainerFromHostEmptyProcess(c *check.C) {
+func (s *S) TestGetContainerPreferablyFromHostEmptyProcess(c *check.C) {
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err := contColl.Insert(map[string]string{"id": "pre1", "name": "unit1", "appname": "coolappX", "hostaddr": "server1"})
@@ -640,13 +649,13 @@ func (s *S) TestGetContainerFromHostEmptyProcess(c *check.C) {
 	err = contColl.Insert(map[string]string{"id": "pre2", "name": "unit1", "appname": "coolappX", "hostaddr": "server2", "processname": ""})
 	c.Assert(err, check.Equals, nil)
 	scheduler := segregatedScheduler{provisioner: s.p}
-	id, err := scheduler.getContainerFromHost("server1", "coolappX", "")
+	id, err := scheduler.getContainerPreferablyFromHost("server1", "coolappX", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(id, check.Equals, "pre1")
-	id, err = scheduler.getContainerFromHost("server2", "coolappX", "")
+	id, err = scheduler.getContainerPreferablyFromHost("server2", "coolappX", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(id, check.Equals, "pre2")
-	_, err = scheduler.getContainerFromHost("server1", "coolappX", "other")
+	_, err = scheduler.getContainerPreferablyFromHost("server1", "coolappX", "other")
 	c.Assert(err, check.NotNil)
 }
 
@@ -735,33 +744,96 @@ func (s *S) TestNodesToHosts(c *check.C) {
 	c.Assert(hostsMap[hosts[0]], check.Equals, nodes[0].Address)
 }
 
-func (s *S) TestChooseContainerToBeRemovedMultipleApps(c *check.C) {
-	nodes := []cluster.Node{
-		{Address: "http://server1:1234"},
-		{Address: "http://server2:1234"},
+func (s *S) TestChooseContainerToBeRemovedTable(c *check.C) {
+	tests := []struct {
+		nodes     []cluster.Node
+		conts     []container.Container
+		app, proc string
+		expected  []string
+	}{
+		{
+			nodes: []cluster.Node{
+				{Address: "http://server1:1234"},
+				{Address: "http://server2:1234"},
+			},
+			conts: []container.Container{
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server2", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server2", ProcessName: "web"},
+			},
+			app:      "a2",
+			proc:     "web",
+			expected: []string{"id-4", "id-5"},
+		},
+		{
+			nodes: []cluster.Node{
+				{Address: "http://server1:1234"},
+				{Address: "http://server2:1234"},
+			},
+			conts: []container.Container{
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server2", ProcessName: "web"},
+			},
+			app:      "a2",
+			proc:     "web",
+			expected: []string{"id-4"},
+		},
+		{
+			nodes: []cluster.Node{
+				{Address: "http://server1:1234", Metadata: map[string]string{"net": "1"}},
+				{Address: "http://server2:1234", Metadata: map[string]string{"net": "2"}},
+				{Address: "http://server3:1234", Metadata: map[string]string{"net": "2"}},
+			},
+			conts: []container.Container{
+				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server1", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server2", ProcessName: "web"},
+				{AppName: "a1", HostAddr: "server3", ProcessName: "web"},
+			},
+			app:      "a1",
+			proc:     "web",
+			expected: []string{"id-3", "id-4"},
+		},
+		{
+			nodes: []cluster.Node{
+				{Address: "http://server1:1234"},
+				{Address: "http://server2:1234"},
+				{Address: "http://server3:1234"},
+			},
+			conts: []container.Container{
+				{AppName: "a1", HostAddr: "server3", ProcessName: "web"},
+				{AppName: "a2", HostAddr: "server4", ProcessName: "web"},
+			},
+			app:      "a2",
+			proc:     "web",
+			expected: []string{"id-1"},
+		},
 	}
-	contColl := s.p.Collection()
-	defer contColl.Close()
-	cont1 := container.Container{ID: "pre1", AppName: "coolapp1", HostAddr: "server1"}
-	err := contColl.Insert(cont1)
-	c.Assert(err, check.IsNil)
-	cont2 := container.Container{ID: "pre2", AppName: "coolapp1", HostAddr: "server1"}
-	err = contColl.Insert(cont2)
-	c.Assert(err, check.IsNil)
-	cont3 := container.Container{ID: "pre3", AppName: "coolapp1", HostAddr: "server1"}
-	err = contColl.Insert(cont3)
-	c.Assert(err, check.IsNil)
-	cont4 := container.Container{ID: "pre4", AppName: "coolapp2", HostAddr: "server1"}
-	err = contColl.Insert(cont4)
-	c.Assert(err, check.IsNil)
-	cont5 := container.Container{ID: "pre5", AppName: "coolapp2", HostAddr: "server2"}
-	err = contColl.Insert(cont5)
-	c.Assert(err, check.IsNil)
-	cont6 := container.Container{ID: "pre6", AppName: "coolapp2", HostAddr: "server2"}
-	err = contColl.Insert(cont6)
-	c.Assert(err, check.IsNil)
-	scheduler := segregatedScheduler{provisioner: s.p}
-	containerID, err := scheduler.chooseContainerToRemove(nodes, "coolapp2", "")
-	c.Assert(err, check.IsNil)
-	c.Assert(containerID == "pre5" || containerID == "pre6", check.Equals, true)
+	for i, tt := range tests {
+		scheduler := segregatedScheduler{provisioner: s.p}
+		contColl := s.p.Collection()
+		contColl.DropCollection()
+		for j, cont := range tt.conts {
+			cont.ID = fmt.Sprintf("id-%d", j)
+			contColl.Insert(cont)
+		}
+		contColl.Close()
+		containerID, err := scheduler.chooseContainerToRemove(tt.nodes, tt.app, tt.proc)
+		c.Assert(err, check.IsNil, check.Commentf("test %d", i))
+		found := false
+		for _, e := range tt.expected {
+			if containerID == e {
+				found = true
+				break
+			}
+		}
+		c.Assert(found, check.Equals, true, check.Commentf("test %d: containerID: %s, expected: %v", i, containerID, tt.expected))
+	}
 }
