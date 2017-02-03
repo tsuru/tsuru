@@ -37,7 +37,6 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Swap:     swap,
 		CpuShare: cpuShare,
 		Default:  isDefault,
-		Router:   r.FormValue("router"),
 	}
 	allowed := permission.Check(t, permission.PermPlanCreate)
 	if !allowed {

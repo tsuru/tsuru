@@ -219,7 +219,7 @@ var addRouterBackend = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +232,7 @@ var addRouterBackend = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			log.Errorf("[add-router-backend rollback] unable to get app router: %s", err)
 			return
@@ -290,7 +290,7 @@ var setAppIp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			return nil, err
 		}
@@ -395,6 +395,7 @@ type changePlanPipelineResult struct {
 	changedRouter bool
 	oldPlan       *Plan
 	oldIp         string
+	oldRouter     string
 	app           *App
 }
 
@@ -409,17 +410,14 @@ var moveRouterUnits = action.Action{
 		if !ok {
 			return nil, errors.New("second parameter must be a *Plan")
 		}
-		newRouter, err := app.GetRouter()
-		if err != nil {
-			return nil, err
+		oldRouter, ok := ctx.Params[2].(string)
+		if !ok {
+			return nil, errors.New("third parameter must be a string")
 		}
-		oldRouter, err := oldPlan.getRouter()
-		if err != nil {
-			return nil, err
-		}
-		result := changePlanPipelineResult{oldPlan: oldPlan, app: app, oldIp: app.Ip}
+		newRouter := app.Router
+		result := changePlanPipelineResult{oldPlan: oldPlan, oldRouter: oldRouter, app: app, oldIp: app.Ip}
 		if newRouter != oldRouter {
-			_, err = rebuild.RebuildRoutes(app)
+			_, err := rebuild.RebuildRoutes(app)
 			if err != nil {
 				return nil, err
 			}
@@ -431,6 +429,7 @@ var moveRouterUnits = action.Action{
 		result := ctx.FWResult.(*changePlanPipelineResult)
 		defer func() {
 			result.app.Plan = *result.oldPlan
+			result.app.Router = result.oldRouter
 		}()
 		if result.changedRouter {
 			app := result.app
@@ -442,7 +441,7 @@ var moveRouterUnits = action.Action{
 			}
 			defer conn.Close()
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
-			r, err := result.app.Router()
+			r, err := result.app.GetRouter()
 			if err != nil {
 				log.Errorf("BACKWARD move router units - failed to retrieve router: %s", err)
 				return
@@ -467,7 +466,7 @@ var saveApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		update := bson.M{"$set": bson.M{"plan": result.app.Plan}}
+		update := bson.M{"$set": bson.M{"plan": result.app.Plan, "routername": result.app.Router}}
 		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
 		if err != nil {
 			return nil, err
@@ -482,7 +481,7 @@ var saveApp = action.Action{
 			return
 		}
 		defer conn.Close()
-		update := bson.M{"$set": bson.M{"plan": *result.oldPlan}}
+		update := bson.M{"$set": bson.M{"plan": *result.oldPlan, "routername": result.oldRouter}}
 		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to update app: %s", err)
@@ -493,9 +492,9 @@ var saveApp = action.Action{
 var restartApp = action.Action{
 	Name: "change-plan-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		w, ok := ctx.Params[2].(io.Writer)
+		w, ok := ctx.Params[3].(io.Writer)
 		if !ok {
-			return nil, errors.New("third parameter must be an io.Writer")
+			return nil, errors.New("forth parameter must be an io.Writer")
 		}
 		result, ok := ctx.Previous.(*changePlanPipelineResult)
 		if !ok {
@@ -518,12 +517,7 @@ var removeOldBackend = action.Action{
 			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
 		}
 		if result.changedRouter {
-			routerName, err := result.oldPlan.getRouter()
-			if err != nil {
-				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
-				return nil, nil
-			}
-			r, err := router.Get(routerName)
+			r, err := router.Get(result.oldRouter)
 			if err != nil {
 				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
 				return nil, nil
@@ -568,7 +562,7 @@ var setNewCNamesToProvisioner = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			return nil, err
 		}
@@ -592,7 +586,7 @@ var setNewCNamesToProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			log.Errorf("BACKWARD set cnames - unable to retrieve router: %s", err)
 			return
@@ -698,7 +692,7 @@ var unsetCNameFromProvisioner = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		cnames := ctx.Params[1].([]string)
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			return nil, err
 		}
@@ -722,7 +716,7 @@ var unsetCNameFromProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		cnames := ctx.Params[1].([]string)
 		app := ctx.Params[0].(*App)
-		r, err := app.Router()
+		r, err := app.GetRouter()
 		if err != nil {
 			log.Errorf("BACKWARD unset cname - unable to retrieve router: %s", err)
 			return

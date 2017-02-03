@@ -8,7 +8,6 @@ import (
 	"sort"
 
 	"github.com/tsuru/config"
-	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -28,26 +27,6 @@ func (s *S) TestPlanAdd(c *check.C) {
 	c.Assert(plan, check.DeepEquals, p)
 }
 
-func (s *S) TestPlanAddWithInvalidRouter(c *check.C) {
-	p := Plan{
-		Name:     "plan1",
-		Memory:   9223372036854775807,
-		Swap:     1024,
-		CpuShare: 100,
-		Router:   "fake",
-	}
-	err := p.Save()
-	c.Assert(err, check.IsNil)
-	defer s.conn.Plans().RemoveId(p.Name)
-	var plan Plan
-	err = s.conn.Plans().FindId(p.Name).One(&plan)
-	c.Assert(err, check.IsNil)
-	c.Assert(plan, check.DeepEquals, p)
-	r, err := plan.getRouter()
-	c.Assert(err, check.IsNil)
-	c.Assert(r, check.Equals, "fake")
-}
-
 func (s *S) TestPlanAddInvalid(c *check.C) {
 	invalidPlans := []Plan{
 		{
@@ -63,19 +42,12 @@ func (s *S) TestPlanAddInvalid(c *check.C) {
 		},
 		{
 			Name:     "plan1",
-			Memory:   9223372036854775807,
-			Swap:     1024,
-			CpuShare: 100,
-			Router:   "invalid",
-		},
-		{
-			Name:     "plan1",
 			Memory:   4,
 			Swap:     1024,
 			CpuShare: 100,
 		},
 	}
-	expectedError := []error{PlanValidationError{"name"}, ErrLimitOfCpuShare, PlanValidationError{"router"}, ErrLimitOfMemory}
+	expectedError := []error{PlanValidationError{"name"}, ErrLimitOfCpuShare, ErrLimitOfMemory}
 	for i, p := range invalidPlans {
 		err := p.Save()
 		c.Assert(err, check.FitsTypeOf, expectedError[i])
@@ -212,22 +184,4 @@ func (s *S) TestFindPlanByName(c *check.C) {
 	dbPlan, err := findPlanByName(p.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(*dbPlan, check.DeepEquals, p)
-}
-
-func (s *S) TestPlanGetRouter(c *check.C) {
-	config.Set("docker:router", "defaultrouter")
-	defer config.Unset("docker:router")
-	p := Plan{
-		Name:   "plan1",
-		Router: "myrouter",
-	}
-	r, err := p.getRouter()
-	c.Assert(err, check.IsNil)
-	c.Assert(r, check.Equals, "myrouter")
-	p2 := Plan{
-		Name: "plan2",
-	}
-	r2, err := p2.getRouter()
-	c.Assert(err, check.IsNil)
-	c.Assert(r2, check.Equals, "defaultrouter")
 }

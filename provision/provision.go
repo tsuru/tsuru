@@ -228,7 +228,7 @@ type App interface {
 	SetUpdatePlatform(bool) error
 	GetUpdatePlatform() bool
 
-	GetRouter() (string, error)
+	GetRouterName() (string, error)
 
 	GetPool() string
 

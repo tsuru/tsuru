@@ -249,10 +249,10 @@ func (s *S) TestGetDeployInvalidHex(c *check.C) {
 func (s *S) TestDeployApp(c *check.C) {
 	a := App{
 		Name:      "some-app",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -279,11 +279,11 @@ func (s *S) TestDeployApp(c *check.C) {
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	a := App{
 		Name:           "some-app",
-		Plan:           Plan{Router: "fake"},
 		Platform:       "django",
 		Teams:          []string{s.team.Name},
 		UpdatePlatform: true,
 		TeamOwner:      s.team.Name,
+		Router:         "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -313,10 +313,10 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -344,10 +344,10 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -377,10 +377,10 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -408,10 +408,10 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -439,10 +439,10 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -507,10 +507,10 @@ func (s *S) TestValidateOrigin(c *check.C) {
 func (s *S) TestDeployAsleepApp(c *check.C) {
 	a := App{
 		Name:      "some-app",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "django",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -653,10 +653,10 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 func (s *S) TestRollbackWithNameImage(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -683,10 +683,10 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -719,10 +719,10 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	a := App{
 		Name:      "otherapp",
-		Plan:      Plan{Router: "fake"},
 		Platform:  "zend",
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)

@@ -16,8 +16,9 @@ import (
 
 func (s *S) TestReserveUnits(c *check.C) {
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 7},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 7},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -30,8 +31,9 @@ func (s *S) TestReserveUnits(c *check.C) {
 
 func (s *S) TestReserveUnitsAppNotFound(c *check.C) {
 	app := App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 7},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 7},
+		Router: "fake",
 	}
 	err := reserveUnits(&app, 6)
 	c.Assert(err, check.Equals, ErrAppNotFound)
@@ -39,8 +41,9 @@ func (s *S) TestReserveUnitsAppNotFound(c *check.C) {
 
 func (s *S) TestReserveUnitsQuotaExceeded(c *check.C) {
 	app := App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 7},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 7},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -55,7 +58,7 @@ func (s *S) TestReserveUnitsQuotaExceeded(c *check.C) {
 }
 
 func (s *S) TestReserveUnitsUnlimitedQuota(c *check.C) {
-	app := &App{Name: "together", Quota: quota.Unlimited}
+	app := &App{Name: "together", Quota: quota.Unlimited, Router: "fake"}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := reserveUnits(app, 6)
@@ -69,8 +72,9 @@ func (s *S) TestReserveUnitsIsAtomic(c *check.C) {
 	ncpu := runtime.NumCPU()
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(ncpu))
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 40},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 40},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -90,8 +94,9 @@ func (s *S) TestReserveUnitsIsAtomic(c *check.C) {
 
 func (s *S) TestReleaseUnits(c *check.C) {
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 7, InUse: 7},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 7, InUse: 7},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -104,8 +109,9 @@ func (s *S) TestReleaseUnits(c *check.C) {
 
 func (s *S) TestReleaseUnreservedUnits(c *check.C) {
 	app := App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 7, InUse: 7},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 7, InUse: 7},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -118,8 +124,9 @@ func (s *S) TestReleaseUnitsIsAtomic(c *check.C) {
 	ncpu := runtime.NumCPU()
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(ncpu))
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 40, InUse: 40},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 40, InUse: 40},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -139,8 +146,9 @@ func (s *S) TestReleaseUnitsIsAtomic(c *check.C) {
 
 func (s *S) TestReleaseUnitsAppNotFound(c *check.C) {
 	app := App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 7, InUse: 7},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 7, InUse: 7},
+		Router: "fake",
 	}
 	err := releaseUnits(&app, 6)
 	c.Assert(err, check.Equals, ErrAppNotFound)
@@ -148,8 +156,9 @@ func (s *S) TestReleaseUnitsAppNotFound(c *check.C) {
 
 func (s *S) TestChangeQuota(c *check.C) {
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 3, InUse: 3},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 3, InUse: 3},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -163,8 +172,9 @@ func (s *S) TestChangeQuota(c *check.C) {
 
 func (s *S) TestChangeQuotaUnlimited(c *check.C) {
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 3, InUse: 2},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 3, InUse: 2},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -178,8 +188,9 @@ func (s *S) TestChangeQuotaUnlimited(c *check.C) {
 
 func (s *S) TestChangeQuotaLessThanInUse(c *check.C) {
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 3, InUse: 3},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 3, InUse: 3},
+		Router: "fake",
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -190,8 +201,9 @@ func (s *S) TestChangeQuotaLessThanInUse(c *check.C) {
 
 func (s *S) TestChangeQuotaAppNotFound(c *check.C) {
 	app := &App{
-		Name:  "together",
-		Quota: quota.Quota{Limit: 3, InUse: 3},
+		Name:   "together",
+		Quota:  quota.Quota{Limit: 3, InUse: 3},
+		Router: "fake",
 	}
 	err := ChangeQuota(app, 20)
 	c.Assert(err, check.NotNil)

@@ -158,7 +158,7 @@ func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
 	err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
 	oldIp := a.Ip
-	a.Plan = app.Plan{Router: "fake-hc"}
+	a.Router = "fake-hc"
 	_, err = rebuild.RebuildRoutes(&a)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Ip, check.Not(check.Equals), oldIp)

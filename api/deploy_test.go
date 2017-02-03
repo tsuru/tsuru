@@ -246,9 +246,9 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{
 		Name:      "otherapp",
-		Plan:      app.Plan{Router: "fake"},
 		Platform:  "python",
 		TeamOwner: s.team.Name,
+		Router:    "fake",
 	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -291,7 +291,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	a := app.App{
 		Name:      "otherapp",
 		Platform:  "python",
-		Plan:      app.Plan{Router: "fake"},
+		Router:    "fake",
 		TeamOwner: s.team.Name,
 	}
 
@@ -346,7 +346,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
-		Plan:      app.Plan{Router: "fake"},
+		Router:    "fake",
 	}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -392,7 +392,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
-		Plan:      app.Plan{Router: "fake"},
+		Router:    "fake",
 	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -439,7 +439,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
-		Plan:      app.Plan{Router: "fake"},
+		Router:    "fake",
 	}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
@@ -599,7 +599,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
-		Plan:      app.Plan{Router: "fake"},
+		Router:    "fake",
 	}
 	user, _ := s.token.User()
 	err = app.CreateApp(&a, user)

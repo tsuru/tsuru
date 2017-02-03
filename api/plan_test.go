@@ -21,7 +21,7 @@ import (
 
 func (s *S) TestPlanAdd(c *check.C) {
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=1024&cpushare=100&router=fake")
+	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=1024&cpushare=100")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -34,7 +34,7 @@ func (s *S) TestPlanAdd(c *check.C) {
 	err = s.conn.Plans().Find(nil).All(&plans)
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []app.Plan{
-		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100, Router: "fake"},
+		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100},
 	})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
@@ -45,14 +45,13 @@ func (s *S) TestPlanAdd(c *check.C) {
 			{"name": "memory", "value": "9223372036854775807"},
 			{"name": "swap", "value": "1024"},
 			{"name": "cpushare", "value": "100"},
-			{"name": "router", "value": "fake"},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100&router=fake")
+	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -65,13 +64,13 @@ func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 	err = s.conn.Plans().Find(nil).All(&plans)
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []app.Plan{
-		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100, Router: "fake"},
+		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100},
 	})
 }
 
 func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100&router=fake")
+	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -84,13 +83,13 @@ func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 	err = s.conn.Plans().Find(nil).All(&plans)
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []app.Plan{
-		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100, Router: "fake"},
+		{Name: "xyz", Memory: 536870912, Swap: 1024, CpuShare: 100},
 	})
 }
 
 func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=512M&cpushare=100&router=fake")
+	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=512M&cpushare=100")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -103,7 +102,7 @@ func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 	err = s.conn.Plans().Find(nil).All(&plans)
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []app.Plan{
-		{Name: "xyz", Memory: 9223372036854775807, Swap: 536870912, CpuShare: 100, Router: "fake"},
+		{Name: "xyz", Memory: 9223372036854775807, Swap: 536870912, CpuShare: 100},
 	})
 }
 
@@ -272,7 +271,7 @@ func (s *S) TestRoutersList(c *check.C) {
 	defer config.Unset("routers:router2:type")
 	recorder := httptest.NewRecorder()
 	expected := []router.PlanRouter{
-		{Name: "fake", Type: "fake"},
+		{Name: "fake", Type: "fake", Default: true},
 		{Name: "fake-tls", Type: "fake-tls"},
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},

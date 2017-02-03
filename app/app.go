@@ -124,6 +124,7 @@ type App struct {
 	Plan           Plan
 	Pool           string
 	Description    string
+	Router         string
 	RouterOpts     map[string]string
 
 	quota.Quota
@@ -281,6 +282,14 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
+	if app.Router == "" {
+		app.Router, err = router.Default()
+	} else {
+		_, err = router.Get(app.Router)
+	}
+	if err != nil {
+		return err
+	}
 	err = app.validateTeamOwner()
 	if err != nil {
 		return err
@@ -319,6 +328,7 @@ func (app *App) Update(updateData App, w io.Writer) error {
 	planName := updateData.Plan.Name
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
+	routerName := updateData.Router
 	if description != "" {
 		app.Description = description
 	}
@@ -329,25 +339,30 @@ func (app *App) Update(updateData App, w io.Writer) error {
 			return err
 		}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
+	oldPlan := app.Plan
+	oldRouter := app.Router
+	if routerName != "" {
+		_, err := router.Get(routerName)
+		if err != nil {
+			return err
+		}
+		app.Router = routerName
 	}
-	defer conn.Close()
 	if planName != "" {
 		plan, err := findPlanByName(planName)
 		if err != nil {
 			return err
 		}
-		var oldPlan Plan
-		oldPlan, app.Plan = app.Plan, *plan
+		app.Plan = *plan
+	}
+	if planName != "" || routerName != "" {
 		actions := []*action.Action{
 			&moveRouterUnits,
 			&saveApp,
 			&restartApp,
 			&removeOldBackend,
 		}
-		err = action.NewPipeline(actions...).Execute(app, &oldPlan, w)
+		err := action.NewPipeline(actions...).Execute(app, &oldPlan, oldRouter, w)
 		if err != nil {
 			return err
 		}
@@ -364,6 +379,11 @@ func (app *App) Update(updateData App, w io.Writer) error {
 		}
 		app.Grant(team)
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
 	return conn.Apps().Update(bson.M{"name": app.Name}, app)
 }
 
@@ -430,7 +450,7 @@ func Delete(app *App, w io.Writer) error {
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
 	}
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err == nil {
 		err = r.RemoveBackend(app.Name)
 	}
@@ -982,7 +1002,7 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep\n", app.Name)
 	}
 	log.Write(w, []byte(msg))
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		return err
@@ -1584,11 +1604,11 @@ func List(filter *Filter) ([]App, error) {
 
 // Swap calls the Router.Swap and updates the app.CName in the database.
 func Swap(app1, app2 *App, cnameOnly bool) error {
-	r1, err := app1.Router()
+	r1, err := app1.GetRouter()
 	if err != nil {
 		return err
 	}
-	r2, err := app2.Router()
+	r2, err := app2.GetRouter()
 	if err != nil {
 		return err
 	}
@@ -1666,8 +1686,12 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 	return prov.RegisterUnit(app, unitId, customData)
 }
 
-func (app *App) GetRouter() (string, error) {
-	return app.Plan.getRouter()
+func (app *App) GetRouterName() (string, error) {
+	return app.Router, nil
+}
+
+func (app *App) GetRouter() (router.Router, error) {
+	return router.Get(app.Router)
 }
 
 func (app *App) MetricEnvs() (map[string]string, error) {
@@ -1705,7 +1729,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 	if !hasCname && name != app.Ip {
 		return errors.New("invalid name")
 	}
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err != nil {
 		return err
 	}
@@ -1738,7 +1762,7 @@ func (app *App) RemoveCertificate(name string) error {
 	if !hasCname && name != app.Ip {
 		return errors.New("invalid name")
 	}
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err != nil {
 		return err
 	}
@@ -1750,7 +1774,7 @@ func (app *App) RemoveCertificate(name string) error {
 }
 
 func (app *App) GetCertificates() (map[string]string, error) {
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err != nil {
 		return nil, err
 	}
@@ -1778,16 +1802,8 @@ func (e *ProcfileError) Error() string {
 	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
 }
 
-func (app *App) Router() (router.Router, error) {
-	routerName, err := app.GetRouter()
-	if err != nil {
-		return nil, err
-	}
-	return router.Get(routerName)
-}
-
 func (app *App) UpdateAddr() error {
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err != nil {
 		return err
 	}

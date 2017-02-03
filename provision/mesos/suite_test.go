@@ -41,6 +41,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("kubernetes:token", "token==")
 	config.Set("database:name", "provision_mesos_tests_s")
 	config.Set("routers:fake:type", "fake")
+	config.Set("routers:fake:default", true)
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -63,7 +64,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := app.Plan{
 		Name:     "default",
-		Router:   "fake",
 		Default:  true,
 		CpuShare: 100,
 	}

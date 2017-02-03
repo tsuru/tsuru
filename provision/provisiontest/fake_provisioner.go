@@ -344,7 +344,7 @@ func (a *FakeApp) SetUpdatePlatform(check bool) error {
 	return nil
 }
 
-func (app *FakeApp) GetRouter() (string, error) {
+func (app *FakeApp) GetRouterName() (string, error) {
 	return "fake", nil
 }
 

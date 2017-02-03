@@ -41,7 +41,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = dbtest.ClearAllCollections(conn.Events().Database)
 	c.Assert(err, check.IsNil)
 	config.Set("routers:fake:type", "fake")
-	err = (&app.Plan{Name: "default", Router: "fake", CpuShare: 100, Default: true}).Save()
+	config.Set("routers:fake:default", true)
+	err = (&app.Plan{Name: "default", CpuShare: 100, Default: true}).Save()
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme

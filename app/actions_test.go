@@ -121,8 +121,8 @@ func (s *S) TestInsertAppForwardInvalidValue(c *check.C) {
 }
 
 func (s *S) TestInsertAppDuplication(c *check.C) {
-	app := App{Name: "come", Platform: "gotthard"}
-	err := s.conn.Apps().Insert(app)
+	app := App{Name: "come", Platform: "gotthard", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{
@@ -134,12 +134,12 @@ func (s *S) TestInsertAppDuplication(c *check.C) {
 }
 
 func (s *S) TestInsertAppBackward(c *check.C) {
-	app := App{Name: "conviction", Platform: "evergrey"}
+	app := App{Name: "conviction", Platform: "evergrey", TeamOwner: s.team.Name}
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: &app,
 	}
-	err := s.conn.Apps().Insert(app)
+	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name}) // sanity
 	insertApp.Backward(ctx)
@@ -155,8 +155,8 @@ func (s *S) TestInsertAppMinimumParams(c *check.C) {
 func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	app := App{Name: "mist", Platform: "opeth"}
-	err := s.conn.Apps().Insert(app)
+	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app}}
@@ -182,7 +182,12 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	envNames := []string{
 		"TSURU_APP_TOKEN",
 	}
-	app := App{Name: "moon", Platform: "opeth", Env: make(map[string]bind.EnvVar)}
+	app := App{
+		Name:      "moon",
+		Platform:  "opeth",
+		Env:       make(map[string]bind.EnvVar),
+		TeamOwner: s.team.Name,
+	}
 	for _, name := range envNames {
 		envVar := bind.EnvVar{Name: name, Value: name, Public: false}
 		app.Env[name] = envVar
@@ -190,7 +195,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	token, err := nativeScheme.AppLogin(app.Name)
 	c.Assert(err, check.IsNil)
 	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
-	err = s.conn.Apps().Insert(app)
+	err = CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
@@ -260,6 +265,7 @@ func (s *S) TestProvisionAppForward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
+		Router:   "fake",
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -277,6 +283,7 @@ func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
+		Router:   "fake",
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -300,6 +307,7 @@ func (s *S) TestProvisionAppBackward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
+		Router:   "fake",
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -460,8 +468,10 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Unlimited,
+		Router:   "fake",
 	}
-	s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(err, check.IsNil)
@@ -476,8 +486,10 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Unlimited,
+		Router:   "fake",
 	}
-	s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
 	c.Assert(err, check.IsNil)
@@ -492,8 +504,10 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Quota{Limit: 1, InUse: 1},
+		Router:   "fake",
 	}
-	s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 1}})
 	c.Assert(result, check.IsNil)
@@ -531,8 +545,10 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 		Quota:    quota.Quota{Limit: 5, InUse: 4},
+		Router:   "fake",
 	}
-	s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
 	gotApp, err := GetByName(app.Name)
@@ -606,8 +622,8 @@ func (s *S) TestSetAppIpForward(c *check.C) {
 }
 
 func (s *S) TestSetAppIpBackward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey", Ip: "some-value"}
-	err := s.conn.Apps().Insert(app)
+	app := &App{Name: "conviction", Platform: "evergrey", Ip: "some-value", TeamOwner: s.team.Name}
+	err := CreateApp(app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{
@@ -626,6 +642,7 @@ func (s *S) TestAddRouterBackendForward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
+		Router:   "fake",
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -649,6 +666,7 @@ func (s *S) TestAddRouterBackendBackward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
+		Router:   "fake",
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)

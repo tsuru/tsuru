@@ -387,7 +387,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	} else if replicas == 0 && opts.processState.start {
 		replicas = 1
 	}
-	routerName, err := opts.app.GetRouter()
+	routerName, err := opts.app.GetRouterName()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

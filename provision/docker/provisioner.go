@@ -68,7 +68,7 @@ func init() {
 }
 
 func getRouterForApp(app provision.App) (router.Router, error) {
-	routerName, err := app.GetRouter()
+	routerName, err := app.GetRouterName()
 	if err != nil {
 		return nil, err
 	}

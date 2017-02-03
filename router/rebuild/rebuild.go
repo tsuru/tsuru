@@ -19,7 +19,7 @@ type RebuildApp interface {
 	GetRouterOpts() map[string]string
 	GetName() string
 	GetCname() []string
-	Router() (router.Router, error)
+	GetRouter() (router.Router, error)
 	RoutableAddresses() ([]url.URL, error)
 	UpdateAddr() error
 	InternalLock(string) (bool, error)
@@ -27,7 +27,7 @@ type RebuildApp interface {
 }
 
 func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
-	r, err := app.Router()
+	r, err := app.GetRouter()
 	if err != nil {
 		return nil, err
 	}

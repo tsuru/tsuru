@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -22,7 +21,6 @@ type Plan struct {
 	Swap     int64  `json:"swap"`
 	CpuShare int    `json:"cpushare"`
 	Default  bool   `json:"default,omitempty"`
-	Router   string `json:"router,omitempty"`
 }
 
 type PlanValidationError struct{ field string }
@@ -49,12 +47,6 @@ func (plan *Plan) Save() error {
 	if plan.Memory > 0 && plan.Memory < 4194304 {
 		return ErrLimitOfMemory
 	}
-	if plan.Router != "" {
-		_, err := router.Get(plan.Router)
-		if err != nil {
-			return PlanValidationError{fmt.Sprintf("router error: %v", err)}
-		}
-	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -71,13 +63,6 @@ func (plan *Plan) Save() error {
 		return ErrPlanAlreadyExists
 	}
 	return err
-}
-
-func (plan *Plan) getRouter() (string, error) {
-	if plan.Router != "" {
-		return plan.Router, nil
-	}
-	return config.GetString("docker:router")
 }
 
 func PlansList() ([]Plan, error) {

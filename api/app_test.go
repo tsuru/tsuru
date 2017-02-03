@@ -5245,9 +5245,7 @@ func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestRebuildRoutes(c *check.C) {
-	config.Set("docker:router", "fake")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&a)
@@ -5265,9 +5263,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 }
 
 func (s *S) TestSetCertificate(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -5296,9 +5292,7 @@ func (s *S) TestSetCertificate(c *check.C) {
 }
 
 func (s *S) TestSetCertificateInvalidCname(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -5318,9 +5312,7 @@ func (s *S) TestSetCertificateInvalidCname(c *check.C) {
 }
 
 func (s *S) TestSetCertificateInvalidCertificate(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"myapp.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"myapp.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
@@ -5360,9 +5352,7 @@ func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
 }
 
 func (s *S) TestUnsetCertificate(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate("app.io", testCert, testKey)
@@ -5387,9 +5377,7 @@ func (s *S) TestUnsetCertificate(c *check.C) {
 }
 
 func (s *S) TestUnsetCertificateWithoutCName(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate("app.io", testCert, testKey)
@@ -5406,9 +5394,7 @@ func (s *S) TestUnsetCertificateWithoutCName(c *check.C) {
 }
 
 func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate("app.io", testCert, testKey)
@@ -5425,9 +5411,7 @@ func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
 }
 
 func (s *S) TestListCertificates(c *check.C) {
-	config.Set("docker:router", "fake-tls")
-	defer config.Unset("docker:router")
-	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}}
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, CName: []string{"app.io"}, Router: "fake-tls"}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate("app.io", testCert, testKey)

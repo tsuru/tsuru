@@ -162,7 +162,6 @@ func (s *S) SetUpTest(c *check.C) {
 		Swap:     1024,
 		CpuShare: 100,
 		Default:  true,
-		Router:   "fake",
 	}
 	err = s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)

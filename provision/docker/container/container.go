@@ -123,7 +123,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	if args.Building {
 		user = c.user()
 	}
-	routerName, err := args.App.GetRouter()
+	routerName, err := args.App.GetRouterName()
 	if err != nil {
 		return err
 	}
