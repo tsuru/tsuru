@@ -40,6 +40,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-database", "queue_router_rebuild_tests")
 	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("routers:fake:type", "fake")
+	config.Set("routers:fake:default", true)
 	config.Set("routers:fake-hc:type", "fake-hc")
 	config.Set("docker:router", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)

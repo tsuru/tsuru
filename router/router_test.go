@@ -84,6 +84,39 @@ func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	c.Assert(prefixes, check.DeepEquals, []string{"routers:inst1", "routers:inst2"})
 }
 
+func (s *S) TestDefault(c *check.C) {
+	defer config.Unset("routers")
+	config.Set("routers:fake:type", "fake")
+	config.Set("routers:fake2:type", "fake")
+	config.Set("routers:fake2:default", true)
+	d, err := Default()
+	c.Assert(err, check.IsNil)
+	c.Assert(d, check.Equals, "fake2")
+}
+
+func (s *S) TestDefaultNoRouter(c *check.C) {
+	d, err := Default()
+	c.Assert(err, check.NotNil)
+	c.Assert(d, check.Equals, "")
+}
+
+func (s *S) TestDefaultNoRouterMultipleRouters(c *check.C) {
+	defer config.Unset("routers")
+	config.Set("routers:fake:type", "fake")
+	config.Set("routers:fake2:type", "fake")
+	d, err := Default()
+	c.Assert(err, check.NotNil)
+	c.Assert(d, check.Equals, "")
+}
+
+func (s *S) TestDefaultSingleRouter(c *check.C) {
+	defer config.Unset("routers")
+	config.Set("routers:fake:type", "fake")
+	d, err := Default()
+	c.Assert(err, check.IsNil)
+	c.Assert(d, check.Equals, "fake")
+}
+
 func (s *S) TestStore(c *check.C) {
 	err := Store("appname", "routername", "fake")
 	c.Assert(err, check.IsNil)
@@ -157,11 +190,12 @@ func (s *S) TestSwapBackendName(c *check.C) {
 func (s *S) TestList(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
+	config.Set("routers:router2:default", true)
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
 	expected := []PlanRouter{
-		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar"},
+		{Name: "router1", Type: "foo", Default: false},
+		{Name: "router2", Type: "bar", Default: true},
 	}
 	routers, err := List()
 	c.Assert(err, check.IsNil)

@@ -24,15 +24,16 @@ import (
 type routerFactory func(routerName, configPrefix string) (Router, error)
 
 var (
-	ErrBackendExists       = errors.New("Backend already exists")
-	ErrBackendNotFound     = errors.New("Backend not found")
-	ErrBackendSwapped      = errors.New("Backend is swapped cannot remove")
-	ErrRouteExists         = errors.New("Route already exists")
-	ErrRouteNotFound       = errors.New("Route not found")
-	ErrCNameExists         = errors.New("CName already exists")
-	ErrCNameNotFound       = errors.New("CName not found")
-	ErrCNameNotAllowed     = errors.New("CName as router subdomain not allowed")
-	ErrCertificateNotFound = errors.New("Certificate not found")
+	ErrBackendExists         = errors.New("Backend already exists")
+	ErrBackendNotFound       = errors.New("Backend not found")
+	ErrBackendSwapped        = errors.New("Backend is swapped cannot remove")
+	ErrRouteExists           = errors.New("Route already exists")
+	ErrRouteNotFound         = errors.New("Route not found")
+	ErrCNameExists           = errors.New("CName already exists")
+	ErrCNameNotFound         = errors.New("CName not found")
+	ErrCNameNotAllowed       = errors.New("CName as router subdomain not allowed")
+	ErrCertificateNotFound   = errors.New("Certificate not found")
+	ErrDefaultRouterNotFound = errors.New("No default router found")
 )
 
 const HttpScheme = "http"
@@ -73,6 +74,26 @@ func Get(name string) (Router, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// Default returns the default router
+func Default() (string, error) {
+	plans, err := List()
+	if err != nil {
+		return "", err
+	}
+	if len(plans) == 0 {
+		return "", ErrDefaultRouterNotFound
+	}
+	if len(plans) == 1 {
+		return plans[0].Name, nil
+	}
+	for _, p := range plans {
+		if p.Default {
+			return p.Name, nil
+		}
+	}
+	return "", ErrDefaultRouterNotFound
 }
 
 // Router is the basic interface of this package. It provides methods for
@@ -320,8 +341,9 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 }
 
 type PlanRouter struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Default bool   `json:"default"`
 }
 
 func List() ([]PlanRouter, error) {
@@ -342,14 +364,16 @@ func List() ([]PlanRouter, error) {
 	sort.Strings(keys)
 	for _, value := range keys {
 		var routerType string
+		var defaultFlag bool
 		routerProperties, _ := routers[value].(map[interface{}]interface{})
 		if routerProperties != nil {
 			routerType, _ = routerProperties["type"].(string)
+			defaultFlag, _ = routerProperties["default"].(bool)
 		}
 		if routerType == "" {
 			routerType = value
 		}
-		routersList = append(routersList, PlanRouter{Name: value, Type: routerType})
+		routersList = append(routersList, PlanRouter{Name: value, Type: routerType, Default: defaultFlag})
 	}
 	return routersList, nil
 }
