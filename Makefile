@@ -8,9 +8,9 @@ TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 LINTER_ARGS = \
-	-j 4 --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
+	-j 4 --enable-gc -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
-	--deadline=15m --tests
+	--disable=structcheck --deadline=20m --tests
 
 .PHONY: all check-path test race docs install
 
@@ -50,8 +50,8 @@ metalint:
 	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
 		go get -u github.com/alecthomas/gometalinter; \
 		gometalinter --install; \
-		for pkg in $$(go list ./...); do go install $$pkg; done; \
-		go list ./... | grep -v vendor/ | sed -e "s;^;$$GOPATH/src/;" | xargs gometalinter $(LINTER_ARGS); \
+		go install ./...; \
+		gometalinter $(LINTER_ARGS) ./...; \
 	fi
 
 race:
