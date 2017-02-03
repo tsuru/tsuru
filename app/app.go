@@ -355,7 +355,7 @@ func (app *App) Update(updateData App, w io.Writer) error {
 		}
 		app.Plan = *plan
 	}
-	if planName != "" || routerName != "" {
+	if app.Router != oldRouter || app.Plan != oldPlan {
 		actions := []*action.Action{
 			&moveRouterUnits,
 			&saveApp,
