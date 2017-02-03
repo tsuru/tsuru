@@ -436,7 +436,7 @@ func startServer(handler http.Handler) {
 		}
 		fmt.Println()
 	}
-	defaultRouter, _ := config.GetString("docker:router")
+	defaultRouter, _ := router.Default()
 	fmt.Printf("Default router is %q.\n", defaultRouter)
 	repoManager, err := config.GetString("repo-manager")
 	if err != nil {
