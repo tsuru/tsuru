@@ -51,9 +51,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -99,9 +97,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -147,9 +143,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -195,9 +189,7 @@ func (s *S) TestMoveContainerStopped(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -231,9 +223,7 @@ func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = addedConts[0].SetStatus(p, provision.StatusError, true)
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -267,9 +257,7 @@ func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = addedConts[0].SetStatus(p, provision.StatusError, true)
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -302,10 +290,8 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -353,11 +339,9 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:      appInstance.GetName(),
-		TeamOwner: "team1",
-		Pool:      "pool1",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.TeamOwner = "team1"
+	appStruct.Pool = "pool1"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
@@ -409,11 +393,9 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:      appInstance.GetName(),
-		TeamOwner: "team1",
-		Pool:      "pool1",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.TeamOwner = "team1"
+	appStruct.Pool = "pool1"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
@@ -512,16 +494,12 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	appStruct2 := &app.App{
-		Name: appInstance2.GetName(),
-		Pool: "test-default",
-	}
+	appStruct2 := s.newAppFromFake(appInstance2)
+	appStruct2.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct2)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -564,10 +542,8 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	)
 	err = pipeline.Execute(args)
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	router, err := getRouterForApp(appInstance)

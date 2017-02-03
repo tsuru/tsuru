@@ -10,7 +10,6 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -78,11 +77,9 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		)
 		err = pipeline.Execute(args)
 		c.Assert(err, check.IsNil)
-		appStruct := &app.App{
-			Name:      appInstance.GetName(),
-			TeamOwner: "team1",
-			Pool:      "pool1",
-		}
+		appStruct := s.newAppFromFake(appInstance)
+		appStruct.TeamOwner = "team1"
+		appStruct.Pool = "pool1"
 		err = s.storage.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
 	}

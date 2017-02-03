@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -255,4 +256,22 @@ func (s unitSlice) Swap(i, j int) {
 
 func sortUnits(units []provision.Unit) {
 	sort.Sort(unitSlice(units))
+}
+
+func (s *S) newApp(name string) app.App {
+	return app.App{
+		Name:      name,
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+	}
+}
+
+func (s *S) newAppFromFake(fake *provisiontest.FakeApp) app.App {
+	router, _ := fake.GetRouterName()
+	return app.App{
+		Name:     fake.GetName(),
+		Platform: fake.GetPlatform(),
+		Router:   router,
+	}
 }

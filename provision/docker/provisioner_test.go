@@ -252,11 +252,7 @@ func (s *S) TestDeploy(c *check.C) {
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateRepository(a.Name, nil)
@@ -316,11 +312,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	defer func() { <-stopCh }()
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -379,11 +371,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	defer func() { <-stopCh }()
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -429,11 +417,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	err = app.ChangeQuota(&a, 1)
@@ -485,11 +469,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "appdeployimagetest",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("appdeployimagetest")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
@@ -551,11 +531,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	defer config.Unset("docker:image-history-size")
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "appdeployimagetest",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("appdeployimagetest")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -601,11 +577,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "appdeployimagetest",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("appdeployimagetest")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -687,12 +659,8 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -738,12 +706,8 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -775,10 +739,7 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "python",
-	}
+	a := s.newApp("otherapp")
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	s.p.Provision(&a)
@@ -866,13 +827,9 @@ func (s *S) TestImageDeployMoreThanOnePortFromImage(c *check.C) {
 	}
 	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		Pool:      "pool1",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "pool1"
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	image.PullAppImageNames(a.Name, []string{imageName})
@@ -937,13 +894,9 @@ func (s *S) TestImageDeployGetPortFromImage(c *check.C) {
 	}
 	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		Pool:      "pool1",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "pool1"
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	image.PullAppImageNames(a.Name, []string{imageName})
@@ -1030,13 +983,9 @@ func (s *S) TestImageDeploy(c *check.C) {
 	}
 	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		Pool:      "pool1",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "pool1"
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	image.PullAppImageNames(a.Name, []string{imageName})
@@ -1105,13 +1054,9 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	customData := map[string]interface{}{}
 	err = s.newFakeImage(p, imageName, customData)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		Pool:      "pool1",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "pool1"
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	image.PullAppImageNames(a.Name, []string{imageName})
@@ -1182,13 +1127,9 @@ func (s *S) TestImageDeployWithEntrypointAndCmd(c *check.C) {
 	}
 	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		Pool:      "pool1",
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "pool1"
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	image.PullAppImageNames(a.Name, []string{imageName})
@@ -1248,12 +1189,8 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	defer config.Unset("docker:registry")
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
-	a := app.App{
-		Name:      "mydoomedapp",
-		Platform:  "python",
-		Quota:     quota.Unlimited,
-		TeamOwner: s.team.Name,
-	}
+	a := s.newApp("mydoomedapp")
+	a.Quota = quota.Unlimited
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -3328,10 +3265,7 @@ func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -3385,10 +3319,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	containers, err := addContainersWithHost(&changeUnitsPipelineArgs{
@@ -3553,10 +3484,7 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-	}
+	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -3641,11 +3569,8 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-		Pool:     "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -3690,11 +3615,8 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-		Pool:     "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -3736,11 +3658,8 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-		Pool:     "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
@@ -3775,11 +3694,8 @@ func (s *S) TestRebalanceNodesDry(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-		Pool:     "test-default",
-	}
+	appStruct := s.newAppFromFake(appInstance)
+	appStruct.Pool = "test-default"
 	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
