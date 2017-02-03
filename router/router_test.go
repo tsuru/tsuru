@@ -116,6 +116,17 @@ func (s *S) TestDefaultSingleRouter(c *check.C) {
 	c.Assert(d, check.Equals, "fake")
 }
 
+func (s *S) TestDefaultFromFallbackConfig(c *check.C) {
+	defer config.Unset("routers")
+	defer config.Unset("docker:router")
+	config.Set("routers:fake:type", "fake")
+	config.Set("routers:fake2:type", "fake")
+	config.Set("docker:router", "fake2")
+	d, err := Default()
+	c.Assert(err, check.IsNil)
+	c.Assert(d, check.Equals, "fake2")
+}
+
 func (s *S) TestStore(c *check.C) {
 	err := Store("appname", "routername", "fake")
 	c.Assert(err, check.IsNil)
