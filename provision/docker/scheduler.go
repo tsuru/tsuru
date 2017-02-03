@@ -181,15 +181,14 @@ func (s *segregatedScheduler) GetRemovableContainer(appName string, process stri
 
 type errContainerNotFound struct {
 	AppName     string
-	HostAddr    string
 	ProcessName string
 }
 
 func (m *errContainerNotFound) Error() string {
-	return fmt.Sprintf("Container of app %q with process %q was not found in server %q", m.AppName, m.ProcessName, m.HostAddr)
+	return fmt.Sprintf("Container of app %q with process %q was not found in any servers", m.AppName, m.ProcessName)
 }
 
-func (s *segregatedScheduler) getContainerFromHost(host string, appName, process string) (string, error) {
+func (s *segregatedScheduler) getContainerPreferablyFromHost(host string, appName, process string) (string, error) {
 	coll := s.provisioner.Collection()
 	defer coll.Close()
 	var c container.Container
@@ -205,7 +204,11 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 	}
 	err := coll.Find(query).Select(bson.M{"id": 1}).One(&c)
 	if err == mgo.ErrNotFound {
-		return "", &errContainerNotFound{AppName: appName, ProcessName: process, HostAddr: net.URLToHost(host)}
+		delete(query, "hostaddr")
+		err = coll.Find(query).Select(bson.M{"id": 1}).One(&c)
+	}
+	if err == mgo.ErrNotFound {
+		return "", &errContainerNotFound{AppName: appName, ProcessName: process}
 	}
 	return c.ID, err
 }
@@ -250,7 +253,7 @@ func (s *segregatedScheduler) chooseContainerToRemove(nodes []cluster.Node, appN
 		return "", err
 	}
 	log.Debugf("[scheduler] Chosen node for remove a container: %#v", chosenNode)
-	containerID, err := s.getContainerFromHost(chosenNode, appName, process)
+	containerID, err := s.getContainerPreferablyFromHost(chosenNode, appName, process)
 	if err != nil {
 		return "", err
 	}
@@ -309,7 +312,7 @@ func (s *segregatedScheduler) minMaxNodes(nodes []cluster.Node, appName, process
 			minScore = score
 			minHost = host
 		}
-		if score > maxScore {
+		if score >= maxScore {
 			maxScore = score
 			maxHost = host
 		}
