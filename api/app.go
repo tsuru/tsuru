@@ -228,6 +228,7 @@ type inputApp struct {
 	Name        string
 	Description string
 	Pool        string
+	Router      string
 	RouterOpts  map[string]string
 }
 
@@ -260,6 +261,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description: ia.Description,
 		Pool:        ia.Pool,
 		RouterOpts:  ia.RouterOpts,
+		Router:      ia.Router,
 	}
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
