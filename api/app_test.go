@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
@@ -1261,6 +1262,42 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("router=fake-tls")
+	request, err := http.NewRequest("PUT", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Router, check.DeepEquals, "fake-tls")
+}
+
+func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader("router=invalid-router")
+	request, err := http.NewRequest("PUT", "/apps/myappx", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	expectedErr := &router.ErrRouterNotFound{Name: "invalid-router"}
+	c.Check(recorder.Body.String(), check.Equals, expectedErr.Error()+"\n")
+}
+
 func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
@@ -1388,7 +1425,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	errorMessage := "Neither the description, plan, pool or team owner were set. You must define at least one.\n"
+	errorMessage := "Neither the description, plan, pool, router or team owner were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
@@ -373,6 +374,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Plan:        app.Plan{Name: r.FormValue("plan")},
 		Pool:        r.FormValue("pool"),
 		Description: r.FormValue("description"),
+		Router:      r.FormValue("router"),
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
@@ -392,8 +394,11 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if updateData.TeamOwner != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateTeamowner)
 	}
+	if updateData.Router != "" {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouter)
+	}
 	if len(wantedPerms) == 0 {
-		msg := "Neither the description, plan, pool or team owner were set. You must define at least one."
+		msg := "Neither the description, plan, pool, router or team owner were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	for _, perm := range wantedPerms {
@@ -421,6 +426,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.Update(updateData, writer)
 	if err == app.ErrPlanNotFound {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	if _, ok := err.(*router.ErrRouterNotFound); ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	return err

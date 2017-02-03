@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -51,6 +51,7 @@ var (
 	PermAppUpdatePool                    = PermissionRegistry.get("app.update.pool")                     // [global app team pool]
 	PermAppUpdateRestart                 = PermissionRegistry.get("app.update.restart")                  // [global app team pool]
 	PermAppUpdateRevoke                  = PermissionRegistry.get("app.update.revoke")                   // [global app team pool]
+	PermAppUpdateRouter                  = PermissionRegistry.get("app.update.router")                   // [global app team pool]
 	PermAppUpdateSleep                   = PermissionRegistry.get("app.update.sleep")                    // [global app team pool]
 	PermAppUpdateStart                   = PermissionRegistry.get("app.update.start")                    // [global app team pool]
 	PermAppUpdateStop                    = PermissionRegistry.get("app.update.stop")                     // [global app team pool]
