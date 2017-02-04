@@ -118,14 +118,14 @@ type App struct {
 	Teams          []string
 	TeamOwner      string
 	Owner          string
-	Deploys        uint
+	Plan           Plan
 	UpdatePlatform bool
 	Lock           AppLock
-	Plan           Plan
 	Pool           string
 	Description    string
 	Router         string
 	RouterOpts     map[string]string
+	Deploys        uint
 
 	quota.Quota
 	provisioner provision.Provisioner
