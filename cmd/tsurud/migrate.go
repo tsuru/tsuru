@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/app"
+	appMigrate "github.com/tsuru/tsuru/app/migrate"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -66,6 +67,10 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-router-unique", router.MigrateUniqueCollection)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
+	err = migration.Register("migrate-app-plan-router-to-app-router", appMigrate.MigrateAppPlanRouterToRouter)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
