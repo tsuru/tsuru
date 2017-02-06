@@ -7,11 +7,9 @@ package nodecontainer
 import (
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
-	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/queue"
 )
 
@@ -47,7 +45,7 @@ func (t *runBs) Run(job monsterqueue.Job) {
 		job.Error(err)
 		return
 	}
-	err = t.waitDocker(client)
+	err = dockercommon.WaitDocker(client)
 	if err != nil {
 		job.Error(err)
 		return
@@ -66,39 +64,4 @@ func (t *runBs) Run(job monsterqueue.Job) {
 		return
 	}
 	job.Success(nil)
-}
-
-func (t *runBs) waitDocker(client *docker.Client) error {
-	timeout, _ := config.GetInt("docker:api-timeout")
-	if timeout == 0 {
-		timeout = 600
-	}
-	timeoutChan := time.After(time.Duration(timeout) * time.Second)
-	pong := make(chan error, 1)
-	exit := make(chan struct{})
-	go func() {
-		for {
-			err := client.Ping()
-			if err == nil {
-				pong <- nil
-				return
-			}
-			if e, ok := err.(*docker.Error); ok && e.Status > 499 {
-				pong <- err
-				return
-			}
-			select {
-			case <-exit:
-				return
-			case <-time.After(time.Second):
-			}
-		}
-	}()
-	select {
-	case err := <-pong:
-		return err
-	case <-timeoutChan:
-		close(exit)
-		return errors.Errorf("Docker API at %q didn't respond after %d seconds", client.Endpoint(), timeout)
-	}
 }

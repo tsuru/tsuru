@@ -483,6 +483,10 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return err
 	}
+	err = dockercommon.WaitDocker(newClient)
+	if err != nil {
+		return err
+	}
 	if existingClient == nil {
 		err = initSwarm(newClient, opts.Address)
 		existingClient = newClient

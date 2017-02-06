@@ -13,6 +13,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"gopkg.in/check.v1"
@@ -128,4 +129,28 @@ func (s *S) TestUploadToContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgId, check.Matches, "^img-.{32}$")
 	c.Assert(path, check.Equals, "file:///home/application/archive.tar.gz")
+}
+
+func (s *S) TestWaitDocker(c *check.C) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	err = WaitDocker(client)
+	c.Assert(err, check.IsNil)
+	server.CustomHandler("/_ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}))
+	err = WaitDocker(client)
+	c.Assert(err, check.NotNil)
+	config.Set("docker:api-timeout", 1)
+	defer config.Unset("docker:api-timeout")
+	client, err = docker.NewClient("http://169.254.169.254:2375/")
+	c.Assert(err, check.IsNil)
+	err = WaitDocker(client)
+	c.Assert(err, check.NotNil)
+	expectedMsg := `Docker API at "http://169.254.169.254:2375/" didn't respond after 1 seconds`
+	c.Assert(err.Error(), check.Equals, expectedMsg)
 }
