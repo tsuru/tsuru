@@ -101,11 +101,7 @@ func Default() (string, error) {
 			return p.Name, nil
 		}
 	}
-	fromConfig, _ := config.GetString("docker:router")
-	if fromConfig == "" {
-		return "", ErrDefaultRouterNotFound
-	}
-	return fromConfig, nil
+	return "", ErrDefaultRouterNotFound
 }
 
 // Router is the basic interface of this package. It provides methods for
