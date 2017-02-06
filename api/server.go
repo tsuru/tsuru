@@ -261,6 +261,14 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/debug/pprof/block", AuthorizationRequiredHandler(indexHandler))
 	m.Add("1.0", "Get", "/debug/pprof/trace", AuthorizationRequiredHandler(traceHandler))
 
+	m.Add("1.3", "GET", "/node/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
+	m.Add("1.3", "GET", "/node/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
+	m.Add("1.3", "POST", "/node/autoscale/run", AuthorizationRequiredHandler(autoScaleRunHandler))
+	m.Add("1.3", "GET", "/node/autoscale/rules", AuthorizationRequiredHandler(autoScaleListRules))
+	m.Add("1.3", "POST", "/node/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
+	m.Add("1.3", "DELETE", "/node/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
+	m.Add("1.3", "DELETE", "/node/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
+
 	m.Add("1.2", "GET", "/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.2", "GET", "/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
 	m.Add("1.2", "GET", "/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))
@@ -284,16 +292,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "POST", "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.2", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
 
-	m.Add("1.3", "GET", "/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
-	m.Add("1.3", "GET", "/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
-	m.Add("1.3", "POST", "/autoscale/run", AuthorizationRequiredHandler(autoScaleRunHandler))
-	m.Add("1.3", "GET", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleListRules))
-	m.Add("1.3", "POST", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
-	m.Add("1.3", "DELETE", "/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
-	m.Add("1.3", "DELETE", "/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
-
 	m.Add("1.3", "Get", "/routers", AuthorizationRequiredHandler(listRouters))
-
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
