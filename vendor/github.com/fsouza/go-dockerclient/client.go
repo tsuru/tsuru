@@ -383,8 +383,16 @@ func (c *Client) Endpoint() string {
 //
 // See https://goo.gl/wYfgY1 for more details.
 func (c *Client) Ping() error {
+	return c.PingWithContext(nil)
+}
+
+// PingWithContext pings the docker server
+// The context object can be used to cancel the ping request.
+//
+// See https://goo.gl/wYfgY1 for more details.
+func (c *Client) PingWithContext(ctx context.Context) error {
 	path := "/_ping"
-	resp, err := c.do("GET", path, doOptions{})
+	resp, err := c.do("GET", path, doOptions{context: ctx})
 	if err != nil {
 		return err
 	}

@@ -175,6 +175,7 @@ func (s *DockerServer) buildMuxer() {
 	s.mux.Path("/containers/{id:.*}/exec").Methods("POST").HandlerFunc(s.handlerWrapper(s.createExecContainer))
 	s.mux.Path("/containers/{id:.*}/stats").Methods("GET").HandlerFunc(s.handlerWrapper(s.statsContainer))
 	s.mux.Path("/containers/{id:.*}/archive").Methods("PUT").HandlerFunc(s.handlerWrapper(s.uploadToContainer))
+	s.mux.Path("/containers/{id:.*}/logs").Methods("GET").HandlerFunc(s.handlerWrapper(s.logContainer))
 	s.mux.Path("/exec/{id:.*}/resize").Methods("POST").HandlerFunc(s.handlerWrapper(s.resizeExecContainer))
 	s.mux.Path("/exec/{id:.*}/start").Methods("POST").HandlerFunc(s.handlerWrapper(s.startExecContainer))
 	s.mux.Path("/exec/{id:.*}/json").Methods("GET").HandlerFunc(s.handlerWrapper(s.inspectExecContainer))
@@ -345,7 +346,7 @@ func (s *DockerServer) DefaultHandler() http.Handler {
 	return s.mux
 }
 
-func (s *DockerServer) handlerWrapper(f func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+func (s *DockerServer) handlerWrapper(f http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		for errorID, urlRegexp := range s.failures {
 			matched, err := regexp.MatchString(urlRegexp, r.URL.Path)
@@ -872,6 +873,35 @@ func (s *DockerServer) findContainerWithLock(idOrName string, shouldLock bool) (
 		}
 	}
 	return nil, -1, errors.New("No such container")
+}
+
+func (s *DockerServer) logContainer(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	container, _, err := s.findContainer(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+	w.WriteHeader(http.StatusOK)
+	if container.State.Running {
+		fmt.Fprintf(w, "Container is running\n")
+	} else {
+		fmt.Fprintf(w, "Container is not running\n")
+	}
+	fmt.Fprintln(w, "What happened?")
+	fmt.Fprintln(w, "Something happened")
+	if r.URL.Query().Get("follow") == "1" {
+		for {
+			time.Sleep(1e6)
+			s.cMut.RLock()
+			if !container.State.StartedAt.IsZero() && !container.State.Running {
+				s.cMut.RUnlock()
+				break
+			}
+			s.cMut.RUnlock()
+		}
+	}
 }
 
 func (s *DockerServer) buildImage(w http.ResponseWriter, r *http.Request) {
