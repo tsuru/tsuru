@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types/swarm"
@@ -877,64 +878,35 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		}
 		return err
 	}
-	poolsToRun := []string{pool}
+	poolsToRun := []string{"", pool}
 	if pool == "" {
 		poolMap, errLoad := nodecontainer.LoadNodeContainersForPools(name)
 		if errLoad != nil {
 			return errors.WithStack(errLoad)
 		}
-		poolsToRun = make([]string, len(poolMap))
-		i := 0
+		poolsToRun = make([]string, 0, len(poolMap))
 		for k, v := range poolMap {
 			if !v.Valid() {
 				continue
 			}
-			if k == "" {
-				poolsToRun[len(poolMap)-1] = k
-				continue
-			}
-			poolsToRun[i] = k
-			i++
+			poolsToRun = append(poolsToRun, k)
 		}
 	}
+	sort.Strings(poolsToRun)
 	var allErrors []error
-	created := false
 	for _, v := range poolsToRun {
 		serviceSpec, errUpsert := serviceSpecForNodeContainer(name, v)
 		if errUpsert != nil {
 			errUpsert = errors.Wrapf(errUpsert, "[node containers] failed retrieve service spec for node container %q [%s]", name, v)
 			allErrors = append(allErrors, errUpsert)
 		}
+		placementOnly := v == "" && pool != ""
 		log.Debugf("[node containers] upserting service %q for node container %s [%s]", serviceSpec.Name, name, v)
 		fmt.Fprintf(writer, "upserting service %q for node container %q [%s]\n", serviceSpec.Name, name, v)
-		errUpsert, created = upsertService(serviceSpec, client)
+		errUpsert, _ = upsertService(serviceSpec, client, placementOnly)
 		if errUpsert != nil {
 			errUpsert = errors.Wrapf(errUpsert, "[node containers] failed upsert service %q for node container %q [%s]", serviceSpec.Name, name, v)
 			allErrors = append(allErrors, errUpsert)
-		}
-	}
-	if pool != "" && created {
-		serviceName := nodeContainerServiceName(name, "")
-		baseSpec, err := client.InspectService(serviceName)
-		if err != nil {
-			if _, ok := err.(*docker.NoSuchService); ok {
-				return nil
-			}
-			err = errors.Wrapf(err, "[node containers] failed inspect base service %q for node container %q", serviceName, name)
-			allErrors = append(allErrors, err)
-		}
-		newBaseSpec, err := serviceSpecForNodeContainer(name, "")
-		if err != nil {
-			err = errors.Wrapf(err, "[node containers] failed retrieve base service spec %q for node container %q", serviceName, name)
-			allErrors = append(allErrors, err)
-		}
-		baseSpec.Spec.TaskTemplate.Placement = newBaseSpec.TaskTemplate.Placement
-		log.Debugf("[node containers] updating base service %q for node container %s constraints", serviceName, name)
-		fmt.Fprintf(writer, "updating base service %q for node container %s constraints\n", serviceName, name)
-		err, _ = upsertService(&baseSpec.Spec, client)
-		if err != nil {
-			err = errors.Wrapf(err, "[node containers] failed update base service %q for node container %q", serviceName, name)
-			allErrors = append(allErrors, err)
 		}
 	}
 	if len(allErrors) == 0 {
@@ -961,15 +933,9 @@ func (p *swarmProvisioner) ensureNodeContainersCreated() error {
 		return errors.WithStack(err)
 	}
 	for _, n := range names {
-		poolMap, err := nodecontainer.LoadNodeContainersForPools(n)
+		err = p.UpgradeNodeContainer(n, "", ioutil.Discard)
 		if err != nil {
-			return errors.WithStack(err)
-		}
-		for pool := range poolMap {
-			err = p.UpgradeNodeContainer(n, pool, ioutil.Discard)
-			if err != nil {
-				return err
-			}
+			return err
 		}
 	}
 	return nil

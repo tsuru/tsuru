@@ -212,7 +212,10 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 }
 
 func (s *S) TestAddNodeFirstNodeStartsNodeContainers(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	var srv1Calls []string
+	srv, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		srv1Calls = append(srv1Calls, r.Method+" "+r.URL.Path)
+	})
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
 	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -231,6 +234,13 @@ func (s *S) TestAddNodeFirstNodeStartsNodeContainers(c *check.C) {
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
+	c.Assert(srv1Calls, check.HasLen, 11)
+	c.Assert(srv1Calls[7:], check.DeepEquals, []string{
+		"GET /services/node-container-bs-all",
+		"POST /services/create",
+		"GET /services/node-container-bs-p1",
+		"POST /services/create",
+	})
 	client, err := docker.NewClient(srv.URL())
 	c.Assert(err, check.IsNil)
 	services, err := client.ListServices(docker.ListServicesOptions{})
@@ -239,6 +249,7 @@ func (s *S) TestAddNodeFirstNodeStartsNodeContainers(c *check.C) {
 	opts = provision.AddNodeOptions{Address: srv2.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
+	c.Assert(srv1Calls[len(srv1Calls)-1], check.Equals, "GET /nodes")
 	services, err = client.ListServices(docker.ListServicesOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(services), check.Equals, 2)
