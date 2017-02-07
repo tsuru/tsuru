@@ -594,6 +594,12 @@ by tsuru is `hipache <https://github.com/hipache/hipache>`_. There is also
 experimental support for `galeb <http://galeb.io/>`_ and `vulcand
 <https://docs.vulcand.io/>`_).
 
+routers:<router name>:default
++++++++++++++++++++++++++++++
+
+Boolean value that indicates if this router is to be used when an app is created
+with no specific router. Defaults to false.
+
 Depending on the type, there are some specific configuration options available.
 
 routers:<router name>:domain (type: hipache, galeb, vulcand)
@@ -812,12 +818,8 @@ For backward compatibility reasons, the value ``hipache`` is also supported, and
 it will use either configuration available under ``router:hipache:*`` or
 ``hipache:*``, in this order.
 
-Note that as of 0.10.0, routers may be associated to plans, if when creating an
-application the chosen plan has a router value it will be used instead of the
-value set in ``docker:router``.
-
-The router defined in ``docker:router`` will only be used if the chosen plan
-doesn't specify one.
+The router defined in ``docker:router`` will only be used if there is no router
+with `router:<my-router>:default` set to true.
 
 docker:deploy-cmd
 +++++++++++++++++
