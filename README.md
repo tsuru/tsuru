@@ -24,13 +24,13 @@ Links:
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
 - Talk to us on Gitter: https://gitter.im/tsuru/tsuru
 
-## Quick Start 
+## Quick Start
 
-With the purpose of test tsuru and/or for development, you can use [installer](https://docs.tsuru.io/master/experimental/installer.html) to have tsuru up and running. Installer is an experimental feature. 
+With the purpose of test tsuru and/or for development, you can use [installer](https://docs.tsuru.io/master/experimental/installer.html) to have tsuru up and running. Installer is an experimental feature.
 
 ### From Binary
 
-#### Getting tsuru-client 
+#### Getting tsuru-client
 
 Download the latest release for your platform at: https://github.com/tsuru/tsuru-client/releases/
 
@@ -49,7 +49,7 @@ $ tsuru install
 
 ### From Source
 
-#### Getting tsuru-client 
+#### Getting tsuru-client
 
 You need to have [Go](https://golang.org/doc/install) properly installed in your machine.
 
@@ -72,12 +72,12 @@ components:
 #### Call tsuru installer
 
 ```
-$ tsuru install -c local.yml
+$ $GOPATH/bin/tsuru install -c local.yml
 ```
 
 ### Testing
 
-If everything's gone well you have the tsuru running on a virtualbox. 
+If everything's gone well you have the tsuru running on a virtualbox.
 Call app-list to see tsuru working, this command needs to return one app called tsuru-dashboard.
 
 ```
