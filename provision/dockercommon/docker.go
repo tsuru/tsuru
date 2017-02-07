@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"golang.org/x/net/context"
 )
 
 type Client interface {
@@ -124,7 +125,9 @@ func WaitDocker(client *docker.Client) error {
 	exit := make(chan struct{})
 	go func() {
 		for {
-			err := client.Ping()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			err := client.PingWithContext(ctx)
+			cancel()
 			if err == nil {
 				pong <- nil
 				return
