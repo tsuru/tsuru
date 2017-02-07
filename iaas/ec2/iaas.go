@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/queue"
 )
 
@@ -58,6 +59,7 @@ func (i *EC2IaaS) createEC2Handler(regionOrEndpoint string) (*ec2.EC2, error) {
 		Credentials: credentials.NewStaticCredentials(keyId, secretKey, ""),
 		Region:      aws.String(region),
 		Endpoint:    aws.String(endpoint),
+		HTTPClient:  tsuruNet.Dial5Full300ClientNoKeepAlive,
 	}
 	return ec2.New(session.New(&config)), nil
 }
