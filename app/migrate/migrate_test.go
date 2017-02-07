@@ -38,25 +38,28 @@ var _ = check.Suite(&S{})
 func (s *S) TestMigrateAppPlanRouterToRouter(c *check.C) {
 	config.Set("routers:galeb:default", true)
 	defer config.Unset("routers")
-	a := app.App{Name: "a-with-plan-router"}
+	a := &app.App{Name: "with-plan-router"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Update(bson.M{"name": "a-with-plan-router"}, bson.M{"$set": bson.M{"plan.router": "planb"}})
+	err = s.conn.Apps().Update(bson.M{"name": "with-plan-router"}, bson.M{"$set": bson.M{"plan.router": "planb"}})
 	c.Assert(err, check.IsNil)
-	a = app.App{Name: "b-without-plan-router"}
+	a = &app.App{Name: "without-plan-router"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	a = app.App{Name: "c-with-router", Router: "hipache"}
+	a = &app.App{Name: "with-router", Router: "hipache"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	err = MigrateAppPlanRouterToRouter()
 	c.Assert(err, check.IsNil)
-	var apps []app.App
-	err = s.conn.Apps().Find(nil).Sort("name").All(&apps)
+	a, err = app.GetByName("with-plan-router")
 	c.Assert(err, check.IsNil)
-	c.Assert(apps[0].Router, check.DeepEquals, "planb")
-	c.Assert(apps[1].Router, check.DeepEquals, "galeb")
-	c.Assert(apps[2].Router, check.DeepEquals, "hipache")
+	c.Assert(a.Router, check.Equals, "planb")
+	a, err = app.GetByName("without-plan-router")
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Router, check.Equals, "galeb")
+	a, err = app.GetByName("with-router")
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Router, check.Equals, "hipache")
 }
 
 func (s *S) TestMigrateAppPlanRouterToRouterWithoutDefaultRouter(c *check.C) {
