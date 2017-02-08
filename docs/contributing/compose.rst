@@ -57,6 +57,15 @@ You need to create one pool of nodes and add node1 as a tsuru node.
 
 Everytime you change tsuru and want to test you need to run ``build-compose.sh`` to build tsurud, generate and run the new api.
 
+If you want to use gandalf, generate one app token and insert into docker-compose.yml file in gandalf environment TSURU_TOKEN.
+
+::
+
+    $ docker-compose stop api
+    $ docker-compose run --entrypoint="/bin/sh -c" api "tsurud token"
+    // insert token into docker-compose.yml
+    $ docker-compose up -d
+
 .. _Docker: https://docs.docker.com/engine/installation/
 .. _Compose: https://docs.docker.com/compose/install/
 .. _tsuru: https://github.com/tsuru/tsuru
