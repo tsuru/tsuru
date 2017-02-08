@@ -3,3 +3,4 @@ dist-*
 cmd/tsurud/tsurud
 docs/_build
 build
+data
