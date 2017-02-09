@@ -27,7 +27,7 @@ services:
             - "8989:8989" 
         networks:
             - tsuru_net
-     gandalf:
+    gandalf:
         image: tsuru/gandalf:latest
         environment: 
             - MONGODB_ADDR=mongo
