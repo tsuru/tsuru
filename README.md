@@ -11,7 +11,7 @@ tsuru is an open source polyglot cloud application platform (PaaS).
 With tsuru, you don’t need to think about servers at all.
 As an application developer, you can:
 
-- Write apps in the programming language of your choice,
+- Write apps in the programming language of your choice
 - Back apps with add-on resources such as SQL and NoSQL databases, including memcached, redis, and many
 others.
 - Manage apps using the ``tsuru`` command-line tool
