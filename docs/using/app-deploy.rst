@@ -46,7 +46,7 @@ With the command bellow we'll be able to deploy our first app ``helloworld`` tha
 Ignoring files and directories
 ++++++++++++++++++++++++++++++
 
-To deploy smaller applications you are allowed to ignore files and/or directories using a file named ``.tsuruignore`` that needs to be on your app's root directory. After using the command ``tsuru app-deploy -a <app name> <directory>``, ``.tsuruignore`` will be read and each line will be considered a pattern to be ignored, so anything that matches a pattern will not be on your app after the deployment.
+To deploy smaller applications you are allowed to ignore files and/or directories using a file named ``.tsuruignore`` that needs to be on your app's root directory. After using `app-deploy`, ``.tsuruignore`` will be read and each line will be considered a pattern to be ignored, so anything that matches a pattern will not be on your app after the deployment.
 
  This is not mandatory while deploying your app, so If there's no ``.tsuruignore`` on your app root directory, It'll deploy your normally. This is a example of a ``.tsuruignore`` file:
 
@@ -61,6 +61,3 @@ To deploy smaller applications you are allowed to ignore files and/or directorie
     dir*ry                      // anything that matches these pieces of name
     dir/to/specific/path/<file name>.<file type>
     relative/dir/*/to/path      // any directory that leads to <path>
-
-Adding lines like ``1, 2, 3, 4, 5`` to your ``.tsuruignore`` means that each line will be a global pattern and any kind of file that matches these patterns will be ignored, so be careful when adding patterns. It's important not to add ``.tsuruignore`` to your patterns, so If you ever get a problem of missing files, you can debbug It faster.
-
