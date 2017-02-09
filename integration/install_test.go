@@ -10,7 +10,7 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type postFunc func(c *check.C, res *Result, env *environment)
+type postFunc func(c *check.C, res *Result, env *Environment)
 
 type CmdWithExp struct {
 	C     *Command
@@ -55,7 +55,7 @@ var afterInstallFlow = CmdList{
 		"-t", "integration-team", "-o", "integration-pool-docker")},
 	{Defer: true, C: T("app-remove", "-y", "-a", "integration-app-python")},
 	{C: T("app-deploy", "-a", "integration-app-python", "{{.examplesdir}}/python")},
-	{C: T("app-info", "-a", "integration-app-python"), P: func(c *check.C, res *Result, env *environment) {
+	{C: T("app-info", "-a", "integration-app-python"), P: func(c *check.C, res *Result, env *Environment) {
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 		parts := addrRE.FindStringSubmatch(res.Stdout.String())
 		env.Set("appaddr", parts[1])
@@ -64,7 +64,10 @@ var afterInstallFlow = CmdList{
 }
 
 func (s *S) TestBase(c *check.C) {
-	env := newEnvironment()
+	env := NewEnvironment()
+	if env.Get("targetaddr") == "" {
+		return
+	}
 	for _, f := range afterInstallFlow {
 		if f.Defer {
 			defer func(cmd *Command) {

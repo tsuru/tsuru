@@ -47,12 +47,12 @@ type Expected struct {
 	Stdout   string
 }
 
-type environment struct {
+type Environment struct {
 	data map[string]string
 }
 
-func newEnvironment() *environment {
-	e := environment{
+func NewEnvironment() *Environment {
+	e := Environment{
 		data: make(map[string]string),
 	}
 	envs := os.Environ()
@@ -69,11 +69,11 @@ func newEnvironment() *environment {
 	return &e
 }
 
-func (e *environment) Set(k string, v string) {
+func (e *Environment) Set(k string, v string) {
 	e.data[k] = v
 }
 
-func (e *environment) Get(k string) string {
+func (e *Environment) Get(k string) string {
 	return e.data[k]
 }
 
@@ -160,7 +160,7 @@ func (c *Command) WithInput(input string) *Command {
 	return &c2
 }
 
-func transformArgTemplate(e *environment, val string) (string, error) {
+func transformArgTemplate(e *Environment, val string) (string, error) {
 	tpl, err := template.New("tpl").Parse(val)
 	if err != nil {
 		return "", err
@@ -173,7 +173,7 @@ func transformArgTemplate(e *environment, val string) (string, error) {
 	return out.String(), nil
 }
 
-func (c *Command) Run(e *environment) *Result {
+func (c *Command) Run(e *Environment) *Result {
 	res := &Result{Command: c}
 	args := c.Args
 	input := c.Input
