@@ -48,7 +48,7 @@ Ignoring files and directories
 
 To deploy smaller applications you are allowed to ignore files and/or directories using a file named ``.tsuruignore`` that needs to be on your app's root directory. After using `app-deploy`, ``.tsuruignore`` will be read and each line will be considered a pattern to be ignored, so anything that matches a pattern will not be on your app after the deployment.
 
- This is not mandatory while deploying your app, so If there's no ``.tsuruignore`` on your app root directory, It'll deploy your normally. This is a example of a ``.tsuruignore`` file:
+This is not mandatory while deploying your app, so If there's no ``.tsuruignore`` on your app root directory, It'll deploy your normally. This is a example of a ``.tsuruignore`` file:
 
 .. highlight:: go
 
