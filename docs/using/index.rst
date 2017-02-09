@@ -14,6 +14,7 @@ Using
 
     install-client
     deploying
+    app-deploy
     quickstart
     python
     ruby

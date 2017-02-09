@@ -33,6 +33,8 @@ app-deploy
 The `app-deploy` deployments are based on tsuru `platforms` and are useful for
 automated deployments.
 
+:doc:`Learn how to deploy applications using app-deploy </using/app-deploy>`.
+
 Docker image
 ++++++++++++
 

@@ -64,4 +64,4 @@ first application using one of the supported platforms:
 * :doc:`Deploying Python applications in tsuru </using/python>`
 * :doc:`Deploying Ruby/Rails applications in tsuru </using/ruby>`
 * :doc:`Deploying PHP applications in tsuru </using/php>`
-* :doc:`Deploying go applications in tsuru </using/go>`
+* :doc:`Deploying Go applications in tsuru </using/go>`
