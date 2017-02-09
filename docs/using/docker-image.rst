@@ -14,7 +14,7 @@ This document is a hands-on guide to deploy a simple Docker Image web applicatio
 Creating the app
 ================
 
-To create an app, you use the command `app-create`:
+To create an app, you need to use the command `app-create`:
 
 .. highlight:: bash
 
