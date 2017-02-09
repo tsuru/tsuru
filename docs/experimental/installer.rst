@@ -127,11 +127,11 @@ For example, to install tsuru on amazon ec2, one could create the following file
 
     driver:
       name: amazonec2
-        options:
-          amazonec2-access-key: myAmazonAccessKey
-          amazonec2-secret-key: myAmazonSecretKey
-          amazonec2-vpc-id: vpc-abc1234
-          amazonec2-subnet-id: subnet-abc1234
+      options:
+        amazonec2-access-key: myAmazonAccessKey
+        amazonec2-secret-key: myAmazonSecretKey
+        amazonec2-vpc-id: vpc-abc1234
+        amazonec2-subnet-id: subnet-abc1234
 
 And pass it to the install command as:
 
