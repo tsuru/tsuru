@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"gopkg.in/check.v1"
 )
@@ -293,4 +294,13 @@ func (s *S) TestSimpleJsonMessageEncoderWriter(c *check.C) {
 	c.Assert(written, check.Equals, 11)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, `{"Message":"my cool msg"}`+"\n")
+}
+
+func (s *S) TestSyncWriterFD(c *check.C) {
+	w := syncWriter{w: os.Stdout}
+	fd := int(w.FD())
+	c.Assert(fd, check.Not(check.Equals), 0)
+	w.w = &bytes.Buffer{}
+	fd = int(w.FD())
+	c.Assert(fd, check.Equals, 0)
 }

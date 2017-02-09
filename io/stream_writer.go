@@ -33,6 +33,17 @@ func (w *syncWriter) Write(b []byte) (int, error) {
 	return w.w.Write(b)
 }
 
+func (w *syncWriter) FD() uintptr {
+	fd := 0
+	switch v := w.w.(type) {
+	case withFd:
+		fd = int(v.Fd())
+	case withFD:
+		fd = int(v.FD())
+	}
+	return uintptr(fd)
+}
+
 var ErrInvalidStreamChunk = errors.New("invalid stream chunk")
 
 type Formatter interface {
