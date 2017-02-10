@@ -5,6 +5,11 @@
 package provision
 
 import (
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2"
@@ -232,4 +237,147 @@ func PoolUpdate(name string, opts UpdatePoolOptions) error {
 		return ErrPoolNotFound
 	}
 	return err
+}
+
+type constraint struct {
+	PoolExpr  string
+	Field     string
+	Values    []string
+	WhiteList bool
+}
+
+func (c *constraint) check(v string) bool {
+	for _, r := range c.Values {
+		if match, _ := regexp.MatchString(strings.Replace(r, "*", ".*", -1), v); match {
+			return c.WhiteList
+		}
+	}
+	return !c.WhiteList
+}
+
+func (c *constraint) String() string {
+	op := "!="
+	if c.WhiteList {
+		op = "="
+	}
+	return fmt.Sprintf("PoolExpr: %s - %s%s%s", c.PoolExpr, c.Field, op, strings.Join(c.Values, ","))
+}
+
+type constraintList []*constraint
+
+func (l constraintList) Len() int      { return len(l) }
+func (l constraintList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+func (l constraintList) Less(i, j int) bool {
+	lenI, lenJ := len(l[i].PoolExpr), len(l[j].PoolExpr)
+	if lenI == lenJ {
+		return strings.Count(l[i].PoolExpr, "*") < strings.Count(l[j].PoolExpr, "*")
+	}
+	return lenI > lenJ
+}
+
+func (l constraintList) String() string {
+	s := make([]string, len(l))
+	for i := range l {
+		s[i] = l[i].String()
+	}
+	return strings.Join(s, "\n")
+}
+
+func SetPoolConstraints(poolExpr string, constraints ...string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	for _, c := range constraints {
+		op := "="
+		if strings.Contains(c, "!=") {
+			op = "!="
+		}
+		parts := strings.SplitN(c, op, 2)
+		constraint := &constraint{
+			PoolExpr:  poolExpr,
+			Field:     parts[0],
+			Values:    strings.Split(parts[1], ","),
+			WhiteList: op == "=",
+		}
+		_, err := conn.PoolsContraints().Upsert(bson.M{"poolexpr": poolExpr, "field": parts[0]}, constraint)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func AppendPoolConstraint(poolExpr string, field string, values ...string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.PoolsContraints().Update(
+		bson.M{"poolexpr": poolExpr, "field": field},
+		bson.M{"$pushAll": bson.M{"values": values}},
+	)
+}
+
+func checkPoolExactConstraint(pool, field, value string) (bool, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	var constraint *constraint
+	err = conn.PoolsContraints().Find(bson.M{"poolexpr": pool, "field": field, "whitelist": true}).One(&constraint)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return constraint.check(value), nil
+}
+
+func checkPoolConstraint(pool, field, value string) (bool, error) {
+	constraints, err := getConstraintsForPool(pool)
+	if err != nil {
+		return false, err
+	}
+	if c, ok := constraints[field]; ok {
+		if !c.check(value) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func getConstraintsForPool(pool string) (map[string]*constraint, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var constraints []*constraint
+	err = conn.PoolsContraints().Find(nil).All(&constraints)
+	if err != nil {
+		return nil, err
+	}
+	var matches []*constraint
+	for _, c := range constraints {
+		match, err := regexp.MatchString(strings.Replace(c.PoolExpr, "*", ".*", -1), pool)
+		if err != nil {
+			return nil, err
+		}
+		if match {
+			matches = append(matches, c)
+		}
+	}
+	sort.Sort(constraintList(matches))
+	merged := make(map[string]*constraint)
+	for i := range matches {
+		if _, ok := merged[matches[i].Field]; !ok {
+			merged[matches[i].Field] = matches[i]
+		}
+	}
+	return merged, nil
 }
