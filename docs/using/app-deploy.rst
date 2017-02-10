@@ -9,7 +9,7 @@ App-Deploy
 Overview
 ++++++++
 
-This is a hands on guide to deploy a simple app using tsuru's CLI ``app-deploy`` flag.
+This is a hands on guide to deploy a simple app using tsuru's CLI ``app-deploy`` command.
 
 Creating a app
 ++++++++++++++
