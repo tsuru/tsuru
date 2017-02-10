@@ -121,6 +121,14 @@ func (s *Storage) Pools() *storage.Collection {
 	return s.Collection("pool")
 }
 
+// PoolsConstraints return the pool constraints collection.
+func (s *Storage) PoolsContraints() *storage.Collection {
+	poolConstraintIndex := mgo.Index{Key: []string{"poolexpr", "field"}, Unique: true}
+	c := s.Collection("pool_constraints")
+	c.EnsureIndex(poolConstraintIndex)
+	return c
+}
+
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *storage.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}

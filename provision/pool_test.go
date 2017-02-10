@@ -5,6 +5,8 @@
 package provision
 
 import (
+	"reflect"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -381,4 +383,145 @@ func (s *S) TestGetPoolByName(c *check.C) {
 	p, err = GetPoolByName("not found")
 	c.Assert(p, check.IsNil)
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestPoolSetConstraints(c *check.C) {
+	coll := s.storage.PoolsContraints()
+	err := SetPoolConstraints("*", "router=planb,hipache", "team!=user")
+	c.Assert(err, check.IsNil)
+	var cs []*constraint
+	err = coll.Find(bson.M{"poolexpr": "*"}).All(&cs)
+	c.Assert(err, check.IsNil)
+	c.Assert(cs, check.DeepEquals, []*constraint{
+		{PoolExpr: "*", Field: "router", Values: []string{"planb", "hipache"}, WhiteList: true},
+		{PoolExpr: "*", Field: "team", Values: []string{"user"}, WhiteList: false},
+	})
+}
+
+func (s *S) TestCheckPoolConstraint(c *check.C) {
+	err := SetPoolConstraints("*", "router=planb")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("*_dev", "router=planb_dev", "team!=team_pool1")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("pool1_dev", "team=team_pool1")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("pool1_prod", "router!=*_dev")
+	c.Assert(err, check.IsNil)
+	tt := []struct {
+		pool     string
+		field    string
+		value    string
+		expected bool
+	}{
+		{pool: "prod", field: "router", value: "planb", expected: true},
+		{pool: "prod", field: "team", value: "my-team", expected: true},
+		{pool: "pool_dev", field: "router", value: "planb", expected: false},
+		{pool: "pool1_dev", field: "router", value: "planb_dev", expected: true},
+		{pool: "pool1_dev", field: "team", value: "team_pool1", expected: true},
+		{pool: "pool2_dev", field: "team", value: "team_pool1", expected: false},
+		{pool: "pool1_prod", field: "router", value: "planb_dev", expected: false},
+	}
+	for i, t := range tt {
+		s, err := checkPoolConstraint(t.pool, t.field, t.value)
+		c.Check(err, check.IsNil)
+		if s != t.expected {
+			c.Fatalf("(%d) Expected \"%t\" for pool %q with field %q value %q. Got \"%t\".", i, t.expected, t.pool, t.field, t.value, s)
+		}
+	}
+}
+
+func (s *S) TestCheckPoolConstraintWithoutMatch(c *check.C) {
+	err := SetPoolConstraints("prod", "router=prod_router")
+	c.Assert(err, check.IsNil)
+	result, err := checkPoolConstraint("dev", "router", "dev")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.Equals, true)
+}
+
+func (s *S) TestCheckPoolConstraintWithoutAnyConstraint(c *check.C) {
+	result, err := checkPoolConstraint("dev", "router", "dev")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.Equals, true)
+}
+
+func (s *S) TestGetConstraintsForPool(c *check.C) {
+	err := SetPoolConstraints("*", "router=planb")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("pp", "router=galeb")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("*_dev", "router=planb_dev", "team!=team_pool1")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("pool1_dev", "team=team_pool1")
+	c.Assert(err, check.IsNil)
+	tt := []struct {
+		pool     string
+		expected map[string]*constraint
+	}{
+		{pool: "prod", expected: map[string]*constraint{
+			"router": &constraint{PoolExpr: "*", Field: "router", Values: []string{"planb"}, WhiteList: true},
+		}},
+		{pool: "pp", expected: map[string]*constraint{
+			"router": &constraint{PoolExpr: "pp", Field: "router", Values: []string{"galeb"}, WhiteList: true},
+		}},
+		{pool: "pool1_dev", expected: map[string]*constraint{
+			"router": &constraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}, WhiteList: true},
+			"team":   &constraint{PoolExpr: "pool1_dev", Field: "team", Values: []string{"team_pool1"}, WhiteList: true},
+		}},
+		{pool: "pool2_dev", expected: map[string]*constraint{
+			"router": &constraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}, WhiteList: true},
+			"team":   &constraint{PoolExpr: "*_dev", Field: "team", Values: []string{"team_pool1"}, WhiteList: false},
+		}},
+	}
+	for i, t := range tt {
+		constraints, err := getConstraintsForPool(t.pool)
+		c.Check(err, check.IsNil)
+		if !reflect.DeepEqual(constraints, t.expected) {
+			c.Logf("Got:")
+			for k, v := range constraints {
+				c.Logf("%s: %s", k, v.String())
+			}
+			c.Logf("Expected:")
+			for k, v := range t.expected {
+				c.Logf("%s: %s", k, v.String())
+			}
+			c.Fatalf("(%d) Expected %#+v for pool %q. Got %#+v.", i, t.expected, t.pool, constraints)
+		}
+	}
+}
+
+func (s *S) TestAppendPoolConstraint(c *check.C) {
+	err := SetPoolConstraints("*", "router=planb")
+	c.Assert(err, check.IsNil)
+	err = AppendPoolConstraint("*", "router", "galeb")
+	c.Assert(err, check.IsNil)
+	constraints, err := getConstraintsForPool("*")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraints, check.DeepEquals, map[string]*constraint{
+		"router": &constraint{Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, WhiteList: true},
+	})
+}
+
+func (s *S) TestCheckPoolExactConstraint(c *check.C) {
+	err := SetPoolConstraints("pool2", "router=galeb")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("*", "router=planb")
+	c.Assert(err, check.IsNil)
+	tt := []struct {
+		pool     string
+		field    string
+		value    string
+		expected bool
+	}{
+		{pool: "pool2", field: "router", value: "galeb", expected: true},
+		{pool: "pool2", field: "router", value: "planb", expected: false},
+		{pool: "pool", field: "router", value: "planb", expected: false},
+		{pool: "pool", field: "router", value: "galeb", expected: false},
+	}
+	for i, t := range tt {
+		s, err := checkPoolExactConstraint(t.pool, t.field, t.value)
+		c.Check(err, check.IsNil)
+		if s != t.expected {
+			c.Fatalf("(%d) Expected \"%t\" for pool %q with field %q value %q. Got \"%t\".", i, t.expected, t.pool, t.field, t.value, s)
+		}
+	}
 }
