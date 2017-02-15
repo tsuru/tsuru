@@ -39,7 +39,7 @@ var ResultOk = &baseMatcher{
 			return false, fmt.Sprintf("result error: %v", result)
 		}
 		if result.Timeout {
-			return false, fmt.Sprintf("result timeout after %v", result.Command.Timeout)
+			return false, fmt.Sprintf("result timeout after %v: %v", result.Command.Timeout, result)
 		}
 		return true, ""
 	},

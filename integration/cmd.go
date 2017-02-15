@@ -37,6 +37,7 @@ type Result struct {
 	Timeout  bool
 	Stdout   bytes.Buffer
 	Stderr   bytes.Buffer
+	Env      *Environment
 }
 
 type Expected struct {
@@ -48,12 +49,12 @@ type Expected struct {
 }
 
 type Environment struct {
-	data map[string]string
+	data map[string][]string
 }
 
 func NewEnvironment() *Environment {
 	e := Environment{
-		data: make(map[string]string),
+		data: make(map[string][]string),
 	}
 	envs := os.Environ()
 	for _, env := range envs {
@@ -63,18 +64,59 @@ func NewEnvironment() *Environment {
 		}
 		if strings.HasPrefix(parts[0], integrationEnvID) {
 			key := strings.Replace(parts[0], integrationEnvID, "", 1)
-			e.data[key] = parts[1]
+			e.data[key] = strings.Split(parts[1], ",")
 		}
 	}
 	return &e
 }
 
-func (e *Environment) Set(k string, v string) {
+func (e *Environment) String() string {
+	ret := fmt.Sprintln("Env vars:")
+	for k, v := range e.data {
+		ret += fmt.Sprintf("  %s: %#v\n", k, v)
+	}
+	return ret[:len(ret)-1]
+}
+
+func (e *Environment) flatData() map[string]string {
+	ret := map[string]string{}
+	for k, v := range e.data {
+		if len(v) > 0 {
+			ret[k] = v[0]
+		}
+	}
+	return ret
+}
+
+func (e *Environment) Set(k string, v ...string) {
 	e.data[k] = v
 }
 
-func (e *Environment) Get(k string) string {
+func (e *Environment) Add(k string, v string) {
+	e.data[k] = append(e.data[k], v)
+}
+
+func (e *Environment) All(k string) []string {
 	return e.data[k]
+}
+
+func (e *Environment) Get(k string) string {
+	if len(e.data[k]) > 0 {
+		return e.data[k][0]
+	}
+	return ""
+}
+
+func (e *Environment) Has(k string) bool {
+	return len(e.data[k]) > 0
+}
+
+func (e *Environment) IsDry() bool {
+	return len(e.data["dryrun"]) > 0
+}
+
+func (e *Environment) IsVerbose() bool {
+	return len(e.data["verbose"]) > 0
 }
 
 func (r *Result) SetError(err error) {
@@ -96,13 +138,15 @@ Error: %v
 Timeout: %v
 Stdout: %q
 Stderr: %q
+%v
 ----------
 `, r.Cmd.Args,
 		r.ExitCode,
 		r.Error,
 		r.Timeout,
 		r.Stdout.String(),
-		r.Stderr.String())
+		r.Stderr.String(),
+		r.Env)
 }
 
 func (r *Result) Compare(expected Expected) error {
@@ -145,7 +189,7 @@ func (r *Result) Compare(expected Expected) error {
 }
 
 func NewCommand(cmd string, args ...string) *Command {
-	return &Command{Command: cmd, Args: args}
+	return &Command{Command: cmd, Args: args, Timeout: time.Minute}
 }
 
 func (c *Command) WithArgs(args ...string) *Command {
@@ -166,7 +210,7 @@ func transformArgTemplate(e *Environment, val string) (string, error) {
 		return "", err
 	}
 	out := &bytes.Buffer{}
-	err = tpl.Execute(out, e.data)
+	err = tpl.Execute(out, e.flatData())
 	if err != nil {
 		return "", err
 	}
@@ -174,44 +218,52 @@ func transformArgTemplate(e *Environment, val string) (string, error) {
 }
 
 func (c *Command) Run(e *Environment) *Result {
-	res := &Result{Command: c}
+	res := &Result{Command: c, Env: e}
 	args := c.Args
 	input := c.Input
-	var err error
 	if e != nil {
-		args = make([]string, len(c.Args))
+		args = nil
 		for i := range c.Args {
-			args[i], err = transformArgTemplate(e, c.Args[i])
+			transformed, err := transformArgTemplate(e, c.Args[i])
 			if err != nil {
 				res.SetError(err)
 				return res
 			}
+			args = append(args, strings.Split(transformed, " ")...)
 		}
+		var err error
 		input, err = transformArgTemplate(e, c.Input)
 		if err != nil {
 			res.SetError(err)
 			return res
 		}
 	}
-
 	execCmd := exec.Command(c.Command, args...)
 	execCmd.Stdin = strings.NewReader(input)
 	execCmd.Stdout = &res.Stdout
 	execCmd.Stderr = &res.Stderr
 	res.Cmd = execCmd
-	err = res.Cmd.Start()
-	if err != nil {
-		res.SetError(err)
-		return res
-	}
-	if c.Timeout == 0 {
-		res.SetError(res.Cmd.Wait())
-		return res
-	}
 	done := make(chan error, 1)
-	go func() {
-		done <- res.Cmd.Wait()
-	}()
+	if e.IsDry() {
+		close(done)
+		fmt.Printf("Would run: %+v\n", execCmd.Args)
+	} else {
+		if e.IsVerbose() {
+			fmt.Printf("Running: %+v\n", execCmd.Args)
+		}
+		err := res.Cmd.Start()
+		if err != nil {
+			res.SetError(err)
+			return res
+		}
+		if c.Timeout == 0 {
+			res.SetError(res.Cmd.Wait())
+			return res
+		}
+		go func() {
+			done <- res.Cmd.Wait()
+		}()
+	}
 	select {
 	case <-time.After(c.Timeout):
 		killErr := res.Cmd.Process.Kill()

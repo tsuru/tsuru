@@ -6,80 +6,199 @@ package integration
 
 import (
 	"regexp"
+	"strings"
+	"time"
 
 	"gopkg.in/check.v1"
 )
 
-type postFunc func(c *check.C, res *Result, env *Environment)
+var (
+	T            = NewCommand("tsuru").WithArgs
+	allPlatforms = []string{
+		"python",
+		"go",
+		"buildpack",
+		"cordova",
+		"elixir",
+		"java",
+		"nodejs",
+		"php",
+		"play",
+		"pypy",
+		"python3",
+		"ruby",
+		"static",
+	}
+	allProvisioners = []string{
+		"docker",
+		"swarm",
+	}
+	flows = []ExecFlow{
+		targetTest(),
+		loginTest(),
+		teamTest(),
+		poolAdd(),
+		nodeRemove(),
+		platformAdd(),
+		exampleApps(),
+	}
+)
 
-type CmdWithExp struct {
-	C     *Command
-	E     Expected
-	P     postFunc
-	Defer bool
+func targetTest() ExecFlow {
+	flow := ExecFlow{}
+	targetName := "integration-target"
+	flow.Add(T("target-add", targetName, "{{.targetaddr}}"))
+	flow.AddRollback(T("target-remove", targetName))
+	flow.Add(T("target-list"), Expected{Stdout: `\s+` + targetName + ` .*`})
+	flow.Add(T("target-set", targetName))
+	flow.Add(T("target-list"), Expected{Stdout: `\* ` + targetName + ` .*`})
+	return flow
 }
 
-type CmdList []CmdWithExp
+func loginTest() ExecFlow {
+	flow := ExecFlow{}
+	flow.Add(T("login", "{{.adminuser}}").WithInput("{{.adminpassword}}"))
+	return flow
+}
 
-var T = NewCommand("tsuru").WithArgs
+func teamTest() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"team"},
+	}
+	teamName := "integration-team"
+	flow.Add(T("team-create", teamName))
+	flow.AddHook(func(c *check.C, res *Result) {
+		res.Env.Set("team", teamName)
+	})
+	flow.AddRollback(T("team-remove", "-y", teamName))
+	return flow
+}
 
-var afterInstallFlow = CmdList{
-	{C: T("target-add", "integration", "{{.targetaddr}}")},
-	{C: T("target-list"), E: Expected{Stdout: `\s+integration .*`}},
-	{C: T("target-set", "integration")},
-	{C: T("target-list"), E: Expected{Stdout: `\* integration .*`}},
+func poolAdd() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"poolnames"},
+	}
+	for _, prov := range allProvisioners {
+		poolName := "ipool-" + prov
+		flow.Add(T("pool-add", "--provisioner", prov, poolName))
+		flow.AddHook(func(c *check.C, res *Result) {
+			res.Env.Add("poolnames", poolName)
+		})
+		flow.AddRollback(T("pool-remove", "-y", poolName))
+		flow.Add(T("pool-teams-add", poolName, "{{.team}}"))
+		flow.AddRollback(T("pool-teams-remove", poolName, "{{.team}}"))
+		flow.Add(T("node-add", "{{.nodeopts}}", "pool="+poolName))
+		flow.Add(T("event-list"))
+		flow.AddHook(func(c *check.C, res *Result) {
+			nodeopts := res.Env.All("nodeopts")
+			res.Env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
+			regex := regexp.MustCompile(`node.create.*?node:\s+(.*?)\s+`)
+			parts := regex.FindStringSubmatch(res.Stdout.String())
+			c.Assert(parts, check.HasLen, 2)
+			res.Env.Add("nodeaddrs", parts[1])
+			res.Env.Set("nodeaddr", parts[1])
+		})
+		flow.AddHook(func(c *check.C, res *Result) {
+			timeout := time.After(time.Minute)
+			regex := regexp.MustCompile(res.Env.Get("nodeaddr") + `.*?ready`)
+			for {
+				res = T("node-list").Run(res.Env)
+				if regex.MatchString(res.Stdout.String()) {
+					return
+				}
+				select {
+				case <-time.After(time.Second):
+				case <-timeout:
+					c.Fatalf("node %q not ready after 1 minute", res.Env.Get("nodeaddr"))
+					return
+				}
+			}
+		})
+	}
+	return flow
+}
 
-	{C: T("app-list"), E: Expected{ExitCode: 1, Stderr: `.*you're not authenticated.*`}},
-	{C: T("login", "{{.adminuser}}").WithInput("{{.adminpassword}}")},
+func nodeRemove() ExecFlow {
+	flow := ExecFlow{
+		matrix: map[string]string{
+			"node": "nodeaddrs",
+		},
+	}
+	flow.AddRollback(T("node-remove", "-y", "--no-rebalance", "{{.node}}"))
+	return flow
+}
 
-	{C: T("team-create", "integration-team")},
-	{Defer: true, C: T("team-remove", "-y", "integration-team")},
-	{C: T("team-list"), E: Expected{Stdout: `(?s).*integration-team.*`}},
-	{C: T("pool-add", "--provisioner", "docker", "integration-pool-docker")},
-	{Defer: true, C: T("pool-remove", "-y", "integration-pool-docker")},
-	{C: T("pool-add", "--provisioner", "swarm", "integration-pool-swarm")},
-	{Defer: true, C: T("pool-remove", "-y", "integration-pool-swarm")},
+func platformAdd() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"platforms"},
+	}
+	for _, plat := range allPlatforms {
+		integrationPlat := "iplat-" + plat
+		flow.Add(T("platform-add", integrationPlat, "-i", "tsuru/"+plat))
+		flow.AddHook(func(c *check.C, res *Result) {
+			res.Env.Add("platforms", integrationPlat)
+		})
+		flow.AddRollback(T("platform-remove", "-y", integrationPlat))
+		flow.Add(T("platform-list"), Expected{Stdout: "(?s).*- " + integrationPlat + ".*"})
+	}
+	return flow
+}
 
-	{C: T("pool-teams-add", "integration-pool-docker", "integration-team")},
-	{Defer: true, C: T("pool-teams-remove", "integration-pool-docker", "integration-team")},
-	{C: T("pool-teams-add", "integration-pool-swarm", "integration-team")},
-	{Defer: true, C: T("pool-teams-remove", "integration-pool-swarm", "integration-team")},
-
-	{C: T("platform-add", "integration-python", "-i", "tsuru/python")},
-	{Defer: true, C: T("platform-remove", "-y", "integration-python")},
-	{C: T("platform-list"), E: Expected{Stdout: "- integration-python"}},
-
-	{C: T("node-update", "{{.nodeaddr}}", "pool=integration-pool-docker")},
-
-	{C: T("app-create", "integration-app-python", "integration-python",
-		"-t", "integration-team", "-o", "integration-pool-docker")},
-	{Defer: true, C: T("app-remove", "-y", "-a", "integration-app-python")},
-	{C: T("app-deploy", "-a", "integration-app-python", "{{.examplesdir}}/python")},
-	{C: T("app-info", "-a", "integration-app-python"), P: func(c *check.C, res *Result, env *Environment) {
+func exampleApps() ExecFlow {
+	flow := ExecFlow{
+		matrix: map[string]string{
+			"pool": "poolnames",
+			"plat": "platforms",
+		},
+	}
+	appName := "iapp-{{.plat}}-{{.pool}}"
+	flow.Add(T("app-create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}"))
+	flow.AddRollback(T("app-remove", "-y", "-a", appName))
+	flow.Add(T("app-info", "-a", appName))
+	flow.AddHook(func(c *check.C, res *Result) {
+		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
+		parts := platRE.FindStringSubmatch(res.Stdout.String())
+		c.Assert(parts, check.HasLen, 2)
+		res.Env.Set("language", strings.Replace(parts[1], "iplat-", "", -1))
+	})
+	flow.Add(T("app-deploy", "-a", appName, "{{.examplesdir}}/{{.language}}"))
+	flow.Add(T("app-info", "-a", appName))
+	flow.AddHook(func(c *check.C, res *Result) {
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 		parts := addrRE.FindStringSubmatch(res.Stdout.String())
-		env.Set("appaddr", parts[1])
-	}},
-	{C: NewCommand("curl", "-sSf", "http://{{.appaddr}}")},
+		c.Assert(parts, check.HasLen, 2)
+		res.Env.Set("appaddr", parts[1])
+	})
+	flow.Add(NewCommand("curl", "-sSf", "http://{{.appaddr}}"))
+	return flow
 }
 
 func (s *S) TestBase(c *check.C) {
 	env := NewEnvironment()
-	if env.Get("targetaddr") == "" {
+	if !env.Has("targetaddr") {
 		return
 	}
-	for _, f := range afterInstallFlow {
-		if f.Defer {
-			defer func(cmd *Command) {
-				res := cmd.Run(env)
-				c.Check(res, ResultOk)
-			}(f.C)
-			continue
+	var executedFlows []*ExecFlow
+	defer func() {
+		for i := len(executedFlows) - 1; i >= 0; i-- {
+			executedFlows[i].Rollback(c, env)
 		}
-		res := f.C.Run(env)
-		c.Assert(res, ResultMatches, f.E)
-		if f.P != nil {
-			f.P(c, res, env)
+	}()
+	for i := range flows {
+		f := &flows[i]
+		if len(f.provides) > 0 {
+			providesAll := true
+			for _, envVar := range f.provides {
+				if env.Get(envVar) == "" {
+					providesAll = false
+					break
+				}
+			}
+			if providesAll {
+				continue
+			}
 		}
+		executedFlows = append(executedFlows, f)
+		f.Run(c, env)
 	}
 }
