@@ -1,14 +1,9 @@
 #!/bin/bash -el
 
-# This script generates a git archive from the provided commit, uploads it to
-# S3, sends the URL to Tsuru and then delete the archive in from the
-# bucket.
+# This script generate archives and deploy applications using tsuru api.
 #
-# It depends on the "s3cmd" command line, previously configured.
+# It depends on the following environment variables:
 #
-# It also depends on the following environment variables:
-#
-#   - BUCKET_NAME: name of the bucket where the script will store the archives
 #   - TSURU_HOST: URL to the Tsuru API (for example: http://yourtsuru:8080)
 #   - TSURU_TOKEN: the token to communicate with the API (generated with
 #                  `tsurud token`, in the server).
@@ -27,12 +22,12 @@ done
 
 if [ -z ${COMMIT} ]
 then
-    echo "ERROR: please push to master"
-    exit 3
+	echo "ERROR: please push to master"
+	exit 3
 fi
 
 git_archive_all() {
-    APP=$1; REV=$2; FILE=$3
+    REV=$1; FILE=$2
     TMP_WORK_DIR=$(mktemp -d)
     chmod 755 $TMP_WORK_DIR
     unset GIT_DIR GIT_WORK_TREE
@@ -51,11 +46,9 @@ APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
 UUID=`python -c 'import uuid; print uuid.uuid4().hex'`
 ARCHIVE_FILE_NAME=${APP_NAME}_${COMMIT}_${UUID}.tar.gz
-git_archive_all $APP_NAME $COMMIT $ARCHIVE_FILE_NAME
-s3cmd put -P /tmp/${ARCHIVE_FILE_NAME} s3://${BUCKET_NAME}/ > /dev/null
+git_archive_all $COMMIT $ARCHIVE_FILE_NAME
+archive_url="/tmp/${ARCHIVE_FILE_NAME}"
+url="${TSURU_HOST}/apps/${APP_NAME}/deploy"
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -F "file=@${archive_url}" -F "commit=${COMMIT}" -F "user=${TSURU_USER}" -s -N $url | tee /tmp/deploy-${APP_NAME}.log
 rm /tmp/${ARCHIVE_FILE_NAME}
-ARCHIVE_URL=`s3cmd info s3://${BUCKET_NAME}/${ARCHIVE_FILE_NAME} | grep URL | awk -F': ' '{print $2}' | tr -d ' '`
-URL="${TSURU_HOST}/apps/${APP_NAME}/deploy"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}&user=${TSURU_USER}" -s -N $URL | tee /tmp/deploy-${APP_NAME}.log
-s3cmd del s3://${BUCKET_NAME}/${ARCHIVE_FILE_NAME} > /dev/null
 tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"
