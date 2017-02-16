@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -102,8 +103,10 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
 	err = p.MoveContainers("localhost", "unknown", buf)
-	c.Assert(err, check.Equals, containerMovementErr)
+	multiErr := err.(*tsuruErrors.MultiError)
+	c.Assert(multiErr.Len(), check.Equals, 2)
 	parts := strings.Split(buf.String(), "\n")
+	errorRegexp.FindAllString(s, n)
 	c.Assert(parts, check.HasLen, 6)
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
 	var matches int

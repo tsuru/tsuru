@@ -62,18 +62,16 @@ func (l *appLocker) Unlock(appName string) {
 	}
 }
 
-var containerMovementErr = errors.New("Error moving some containers.")
-
 func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Writer) error {
-	hasError := false
+	multiErr := tsuruErrors.NewMultiError()
 	for err := range moveErrors {
+		multiErr.Add(err)
 		err = errors.Wrap(err, "Error moving container")
 		log.Error(err)
 		fmt.Fprintf(writer, "%s\n", err)
-		hasError = true
 	}
-	if hasError {
-		return containerMovementErr
+	if multiErr.Len() > 0 {
+		return multiErr
 	}
 	return nil
 }
