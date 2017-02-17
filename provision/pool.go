@@ -315,10 +315,13 @@ func AppendPoolConstraint(poolExpr string, field string, values ...string) error
 		return err
 	}
 	defer conn.Close()
-	return conn.PoolsContraints().Update(
+	_, err = conn.PoolsContraints().Upsert(
 		bson.M{"poolexpr": poolExpr, "field": field},
-		bson.M{"$pushAll": bson.M{"values": values}},
+		bson.M{"$pushAll": bson.M{"values": values},
+			"$setOnInsert": bson.M{"whitelist": true},
+		},
 	)
+	return err
 }
 
 func checkPoolExactConstraint(pool, field, value string) (bool, error) {
