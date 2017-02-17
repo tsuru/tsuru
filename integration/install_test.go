@@ -5,6 +5,8 @@
 package integration
 
 import (
+	"fmt"
+	"io/ioutil"
 	"regexp"
 	"strings"
 	"time"
@@ -34,8 +36,12 @@ var (
 		"swarm",
 	}
 	flows = []ExecFlow{
+		installerConfigTest(),
+		installerTest(),
 		targetTest(),
 		loginTest(),
+		removeInstallNodes(),
+		quotaTest(),
 		teamTest(),
 		poolAdd(),
 		nodeRemove(),
@@ -43,6 +49,64 @@ var (
 		exampleApps(),
 	}
 )
+
+// FIXME: Pinning on 1.12.6, using latest (1.13.1) was causing docker pull to
+// freeze for a long time.
+var installerConfig = `driver:
+  name: virtualbox
+  options:
+    virtualbox-boot2docker-url: https://github.com/boot2docker/boot2docker/releases/download/v1.12.6/boot2docker.iso
+hosts:
+  apps:
+    size: 2
+components:
+  tsuru:
+    version: latest
+    install-dashboard: false
+`
+
+func installerConfigTest() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"installerconfig"},
+	}
+	flow.AddHook(func(c *check.C, res *Result) {
+		f, err := ioutil.TempFile("", "installer-config")
+		c.Assert(err, check.IsNil)
+		defer f.Close()
+		f.Write([]byte(installerConfig))
+		res.Env.Set("installerconfig", f.Name())
+	})
+	flow.AddRollback(NewCommand("rm", "{{.installerconfig}}"))
+	return flow
+}
+
+func installerTest() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"targetaddr"},
+	}
+	flow.Add(T("install", "--config", "{{.installerconfig}}").WithTimeout(9 * time.Minute))
+	flow.AddRollback(T("uninstall", "-y"))
+	flow.AddHook(func(c *check.C, res *Result) {
+		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
+		parts := regex.FindStringSubmatch(res.Stdout.String())
+		c.Assert(parts, check.HasLen, 2)
+		res.Env.Set("targetaddr", parts[1])
+		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
+		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
+		for _, parts = range allParts {
+			c.Assert(parts, check.HasLen, 2)
+			res.Env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert ~/.tsuru/installs/tsuru/certs/ca.pem --clientcert ~/.tsuru/installs/tsuru/certs/cert.pem --clientkey ~/.tsuru/installs/tsuru/certs/key.pem", parts[1]))
+			res.Env.Add("nodestoremove", parts[1])
+		}
+		regex = regexp.MustCompile(`Username: (.+)`)
+		parts = regex.FindStringSubmatch(res.Stdout.String())
+		fmt.Println("adminuser", parts[1])
+		regex = regexp.MustCompile(`Password: (.+)`)
+		parts = regex.FindStringSubmatch(res.Stdout.String())
+		fmt.Println("adminpassword", parts[1])
+	})
+	return flow
+}
 
 func targetTest() ExecFlow {
 	flow := ExecFlow{}
@@ -58,6 +122,23 @@ func targetTest() ExecFlow {
 func loginTest() ExecFlow {
 	flow := ExecFlow{}
 	flow.Add(T("login", "{{.adminuser}}").WithInput("{{.adminpassword}}"))
+	return flow
+}
+
+func removeInstallNodes() ExecFlow {
+	flow := ExecFlow{
+		matrix: map[string]string{
+			"node": "nodestoremove",
+		},
+	}
+	flow.Add(T("node-remove", "-y", "--no-rebalance", "{{.node}}"))
+	return flow
+}
+
+func quotaTest() ExecFlow {
+	flow := ExecFlow{}
+	flow.Add(T("user-quota-change", "{{.adminuser}}", "100"))
+	flow.Add(T("user-quota-view", "{{.adminuser}}"), Expected{Stdout: `(?s)Apps usage.*/100`})
 	return flow
 }
 
@@ -96,23 +177,12 @@ func poolAdd() ExecFlow {
 			parts := regex.FindStringSubmatch(res.Stdout.String())
 			c.Assert(parts, check.HasLen, 2)
 			res.Env.Add("nodeaddrs", parts[1])
-			res.Env.Set("nodeaddr", parts[1])
-		})
-		flow.AddHook(func(c *check.C, res *Result) {
-			timeout := time.After(time.Minute)
-			regex := regexp.MustCompile(res.Env.Get("nodeaddr") + `.*?ready`)
-			for {
+			regex = regexp.MustCompile(parts[1] + `.*?ready`)
+			ok := retry(time.Minute, func() bool {
 				res = T("node-list").Run(res.Env)
-				if regex.MatchString(res.Stdout.String()) {
-					return
-				}
-				select {
-				case <-time.After(time.Second):
-				case <-timeout:
-					c.Fatalf("node %q not ready after 1 minute", res.Env.Get("nodeaddr"))
-					return
-				}
-			}
+				return regex.MatchString(res.Stdout.String())
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
 		})
 	}
 	return flow
@@ -169,13 +239,20 @@ func exampleApps() ExecFlow {
 		c.Assert(parts, check.HasLen, 2)
 		res.Env.Set("appaddr", parts[1])
 	})
-	flow.Add(NewCommand("curl", "-sSf", "http://{{.appaddr}}"))
+	flow.AddHook(func(c *check.C, res *Result) {
+		cmd := NewCommand("curl", "-sSf", "http://{{.appaddr}}")
+		ok := retry(time.Minute, func() bool {
+			res = cmd.Run(res.Env)
+			return res.ExitCode == 0
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
+	})
 	return flow
 }
 
 func (s *S) TestBase(c *check.C) {
 	env := NewEnvironment()
-	if !env.Has("targetaddr") {
+	if !env.Has("enabled") {
 		return
 	}
 	var executedFlows []*ExecFlow

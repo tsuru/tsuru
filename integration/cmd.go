@@ -7,9 +7,11 @@ package integration
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"text/template"
@@ -115,8 +117,9 @@ func (e *Environment) IsDry() bool {
 	return len(e.data["dryrun"]) > 0
 }
 
-func (e *Environment) IsVerbose() bool {
-	return len(e.data["verbose"]) > 0
+func (e *Environment) VerboseLevel() int {
+	v, _ := strconv.Atoi(e.Get("verbose"))
+	return v
 }
 
 func (r *Result) SetError(err error) {
@@ -189,7 +192,7 @@ func (r *Result) Compare(expected Expected) error {
 }
 
 func NewCommand(cmd string, args ...string) *Command {
-	return &Command{Command: cmd, Args: args, Timeout: time.Minute}
+	return &Command{Command: cmd, Args: args, Timeout: 5 * time.Minute}
 }
 
 func (c *Command) WithArgs(args ...string) *Command {
@@ -201,6 +204,12 @@ func (c *Command) WithArgs(args ...string) *Command {
 func (c *Command) WithInput(input string) *Command {
 	c2 := *c
 	c2.Input = input
+	return &c2
+}
+
+func (c *Command) WithTimeout(timeout time.Duration) *Command {
+	c2 := *c
+	c2.Timeout = timeout
 	return &c2
 }
 
@@ -240,15 +249,22 @@ func (c *Command) Run(e *Environment) *Result {
 	}
 	execCmd := exec.Command(c.Command, args...)
 	execCmd.Stdin = strings.NewReader(input)
-	execCmd.Stdout = &res.Stdout
-	execCmd.Stderr = &res.Stderr
+	var stdout, stderr io.Writer
+	stdout = &res.Stdout
+	stderr = &res.Stderr
+	if e.VerboseLevel() > 1 {
+		stdout = io.MultiWriter(stdout, os.Stdout)
+		stderr = io.MultiWriter(stderr, os.Stderr)
+	}
+	execCmd.Stdout = stdout
+	execCmd.Stderr = stderr
 	res.Cmd = execCmd
 	done := make(chan error, 1)
 	if e.IsDry() {
 		close(done)
 		fmt.Printf("Would run: %+v\n", execCmd.Args)
 	} else {
-		if e.IsVerbose() {
+		if e.VerboseLevel() > 0 {
 			fmt.Printf("Running: %+v\n", execCmd.Args)
 		}
 		err := res.Cmd.Start()

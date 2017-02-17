@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"gopkg.in/check.v1"
 )
@@ -31,4 +32,18 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	err := os.RemoveAll(s.tmpDir)
 	c.Assert(err, check.IsNil)
+}
+
+func retry(timeout time.Duration, fn func() bool) bool {
+	timeoutTimer := time.After(timeout)
+	for {
+		if fn() {
+			return true
+		}
+		select {
+		case <-time.After(time.Second):
+		case <-timeoutTimer:
+			return false
+		}
+	}
 }

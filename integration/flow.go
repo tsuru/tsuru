@@ -67,6 +67,9 @@ func (f *ExecFlow) rollbackOnce(c *check.C, env *Environment) {
 }
 
 func (f *ExecFlow) runOnce(c *check.C, env *Environment) {
+	for _, hook := range f.hooks[-1] {
+		hook(c, &Result{Env: env})
+	}
 	for i, cmd := range f.actions {
 		res := cmd.C.Run(env)
 		if len(cmd.E) == 0 {
