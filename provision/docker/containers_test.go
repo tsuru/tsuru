@@ -106,7 +106,6 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	multiErr := err.(*tsuruErrors.MultiError)
 	c.Assert(multiErr.Len(), check.Equals, 2)
 	parts := strings.Split(buf.String(), "\n")
-	errorRegexp.FindAllString(s, n)
 	c.Assert(parts, check.HasLen, 6)
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
 	var matches int
