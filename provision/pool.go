@@ -54,7 +54,7 @@ func (p *Pool) GetProvisioner() (Provisioner, error) {
 }
 
 func (p *Pool) GetTeams() ([]string, error) {
-	constraints, err := getConstraintsForPool(p.Name)
+	constraints, err := getConstraintsForPool(p.Name, "team")
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func checkPoolExactConstraint(pool, field, value string) (bool, error) {
 }
 
 func checkPoolConstraint(pool, field, value string) (bool, error) {
-	constraints, err := getConstraintsForPool(pool)
+	constraints, err := getConstraintsForPool(pool, field)
 	if err != nil {
 		return false, err
 	}
@@ -398,7 +398,7 @@ func getPoolsSatisfyConstraints(field string, values ...string) ([]Pool, error) 
 	}
 	var satisfying []Pool
 	for _, p := range pools {
-		constraints, err := getConstraintsForPool(p.Name)
+		constraints, err := getConstraintsForPool(p.Name, field)
 		if err != nil {
 			return nil, err
 		}
@@ -416,14 +416,18 @@ func getPoolsSatisfyConstraints(field string, values ...string) ([]Pool, error) 
 	return satisfying, nil
 }
 
-func getConstraintsForPool(pool string) (map[string]*constraint, error) {
+func getConstraintsForPool(pool string, fields ...string) (map[string]*constraint, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var constraints []*constraint
-	err = conn.PoolsConstraints().Find(nil).All(&constraints)
+	var query bson.M
+	if len(fields) > 0 {
+		query = bson.M{"field": bson.M{"$in": fields}}
+	}
+	err = conn.PoolsConstraints().Find(query).All(&constraints)
 	if err != nil {
 		return nil, err
 	}
