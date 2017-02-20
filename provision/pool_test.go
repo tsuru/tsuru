@@ -117,7 +117,7 @@ func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
 	defer coll.RemoveId(pool.Name)
 	err = AddTeamsToPool(pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrPublicDefaultPollCantHaveTeams)
+	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
 
 func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
@@ -235,7 +235,7 @@ func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
 	defer coll.RemoveId(pool.Name)
 	err = AddTeamsToPool(pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrPublicDefaultPollCantHaveTeams)
+	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
 
 func (s *S) TestRemoveTeamsFromPoolNotFound(c *check.C) {
