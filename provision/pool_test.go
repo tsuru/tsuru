@@ -192,35 +192,39 @@ func (s *S) TestAddTeamToPool(c *check.C) {
 	var p Pool
 	err = coll.FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{"ateam", "test"})
+	teams, err := p.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 }
 
-func (s *S) TestAddTeamToPollWithTeams(c *check.C) {
+func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
 	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
+	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
+	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
+	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool(pool.Name, []string{"pteam"})
 	c.Assert(err, check.IsNil)
-	var p Pool
-	err = coll.FindId(pool.Name).One(&p)
+	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{"test", "ateam", "pteam"})
+	c.Assert(teams, check.DeepEquals, []string{"test", "ateam", "pteam"})
 }
 
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
+	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
+	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
+	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool(pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
-	var p Pool
-	err = coll.FindId(pool.Name).One(&p)
+	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{"test", "ateam"})
+	c.Assert(teams, check.DeepEquals, []string{"test", "ateam"})
 }
 
 func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
@@ -241,16 +245,20 @@ func (s *S) TestRemoveTeamsFromPoolNotFound(c *check.C) {
 
 func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
+	pool := Pool{Name: "pool1"}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
+	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
+	c.Assert(err, check.IsNil)
+	teams, err := pool.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"test", "ateam"})
 	err = RemoveTeamsFromPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
-	var p Pool
-	err = coll.FindId(pool.Name).One(&p)
+	teams, err = pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{"ateam"})
+	c.Assert(teams, check.DeepEquals, []string{"ateam"})
 }
 
 func boolPtr(v bool) *bool {
@@ -386,7 +394,7 @@ func (s *S) TestGetPoolByName(c *check.C) {
 }
 
 func (s *S) TestPoolSetConstraints(c *check.C) {
-	coll := s.storage.PoolsContraints()
+	coll := s.storage.PoolsConstraints()
 	err := SetPoolConstraints("*", "router=planb,hipache", "team!=user")
 	c.Assert(err, check.IsNil)
 	var cs []*constraint

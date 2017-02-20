@@ -34,14 +34,14 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-		"nodockerforme",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
@@ -92,14 +92,14 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-		"nodockerforme",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
@@ -772,14 +772,14 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a2.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-		"nodockerforme",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()

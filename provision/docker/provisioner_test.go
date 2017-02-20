@@ -1397,14 +1397,14 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-		"nodockerforme",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
@@ -1466,14 +1466,14 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-		"nodockerforme",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
@@ -1534,13 +1534,11 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	contColl := s.p.Collection()
 	defer contColl.Close()
@@ -1589,14 +1587,14 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-		"nodockerforme",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
@@ -1636,13 +1634,13 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{
-		"tsuruteam",
-	}}
+	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	err = provision.AddTeamsToPool(p.Name, []string{
+		"tsuruteam",
+	})
 	c.Assert(err, check.IsNil)
 	contColl := s.p.Collection()
 	defer contColl.Close()

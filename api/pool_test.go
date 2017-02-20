@@ -171,7 +171,9 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{"test"})
+	teams, err := p.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"test"})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -206,11 +208,11 @@ func (s *S) TestRemoveTeamsToPoolNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
-	pool := provision.Pool{Name: "pool1", Teams: []string{"test"}}
+	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	err = provision.AddTeamsToPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	req, err := http.NewRequest("DELETE", "/pools/pool1/team", nil)
@@ -223,11 +225,11 @@ func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
-	pool := provision.Pool{Name: "pool1", Teams: []string{"test"}}
+	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	err = provision.AddTeamsToPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=test", nil)
@@ -240,7 +242,9 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	var p provision.Pool
 	err = s.conn.Pools().FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{})
+	teams, err := p.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -262,7 +266,7 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
 		*defaultPool,
-		{Name: "pool1", Public: true, Teams: []string{}},
+		{Name: "pool1", Public: true},
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermTeamCreate,
@@ -287,11 +291,11 @@ func (s *S) TestPoolListHandler(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, "angra"),
 	})
-	pool := provision.Pool{Name: "pool1", Teams: []string{"angra"}}
+	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	err = provision.AddTeamsToPool(pool.Name, []string{"angra"})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	opts = provision.AddPoolOptions{Name: "nopool"}
@@ -302,7 +306,7 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
 		*defaultPool,
-		{Name: "pool1", Teams: []string{"angra"}},
+		{Name: "pool1"},
 	}
 	req, err := http.NewRequest("GET", "/pools", nil)
 	c.Assert(err, check.IsNil)
@@ -349,11 +353,11 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 		},
 	}
 	token := userWithPermission(c, perms...)
-	pool := provision.Pool{Name: "pool1", Teams: []string{team.Name}}
+	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name, Default: pool.Default}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	err = provision.AddTeamsToPool(pool.Name, []string{team.Name})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	req, err := http.NewRequest("GET", "/pools", nil)
