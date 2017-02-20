@@ -122,7 +122,7 @@ func (s *Storage) Pools() *storage.Collection {
 }
 
 // PoolsConstraints return the pool constraints collection.
-func (s *Storage) PoolsContraints() *storage.Collection {
+func (s *Storage) PoolsConstraints() *storage.Collection {
 	poolConstraintIndex := mgo.Index{Key: []string{"poolexpr", "field"}, Unique: true}
 	c := s.Collection("pool_constraints")
 	c.EnsureIndex(poolConstraintIndex)
