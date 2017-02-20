@@ -72,7 +72,7 @@ func (s *S) TestCustomizableIaaSProvider(c *check.C) {
 
 func (s *S) TestReadUserDataDefault(c *check.C) {
 	iaasInst := UserDataIaaS{}
-	userData, err := iaasInst.ReadUserData()
+	userData, err := iaasInst.ReadUserData(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(userData, check.Equals, defaultUserData)
 }
@@ -85,7 +85,7 @@ func (s *S) TestReadUserData(c *check.C) {
 	defer server.Close()
 	config.Set("iaas:x:user-data", server.URL)
 	defer config.Unset("iaas:x:user-data")
-	userData, err := iaasInst.ReadUserData()
+	userData, err := iaasInst.ReadUserData(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(userData, check.Equals, "abc def ghi")
 }
@@ -94,7 +94,7 @@ func (s *S) TestReadUserDataEmpty(c *check.C) {
 	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
 	config.Set("iaas:x:user-data", "")
 	defer config.Unset("iaas:x:user-data")
-	userData, err := iaasInst.ReadUserData()
+	userData, err := iaasInst.ReadUserData(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(userData, check.Equals, "")
 }
@@ -107,8 +107,36 @@ func (s *S) TestReadUserDataError(c *check.C) {
 	defer server.Close()
 	config.Set("iaas:x:user-data", server.URL)
 	defer config.Unset("iaas:x:user-data")
-	_, err := iaasInst.ReadUserData()
+	_, err := iaasInst.ReadUserData(nil)
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestReadUserDataParamsOverride(c *check.C) {
+	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "abc def ghi")
+	}))
+	defer server.Close()
+	config.Set("iaas:x:user-data", server.URL)
+	defer config.Unset("iaas:x:user-data")
+	params := map[string]string{"user-data": "myvalue"}
+	userData, err := iaasInst.ReadUserData(params)
+	c.Assert(err, check.IsNil)
+	c.Assert(userData, check.Equals, "myvalue")
+	c.Assert(params, check.DeepEquals, map[string]string{})
+}
+
+func (s *S) TestReadUserDataParamsURL(c *check.C) {
+	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "myurlvalue")
+	}))
+	defer server.Close()
+	params := map[string]string{"user-data-url": server.URL}
+	userData, err := iaasInst.ReadUserData(params)
+	c.Assert(err, check.IsNil)
+	c.Assert(userData, check.Equals, "myurlvalue")
+	c.Assert(params, check.DeepEquals, map[string]string{})
 }
 
 func (s *S) TestGetConfigString(c *check.C) {

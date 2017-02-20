@@ -53,27 +53,37 @@ type UserDataIaaS struct {
 	NamedIaaS
 }
 
-func (i *UserDataIaaS) ReadUserData() (string, error) {
-	userDataURL, err := i.NamedIaaS.GetConfigString("user-data")
-	var userData string
-	if err != nil {
-		userData = defaultUserData
-	} else if userDataURL != "" {
-		resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(userDataURL)
-		if err != nil {
-			return "", err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return "", errors.Errorf("Invalid user-data status code: %d", resp.StatusCode)
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
-		}
-		userData = string(body)
+func (i *UserDataIaaS) ReadUserData(params map[string]string) (string, error) {
+	if userData, ok := params["user-data"]; ok {
+		delete(params, "user-data")
+		return userData, nil
 	}
-	return userData, nil
+	userDataURL, ok := params["user-data-url"]
+	var err error
+	if ok {
+		delete(params, "user-data-url")
+	} else {
+		userDataURL, err = i.NamedIaaS.GetConfigString("user-data")
+		if err != nil {
+			return defaultUserData, nil
+		}
+	}
+	if userDataURL == "" {
+		return "", nil
+	}
+	resp, err := tsuruNet.Dial5Full60ClientNoKeepAlive.Get(userDataURL)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("Invalid user-data status code: %d", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
 
 func (i *NamedIaaS) GetConfigString(name string) (string, error) {

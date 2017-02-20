@@ -283,7 +283,7 @@ func (i *EC2IaaS) loadStruct(value reflect.Value, t reflect.Type, data []byte) e
 
 func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	regionOrEndpoint := getRegionOrEndpoint(params, true)
-	userData, err := i.base.ReadUserData()
+	userData, err := i.base.ReadUserData(params)
 	if err != nil {
 		return nil, err
 	}

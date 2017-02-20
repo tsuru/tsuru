@@ -55,7 +55,7 @@ func (i *digitalOceanIaas) Auth() error {
 func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	i.Auth()
 	image := godo.DropletCreateImage{Slug: params["image"]}
-	userData, err := i.base.ReadUserData()
+	userData, err := i.base.ReadUserData(params)
 	if err != nil {
 		return nil, err
 	}

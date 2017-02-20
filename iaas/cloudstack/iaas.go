@@ -151,7 +151,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if err != nil {
 		return nil, err
 	}
-	userData, err := i.base.ReadUserData()
+	userData, err := i.base.ReadUserData(params)
 	if err != nil {
 		return nil, err
 	}

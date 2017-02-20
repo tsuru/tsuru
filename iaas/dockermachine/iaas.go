@@ -80,7 +80,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 			return nil, errors.Wrap(errTemp, "failed to create userdata file")
 		}
 		defer os.RemoveAll(f.Name())
-		userData, errData := i.base.ReadUserData()
+		userData, errData := i.base.ReadUserData(params)
 		if errData != nil {
 			return nil, errors.WithMessage(errData, "failed to read userdata")
 		}
