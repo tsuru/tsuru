@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
+	ErrPublicDefaultPoolCantHaveTeams = errors.New("Public/Default pool can't have teams.")
 	ErrDefaultPoolAlreadyExists       = errors.New("Default pool already exists.")
 	ErrPoolNameIsRequired             = errors.New("Pool name is required.")
 	ErrPoolNotFound                   = errors.New("Pool does not exist.")
@@ -132,7 +132,7 @@ func AddTeamsToPool(poolName string, teams []string) error {
 		return err
 	}
 	if pool.Public || pool.Default {
-		return ErrPublicDefaultPollCantHaveTeams
+		return ErrPublicDefaultPoolCantHaveTeams
 	}
 	for _, newTeam := range teams {
 		check, err := checkPoolExactConstraint(poolName, "team", newTeam)
