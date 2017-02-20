@@ -2,13 +2,13 @@ language: go
 sudo: required
 install: true
 go:
-  - 1.6.4
   - 1.7.5
-  - tip
+  - 1.8
+  - master
 env:
   global:
     - GOARCH=amd64
-    - GO_FOR_RELEASE=1.7.5
+    - GO_FOR_RELEASE=1.8
     - IMAGE_NAME=tsuru/api
 addons:
   apt:
@@ -55,4 +55,4 @@ services:
   - mongodb
 matrix:
   allow_failures:
-    - go: tip
+    - go: master

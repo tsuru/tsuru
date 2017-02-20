@@ -10,7 +10,7 @@ TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 LINTER_ARGS = \
 	-j 4 --enable-gc -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
-	--disable=structcheck --deadline=20m --tests
+	--disable=structcheck --deadline=30m --tests
 
 .PHONY: all check-path test race docs install
 
