@@ -17,6 +17,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/mattn/go-shellwords"
 	"github.com/pkg/errors"
 )
 
@@ -163,6 +164,11 @@ func (r *Result) Compare(expected Expected) error {
 		if exp == "" {
 			return nil
 		}
+		var err error
+		exp, err = transformArgTemplate(r.Env, exp)
+		if err != nil {
+			return err
+		}
 		re, err := regexp.Compile(exp)
 		if err != nil {
 			return err
@@ -238,7 +244,8 @@ func (c *Command) Run(e *Environment) *Result {
 				res.SetError(err)
 				return res
 			}
-			args = append(args, strings.Split(transformed, " ")...)
+			parts, _ := shellwords.Parse(transformed)
+			args = append(args, parts...)
 		}
 		var err error
 		input, err = transformArgTemplate(e, c.Input)

@@ -17,25 +17,26 @@ import (
 var (
 	T            = NewCommand("tsuru").WithArgs
 	allPlatforms = []string{
-		"python",
-		"go",
-		"buildpack",
-		"cordova",
-		"elixir",
-		"java",
-		"nodejs",
-		"php",
-		"play",
-		"pypy",
-		"python3",
-		"ruby",
-		"static",
+		"tsuru/python",
+		"tsuru/go",
+		"tsuru/buildpack",
+		"tsuru/cordova",
+		"tsuru/elixir",
+		"tsuru/java",
+		"tsuru/nodejs",
+		"tsuru/php",
+		"tsuru/play",
+		"tsuru/pypy",
+		"tsuru/python3",
+		"tsuru/ruby",
+		"tsuru/static",
 	}
 	allProvisioners = []string{
 		"docker",
 		"swarm",
 	}
 	flows = []ExecFlow{
+		platformsToInstall(),
 		installerConfigTest(),
 		installerTest(),
 		targetTest(),
@@ -50,12 +51,11 @@ var (
 	}
 )
 
-// FIXME: Pinning on 1.12.6, using latest (1.13.1) was causing docker pull to
-// freeze for a long time.
 var installerConfig = `driver:
   name: virtualbox
   options:
-    virtualbox-boot2docker-url: https://github.com/boot2docker/boot2docker/releases/download/v1.12.6/boot2docker.iso
+    virtualbox-cpu-count: 2
+    virtualbox-memory: 2048
 hosts:
   apps:
     size: 2
@@ -64,6 +64,18 @@ components:
     version: latest
     install-dashboard: false
 `
+
+func platformsToInstall() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"platformimages"},
+	}
+	flow.AddHook(func(c *check.C, res *Result) {
+		for _, platImg := range allPlatforms {
+			res.Env.Add("platformimages", platImg)
+		}
+	})
+	return flow
+}
 
 func installerConfigTest() ExecFlow {
 	flow := ExecFlow{
@@ -90,7 +102,12 @@ func installerTest() ExecFlow {
 		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		res.Env.Set("targetaddr", parts[1])
+		targetHost := parts[1]
+		regex = regexp.MustCompile(`(?si).*Tsuru API.*?\|\s(\d+)`)
+		parts = regex.FindStringSubmatch(res.Stdout.String())
+		c.Assert(parts, check.HasLen, 2)
+		targetPort := parts[1]
+		res.Env.Set("targetaddr", fmt.Sprintf("http://%s:%s", targetHost, targetPort))
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
 		for _, parts = range allParts {
@@ -100,10 +117,10 @@ func installerTest() ExecFlow {
 		}
 		regex = regexp.MustCompile(`Username: (.+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
-		fmt.Println("adminuser", parts[1])
+		res.Env.Set("adminuser", parts[1])
 		regex = regexp.MustCompile(`Password: (.+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
-		fmt.Println("adminpassword", parts[1])
+		res.Env.Set("adminpassword", parts[1])
 	})
 	return flow
 }
@@ -112,10 +129,8 @@ func targetTest() ExecFlow {
 	flow := ExecFlow{}
 	targetName := "integration-target"
 	flow.Add(T("target-add", targetName, "{{.targetaddr}}"))
-	flow.AddRollback(T("target-remove", targetName))
 	flow.Add(T("target-list"), Expected{Stdout: `\s+` + targetName + ` .*`})
 	flow.Add(T("target-set", targetName))
-	flow.Add(T("target-list"), Expected{Stdout: `\* ` + targetName + ` .*`})
 	return flow
 }
 
@@ -201,16 +216,20 @@ func nodeRemove() ExecFlow {
 func platformAdd() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"platforms"},
+		matrix: map[string]string{
+			"platimg": "platformimages",
+		},
 	}
-	for _, plat := range allPlatforms {
-		integrationPlat := "iplat-" + plat
-		flow.Add(T("platform-add", integrationPlat, "-i", "tsuru/"+plat))
-		flow.AddHook(func(c *check.C, res *Result) {
-			res.Env.Add("platforms", integrationPlat)
-		})
-		flow.AddRollback(T("platform-remove", "-y", integrationPlat))
-		flow.Add(T("platform-list"), Expected{Stdout: "(?s).*- " + integrationPlat + ".*"})
-	}
+	flow.AddHook(func(c *check.C, res *Result) {
+		img := res.Env.Get("platimg")
+		res.Env.Set("platimgsuffix", img[strings.LastIndex(img, "/")+1:])
+	})
+	flow.Add(T("platform-add", "iplat-{{.platimgsuffix}}", "-i", "{{.platimg}}"))
+	flow.AddHook(func(c *check.C, res *Result) {
+		res.Env.Add("platforms", "iplat-"+res.Env.Get("platimgsuffix"))
+	})
+	flow.AddRollback(T("platform-remove", "-y", "iplat-{{.platimgsuffix}}"))
+	flow.Add(T("platform-list"), Expected{Stdout: "(?s).*- iplat-{{.platimgsuffix}}.*"})
 	return flow
 }
 
