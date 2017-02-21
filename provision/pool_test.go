@@ -238,6 +238,24 @@ func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
 	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
 
+func (s *S) TestAddTeamsToPoolWithBlacklistShouldFail(c *check.C) {
+	coll := s.storage.Pools()
+	pool := Pool{Name: "pool1"}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = SetPoolConstraints("pool1", "team!=myteam")
+	c.Assert(err, check.IsNil)
+	err = AddTeamsToPool("pool1", []string{"otherteam"})
+	c.Assert(err, check.NotNil)
+	_, err = pool.GetTeams()
+	c.Assert(err, check.Equals, ErrPoolHasNoTeam)
+	constraint, err := getExactConstraintForPool("pool1", "team")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraint.WhiteList, check.Equals, false)
+	c.Assert(constraint.Values, check.DeepEquals, []string{"myteam"})
+}
+
 func (s *S) TestRemoveTeamsFromPoolNotFound(c *check.C) {
 	err := RemoveTeamsFromPool("notfound", []string{"test"})
 	c.Assert(err, check.Equals, ErrPoolNotFound)
@@ -259,6 +277,24 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	teams, err = pool.GetTeams()
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"ateam"})
+}
+
+func (s *S) TestRemoveTeamsFromPoolWithBlacklistShouldFail(c *check.C) {
+	coll := s.storage.Pools()
+	pool := Pool{Name: "pool1"}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = SetPoolConstraints("pool1", "team!=myteam")
+	c.Assert(err, check.IsNil)
+	err = RemoveTeamsFromPool("pool1", []string{"myteam"})
+	c.Assert(err, check.NotNil)
+	_, err = pool.GetTeams()
+	c.Assert(err, check.Equals, ErrPoolHasNoTeam)
+	constraint, err := getExactConstraintForPool("pool1", "team")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraint.WhiteList, check.Equals, false)
+	c.Assert(constraint.Values, check.DeepEquals, []string{"myteam"})
 }
 
 func boolPtr(v bool) *bool {

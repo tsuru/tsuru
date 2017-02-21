@@ -58,10 +58,8 @@ func (p *Pool) GetTeams() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := constraints["team"]; ok {
-		if c.WhiteList == true {
-			return c.Values, nil
-		}
+	if c, ok := constraints["team"]; ok && c.WhiteList {
+		return c.Values, nil
 	}
 	return nil, ErrPoolHasNoTeam
 }
@@ -135,13 +133,20 @@ func AddTeamsToPool(poolName string, teams []string) error {
 		return ErrPublicDefaultPoolCantHaveTeams
 	}
 	for _, newTeam := range teams {
-		check, err := checkPoolExactConstraint(poolName, "team", newTeam)
-		if err != nil {
-			return err
+		check, errCheck := checkPoolExactConstraint(poolName, "team", newTeam)
+		if errCheck != nil {
+			return errCheck
 		}
 		if check {
 			return errors.New("Team already exists in pool.")
 		}
+	}
+	constraint, err := getExactConstraintForPool(poolName, "team")
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	if constraint != nil && !constraint.WhiteList {
+		return errors.New("Unable to add teams to blacklist constraint")
 	}
 	return appendPoolConstraint(poolName, "team", teams...)
 }
@@ -159,6 +164,13 @@ func RemoveTeamsFromPool(poolName string, teams []string) error {
 	}
 	if err != nil {
 		return err
+	}
+	constraint, err := getExactConstraintForPool(poolName, "team")
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	if constraint != nil && !constraint.WhiteList {
+		return errors.New("Unable to remove teams from blacklist constraint")
 	}
 	return removePoolConstraint(poolName, "team", teams...)
 }
@@ -362,18 +374,12 @@ func removePoolConstraint(poolExpr string, field string, values ...string) error
 }
 
 func checkPoolExactConstraint(pool, field, value string) (bool, error) {
-	conn, err := db.Conn()
+	constraint, err := getExactConstraintForPool(pool, field)
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
-	var constraint *constraint
-	err = conn.PoolsConstraints().Find(bson.M{"poolexpr": pool, "field": field, "whitelist": true}).One(&constraint)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			return false, nil
-		}
-		return false, err
+	if constraint == nil {
+		return false, nil
 	}
 	return constraint.check(value), nil
 }
@@ -417,17 +423,11 @@ func getPoolsSatisfyConstraints(field string, values ...string) ([]Pool, error) 
 }
 
 func getConstraintsForPool(pool string, fields ...string) (map[string]*constraint, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var constraints []*constraint
 	var query bson.M
 	if len(fields) > 0 {
 		query = bson.M{"field": bson.M{"$in": fields}}
 	}
-	err = conn.PoolsConstraints().Find(query).All(&constraints)
+	constraints, err := listPoolsConstraints(query)
 	if err != nil {
 		return nil, err
 	}
@@ -449,4 +449,29 @@ func getConstraintsForPool(pool string, fields ...string) (map[string]*constrain
 		}
 	}
 	return merged, nil
+}
+
+func getExactConstraintForPool(pool, field string) (*constraint, error) {
+	constraints, err := listPoolsConstraints(bson.M{"poolexpr": pool, "field": field})
+	if err != nil {
+		return nil, err
+	}
+	if len(constraints) == 0 {
+		return nil, nil
+	}
+	return constraints[0], nil
+}
+
+func listPoolsConstraints(query bson.M) ([]*constraint, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	constraints := []*constraint{}
+	err = conn.PoolsConstraints().Find(query).All(&constraints)
+	if err != nil {
+		return nil, err
+	}
+	return constraints, nil
 }
