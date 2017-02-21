@@ -143,7 +143,7 @@ func AddTeamsToPool(poolName string, teams []string) error {
 			return errors.New("Team already exists in pool.")
 		}
 	}
-	return AppendPoolConstraint(poolName, "team", teams...)
+	return appendPoolConstraint(poolName, "team", teams...)
 }
 
 func RemoveTeamsFromPool(poolName string, teams []string) error {
@@ -337,7 +337,7 @@ func SetPoolConstraints(poolExpr string, constraints ...string) error {
 	return nil
 }
 
-func AppendPoolConstraint(poolExpr string, field string, values ...string) error {
+func appendPoolConstraint(poolExpr string, field string, values ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
