@@ -500,7 +500,7 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 func (s *S) TestAppendPoolConstraint(c *check.C) {
 	err := SetPoolConstraints("*", "router!=planb")
 	c.Assert(err, check.IsNil)
-	err = AppendPoolConstraint("*", "router", "galeb")
+	err = appendPoolConstraint("*", "router", "galeb")
 	c.Assert(err, check.IsNil)
 	constraints, err := getConstraintsForPool("*")
 	c.Assert(err, check.IsNil)
@@ -510,7 +510,7 @@ func (s *S) TestAppendPoolConstraint(c *check.C) {
 }
 
 func (s *S) TestAppendPoolConstraintNewConstraint(c *check.C) {
-	err := AppendPoolConstraint("myPool", "router", "galeb")
+	err := appendPoolConstraint("myPool", "router", "galeb")
 	c.Assert(err, check.IsNil)
 	constraints, err := getConstraintsForPool("myPool")
 	c.Assert(err, check.IsNil)
