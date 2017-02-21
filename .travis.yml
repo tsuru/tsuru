@@ -40,7 +40,7 @@ script:
   - ./misc/check-handlers.sh
   - ./misc/check-events.sh
   - make check-api-doc
-  - CGO_ENABLED=0 go build ./cmd/tsurud/
+  - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
 after_success:
   - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
 notifications:

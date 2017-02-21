@@ -388,7 +388,7 @@ func (c *help) Info() *Info {
 
 func (c *help) Run(context *Context, client *Client) error {
 	const deprecatedMsg = "WARNING: %q is deprecated. Showing help for %q instead.\n\n"
-	output := fmt.Sprintf("%s version %s.\n\n", c.manager.name, c.manager.version)
+	output := fmt.Sprintf("%s\n", versionString(c.manager))
 	if c.manager.wrong {
 		output += fmt.Sprint("ERROR: wrong number of arguments.\n\n")
 	}
@@ -484,8 +484,18 @@ func (c *version) Info() *Info {
 	}
 }
 
+var GitHash = ""
+
+func versionString(manager *Manager) string {
+	suffix := "\n"
+	if GitHash != "" {
+		suffix = fmt.Sprintf(" hash %s\n", GitHash)
+	}
+	return fmt.Sprintf("%s version %s.%s", manager.name, manager.version, suffix)
+}
+
 func (c *version) Run(context *Context, client *Client) error {
-	fmt.Fprintf(context.Stdout, "%s version %s.\n", c.manager.name, c.manager.version)
+	fmt.Fprintf(context.Stdout, versionString(c.manager))
 	return nil
 }
 
