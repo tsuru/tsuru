@@ -81,11 +81,28 @@ func (s *S) TestCreateMachineIaaSConfigFromIaaSConfig(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.DeepEquals, "host-name")
 	c.Assert(m.CreationParams["driver"], check.Equals, "driver-name")
-	c.Assert(FakeDM.hostOpts.Params["driver-userdata"], check.Not(check.Equals), "")
+	c.Assert(FakeDM.hostOpts.Params["driver-userdata"], check.NotNil)
 	c.Assert(m.CreationParams["driver-userdata"], check.Equals, "")
 	c.Assert(FakeDM.hostOpts.DockerEngineInstallURL, check.Equals, "https://getdocker.com")
 	c.Assert(FakeDM.hostOpts.ArbitraryFlags, check.DeepEquals, []string{"flag1", "flag2"})
 	c.Assert(FakeDM.config.IsDebug, check.Equals, true)
+}
+
+func (s *S) TestCreateMachineIaaSConfigUserDataFromParams(c *check.C) {
+	config.Set("iaas:dockermachine:driver:name", "driver-name")
+	defer config.Unset("iaas:dockermachine")
+	i := newDockerMachineIaaS("dockermachine")
+	dmIaas := i.(*dockerMachineIaaS)
+	dmIaas.apiFactory = NewFakeDockerMachine
+	m, err := dmIaas.CreateMachine(map[string]string{
+		"name":                 "host-name",
+		"user-data-file-param": "driver-userdata",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Id, check.DeepEquals, "host-name")
+	c.Assert(m.CreationParams["driver"], check.Equals, "driver-name")
+	c.Assert(FakeDM.hostOpts.Params["driver-userdata"], check.NotNil)
+	c.Assert(m.CreationParams["driver-userdata"], check.Equals, "")
 }
 
 func (s *S) TestCreateMachineIaaSFailsWithNoDriver(c *check.C) {

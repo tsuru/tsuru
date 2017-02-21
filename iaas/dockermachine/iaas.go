@@ -73,7 +73,10 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 	} else {
 		delete(params, "name")
 	}
-	userDataFileParam, err := i.base.GetConfigString("driver:user-data-file-param")
+	userDataFileParam, err := i.getParamOrConfigString("user-data-file-param", params)
+	if err != nil {
+		userDataFileParam, err = i.base.GetConfigString("driver:user-data-file-param")
+	}
 	if err == nil {
 		f, errTemp := ioutil.TempFile("", "")
 		if errTemp != nil {
