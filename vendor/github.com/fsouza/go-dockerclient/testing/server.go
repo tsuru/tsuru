@@ -175,6 +175,7 @@ func (s *DockerServer) buildMuxer() {
 	s.mux.Path("/containers/{id:.*}/exec").Methods("POST").HandlerFunc(s.handlerWrapper(s.createExecContainer))
 	s.mux.Path("/containers/{id:.*}/stats").Methods("GET").HandlerFunc(s.handlerWrapper(s.statsContainer))
 	s.mux.Path("/containers/{id:.*}/archive").Methods("PUT").HandlerFunc(s.handlerWrapper(s.uploadToContainer))
+	s.mux.Path("/containers/{id:.*}/archive").Methods("GET").HandlerFunc(s.handlerWrapper(s.downloadFromContainer))
 	s.mux.Path("/containers/{id:.*}/logs").Methods("GET").HandlerFunc(s.handlerWrapper(s.logContainer))
 	s.mux.Path("/exec/{id:.*}/resize").Methods("POST").HandlerFunc(s.handlerWrapper(s.resizeExecContainer))
 	s.mux.Path("/exec/{id:.*}/start").Methods("POST").HandlerFunc(s.handlerWrapper(s.startExecContainer))
@@ -600,6 +601,29 @@ func (s *DockerServer) uploadToContainer(w http.ResponseWriter, r *http.Request)
 	}
 	path := r.URL.Query().Get("path")
 	s.uploadedFiles[id] = path
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *DockerServer) downloadFromContainer(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	container, _, err := s.findContainer(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if !container.State.Running {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Container %s is not running", id)
+		return
+	}
+	path := r.URL.Query().Get("path")
+	val, ok := s.uploadedFiles[id]
+	if !ok || val != path {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "Path %s not found", path)
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-tar")
 	w.WriteHeader(http.StatusOK)
 }
 

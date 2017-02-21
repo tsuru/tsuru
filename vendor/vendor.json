@@ -849,16 +849,16 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
-			"checksumSHA1": "7VW2uJD9tW7J17ifHIJmWGyTBHk=",
+			"checksumSHA1": "/wGNBzRJdmss307xZyBfYaE0c7Q=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "278cc927a7f7e7228f5e50f517ae2ca1076316a5",
-			"revisionTime": "2017-02-07T15:33:21Z"
+			"revision": "54fbd1ff920ca5fd5ec53068d513c14c3a25bba9",
+			"revisionTime": "2017-02-21T19:53:20Z"
 		},
 		{
-			"checksumSHA1": "dxeBd36WRJBngDFAw0c1Az8mJMY=",
+			"checksumSHA1": "Dj8ke8a9l2qpPwGX4pIWUrhPL4g=",
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "278cc927a7f7e7228f5e50f517ae2ca1076316a5",
-			"revisionTime": "2017-02-07T15:33:21Z"
+			"revision": "54fbd1ff920ca5fd5ec53068d513c14c3a25bba9",
+			"revisionTime": "2017-02-21T19:53:20Z"
 		},
 		{
 			"checksumSHA1": "nJYT8dNFeMl0lkIYM9z9OzxP15M=",
@@ -1116,6 +1116,12 @@
 			"path": "github.com/manucorporat/sse",
 			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
 			"revisionTime": "2016-07-12T00:16:01Z"
+		},
+		{
+			"checksumSHA1": "COqeZiiECcnjWBik95gPTsJf0fg=",
+			"path": "github.com/mattn/go-shellwords",
+			"revision": "005a0944d84452842197c2108bd9168ced206f78",
+			"revisionTime": "2017-02-20T02:22:20Z"
 		},
 		{
 			"checksumSHA1": "bKMZjd2wPw13VwoE7mBeSv5djFA=",
