@@ -513,3 +513,35 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
+
+func (s *S) TestPoolConstraint(c *check.C) {
+	err := provision.SetPoolConstraints("*", "router=*")
+	c.Assert(err, check.IsNil)
+	err = provision.SetPoolConstraints("dev", "router=dev")
+	c.Assert(err, check.IsNil)
+	expected := []provision.PoolConstraint{
+		{PoolExpr: "*", Field: "router", Values: []string{"*"}, WhiteList: true},
+		{PoolExpr: "dev", Field: "router", Values: []string{"dev"}, WhiteList: true},
+	}
+	request, err := http.NewRequest("GET", "/constraints", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, request)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	var constraints []provision.PoolConstraint
+	err = json.NewDecoder(rec.Body).Decode(&constraints)
+	c.Assert(err, check.IsNil)
+	c.Assert(constraints, check.DeepEquals, expected)
+}
+
+func (s *S) TestPoolConstraintListEmpty(c *check.C) {
+	request, err := http.NewRequest("GET", "/constraints", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}

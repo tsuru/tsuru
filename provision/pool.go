@@ -353,14 +353,14 @@ func PoolUpdate(name string, opts UpdatePoolOptions) error {
 	return err
 }
 
-type constraint struct {
+type PoolConstraint struct {
 	PoolExpr  string
 	Field     string
 	Values    []string
 	WhiteList bool
 }
 
-func (c *constraint) check(v string) bool {
+func (c *PoolConstraint) check(v string) bool {
 	for _, r := range c.Values {
 		if match, _ := regexp.MatchString(strings.Replace(r, "*", ".*", -1), v); match {
 			return c.WhiteList
@@ -369,7 +369,7 @@ func (c *constraint) check(v string) bool {
 	return !c.WhiteList
 }
 
-func (c *constraint) String() string {
+func (c *PoolConstraint) String() string {
 	op := "!="
 	if c.WhiteList {
 		op = "="
@@ -377,7 +377,7 @@ func (c *constraint) String() string {
 	return fmt.Sprintf("PoolExpr: %s - %s%s%s", c.PoolExpr, c.Field, op, strings.Join(c.Values, ","))
 }
 
-type constraintList []*constraint
+type constraintList []*PoolConstraint
 
 func (l constraintList) Len() int      { return len(l) }
 func (l constraintList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
@@ -409,7 +409,7 @@ func SetPoolConstraints(poolExpr string, constraints ...string) error {
 			op = "!="
 		}
 		parts := strings.SplitN(c, op, 2)
-		constraint := &constraint{
+		constraint := &PoolConstraint{
 			PoolExpr:  poolExpr,
 			Field:     parts[0],
 			Values:    strings.Split(parts[1], ","),
@@ -496,16 +496,16 @@ func getPoolsSatisfyConstraints(field string, values ...string) ([]Pool, error) 
 	return satisfying, nil
 }
 
-func getConstraintsForPool(pool string, fields ...string) (map[string]*constraint, error) {
+func getConstraintsForPool(pool string, fields ...string) (map[string]*PoolConstraint, error) {
 	var query bson.M
 	if len(fields) > 0 {
 		query = bson.M{"field": bson.M{"$in": fields}}
 	}
-	constraints, err := listPoolsConstraints(query)
+	constraints, err := ListPoolsConstraints(query)
 	if err != nil {
 		return nil, err
 	}
-	var matches []*constraint
+	var matches []*PoolConstraint
 	for _, c := range constraints {
 		match, err := regexp.MatchString(strings.Replace(c.PoolExpr, "*", ".*", -1), pool)
 		if err != nil {
@@ -516,7 +516,7 @@ func getConstraintsForPool(pool string, fields ...string) (map[string]*constrain
 		}
 	}
 	sort.Sort(constraintList(matches))
-	merged := make(map[string]*constraint)
+	merged := make(map[string]*PoolConstraint)
 	for i := range matches {
 		if _, ok := merged[matches[i].Field]; !ok {
 			merged[matches[i].Field] = matches[i]
@@ -525,8 +525,8 @@ func getConstraintsForPool(pool string, fields ...string) (map[string]*constrain
 	return merged, nil
 }
 
-func getExactConstraintForPool(pool, field string) (*constraint, error) {
-	constraints, err := listPoolsConstraints(bson.M{"poolexpr": pool, "field": field})
+func getExactConstraintForPool(pool, field string) (*PoolConstraint, error) {
+	constraints, err := ListPoolsConstraints(bson.M{"poolexpr": pool, "field": field})
 	if err != nil {
 		return nil, err
 	}
@@ -536,13 +536,13 @@ func getExactConstraintForPool(pool, field string) (*constraint, error) {
 	return constraints[0], nil
 }
 
-func listPoolsConstraints(query bson.M) ([]*constraint, error) {
+func ListPoolsConstraints(query bson.M) ([]*PoolConstraint, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	constraints := []*constraint{}
+	constraints := []*PoolConstraint{}
 	err = conn.PoolsConstraints().Find(query).All(&constraints)
 	if err != nil {
 		return nil, err
