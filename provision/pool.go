@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -62,6 +64,56 @@ func (p *Pool) GetTeams() ([]string, error) {
 		return c.Values, nil
 	}
 	return nil, ErrPoolHasNoTeam
+}
+
+func (p *Pool) AllowedValues() (map[string][]string, error) {
+	constraints, err := getConstraintsForPool(p.Name)
+	if err != nil {
+		return nil, err
+	}
+	resolved := make(map[string][]string)
+	for k, v := range constraints {
+		var names []string
+		switch k {
+		case "team":
+			names, err = teamsNames()
+		case "router":
+			names, err = routersNames()
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range names {
+			if v.check(n) {
+				resolved[k] = append(resolved[k], n)
+			}
+		}
+	}
+	return resolved, nil
+}
+
+func routersNames() ([]string, error) {
+	routers, err := router.List()
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, r := range routers {
+		names = append(names, r.Name)
+	}
+	return names, nil
+}
+
+func teamsNames() ([]string, error) {
+	teams, err := auth.ListTeams()
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, t := range teams {
+		names = append(names, t.Name)
+	}
+	return names, nil
 }
 
 func AddPool(opts AddPoolOptions) error {
