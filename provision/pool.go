@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -114,6 +115,27 @@ func teamsNames() ([]string, error) {
 		names = append(names, t.Name)
 	}
 	return names, nil
+}
+
+func (p *Pool) MarshalJSON() ([]byte, error) {
+	teams, err := getExactConstraintForPool(p.Name, "team")
+	if err != nil {
+		return nil, err
+	}
+	resolvedConstraints, err := p.AllowedValues()
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]interface{})
+	result["name"] = p.Name
+	result["public"] = p.Public
+	result["default"] = p.Default
+	result["provisioner"] = p.Provisioner
+	if teams != nil {
+		result["teams"] = teams.Values
+	}
+	result["allowed"] = resolvedConstraints
+	return json.Marshal(&result)
 }
 
 func AddPool(opts AddPoolOptions) error {
