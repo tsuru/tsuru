@@ -115,10 +115,10 @@ func installerTest() ExecFlow {
 			res.Env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert ~/.tsuru/installs/tsuru/certs/ca.pem --clientcert ~/.tsuru/installs/tsuru/certs/cert.pem --clientkey ~/.tsuru/installs/tsuru/certs/key.pem", parts[1]))
 			res.Env.Add("nodestoremove", parts[1])
 		}
-		regex = regexp.MustCompile(`Username: (.+)`)
+		regex = regexp.MustCompile(`Username: ([[:print:]]+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
 		res.Env.Set("adminuser", parts[1])
-		regex = regexp.MustCompile(`Password: (.+)`)
+		regex = regexp.MustCompile(`Password: ([[:print:]]+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
 		res.Env.Set("adminpassword", parts[1])
 	})
