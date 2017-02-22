@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"gopkg.in/check.v1"
@@ -578,4 +579,29 @@ func (s *S) TestCheckPoolExactConstraint(c *check.C) {
 			c.Fatalf("(%d) Expected \"%t\" for pool %q with field %q value %q. Got \"%t\".", i, t.expected, t.pool, t.field, t.value, s)
 		}
 	}
+}
+
+func (s *S) TestPoolAllowedValues(c *check.C) {
+	config.Set("routers:router1:type", "hipache")
+	config.Set("routers:router2:type", "hipache")
+	config.Set("routers:router3:type", "hipache")
+	defer config.Unset("routers")
+	err := auth.CreateTeam("pubteam", &auth.User{})
+	c.Assert(err, check.IsNil)
+	err = auth.CreateTeam("team1", &auth.User{})
+	c.Assert(err, check.IsNil)
+	coll := s.storage.Pools()
+	pool := Pool{Name: "pool1"}
+	err = coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("pool*", "team=pubteam", "router!=router2")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("pool1", "team=team1")
+	c.Assert(err, check.IsNil)
+	constraints, err := pool.AllowedValues()
+	c.Assert(err, check.IsNil)
+	c.Assert(constraints, check.DeepEquals, map[string][]string{
+		"team":   {"team1"},
+		"router": {"router1", "router3"},
+	})
 }
