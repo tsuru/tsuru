@@ -140,6 +140,7 @@ func (r *Result) String() string {
 ExitCode: %d
 Error: %v
 Timeout: %v
+Stdin: %q
 Stdout: %q
 Stderr: %q
 %v
@@ -148,6 +149,7 @@ Stderr: %q
 		r.ExitCode,
 		r.Error,
 		r.Timeout,
+		r.Command.Input,
 		r.Stdout.String(),
 		r.Stderr.String(),
 		r.Env)
