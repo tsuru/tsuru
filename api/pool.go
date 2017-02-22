@@ -276,3 +276,27 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	return err
 }
+
+// title: constraint list
+// path: /constraints
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   204: No content
+//   401: Unauthorized
+func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermPoolReadConstraints) {
+		return permission.ErrUnauthorized
+	}
+	constraints, err := provision.ListPoolsConstraints(nil)
+	if err != nil {
+		return err
+	}
+	if len(constraints) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(constraints)
+}

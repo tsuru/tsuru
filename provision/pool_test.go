@@ -434,10 +434,10 @@ func (s *S) TestPoolSetConstraints(c *check.C) {
 	coll := s.storage.PoolsConstraints()
 	err := SetPoolConstraints("*", "router=planb,hipache", "team!=user")
 	c.Assert(err, check.IsNil)
-	var cs []*constraint
+	var cs []*PoolConstraint
 	err = coll.Find(bson.M{"poolexpr": "*"}).All(&cs)
 	c.Assert(err, check.IsNil)
-	c.Assert(cs, check.DeepEquals, []*constraint{
+	c.Assert(cs, check.DeepEquals, []*PoolConstraint{
 		{PoolExpr: "*", Field: "router", Values: []string{"planb", "hipache"}, WhiteList: true},
 		{PoolExpr: "*", Field: "team", Values: []string{"user"}, WhiteList: false},
 	})
@@ -500,21 +500,21 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	tt := []struct {
 		pool     string
-		expected map[string]*constraint
+		expected map[string]*PoolConstraint
 	}{
-		{pool: "prod", expected: map[string]*constraint{
-			"router": &constraint{PoolExpr: "*", Field: "router", Values: []string{"planb"}, WhiteList: true},
+		{pool: "prod", expected: map[string]*PoolConstraint{
+			"router": &PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"planb"}, WhiteList: true},
 		}},
-		{pool: "pp", expected: map[string]*constraint{
-			"router": &constraint{PoolExpr: "pp", Field: "router", Values: []string{"galeb"}, WhiteList: true},
+		{pool: "pp", expected: map[string]*PoolConstraint{
+			"router": &PoolConstraint{PoolExpr: "pp", Field: "router", Values: []string{"galeb"}, WhiteList: true},
 		}},
-		{pool: "pool1_dev", expected: map[string]*constraint{
-			"router": &constraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}, WhiteList: true},
-			"team":   &constraint{PoolExpr: "pool1_dev", Field: "team", Values: []string{"team_pool1"}, WhiteList: true},
+		{pool: "pool1_dev", expected: map[string]*PoolConstraint{
+			"router": &PoolConstraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}, WhiteList: true},
+			"team":   &PoolConstraint{PoolExpr: "pool1_dev", Field: "team", Values: []string{"team_pool1"}, WhiteList: true},
 		}},
-		{pool: "pool2_dev", expected: map[string]*constraint{
-			"router": &constraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}, WhiteList: true},
-			"team":   &constraint{PoolExpr: "*_dev", Field: "team", Values: []string{"team_pool1"}, WhiteList: false},
+		{pool: "pool2_dev", expected: map[string]*PoolConstraint{
+			"router": &PoolConstraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}, WhiteList: true},
+			"team":   &PoolConstraint{PoolExpr: "*_dev", Field: "team", Values: []string{"team_pool1"}, WhiteList: false},
 		}},
 	}
 	for i, t := range tt {
@@ -541,8 +541,8 @@ func (s *S) TestAppendPoolConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	constraints, err := getConstraintsForPool("*")
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[string]*constraint{
-		"router": &constraint{Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, WhiteList: false},
+	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
+		"router": &PoolConstraint{Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, WhiteList: false},
 	})
 }
 
@@ -551,8 +551,8 @@ func (s *S) TestAppendPoolConstraintNewConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	constraints, err := getConstraintsForPool("myPool")
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[string]*constraint{
-		"router": &constraint{Field: "router", PoolExpr: "myPool", Values: []string{"galeb"}, WhiteList: true},
+	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
+		"router": &PoolConstraint{Field: "router", PoolExpr: "myPool", Values: []string{"galeb"}, WhiteList: true},
 	})
 }
 
