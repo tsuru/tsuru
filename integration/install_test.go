@@ -96,7 +96,7 @@ func installerTest() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"targetaddr"},
 	}
-	flow.Add(T("install", "--config", "{{.installerconfig}}").WithTimeout(15 * time.Minute))
+	flow.Add(T("install", "--config", "{{.installerconfig}}").WithTimeout(30 * time.Minute))
 	flow.AddRollback(T("uninstall", "-y"))
 	flow.AddHook(func(c *check.C, res *Result) {
 		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
