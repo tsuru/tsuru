@@ -74,6 +74,10 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
+	err = migration.Register("migrate-pool-teams-to-pool-constraints", provision.MigratePoolTeamsToPoolConstraints)
+	if err != nil {
+		log.Fatalf("unable to register migration: %s", err)
+	}
 	err = migration.RegisterOptional("migrate-roles", migrateRoles)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
