@@ -430,7 +430,7 @@ func (s *S) TestGetPoolByName(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestPoolSetConstraints(c *check.C) {
+func (s *S) TestSetPoolConstraints(c *check.C) {
 	coll := s.storage.PoolsConstraints()
 	err := SetPoolConstraints("*", "router=planb,hipache", "team!=user")
 	c.Assert(err, check.IsNil)
@@ -440,6 +440,20 @@ func (s *S) TestPoolSetConstraints(c *check.C) {
 	c.Assert(cs, check.DeepEquals, []*PoolConstraint{
 		{PoolExpr: "*", Field: "router", Values: []string{"planb", "hipache"}, WhiteList: true},
 		{PoolExpr: "*", Field: "team", Values: []string{"user"}, WhiteList: false},
+	})
+}
+
+func (s *S) TestSetPoolConstraintsRemoveEmpty(c *check.C) {
+	coll := s.storage.PoolsConstraints()
+	err := SetPoolConstraints("*", "router=planb,hipache", "team!=user")
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraints("*", "team=")
+	c.Assert(err, check.IsNil)
+	var cs []*PoolConstraint
+	err = coll.Find(bson.M{"poolexpr": "*"}).All(&cs)
+	c.Assert(err, check.IsNil)
+	c.Assert(cs, check.DeepEquals, []*PoolConstraint{
+		{PoolExpr: "*", Field: "router", Values: []string{"planb", "hipache"}, WhiteList: true},
 	})
 }
 
