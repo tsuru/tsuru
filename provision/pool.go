@@ -415,6 +415,13 @@ func SetPoolConstraints(poolExpr string, constraints ...string) error {
 			Values:    strings.Split(parts[1], ","),
 			WhiteList: op == "=",
 		}
+		if len(constraint.Values) == 1 && constraint.Values[0] == "" {
+			errRem := conn.PoolsConstraints().Remove(bson.M{"poolexpr": poolExpr, "field": parts[0]})
+			if errRem != nil && errRem != mgo.ErrNotFound {
+				return errRem
+			}
+			continue
+		}
 		_, err := conn.PoolsConstraints().Upsert(bson.M{"poolexpr": poolExpr, "field": parts[0]}, constraint)
 		if err != nil {
 			return err
