@@ -18,78 +18,32 @@ type CmdWithExp struct {
 }
 
 type ExecFlow struct {
-	actions  []CmdWithExp
-	rollback []CmdWithExp
-	hooks    map[int][]hookFunc
 	provides []string
 	requires []string
 	matrix   map[string]string
 	parallel bool
-}
-
-func (f *ExecFlow) Add(cmd *Command, exp ...Expected) *ExecFlow {
-	f.actions = append(f.actions, CmdWithExp{C: cmd, E: exp})
-	return f
-}
-
-func (f *ExecFlow) AddRollback(cmd *Command, exp ...Expected) *ExecFlow {
-	f.rollback = append(f.rollback, CmdWithExp{C: cmd, E: exp})
-	return f
-}
-
-func (f *ExecFlow) AddHook(fn hookFunc) {
-	if f.hooks == nil {
-		f.hooks = make(map[int][]hookFunc)
-	}
-	pos := len(f.actions) - 1
-	f.hooks[pos] = append(f.hooks[pos], fn)
+	forward  func(c *check.C, env *Environment)
+	backward func(c *check.C, env *Environment)
 }
 
 func (f *ExecFlow) Rollback(c *check.C, env *Environment) {
+	if f.backward == nil {
+		return
+	}
 	f.forExpanded(env, func(e *Environment) {
-		f.rollbackOnce(c, e)
+		f.backward(c, e)
 	})
 }
 
 func (f *ExecFlow) Run(c *check.C, env *Environment) {
+	if f.forward == nil {
+		return
+	}
 	f.forExpanded(env, func(e *Environment) {
-		f.runOnce(c, e)
+		f.forward(c, e)
 	})
-}
-
-func (f *ExecFlow) rollbackOnce(c *check.C, env *Environment) {
-	for i := len(f.rollback) - 1; i >= 0; i-- {
-		cmd := f.rollback[i]
-		res := cmd.C.Run(env)
-		if len(cmd.E) == 0 {
-			c.Check(res, ResultOk)
-		}
-		for _, exp := range cmd.E {
-			c.Check(res, ResultMatches, exp)
-		}
-	}
-}
-
-func (f *ExecFlow) runOnce(c *check.C, env *Environment) {
-	for _, hook := range f.hooks[-1] {
-		hook(c, &Result{Env: env})
-	}
-	for i, cmd := range f.actions {
-		res := cmd.C.Run(env)
-		if len(cmd.E) == 0 {
-			c.Assert(res, ResultOk)
-		}
-		if !env.IsDry() {
-			for _, exp := range cmd.E {
-				c.Assert(res, ResultMatches, exp)
-			}
-		}
-		for _, hook := range f.hooks[i] {
-			hook(c, res)
-		}
-	}
-	for _, envVar := range f.provides {
-		c.Assert(env.Has(envVar), check.Equals, true)
+	if c.Failed() {
+		c.FailNow()
 	}
 }
 

@@ -45,7 +45,6 @@ var (
 		quotaTest(),
 		teamTest(),
 		poolAdd(),
-		nodeRemove(),
 		platformAdd(),
 		exampleApps(),
 	}
@@ -69,11 +68,11 @@ func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"platformimages"},
 	}
-	flow.AddHook(func(c *check.C, res *Result) {
+	flow.forward = func(c *check.C, env *Environment) {
 		for _, platImg := range allPlatforms {
-			res.Env.Add("platformimages", platImg)
+			env.Add("platformimages", platImg)
 		}
-	})
+	}
 	return flow
 }
 
@@ -81,14 +80,17 @@ func installerConfigTest() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"installerconfig"},
 	}
-	flow.AddHook(func(c *check.C, res *Result) {
+	flow.forward = func(c *check.C, env *Environment) {
 		f, err := ioutil.TempFile("", "installer-config")
 		c.Assert(err, check.IsNil)
 		defer f.Close()
 		f.Write([]byte(installerConfig))
-		res.Env.Set("installerconfig", f.Name())
-	})
-	flow.AddRollback(NewCommand("rm", "{{.installerconfig}}"))
+		env.Set("installerconfig", f.Name())
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := NewCommand("rm", "{{.installerconfig}}").Run(env)
+		c.Check(res, ResultOk)
+	}
 	return flow
 }
 
@@ -96,9 +98,9 @@ func installerTest() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"targetaddr"},
 	}
-	flow.Add(T("install", "--config", "{{.installerconfig}}").WithTimeout(30 * time.Minute))
-	flow.AddRollback(T("uninstall", "-y"))
-	flow.AddHook(func(c *check.C, res *Result) {
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("install", "--config", "{{.installerconfig}}").WithTimeout(30 * time.Minute).Run(env)
+		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
@@ -107,36 +109,48 @@ func installerTest() ExecFlow {
 		parts = regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		targetPort := parts[1]
-		res.Env.Set("targetaddr", fmt.Sprintf("http://%s:%s", targetHost, targetPort))
+		env.Set("targetaddr", fmt.Sprintf("http://%s:%s", targetHost, targetPort))
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
 		for _, parts = range allParts {
 			c.Assert(parts, check.HasLen, 2)
-			res.Env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert ~/.tsuru/installs/tsuru/certs/ca.pem --clientcert ~/.tsuru/installs/tsuru/certs/cert.pem --clientkey ~/.tsuru/installs/tsuru/certs/key.pem", parts[1]))
-			res.Env.Add("nodestoremove", parts[1])
+			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert ~/.tsuru/installs/tsuru/certs/ca.pem --clientcert ~/.tsuru/installs/tsuru/certs/cert.pem --clientkey ~/.tsuru/installs/tsuru/certs/key.pem", parts[1]))
+			env.Add("nodestoremove", parts[1])
 		}
 		regex = regexp.MustCompile(`Username: ([[:print:]]+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
-		res.Env.Set("adminuser", parts[1])
+		env.Set("adminuser", parts[1])
 		regex = regexp.MustCompile(`Password: ([[:print:]]+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
-		res.Env.Set("adminpassword", parts[1])
-	})
+		env.Set("adminpassword", parts[1])
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := T("uninstall", "-y").Run(env)
+		c.Check(res, ResultOk)
+	}
 	return flow
 }
 
 func targetTest() ExecFlow {
 	flow := ExecFlow{}
-	targetName := "integration-target"
-	flow.Add(T("target-add", targetName, "{{.targetaddr}}"))
-	flow.Add(T("target-list"), Expected{Stdout: `\s+` + targetName + ` .*`})
-	flow.Add(T("target-set", targetName))
+	flow.forward = func(c *check.C, env *Environment) {
+		targetName := "integration-target"
+		res := T("target-add", targetName, "{{.targetaddr}}").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("target-list").Run(env)
+		c.Assert(res, ResultMatches, Expected{Stdout: `\s+` + targetName + ` .*`})
+		res = T("target-set", targetName).Run(env)
+		c.Assert(res, ResultOk)
+	}
 	return flow
 }
 
 func loginTest() ExecFlow {
 	flow := ExecFlow{}
-	flow.Add(T("login", "{{.adminuser}}").WithInput("{{.adminpassword}}"))
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("login", "{{.adminuser}}").WithInput("{{.adminpassword}}").Run(env)
+		c.Assert(res, ResultOk)
+	}
 	return flow
 }
 
@@ -146,7 +160,10 @@ func removeInstallNodes() ExecFlow {
 			"node": "nodestoremove",
 		},
 	}
-	flow.Add(T("node-remove", "-y", "--no-rebalance", "{{.node}}"))
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("node-remove", "-y", "--no-rebalance", "{{.node}}").Run(env)
+		c.Assert(res, ResultOk)
+	}
 	return flow
 }
 
@@ -154,8 +171,12 @@ func quotaTest() ExecFlow {
 	flow := ExecFlow{
 		requires: []string{"adminuser"},
 	}
-	flow.Add(T("user-quota-change", "{{.adminuser}}", "100"))
-	flow.Add(T("user-quota-view", "{{.adminuser}}"), Expected{Stdout: `(?s)Apps usage.*/100`})
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("user-quota-change", "{{.adminuser}}", "100").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("user-quota-view", "{{.adminuser}}").Run(env)
+		c.Assert(res, ResultMatches, Expected{Stdout: `(?s)Apps usage.*/100`})
+	}
 	return flow
 }
 
@@ -164,11 +185,15 @@ func teamTest() ExecFlow {
 		provides: []string{"team"},
 	}
 	teamName := "integration-team"
-	flow.Add(T("team-create", teamName))
-	flow.AddHook(func(c *check.C, res *Result) {
-		res.Env.Set("team", teamName)
-	})
-	flow.AddRollback(T("team-remove", "-y", teamName))
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("team-create", teamName).Run(env)
+		c.Assert(res, ResultOk)
+		env.Set("team", teamName)
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := T("team-remove", "-y", teamName).Run(env)
+		c.Check(res, ResultOk)
+	}
 	return flow
 }
 
@@ -176,43 +201,45 @@ func poolAdd() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"poolnames"},
 	}
-	for _, prov := range allProvisioners {
-		poolName := "ipool-" + prov
-		flow.Add(T("pool-add", "--provisioner", prov, poolName))
-		flow.AddHook(func(c *check.C, res *Result) {
-			res.Env.Add("poolnames", poolName)
-		})
-		flow.AddRollback(T("pool-remove", "-y", poolName))
-		flow.Add(T("pool-teams-add", poolName, "{{.team}}"))
-		flow.AddRollback(T("pool-teams-remove", poolName, "{{.team}}"))
-		flow.Add(T("node-add", "{{.nodeopts}}", "pool="+poolName))
-		flow.Add(T("event-list"))
-		flow.AddHook(func(c *check.C, res *Result) {
-			nodeopts := res.Env.All("nodeopts")
-			res.Env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
+	flow.forward = func(c *check.C, env *Environment) {
+		for _, prov := range allProvisioners {
+			poolName := "ipool-" + prov
+			res := T("pool-add", "--provisioner", prov, poolName).Run(env)
+			c.Assert(res, ResultOk)
+			env.Add("poolnames", poolName)
+			res = T("pool-teams-add", poolName, "{{.team}}").Run(env)
+			c.Assert(res, ResultOk)
+			res = T("node-add", "{{.nodeopts}}", "pool="+poolName).Run(env)
+			c.Assert(res, ResultOk)
+			res = T("event-list").Run(env)
+			c.Assert(res, ResultOk)
+			nodeopts := env.All("nodeopts")
+			env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
 			regex := regexp.MustCompile(`node.create.*?node:\s+(.*?)\s+`)
 			parts := regex.FindStringSubmatch(res.Stdout.String())
 			c.Assert(parts, check.HasLen, 2)
-			res.Env.Add("nodeaddrs", parts[1])
+			env.Add("nodeaddrs", parts[1])
 			regex = regexp.MustCompile(parts[1] + `.*?ready`)
 			ok := retry(time.Minute, func() bool {
-				res = T("node-list").Run(res.Env)
+				res = T("node-list").Run(env)
 				return regex.MatchString(res.Stdout.String())
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
-		})
+		}
 	}
-	return flow
-}
-
-func nodeRemove() ExecFlow {
-	flow := ExecFlow{
-		matrix: map[string]string{
-			"node": "nodeaddrs",
-		},
-		parallel: true,
+	flow.backward = func(c *check.C, env *Environment) {
+		for _, node := range env.All("nodeaddrs") {
+			res := T("node-remove", "-y", "--no-rebalance", node).Run(env)
+			c.Check(res, ResultOk)
+		}
+		for _, prov := range allProvisioners {
+			poolName := "ipool-" + prov
+			res := T("pool-teams-remove", poolName, "{{.team}}").Run(env)
+			c.Check(res, ResultOk)
+			res = T("pool-remove", "-y", poolName).Run(env)
+			c.Check(res, ResultOk)
+		}
 	}
-	flow.AddRollback(T("node-remove", "-y", "--no-rebalance", "{{.node}}"))
 	return flow
 }
 
@@ -224,16 +251,24 @@ func platformAdd() ExecFlow {
 		},
 		parallel: true,
 	}
-	flow.AddHook(func(c *check.C, res *Result) {
-		img := res.Env.Get("platimg")
-		res.Env.SetLocal("platimgsuffix", img[strings.LastIndex(img, "/")+1:])
-	})
-	flow.Add(T("platform-add", "iplat-{{.platimgsuffix}}", "-i", "{{.platimg}}"))
-	flow.AddHook(func(c *check.C, res *Result) {
-		res.Env.Add("platforms", "iplat-"+res.Env.Get("platimgsuffix"))
-	})
-	flow.AddRollback(T("platform-remove", "-y", "iplat-{{.platimgsuffix}}"))
-	flow.Add(T("platform-list"), Expected{Stdout: "(?s).*- iplat-{{.platimgsuffix}}.*"})
+	flow.forward = func(c *check.C, env *Environment) {
+		img := env.Get("platimg")
+		suffix := img[strings.LastIndex(img, "/")+1:]
+		platName := "iplat-" + suffix
+		res := T("platform-add", platName, "-i", img).Run(env)
+		c.Assert(res, ResultOk)
+		env.Add("platforms", platName)
+		res = T("platform-list").Run(env)
+		c.Assert(res, ResultOk)
+		c.Assert(res, ResultMatches, Expected{Stdout: "(?s).*- " + platName + ".*"})
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		img := env.Get("platimg")
+		suffix := img[strings.LastIndex(img, "/")+1:]
+		platName := "iplat-" + suffix
+		res := T("platform-remove", "-y", platName).Run(env)
+		c.Check(res, ResultOk)
+	}
 	return flow
 }
 
@@ -246,31 +281,33 @@ func exampleApps() ExecFlow {
 		parallel: true,
 	}
 	appName := "iapp-{{.plat}}-{{.pool}}"
-	flow.Add(T("app-create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}"))
-	flow.AddRollback(T("app-remove", "-y", "-a", appName))
-	flow.Add(T("app-info", "-a", appName))
-	flow.AddHook(func(c *check.C, res *Result) {
+	flow.forward = func(c *check.C, env *Environment) {
+		res := T("app-create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("app-info", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
 		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		res.Env.SetLocal("language", strings.Replace(parts[1], "iplat-", "", -1))
-	})
-	flow.Add(T("app-deploy", "-a", appName, "{{.examplesdir}}/{{.language}}/"))
-	flow.Add(T("app-info", "-a", appName))
-	flow.AddHook(func(c *check.C, res *Result) {
+		lang := strings.Replace(parts[1], "iplat-", "", -1)
+		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang+"/").Run(env)
+		c.Assert(res, ResultOk)
+		res = T("app-info", "-a", appName).Run(env)
+		c.Assert(res, ResultOk)
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
-		parts := addrRE.FindStringSubmatch(res.Stdout.String())
+		parts = addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		res.Env.SetLocal("appaddr", parts[1])
-	})
-	flow.AddHook(func(c *check.C, res *Result) {
-		cmd := NewCommand("curl", "-sSf", "http://{{.appaddr}}")
+		cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
 		ok := retry(time.Minute, func() bool {
-			res = cmd.Run(res.Env)
+			res = cmd.Run(env)
 			return res.ExitCode == 0
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
-	})
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := T("app-remove", "-y", "-a", appName).Run(env)
+		c.Check(res, ResultOk)
+	}
 	return flow
 }
 
