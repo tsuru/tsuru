@@ -250,7 +250,7 @@ func exampleApps() ExecFlow {
 		c.Assert(parts, check.HasLen, 2)
 		res.Env.Set("language", strings.Replace(parts[1], "iplat-", "", -1))
 	})
-	flow.Add(T("app-deploy", "-a", appName, "{{.examplesdir}}/{{.language}}"))
+	flow.Add(T("app-deploy", "-a", appName, "{{.examplesdir}}/{{.language}}/"))
 	flow.Add(T("app-info", "-a", appName))
 	flow.AddHook(func(c *check.C, res *Result) {
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
