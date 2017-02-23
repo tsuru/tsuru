@@ -13,16 +13,34 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"text/template"
 	"time"
 
 	"github.com/mattn/go-shellwords"
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/safe"
 )
 
 const (
 	integrationEnvID = "TSURU_INTEGRATION_"
+)
+
+type safeWriter struct {
+	io.Writer
+	mu sync.Mutex
+}
+
+func (w *safeWriter) Write(data []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.Writer.Write(data)
+}
+
+var (
+	safeStdout = &safeWriter{Writer: os.Stdout}
+	safeStderr = &safeWriter{Writer: os.Stderr}
 )
 
 type Command struct {
@@ -38,8 +56,8 @@ type Result struct {
 	ExitCode int
 	Error    error
 	Timeout  bool
-	Stdout   bytes.Buffer
-	Stderr   bytes.Buffer
+	Stdout   safe.Buffer
+	Stderr   safe.Buffer
 	Env      *Environment
 }
 
@@ -52,12 +70,16 @@ type Expected struct {
 }
 
 type Environment struct {
-	data map[string][]string
+	mu    *sync.Mutex
+	data  map[string][]string
+	local map[string][]string
 }
 
 func NewEnvironment() *Environment {
 	e := Environment{
-		data: make(map[string][]string),
+		mu:    &sync.Mutex{},
+		data:  make(map[string][]string),
+		local: make(map[string][]string),
 	}
 	envs := os.Environ()
 	for _, env := range envs {
@@ -73,37 +95,68 @@ func NewEnvironment() *Environment {
 	return &e
 }
 
+func (e *Environment) Clone() *Environment {
+	newEnv := *e
+	newEnv.local = make(map[string][]string)
+	return &newEnv
+}
+
 func (e *Environment) String() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	ret := fmt.Sprintln("Env vars:")
 	for k, v := range e.data {
+		ret += fmt.Sprintf("  %s: %#v\n", k, v)
+	}
+	ret += fmt.Sprintln("Local vars:")
+	for k, v := range e.local {
 		ret += fmt.Sprintf("  %s: %#v\n", k, v)
 	}
 	return ret[:len(ret)-1]
 }
 
 func (e *Environment) flatData() map[string]string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	ret := map[string]string{}
-	for k, v := range e.data {
-		if len(v) > 0 {
-			ret[k] = v[0]
+	for _, m := range []map[string][]string{e.data, e.local} {
+		for k, v := range m {
+			if len(v) > 0 {
+				ret[k] = v[0]
+			}
 		}
 	}
 	return ret
 }
 
+func (e *Environment) SetLocal(k string, v ...string) {
+	e.local[k] = v
+}
+
 func (e *Environment) Set(k string, v ...string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.data[k] = v
 }
 
 func (e *Environment) Add(k string, v string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.data[k] = append(e.data[k], v)
 }
 
 func (e *Environment) All(k string) []string {
-	return e.data[k]
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append(e.local[k], e.data[k]...)
 }
 
 func (e *Environment) Get(k string) string {
+	if len(e.local[k]) > 0 {
+		return e.local[k][0]
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	if len(e.data[k]) > 0 {
 		return e.data[k][0]
 	}
@@ -111,11 +164,13 @@ func (e *Environment) Get(k string) string {
 }
 
 func (e *Environment) Has(k string) bool {
-	return len(e.data[k]) > 0
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return len(e.local[k]) > 0 || len(e.data[k]) > 0
 }
 
 func (e *Environment) IsDry() bool {
-	return len(e.data["dryrun"]) > 0
+	return e.Get("dryrun") != ""
 }
 
 func (e *Environment) VerboseLevel() int {
@@ -262,8 +317,8 @@ func (c *Command) Run(e *Environment) *Result {
 	stdout = &res.Stdout
 	stderr = &res.Stderr
 	if e.VerboseLevel() > 1 {
-		stdout = io.MultiWriter(stdout, os.Stdout)
-		stderr = io.MultiWriter(stderr, os.Stderr)
+		stdout = io.MultiWriter(stdout, safeStdout)
+		stderr = io.MultiWriter(stderr, safeStderr)
 	}
 	execCmd.Stdout = stdout
 	execCmd.Stderr = stderr
@@ -271,10 +326,10 @@ func (c *Command) Run(e *Environment) *Result {
 	done := make(chan error, 1)
 	if e.IsDry() {
 		close(done)
-		fmt.Printf("Would run: %+v\n", execCmd.Args)
+		fmt.Fprintf(safeStdout, "Would run: %+v\n", execCmd.Args)
 	} else {
 		if e.VerboseLevel() > 0 {
-			fmt.Printf("Running: %+v\n", execCmd.Args)
+			fmt.Fprintf(safeStdout, "Running: %+v\n", execCmd.Args)
 		}
 		err := res.Cmd.Start()
 		if err != nil {
@@ -293,7 +348,7 @@ func (c *Command) Run(e *Environment) *Result {
 	case <-time.After(c.Timeout):
 		killErr := res.Cmd.Process.Kill()
 		if killErr != nil {
-			fmt.Printf("failed to kill (pid=%d): %v\n", res.Cmd.Process.Pid, killErr)
+			fmt.Fprintf(safeStderr, "failed to kill (pid=%d): %v\n", res.Cmd.Process.Pid, killErr)
 		}
 		res.Timeout = true
 	case err := <-done:

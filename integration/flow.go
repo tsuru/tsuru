@@ -5,6 +5,8 @@
 package integration
 
 import (
+	"sync"
+
 	"gopkg.in/check.v1"
 )
 
@@ -20,7 +22,9 @@ type ExecFlow struct {
 	rollback []CmdWithExp
 	hooks    map[int][]hookFunc
 	provides []string
+	requires []string
 	matrix   map[string]string
+	parallel bool
 }
 
 func (f *ExecFlow) Add(cmd *Command, exp ...Expected) *ExecFlow {
@@ -42,14 +46,14 @@ func (f *ExecFlow) AddHook(fn hookFunc) {
 }
 
 func (f *ExecFlow) Rollback(c *check.C, env *Environment) {
-	f.forExpanded(env, func() {
-		f.rollbackOnce(c, env)
+	f.forExpanded(env, func(e *Environment) {
+		f.rollbackOnce(c, e)
 	})
 }
 
 func (f *ExecFlow) Run(c *check.C, env *Environment) {
-	f.forExpanded(env, func() {
-		f.runOnce(c, env)
+	f.forExpanded(env, func(e *Environment) {
+		f.runOnce(c, e)
 	})
 }
 
@@ -111,12 +115,29 @@ func (f *ExecFlow) expandMatrix(env *Environment) []map[string]string {
 	return expanded
 }
 
-func (f *ExecFlow) forExpanded(env *Environment, fn func()) {
+func (f *ExecFlow) forExpanded(env *Environment, fn func(env *Environment)) {
 	expanded := f.expandMatrix(env)
+	wg := sync.WaitGroup{}
+expandedloop:
 	for _, entry := range expanded {
+		newEnv := env.Clone()
 		for k, v := range entry {
-			env.Set(k, v)
+			newEnv.SetLocal(k, v)
 		}
-		fn()
+		for _, req := range f.requires {
+			if !newEnv.Has(req) {
+				continue expandedloop
+			}
+		}
+		if f.parallel {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fn(newEnv)
+			}()
+		} else {
+			fn(newEnv)
+		}
 	}
+	wg.Wait()
 }

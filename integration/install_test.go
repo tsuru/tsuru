@@ -151,7 +151,9 @@ func removeInstallNodes() ExecFlow {
 }
 
 func quotaTest() ExecFlow {
-	flow := ExecFlow{}
+	flow := ExecFlow{
+		requires: []string{"adminuser"},
+	}
 	flow.Add(T("user-quota-change", "{{.adminuser}}", "100"))
 	flow.Add(T("user-quota-view", "{{.adminuser}}"), Expected{Stdout: `(?s)Apps usage.*/100`})
 	return flow
@@ -208,6 +210,7 @@ func nodeRemove() ExecFlow {
 		matrix: map[string]string{
 			"node": "nodeaddrs",
 		},
+		parallel: true,
 	}
 	flow.AddRollback(T("node-remove", "-y", "--no-rebalance", "{{.node}}"))
 	return flow
@@ -219,10 +222,11 @@ func platformAdd() ExecFlow {
 		matrix: map[string]string{
 			"platimg": "platformimages",
 		},
+		parallel: true,
 	}
 	flow.AddHook(func(c *check.C, res *Result) {
 		img := res.Env.Get("platimg")
-		res.Env.Set("platimgsuffix", img[strings.LastIndex(img, "/")+1:])
+		res.Env.SetLocal("platimgsuffix", img[strings.LastIndex(img, "/")+1:])
 	})
 	flow.Add(T("platform-add", "iplat-{{.platimgsuffix}}", "-i", "{{.platimg}}"))
 	flow.AddHook(func(c *check.C, res *Result) {
@@ -239,6 +243,7 @@ func exampleApps() ExecFlow {
 			"pool": "poolnames",
 			"plat": "platforms",
 		},
+		parallel: true,
 	}
 	appName := "iapp-{{.plat}}-{{.pool}}"
 	flow.Add(T("app-create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}"))
@@ -248,7 +253,7 @@ func exampleApps() ExecFlow {
 		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		res.Env.Set("language", strings.Replace(parts[1], "iplat-", "", -1))
+		res.Env.SetLocal("language", strings.Replace(parts[1], "iplat-", "", -1))
 	})
 	flow.Add(T("app-deploy", "-a", appName, "{{.examplesdir}}/{{.language}}/"))
 	flow.Add(T("app-info", "-a", appName))
@@ -256,7 +261,7 @@ func exampleApps() ExecFlow {
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 		parts := addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
-		res.Env.Set("appaddr", parts[1])
+		res.Env.SetLocal("appaddr", parts[1])
 	})
 	flow.AddHook(func(c *check.C, res *Result) {
 		cmd := NewCommand("curl", "-sSf", "http://{{.appaddr}}")
