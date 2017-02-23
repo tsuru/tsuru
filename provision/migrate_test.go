@@ -10,8 +10,9 @@ import (
 )
 
 func (s *S) TestMigratePoolTeamsToPoolConstraints(c *check.C) {
-	p := &Pool{Name: "pool1"}
-	err := s.storage.Pools().Insert(p)
+	err := s.storage.Pools().Insert(&Pool{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = s.storage.Pools().Insert(&Pool{Name: "publicPool", Public: true})
 	c.Assert(err, check.IsNil)
 	err = s.storage.Pools().Update(bson.M{"_id": "pool1"}, bson.M{"$set": bson.M{"teams": []string{"team1", "team2"}}})
 	c.Assert(err, check.IsNil)
@@ -21,4 +22,8 @@ func (s *S) TestMigratePoolTeamsToPoolConstraints(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint, check.NotNil)
 	c.Assert(constraint.Values, check.DeepEquals, []string{"team1", "team2"})
+	constraint, err = getExactConstraintForPool("publicPool", "team")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraint, check.NotNil)
+	c.Assert(constraint.Values, check.DeepEquals, []string{"*"})
 }
