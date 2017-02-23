@@ -12,8 +12,9 @@ import (
 )
 
 type poolWithTeams struct {
-	Name  string `bson:"_id"`
-	Teams []string
+	Name   string `bson:"_id"`
+	Teams  []string
+	Public bool
 }
 
 func MigratePoolTeamsToPoolConstraints() error {
@@ -28,7 +29,10 @@ func MigratePoolTeamsToPoolConstraints() error {
 		return err
 	}
 	for _, p := range pools {
-		constraint := fmt.Sprintf("team=%s", strings.Join(p.Teams, ","))
+		constraint := fmt.Sprintf("team=*")
+		if !p.Public {
+			constraint = fmt.Sprintf("team=%s", strings.Join(p.Teams, ","))
+		}
 		err := SetPoolConstraints(p.Name, constraint)
 		if err != nil {
 			return err
