@@ -16,20 +16,22 @@ import (
 )
 
 type LimiterSuite struct {
-	limiter func() ActionLimiter
+	limiter     ActionLimiter
+	makeLimiter func() ActionLimiter
 }
 
 func init() {
 	check.Suite(&LimiterSuite{
-		limiter: func() ActionLimiter { return &LocalLimiter{} },
+		makeLimiter: func() ActionLimiter { return &LocalLimiter{} },
 	})
 	check.Suite(&LimiterSuite{
-		limiter: func() ActionLimiter { return &MongodbLimiter{} },
+		makeLimiter: func() ActionLimiter { return &MongodbLimiter{} },
 	})
 }
 
 func (s *LimiterSuite) SetUpTest(c *check.C) {
-	c.Logf("Test with s.limiter: %T", s.limiter())
+	s.limiter = s.makeLimiter()
+	c.Logf("Test with s.limiter: %T", s.limiter)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_limiter_tests_s")
 	conn, err := db.Conn()
@@ -39,8 +41,16 @@ func (s *LimiterSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *LimiterSuite) TearDownTest(c *check.C) {
+	if stoppable, ok := s.limiter.(interface {
+		stop()
+	}); ok {
+		stoppable.stop()
+	}
+}
+
 func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
-	l := s.limiter()
+	l := s.limiter
 	l.Initialize(3)
 	l.Start("node1")
 	l.Start("node1")
@@ -71,7 +81,7 @@ func (s *LimiterSuite) TestLimiterAddDone(c *check.C) {
 
 func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
-	l := s.limiter()
+	l := s.limiter
 	l.Initialize(100)
 	wg := sync.WaitGroup{}
 	doneCh := make(chan func(), 100)
@@ -98,7 +108,7 @@ func (s *LimiterSuite) TestLimiterAddDoneRace(c *check.C) {
 
 func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
-	l := s.limiter()
+	l := s.limiter
 	l.Initialize(100)
 	wg := sync.WaitGroup{}
 	doneCh := make(chan func(), 100)
@@ -118,7 +128,7 @@ func (s *LimiterSuite) TestLimiterAddDoneRace2(c *check.C) {
 }
 
 func (s *LimiterSuite) TestLimiterAddDoneZeroLimit(c *check.C) {
-	l := s.limiter()
+	l := s.limiter
 	l.Initialize(0)
 	var doneSlice []func()
 	for i := 0; i < 100; i++ {
@@ -137,6 +147,7 @@ func (s *S) TestMongodbLimiterTimeout(c *check.C) {
 		maxStale:       200 * time.Millisecond,
 	}
 	l.Initialize(1)
+	defer l.stop()
 	l.Start("n1")
 	done := make(chan bool)
 	go func() {
@@ -156,6 +167,7 @@ func (s *S) TestMongodbLimiterTimeoutUpdated(c *check.C) {
 		maxStale:       300 * time.Millisecond,
 	}
 	l.Initialize(1)
+	defer l.stop()
 	l.Start("n1")
 	done := make(chan bool)
 	go func() {

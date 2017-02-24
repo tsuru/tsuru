@@ -70,6 +70,7 @@ func (l *LocalLimiter) Len(action string) int {
 type MongodbLimiter struct {
 	limit          uint
 	idsCh          chan bson.ObjectId
+	quitCh         chan struct{}
 	updateInterval time.Duration
 	maxStale       time.Duration
 }
@@ -86,7 +87,14 @@ func (l *MongodbLimiter) Initialize(i uint) {
 	if l.maxStale == 0 {
 		l.maxStale = 30 * time.Second
 	}
+	l.quitCh = make(chan struct{})
 	go l.timeUpdater()
+}
+
+func (l *MongodbLimiter) stop() {
+	if l.quitCh != nil {
+		l.quitCh <- struct{}{}
+	}
 }
 
 func (l *MongodbLimiter) timeUpdater() {
@@ -99,6 +107,8 @@ func (l *MongodbLimiter) timeUpdater() {
 			timeoutCh = time.After(l.updateInterval)
 			continue
 		case <-timeoutCh:
+		case <-l.quitCh:
+			return
 		}
 		if len(ids) == 0 {
 			continue
