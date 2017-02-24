@@ -5,12 +5,13 @@
 package integration
 
 import (
+	"strconv"
 	"sync"
 
 	"gopkg.in/check.v1"
 )
 
-type hookFunc func(c *check.C, res *Result)
+type hookFunc func(c *check.C, env *Environment)
 
 type CmdWithExp struct {
 	C *Command
@@ -22,8 +23,8 @@ type ExecFlow struct {
 	requires []string
 	matrix   map[string]string
 	parallel bool
-	forward  func(c *check.C, env *Environment)
-	backward func(c *check.C, env *Environment)
+	forward  hookFunc
+	backward hookFunc
 }
 
 func (f *ExecFlow) Rollback(c *check.C, env *Environment) {
@@ -72,6 +73,11 @@ func (f *ExecFlow) expandMatrix(env *Environment) []map[string]string {
 func (f *ExecFlow) forExpanded(env *Environment, fn func(env *Environment)) {
 	expanded := f.expandMatrix(env)
 	wg := sync.WaitGroup{}
+	maxConcurrency, _ := strconv.Atoi(env.Get("maxconcurrency"))
+	if maxConcurrency == 0 {
+		maxConcurrency = 100
+	}
+	limiter := make(chan struct{}, maxConcurrency)
 expandedloop:
 	for _, entry := range expanded {
 		newEnv := env.Clone()
@@ -87,6 +93,8 @@ expandedloop:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+				limiter <- struct{}{}
+				defer func() { <-limiter }()
 				fn(newEnv)
 			}()
 		} else {
