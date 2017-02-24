@@ -29,6 +29,7 @@ func init() {
 }
 
 func (s *LimiterSuite) SetUpTest(c *check.C) {
+	c.Logf("Test with s.limiter: %T", s.limiter())
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_limiter_tests_s")
 	conn, err := db.Conn()
