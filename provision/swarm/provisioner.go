@@ -234,7 +234,9 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 		if t.Spec.ContainerSpec.Labels[labelService.String()] != "true" {
 			continue
 		}
-		if t.DesiredState == swarm.TaskStateShutdown {
+		if t.DesiredState == swarm.TaskStateShutdown ||
+			t.NodeID == "" ||
+			t.ServiceID == "" {
 			continue
 		}
 		if _, ok := nodeMap[t.NodeID]; !ok {
