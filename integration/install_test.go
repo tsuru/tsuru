@@ -255,7 +255,7 @@ func platformAdd() ExecFlow {
 		img := env.Get("platimg")
 		suffix := img[strings.LastIndex(img, "/")+1:]
 		platName := "iplat-" + suffix
-		res := T("platform-add", platName, "-i", img).Run(env)
+		res := T("platform-add", platName, "-i", img).WithTimeout(15 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		env.Add("platforms", platName)
 		res = T("platform-list").Run(env)

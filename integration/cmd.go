@@ -38,6 +38,20 @@ func (w *safeWriter) Write(data []byte) (int, error) {
 	return w.Writer.Write(data)
 }
 
+type prefixWriter struct {
+	io.Writer
+	prefix string
+}
+
+func (w *prefixWriter) Write(data []byte) (int, error) {
+	newData := bytes.TrimSpace(data)
+	newData = bytes.Replace(newData, []byte("\r"), []byte("\n"), -1)
+	newData = bytes.Replace(newData, []byte("\n"), []byte("\n"+w.prefix), -1)
+	newData = append([]byte(w.prefix), append(newData, '\n')...)
+	_, err := w.Writer.Write(newData)
+	return len(data), err
+}
+
 var (
 	safeStdout = &safeWriter{Writer: os.Stdout}
 	safeStderr = &safeWriter{Writer: os.Stderr}
@@ -255,7 +269,7 @@ func (r *Result) Compare(expected Expected) error {
 }
 
 func NewCommand(cmd string, args ...string) *Command {
-	return &Command{Command: cmd, Args: args, Timeout: 5 * time.Minute}
+	return &Command{Command: cmd, Args: args, Timeout: 10 * time.Minute}
 }
 
 func (c *Command) WithArgs(args ...string) *Command {
@@ -317,8 +331,9 @@ func (c *Command) Run(e *Environment) *Result {
 	stdout = &res.Stdout
 	stderr = &res.Stderr
 	if e.VerboseLevel() > 1 {
-		stdout = io.MultiWriter(stdout, safeStdout)
-		stderr = io.MultiWriter(stderr, safeStderr)
+		prefix := fmt.Sprintf("%+v: ", execCmd.Args)
+		stdout = io.MultiWriter(stdout, &prefixWriter{safeStdout, prefix})
+		stderr = io.MultiWriter(stderr, &prefixWriter{safeStderr, prefix})
 	}
 	execCmd.Stdout = stdout
 	execCmd.Stderr = stderr
