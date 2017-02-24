@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/ajg/form"
@@ -226,14 +225,16 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	templateName := r.URL.Query().Get(":template_name")
-	iaasName := r.URL.Query().Get(":template_iaasname")
-	fmt.Println(iaasName, r.URL)
+	iaasName := r.Form.Get("IaaSName")
 	dbTpl, err := iaas.FindTemplate(templateName)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: "template not found"}
 		}
 		return err
+	}
+	if (dbTpl.IaaSName != iaasName) && (iaasName != "") {
+		dbTpl.IaaSName = iaasName
 	}
 	iaasCtx := permission.Context(permission.CtxIaaS, dbTpl.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateUpdate, iaasCtx)
