@@ -158,7 +158,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"pool.read.events",
 	"pool.update.team.add",
 	"pool.update.team.remove",
-	"pool.update.constraint.set",
+	"pool.update.constraints.set",
 	"pool.read.constraints",
 	"pool.update.logs",
 	"pool.delete",
