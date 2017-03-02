@@ -309,7 +309,7 @@ func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) er
 //   200: OK
 //   401: Unauthorized
 func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	if !permission.Check(t, permission.PermPoolUpdateConstraintSet) {
+	if !permission.Check(t, permission.PermPoolUpdateConstraintsSet) {
 		return permission.ErrUnauthorized
 	}
 	err = r.ParseForm()
@@ -328,7 +328,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolExpr},
-		Kind:       permission.PermPoolUpdateConstraintSet,
+		Kind:       permission.PermPoolUpdateConstraintsSet,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents),
