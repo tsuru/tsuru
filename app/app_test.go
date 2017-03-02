@@ -3551,11 +3551,11 @@ func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test"}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{"test"})
+	err = provision.AddTeamsToPool("test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
-		TeamOwner: "test",
+		TeamOwner: "tsuruteam",
 	}
 	err = app.SetPool()
 	c.Assert(err, check.IsNil)
@@ -3578,17 +3578,17 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test"}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("test", []string{"test"})
+	err = provision.AddTeamsToPool("test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	opts = provision.AddPoolOptions{Name: "pool2"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("pool2", []string{"test"})
+	err = provision.AddTeamsToPool("pool2", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
 		Pool:      "pool2",
-		TeamOwner: "test",
+		TeamOwner: "tsuruteam",
 	}
 	err = app.SetPool()
 	c.Assert(err, check.IsNil)
@@ -3612,7 +3612,7 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	}
 	err = app.SetPool()
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "you have access to more than one pool, please choose one in app creation")
+	c.Assert(err.Error(), check.Equals, "you have access to \"test\",\"pool2\" pools. Please choose one in app creation")
 }
 
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {
@@ -3650,7 +3650,7 @@ func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "testapp",
-		TeamOwner: "testapp",
+		TeamOwner: "tsuruteam",
 		Pool:      "test",
 	}
 	err = app.SetPool()
@@ -3664,11 +3664,11 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	opts = provision.AddPoolOptions{Name: "nonpublic"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool("nonpublic", []string{"team1"})
+	err = provision.AddTeamsToPool("nonpublic", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "testapp",
-		TeamOwner: "team1",
+		TeamOwner: "tsuruteam",
 	}
 	err = a.SetPool()
 	c.Assert(err, check.IsNil)

@@ -839,7 +839,11 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 			return "", err
 		}
 		if len(pools) > 1 {
-			return "", errors.New("you have access to more than one pool, please choose one in app creation")
+			var names []string
+			for _, p := range pools {
+				names = append(names, fmt.Sprintf("%q", p.Name))
+			}
+			return "", errors.Errorf("you have access to %s pools. Please choose one in app creation", strings.Join(names, ","))
 		}
 		if len(pools) == 0 {
 			return "", nil
@@ -861,7 +865,7 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 			break
 		}
 	}
-	if !pool.Public && !poolTeam {
+	if !poolTeam {
 		return "", errors.Errorf("App team owner %q has no access to pool %q", app.TeamOwner, pool.Name)
 	}
 	return pool.Name, nil
