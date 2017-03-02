@@ -176,11 +176,7 @@ func changeDefaultPool(force bool) error {
 		if !force {
 			return ErrDefaultPoolAlreadyExists
 		}
-		err = conn.Pools().UpdateId(p[0].Name, bson.M{"$set": bson.M{"default": false}})
-		if err != nil {
-			return err
-		}
-		return removePoolConstraint(p[0].Name, "team", "*")
+		return conn.Pools().UpdateId(p[0].Name, bson.M{"$set": bson.M{"default": false}})
 	}
 	return nil
 }
