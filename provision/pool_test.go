@@ -37,6 +37,12 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
+	err = auth.CreateTeam("ateam", &auth.User{})
+	c.Assert(err, check.IsNil)
+	err = auth.CreateTeam("test", &auth.User{})
+	c.Assert(err, check.IsNil)
+	err = auth.CreateTeam("pteam", &auth.User{})
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAddPool(c *check.C) {
@@ -44,7 +50,6 @@ func (s *S) TestAddPool(c *check.C) {
 	defer coll.RemoveId("pool1")
 	opts := AddPoolOptions{
 		Name:    "pool1",
-		Public:  false,
 		Default: false,
 	}
 	err := AddPool(opts)
@@ -64,7 +69,9 @@ func (s *S) TestAddNonPublicPool(c *check.C) {
 	var p Pool
 	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Public, check.Equals, false)
+	constraints, err := getConstraintsForPool("pool1", "team")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraints["team"].AllowsAll(), check.Equals, false)
 }
 
 func (s *S) TestAddPublicPool(c *check.C) {
@@ -80,7 +87,9 @@ func (s *S) TestAddPublicPool(c *check.C) {
 	var p Pool
 	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Public, check.Equals, true)
+	constraints, err := getConstraintsForPool("pool1", "team")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraints["team"].AllowsAll(), check.Equals, true)
 }
 
 func (s *S) TestAddPoolWithoutNameShouldBreak(c *check.C) {
@@ -111,29 +120,17 @@ func (s *S) TestAddTeamToPoolNotFound(c *check.C) {
 }
 
 func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "nonteams", Public: false, Default: true}
-	err := coll.Insert(pool)
+	err := AddPool(AddPoolOptions{Name: "nonteams", Public: false, Default: true})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
-	err = AddTeamsToPool(pool.Name, []string{"ateam"})
+	err = AddTeamsToPool("nonteams", []string{"ateam"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
 
 func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "nonteams", Public: false, Default: true}
-	err := coll.Insert(pool)
+	err := AddPool(AddPoolOptions{Name: "nonteams", Public: false, Default: true})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
-	opts := AddPoolOptions{
-		Name:    "pool1",
-		Public:  false,
-		Default: true,
-	}
-	err = AddPool(opts)
-	defer RemovePool("pool1")
+	err = AddPool(AddPoolOptions{Name: "pool1", Public: false, Default: true})
 	c.Assert(err, check.NotNil)
 }
 
@@ -210,7 +207,7 @@ func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{"test", "ateam", "pteam"})
+	c.Assert(teams, check.DeepEquals, []string{"ateam", "test", "pteam"})
 }
 
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
@@ -225,16 +222,13 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	c.Assert(err, check.NotNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{"test", "ateam"})
+	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 }
 
 func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "nonteams", Public: true}
-	err := coll.Insert(pool)
+	err := AddPool(AddPoolOptions{Name: "nonteams", Public: true})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
-	err = AddTeamsToPool(pool.Name, []string{"ateam"})
+	err = AddTeamsToPool("nonteams", []string{"ateam"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrPublicDefaultPoolCantHaveTeams)
 }
@@ -249,8 +243,6 @@ func (s *S) TestAddTeamsToPoolWithBlacklistShouldFail(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool("pool1", []string{"otherteam"})
 	c.Assert(err, check.NotNil)
-	_, err = pool.GetTeams()
-	c.Assert(err, check.Equals, ErrPoolHasNoTeam)
 	constraint, err := getExactConstraintForPool("pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint.WhiteList, check.Equals, false)
@@ -272,7 +264,7 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := pool.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{"test", "ateam"})
+	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 	err = RemoveTeamsFromPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
 	teams, err = pool.GetTeams()
@@ -290,8 +282,6 @@ func (s *S) TestRemoveTeamsFromPoolWithBlacklistShouldFail(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RemoveTeamsFromPool("pool1", []string{"myteam"})
 	c.Assert(err, check.NotNil)
-	_, err = pool.GetTeams()
-	c.Assert(err, check.Equals, ErrPoolHasNoTeam)
 	constraint, err := getExactConstraintForPool("pool1", "team")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraint.WhiteList, check.Equals, false)
@@ -308,84 +298,72 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 }
 
 func (s *S) TestPoolUpdate(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false}
-	err := coll.Insert(pool)
+	opts := AddPoolOptions{
+		Name:   "pool1",
+		Public: false,
+	}
+	err := AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
 	err = PoolUpdate("pool1", UpdatePoolOptions{Public: boolPtr(true)})
 	c.Assert(err, check.IsNil)
-	var p Pool
-	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
+	constraint, err := getExactConstraintForPool("pool1", "team")
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Public, check.Equals, true)
+	c.Assert(constraint.AllowsAll(), check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateToDefault(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: false}
-	err := coll.Insert(pool)
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  false,
+		Default: false,
+	}
+	err := AddPool(opts)
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
 	err = PoolUpdate("pool1", UpdatePoolOptions{Public: boolPtr(true), Default: boolPtr(true)})
 	c.Assert(err, check.IsNil)
-	var p Pool
-	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
+	p, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateForceToDefault(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: true}
-	err := coll.Insert(pool)
+	err := AddPool(AddPoolOptions{Name: "pool1", Public: false, Default: true})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
-	pool = Pool{Name: "pool2", Public: false, Default: false}
-	err = coll.Insert(pool)
+	err = AddPool(AddPoolOptions{Name: "pool2", Public: false, Default: false})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
 	err = PoolUpdate("pool2", UpdatePoolOptions{Public: boolPtr(true), Default: boolPtr(true), Force: true})
 	c.Assert(err, check.IsNil)
-	var p Pool
-	err = coll.Find(bson.M{"_id": "pool2"}).One(&p)
+	p, err := GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: true}
-	err := coll.Insert(pool)
+	err := AddPool(AddPoolOptions{Name: "pool1", Public: false, Default: true})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
-	pool = Pool{Name: "pool2", Public: false, Default: false}
-	err = coll.Insert(pool)
+	err = AddPool(AddPoolOptions{Name: "pool2", Public: false, Default: false})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
 	err = PoolUpdate("pool2", UpdatePoolOptions{Public: boolPtr(true), Default: boolPtr(true)})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrDefaultPoolAlreadyExists)
 }
 
 func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: true}
-	err := coll.Insert(pool)
+	err := AddPool(AddPoolOptions{Name: "pool1", Public: false, Default: true})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
 	err = PoolUpdate("pool1", UpdatePoolOptions{Public: boolPtr(true)})
 	c.Assert(err, check.IsNil)
-	var p Pool
-	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
+	p, err := GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Public, check.Equals, true)
 	c.Assert(p.Default, check.Equals, true)
+	constraint, err := getExactConstraintForPool("pool1", "team")
+	c.Assert(err, check.IsNil)
+	c.Assert(constraint.AllowsAll(), check.Equals, true)
 }
 
 func (s *S) TestListPoolAll(c *check.C) {
 	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: true}
+	pool := Pool{Name: "pool1", Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
@@ -396,18 +374,18 @@ func (s *S) TestListPoolAll(c *check.C) {
 
 func (s *S) TestListPoolByQuery(c *check.C) {
 	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: true}
+	pool := Pool{Name: "pool1", Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
-	pool2 := Pool{Name: "pool2", Public: true, Default: true}
+	pool2 := Pool{Name: "pool2", Default: true}
 	err = coll.Insert(pool2)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
 	defer coll.RemoveId(pool2.Name)
-	pools, err := listPools(bson.M{"public": true})
+	pools, err := listPools(bson.M{"_id": "pool2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)
-	c.Assert(pools[0].Public, check.Equals, true)
+	c.Assert(pools[0].Name, check.Equals, "pool2")
 }
 
 func (s *S) TestListPoolEmpty(c *check.C) {
@@ -418,7 +396,7 @@ func (s *S) TestListPoolEmpty(c *check.C) {
 
 func (s *S) TestGetPoolByName(c *check.C) {
 	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Public: false, Default: true}
+	pool := Pool{Name: "pool1", Default: true}
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
@@ -457,52 +435,6 @@ func (s *S) TestSetPoolConstraintsRemoveEmpty(c *check.C) {
 	})
 }
 
-func (s *S) TestCheckPoolConstraint(c *check.C) {
-	err := SetPoolConstraints("*", "router=planb")
-	c.Assert(err, check.IsNil)
-	err = SetPoolConstraints("*_dev", "router=planb_dev", "team!=team_pool1")
-	c.Assert(err, check.IsNil)
-	err = SetPoolConstraints("pool1_dev", "team=team_pool1")
-	c.Assert(err, check.IsNil)
-	err = SetPoolConstraints("pool1_prod", "router!=*_dev")
-	c.Assert(err, check.IsNil)
-	tt := []struct {
-		pool     string
-		field    string
-		value    string
-		expected bool
-	}{
-		{pool: "prod", field: "router", value: "planb", expected: true},
-		{pool: "prod", field: "team", value: "my-team", expected: true},
-		{pool: "pool_dev", field: "router", value: "planb", expected: false},
-		{pool: "pool1_dev", field: "router", value: "planb_dev", expected: true},
-		{pool: "pool1_dev", field: "team", value: "team_pool1", expected: true},
-		{pool: "pool2_dev", field: "team", value: "team_pool1", expected: false},
-		{pool: "pool1_prod", field: "router", value: "planb_dev", expected: false},
-	}
-	for i, t := range tt {
-		s, err := checkPoolConstraint(t.pool, t.field, t.value)
-		c.Check(err, check.IsNil)
-		if s != t.expected {
-			c.Fatalf("(%d) Expected \"%t\" for pool %q with field %q value %q. Got \"%t\".", i, t.expected, t.pool, t.field, t.value, s)
-		}
-	}
-}
-
-func (s *S) TestCheckPoolConstraintWithoutMatch(c *check.C) {
-	err := SetPoolConstraints("prod", "router=prod_router")
-	c.Assert(err, check.IsNil)
-	result, err := checkPoolConstraint("dev", "router", "dev")
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.Equals, true)
-}
-
-func (s *S) TestCheckPoolConstraintWithoutAnyConstraint(c *check.C) {
-	result, err := checkPoolConstraint("dev", "router", "dev")
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.Equals, true)
-}
-
 func (s *S) TestGetConstraintsForPool(c *check.C) {
 	err := SetPoolConstraints("*", "router=planb")
 	c.Assert(err, check.IsNil)
@@ -535,14 +467,6 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 		constraints, err := getConstraintsForPool(t.pool)
 		c.Check(err, check.IsNil)
 		if !reflect.DeepEqual(constraints, t.expected) {
-			c.Logf("Got:")
-			for k, v := range constraints {
-				c.Logf("%s: %s", k, v.String())
-			}
-			c.Logf("Expected:")
-			for k, v := range t.expected {
-				c.Logf("%s: %s", k, v.String())
-			}
 			c.Fatalf("(%d) Expected %#+v for pool %q. Got %#+v.", i, t.expected, t.pool, constraints)
 		}
 	}
@@ -568,31 +492,6 @@ func (s *S) TestAppendPoolConstraintNewConstraint(c *check.C) {
 	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
 		"router": &PoolConstraint{Field: "router", PoolExpr: "myPool", Values: []string{"galeb"}, WhiteList: true},
 	})
-}
-
-func (s *S) TestCheckPoolExactConstraint(c *check.C) {
-	err := SetPoolConstraints("pool2", "router=galeb")
-	c.Assert(err, check.IsNil)
-	err = SetPoolConstraints("*", "router=planb")
-	c.Assert(err, check.IsNil)
-	tt := []struct {
-		pool     string
-		field    string
-		value    string
-		expected bool
-	}{
-		{pool: "pool2", field: "router", value: "galeb", expected: true},
-		{pool: "pool2", field: "router", value: "planb", expected: false},
-		{pool: "pool", field: "router", value: "planb", expected: false},
-		{pool: "pool", field: "router", value: "galeb", expected: false},
-	}
-	for i, t := range tt {
-		s, err := checkPoolExactConstraint(t.pool, t.field, t.value)
-		c.Check(err, check.IsNil)
-		if s != t.expected {
-			c.Fatalf("(%d) Expected \"%t\" for pool %q with field %q value %q. Got \"%t\".", i, t.expected, t.pool, t.field, t.value, s)
-		}
-	}
 }
 
 func (s *S) TestPoolAllowedValues(c *check.C) {

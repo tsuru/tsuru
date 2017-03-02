@@ -83,7 +83,9 @@ func (s *S) TestAddPool(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	pool, err := provision.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
-	c.Assert(pool.Public, check.Equals, true)
+	teams, err := pool.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -161,7 +163,7 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	b := strings.NewReader("team=test")
+	b := strings.NewReader("team=tsuruteam")
 	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -174,14 +176,14 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	teams, err := p.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{"test"})
+	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.add",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":name", "value": "pool1"},
-			{"name": "team", "value": "test"},
+			{"name": "team", "value": "tsuruteam"},
 		},
 	}, eventtest.HasEvent)
 }
@@ -230,10 +232,10 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: pool.Name}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"test"})
+	err = provision.AddTeamsToPool(pool.Name, []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=test", nil)
+	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=tsuruteam", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -243,23 +245,22 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	var p provision.Pool
 	err = s.conn.Pools().FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
-	c.Assert(err, check.IsNil)
-	c.Assert(teams, check.DeepEquals, []string{})
+	_, err = p.GetTeams()
+	c.Assert(err, check.NotNil)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.remove",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":name", "value": "pool1"},
-			{"name": "team", "value": "test"},
+			{"name": "team", "value": "tsuruteam"},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *S) TestPoolListPublicPool(c *check.C) {
-	pool := provision.Pool{Name: "pool1", Public: true}
-	opts := provision.AddPoolOptions{Name: pool.Name, Public: pool.Public}
+	pool := provision.Pool{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: pool.Name, Public: true}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
@@ -267,7 +268,7 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []provision.Pool{
 		*defaultPool,
-		{Name: "pool1", Public: true},
+		{Name: "pool1"},
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermTeamCreate,
@@ -378,6 +379,10 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
+	p, err := provision.GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	_, err = p.GetTeams()
+	c.Assert(err, check.NotNil)
 	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString("public=true")
 	req, err := http.NewRequest("PUT", "/pools/pool1", b)
@@ -389,9 +394,9 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	p, err := provision.GetPoolByName("pool1")
+	teams, err := p.GetTeams()
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Public, check.Equals, true)
+	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
@@ -489,7 +494,6 @@ func (s *S) TestPoolUpdateProvisioner(c *check.C) {
 	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Provisioner, check.Equals, "myprov")
-	c.Assert(p.Public, check.Equals, true)
 	c.Assert(p.Default, check.Equals, false)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
@@ -521,6 +525,7 @@ func (s *S) TestPoolConstraint(c *check.C) {
 	err = provision.SetPoolConstraints("dev", "router=dev")
 	c.Assert(err, check.IsNil)
 	expected := []provision.PoolConstraint{
+		{PoolExpr: "test1", Field: "team", Values: []string{"*"}, WhiteList: true},
 		{PoolExpr: "*", Field: "router", Values: []string{"*"}, WhiteList: true},
 		{PoolExpr: "dev", Field: "router", Values: []string{"dev"}, WhiteList: true},
 	}
@@ -538,6 +543,8 @@ func (s *S) TestPoolConstraint(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintListEmpty(c *check.C) {
+	err := provision.SetPoolConstraints("test1", "team=")
+	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/constraints", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -560,6 +567,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*provision.PoolConstraint{
+		{PoolExpr: "test1", Field: "team", Values: []string{"*"}, WhiteList: true},
 		{PoolExpr: "*", Field: "team", Values: []string{"*"}, WhiteList: false},
 		{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, WhiteList: true},
 	}

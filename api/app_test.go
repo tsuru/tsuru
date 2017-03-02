@@ -384,8 +384,8 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 }
 
 func (s *S) TestAppList(c *check.C) {
-	pool := provision.Pool{Name: "pool1", Public: true}
-	opts := provision.AddPoolOptions{Name: pool.Name, Public: pool.Public}
+	pool := provision.Pool{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: pool.Name, Public: true}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
@@ -923,7 +923,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithPool(c *check.C) {
-	err := s.conn.Pools().Insert(bson.M{"_id": "mypool1", "public": true})
+	err := provision.AddPool(provision.AddPoolOptions{Name: "mypool1", Public: true})
 	c.Assert(err, check.IsNil)
 	appName := "someapp"
 	data, err := url.QueryUnescape("name=someapp&platform=zend&pool=mypool1")

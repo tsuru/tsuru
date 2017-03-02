@@ -12,7 +12,7 @@ import (
 func (s *S) TestMigratePoolTeamsToPoolConstraints(c *check.C) {
 	err := s.storage.Pools().Insert(&Pool{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	err = s.storage.Pools().Insert(&Pool{Name: "publicPool", Public: true})
+	err = s.storage.Pools().Insert(&bson.M{"_id": "publicPool", "public": true})
 	c.Assert(err, check.IsNil)
 	err = s.storage.Pools().Update(bson.M{"_id": "pool1"}, bson.M{"$set": bson.M{"teams": []string{"team1", "team2"}}})
 	c.Assert(err, check.IsNil)
