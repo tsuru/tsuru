@@ -333,3 +333,52 @@ func (s *S) TestTemplateUpdateBadRequest(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
+
+func (s *S) TestTemplateUpdateIaasName(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	iaas.RegisterIaasProvider("ec2", newTestIaaS)
+	tpl1 := iaas.Template{
+		Name:     "my-tpl",
+		IaaSName: "my-iaas",
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
+			{Name: "a", Value: "b"},
+		}),
+	}
+	err := tpl1.Save()
+	c.Assert(err, check.IsNil)
+	tplParam := iaas.Template{
+		IaaSName: "ec2",
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
+			{Name: "a", Value: "c"},
+		}),
+	}
+	v, err := form.EncodeToValues(&tplParam)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	templates, err := iaas.ListTemplates()
+	c.Assert(err, check.IsNil)
+	c.Assert(templates, check.HasLen, 1)
+	c.Assert(templates[0].Name, check.Equals, "my-tpl")
+	c.Assert(templates[0].IaaSName, check.Equals, "ec2")
+	sort.Sort(templates[0].Data)
+	c.Assert(templates[0].Data, check.DeepEquals, iaas.TemplateDataList([]iaas.TemplateData{
+		{Name: "a", Value: "c"},
+	}))
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeIaas, Value: "ec2"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "machine.template.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":template_name", "value": "my-tpl"},
+			{"name": "Data.0.Name", "value": "a"},
+			{"name": "Data.0.Value", "value": "c"},
+		},
+	}, eventtest.HasEvent)
+}
