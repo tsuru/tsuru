@@ -435,6 +435,16 @@ func (s *S) TestSetPoolConstraintsRemoveEmpty(c *check.C) {
 	})
 }
 
+func (s *S) TestSetPoolConstraintInvalidConstraintType(c *check.C) {
+	coll := s.storage.PoolsConstraints()
+	err := SetPoolConstraints("*", "invalid=abc")
+	c.Assert(err, check.Equals, ErrInvalidConstraintType)
+	var cs []*PoolConstraint
+	err = coll.Find(bson.M{"poolexpr": "*"}).All(&cs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(cs), check.Equals, 0)
+}
+
 func (s *S) TestGetConstraintsForPool(c *check.C) {
 	err := SetPoolConstraints("*", "router=planb")
 	c.Assert(err, check.IsNil)

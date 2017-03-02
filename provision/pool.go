@@ -24,6 +24,9 @@ var (
 	ErrPoolNameIsRequired             = errors.New("Pool name is required.")
 	ErrPoolNotFound                   = errors.New("Pool does not exist.")
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
+
+	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", strings.Join(validConstraintTypes, ","))
+	validConstraintTypes     = []string{"team", "router"}
 )
 
 type Pool struct {
@@ -359,6 +362,30 @@ type PoolConstraint struct {
 	WhiteList bool
 }
 
+func newPoolConstraint(poolExpr, c string) (*PoolConstraint, error) {
+	op := "="
+	if strings.Contains(c, "!=") {
+		op = "!="
+	}
+	parts := strings.SplitN(c, op, 2)
+	isValid := false
+	for _, v := range validConstraintTypes {
+		if parts[0] == v {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		return nil, ErrInvalidConstraintType
+	}
+	return &PoolConstraint{
+		PoolExpr:  poolExpr,
+		Field:     parts[0],
+		Values:    strings.Split(parts[1], ","),
+		WhiteList: op == "=",
+	}, nil
+}
+
 func (c *PoolConstraint) checkExact(v string) bool {
 	if c == nil {
 		return false
@@ -409,25 +436,18 @@ func SetPoolConstraints(poolExpr string, constraints ...string) error {
 	}
 	defer conn.Close()
 	for _, c := range constraints {
-		op := "="
-		if strings.Contains(c, "!=") {
-			op = "!="
-		}
-		parts := strings.SplitN(c, op, 2)
-		constraint := &PoolConstraint{
-			PoolExpr:  poolExpr,
-			Field:     parts[0],
-			Values:    strings.Split(parts[1], ","),
-			WhiteList: op == "=",
+		constraint, err := newPoolConstraint(poolExpr, c)
+		if err != nil {
+			return err
 		}
 		if len(constraint.Values) == 1 && constraint.Values[0] == "" {
-			errRem := conn.PoolsConstraints().Remove(bson.M{"poolexpr": poolExpr, "field": parts[0]})
+			errRem := conn.PoolsConstraints().Remove(bson.M{"poolexpr": poolExpr, "field": constraint.Field})
 			if errRem != nil && errRem != mgo.ErrNotFound {
 				return errRem
 			}
 			continue
 		}
-		_, err := conn.PoolsConstraints().Upsert(bson.M{"poolexpr": poolExpr, "field": parts[0]}, constraint)
+		_, err = conn.PoolsConstraints().Upsert(bson.M{"poolexpr": poolExpr, "field": constraint.Field}, constraint)
 		if err != nil {
 			return err
 		}
