@@ -225,7 +225,6 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	templateName := r.URL.Query().Get(":template_name")
-	iaasName := r.Form.Get("IaaSName")
 	dbTpl, err := iaas.FindTemplate(templateName)
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -233,8 +232,8 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		}
 		return err
 	}
-	if (dbTpl.IaaSName != iaasName) && (iaasName != "") {
-		dbTpl.IaaSName = iaasName
+	if r.Form.Get("IaaSName") != "" {
+		dbTpl.IaaSName = r.Form.Get("IaaSName")
 	}
 	iaasCtx := permission.Context(permission.CtxIaaS, dbTpl.IaaSName)
 	allowed := permission.Check(token, permission.PermMachineTemplateUpdate, iaasCtx)
