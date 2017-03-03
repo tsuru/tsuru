@@ -201,6 +201,40 @@ func (s *S) TestTemplateCreate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestTemplateCreateAlreadyExists(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	iaas.RegisterIaasProvider("ec2", newTestIaaS)
+	data := iaas.Template{
+		Name:     "my-tpl",
+		IaaSName: "my-iaas",
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
+			{Name: "x", Value: "y"},
+			{Name: "a", Value: "b"},
+		}),
+	}
+	err := data.Save()
+	newTemplate := iaas.Template{
+		Name:     "my-tpl",
+		IaaSName: "ec2",
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
+			{Name: "b", Value: "a"},
+		}),
+	}
+	c.Assert(err, check.IsNil)
+	v, err := form.EncodeToValues(&newTemplate)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/iaas/templates", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Equals, "template name \"my-tpl\" already used\n")
+	defer iaas.DestroyTemplate("my-tpl")
+}
+
 func (s *S) TestTemplateCreateBadRequest(c *check.C) {
 	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
 	recorder := httptest.NewRecorder()

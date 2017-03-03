@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/ajg/form"
@@ -148,23 +149,27 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
-		Kind:       permission.PermMachineTemplateCreate,
-		Owner:      token,
-		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
-	})
+	_, err = iaas.FindTemplate(paramTemplate.Name)
 	if err != nil {
-		return err
+		evt, err := event.New(&event.Opts{
+			Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
+			Kind:       permission.PermMachineTemplateCreate,
+			Owner:      token,
+			CustomData: event.FormToCustomData(r.Form),
+			Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
+		})
+		if err != nil {
+			return err
+		}
+		defer func() { evt.Done(err) }()
+		err = paramTemplate.Save()
+		if err != nil {
+			return err
+		}
+		w.WriteHeader(http.StatusCreated)
+		return nil
 	}
-	defer func() { evt.Done(err) }()
-	err = paramTemplate.Save()
-	if err != nil {
-		return err
-	}
-	w.WriteHeader(http.StatusCreated)
-	return nil
+	return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("template name \"%s\" already used", paramTemplate.Name)}
 }
 
 // title: template destroy
