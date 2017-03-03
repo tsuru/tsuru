@@ -382,3 +382,32 @@ func (s *S) TestTemplateUpdateIaasName(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 }
+
+func (s *S) TestTemplateUpdateNotRegistered(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	tpl1 := iaas.Template{
+		Name:     "my-tpl",
+		IaaSName: "my-iaas",
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
+			{Name: "a", Value: "b"},
+		}),
+	}
+	err := tpl1.Save()
+	c.Assert(err, check.IsNil)
+	tplParam := iaas.Template{
+		IaaSName: "not-registered",
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
+			{Name: "a", Value: "c"},
+		}),
+	}
+	v, err := form.EncodeToValues(&tplParam)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "IaaS provider \"not-registered\" based on \"not-registered\" not registered\n")
+}
