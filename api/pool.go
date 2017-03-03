@@ -312,22 +312,28 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if !permission.Check(t, permission.PermPoolUpdateConstraintsSet) {
 		return permission.ErrUnauthorized
 	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	var poolConstraint provision.PoolConstraint
 	err = r.ParseForm()
+	if err == nil {
+		err = dec.DecodeValues(&poolConstraint, r.Form)
+	}
 	if err != nil {
 		return &terrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
 		}
 	}
-	poolExpr := r.FormValue("poolExpr")
-	if poolExpr == "" {
+	if poolConstraint.PoolExpr == "" {
 		return &terrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "You must provide a Pool Expression",
 		}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: poolExpr},
+		Target:     event.Target{Type: event.TargetTypePool, Value: poolConstraint.PoolExpr},
 		Kind:       permission.PermPoolUpdateConstraintsSet,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -337,12 +343,5 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	constraints := r.Form["constraints"]
-	if len(constraints) == 0 {
-		return &terrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "You must provide at least one constraint to set",
-		}
-	}
-	return provision.SetPoolConstraints(poolExpr, constraints...)
+	return provision.SetPoolConstraint(&poolConstraint)
 }
