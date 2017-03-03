@@ -132,6 +132,7 @@ func templatesList(w http.ResponseWriter, r *http.Request, token auth.Token) err
 //   201: Template created
 //   400: Invalid data
 //   401: Unauthorized
+//   409: Existent template
 func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (err error) {
 	err = r.ParseForm()
 	if err != nil {
