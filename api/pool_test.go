@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -520,9 +520,9 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 }
 
 func (s *S) TestPoolConstraint(c *check.C) {
-	err := provision.SetPoolConstraints("*", "router=*")
+	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"*"}, WhiteList: true})
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraints("dev", "router=dev")
+	err = provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "dev", Field: "router", Values: []string{"dev"}, WhiteList: true})
 	c.Assert(err, check.IsNil)
 	expected := []provision.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}, WhiteList: true},
@@ -543,9 +543,9 @@ func (s *S) TestPoolConstraint(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintListEmpty(c *check.C) {
-	err := provision.SetPoolConstraints("test1", "team=")
+	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "test1", Field: "team", Values: []string{""}, WhiteList: true})
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/constraints", nil)
+	request, err := http.NewRequest("GET", "/1.3/constraints", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -555,10 +555,15 @@ func (s *S) TestPoolConstraintListEmpty(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintSet(c *check.C) {
-	values := url.Values{}
-	values.Set("poolExpr", "*")
-	values["constraints"] = []string{"team!=*", "router=routerA"}
-	req, err := http.NewRequest("PUT", "/constraints", strings.NewReader(values.Encode()))
+	params := provision.PoolConstraint{
+		PoolExpr:  "*",
+		WhiteList: true,
+		Field:     "router",
+		Values:    []string{"routerA"},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("PUT", "/1.3/constraints", strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -568,7 +573,6 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*provision.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}, WhiteList: true},
-		{PoolExpr: "*", Field: "team", Values: []string{"*"}, WhiteList: false},
 		{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, WhiteList: true},
 	}
 	constraints, err := provision.ListPoolsConstraints(nil)
@@ -577,10 +581,13 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "*"},
 		Owner:  s.token.GetUserName(),
-		Kind:   "pool.update.constraint.set",
+		Kind:   "pool.update.constraints.set",
 		StartCustomData: []map[string]interface{}{
-			{"name": "poolExpr", "value": "*"},
-			{"name": "constraints", "value": []interface{}{"team!=*", "router=routerA"}},
+			{"name": "PoolExpr", "value": "*"},
+			{"name": "Field", "value": "router"},
+			{"name": "Values.0", "value": "routerA"},
+			{"name": "WhiteList", "value": "true"},
+			{"name": ":version", "value": "1.3"},
 		},
 	}, eventtest.HasEvent)
 }
@@ -595,18 +602,4 @@ func (s *S) TestPoolConstraintSetRequiresPoolExpr(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(rec.Body.String(), check.Equals, "You must provide a Pool Expression\n")
-}
-
-func (s *S) TestPoolConstraintSetRequiresAtLeastOneConstraint(c *check.C) {
-	values := url.Values{}
-	values.Set("poolExpr", "*")
-	req, err := http.NewRequest("PUT", "/constraints", strings.NewReader(values.Encode()))
-	c.Assert(err, check.IsNil)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(rec.Body.String(), check.Equals, "You must provide at least one constraint to set\n")
 }

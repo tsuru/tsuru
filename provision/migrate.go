@@ -5,9 +5,6 @@
 package provision
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/tsuru/tsuru/db"
 )
 
@@ -29,11 +26,11 @@ func MigratePoolTeamsToPoolConstraints() error {
 		return err
 	}
 	for _, p := range pools {
-		constraint := fmt.Sprintf("team=*")
+		values := []string{"*"}
 		if !p.Public {
-			constraint = fmt.Sprintf("team=%s", strings.Join(p.Teams, ","))
+			values = p.Teams
 		}
-		err := SetPoolConstraints(p.Name, constraint)
+		err := SetPoolConstraint(&PoolConstraint{PoolExpr: p.Name, Field: "team", Values: values})
 		if err != nil {
 			return err
 		}
