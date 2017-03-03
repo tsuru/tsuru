@@ -160,7 +160,7 @@ func AddPool(opts AddPoolOptions) error {
 		return err
 	}
 	if opts.Public || opts.Default {
-		return SetPoolConstraint(&PoolConstraint{PoolExpr: opts.Name, Field: "team", Values: []string{"*"}, WhiteList: true})
+		return SetPoolConstraint(&PoolConstraint{PoolExpr: opts.Name, Field: "team", Values: []string{"*"}})
 	}
 	return nil
 }
@@ -215,7 +215,7 @@ func AddTeamsToPool(poolName string, teams []string) error {
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
-	if teamConstraint != nil && !teamConstraint.WhiteList {
+	if teamConstraint != nil && teamConstraint.Blacklist {
 		return errors.New("Unable to add teams to blacklist constraint")
 	}
 	if teamConstraint.AllowsAll() || pool.Default {
@@ -247,7 +247,7 @@ func RemoveTeamsFromPool(poolName string, teams []string) error {
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
-	if constraint != nil && !constraint.WhiteList {
+	if constraint != nil && constraint.Blacklist {
 		return errors.New("Unable to remove teams from blacklist constraint")
 	}
 	return removePoolConstraint(poolName, "team", teams...)
@@ -359,7 +359,7 @@ type PoolConstraint struct {
 	PoolExpr  string
 	Field     string
 	Values    []string
-	WhiteList bool
+	Blacklist bool
 }
 
 func (c *PoolConstraint) checkExact(v string) bool {
@@ -368,10 +368,10 @@ func (c *PoolConstraint) checkExact(v string) bool {
 	}
 	for _, r := range c.Values {
 		if r == v {
-			return c.WhiteList
+			return !c.Blacklist
 		}
 	}
-	return !c.WhiteList
+	return c.Blacklist
 }
 
 func (c *PoolConstraint) check(v string) bool {
@@ -380,14 +380,14 @@ func (c *PoolConstraint) check(v string) bool {
 	}
 	for _, r := range c.Values {
 		if match, _ := regexp.MatchString(strings.Replace(r, "*", ".*", -1), v); match {
-			return c.WhiteList
+			return !c.Blacklist
 		}
 	}
-	return !c.WhiteList
+	return c.Blacklist
 }
 
 func (c *PoolConstraint) AllowsAll() bool {
-	if c == nil || !c.WhiteList {
+	if c == nil || c.Blacklist {
 		return false
 	}
 	return c.checkExact("*")
@@ -443,9 +443,7 @@ func appendPoolConstraint(poolExpr string, field string, values ...string) error
 	defer conn.Close()
 	_, err = conn.PoolsConstraints().Upsert(
 		bson.M{"poolexpr": poolExpr, "field": field},
-		bson.M{"$addToSet": bson.M{"values": bson.M{"$each": values}},
-			"$setOnInsert": bson.M{"whitelist": true},
-		},
+		bson.M{"$addToSet": bson.M{"values": bson.M{"$each": values}}},
 	)
 	return err
 }

@@ -20,10 +20,16 @@ func (s *S) TestMigratePoolTeamsToPoolConstraints(c *check.C) {
 	c.Assert(err, check.IsNil)
 	constraint, err := getExactConstraintForPool("pool1", "team")
 	c.Assert(err, check.IsNil)
-	c.Assert(constraint, check.NotNil)
-	c.Assert(constraint.Values, check.DeepEquals, []string{"team1", "team2"})
+	c.Assert(constraint, check.DeepEquals, &PoolConstraint{
+		PoolExpr: "pool1",
+		Values:   []string{"team1", "team2"},
+		Field:    "team",
+	})
 	constraint, err = getExactConstraintForPool("publicPool", "team")
 	c.Assert(err, check.IsNil)
-	c.Assert(constraint, check.NotNil)
-	c.Assert(constraint.Values, check.DeepEquals, []string{"*"})
+	c.Assert(constraint, check.DeepEquals, &PoolConstraint{
+		PoolExpr: "publicPool",
+		Values:   []string{"*"},
+		Field:    "team",
+	})
 }

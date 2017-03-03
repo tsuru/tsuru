@@ -520,14 +520,14 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 }
 
 func (s *S) TestPoolConstraint(c *check.C) {
-	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"*"}, WhiteList: true})
+	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"*"}})
 	c.Assert(err, check.IsNil)
-	err = provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "dev", Field: "router", Values: []string{"dev"}, WhiteList: true})
+	err = provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "dev", Field: "router", Values: []string{"dev"}})
 	c.Assert(err, check.IsNil)
 	expected := []provision.PoolConstraint{
-		{PoolExpr: "test1", Field: "team", Values: []string{"*"}, WhiteList: true},
-		{PoolExpr: "*", Field: "router", Values: []string{"*"}, WhiteList: true},
-		{PoolExpr: "dev", Field: "router", Values: []string{"dev"}, WhiteList: true},
+		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
+		{PoolExpr: "*", Field: "router", Values: []string{"*"}},
+		{PoolExpr: "dev", Field: "router", Values: []string{"dev"}},
 	}
 	request, err := http.NewRequest("GET", "/constraints", nil)
 	c.Assert(err, check.IsNil)
@@ -543,7 +543,7 @@ func (s *S) TestPoolConstraint(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintListEmpty(c *check.C) {
-	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "test1", Field: "team", Values: []string{""}, WhiteList: true})
+	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "test1", Field: "team", Values: []string{""}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/1.3/constraints", nil)
 	c.Assert(err, check.IsNil)
@@ -557,7 +557,7 @@ func (s *S) TestPoolConstraintListEmpty(c *check.C) {
 func (s *S) TestPoolConstraintSet(c *check.C) {
 	params := provision.PoolConstraint{
 		PoolExpr:  "*",
-		WhiteList: true,
+		Blacklist: true,
 		Field:     "router",
 		Values:    []string{"routerA"},
 	}
@@ -572,8 +572,8 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*provision.PoolConstraint{
-		{PoolExpr: "test1", Field: "team", Values: []string{"*"}, WhiteList: true},
-		{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, WhiteList: true},
+		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
+		{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true},
 	}
 	constraints, err := provision.ListPoolsConstraints(nil)
 	c.Assert(err, check.IsNil)
@@ -586,7 +586,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 			{"name": "PoolExpr", "value": "*"},
 			{"name": "Field", "value": "router"},
 			{"name": "Values.0", "value": "routerA"},
-			{"name": "WhiteList", "value": "true"},
+			{"name": "Blacklist", "value": "true"},
 			{"name": ":version", "value": "1.3"},
 		},
 	}, eventtest.HasEvent)
