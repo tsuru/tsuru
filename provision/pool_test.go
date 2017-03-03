@@ -465,18 +465,18 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 		expected map[string]*PoolConstraint
 	}{
 		{pool: "prod", expected: map[string]*PoolConstraint{
-			"router": &PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"planb"}},
+			"router": {PoolExpr: "*", Field: "router", Values: []string{"planb"}},
 		}},
 		{pool: "pp", expected: map[string]*PoolConstraint{
-			"router": &PoolConstraint{PoolExpr: "pp", Field: "router", Values: []string{"galeb"}},
+			"router": {PoolExpr: "pp", Field: "router", Values: []string{"galeb"}},
 		}},
 		{pool: "pool1_dev", expected: map[string]*PoolConstraint{
-			"router": &PoolConstraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}},
-			"team":   &PoolConstraint{PoolExpr: "pool1_dev", Field: "team", Values: []string{"team_pool1"}},
+			"router": {PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}},
+			"team":   {PoolExpr: "pool1_dev", Field: "team", Values: []string{"team_pool1"}},
 		}},
 		{pool: "pool2_dev", expected: map[string]*PoolConstraint{
-			"router": &PoolConstraint{PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}},
-			"team":   &PoolConstraint{PoolExpr: "*_dev", Field: "team", Values: []string{"team_pool1"}, Blacklist: true},
+			"router": {PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}},
+			"team":   {PoolExpr: "*_dev", Field: "team", Values: []string{"team_pool1"}, Blacklist: true},
 		}},
 	}
 	for i, t := range tt {
@@ -496,7 +496,7 @@ func (s *S) TestAppendPoolConstraint(c *check.C) {
 	constraints, err := getConstraintsForPool("*")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
-		"router": &PoolConstraint{Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, Blacklist: true},
+		"router": {Field: "router", PoolExpr: "*", Values: []string{"planb", "galeb"}, Blacklist: true},
 	})
 }
 
@@ -506,7 +506,7 @@ func (s *S) TestAppendPoolConstraintNewConstraint(c *check.C) {
 	constraints, err := getConstraintsForPool("myPool")
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[string]*PoolConstraint{
-		"router": &PoolConstraint{Field: "router", PoolExpr: "myPool", Values: []string{"galeb"}},
+		"router": {Field: "router", PoolExpr: "myPool", Values: []string{"galeb"}},
 	})
 }
 

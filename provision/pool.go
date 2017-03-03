@@ -429,10 +429,7 @@ func SetPoolConstraint(c *PoolConstraint) error {
 		return nil
 	}
 	_, err = conn.PoolsConstraints().Upsert(bson.M{"poolexpr": c.PoolExpr, "field": c.Field}, c)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func AppendPoolConstraint(c *PoolConstraint) error {
