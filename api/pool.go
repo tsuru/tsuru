@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
@@ -343,5 +344,12 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	append := false
+	if appendStr := r.FormValue("append"); appendStr != "" {
+		append, _ = strconv.ParseBool(appendStr)
+	}
+	if append {
+		return provision.AppendPoolConstraint(&poolConstraint)
+	}
 	return provision.SetPoolConstraint(&poolConstraint)
 }

@@ -592,6 +592,46 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestPoolConstraintSetAppend(c *check.C) {
+	err := provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "*", Field: "router", Values: []string{"routerA"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
+	params := provision.PoolConstraint{
+		PoolExpr: "*",
+		Field:    "router",
+		Values:   []string{"routerB"},
+	}
+	v, err := form.EncodeToValues(&params)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("PUT", "/1.3/constraints?append=true", strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	expected := []*provision.PoolConstraint{
+		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
+		{PoolExpr: "*", Field: "router", Values: []string{"routerA", "routerB"}, Blacklist: true},
+	}
+	constraints, err := provision.ListPoolsConstraints(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(constraints, check.DeepEquals, expected)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "*"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.update.constraints.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": "PoolExpr", "value": "*"},
+			{"name": "Field", "value": "router"},
+			{"name": "Values.0", "value": "routerB"},
+			{"name": "Blacklist", "value": ""},
+			{"name": ":version", "value": "1.3"},
+			{"name": "append", "value": "true"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestPoolConstraintSetRequiresPoolExpr(c *check.C) {
 	req, err := http.NewRequest("PUT", "/constraints", bytes.NewBufferString(""))
 	c.Assert(err, check.IsNil)

@@ -435,6 +435,10 @@ func SetPoolConstraint(c *PoolConstraint) error {
 	return nil
 }
 
+func AppendPoolConstraint(c *PoolConstraint) error {
+	return appendPoolConstraint(c.PoolExpr, c.Field, c.Values...)
+}
+
 func appendPoolConstraint(poolExpr string, field string, values ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
