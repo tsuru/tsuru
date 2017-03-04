@@ -132,9 +132,7 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 	result["public"] = teams.AllowsAll()
 	result["default"] = p.Default
 	result["provisioner"] = p.Provisioner
-	if teams != nil {
-		result["teams"] = teams.Values
-	}
+	result["teams"] = resolvedConstraints["team"]
 	result["allowed"] = resolvedConstraints
 	return json.Marshal(&result)
 }
