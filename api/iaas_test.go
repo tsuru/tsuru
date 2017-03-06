@@ -166,6 +166,7 @@ func (s *S) TestTemplateCreate(c *check.C) {
 			{Name: "a", Value: "b"},
 		}),
 	}
+	defer iaas.DestroyTemplate("my-tpl")
 	v, err := form.EncodeToValues(&data)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -176,7 +177,6 @@ func (s *S) TestTemplateCreate(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	defer iaas.DestroyTemplate("my-tpl")
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
 	c.Assert(templates, check.HasLen, 1)
@@ -220,6 +220,7 @@ func (s *S) TestTemplateCreateAlreadyExists(c *check.C) {
 			{Name: "b", Value: "a"},
 		}),
 	}
+	defer iaas.DestroyTemplate("my-tpl")
 	c.Assert(err, check.IsNil)
 	v, err := form.EncodeToValues(&newTemplate)
 	c.Assert(err, check.IsNil)
@@ -232,7 +233,6 @@ func (s *S) TestTemplateCreateAlreadyExists(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, "template name \"my-tpl\" already used\n")
-	defer iaas.DestroyTemplate("my-tpl")
 }
 
 func (s *S) TestTemplateCreateBadRequest(c *check.C) {
@@ -290,6 +290,7 @@ func (s *S) TestTemplateUpdate(c *check.C) {
 		}),
 	}
 	err := tpl1.Save()
+	defer iaas.DestroyTemplate("my-tpl")
 	c.Assert(err, check.IsNil)
 	tplParam := iaas.Template{
 		Data: iaas.TemplateDataList([]iaas.TemplateData{
@@ -380,6 +381,7 @@ func (s *S) TestTemplateUpdateIaasName(c *check.C) {
 	}
 	err := tpl1.Save()
 	c.Assert(err, check.IsNil)
+	defer iaas.DestroyTemplate("my-tpl")
 	tplParam := iaas.Template{
 		IaaSName: "ec2",
 		Data: iaas.TemplateDataList([]iaas.TemplateData{
@@ -428,6 +430,7 @@ func (s *S) TestTemplateUpdateNotRegistered(c *check.C) {
 	}
 	err := tpl1.Save()
 	c.Assert(err, check.IsNil)
+	defer iaas.DestroyTemplate("my-tpl")
 	tplParam := iaas.Template{
 		IaaSName: "not-registered",
 		Data: iaas.TemplateDataList([]iaas.TemplateData{
