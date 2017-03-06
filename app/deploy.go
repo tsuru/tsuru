@@ -34,6 +34,7 @@ const (
 	DeployRollback    DeployKind = "rollback"
 	DeployUpload      DeployKind = "upload"
 	DeployUploadBuild DeployKind = "uploadbuild"
+	DeployRebuild     DeployKind = "rebuild"
 )
 
 var reImageVersion = regexp.MustCompile("v[0-9]+$")
@@ -248,7 +249,10 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	switch opts.GetKind() {
+	if opts.Kind == "" {
+		opts.GetKind()
+	}
+	switch opts.Kind {
 	case DeployRollback:
 		if deployer, ok := prov.(provision.RollbackableDeployer); ok {
 			return deployer.Rollback(opts.App, opts.Image, evt)
@@ -261,16 +265,20 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 		if deployer, ok := prov.(provision.UploadDeployer); ok {
 			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, evt)
 		}
+	case DeployRebuild:
+		if deployer, ok := prov.(provision.RebuildableDeployer); ok {
+			return deployer.Rebuild(opts.App, evt)
+		}
 	default:
 		if deployer, ok := prov.(provision.ArchiveDeployer); ok {
 			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
 		}
 	}
-	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.GetKind())}
+	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
 }
 
 func ValidateOrigin(origin string) bool {
-	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image"}
+	originList := []string{"app-deploy", "git", "rollback", "drag-and-drop", "image", "rebuild"}
 	for _, ol := range originList {
 		if ol == origin {
 			return true

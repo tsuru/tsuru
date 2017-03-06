@@ -853,7 +853,7 @@ func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, evt *event.
 }
 
 func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Event) (string, error) {
-	if err := p.getError("ImageDeploy"); err != nil {
+	if err := p.getError("Rollback"); err != nil {
 		return "", err
 	}
 	p.mut.Lock()
@@ -865,6 +865,21 @@ func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Eve
 	evt.Write([]byte("Rollback deploy called"))
 	p.apps[app.GetName()] = pApp
 	return img, nil
+}
+
+func (p *FakeProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
+	if err := p.getError("Rebuild"); err != nil {
+		return "", err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return "", errNotProvisioned
+	}
+	evt.Write([]byte("Rebuild deploy called"))
+	p.apps[app.GetName()] = pApp
+	return "app-image", nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {

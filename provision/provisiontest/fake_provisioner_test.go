@@ -1502,3 +1502,22 @@ func (s *S) TestFakeRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, false)
 }
+
+func (s *S) TestRebuildDeploy(c *check.C) {
+	app := NewFakeApp("myapp", "arch", 1)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: app.name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	p := NewFakeProvisioner()
+	err = p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.Rebuild(app, evt)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.Log, check.Equals, "Rebuild deploy called")
+}

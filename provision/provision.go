@@ -294,6 +294,12 @@ type RollbackableDeployer interface {
 	Rollback(App, string, *event.Event) (string, error)
 }
 
+// RebuildableDeployer is a provisioner that allows rebuild the last
+// deployed image.
+type RebuildableDeployer interface {
+	Rebuild(App, *event.Event) (string, error)
+}
+
 // Provisioner is the basic interface of this package.
 //
 // Any tsuru provisioner must implement this interface in order to provision

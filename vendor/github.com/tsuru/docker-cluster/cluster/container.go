@@ -371,3 +371,11 @@ func (c *Cluster) UploadToContainer(containerId string, opts docker.UploadToCont
 	}
 	return node.UploadToContainer(containerId, opts)
 }
+
+func (c *Cluster) DownloadFromContainer(containerId string, opts docker.DownloadFromContainerOptions) error {
+	node, err := c.getNodeForContainer(containerId)
+	if err != nil {
+		return err
+	}
+	return node.DownloadFromContainer(containerId, opts)
+}
