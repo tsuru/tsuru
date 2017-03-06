@@ -150,27 +150,30 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	_, err = iaas.FindTemplate(paramTemplate.Name)
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
+		Kind:       permission.PermMachineTemplateCreate,
+		Owner:      token,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
+	})
 	if err != nil {
-		evt, err := event.New(&event.Opts{
-			Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
-			Kind:       permission.PermMachineTemplateCreate,
-			Owner:      token,
-			CustomData: event.FormToCustomData(r.Form),
-			Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
-		})
-		if err != nil {
-			return err
-		}
-		defer func() { evt.Done(err) }()
-		err = paramTemplate.Save()
-		if err != nil {
-			return err
-		}
-		w.WriteHeader(http.StatusCreated)
-		return nil
+		return err
 	}
-	return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("template name \"%s\" already used", paramTemplate.Name)}
+	defer func() { evt.Done(err) }()
+	_, err = iaas.FindTemplate(paramTemplate.Name)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	if err == nil {
+		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("template name \"%s\" already used", paramTemplate.Name)}
+	}
+	err = paramTemplate.Save()
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusCreated)
+	return nil
 }
 
 // title: template destroy
