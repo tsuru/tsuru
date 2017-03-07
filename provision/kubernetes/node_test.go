@@ -4,9 +4,27 @@
 
 package kubernetes
 
-import "gopkg.in/check.v1"
+import (
+	"gopkg.in/check.v1"
+	"k8s.io/client-go/pkg/api/v1"
+)
 
 func (s *S) TestAddress(c *check.C) {
-	node := kubernetesNodeWrapper{Addresses: []string{"192.168.99.100"}}
+	node := kubernetesNodeWrapper{
+		node: &v1.Node{
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeInternalIP,
+						Address: "192.168.99.100",
+					},
+					{
+						Type:    v1.NodeExternalIP,
+						Address: "200.0.0.1",
+					},
+				},
+			},
+		},
+	}
 	c.Assert(node.Address(), check.Equals, "192.168.99.100")
 }

@@ -13,17 +13,12 @@ import (
 )
 
 func (s *S) TestListNodes(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	s.mockfakeNodes(c)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, url)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.1")
+	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.2")
 }
 
 func (s *S) TestListNodesWithoutNodes(c *check.C) {
@@ -33,58 +28,39 @@ func (s *S) TestListNodesWithoutNodes(c *check.C) {
 }
 
 func (s *S) TestListNodesFilteringByAddress(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
+	s.mockfakeNodes(c)
+	nodes, err := s.p.ListNodes([]string{"192.168.99.1"})
 	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
-	nodes, err := s.p.ListNodes([]string{"https://192.168.99.101"})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 0)
+	c.Assert(nodes, check.HasLen, 1)
 }
 
 func (s *S) TestAddNode(c *check.C) {
-	url := "https://192.168.99.100:8443"
+	url := "https://clusteraddr"
 	opts := provision.AddNodeOptions{
 		Address: url,
+		Metadata: map[string]string{
+			"cluster": "true",
+		},
 	}
 	err := s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
-	nodes, err := s.p.ListNodes(nil)
+	cli, err := getClusterClient()
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	node := nodes[0]
-	c.Assert(node.Address(), check.Equals, url)
-}
-
-func (s *S) TestRemoveNode(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	addNodeOpts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(addNodeOpts)
-	c.Assert(err, check.IsNil)
-	removeNodeOpts := provision.RemoveNodeOptions{
-		Address: url,
-	}
-	err = s.p.RemoveNode(removeNodeOpts)
-	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 0)
+	c.Assert(cli, check.DeepEquals, s.client)
+	c.Assert(s.lastConf.Host, check.Equals, url)
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
 	url := "https://192.168.99.100:8443"
 	opts := provision.AddNodeOptions{
 		Address: url,
+		Metadata: map[string]string{
+			"cluster": "true",
+		},
 	}
 	err := s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	s.mockfakeNodes(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -109,16 +85,11 @@ func (s *S) TestUnits(c *check.C) {
 }
 
 func (s *S) TestGetNode(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
+	s.mockfakeNodes(c)
+	host := "192.168.99.1"
+	node, err := s.p.GetNode(host)
 	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
-	node, err := s.p.GetNode(url)
-	c.Assert(err, check.IsNil)
-	c.Assert(node.Address(), check.Equals, url)
+	c.Assert(node.Address(), check.Equals, host)
 	node, err = s.p.GetNode("http://doesnotexist.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)

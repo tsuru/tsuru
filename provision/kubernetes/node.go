@@ -4,26 +4,53 @@
 
 package kubernetes
 
-import "github.com/tsuru/tsuru/provision"
+import (
+	"github.com/tsuru/tsuru/provision"
+	"k8s.io/client-go/pkg/api/v1"
+)
+
+const (
+	labelNodePoolName = "pool"
+)
 
 type kubernetesNodeWrapper struct {
-	Addresses []string
+	node *v1.Node
+	prov *kubernetesProvisioner
 }
 
 func (n *kubernetesNodeWrapper) Pool() string {
-	return ""
+	if n.node.Labels == nil {
+		return ""
+	}
+	return n.node.Labels[labelNodePoolName]
 }
 
 func (n *kubernetesNodeWrapper) Address() string {
-	return n.Addresses[0]
-}
-
-func (n *kubernetesNodeWrapper) Status() string {
+	for _, addr := range n.node.Status.Addresses {
+		if addr.Type == v1.NodeInternalIP {
+			return addr.Address
+		}
+	}
 	return ""
 }
 
+func (n *kubernetesNodeWrapper) Status() string {
+	for _, cond := range n.node.Status.Conditions {
+		if cond.Type == v1.NodeReady {
+			if cond.Status == v1.ConditionTrue {
+				return "Ready"
+			}
+			return cond.Message
+		}
+	}
+	return "Invalid"
+}
+
 func (n *kubernetesNodeWrapper) Metadata() map[string]string {
-	return nil
+	if n.node.Labels == nil {
+		return map[string]string{}
+	}
+	return n.node.Labels
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
@@ -31,5 +58,5 @@ func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
 }
 
 func (n *kubernetesNodeWrapper) Provisioner() provision.NodeProvisioner {
-	return nil
+	return n.prov
 }

@@ -19,14 +19,22 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
+	"k8s.io/client-go/rest"
+	ktesting "k8s.io/client-go/testing"
 )
 
 type S struct {
-	p     *kubernetesProvisioner
-	conn  *db.Storage
-	user  *auth.User
-	team  *auth.Team
-	token auth.Token
+	p        *kubernetesProvisioner
+	conn     *db.Storage
+	user     *auth.User
+	team     *auth.Team
+	token    auth.Token
+	client   *fake.Clientset
+	lastConf *rest.Config
 }
 
 var _ = check.Suite(&S{})
@@ -52,6 +60,11 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	s.client = fake.NewSimpleClientset()
+	clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
+		s.lastConf = conf
+		return s.client, nil
+	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
@@ -81,4 +94,50 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) mockfakeNodes(c *check.C) {
+	url := "https://anything"
+	opts := provision.AddNodeOptions{
+		Address: url,
+		Metadata: map[string]string{
+			"cluster": "true",
+		},
+	}
+	err := s.p.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	s.client.PrependReactor("list", "nodes", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, &v1.NodeList{
+			Items: []v1.Node{
+				{
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "192.168.99.1",
+							},
+							{
+								Type:    v1.NodeExternalIP,
+								Address: "200.0.0.1",
+							},
+						},
+					},
+				},
+				{
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "192.168.99.2",
+							},
+							{
+								Type:    v1.NodeExternalIP,
+								Address: "200.0.0.2",
+							},
+						},
+					},
+				},
+			},
+		}, nil
+	})
 }

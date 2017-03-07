@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/mgo.v2/bson"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/set"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 const (
@@ -80,129 +80,152 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitId string, cus
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	coll, err := nodeAddrCollection()
+	client, err := getClusterClient()
+	if err != nil {
+		if err == errNoCluster {
+			return nil, nil
+		}
+		return nil, err
+	}
+	nodeList, err := client.Core().Nodes().List(v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer coll.Close()
-	var data kubernetesNodeWrapper
-	err = coll.FindId(uniqueDocumentID).One(&data)
-	if err != nil {
-		return []provision.Node{}, nil
-	}
+	var addressSet set.Set
 	if len(addressFilter) > 0 {
-		for _, addr := range addressFilter {
-			if addr == data.Address() {
-				return []provision.Node{&data}, nil
-			}
-		}
-		return []provision.Node{}, nil
+		addressSet = set.FromSlice(addressFilter)
 	}
-	return []provision.Node{&data}, nil
+	var nodes []provision.Node
+	for i := range nodeList.Items {
+		n := &kubernetesNodeWrapper{
+			node: &nodeList.Items[i],
+			prov: p,
+		}
+		if addressSet == nil || addressSet.Includes(n.Address()) {
+			nodes = append(nodes, n)
+		}
+	}
+	return nodes, nil
 }
 
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
-	nodes, err := p.ListNodes(nil)
+	client, err := getClusterClient()
 	if err != nil {
 		return nil, err
 	}
-	for _, n := range nodes {
-		if address == n.Address() {
-			return n, nil
-		}
+	node, err := p.findNodeByAddress(client, address)
+	if err != nil {
+		return nil, err
 	}
-	return nil, provision.ErrNodeNotFound
+	return node, nil
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	coll, err := nodeAddrCollection()
-	if err != nil {
-		return err
+	isCluster, _ := strconv.ParseBool(opts.Metadata["cluster"])
+	if isCluster {
+		return addClusterNode(opts)
 	}
-	defer coll.Close()
-	token, err := config.GetString("kubernetes:token")
-	if err != nil {
-		return err
-	}
-	_, err = client.New(&restclient.Config{
-		Host:        opts.Address,
-		Insecure:    true,
-		BearerToken: token,
-	})
-	if err != nil {
-		return err
-	}
-	addrs := []string{opts.Address}
-	_, err = coll.UpsertId(uniqueDocumentID, bson.M{"$set": bson.M{"addresses": addrs}})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
+	// TODO(cezarsa): Start kubelet, kube-proxy and add labels
+	return errNotImplemented
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
-	coll, err := nodeAddrCollection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	err = coll.RemoveId(uniqueDocumentID)
-	return err
+	return errNotImplemented
 }
 
 func (p *kubernetesProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
 	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
-func (p *kubernetesProvisioner) UpdateNode(provision.UpdateNodeOptions) error {
-	return nil
+func (p *kubernetesProvisioner) findNodeByAddress(client kubernetes.Interface, address string) (*kubernetesNodeWrapper, error) {
+	nodeList, err := client.Core().Nodes().List(v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for i := range nodeList.Items {
+		nodeWrapper := &kubernetesNodeWrapper{node: &nodeList.Items[i], prov: p}
+		if address == nodeWrapper.Address() {
+			return nodeWrapper, nil
+		}
+	}
+	return nil, provision.ErrNodeNotFound
 }
 
-func (p *kubernetesProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {
-	return "", errNotImplemented
+func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	nodeWrapper, err := p.findNodeByAddress(client, opts.Address)
+	if err != nil {
+		return err
+	}
+	node := nodeWrapper.node
+	if opts.Disable {
+		node.Spec.Unschedulable = true
+	} else if opts.Enable {
+		node.Spec.Unschedulable = false
+	}
+	for k, v := range opts.Metadata {
+		if v == "" {
+			delete(node.Labels, k)
+		} else {
+			node.Labels[k] = v
+		}
+	}
+	_, err = client.Core().Nodes().Update(node)
+	return err
+}
+
+func deploymentNameForApp(a provision.App, process string) string {
+	return fmt.Sprintf("%s-%s", a.GetName(), process)
 }
 
 func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
-	hosts, err := p.ListNodes(nil)
-	if err != nil {
-		return "", err
-	}
-	token, err := config.GetString("kubernetes:token")
-	if err != nil {
-		return "", err
-	}
-	client, err := client.New(&restclient.Config{
-		Host:        hosts[0].Address(),
-		Insecure:    true,
-		BearerToken: token,
-	})
+	client, err := getClusterClient()
 	if err != nil {
 		return "", err
 	}
 	if !strings.Contains(imgID, ":") {
 		imgID = fmt.Sprintf("%s:latest", imgID)
 	}
-	deployment := extensions.Deployment{
-		ObjectMeta: api.ObjectMeta{
-			Name: a.GetName(),
+	routerName, err := a.GetRouterName()
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	routerType, _, err := router.Type(routerName)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	replicas := int32(1)
+	deployment := v1beta1.Deployment{
+		ObjectMeta: v1.ObjectMeta{
+			Name: deploymentNameForApp(a, ""),
 		},
-		Spec: extensions.DeploymentSpec{
-			Replicas: 1,
-			Template: api.PodTemplateSpec{
-				ObjectMeta: api.ObjectMeta{
-					Name: a.GetName(),
+		Spec: v1beta1.DeploymentSpec{
+			Replicas: &replicas,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
 					Labels: map[string]string{
-						"name": a.GetName(),
+						"tsuru.pod":         strconv.FormatBool(true),
+						"tsuru.app.name":    a.GetName(),
+						"tsuru.node.pool":   a.GetPool(),
+						"tsuru.router.name": routerName,
+						"tsuru.router.type": routerType,
 					},
 				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
-						{Name: a.GetName(), Image: imgID},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  a.GetName(),
+							Image: imgID,
+						},
 					},
 				},
 			},
 		},
 	}
-	_, err = client.Deployments("default").Create(&deployment)
+	// client.De
+	_, err = client.Extensions().Deployments("default").Create(&deployment)
 	return "", err
 }
