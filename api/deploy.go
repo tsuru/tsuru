@@ -358,12 +358,10 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
 	origin := r.FormValue("origin")
-	if origin != "" {
-		if !app.ValidateOrigin(origin) {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: "Invalid deployment origin",
-			}
+	if !app.ValidateOrigin(origin) {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid deployment origin",
 		}
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -376,6 +374,10 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		User:         t.GetUserName(),
 		Origin:       origin,
 		Kind:         app.DeployRebuild,
+	}
+	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	if !canDeploy {
+		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
 	var imageID string
 	evt, err := event.New(&event.Opts{
