@@ -24,6 +24,7 @@ var (
 	ErrPoolNameIsRequired             = errors.New("Pool name is required.")
 	ErrPoolNotFound                   = errors.New("Pool does not exist.")
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
+	ErrPoolHasNoRouter                = errors.New("no router found for pool")
 
 	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", strings.Join(validConstraintTypes, ","))
 	validConstraintTypes     = []string{"team", "router"}
@@ -58,38 +59,59 @@ func (p *Pool) GetProvisioner() (Provisioner, error) {
 }
 
 func (p *Pool) GetTeams() ([]string, error) {
-	allowedValues, err := p.AllowedValues()
+	allowedValues, err := p.allowedValues()
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := allowedValues["team"]; ok {
+	if c, _ := allowedValues["team"]; len(c) > 0 {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoTeam
 }
 
-func (p *Pool) AllowedValues() (map[string][]string, error) {
+func (p *Pool) GetRouters() ([]string, error) {
+	allowedValues, err := p.allowedValues()
+	if err != nil {
+		return nil, err
+	}
+	if c, _ := allowedValues["router"]; len(c) > 0 {
+		return c, nil
+	}
+	return nil, ErrPoolHasNoRouter
+}
+
+func (p *Pool) allowedValues() (map[string][]string, error) {
+	teams, err := teamsNames()
+	if err != nil {
+		return nil, err
+	}
+	routers, err := routersNames()
+	if err != nil {
+		return nil, err
+	}
+	resolved := map[string][]string{
+		"router": routers,
+		"team":   teams,
+	}
 	constraints, err := getConstraintsForPool(p.Name, "team", "router")
 	if err != nil {
 		return nil, err
 	}
-	resolved := make(map[string][]string)
 	for k, v := range constraints {
 		var names []string
 		switch k {
 		case "team":
-			names, err = teamsNames()
+			names = teams
 		case "router":
-			names, err = routersNames()
+			names = routers
 		}
-		if err != nil {
-			return nil, err
-		}
+		var validNames []string
 		for _, n := range names {
 			if v.check(n) {
-				resolved[k] = append(resolved[k], n)
+				validNames = append(validNames, n)
 			}
 		}
+		resolved[k] = validNames
 	}
 	return resolved, nil
 }
@@ -123,7 +145,7 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resolvedConstraints, err := p.AllowedValues()
+	resolvedConstraints, err := p.allowedValues()
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +351,7 @@ func PoolUpdate(name string, opts UpdatePoolOptions) error {
 		query["default"] = *opts.Default
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
-		errConstraint := appendPoolConstraint(name, "team", "*")
+		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: "team", Values: []string{"*"}})
 		if errConstraint != nil {
 			return err
 		}

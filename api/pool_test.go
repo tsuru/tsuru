@@ -228,14 +228,18 @@ func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
 }
 
 func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
+	err := auth.CreateTeam("ateam", s.user)
+	c.Assert(err, check.IsNil)
 	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name}
-	err := provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = provision.AddTeamsToPool(pool.Name, []string{"tsuruteam"})
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=tsuruteam", nil)
+	err = provision.AddTeamsToPool(pool.Name, []string{"tsuruteam"})
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, []string{"ateam"})
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=ateam", nil)
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
@@ -245,15 +249,16 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	var p provision.Pool
 	err = s.conn.Pools().FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
-	_, err = p.GetTeams()
-	c.Assert(err, check.NotNil)
+	teams, err := p.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.remove",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":name", "value": "pool1"},
-			{"name": "team", "value": "tsuruteam"},
+			{"name": "team", "value": "ateam"},
 		},
 	}, eventtest.HasEvent)
 }
@@ -379,11 +384,13 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool1")
+	err = provision.SetPoolConstraint(&provision.PoolConstraint{PoolExpr: "pool1", Field: "team", Values: []string{"*"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
 	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
 	_, err = p.GetTeams()
 	c.Assert(err, check.NotNil)
-	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString("public=true")
 	req, err := http.NewRequest("PUT", "/pools/pool1", b)
 	c.Assert(err, check.IsNil)

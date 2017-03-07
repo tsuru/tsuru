@@ -297,10 +297,6 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	err = app.validateTeamOwner()
-	if err != nil {
-		return err
-	}
 	app.Plan = *plan
 	err = app.SetPool()
 	if err != nil {
@@ -330,7 +326,7 @@ func CreateApp(app *App, user *auth.User) error {
 }
 
 // Update changes informations of the application.
-func (app *App) Update(updateData App, w io.Writer) error {
+func (app *App) Update(updateData App, w io.Writer) (err error) {
 	description := updateData.Description
 	planName := updateData.Plan.Name
 	poolName := updateData.Pool
@@ -362,6 +358,22 @@ func (app *App) Update(updateData App, w io.Writer) error {
 		}
 		app.Plan = *plan
 	}
+	if teamOwner != "" {
+		team, err := auth.GetTeam(teamOwner)
+		if err != nil {
+			return err
+		}
+		app.TeamOwner = team.Name
+		defer func() {
+			if err == nil {
+				app.Grant(team)
+			}
+		}()
+	}
+	err = app.validate()
+	if err != nil {
+		return err
+	}
 	if app.Router != oldRouter || app.Plan != oldPlan {
 		actions := []*action.Action{
 			&moveRouterUnits,
@@ -373,18 +385,6 @@ func (app *App) Update(updateData App, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-	}
-	if teamOwner != "" {
-		team, err := auth.GetTeam(teamOwner)
-		if err != nil {
-			return err
-		}
-		app.TeamOwner = team.Name
-		err = app.validateTeamOwner()
-		if err != nil {
-			return err
-		}
-		app.Grant(team)
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -810,11 +810,6 @@ func (app *App) GetTeams() []auth.Team {
 	return teams
 }
 
-func (app *App) validateTeamOwner() error {
-	_, err := auth.GetTeam(app.TeamOwner)
-	return err
-}
-
 func (app *App) SetPool() error {
 	poolName, err := app.getPoolForApp(app.Pool)
 	if err != nil {
@@ -829,7 +824,11 @@ func (app *App) SetPool() error {
 		poolName = pool.Name
 	}
 	app.Pool = poolName
-	return nil
+	pool, err := provision.GetPoolByName(poolName)
+	if err != nil {
+		return err
+	}
+	return app.validateTeamOwner(pool)
 }
 
 func (app *App) getPoolForApp(poolName string) (string, error) {
@@ -853,20 +852,6 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 	pool, err := provision.GetPoolByName(poolName)
 	if err != nil {
 		return "", err
-	}
-	poolTeams, err := pool.GetTeams()
-	if err != nil && err != provision.ErrPoolHasNoTeam {
-		return "", errors.WithMessage(err, fmt.Sprintf("failed to get pool %q teams", pool.Name))
-	}
-	var poolTeam bool
-	for _, team := range poolTeams {
-		if team == app.TeamOwner {
-			poolTeam = true
-			break
-		}
-	}
-	if !poolTeam {
-		return "", errors.Errorf("App team owner %q has no access to pool %q", app.TeamOwner, pool.Name)
 	}
 	return pool.Name, nil
 }
@@ -904,7 +889,57 @@ func (app *App) validate() error {
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
+	return app.validatePool()
+}
+
+func (app *App) validatePool() error {
+	pool, err := provision.GetPoolByName(app.Pool)
+	if err != nil {
+		return err
+	}
+	err = app.validateTeamOwner(pool)
+	if err != nil {
+		return err
+	}
+	return app.validateRouter(pool)
+}
+
+func (app *App) validateTeamOwner(pool *provision.Pool) error {
+	_, err := auth.GetTeam(app.TeamOwner)
+	if err != nil {
+		return &tsuruErrors.ValidationError{Message: err.Error()}
+	}
+	poolTeams, err := pool.GetTeams()
+	if err != nil && err != provision.ErrPoolHasNoTeam {
+		msg := fmt.Sprintf("failed to get pool %q teams", pool.Name)
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
+	var poolTeam bool
+	for _, team := range poolTeams {
+		if team == app.TeamOwner {
+			poolTeam = true
+			break
+		}
+	}
+	if !poolTeam {
+		msg := fmt.Sprintf("App team owner %q has no access to pool %q", app.TeamOwner, pool.Name)
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
 	return nil
+}
+
+func (app *App) validateRouter(pool *provision.Pool) error {
+	routers, err := pool.GetRouters()
+	if err != nil {
+		return &tsuruErrors.ValidationError{Message: err.Error()}
+	}
+	for _, r := range routers {
+		if r == app.Router {
+			return nil
+		}
+	}
+	msg := fmt.Sprintf("router %q is not available for pool %q", app.Router, app.Pool)
+	return &tsuruErrors.ValidationError{Message: msg}
 }
 
 // InstanceEnv returns a map of environment variables that belongs to the given

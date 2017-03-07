@@ -319,7 +319,7 @@ func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "beyond"}
 	err = CreateApp(&a, &u)
-	c.Check(err, check.Equals, auth.ErrTeamNotFound)
+	c.Check(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
@@ -2141,29 +2141,44 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 }
 
 func (s *S) TestIsValid(c *check.C) {
+	err := auth.CreateTeam("noaccessteam", s.user)
+	c.Assert(err, check.IsNil)
+	err = provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     "team",
+		Values:    []string{"noaccessteam"},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
 	errMsg := "Invalid app name, your app should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter."
 	var data = []struct {
-		name     string
-		expected string
+		name      string
+		teamOwner string
+		pool      string
+		router    string
+		expected  string
 	}{
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", errMsg},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", ""},
-		{"myApp", errMsg},
-		{"my app", errMsg},
-		{"123myapp", errMsg},
-		{"myapp", ""},
-		{"_theirapp", errMsg},
-		{"my-app", ""},
-		{"-myapp", errMsg},
-		{"my_app", errMsg},
-		{"b", ""},
-		{InternalAppName, errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", s.team.Name, "pool1", "fake", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", s.team.Name, "pool1", "fake", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", s.team.Name, "pool1", "fake", ""},
+		{"myApp", s.team.Name, "pool1", "fake", errMsg},
+		{"my app", s.team.Name, "pool1", "fake", errMsg},
+		{"123myapp", s.team.Name, "pool1", "fake", errMsg},
+		{"myapp", s.team.Name, "pool1", "fake", ""},
+		{"_theirapp", s.team.Name, "pool1", "fake", errMsg},
+		{"my-app", s.team.Name, "pool1", "fake", ""},
+		{"-myapp", s.team.Name, "pool1", "fake", errMsg},
+		{"my_app", s.team.Name, "pool1", "fake", errMsg},
+		{"b", s.team.Name, "pool1", "fake", ""},
+		{InternalAppName, s.team.Name, "pool1", "fake", errMsg},
+		{"myapp", "invalidteam", "pool1", "fake", "team not found"},
+		{"myapp", s.team.Name, "pool1", "faketls", "router \"faketls\" is not available for pool \"pool1\""},
+		{"myapp", "noaccessteam", "pool1", "fake", "App team owner \"noaccessteam\" has no access to pool \"pool1\""},
 	}
 	for _, d := range data {
-		a := App{Name: d.name}
+		a := App{Name: d.name, TeamOwner: d.teamOwner, Pool: d.pool, Router: d.router}
 		if valid := a.validate(); valid != nil && valid.Error() != d.expected {
-			c.Errorf("Is %q a valid app name? Expected: %v. Got: %v.", d.name, d.expected, valid)
+			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
 }
@@ -3529,7 +3544,7 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 	c.Assert(e.ID, check.Equals, "oddity")
 }
 
-func (s *S) TestAppValidateTeamOwner(c *check.C) {
+func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	team := auth.Team{Name: "test"}
 	err := s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
@@ -3539,12 +3554,36 @@ func (s *S) TestAppValidateTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestAppValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
+func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
 	err := CreateApp(&a, s.user)
-	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
-	err = a.validateTeamOwner()
-	c.Assert(err, check.Equals, auth.ErrTeamNotFound)
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
+}
+
+func (s *S) TestAppCreateValidateNoRouterForPool(c *check.C) {
+	provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     "router",
+		Values:    []string{"fake"},
+		Blacklist: true,
+	})
+	a := App{Name: "test", Platform: "python", TeamOwner: s.team.Name, Router: "fake"}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "no router found for pool"})
+}
+
+func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
+	provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     "router",
+		Values:    []string{"fake-tls"},
+		Blacklist: true,
+	})
+	a := App{Name: "test", Platform: "python", TeamOwner: s.team.Name, Router: "fake-tls"}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{
+		Message: "router \"fake-tls\" is not available for pool \"pool1\"",
+	})
 }
 
 func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
@@ -3567,7 +3606,8 @@ func (s *S) TestAppSetPoolDefault(c *check.C) {
 	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app := App{
-		Name: "test",
+		Name:      "test",
+		TeamOwner: "tsuruteam",
 	}
 	err = app.SetPool()
 	c.Assert(err, check.IsNil)
@@ -3636,7 +3676,7 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
-		TeamOwner: "test",
+		TeamOwner: "tsuruteam",
 		Pool:      "test",
 	}
 	err = app.SetPool()
@@ -4158,4 +4198,21 @@ func (s *S) TestUpdateRouterNotFound(c *check.C) {
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Router, check.Equals, "fake")
+}
+
+func (s *S) TestAppUpdateRouterNotAvailableForPool(c *check.C) {
+	provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     "router",
+		Values:    []string{"fake-tls"},
+		Blacklist: true,
+	})
+	a := App{Name: "test", Router: "fake", TeamOwner: s.team.Name}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "test", Router: "fake-tls"}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.DeepEquals, &errors.ValidationError{
+		Message: "router \"fake-tls\" is not available for pool \"pool1\"",
+	})
 }
