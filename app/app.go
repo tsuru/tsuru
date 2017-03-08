@@ -126,6 +126,7 @@ type App struct {
 	Router         string
 	RouterOpts     map[string]string
 	Deploys        uint
+	Tags           []string
 
 	quota.Quota
 	provisioner provision.Provisioner
@@ -332,6 +333,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
 	routerName := updateData.Router
+	tags := updateData.Tags
 	if description != "" {
 		app.Description = description
 	}
@@ -369,6 +371,9 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 				app.Grant(team)
 			}
 		}()
+	}
+	if len(tags) > 0 {
+		app.Tags = tags
 	}
 	err = app.validate()
 	if err != nil {
