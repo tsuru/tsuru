@@ -337,7 +337,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	}
 	if poolName != "" {
 		app.Pool = poolName
-		_, err := app.getPoolForApp(app.Pool)
+		_, err = app.getPoolForApp(app.Pool)
 		if err != nil {
 			return err
 		}
@@ -345,23 +345,23 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	oldPlan := app.Plan
 	oldRouter := app.Router
 	if routerName != "" {
-		_, err := router.Get(routerName)
+		_, err = router.Get(routerName)
 		if err != nil {
 			return err
 		}
 		app.Router = routerName
 	}
 	if planName != "" {
-		plan, err := findPlanByName(planName)
-		if err != nil {
-			return err
+		plan, errFind := findPlanByName(planName)
+		if errFind != nil {
+			return errFind
 		}
 		app.Plan = *plan
 	}
 	if teamOwner != "" {
-		team, err := auth.GetTeam(teamOwner)
-		if err != nil {
-			return err
+		team, errTeam := auth.GetTeam(teamOwner)
+		if errTeam != nil {
+			return errTeam
 		}
 		app.TeamOwner = team.Name
 		defer func() {
@@ -381,7 +381,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 			&restartApp,
 			&removeOldBackend,
 		}
-		err := action.NewPipeline(actions...).Execute(app, &oldPlan, oldRouter, w)
+		err = action.NewPipeline(actions...).Execute(app, &oldPlan, oldRouter, w)
 		if err != nil {
 			return err
 		}
