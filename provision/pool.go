@@ -400,7 +400,8 @@ func (c *PoolConstraint) check(v string) bool {
 		return false
 	}
 	for _, r := range c.Values {
-		if match, _ := regexp.MatchString(strings.Replace(r, "*", ".*", -1), v); match {
+		pattern := fmt.Sprintf("^%s$", strings.Replace(r, "*", ".*", -1))
+		if match, _ := regexp.MatchString(pattern, v); match {
 			return !c.Blacklist
 		}
 	}
