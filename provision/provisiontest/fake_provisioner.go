@@ -36,6 +36,8 @@ var (
 	_ provision.NodeProvisioner = &FakeProvisioner{}
 )
 
+const fakeAppImage = "app-image"
+
 func init() {
 	ProvisionerInstance = NewFakeProvisioner()
 	ExtensibleInstance = &ExtensibleFakeProvisioner{
@@ -817,7 +819,7 @@ func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, ev
 	evt.Write([]byte("Archive deploy called"))
 	pApp.lastArchive = archiveURL
 	p.apps[app.GetName()] = pApp
-	return "app-image", nil
+	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
@@ -833,7 +835,7 @@ func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fi
 	evt.Write([]byte("Upload deploy called"))
 	pApp.lastFile = file
 	p.apps[app.GetName()] = pApp
-	return "app-image", nil
+	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, evt *event.Event) (string, error) {
@@ -879,7 +881,7 @@ func (p *FakeProvisioner) Rebuild(app provision.App, evt *event.Event) (string, 
 	}
 	evt.Write([]byte("Rebuild deploy called"))
 	p.apps[app.GetName()] = pApp
-	return "app-image", nil
+	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
