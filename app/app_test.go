@@ -3560,18 +3560,6 @@ func (s *S) TestAppCreateValidateTeamOwnerSetAnTeamWhichNotExists(c *check.C) {
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: auth.ErrTeamNotFound.Error()})
 }
 
-func (s *S) TestAppCreateValidateNoRouterForPool(c *check.C) {
-	provision.SetPoolConstraint(&provision.PoolConstraint{
-		PoolExpr:  "pool1",
-		Field:     "router",
-		Values:    []string{"fake"},
-		Blacklist: true,
-	})
-	a := App{Name: "test", Platform: "python", TeamOwner: s.team.Name, Router: "fake"}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.DeepEquals, &errors.ValidationError{Message: "no router found for pool"})
-}
-
 func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
 	provision.SetPoolConstraint(&provision.PoolConstraint{
 		PoolExpr:  "pool1",
