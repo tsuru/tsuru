@@ -14,20 +14,34 @@ import (
 	"time"
 )
 
-// NewDecoder returns a new form decoder.
-func NewDecoder(r io.Reader) *decoder {
-	return &decoder{r: r}
+// NewDecoder returns a new form Decoder.
+func NewDecoder(r io.Reader) *Decoder {
+	return &Decoder{r, defaultDelimiter, defaultEscape, false, false}
 }
 
-// decoder decodes data from a form (application/x-www-form-urlencoded).
-type decoder struct {
+// Decoder decodes data from a form (application/x-www-form-urlencoded).
+type Decoder struct {
 	r             io.Reader
+	d             rune
+	e             rune
 	ignoreUnknown bool
 	ignoreCase    bool
 }
 
+// DelimitWith sets r as the delimiter used for composite keys by Decoder d and returns the latter; it is '.' by default.
+func (d *Decoder) DelimitWith(r rune) *Decoder {
+	d.d = r
+	return d
+}
+
+// EscapeWith sets r as the escape used for delimiters (and to escape itself) by Decoder d and returns the latter; it is '\\' by default.
+func (d *Decoder) EscapeWith(r rune) *Decoder {
+	d.e = r
+	return d
+}
+
 // Decode reads in and decodes form-encoded data into dst.
-func (d decoder) Decode(dst interface{}) error {
+func (d Decoder) Decode(dst interface{}) error {
 	bs, err := ioutil.ReadAll(d.r)
 	if err != nil {
 		return err
@@ -37,35 +51,35 @@ func (d decoder) Decode(dst interface{}) error {
 		return err
 	}
 	v := reflect.ValueOf(dst)
-	return d.decodeNode(v, parseValues(vs, canIndexOrdinally(v)))
+	return d.decodeNode(v, parseValues(d.d, d.e, vs, canIndexOrdinally(v)))
 }
 
-// IgnoreUnknownKeys if set to true it will make the decoder ignore values
+// IgnoreUnknownKeys if set to true it will make the Decoder ignore values
 // that are not found in the destination object instead of returning an error.
-func (d *decoder) IgnoreUnknownKeys(ignoreUnknown bool) {
+func (d *Decoder) IgnoreUnknownKeys(ignoreUnknown bool) {
 	d.ignoreUnknown = ignoreUnknown
 }
 
-// IgnoreCase if set to true it will make the decoder try to set values in the
+// IgnoreCase if set to true it will make the Decoder try to set values in the
 // destination object even if the case does not match.
-func (d *decoder) IgnoreCase(ignoreCase bool) {
+func (d *Decoder) IgnoreCase(ignoreCase bool) {
 	d.ignoreCase = ignoreCase
 }
 
 // DecodeString decodes src into dst.
-func (d decoder) DecodeString(dst interface{}, src string) error {
+func (d Decoder) DecodeString(dst interface{}, src string) error {
 	vs, err := url.ParseQuery(src)
 	if err != nil {
 		return err
 	}
 	v := reflect.ValueOf(dst)
-	return d.decodeNode(v, parseValues(vs, canIndexOrdinally(v)))
+	return d.decodeNode(v, parseValues(d.d, d.e, vs, canIndexOrdinally(v)))
 }
 
 // DecodeValues decodes vs into dst.
-func (d decoder) DecodeValues(dst interface{}, vs url.Values) error {
+func (d Decoder) DecodeValues(dst interface{}, vs url.Values) error {
 	v := reflect.ValueOf(dst)
-	return d.decodeNode(v, parseValues(vs, canIndexOrdinally(v)))
+	return d.decodeNode(v, parseValues(d.d, d.e, vs, canIndexOrdinally(v)))
 }
 
 // DecodeString decodes src into dst.
@@ -78,7 +92,7 @@ func DecodeValues(dst interface{}, vs url.Values) error {
 	return NewDecoder(nil).DecodeValues(dst, vs)
 }
 
-func (d decoder) decodeNode(v reflect.Value, n node) (err error) {
+func (d Decoder) decodeNode(v reflect.Value, n node) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("%v", e)
@@ -92,7 +106,7 @@ func (d decoder) decodeNode(v reflect.Value, n node) (err error) {
 	return nil
 }
 
-func (d decoder) decodeValue(v reflect.Value, x interface{}) {
+func (d Decoder) decodeValue(v reflect.Value, x interface{}) {
 	t := v.Type()
 	k := v.Kind()
 
@@ -149,7 +163,7 @@ func (d decoder) decodeValue(v reflect.Value, x interface{}) {
 	}
 }
 
-func (d decoder) decodeStruct(v reflect.Value, x interface{}) {
+func (d Decoder) decodeStruct(v reflect.Value, x interface{}) {
 	t := v.Type()
 	for k, c := range getNode(x) {
 		if f, ok := findField(v, k, d.ignoreCase); !ok && k == "" {
@@ -166,7 +180,7 @@ func (d decoder) decodeStruct(v reflect.Value, x interface{}) {
 	}
 }
 
-func (d decoder) decodeMap(v reflect.Value, x interface{}) {
+func (d Decoder) decodeMap(v reflect.Value, x interface{}) {
 	t := v.Type()
 	if v.IsNil() {
 		v.Set(reflect.MakeMap(t))
@@ -202,7 +216,7 @@ func (d decoder) decodeMap(v reflect.Value, x interface{}) {
 	}
 }
 
-func (d decoder) decodeArray(v reflect.Value, x interface{}) {
+func (d Decoder) decodeArray(v reflect.Value, x interface{}) {
 	t := v.Type()
 	for k, c := range getNode(x) {
 		i, err := strconv.Atoi(k)
@@ -216,7 +230,7 @@ func (d decoder) decodeArray(v reflect.Value, x interface{}) {
 	}
 }
 
-func (d decoder) decodeSlice(v reflect.Value, x interface{}) {
+func (d Decoder) decodeSlice(v reflect.Value, x interface{}) {
 	t := v.Type()
 	if t.Elem().Kind() == reflect.Uint8 {
 		// Allow, but don't require, byte slices to be encoded as a single string.
@@ -251,7 +265,7 @@ func (d decoder) decodeSlice(v reflect.Value, x interface{}) {
 	}
 }
 
-func (d decoder) decodeBasic(v reflect.Value, x interface{}) {
+func (d Decoder) decodeBasic(v reflect.Value, x interface{}) {
 	t := v.Type()
 	switch k, s := t.Kind(), getString(x); k {
 	case reflect.Bool:
@@ -302,7 +316,7 @@ func (d decoder) decodeBasic(v reflect.Value, x interface{}) {
 	}
 }
 
-func (d decoder) decodeTime(v reflect.Value, x interface{}) {
+func (d Decoder) decodeTime(v reflect.Value, x interface{}) {
 	t := v.Type()
 	s := getString(x)
 	// TODO: Find a more efficient way to do this.
@@ -315,7 +329,7 @@ func (d decoder) decodeTime(v reflect.Value, x interface{}) {
 	panic("cannot decode string `" + s + "` as " + t.String())
 }
 
-func (d decoder) decodeURL(v reflect.Value, x interface{}) {
+func (d Decoder) decodeURL(v reflect.Value, x interface{}) {
 	t := v.Type()
 	s := getString(x)
 	if u, err := url.Parse(s); err == nil {
