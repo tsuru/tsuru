@@ -28,7 +28,7 @@ func writeTarball(tarball *tar.Writer, archive io.Reader, fileSize int64, name s
 	return tarball.Close()
 }
 
-func addDeployTarFile(archive io.Reader, fileSize int64, name string) io.Reader {
+func AddDeployTarFile(archive io.Reader, fileSize int64, name string) io.ReadCloser {
 	reader, writer := io.Pipe()
 	go func() {
 		tarball := tar.NewWriter(writer)

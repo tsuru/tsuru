@@ -387,6 +387,18 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 	return imageId, p.deploy(a, imageId, evt)
 }
 
+func (p *dockerProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
+	intermediateimageID, fileURI, err := p.rebuildImage(app)
+	if err != nil {
+		return "", err
+	}
+	imageID, err := p.archiveDeploy(app, intermediateimageID, fileURI, evt)
+	if err != nil {
+		return "", err
+	}
+	return imageID, p.deployAndClean(app, imageID, evt)
+}
+
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *event.Event) (string, error) {
 	cluster := p.Cluster()
 	if !strings.Contains(imageId, ":") {
@@ -445,63 +457,17 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if build {
 		return "", errors.New("running UploadDeploy with build=true is not yet supported")
 	}
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
-	defer archiveFile.Close()
-	imageName := image.GetBuildImage(app)
-	options := docker.CreateContainerOptions{
-		Config: &docker.Config{
-			AttachStdout: true,
-			AttachStderr: true,
-			AttachStdin:  true,
-			OpenStdin:    true,
-			StdinOnce:    true,
-			User:         user,
-			Image:        imageName,
-			Cmd:          []string{"/bin/bash", "-c", "tail -f /dev/null"},
-		},
-	}
-	cluster := p.Cluster()
-	schedOpts := &container.SchedulerOpts{
-		AppName:       app.GetName(),
-		ActionLimiter: p.ActionLimiter(),
-	}
-	addr, cont, err := cluster.CreateContainerSchedulerOpts(options, schedOpts, net.StreamInactivityTimeout)
-	hostAddr := net.URLToHost(addr)
-	if schedOpts.LimiterDone != nil {
-		schedOpts.LimiterDone()
-	}
+	tarFile := dockercommon.AddDeployTarFile(archiveFile, fileSize, "archive.tar.gz")
+	defer tarFile.Close()
+	intermediateimageID, fileURI, err := p.buildImage(app, tarFile)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		done := p.ActionLimiter().Start(hostAddr)
-		cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
-		done()
-	}()
-	done := p.ActionLimiter().Start(hostAddr)
-	err = cluster.StartContainer(cont.ID, nil)
-	done()
+	imageID, err := p.archiveDeploy(app, intermediateimageID, fileURI, evt)
 	if err != nil {
 		return "", err
 	}
-	intermediateImageID, fileURI, err := dockercommon.UploadToContainer(cluster, cont.ID, archiveFile, fileSize)
-	done = p.ActionLimiter().Start(hostAddr)
-	stopErr := cluster.StopContainer(cont.ID, 10)
-	done()
-	if stopErr != nil {
-		return "", stopErr
-	}
-	if err != nil {
-		return "", err
-	}
-	imageId, err := p.archiveDeploy(app, intermediateImageID, fileURI, evt)
-	if err != nil {
-		return "", err
-	}
-	return imageId, p.deployAndClean(app, imageId, evt)
+	return imageID, p.deployAndClean(app, imageID, evt)
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, evt *event.Event) error {

@@ -1159,6 +1159,47 @@ func (s *S) TestImageDeployWithEntrypointAndCmd(c *check.C) {
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
+func (s *S) TestDeployAndRebuild(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 2)
+	defer func() { <-stopCh }()
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	buf := bytes.NewBufferString("something wrong is not right")
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		File:         ioutil.NopCloser(buf),
+		FileSize:     int64(buf.Len()),
+		OutputStream: w,
+		Event:        evt,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Event:        evt,
+		Kind:         "rebuild",
+	})
+	c.Assert(err, check.IsNil)
+	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 5)
+	c.Assert(imgs[4].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[4].RepoTags[0], check.Equals, "tsuru/app-otherapp:v2")
+}
+
 func (s *S) TestProvisionerDestroy(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)

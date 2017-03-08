@@ -865,14 +865,14 @@
 		{
 			"checksumSHA1": "1ctyWjqjUDBKL5cRPGlRAxL8KHM=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "a45f2c476754603041aeb54751207d5e5ec30b77",
-			"revisionTime": "2017-03-02T18:42:38Z"
+			"revision": "8844e96b4cd6730ab2daa510a96e232107a2c09c",
+			"revisionTime": "2017-03-06T14:03:13Z"
 		},
 		{
-			"checksumSHA1": "Dj8ke8a9l2qpPwGX4pIWUrhPL4g=",
+			"checksumSHA1": "FV0GeSI/ViBxj9frKlL4vasCVKw=",
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "a45f2c476754603041aeb54751207d5e5ec30b77",
-			"revisionTime": "2017-03-02T18:42:38Z"
+			"revision": "8844e96b4cd6730ab2daa510a96e232107a2c09c",
+			"revisionTime": "2017-03-06T14:03:13Z"
 		},
 		{
 			"checksumSHA1": "nJYT8dNFeMl0lkIYM9z9OzxP15M=",
@@ -1376,10 +1376,10 @@
 			"revisionTime": "2016-10-05T16:08:30-03:00"
 		},
 		{
-			"checksumSHA1": "UsnY1y5hW9mcqR5feDjTB59i1qk=",
+			"checksumSHA1": "4/+umnXEiZSaOI8wWrvxyDRe9d4=",
 			"path": "github.com/tsuru/docker-cluster/cluster",
-			"revision": "2bf6325acf92505def853dca9982e26ea762e8b6",
-			"revisionTime": "2017-01-31T16:14:47Z"
+			"revision": "d0b3b5fbdc798ea75aeea497e41d4cc857d9be26",
+			"revisionTime": "2017-02-14T11:21:59Z"
 		},
 		{
 			"checksumSHA1": "sTjUknyBzJ565jq4GD0bpHmSNIg=",

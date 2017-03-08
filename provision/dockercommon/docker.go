@@ -25,14 +25,14 @@ type Client interface {
 	TagImage(string, docker.TagImageOptions) error
 	UploadToContainer(string, docker.UploadToContainerOptions) error
 	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
+	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
 }
 
-func UploadToContainer(client Client, contID string, archiveFile io.Reader, fileSize int64) (string, string, error) {
+func UploadToContainer(client Client, contID string, archiveFile io.Reader) (string, string, error) {
 	dirPath := "/home/application/"
 	fileName := "archive.tar.gz"
-	reader := addDeployTarFile(archiveFile, fileSize, fileName)
 	uploadOpts := docker.UploadToContainerOptions{
-		InputStream: reader,
+		InputStream: archiveFile,
 		Path:        dirPath,
 	}
 	err := client.UploadToContainer(contID, uploadOpts)
@@ -46,6 +46,23 @@ func UploadToContainer(client Client, contID string, archiveFile io.Reader, file
 		return "", "", err
 	}
 	return image.ID, fmt.Sprintf("file://%s%s", dirPath, fileName), nil
+}
+
+func DownloadFromContainer(client Client, contID string, filePath string) (io.ReadCloser, error) {
+	reader, writer := io.Pipe()
+	go func() {
+		downloadOpts := docker.DownloadFromContainerOptions{
+			OutputStream: writer,
+			Path:         filePath,
+		}
+		err := client.DownloadFromContainer(contID, downloadOpts)
+		if err != nil {
+			writer.CloseWithError(err)
+		} else {
+			writer.Close()
+		}
+	}()
+	return reader, nil
 }
 
 type PrepareImageArgs struct {

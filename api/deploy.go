@@ -49,6 +49,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			return errors.Wrap(err, "unable to find uploaded file size")
 		}
 		file.Seek(0, os.SEEK_SET)
+		defer file.Close()
 	}
 	archiveURL := r.FormValue("archive-url")
 	image := r.FormValue("image")
@@ -338,4 +339,64 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(deploy)
+}
+
+// title: rebuild
+// path: /apps/{appname}/deploy/rebuild
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: OK
+//   400: Invalid data
+//   403: Forbidden
+//   404: Not found
+func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+	}
+	origin := r.FormValue("origin")
+	if !app.ValidateOrigin(origin) {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid deployment origin",
+		}
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	opts := app.DeployOptions{
+		App:          instance,
+		OutputStream: writer,
+		User:         t.GetUserName(),
+		Origin:       origin,
+		Kind:         app.DeployRebuild,
+	}
+	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	if !canDeploy {
+		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
+	}
+	var imageID string
+	evt, err := event.New(&event.Opts{
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppDeploy,
+		Owner:         t,
+		CustomData:    opts,
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Cancelable:    true,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	opts.Event = evt
+	imageID, err = app.Deploy(opts)
+	if err != nil {
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+	}
+	return nil
 }

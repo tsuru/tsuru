@@ -841,3 +841,31 @@ func (s *S) TestMigrateDeploysToEvents(c *check.C) {
 	normalizeTS(insert)
 	c.Assert(deploys, check.DeepEquals, []DeployData{insert[1], insert[0]})
 }
+
+func (s *S) TestRebuild(c *check.C) {
+	a := App{
+		Name:      "otherapp",
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	writer := &bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	imgID, err := Deploy(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		Kind:         DeployRebuild,
+		Event:        evt,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(writer.String(), check.Equals, "Rebuild deploy called")
+	c.Assert(imgID, check.Equals, "app-image")
+}

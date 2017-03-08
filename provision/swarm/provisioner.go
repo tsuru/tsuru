@@ -713,7 +713,8 @@ func (p *swarmProvisioner) UploadDeploy(a provision.App, archiveFile io.ReadClos
 		return "", err
 	}
 	contID := tasks[0].Status.ContainerStatus.ContainerID
-	imageID, fileURI, err := dockercommon.UploadToContainer(client, contID, archiveFile, fileSize)
+	tarFile := dockercommon.AddDeployTarFile(archiveFile, fileSize, "archive.tar.gz")
+	imageID, fileURI, err := dockercommon.UploadToContainer(client, contID, tarFile)
 	removeErr := client.RemoveService(docker.RemoveServiceOptions{
 		ID: srv.ID,
 	})

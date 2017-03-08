@@ -1220,3 +1220,44 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 `
 	c.Assert(recorder.Body.String(), check.Equals, expected+permission.ErrUnauthorized.Error()+"\n")
 }
+
+func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("origin", "rebuild")
+	u := fmt.Sprintf("/apps/%s/deploy/rebuild", a.Name)
+	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rebuild deploy called\"}\n")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.deploy",
+		StartCustomData: map[string]interface{}{
+			"app.name":   a.Name,
+			"commit":     "",
+			"filesize":   0,
+			"kind":       "rebuild",
+			"archiveurl": "",
+			"user":       s.token.GetUserName(),
+			"image":      "",
+			"origin":     "rebuild",
+			"build":      false,
+			"rollback":   false,
+		},
+		EndCustomData: map[string]interface{}{
+			"image": "app-image",
+		},
+	}, eventtest.HasEvent)
+}

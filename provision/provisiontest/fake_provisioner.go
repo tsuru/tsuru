@@ -36,6 +36,8 @@ var (
 	_ provision.NodeProvisioner = &FakeProvisioner{}
 )
 
+const fakeAppImage = "app-image"
+
 func init() {
 	ProvisionerInstance = NewFakeProvisioner()
 	ExtensibleInstance = &ExtensibleFakeProvisioner{
@@ -817,7 +819,7 @@ func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, ev
 	evt.Write([]byte("Archive deploy called"))
 	pApp.lastArchive = archiveURL
 	p.apps[app.GetName()] = pApp
-	return "app-image", nil
+	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
@@ -833,7 +835,7 @@ func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, fi
 	evt.Write([]byte("Upload deploy called"))
 	pApp.lastFile = file
 	p.apps[app.GetName()] = pApp
-	return "app-image", nil
+	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, evt *event.Event) (string, error) {
@@ -853,7 +855,7 @@ func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, evt *event.
 }
 
 func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Event) (string, error) {
-	if err := p.getError("ImageDeploy"); err != nil {
+	if err := p.getError("Rollback"); err != nil {
 		return "", err
 	}
 	p.mut.Lock()
@@ -865,6 +867,21 @@ func (p *FakeProvisioner) Rollback(app provision.App, img string, evt *event.Eve
 	evt.Write([]byte("Rollback deploy called"))
 	p.apps[app.GetName()] = pApp
 	return img, nil
+}
+
+func (p *FakeProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
+	if err := p.getError("Rebuild"); err != nil {
+		return "", err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return "", errNotProvisioned
+	}
+	evt.Write([]byte("Rebuild deploy called"))
+	p.apps[app.GetName()] = pApp
+	return fakeAppImage, nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
