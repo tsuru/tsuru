@@ -6,6 +6,7 @@ package provision
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -521,7 +522,8 @@ func getConstraintsForPool(pool string, fields ...string) (map[string]*PoolConst
 	}
 	var matches []*PoolConstraint
 	for _, c := range constraints {
-		match, err := regexp.MatchString(strings.Replace(c.PoolExpr, "*", ".*", -1), pool)
+		pattern := fmt.Sprintf("^%s$", strings.Replace(c.PoolExpr, "*", ".*", -1))
+		match, err := regexp.MatchString(pattern, pool)
 		if err != nil {
 			return nil, err
 		}

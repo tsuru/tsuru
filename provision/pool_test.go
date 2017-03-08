@@ -478,6 +478,9 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 			"router": {PoolExpr: "*_dev", Field: "router", Values: []string{"planb_dev"}},
 			"team":   {PoolExpr: "*_dev", Field: "team", Values: []string{"team_pool1"}, Blacklist: true},
 		}},
+		{pool: "pp2", expected: map[string]*PoolConstraint{
+			"router": {PoolExpr: "*", Field: "router", Values: []string{"planb"}},
+		}},
 	}
 	for i, t := range tt {
 		constraints, err := getConstraintsForPool(t.pool)
