@@ -26,6 +26,13 @@ Having routers tied to plans had an unpleasant experience for users that wanted
 to have multiple resource plans(N) and also had more than one available router(M).
 This required users to set up N*M plans.
 
+Generic Pool Constraints (`#1528 <https://github.com/tsuru/tsuru/issues/1528>`_)
+--------------------------------------------------------------------------------
+
+Before this release, one could limit a pool to a set of specific teams. This release
+makes it possible to also constraint specific routers to specific pools and makes it
+easy to add new types of constraints in the future.
+
 Other improvements
 ------------------
 
@@ -41,6 +48,10 @@ Required migrations
 
 * Due to the removal of the relationship between routers and plans, a migration is required.
   This migration will set the router directly to each app based on it's plan (falling back to the default router if none is set).
+  Just run ``tsurud migrate`` after updating tsuru.
+
+* Due to the newly created pool constraints, a migration is required to make current pool teams
+  work as expected. This migration will create the corresponding constraint for each pool.
   Just run ``tsurud migrate`` after updating tsuru.
 
 .. _bug-1.3.0:
