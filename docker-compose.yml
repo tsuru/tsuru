@@ -6,15 +6,19 @@ services:
             - ./data/mongo:/data/db
         networks:
             - tsuru_net
+        ports:
+            - "27017:27017"
     redis:
         image: redis
         volumes:
             - ./data/redis:/data
         networks:
             - tsuru_net
+        ports:
+            - "6379:6379"
     registry:
         image: registry:2
-        environment: 
+        environment:
             - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
         volumes:
             - ./data/registry:/var/lib/registry
@@ -24,17 +28,17 @@ services:
         image: tsuru/planb
         command: --read-redis-host=redis --write-redis-host=redis
         ports:
-            - "8989:8989" 
+            - "8989:8989"
         networks:
             - tsuru_net
     gandalf:
         image: tsuru/gandalf:latest
-        environment: 
+        environment:
             - MONGODB_ADDR=mongo
             - MONGODB_PORT=27017
             - TSURU_HOST=http://api:8080
             - TSURU_TOKEN=
-        volumes: 
+        volumes:
             - ./data/gandalf/repositories:/var/lib/gandalf/repositories
             - ./data/gandalf/ssh:/home/git/.ssh
             - ./misc/git-hooks:/home/git/bare-template/hooks
@@ -43,7 +47,7 @@ services:
         ports:
             - "22:22"
     api:
-        build: 
+        build:
             context: .
             dockerfile: Dockerfile.dev
         ports:
