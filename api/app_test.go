@@ -922,6 +922,49 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestCreateAppWithTags(c *check.C) {
+	data, err := url.QueryUnescape("name=someapp&platform=zend&tags=tag1&tags=tag2")
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permission.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	repoURL := "git@" + repositorytest.ServerHost + ":someapp.git"
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
+	c.Assert(obtained, check.DeepEquals, expected)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag1", "tag2"})
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("someapp"),
+		Kind:   "app.create",
+		Owner:  token.GetUserName(),
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "someapp"},
+			{"name": "platform", "value": "zend"},
+			{"name": "tags", "value": []string{"tag1", "tag2"}},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestCreateAppWithPool(c *check.C) {
 	err := provision.AddPool(provision.AddPoolOptions{Name: "mypool1", Public: true})
 	c.Assert(err, check.IsNil)
@@ -1260,6 +1303,62 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 			{"name": "description", "value": "my app description"},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	b := strings.NewReader("description1=s&tags=tag1&tags=tag2&tags=tag3")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	fmt.Printf("msg %s\n", recorder.Body.String())
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Tags, check.DeepEquals, []string{"tag1", "tag2", "tag3"})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+			{"name": "tags", "value": []string{"tag1", "tag2", "tag3"}},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdateDescription,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	b := strings.NewReader("description1=s&tags=tag1&tags=tag2&tags=tag3")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	fmt.Printf("msg %s\n", recorder.Body.String())
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
