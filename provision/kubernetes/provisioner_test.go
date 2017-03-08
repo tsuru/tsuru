@@ -10,6 +10,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func (s *S) TestListNodes(c *check.C) {
@@ -34,7 +37,7 @@ func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 }
 
-func (s *S) TestAddNode(c *check.C) {
+func (s *S) TestAddNodeCluster(c *check.C) {
 	url := "https://clusteraddr"
 	opts := provision.AddNodeOptions{
 		Address: url,
@@ -48,6 +51,44 @@ func (s *S) TestAddNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cli, check.DeepEquals, s.client)
 	c.Assert(s.lastConf.Host, check.Equals, url)
+}
+
+func (s *S) TestRemoveNode(c *check.C) {
+	s.mockfakeNodes(c)
+	opts := provision.RemoveNodeOptions{
+		Address: "192.168.99.1",
+	}
+	err := s.p.RemoveNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+}
+
+func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
+	s.mockfakeNodes(c)
+	_, err := s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+		ObjectMeta: v1.ObjectMeta{Name: "p1", Namespace: tsuruNamespace},
+	})
+	c.Assert(err, check.IsNil)
+	evictionCalled := false
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		if action.GetSubresource() == "eviction" {
+			evictionCalled = true
+			return true, action.(ktesting.CreateAction).GetObject(), nil
+		}
+		return
+	})
+	opts := provision.RemoveNodeOptions{
+		Address:   "192.168.99.1",
+		Rebalance: true,
+	}
+	err = s.p.RemoveNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(evictionCalled, check.Equals, true)
 }
 
 func (s *S) TestImageDeploy(c *check.C) {

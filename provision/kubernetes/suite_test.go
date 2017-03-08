@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -22,9 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/rest"
-	ktesting "k8s.io/client-go/testing"
 )
 
 type S struct {
@@ -106,38 +105,24 @@ func (s *S) mockfakeNodes(c *check.C) {
 	}
 	err := s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	s.client.PrependReactor("list", "nodes", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		return true, &v1.NodeList{
-			Items: []v1.Node{
-				{
-					Status: v1.NodeStatus{
-						Addresses: []v1.NodeAddress{
-							{
-								Type:    v1.NodeInternalIP,
-								Address: "192.168.99.1",
-							},
-							{
-								Type:    v1.NodeExternalIP,
-								Address: "200.0.0.1",
-							},
-						},
+	for i := 1; i <= 2; i++ {
+		_, err = s.client.Core().Nodes().Create(&v1.Node{
+			ObjectMeta: v1.ObjectMeta{
+				Name: fmt.Sprintf("n%d", i),
+			},
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{
+					{
+						Type:    v1.NodeInternalIP,
+						Address: fmt.Sprintf("192.168.99.%d", i),
 					},
-				},
-				{
-					Status: v1.NodeStatus{
-						Addresses: []v1.NodeAddress{
-							{
-								Type:    v1.NodeInternalIP,
-								Address: "192.168.99.2",
-							},
-							{
-								Type:    v1.NodeExternalIP,
-								Address: "200.0.0.2",
-							},
-						},
+					{
+						Type:    v1.NodeExternalIP,
+						Address: fmt.Sprintf("200.0.0.%d", i),
 					},
 				},
 			},
-		}, nil
-	})
+		})
+		c.Assert(err, check.IsNil)
+	}
 }

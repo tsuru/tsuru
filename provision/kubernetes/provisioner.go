@@ -18,11 +18,14 @@ import (
 	"github.com/tsuru/tsuru/set"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
+	"k8s.io/client-go/pkg/fields"
 )
 
 const (
 	provisionerName = "kubernetes"
+	tsuruNamespace  = "default"
 )
 
 var errNotImplemented = errors.New("not implemented")
@@ -130,7 +133,47 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
-	return errNotImplemented
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	nodeWrapper, err := p.findNodeByAddress(client, opts.Address)
+	if err != nil {
+		return err
+	}
+	node := nodeWrapper.node
+	if opts.Rebalance {
+		node.Spec.Unschedulable = true
+		_, err = client.Core().Nodes().Update(node)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		var podList *v1.PodList
+		podList, err = client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+			FieldSelector: fields.SelectorFromSet(fields.Set{
+				"spec.nodeName": node.Name,
+			}).String(),
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		for _, pod := range podList.Items {
+			err = client.Core().Pods(tsuruNamespace).Evict(&policy.Eviction{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      pod.Name,
+					Namespace: tsuruNamespace,
+				},
+			})
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
+	}
+	err = client.Core().Nodes().Delete(node.Name, &v1.DeleteOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
@@ -198,11 +241,11 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 		return "", errors.WithStack(err)
 	}
 	replicas := int32(1)
-	deployment := v1beta1.Deployment{
+	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name: deploymentNameForApp(a, ""),
 		},
-		Spec: v1beta1.DeploymentSpec{
+		Spec: extensions.DeploymentSpec{
 			Replicas: &replicas,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
@@ -226,6 +269,6 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *
 		},
 	}
 	// client.De
-	_, err = client.Extensions().Deployments("default").Create(&deployment)
+	_, err = client.Extensions().Deployments(tsuruNamespace).Create(&deployment)
 	return "", err
 }
