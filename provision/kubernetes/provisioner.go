@@ -114,6 +114,9 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
 	client, err := getClusterClient()
 	if err != nil {
+		if err == errNoCluster {
+			return nil, provision.ErrNodeNotFound
+		}
 		return nil, err
 	}
 	node, err := p.findNodeByAddress(client, address)
