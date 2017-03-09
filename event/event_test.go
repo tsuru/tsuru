@@ -249,6 +249,26 @@ func (s *S) TestNewLockExpired(c *check.C) {
 	c.Assert(evts[1].Error, check.Matches, `event expired, no update for [\d.]+\w+`)
 }
 
+func (s *S) TestNewEventBlocked(c *check.C) {
+	err := AddBlock(&Block{KindName: "app.deploy", Reason: "you shall not pass"})
+	c.Assert(err, check.IsNil)
+	blocks, err := listBlocks(nil)
+	c.Assert(err, check.IsNil)
+	_, err = New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(err.(*ErrEventBlocked).block, check.DeepEquals, &blocks[0])
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Running, check.Equals, false)
+	c.Assert(evts[0].Error, check.Matches, `.*block app.deploy by all users on all targets: you shall not pass$`)
+}
+
 func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 	updater.stop()
 	oldUpdateInterval := lockUpdateInterval
