@@ -372,7 +372,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 			}
 		}()
 	}
-	if len(tags) > 0 {
+	if tags != nil {
 		app.Tags = tags
 	}
 	err = app.validate()
