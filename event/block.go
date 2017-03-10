@@ -6,6 +6,7 @@ package event
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
@@ -29,6 +30,8 @@ func (e *ErrEventBlocked) Error() string {
 
 type Block struct {
 	ID        bson.ObjectId `bson:"_id,omitempty"`
+	StartTime time.Time
+	EndTime   time.Time `bson:"endtime,omitempty"`
 	KindName  string
 	OwnerName string
 	Target    Target `bson:"target,omitempty"`
@@ -60,6 +63,7 @@ func AddBlock(b *Block) error {
 	defer conn.Close()
 	b.Active = true
 	b.ID = bson.NewObjectId()
+	b.StartTime = time.Now()
 	return conn.EventBlocks().Insert(b)
 }
 
@@ -69,7 +73,8 @@ func RemoveBlock(id bson.ObjectId) error {
 		return err
 	}
 	defer conn.Close()
-	err = conn.EventBlocks().UpdateId(id, bson.M{"$set": bson.M{"active": false}})
+	query := bson.M{"$set": bson.M{"active": false, "endtime": time.Now()}}
+	err = conn.EventBlocks().UpdateId(id, query)
 	if err == mgo.ErrNotFound {
 		return errors.WithMessage(err, "failed to remove event block")
 	}
@@ -91,7 +96,7 @@ func listBlocks(query bson.M) ([]Block, error) {
 	}
 	defer conn.Close()
 	var blocks []Block
-	err = conn.EventBlocks().Find(query).All(&blocks)
+	err = conn.EventBlocks().Find(query).Sort("-starttime").All(&blocks)
 	if err != nil {
 		return nil, err
 	}
