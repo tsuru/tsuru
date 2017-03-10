@@ -77,7 +77,7 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 		if networkIdx < 0 {
 			dnsName = aws.StringValue(instance.PublicDnsName)
 		} else {
-			if len(instance.NetworkInterfaces) < networkIdx {
+			if len(instance.NetworkInterfaces) <= networkIdx {
 				job.Error(errors.New("invalid network-index. "))
 				break
 			}
