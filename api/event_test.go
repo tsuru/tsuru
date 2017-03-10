@@ -11,12 +11,14 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -442,4 +444,221 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockRead,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	expectedBlocks := addBlocks(c)
+	request, err := http.NewRequest("GET", "/events/blocks", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var blocks []*event.Block
+	err = json.NewDecoder(recorder.Body).Decode(&blocks)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(blocks), check.Equals, len(expectedBlocks))
+}
+
+func (s *EventSuite) TestEventBlockListFiltered(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockRead,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	blocks := addBlocks(c)
+	err := event.RemoveBlock(blocks[1].ID)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/events/blocks?active=true", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.NewDecoder(recorder.Body).Decode(&blocks)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(blocks), check.Equals, 2)
+	c.Assert(blocks[0].Active, check.Equals, true)
+	c.Assert(blocks[1].Active, check.Equals, true)
+}
+
+func (s *EventSuite) TestEventBlockListWithoutPermission(c *check.C) {
+	request, err := http.NewRequest("GET", "/events/blocks", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockRead,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	request, err := http.NewRequest("GET", "/events/blocks?active=true", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *EventSuite) TestEventBlockAdd(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockAdd,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	block := &event.Block{KindName: "app.deploy", Reason: "block reason"}
+	values, err := form.EncodeToValues(block)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/events/blocks", strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	blocks, err := event.ListBlocks(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(blocks), check.Equals, 1)
+	c.Assert(blocks[0].Active, check.Equals, true)
+	c.Assert(blocks[0].KindName, check.Equals, "app.deploy")
+	c.Assert(blocks[0].Reason, check.Equals, "block reason")
+}
+
+func (s *EventSuite) TestEventBlockAddWithoutPermission(c *check.C) {
+	block := &event.Block{KindName: "app.deploy", Reason: "block reason"}
+	values, err := form.EncodeToValues(block)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/events/blocks", strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	blocks, err := event.ListBlocks(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(blocks), check.Equals, 0)
+}
+
+func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockAdd,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	block := &event.Block{KindName: "app.deploy"}
+	values, err := form.EncodeToValues(block)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/events/blocks", strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "reason is required\n")
+	blocks, err := event.ListBlocks(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(blocks), check.Equals, 0)
+}
+
+func (s *EventSuite) TestEventBlockRemove(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockRemove,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	blocks := addBlocks(c)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", blocks[0].ID.Hex()), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	active := false
+	afterBlocks, err := event.ListBlocks(&active)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(afterBlocks), check.Equals, 1)
+	c.Assert(afterBlocks[0].ID.Hex(), check.Equals, blocks[0].ID.Hex())
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeEventBlock, Value: blocks[0].ID.Hex()},
+		Owner:  token.GetUserName(),
+		Kind:   "event-block.remove",
+		StartCustomData: []map[string]interface{}{
+			{"name": "ID", "value": blocks[0].ID.Hex()},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockRemove,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/abc"), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "uuid parameter is not ObjectId: abc\n")
+}
+
+func (s *EventSuite) TestEventBlockRemoveUUIDNotFound(c *check.C) {
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermEventBlockRemove,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", bson.NewObjectId().Hex()), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *EventSuite) TestEventBlockRemoveWithoutPermission(c *check.C) {
+	blocks := addBlocks(c)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/events/blocks/%s", blocks[0].ID.Hex()), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func addBlocks(c *check.C) []*event.Block {
+	blocks := []*event.Block{
+		&event.Block{KindName: "app.deploy"},
+		&event.Block{KindName: "app.create"},
+		&event.Block{OwnerName: "blocked-user"},
+	}
+	for _, b := range blocks {
+		err := event.AddBlock(b)
+		c.Assert(err, check.IsNil)
+	}
+	return blocks
 }

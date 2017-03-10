@@ -182,4 +182,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"nodecontainer.delete",
 ).add(
 	"install.manage",
+).add(
+	"event-block.read",
+	"event-block.read.events",
+	"event-block.add",
+	"event-block.remove",
 )

@@ -231,8 +231,10 @@ func (s *Storage) Events() *storage.Collection {
 
 func (s *Storage) EventBlocks() *storage.Collection {
 	index := mgo.Index{Key: []string{"ownername", "kindname", "target"}}
+	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}
 	c := s.Collection("event_blocks")
 	c.EnsureIndex(index)
+	c.EnsureIndex(startTimeIndex)
 	return c
 }
 

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"strconv"
+
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -143,4 +145,116 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// title: event block list
+// path: /events/blocks
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   204: No content
+//   401: Unauthorized
+func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermEventBlockRead) {
+		return permission.ErrUnauthorized
+	}
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	var active *bool
+	if activeStr := r.FormValue("active"); activeStr != "" {
+		b, _ := strconv.ParseBool(activeStr)
+		active = &b
+	}
+	blocks, err := event.ListBlocks(active)
+	if err != nil {
+		return err
+	}
+	if len(blocks) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(blocks)
+}
+
+// title: add event block
+// path: /events/blocks
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: OK
+//   400: Invalid data or empty reason
+//   401: Unauthorized
+func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	if !permission.Check(t, permission.PermEventBlockAdd) {
+		return permission.ErrUnauthorized
+	}
+	r.ParseForm()
+	dec := form.NewDecoder(nil)
+	dec.IgnoreUnknownKeys(true)
+	dec.IgnoreCase(true)
+	var block event.Block
+	err = dec.DecodeValues(&block, r.Form)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("unable to parse block: %s", err)}
+	}
+	if block.Reason == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("reason is required")}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeEventBlock},
+		Kind:       permission.PermEventBlockAdd,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermEventBlockReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		evt.Target.Value = block.ID.Hex()
+		evt.Done(err)
+	}()
+	return event.AddBlock(&block)
+}
+
+// title: event block list
+// path: /events/blocks/{uuid}
+// method: DELETE
+// responses:
+//   200: OK
+//   400: Invalid uuid
+//   401: Unauthorized
+//	 404: Active block with provided uuid not found
+func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	if !permission.Check(t, permission.PermEventBlockRemove) {
+		return permission.ErrUnauthorized
+	}
+	uuid := r.URL.Query().Get(":uuid")
+	if !bson.IsObjectIdHex(uuid) {
+		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+	objID := bson.ObjectIdHex(uuid)
+	evt, err := event.New(&event.Opts{
+		Target: event.Target{Type: event.TargetTypeEventBlock, Value: objID.Hex()},
+		Kind:   permission.PermEventBlockRemove,
+		Owner:  t,
+		CustomData: []map[string]interface{}{
+			{"name": "ID", "value": objID.Hex()},
+		},
+		Allowed: event.Allowed(permission.PermEventBlockReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = event.RemoveBlock(objID)
+	if _, ok := err.(*event.ErrActiveEventBlockNotFound); ok {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
 }
