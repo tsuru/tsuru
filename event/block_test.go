@@ -17,6 +17,7 @@ func (s *S) TestAddBlock(c *check.C) {
 	c.Assert(err, check.IsNil)
 	blocks, err := listBlocks(nil)
 	c.Assert(err, check.IsNil)
+	blocks[0].StartTime = block.StartTime
 	c.Assert(blocks[0], check.DeepEquals, *block)
 }
 
@@ -31,6 +32,7 @@ func (s *S) TestRemoveBlock(c *check.C) {
 	blocks, err = listBlocks(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(blocks[0].Active, check.Equals, false)
+	c.Assert(blocks[0].EndTime.After(block.StartTime), check.Equals, true)
 }
 
 func (s *S) TestRemoveBlockNotFound(c *check.C) {
@@ -61,6 +63,11 @@ func (s *S) TestListBlocks(c *check.C) {
 	for i, t := range tt {
 		blocks, err := ListBlocks(t.active)
 		c.Assert(err, check.IsNil)
+		c.Assert(len(blocks), check.Equals, len(t.expected))
+		for i := range blocks {
+			blocks[i].StartTime = t.expected[i].StartTime
+			blocks[i].EndTime = t.expected[i].EndTime
+		}
 		if !reflect.DeepEqual(blocks, t.expected) {
 			c.Errorf("(%d) Expected %#+v. Got %#+v.", i, t.expected, blocks)
 		}
@@ -92,11 +99,12 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		{&Event{eventData: eventData{Kind: Kind{Name: "node.update"}, Target: Target{Type: TargetTypeNode, Value: "my-node"}}}, blocks["blockAllNodes"]},
 	}
 	for i, t := range tt {
+		errBlock := checkIsBlocked(t.event)
 		var expectedErr error
 		if t.blockedBy != nil {
+			errBlock.(*ErrEventBlocked).block.StartTime = t.blockedBy.StartTime
 			expectedErr = &ErrEventBlocked{event: t.event, block: t.blockedBy}
 		}
-		errBlock := checkIsBlocked(t.event)
 		if !reflect.DeepEqual(errBlock, expectedErr) {
 			c.Errorf("(%d) Expected %#+v. Got %#+v", i, expectedErr, errBlock)
 		}
