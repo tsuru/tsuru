@@ -155,7 +155,6 @@ func (c *Fake) InvokesWatch(action Action) (watch.Interface, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	fmt.Printf("InvokesWatch %#v\n", action)
 	c.actions = append(c.actions, action)
 	for _, reactor := range c.WatchReactionChain {
 		if !reactor.Handles(action) {
