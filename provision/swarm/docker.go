@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
 )
@@ -314,7 +315,7 @@ type tsuruServiceOpts struct {
 	baseSpec      *swarm.ServiceSpec
 	isDeploy      bool
 	isIsolatedRun bool
-	processState  processState
+	processState  servicecommon.ProcessState
 	constraints   []string
 }
 
@@ -379,12 +380,12 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		}
 		restartCount, _ = strconv.Atoi(opts.baseSpec.Labels[labelServiceRestart.String()])
 	}
-	if opts.processState.increment != 0 {
-		replicas += opts.processState.increment
+	if opts.processState.Increment != 0 {
+		replicas += opts.processState.Increment
 		if replicas < 0 {
 			return nil, errors.New("cannot have less than 0 units")
 		}
-	} else if replicas == 0 && opts.processState.start {
+	} else if replicas == 0 && opts.processState.Start {
 		replicas = 1
 	}
 	routerName, err := opts.app.GetRouterName()
@@ -405,10 +406,10 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		srvName = fmt.Sprintf("%sisolated-run", srvName)
 	}
 	uReplicas := uint64(replicas)
-	if opts.processState.stop {
+	if opts.processState.Stop {
 		uReplicas = 0
 	}
-	if opts.processState.restart {
+	if opts.processState.Restart {
 		restartCount++
 	}
 	labels := map[string]string{

@@ -17,7 +17,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -27,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/servicecommon"
 )
 
 const (
@@ -131,7 +131,7 @@ func changeUnits(a provision.App, units int, processName string, w io.Writer) er
 			return errors.WithStack(err)
 		}
 	}
-	return deployProcesses(client, a, imageId, processSpec{processName: processState{increment: units}})
+	return deployProcesses(client, a, imageId, servicecommon.ProcessSpec{processName: servicecommon.ProcessState{Increment: units}})
 }
 
 func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
@@ -142,7 +142,7 @@ func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName 
 	return changeUnits(a, -int(units), processName, w)
 }
 
-func changeAppState(a provision.App, process string, state processState) error {
+func changeAppState(a provision.App, process string, state servicecommon.ProcessState) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func changeAppState(a provision.App, process string, state processState) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	spec := processSpec{}
+	spec := servicecommon.ProcessSpec{}
 	for _, procName := range processes {
 		spec[procName] = state
 	}
@@ -168,15 +168,15 @@ func changeAppState(a provision.App, process string, state processState) error {
 }
 
 func (p *swarmProvisioner) Restart(a provision.App, process string, w io.Writer) error {
-	return changeAppState(a, process, processState{start: true, restart: true})
+	return changeAppState(a, process, servicecommon.ProcessState{Start: true, Restart: true})
 }
 
 func (p *swarmProvisioner) Start(a provision.App, process string) error {
-	return changeAppState(a, process, processState{start: true})
+	return changeAppState(a, process, servicecommon.ProcessState{Start: true})
 }
 
 func (p *swarmProvisioner) Stop(a provision.App, process string) error {
-	return changeAppState(a, process, processState{stop: true})
+	return changeAppState(a, process, servicecommon.ProcessState{Stop: true})
 }
 
 func allAppProcesses(appName string) ([]string, error) {
@@ -964,60 +964,29 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 	return out, nil
 }
 
-func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec processSpec) error {
-	curImg, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return err
+func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec servicecommon.ProcessSpec) error {
+	manager := &serviceManager{
+		client: client,
 	}
-	currentImageData, err := image.GetImageCustomData(curImg)
-	if err != nil {
-		return err
-	}
-	currentSpec := processSpec{}
-	for p := range currentImageData.Processes {
-		currentSpec[p] = processState{}
-	}
-	newImageData, err := image.GetImageCustomData(newImg)
-	if err != nil {
-		return err
-	}
-	if len(newImageData.Processes) == 0 {
-		return errors.Errorf("no process information found deploying image %q", newImg)
-	}
-	newSpec := processSpec{}
-	for p := range newImageData.Processes {
-		newSpec[p] = processState{start: true}
-		if updateSpec != nil {
-			newSpec[p] = updateSpec[p]
-		}
-	}
-	pipeline := action.NewPipeline(
-		updateServices,
-		updateImageInDB,
-		removeOldServices,
-	)
-	return pipeline.Execute(&pipelineArgs{
-		client:           client,
-		app:              a,
-		newImage:         newImg,
-		newImageSpec:     newSpec,
-		currentImage:     curImg,
-		currentImageSpec: currentSpec,
-	})
+	return servicecommon.RunServicePipeline(manager, a, newImg, updateSpec)
 }
 
-func removeService(client *docker.Client, a provision.App, process string) error {
+type serviceManager struct {
+	client *docker.Client
+}
+
+func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	srvName := serviceNameForApp(a, process)
-	err := client.RemoveService(docker.RemoveServiceOptions{ID: srvName})
+	err := m.client.RemoveService(docker.RemoveServiceOptions{ID: srvName})
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func deploy(client *docker.Client, a provision.App, process string, pState processState, imgID string) error {
+func (m *serviceManager) DeployService(a provision.App, process string, pState servicecommon.ProcessState, imgID string) error {
 	srvName := serviceNameForApp(a, process)
-	srv, err := client.InspectService(srvName)
+	srv, err := m.client.InspectService(srvName)
 	if err != nil {
 		if _, isNotFound := err.(*docker.NoSuchService); !isNotFound {
 			return errors.WithStack(err)
@@ -1038,7 +1007,7 @@ func deploy(client *docker.Client, a provision.App, process string, pState proce
 		return err
 	}
 	if srv == nil {
-		_, err = client.CreateService(docker.CreateServiceOptions{
+		_, err = m.client.CreateService(docker.CreateServiceOptions{
 			ServiceSpec: *spec,
 		})
 		if err != nil {
@@ -1046,7 +1015,7 @@ func deploy(client *docker.Client, a provision.App, process string, pState proce
 		}
 	} else {
 		srv.Spec = *spec
-		err = client.UpdateService(srv.ID, docker.UpdateServiceOptions{
+		err = m.client.UpdateService(srv.ID, docker.UpdateServiceOptions{
 			Version:     srv.Version.Index,
 			ServiceSpec: srv.Spec,
 		})
