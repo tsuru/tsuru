@@ -76,10 +76,10 @@ func (s *S) TestListBlocks(c *check.C) {
 
 func (s *S) TestCheckIsBlocked(c *check.C) {
 	blocks := map[string]*Block{
-		"blockApp":        &Block{Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
-		"blockAllDeploys": &Block{KindName: "app.deploy", Reason: "maintenance"},
-		"blockAllNodes":   &Block{Target: Target{Type: TargetTypeNode}},
-		"blockUser":       &Block{OwnerName: "blocked-user"},
+		"blockApp":        {Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
+		"blockAllDeploys": {KindName: "app.deploy", Reason: "maintenance"},
+		"blockAllNodes":   {Target: Target{Type: TargetTypeNode}},
+		"blockUser":       {OwnerName: "blocked-user"},
 	}
 	for _, b := range blocks {
 		err := AddBlock(b)

@@ -652,9 +652,9 @@ func (s *EventSuite) TestEventBlockRemoveWithoutPermission(c *check.C) {
 
 func addBlocks(c *check.C) []*event.Block {
 	blocks := []*event.Block{
-		&event.Block{KindName: "app.deploy"},
-		&event.Block{KindName: "app.create"},
-		&event.Block{OwnerName: "blocked-user"},
+		{KindName: "app.deploy"},
+		{KindName: "app.create"},
+		{OwnerName: "blocked-user"},
 	}
 	for _, b := range blocks {
 		err := event.AddBlock(b)
