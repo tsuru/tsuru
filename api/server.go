@@ -166,6 +166,9 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/deploys/{deploy}", AuthorizationRequiredHandler(deployInfo))
 
 	m.Add("1.1", "Get", "/events", AuthorizationRequiredHandler(eventList))
+	m.Add("1.3", "Get", "/events/blocks", AuthorizationRequiredHandler(eventBlockList))
+	m.Add("1.3", "Post", "/events/blocks", AuthorizationRequiredHandler(eventBlockAdd))
+	m.Add("1.3", "Delete", "/events/blocks/{uuid}", AuthorizationRequiredHandler(eventBlockRemove))
 	m.Add("1.1", "Get", "/events/kinds", AuthorizationRequiredHandler(kindList))
 	m.Add("1.1", "Get", "/events/{uuid}", AuthorizationRequiredHandler(eventInfo))
 	m.Add("1.1", "Post", "/events/{uuid}/cancel", AuthorizationRequiredHandler(eventCancel))

@@ -8,11 +8,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+type ErrActiveEventBlockNotFound struct {
+	id string
+}
+
+func (e *ErrActiveEventBlockNotFound) Error() string {
+	return fmt.Sprintf("active event block with id %s not found", e.id)
+}
 
 type ErrEventBlocked struct {
 	event *Event
@@ -73,10 +80,10 @@ func RemoveBlock(id bson.ObjectId) error {
 		return err
 	}
 	defer conn.Close()
-	query := bson.M{"$set": bson.M{"active": false, "endtime": time.Now()}}
-	err = conn.EventBlocks().UpdateId(id, query)
+	query := bson.M{"_id": id, "active": true}
+	err = conn.EventBlocks().Update(query, bson.M{"$set": bson.M{"active": false, "endtime": time.Now()}})
 	if err == mgo.ErrNotFound {
-		return errors.WithMessage(err, "failed to remove event block")
+		return &ErrActiveEventBlockNotFound{id: id.Hex()}
 	}
 	return err
 }

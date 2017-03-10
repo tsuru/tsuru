@@ -71,7 +71,6 @@ func (s *S) TestListBlocks(c *check.C) {
 		if !reflect.DeepEqual(blocks, t.expected) {
 			c.Errorf("(%d) Expected %#+v. Got %#+v.", i, t.expected, blocks)
 		}
-		c.Assert(blocks, check.DeepEquals, t.expected)
 	}
 }
 
