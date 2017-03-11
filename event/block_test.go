@@ -6,6 +6,7 @@ package event
 
 import (
 	"reflect"
+	"time"
 
 	check "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -45,6 +46,7 @@ func (s *S) TestListBlocks(c *check.C) {
 	block := &Block{KindName: "app.deploy", Reason: "maintenance"}
 	err := AddBlock(block)
 	c.Assert(err, check.IsNil)
+	time.Sleep(100 * time.Millisecond)
 	block2 := &Block{KindName: "app.create", Reason: "maintenance"}
 	err = AddBlock(block2)
 	c.Assert(err, check.IsNil)
@@ -65,7 +67,7 @@ func (s *S) TestListBlocks(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(len(blocks), check.Equals, len(t.expected))
 		for j := range blocks {
-			if !reflect.DeepEqual(blocks[j].ID, t.expected[j].ID) {
+			if blocks[j].ID.Hex() != t.expected[j].ID.Hex() {
 				c.Errorf("(%d) Expected %#+v to be in index %d. Got %#+v.", i, t.expected[j], j, blocks[j])
 			}
 		}
