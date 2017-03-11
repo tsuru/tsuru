@@ -118,7 +118,7 @@ func checkIsBlocked(evt *Event) error {
 		{"$or": []bson.M{
 			{"target": evt.Target},
 			{"target": bson.M{"$exists": false}},
-			{"$and": []bson.M{{"target.type": evt.Target.Type}, {"target.value": ""}}}}},
+			{"target.type": evt.Target.Type, "target.value": ""}}},
 	}}
 	blocks, err := listBlocks(query)
 	if err != nil {
