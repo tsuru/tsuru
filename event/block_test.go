@@ -27,12 +27,13 @@ func (s *S) TestRemoveBlock(c *check.C) {
 	c.Assert(err, check.IsNil)
 	blocks, err := listBlocks(nil)
 	c.Assert(err, check.IsNil)
+	c.Assert(blocks[0].Active, check.Equals, true)
 	err = RemoveBlock(blocks[0].ID)
 	c.Assert(err, check.IsNil)
 	blocks, err = listBlocks(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(blocks[0].Active, check.Equals, false)
-	c.Assert(blocks[0].EndTime.After(block.StartTime), check.Equals, true)
+	c.Assert(blocks[0].EndTime.IsZero(), check.Equals, false)
 }
 
 func (s *S) TestRemoveBlockNotFound(c *check.C) {
@@ -49,14 +50,13 @@ func (s *S) TestListBlocks(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RemoveBlock(block2.ID)
 	c.Assert(err, check.IsNil)
-	block2.Active = false
 	active := true
 	deactive := false
 	tt := []struct {
 		active   *bool
 		expected []Block
 	}{
-		{nil, []Block{*block, *block2}},
+		{nil, []Block{*block2, *block}},
 		{&active, []Block{*block}},
 		{&deactive, []Block{*block2}},
 	}
@@ -64,12 +64,10 @@ func (s *S) TestListBlocks(c *check.C) {
 		blocks, err := ListBlocks(t.active)
 		c.Assert(err, check.IsNil)
 		c.Assert(len(blocks), check.Equals, len(t.expected))
-		for i := range blocks {
-			blocks[i].StartTime = t.expected[i].StartTime
-			blocks[i].EndTime = t.expected[i].EndTime
-		}
-		if !reflect.DeepEqual(blocks, t.expected) {
-			c.Errorf("(%d) Expected %#+v. Got %#+v.", i, t.expected, blocks)
+		for j := range blocks {
+			if !reflect.DeepEqual(blocks[j].ID, t.expected[j].ID) {
+				c.Errorf("(%d) Expected %#+v to be in index %d. Got %#+v.", i, t.expected[j], j, blocks[j])
+			}
 		}
 	}
 }
