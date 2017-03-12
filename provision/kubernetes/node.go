@@ -60,3 +60,32 @@ func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
 func (n *kubernetesNodeWrapper) Provisioner() provision.NodeProvisioner {
 	return n.prov
 }
+
+type clusterNode struct {
+	address string
+	prov    *kubernetesProvisioner
+}
+
+func (n *clusterNode) Pool() string {
+	return ""
+}
+
+func (n *clusterNode) Address() string {
+	return n.address
+}
+
+func (n *clusterNode) Status() string {
+	return ""
+}
+
+func (n *clusterNode) Metadata() map[string]string {
+	return map[string]string{"cluster": "true"}
+}
+
+func (n *clusterNode) Units() ([]provision.Unit, error) {
+	return nil, nil
+}
+
+func (n *clusterNode) Provisioner() provision.NodeProvisioner {
+	return n.prov
+}

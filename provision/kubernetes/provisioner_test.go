@@ -23,9 +23,10 @@ func (s *S) TestListNodes(c *check.C) {
 	s.mockfakeNodes(c)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
-	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.1")
-	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.2")
+	c.Assert(nodes, check.HasLen, 3)
+	c.Assert(nodes[0].Address(), check.Equals, "https://anything")
+	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.1")
+	c.Assert(nodes[2].Address(), check.Equals, "192.168.99.2")
 }
 
 func (s *S) TestListNodesWithoutNodes(c *check.C) {
@@ -66,7 +67,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes, check.HasLen, 2)
 }
 
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
@@ -91,7 +92,7 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(evictionCalled, check.Equals, true)
 }
 

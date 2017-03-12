@@ -55,6 +55,15 @@ func addClusterNode(opts provision.AddNodeOptions) error {
 	return nil
 }
 
+func removeClusterNode(addr string) error {
+	coll, err := clusterAddrCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	return coll.RemoveId(addr)
+}
+
 func getClusterRestConfig() (*rest.Config, error) {
 	coll, err := clusterAddrCollection()
 	if err != nil {
@@ -69,11 +78,12 @@ func getClusterRestConfig() (*rest.Config, error) {
 		}
 		return nil, errors.WithStack(err)
 	}
-	gv, err := unversioned.ParseGroupVersion("v1")
+	gv, err := unversioned.ParseGroupVersion("/v1")
 	if err != nil {
 		return nil, err
 	}
 	return &rest.Config{
+		APIPath: "/api",
 		ContentConfig: rest.ContentConfig{
 			GroupVersion:         &gv,
 			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: api.Codecs},
@@ -88,13 +98,18 @@ func getClusterRestConfig() (*rest.Config, error) {
 	}, nil
 }
 
-func getClusterClient() (kubernetes.Interface, error) {
+func getClusterClientWithCfg() (kubernetes.Interface, *rest.Config, error) {
 	cfg, err := getClusterRestConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	client, err := clientForConfig(cfg)
-	return client, errors.WithStack(err)
+	return client, cfg, errors.WithStack(err)
+}
+
+func getClusterClient() (kubernetes.Interface, error) {
+	client, _, err := getClusterClientWithCfg()
+	return client, err
 }
 
 func clusterAddrCollection() (*storage.Collection, error) {

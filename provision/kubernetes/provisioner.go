@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -210,22 +211,29 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	client, err := getClusterClient()
+	client, cfg, err := getClusterClientWithCfg()
 	if err != nil {
 		if err == errNoCluster {
 			return nil, nil
 		}
 		return nil, err
 	}
-	nodeList, err := client.Core().Nodes().List(v1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
+	var nodes []provision.Node
 	var addressSet set.Set
 	if len(addressFilter) > 0 {
 		addressSet = set.FromSlice(addressFilter)
 	}
-	var nodes []provision.Node
+	if addressSet == nil || addressSet.Includes(cfg.Host) {
+		nodes = append(nodes, &clusterNode{address: cfg.Host, prov: p})
+	}
+	nodeList, err := client.Core().Nodes().List(v1.ListOptions{})
+	if err != nil {
+		// TODO(cezarsa): It would be better to return an error to be handled
+		// by the api. Failing to list nodes from one provisioner should not
+		// prevent other nodes from showing up.
+		log.Errorf("unable to list all node from kubernetes cluster: %v", err)
+		return nodes, nil
+	}
 	for i := range nodeList.Items {
 		n := &kubernetesNodeWrapper{
 			node: &nodeList.Items[i],
@@ -239,12 +247,15 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 }
 
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
-	client, err := getClusterClient()
+	client, cfg, err := getClusterClientWithCfg()
 	if err != nil {
 		if err == errNoCluster {
 			return nil, provision.ErrNodeNotFound
 		}
 		return nil, err
+	}
+	if address == cfg.Host {
+		return &clusterNode{address: cfg.Host, prov: p}, nil
 	}
 	node, err := p.findNodeByAddress(client, address)
 	if err != nil {
@@ -263,9 +274,12 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
-	client, err := getClusterClient()
+	client, cfg, err := getClusterClientWithCfg()
 	if err != nil {
 		return err
+	}
+	if opts.Address == cfg.Host {
+		return removeClusterNode(opts.Address)
 	}
 	nodeWrapper, err := p.findNodeByAddress(client, opts.Address)
 	if err != nil {
