@@ -13,6 +13,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/runtime/serializer"
 	"k8s.io/client-go/rest"
 )
 
@@ -52,7 +55,7 @@ func addClusterNode(opts provision.AddNodeOptions) error {
 	return nil
 }
 
-func getClusterClient() (kubernetes.Interface, error) {
+func getClusterRestConfig() (*rest.Config, error) {
 	coll, err := clusterAddrCollection()
 	if err != nil {
 		return nil, err
@@ -66,7 +69,15 @@ func getClusterClient() (kubernetes.Interface, error) {
 		}
 		return nil, errors.WithStack(err)
 	}
-	client, err := clientForConfig(&rest.Config{
+	gv, err := unversioned.ParseGroupVersion("v1")
+	if err != nil {
+		return nil, err
+	}
+	return &rest.Config{
+		ContentConfig: rest.ContentConfig{
+			GroupVersion:         &gv,
+			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: api.Codecs},
+		},
 		Host: data.Address,
 		TLSClientConfig: rest.TLSClientConfig{
 			CAData:   data.CaCert,
@@ -74,11 +85,16 @@ func getClusterClient() (kubernetes.Interface, error) {
 			KeyData:  data.ClientKey,
 		},
 		Timeout: defaultTimeout,
-	})
+	}, nil
+}
+
+func getClusterClient() (kubernetes.Interface, error) {
+	cfg, err := getClusterRestConfig()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
-	return client, nil
+	client, err := clientForConfig(cfg)
+	return client, errors.WithStack(err)
 }
 
 func clusterAddrCollection() (*storage.Collection, error) {

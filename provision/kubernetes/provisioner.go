@@ -9,23 +9,27 @@ import (
 	"io"
 	"net/url"
 	"strconv"
-	"strings"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app/image"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	"k8s.io/client-go/pkg/fields"
 )
 
 const (
-	provisionerName = "kubernetes"
-	tsuruNamespace  = "default"
+	provisionerName        = "kubernetes"
+	tsuruNamespace         = "default"
+	dockerImageName        = "docker:1.11.2"
+	defaultBuildJobTimeout = 30 * time.Minute
 )
 
 var errNotImplemented = errors.New("not implemented")
@@ -46,8 +50,33 @@ func (p *kubernetesProvisioner) Provision(provision.App) error {
 	return nil
 }
 
-func (p *kubernetesProvisioner) Destroy(provision.App) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) Destroy(a provision.App) error {
+	imgID, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	data, err := image.GetImageCustomData(imgID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	manager := &serviceManager{
+		client: client,
+	}
+	multiErrors := tsuruErrors.NewMultiError()
+	for process := range data.Processes {
+		err = manager.RemoveService(a, process)
+		if err != nil {
+			multiErrors.Add(err)
+		}
+	}
+	if multiErrors.Len() > 0 {
+		return multiErrors
+	}
+	return nil
 }
 
 func (p *kubernetesProvisioner) AddUnits(provision.App, uint, string, io.Writer) error {
@@ -70,16 +99,114 @@ func (p *kubernetesProvisioner) Stop(provision.App, string) error {
 	return errNotImplemented
 }
 
-func (p *kubernetesProvisioner) Units(app provision.App) ([]provision.Unit, error) {
-	return nil, nil
+var stateMap = map[v1.PodPhase]provision.Status{
+	v1.PodPending:   provision.StatusCreated,
+	v1.PodRunning:   provision.StatusStarted,
+	v1.PodSucceeded: provision.StatusStopped,
+	v1.PodFailed:    provision.StatusError,
+	v1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
-	return nil, errNotImplemented
+func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error) {
+	client, err := getClusterClient()
+	if err != nil {
+		return nil, err
+	}
+	pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+		LabelSelector: fmt.Sprintf("tsuru.app.name=%s", a.GetName()),
+	})
+	if err != nil {
+		return nil, err
+	}
+	nodeMap := map[string]*v1.Node{}
+	units := make([]provision.Unit, len(pods.Items))
+	for i, pod := range pods.Items {
+		node, ok := nodeMap[pod.Spec.NodeName]
+		if !ok {
+			node, err = client.Core().Nodes().Get(pod.Spec.NodeName)
+			if err != nil {
+				return nil, err
+			}
+			nodeMap[pod.Spec.NodeName] = node
+		}
+		wrapper := kubernetesNodeWrapper{node: node, prov: p}
+		units[i] = provision.Unit{
+			ID:          pod.Name,
+			AppName:     a.GetName(),
+			ProcessName: pod.Labels["tsuru.app.process"],
+			Type:        pod.Labels["tsuru.app.platform"],
+			Ip:          wrapper.Address(),
+			Status:      stateMap[pod.Status.Phase],
+			Address: &url.URL{
+				Host: wrapper.Address(),
+			},
+		}
+	}
+	return units, nil
 }
 
-func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
+	client, err := getClusterClient()
+	if err != nil {
+		return nil, err
+	}
+	imgID, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		if err != image.ErrNoImagesAvailable {
+			return nil, err
+		}
+		return nil, nil
+	}
+	webProcessName, err := image.GetImageWebProcessName(imgID)
+	if err != nil {
+		return nil, err
+	}
+	if webProcessName == "" {
+		return nil, nil
+	}
+	depName := deploymentNameForApp(a, webProcessName)
+	srv, err := client.Core().Services(tsuruNamespace).Get(depName)
+	if err != nil {
+		return nil, err
+	}
+	if len(srv.Spec.Ports) == 0 {
+		return nil, nil
+	}
+	pubPort := srv.Spec.Ports[0].NodePort
+	nodes, err := client.Core().Nodes().List(v1.ListOptions{
+		LabelSelector: fmt.Sprintf("pool=%s", a.GetPool()),
+	})
+	if err != nil {
+		return nil, err
+	}
+	addrs := make([]url.URL, len(nodes.Items))
+	for i, n := range nodes.Items {
+		wrapper := kubernetesNodeWrapper{node: &n, prov: p}
+		addrs[i] = url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
+		}
+	}
+	return addrs, nil
+}
+
+func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, customData map[string]interface{}) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	pod, err := client.Core().Pods(tsuruNamespace).Get(unitID)
+	if err != nil {
+		return err
+	}
+	if customData == nil {
+		return nil
+	}
+	buildingImage, ok := pod.Annotations["tsuru.pod.buildImage"]
+	if !ok || buildingImage == "" {
+		return nil
+	}
+	return image.SaveImageCustomData(buildingImage, customData)
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
@@ -223,55 +350,77 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 	return err
 }
 
-func deploymentNameForApp(a provision.App, process string) string {
-	return fmt.Sprintf("%s-%s", a.GetName(), process)
-}
-
-func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
+func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
+	defer archiveFile.Close()
+	if build {
+		return "", errors.New("running UploadDeploy with build=true is not yet supported")
+	}
+	deployJobName := deployJobNameForApp(a)
+	baseImage := image.GetBuildImage(a)
+	buildingImage, err := image.AppNewImageName(a.GetName())
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
 	client, err := getClusterClient()
 	if err != nil {
 		return "", err
 	}
-	if !strings.Contains(imgID, ":") {
-		imgID = fmt.Sprintf("%s:latest", imgID)
+	defer cleanupJob(client, deployJobName)
+	params := buildJobParams{
+		app:              a,
+		client:           client,
+		buildCmd:         []string{"sh", "-c", "cat >/home/application/archive.tar.gz"},
+		sourceImage:      baseImage,
+		destinationImage: buildingImage,
+		attachInput:      archiveFile,
 	}
-	routerName, err := a.GetRouterName()
+	_, err = createBuildJob(params)
+	if err != nil {
+		return "", err
+	}
+	err = waitForJob(client, deployJobName, defaultBuildJobTimeout, false)
+	if err != nil {
+		return "", err
+	}
+	err = cleanupJob(client, deployJobName)
+	if err != nil {
+		return "", err
+	}
+	cmds := dockercommon.ArchiveDeployCmds(a, "file:///home/application/archive.tar.gz")
+	params = buildJobParams{
+		app:              a,
+		client:           client,
+		buildCmd:         cmds,
+		sourceImage:      buildingImage,
+		destinationImage: buildingImage,
+	}
+	podName, err := createBuildJob(params)
+	if err != nil {
+		return "", err
+	}
+	req := client.Core().Pods(tsuruNamespace).GetLogs(podName, &v1.PodLogOptions{
+		Follow:    true,
+		Container: deployJobName,
+	})
+	reader, err := req.Stream()
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	routerType, _, err := router.Type(routerName)
+	defer reader.Close()
+	_, err = io.Copy(evt, reader)
+	if err != nil && err != io.EOF {
+		return "", errors.WithStack(err)
+	}
+	err = waitForJob(client, deployJobName, defaultBuildJobTimeout, false)
+	if err != nil {
+		return "", err
+	}
+	manager := &serviceManager{
+		client: client,
+	}
+	err = servicecommon.RunServicePipeline(manager, a, buildingImage, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	replicas := int32(1)
-	deployment := extensions.Deployment{
-		ObjectMeta: v1.ObjectMeta{
-			Name: deploymentNameForApp(a, ""),
-		},
-		Spec: extensions.DeploymentSpec{
-			Replicas: &replicas,
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
-					Labels: map[string]string{
-						"tsuru.pod":         strconv.FormatBool(true),
-						"tsuru.app.name":    a.GetName(),
-						"tsuru.node.pool":   a.GetPool(),
-						"tsuru.router.name": routerName,
-						"tsuru.router.type": routerType,
-					},
-				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Name:  a.GetName(),
-							Image: imgID,
-						},
-					},
-				},
-			},
-		},
-	}
-	// client.De
-	_, err = client.Extensions().Deployments(tsuruNamespace).Create(&deployment)
-	return "", err
+	return buildingImage, nil
 }
