@@ -407,7 +407,7 @@ func processTags(tags []string) []string {
 	processedTags := []string{}
 	usedTags := make(map[string]bool)
 	for _, tag := range tags {
-		tag = strings.Trim(tag, " ")
+		tag = strings.TrimSpace(tag)
 		if len(tag) > 0 && !usedTags[tag] {
 			processedTags = append(processedTags, tag)
 			usedTags[tag] = true
