@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	"k8s.io/client-go/pkg/runtime"
@@ -162,6 +163,9 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) ktesting.ReactionFun
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		job := action.(ktesting.CreateAction).GetObject().(*batch.Job)
 		job.Status.Succeeded = int32(1)
+		job.Spec.Selector = &unversioned.LabelSelector{
+			MatchLabels: map[string]string{"uuid": "my-uuid"},
+		}
 		go func() {
 			pod := &v1.Pod{
 				ObjectMeta: job.Spec.Template.ObjectMeta,
@@ -172,6 +176,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) ktesting.ReactionFun
 			if pod.ObjectMeta.Labels == nil {
 				pod.ObjectMeta.Labels = map[string]string{}
 			}
+			pod.ObjectMeta.Labels["uuid"] = "my-uuid"
 			pod.ObjectMeta.Labels["job-name"] = job.Name
 			toRegister := false
 			for _, cont := range pod.Spec.Containers {

@@ -44,7 +44,7 @@ func (s *S) TestWaitFor(c *check.C) {
 }
 
 func (s *S) TestWaitForJobContainerRunning(c *check.C) {
-	podName, err := waitForJobContainerRunning(s.client, "job1", "cont1", 100*time.Millisecond)
+	podName, err := waitForJobContainerRunning(s.client, map[string]string{"a": "x"}, "cont1", 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `timeout after .*`)
 	c.Assert(podName, check.Equals, "")
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
@@ -60,7 +60,8 @@ func (s *S) TestWaitForJobContainerRunning(c *check.C) {
 			Spec: batch.JobSpec{
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: v1.ObjectMeta{
-						Name: "job1",
+						Name:   "job1",
+						Labels: map[string]string{"a": "x"},
 					},
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{
@@ -72,7 +73,7 @@ func (s *S) TestWaitForJobContainerRunning(c *check.C) {
 		})
 		c.Assert(jErr, check.IsNil)
 	}()
-	podName, err = waitForJobContainerRunning(s.client, "job1", "cont1", 2*time.Minute)
+	podName, err = waitForJobContainerRunning(s.client, map[string]string{"a": "x"}, "cont1", 2*time.Minute)
 	c.Assert(err, check.IsNil)
 	c.Assert(podName, check.Equals, "job1-pod")
 	<-done

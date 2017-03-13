@@ -42,11 +42,11 @@ func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 	}
 }
 
-func waitForJobContainerRunning(client kubernetes.Interface, jobName string, container string, timeout time.Duration) (string, error) {
+func waitForJobContainerRunning(client kubernetes.Interface, matchLabels map[string]string, container string, timeout time.Duration) (string, error) {
 	var name string
 	err := waitFor(timeout, func() (bool, error) {
 		pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
-			LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+			LabelSelector: labels.SelectorFromSet(labels.Set(matchLabels)).String(),
 		})
 		if err != nil {
 			return false, errors.WithStack(err)

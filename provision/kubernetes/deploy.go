@@ -143,11 +143,14 @@ func createBuildJob(params buildJobParams) (string, error) {
 			},
 		},
 	}
-	_, err := params.client.Batch().Jobs(tsuruNamespace).Create(job)
+	createdJob, err := params.client.Batch().Jobs(tsuruNamespace).Create(job)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	podName, err := waitForJobContainerRunning(params.client, baseName, baseName, defaultBuildJobTimeout)
+	if createdJob.Spec.Selector == nil {
+		return "", errors.Errorf("empty selector for created job %q", job.Name)
+	}
+	podName, err := waitForJobContainerRunning(params.client, createdJob.Spec.Selector.MatchLabels, baseName, defaultBuildJobTimeout)
 	if err != nil {
 		return "", err
 	}
@@ -199,13 +202,15 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		{Name: "PORT", Value: port},
 	}...)
 	depName := deploymentNameForApp(a, process)
+	tenRevs := int32(10)
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
 			Namespace: tsuruNamespace,
 		},
 		Spec: extensions.DeploymentSpec{
-			Replicas: &replicas,
+			Replicas:             &replicas,
+			RevisionHistoryLimit: &tenRevs,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
 					Labels: map[string]string{

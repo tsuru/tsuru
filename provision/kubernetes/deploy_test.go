@@ -36,13 +36,15 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
 	c.Assert(err, check.IsNil)
 	one := int32(1)
+	ten := int32(10)
 	c.Assert(dep, check.DeepEquals, &extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: tsuruNamespace,
 		},
 		Spec: extensions.DeploymentSpec{
-			Replicas: &one,
+			Replicas:             &one,
+			RevisionHistoryLimit: &ten,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
 					Labels: map[string]string{
