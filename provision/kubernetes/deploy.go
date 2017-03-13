@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 
@@ -31,7 +30,7 @@ import (
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 )
 
-func doAttach(podName, namespace, containerName string, stdin io.Reader) error {
+func doAttach(params buildJobParams, podName, containerName string) error {
 	cfg, err := getClusterRestConfig()
 	if err != nil {
 		return err
@@ -43,7 +42,7 @@ func doAttach(podName, namespace, containerName string, stdin io.Reader) error {
 	req := cli.Post().
 		Resource("pods").
 		Name(podName).
-		Namespace(namespace).
+		Namespace(tsuruNamespace).
 		SubResource("attach")
 	req.VersionedParams(&api.PodAttachOptions{
 		Container: containerName,
@@ -58,9 +57,9 @@ func doAttach(podName, namespace, containerName string, stdin io.Reader) error {
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
 		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
-		Stdin:              stdin,
-		Stdout:             ioutil.Discard,
-		Stderr:             ioutil.Discard,
+		Stdin:              params.attachInput,
+		Stdout:             params.attachOutput,
+		Stderr:             params.attachOutput,
 		Tty:                false,
 		TerminalSizeQueue:  nil,
 	})
@@ -77,6 +76,7 @@ type buildJobParams struct {
 	sourceImage      string
 	destinationImage string
 	attachInput      io.Reader
+	attachOutput     io.Writer
 }
 
 func createBuildJob(params buildJobParams) (string, error) {
@@ -153,7 +153,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 		return "", err
 	}
 	if params.attachInput != nil {
-		return podName, doAttach(podName, tsuruNamespace, baseName, params.attachInput)
+		return podName, doAttach(params, podName, baseName)
 	}
 	return podName, nil
 }

@@ -27,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	"k8s.io/client-go/pkg/runtime"
@@ -42,7 +40,7 @@ type S struct {
 	user     *auth.User
 	team     *auth.Team
 	token    auth.Token
-	client   *clientWrapper
+	client   *fake.Clientset
 	lastConf *rest.Config
 	t        *testing.T
 }
@@ -71,37 +69,8 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
-type clientWrapper struct {
-	*fake.Clientset
-}
-
-func (c *clientWrapper) Core() v1core.CoreV1Interface {
-	core := c.Clientset.Core()
-	return &clientCoreWrapper{core}
-}
-
-type clientCoreWrapper struct {
-	v1core.CoreV1Interface
-}
-
-func (c *clientCoreWrapper) Pods(namespace string) v1core.PodInterface {
-	pods := c.CoreV1Interface.Pods(namespace)
-	return &clientPodsWrapper{pods}
-}
-
-type clientPodsWrapper struct {
-	v1core.PodInterface
-}
-
-func (c *clientPodsWrapper) GetLogs(name string, opts *v1.PodLogOptions) *rest.Request {
-	c.PodInterface.GetLogs(name, opts)
-	cfg, _ := getClusterRestConfig()
-	cli, _ := rest.RESTClientFor(cfg)
-	return cli.Get().Namespace(tsuruNamespace).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, api.ParameterCodec)
-}
-
 func (s *S) SetUpTest(c *check.C) {
-	s.client = &clientWrapper{fake.NewSimpleClientset()}
+	s.client = fake.NewSimpleClientset()
 	clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
 		return s.client, nil
@@ -174,21 +143,16 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 
 func (s *S) createDeployReadyServer(c *check.C) *httptest.Server {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/attach") {
-			_, streamErr := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
-			c.Assert(streamErr, check.IsNil)
-			upgrader := spdy.NewResponseUpgrader()
-			streams := make(chan httpstream.Stream, 4)
-			upgrader.UpgradeResponse(w, r, func(stream httpstream.Stream, replySent <-chan struct{}) error {
-				streams <- stream
-				return nil
-			})
-			for stream := range streams {
-				stream.Close()
-			}
-		} else if strings.HasSuffix(r.URL.Path, "/logs") {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, "my app log")
+		_, streamErr := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
+		c.Assert(streamErr, check.IsNil)
+		upgrader := spdy.NewResponseUpgrader()
+		streams := make(chan httpstream.Stream, 4)
+		upgrader.UpgradeResponse(w, r, func(stream httpstream.Stream, replySent <-chan struct{}) error {
+			streams <- stream
+			return nil
+		})
+		for stream := range streams {
+			stream.Close()
 		}
 	}))
 	return srv

@@ -380,50 +380,23 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 		return "", err
 	}
 	defer cleanupJob(client, deployJobName)
+	cmds := dockercommon.ArchiveDeployCmds(a, "file:///home/application/archive.tar.gz")
+	if len(cmds) != 3 {
+		return "", errors.Errorf("unexpected cmds list: %#v", cmds)
+	}
+	cmds[2] = fmt.Sprintf("cat >/home/application/archive.tar.gz && %s", cmds[2])
 	params := buildJobParams{
 		app:              a,
 		client:           client,
-		buildCmd:         []string{"sh", "-c", "cat >/home/application/archive.tar.gz"},
+		buildCmd:         cmds,
 		sourceImage:      baseImage,
 		destinationImage: buildingImage,
 		attachInput:      archiveFile,
+		attachOutput:     evt,
 	}
 	_, err = createBuildJob(params)
 	if err != nil {
 		return "", err
-	}
-	err = waitForJob(client, deployJobName, defaultBuildJobTimeout, false)
-	if err != nil {
-		return "", err
-	}
-	err = cleanupJob(client, deployJobName)
-	if err != nil {
-		return "", err
-	}
-	cmds := dockercommon.ArchiveDeployCmds(a, "file:///home/application/archive.tar.gz")
-	params = buildJobParams{
-		app:              a,
-		client:           client,
-		buildCmd:         cmds,
-		sourceImage:      buildingImage,
-		destinationImage: buildingImage,
-	}
-	podName, err := createBuildJob(params)
-	if err != nil {
-		return "", err
-	}
-	req := client.Core().Pods(tsuruNamespace).GetLogs(podName, &v1.PodLogOptions{
-		Follow:    true,
-		Container: deployJobName,
-	})
-	reader, err := req.Stream()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	defer reader.Close()
-	_, err = io.Copy(evt, reader)
-	if err != nil && err != io.EOF {
-		return "", errors.WithStack(err)
 	}
 	err = waitForJob(client, deployJobName, defaultBuildJobTimeout, false)
 	if err != nil {
