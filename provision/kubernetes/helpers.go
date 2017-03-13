@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/labels"
 )
 
 func deploymentNameForApp(a provision.App, process string) string {
@@ -41,14 +42,14 @@ func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 	}
 }
 
-func waitForPodRunning(client kubernetes.Interface, jobName string, container string, timeout time.Duration) (string, error) {
+func waitForJobContainerRunning(client kubernetes.Interface, jobName string, container string, timeout time.Duration) (string, error) {
 	var name string
 	err := waitFor(timeout, func() (bool, error) {
 		pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
 			LabelSelector: fmt.Sprintf("job-name=%s", jobName),
 		})
 		if err != nil {
-			return false, err
+			return false, errors.WithStack(err)
 		}
 		if len(pods.Items) == 0 {
 			return false, nil
@@ -63,41 +64,20 @@ func waitForPodRunning(client kubernetes.Interface, jobName string, container st
 		}
 		return false, nil
 	})
-	if err != nil {
-		return "", err
-	}
-	return name, nil
+	return name, err
 }
 
-func waitForJob(client kubernetes.Interface, jobName string, timeout time.Duration, waitDelete bool) error {
+func waitForJob(client kubernetes.Interface, jobName string, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
 		job, err := client.Batch().Jobs(tsuruNamespace).Get(jobName)
 		if err != nil {
-			if waitDelete && k8sErrors.IsNotFound(err) {
-				return true, nil
-			}
 			return false, errors.WithStack(err)
 		}
-		if !waitDelete {
-			if job.Status.Failed > 0 {
-				return false, errors.Errorf("job %s failed: %#v", jobName, job.Status.Conditions)
-			}
-			if job.Status.Succeeded == 1 {
-				return true, nil
-			}
+		if job.Status.Failed > 0 {
+			return false, errors.Errorf("job %s failed: %#v", jobName, job.Status.Conditions)
 		}
-		return false, nil
-	})
-}
-
-func waitForDeploymentDelete(client kubernetes.Interface, depName string, timeout time.Duration) error {
-	return waitFor(timeout, func() (bool, error) {
-		_, err := client.Extensions().Deployments(tsuruNamespace).Get(depName)
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, errors.WithStack(err)
+		if job.Status.Succeeded == 1 {
+			return true, nil
 		}
 		return false, nil
 	})
@@ -106,12 +86,12 @@ func waitForDeploymentDelete(client kubernetes.Interface, depName string, timeou
 func cleanupPods(client kubernetes.Interface, opts v1.ListOptions) error {
 	pods, err := client.Core().Pods(tsuruNamespace).List(opts)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
 		err = client.Core().Pods(tsuruNamespace).Delete(pod.Name, &v1.DeleteOptions{})
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 	return nil
@@ -120,7 +100,7 @@ func cleanupPods(client kubernetes.Interface, opts v1.ListOptions) error {
 func cleanupReplicas(client kubernetes.Interface, opts v1.ListOptions) error {
 	replicas, err := client.Extensions().ReplicaSets(tsuruNamespace).List(opts)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	falseVar := false
 	for _, replica := range replicas.Items {
@@ -128,10 +108,27 @@ func cleanupReplicas(client kubernetes.Interface, opts v1.ListOptions) error {
 			OrphanDependents: &falseVar,
 		})
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
-	return nil
+	return cleanupPods(client, opts)
+}
+
+func cleanupDeployment(client kubernetes.Interface, a provision.App, process string) error {
+	depName := deploymentNameForApp(a, process)
+	falseVar := false
+	err := client.Extensions().Deployments(tsuruNamespace).Delete(depName, &v1.DeleteOptions{
+		OrphanDependents: &falseVar,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return cleanupReplicas(client, v1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			"tsuru.app.name":    a.GetName(),
+			"tsuru.app.process": process,
+		}).String(),
+	})
 }
 
 func cleanupJob(client kubernetes.Interface, jobName string) error {
@@ -141,10 +138,6 @@ func cleanupJob(client kubernetes.Interface, jobName string) error {
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
-	}
-	err = waitForJob(client, jobName, defaultBuildJobTimeout, true)
-	if err != nil {
-		return err
 	}
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", jobName),

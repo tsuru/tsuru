@@ -167,7 +167,11 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) ktesting.ReactionFun
 				ObjectMeta: job.Spec.Template.ObjectMeta,
 				Spec:       job.Spec.Template.Spec,
 			}
+			pod.ObjectMeta.Name += "-pod"
 			pod.ObjectMeta.Namespace = job.Namespace
+			if pod.ObjectMeta.Labels == nil {
+				pod.ObjectMeta.Labels = map[string]string{}
+			}
 			pod.ObjectMeta.Labels["job-name"] = job.Name
 			toRegister := false
 			for _, cont := range pod.Spec.Containers {
@@ -184,7 +188,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) ktesting.ReactionFun
 			_, err := s.client.Core().Pods(job.Namespace).Create(pod)
 			c.Assert(err, check.IsNil)
 			if toRegister {
-				err = s.p.RegisterUnit(a, job.Name, map[string]interface{}{
+				err = s.p.RegisterUnit(a, pod.Name, map[string]interface{}{
 					"processes": map[string]interface{}{
 						"web":    "python myapp.py",
 						"worker": "python myworker.py",

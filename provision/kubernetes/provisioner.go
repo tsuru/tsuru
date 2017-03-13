@@ -398,7 +398,7 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if err != nil {
 		return "", err
 	}
-	err = waitForJob(client, deployJobName, defaultBuildJobTimeout, false)
+	err = waitForJob(client, deployJobName, defaultBuildJobTimeout)
 	if err != nil {
 		return "", err
 	}
