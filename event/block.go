@@ -13,6 +13,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const blockListLimit = 25
+
 type ErrActiveEventBlockNotFound struct {
 	id string
 }
@@ -103,7 +105,7 @@ func listBlocks(query bson.M) ([]Block, error) {
 	}
 	defer conn.Close()
 	var blocks []Block
-	err = conn.EventBlocks().Find(query).Sort("-starttime").All(&blocks)
+	err = conn.EventBlocks().Find(query).Sort("-starttime").Limit(blockListLimit).All(&blocks)
 	if err != nil {
 		return nil, err
 	}
