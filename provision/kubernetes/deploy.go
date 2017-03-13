@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/router"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
@@ -39,11 +40,13 @@ func doAttach(podName, namespace, containerName string, stdin io.Reader) error {
 		Name(podName).
 		Namespace(namespace).
 		SubResource("attach")
-	req.Param("container", containerName)
-	req.Param("stdin", "true")
-	req.Param("stdout", "true")
-	req.Param("stderr", "true")
-	req.Param("tty", "false")
+	req.VersionedParams(&api.PodAttachOptions{
+		Container: containerName,
+		Stdin:     true,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}, api.ParameterCodec)
 	exec, err := remotecommand.NewExecutor(cfg, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
