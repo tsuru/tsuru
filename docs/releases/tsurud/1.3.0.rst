@@ -33,6 +33,14 @@ Before this release, one could limit a pool to a set of specific teams. This rel
 makes it possible to also constraint specific routers to specific pools and makes it
 easy to add new types of constraints in the future.
 
+Blockable Events (`#1502 <https://github.com/tsuru/tsuru/issues/1502>`_)
+------------------------------------------------------------------------
+
+Since tsuru 1.1, every action performed on tsuru API, e.g deploys, generates an event.
+This release of tsuru adds the capability of blocking certain actions from being performed.
+This can be used in a variety of ways, e.g, blocking every action during a maintenance, blocking
+all actions from a certain user to mitigate a security issue etc.
+
 Other improvements
 ------------------
 
