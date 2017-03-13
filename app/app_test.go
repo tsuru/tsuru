@@ -179,7 +179,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		Name:      "appname",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
-		Tags:      []string{"test a", "test b"},
+		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -195,7 +195,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(retrievedApp.Platform, check.Equals, a.Platform)
 	c.Assert(retrievedApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(retrievedApp.Owner, check.Equals, s.user.Email)
-	c.Assert(retrievedApp.Tags, check.DeepEquals, a.Tags)
+	c.Assert(retrievedApp.Tags, check.DeepEquals, []string{"test a", "test b"})
 	env := retrievedApp.InstanceEnv("")
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
@@ -4104,7 +4104,7 @@ func (s *S) TestUpdateIgnoresEmptyAndDuplicatedTags(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla", Tags: []string{"tag1"}}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	updateData := App{Tags: []string{"tag2 ", "  tag3  ", "", " tag3"}}
+	updateData := App{Tags: []string{"tag2 ", "  tag3  ", "", " tag3", "  "}}
 	err = app.Update(updateData, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
