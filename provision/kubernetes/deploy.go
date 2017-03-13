@@ -1,3 +1,7 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package kubernetes
 
 import (
@@ -20,6 +24,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/labels"
 	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
@@ -255,6 +260,24 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 		OrphanDependents: &falseVar,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
+		multiErrors.Add(errors.WithStack(err))
+	}
+	err = cleanupReplicas(m.client, v1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			"tsuru.app.name":    a.GetName(),
+			"tsuru.app.process": process,
+		}).String(),
+	})
+	if err != nil {
+		multiErrors.Add(errors.WithStack(err))
+	}
+	err = cleanupPods(m.client, v1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			"tsuru.app.name":    a.GetName(),
+			"tsuru.app.process": process,
+		}).String(),
+	})
+	if err != nil {
 		multiErrors.Add(errors.WithStack(err))
 	}
 	if multiErrors.Len() > 0 {

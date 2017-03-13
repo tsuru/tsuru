@@ -1,3 +1,7 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package kubernetes
 
 import (
@@ -99,21 +103,8 @@ func waitForDeploymentDelete(client kubernetes.Interface, depName string, timeou
 	})
 }
 
-func cleanupJob(client kubernetes.Interface, jobName string) error {
-	orphanDeps := false
-	err := client.Batch().Jobs(tsuruNamespace).Delete(jobName, &v1.DeleteOptions{
-		OrphanDependents: &orphanDeps,
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
-	}
-	err = waitForJob(client, jobName, defaultBuildJobTimeout, true)
-	if err != nil {
-		return err
-	}
-	pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
-	})
+func cleanupPods(client kubernetes.Interface, opts v1.ListOptions) error {
+	pods, err := client.Core().Pods(tsuruNamespace).List(opts)
 	if err != nil {
 		return err
 	}
@@ -124,4 +115,38 @@ func cleanupJob(client kubernetes.Interface, jobName string) error {
 		}
 	}
 	return nil
+}
+
+func cleanupReplicas(client kubernetes.Interface, opts v1.ListOptions) error {
+	replicas, err := client.Extensions().ReplicaSets(tsuruNamespace).List(opts)
+	if err != nil {
+		return err
+	}
+	falseVar := false
+	for _, replica := range replicas.Items {
+		err = client.Extensions().ReplicaSets(tsuruNamespace).Delete(replica.Name, &v1.DeleteOptions{
+			OrphanDependents: &falseVar,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupJob(client kubernetes.Interface, jobName string) error {
+	falseVar := false
+	err := client.Batch().Jobs(tsuruNamespace).Delete(jobName, &v1.DeleteOptions{
+		OrphanDependents: &falseVar,
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	err = waitForJob(client, jobName, defaultBuildJobTimeout, true)
+	if err != nil {
+		return err
+	}
+	return cleanupPods(client, v1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+	})
 }
