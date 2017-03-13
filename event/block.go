@@ -113,6 +113,9 @@ func listBlocks(query bson.M) ([]Block, error) {
 }
 
 func checkIsBlocked(evt *Event) error {
+	if evt.Target.Type == TargetTypeEventBlock {
+		return nil
+	}
 	query := bson.M{"$and": []bson.M{
 		{"active": true},
 		{"$or": []bson.M{{"kindname": evt.Kind.Name}, {"kindname": ""}}},

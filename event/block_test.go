@@ -96,6 +96,7 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Target: Target{Type: TargetTypeApp, Value: "blocked-app"}}}, blocks["blockApp"]},
 		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Owner: Owner{Type: OwnerTypeUser, Name: "blocked-user"}}}, blocks["blockUser"]},
 		{&Event{eventData: eventData{Kind: Kind{Name: "node.update"}, Target: Target{Type: TargetTypeNode, Value: "my-node"}}}, blocks["blockAllNodes"]},
+		{&Event{eventData: eventData{Target: Target{Type: TargetTypeEventBlock}, Owner: Owner{Type: OwnerTypeUser, Name: "blocked-user"}}}, nil},
 	}
 	for i, t := range tt {
 		errBlock := checkIsBlocked(t.event)
