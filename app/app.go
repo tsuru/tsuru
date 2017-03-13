@@ -333,7 +333,18 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
 	routerName := updateData.Router
-	tags := updateData.Tags
+	var tags []string
+	if updateData.Tags != nil {
+		tags = []string{}
+	}
+	usedTags := make(map[string]bool)
+	for _, tag := range updateData.Tags {
+		tag := strings.Trim(tag, " ")
+		if len(tag) > 0 && !usedTags[tag] {
+			tags = append(tags, tag)
+			usedTags[tag] = true
+		}
+	}
 	if description != "" {
 		app.Description = description
 	}

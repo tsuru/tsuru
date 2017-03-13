@@ -4100,17 +4100,16 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(routesStr, check.DeepEquals, expected)
 }
 
-func (s *S) TestUpdateTags(c *check.C) {
+func (s *S) TestUpdateIgnoresEmptyAndDuplicatedTags(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla", Tags: []string{"tag1"}}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	newTags := []string{"tag2", "tag3"}
-	updateData := App{Tags: newTags}
+	updateData := App{Tags: []string{"tag2 ", "  tag3  ", "", " tag3"}}
 	err = app.Update(updateData, new(bytes.Buffer))
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Tags, check.DeepEquals, newTags)
+	c.Assert(dbApp.Tags, check.DeepEquals, []string{"tag2", "tag3"})
 }
 
 func (s *S) TestUpdateWithEmptyTagsRemovesAllTags(c *check.C) {
