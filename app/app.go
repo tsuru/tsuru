@@ -126,6 +126,7 @@ type App struct {
 	Router         string
 	RouterOpts     map[string]string
 	Deploys        uint
+	Tags           []string
 
 	quota.Quota
 	provisioner provision.Provisioner
@@ -304,6 +305,7 @@ func CreateApp(app *App, user *auth.User) error {
 	}
 	app.Teams = []string{app.TeamOwner}
 	app.Owner = user.Email
+	app.Tags = processTags(app.Tags)
 	err = app.validate()
 	if err != nil {
 		return err
@@ -332,6 +334,7 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
 	routerName := updateData.Router
+	tags := processTags(updateData.Tags)
 	if description != "" {
 		app.Description = description
 	}
@@ -370,6 +373,9 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 			}
 		}()
 	}
+	if tags != nil {
+		app.Tags = tags
+	}
 	err = app.validate()
 	if err != nil {
 		return err
@@ -392,6 +398,22 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	}
 	defer conn.Close()
 	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+}
+
+func processTags(tags []string) []string {
+	if tags == nil {
+		return nil
+	}
+	processedTags := []string{}
+	usedTags := make(map[string]bool)
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if len(tag) > 0 && !usedTags[tag] {
+			processedTags = append(processedTags, tag)
+			usedTags[tag] = true
+		}
+	}
+	return processedTags
 }
 
 // unbind takes all service instances that are bound to the app, and unbind

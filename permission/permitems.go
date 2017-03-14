@@ -41,6 +41,7 @@ var (
 	PermAppUpdateCnameAdd                = PermissionRegistry.get("app.update.cname.add")                // [global app team pool]
 	PermAppUpdateCnameRemove             = PermissionRegistry.get("app.update.cname.remove")             // [global app team pool]
 	PermAppUpdateDescription             = PermissionRegistry.get("app.update.description")              // [global app team pool]
+	PermAppUpdateTags                    = PermissionRegistry.get("app.update.tags")                     // [global app team pool]
 	PermAppUpdateEnv                     = PermissionRegistry.get("app.update.env")                      // [global app team pool]
 	PermAppUpdateEnvSet                  = PermissionRegistry.get("app.update.env.set")                  // [global app team pool]
 	PermAppUpdateEnvUnset                = PermissionRegistry.get("app.update.env.unset")                // [global app team pool]

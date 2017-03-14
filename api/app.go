@@ -263,6 +263,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ia.Pool,
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
+		Tags:        r.Form["tags"],
 	}
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
@@ -369,12 +370,17 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //   401: Unauthorized
 //   404: Not found
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	updateData := app.App{
 		TeamOwner:   r.FormValue("teamOwner"),
 		Plan:        app.Plan{Name: r.FormValue("plan")},
 		Pool:        r.FormValue("pool"),
 		Description: r.FormValue("description"),
 		Router:      r.FormValue("router"),
+		Tags:        r.Form["tags"],
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
@@ -384,6 +390,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	var wantedPerms []*permission.PermissionScheme
 	if updateData.Description != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateDescription)
+	}
+	if len(updateData.Tags) > 0 {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateTags)
 	}
 	if updateData.Plan.Name != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)

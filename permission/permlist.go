@@ -12,6 +12,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.create", []contextType{CtxTeam},
 ).add(
 	"app.update.description",
+	"app.update.tags",
 	"app.update.log",
 	"app.update.pool",
 	"app.update.unit.add",
