@@ -158,7 +158,10 @@ func (s *S) TestCleanupJob(c *check.C) {
 }
 
 func (s *S) TestCleanupDeployment(c *check.C) {
-	_, err := s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
+	a := provisiontest.NewFakeApp("myapp", "plat", 1)
+	ls, err := podLabels(a, "p1", "", 0)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: tsuruNamespace,
@@ -169,10 +172,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: tsuruNamespace,
-			Labels: map[string]string{
-				"tsuru.app.name":    "myapp",
-				"tsuru.app.process": "p1",
-			},
+			Labels:    ls.ToLabels(),
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -180,14 +180,10 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: tsuruNamespace,
-			Labels: map[string]string{
-				"tsuru.app.name":    "myapp",
-				"tsuru.app.process": "p1",
-			},
+			Labels:    ls.ToLabels(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
 	err = cleanupDeployment(s.client, a, "p1")
 	c.Assert(err, check.IsNil)
 	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})

@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	"k8s.io/client-go/pkg/fields"
+	"k8s.io/client-go/pkg/labels"
 )
 
 const (
@@ -113,8 +114,12 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
+	l, err := podLabels(a, "", "", 0)
+	if err != nil {
+		return nil, err
+	}
 	pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
-		LabelSelector: fmt.Sprintf("tsuru.app.name=%s", a.GetName()),
+		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
 		return nil, err
@@ -122,6 +127,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	nodeMap := map[string]*v1.Node{}
 	units := make([]provision.Unit, len(pods.Items))
 	for i, pod := range pods.Items {
+		l := labelSetFromMeta(&pod.ObjectMeta)
 		node, ok := nodeMap[pod.Spec.NodeName]
 		if !ok {
 			node, err = client.Core().Nodes().Get(pod.Spec.NodeName)
@@ -134,8 +140,8 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 		units[i] = provision.Unit{
 			ID:          pod.Name,
 			AppName:     a.GetName(),
-			ProcessName: pod.Labels["tsuru.app.process"],
-			Type:        pod.Labels["tsuru.app.platform"],
+			ProcessName: l.AppProcess(),
+			Type:        l.AppPlatform(),
 			Ip:          wrapper.Address(),
 			Status:      stateMap[pod.Status.Phase],
 			Address: &url.URL{
@@ -203,8 +209,9 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if customData == nil {
 		return nil
 	}
-	buildingImage, ok := pod.Annotations["tsuru.pod.buildImage"]
-	if !ok || buildingImage == "" {
+	l := labelSetFromMeta(&pod.ObjectMeta)
+	buildingImage := l.BuildImage()
+	if buildingImage == "" {
 		return nil
 	}
 	return image.SaveImageCustomData(buildingImage, customData)

@@ -6,14 +6,21 @@ package kubernetes
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/set"
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/labels"
+)
+
+const (
+	tsuruLabelPrefix = "tsuru.io/"
 )
 
 func deploymentNameForApp(a provision.App, process string) string {
@@ -123,11 +130,12 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	l, err := podLabels(a, process, "", 0)
+	if err != nil {
+		return err
+	}
 	return cleanupReplicas(client, v1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{
-			"tsuru.app.name":    a.GetName(),
-			"tsuru.app.process": process,
-		}).String(),
+		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
 	})
 }
 
@@ -142,4 +150,105 @@ func cleanupJob(client kubernetes.Interface, jobName string) error {
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
 	})
+}
+
+type labelSet struct {
+	labels      map[string]string
+	annotations map[string]string
+}
+
+func withPrefix(m map[string]string) map[string]string {
+	result := make(map[string]string, len(m))
+	for k, v := range m {
+		result[tsuruLabelPrefix+k] = v
+	}
+	return result
+}
+
+func subMap(m map[string]string, keys ...string) map[string]string {
+	result := make(map[string]string, len(keys))
+	s := set.FromValues(keys...)
+	for k, v := range m {
+		if s.Includes(k) {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+func (s *labelSet) ToLabels() map[string]string {
+	return withPrefix(s.labels)
+}
+
+func (s *labelSet) ToAnnotations() map[string]string {
+	return withPrefix(s.annotations)
+}
+
+func (s *labelSet) ToSelector() map[string]string {
+	return withPrefix(subMap(s.labels, "app-name", "app-process", "is-build"))
+}
+
+func (s *labelSet) ToAppSelector() map[string]string {
+	return withPrefix(subMap(s.labels, "app-name"))
+}
+
+func (s *labelSet) AppProcess() string {
+	return s.getLabel("app-process")
+}
+
+func (s *labelSet) AppPlatform() string {
+	return s.getLabel("app-platform")
+}
+
+func (s *labelSet) BuildImage() string {
+	return s.getLabel("build-image")
+}
+
+func (s *labelSet) getLabel(k string) string {
+	if v, ok := s.labels[tsuruLabelPrefix+k]; ok {
+		return v
+	}
+	if v, ok := s.labels[k]; ok {
+		return v
+	}
+	if v, ok := s.annotations[tsuruLabelPrefix+k]; ok {
+		return v
+	}
+	if v, ok := s.annotations[k]; ok {
+		return v
+	}
+	return ""
+}
+
+func labelSetFromMeta(meta *v1.ObjectMeta) *labelSet {
+	return &labelSet{labels: meta.Labels, annotations: meta.Annotations}
+}
+
+func podLabels(a provision.App, process, buildImg string, replicas int) (*labelSet, error) {
+	routerName, err := a.GetRouterName()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	routerType, _, err := router.Type(routerName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	set := &labelSet{
+		labels: map[string]string{
+			"is-tsuru":             strconv.FormatBool(true),
+			"is-build":             strconv.FormatBool(buildImg != ""),
+			"app-name":             a.GetName(),
+			"app-process":          process,
+			"app-process-replicas": strconv.Itoa(replicas),
+			"app-platform":         a.GetPlatform(),
+			"app-pool":             a.GetPool(),
+			"router-name":          routerName,
+			"router-type":          routerType,
+			"provisioner":          "kubernetes",
+		},
+		annotations: map[string]string{
+			"build-image": buildImg,
+		},
+	}
+	return set, nil
 }

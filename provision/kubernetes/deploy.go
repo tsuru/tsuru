@@ -16,10 +16,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"github.com/tsuru/tsuru/router"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -82,6 +82,10 @@ func createBuildJob(params buildJobParams) (string, error) {
 	parallelism := int32(1)
 	dockerSockPath := "/var/run/docker.sock"
 	baseName := deployJobNameForApp(params.app)
+	labels, err := podLabels(params.app, "", params.destinationImage, 0)
+	if err != nil {
+		return "", err
+	}
 	job := &batch.Job{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      baseName,
@@ -92,15 +96,9 @@ func createBuildJob(params buildJobParams) (string, error) {
 			Completions: &parallelism,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
-					Name: baseName,
-					Labels: map[string]string{
-						"tsuru.pod":       strconv.FormatBool(true),
-						"tsuru.pod.build": strconv.FormatBool(true),
-						"tsuru.app.name":  params.app.GetName(),
-					},
-					Annotations: map[string]string{
-						"tsuru.pod.buildImage": params.destinationImage,
-					},
+					Name:        baseName,
+					Labels:      labels.ToLabels(),
+					Annotations: labels.ToAnnotations(),
 				},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
@@ -172,23 +170,15 @@ func extraRegisterCmds(a provision.App) string {
 	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register`, token, host, a.GetName())
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process string, image string) error {
+func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process string, image string) (*labelSet, error) {
 	replicas := int32(1)
 	if oldDeployment != nil && oldDeployment.Spec.Replicas != nil {
 		replicas = *oldDeployment.Spec.Replicas
 	}
-	routerName, err := a.GetRouterName()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	routerType, _, err := router.Type(routerName)
-	if err != nil {
-		return errors.WithStack(err)
-	}
 	extra := []string{extraRegisterCmds(a)}
 	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, image, a, extra)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	var envs []v1.EnvVar
 	for _, envData := range a.Envs() {
@@ -203,6 +193,10 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	}...)
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
+	labels, err := podLabels(a, process, "", int(replicas))
+	if err != nil {
+		return nil, err
+	}
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
@@ -211,19 +205,13 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		Spec: extensions.DeploymentSpec{
 			Replicas:             &replicas,
 			RevisionHistoryLimit: &tenRevs,
+			Selector: &unversioned.LabelSelector{
+				MatchLabels: labels.ToSelector(),
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
-					Labels: map[string]string{
-						"tsuru.pod":                  strconv.FormatBool(true),
-						"tsuru.pod.build":            strconv.FormatBool(false),
-						"tsuru.app.name":             a.GetName(),
-						"tsuru.app.process":          process,
-						"tsuru.app.process.replicas": strconv.Itoa(int(replicas)),
-						"tsuru.app.platform":         a.GetPlatform(),
-						"tsuru.node.pool":            a.GetPool(),
-						"tsuru.router.name":          routerName,
-						"tsuru.router.type":          routerType,
-					},
+					Labels:      labels.ToLabels(),
+					Annotations: labels.ToAnnotations(),
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -243,7 +231,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	} else {
 		_, err = client.Extensions().Deployments(tsuruNamespace).Update(&deployment)
 	}
-	return errors.WithStack(err)
+	return labels, errors.WithStack(err)
 }
 
 type serviceManager struct {
@@ -279,7 +267,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 		}
 		dep = nil
 	}
-	err = createAppDeployment(m.client, dep, a, process, image)
+	labels, err := createAppDeployment(m.client, dep, a, process, image)
 	if err != nil {
 		return err
 	}
@@ -287,14 +275,13 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 	portInt, _ := strconv.Atoi(port)
 	_, err = m.client.Core().Services(tsuruNamespace).Create(&v1.Service{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      depName,
-			Namespace: tsuruNamespace,
+			Name:        depName,
+			Namespace:   tsuruNamespace,
+			Labels:      labels.ToLabels(),
+			Annotations: labels.ToAnnotations(),
 		},
 		Spec: v1.ServiceSpec{
-			Selector: map[string]string{
-				"tsuru.app.name":    a.GetName(),
-				"tsuru.app.process": process,
-			},
+			Selector: labels.ToSelector(),
 			Ports: []v1.ServicePort{
 				{
 					Protocol:   "TCP",
