@@ -191,6 +191,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	}
 	result["router"] = app.Router
 	result["lock"] = app.Lock
+	result["tags"] = app.Tags
 	return json.Marshal(&result)
 }
 
