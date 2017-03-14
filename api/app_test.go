@@ -923,7 +923,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 }
 
 func (s *S) TestCreateAppWithTags(c *check.C) {
-	data, err := url.QueryUnescape("name=someapp&platform=zend&tags=tag1&tags=tag2")
+	data, err := url.QueryUnescape("name=someapp&platform=zend&tag=tag1&tag=tag2")
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -960,7 +960,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": "someapp"},
 			{"name": "platform", "value": "zend"},
-			{"name": "tags", "value": []string{"tag1", "tag2"}},
+			{"name": "tag", "value": []string{"tag1", "tag2"}},
 		},
 	}, eventtest.HasEvent)
 }
@@ -1314,7 +1314,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permission.CtxApp, a.Name),
 	})
-	b := strings.NewReader("description1=s&tags=tag1&tags=tag2&tags=tag3")
+	b := strings.NewReader("description1=s&tag=tag1&tag=tag2&tag=tag3")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -1335,7 +1335,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
 			{"name": ":appname", "value": a.Name},
-			{"name": "tags", "value": []string{"tag1", "tag2", "tag3"}},
+			{"name": "tag", "value": []string{"tag1", "tag2", "tag3"}},
 		},
 	}, eventtest.HasEvent)
 }
@@ -1349,7 +1349,7 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 		Scheme:  permission.PermAppUpdateDescription,
 		Context: permission.Context(permission.CtxApp, a.Name),
 	})
-	b := strings.NewReader("description1=s&tags=tag1&tags=tag2&tags=tag3")
+	b := strings.NewReader("description1=s&tag=tag1&tag=tag2&tag=tag3")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())

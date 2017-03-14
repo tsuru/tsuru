@@ -263,7 +263,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ia.Pool,
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
-		Tags:        r.Form["tags"],
+		Tags:        r.Form["tag"],
 	}
 	if a.TeamOwner == "" {
 		a.TeamOwner, err = permission.TeamForPermission(t, permission.PermAppCreate)
@@ -380,7 +380,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        r.FormValue("pool"),
 		Description: r.FormValue("description"),
 		Router:      r.FormValue("router"),
-		Tags:        r.Form["tags"],
+		Tags:        r.Form["tag"],
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
