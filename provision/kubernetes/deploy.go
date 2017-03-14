@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -170,13 +171,44 @@ func extraRegisterCmds(a provision.App) string {
 	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register`, token, host, a.GetName())
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process string, image string) (*labelSet, error) {
-	replicas := int32(1)
-	if oldDeployment != nil && oldDeployment.Spec.Replicas != nil {
-		replicas = *oldDeployment.Spec.Replicas
+func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error) {
+	if hc.Path == "" {
+		return nil, nil
+	}
+	method := strings.ToUpper(hc.Method)
+	if method != "" && method != "GET" {
+		return nil, errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
+	}
+	return &v1.Probe{
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: hc.Path,
+				Port: intstr.FromInt(port),
+			},
+		},
+	}, nil
+}
+
+func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*labelSet, error) {
+	replicas := 0
+	restartCount := 0
+	if oldDeployment != nil {
+		oldLabels := labelSetFromMeta(&oldDeployment.Spec.Template.ObjectMeta)
+		// Use label instead of .Spec.Replicas because stopped apps will have
+		// always 0 .Spec.Replicas.
+		replicas = oldLabels.AppReplicas()
+		restartCount = oldLabels.Restarts()
+	}
+	if pState.Increment != 0 {
+		replicas += pState.Increment
+		if replicas < 0 {
+			return nil, errors.New("cannot have less than 0 units")
+		}
+	} else if replicas == 0 && pState.Start {
+		replicas = 1
 	}
 	extra := []string{extraRegisterCmds(a)}
-	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, image, a, extra)
+	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, imageName, a, extra)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -197,13 +229,39 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	if err != nil {
 		return nil, err
 	}
+	realReplicas := int32(replicas)
+	if pState.Stop {
+		realReplicas = 0
+	}
+	if pState.Restart {
+		restartCount++
+		labels.SetRestarts(restartCount)
+	}
+	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	portInt, _ := strconv.Atoi(port)
+	probe, err := probeFromHC(yamlData.Healthcheck, portInt)
+	if err != nil {
+		return nil, err
+	}
+	maxSurge := intstr.FromString("100%")
+	maxUnavailable := intstr.FromInt(0)
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
 			Namespace: tsuruNamespace,
 		},
 		Spec: extensions.DeploymentSpec{
-			Replicas:             &replicas,
+			Strategy: extensions.DeploymentStrategy{
+				Type: extensions.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &extensions.RollingUpdateDeployment{
+					MaxSurge:       &maxSurge,
+					MaxUnavailable: &maxUnavailable,
+				},
+			},
+			Replicas:             &realReplicas,
 			RevisionHistoryLimit: &tenRevs,
 			Selector: &unversioned.LabelSelector{
 				MatchLabels: labels.ToSelector(),
@@ -214,12 +272,16 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 					Annotations: labels.ToAnnotations(),
 				},
 				Spec: v1.PodSpec{
+					NodeSelector: map[string]string{
+						labelNodePoolName: a.GetPool(),
+					},
 					Containers: []v1.Container{
 						{
-							Name:    depName,
-							Image:   image,
-							Command: cmds,
-							Env:     envs,
+							Name:           depName,
+							Image:          imageName,
+							Command:        cmds,
+							Env:            envs,
+							ReadinessProbe: probe,
 						},
 					},
 				},
@@ -267,7 +329,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 		}
 		dep = nil
 	}
-	labels, err := createAppDeployment(m.client, dep, a, process, image)
+	labels, err := createAppDeployment(m.client, dep, a, process, image, pState)
 	if err != nil {
 		return err
 	}

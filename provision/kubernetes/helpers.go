@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -160,7 +161,10 @@ type labelSet struct {
 func withPrefix(m map[string]string) map[string]string {
 	result := make(map[string]string, len(m))
 	for k, v := range m {
-		result[tsuruLabelPrefix+k] = v
+		if !strings.HasPrefix(k, tsuruLabelPrefix) {
+			k = tsuruLabelPrefix + k
+		}
+		result[k] = v
 	}
 	return result
 }
@@ -200,8 +204,26 @@ func (s *labelSet) AppPlatform() string {
 	return s.getLabel("app-platform")
 }
 
+func (s *labelSet) AppReplicas() int {
+	replicas, _ := strconv.Atoi(s.getLabel("app-process-replicas"))
+	return replicas
+}
+
+func (s *labelSet) Restarts() int {
+	restarts, _ := strconv.Atoi(s.getLabel("restarts"))
+	return restarts
+}
+
 func (s *labelSet) BuildImage() string {
 	return s.getLabel("build-image")
+}
+
+func (s *labelSet) SetRestarts(count int) {
+	s.addLabel("restarts", strconv.Itoa(count))
+}
+
+func (s *labelSet) addLabel(k, v string) {
+	s.labels[k] = v
 }
 
 func (s *labelSet) getLabel(k string) string {
