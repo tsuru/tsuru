@@ -167,6 +167,10 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 		job.Spec.Selector = &unversioned.LabelSelector{
 			MatchLabels: map[string]string{"uuid": "my-uuid"},
 		}
+		labelsCopy := make(map[string]string, len(job.Spec.Template.ObjectMeta.Labels))
+		for k, v := range job.Spec.Template.ObjectMeta.Labels {
+			labelsCopy[k] = v
+		}
 		go func() {
 			pod := &v1.Pod{
 				ObjectMeta: job.Spec.Template.ObjectMeta,
@@ -174,9 +178,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 			}
 			pod.ObjectMeta.Name += "-pod"
 			pod.ObjectMeta.Namespace = job.Namespace
-			if pod.ObjectMeta.Labels == nil {
-				pod.ObjectMeta.Labels = map[string]string{}
-			}
+			pod.ObjectMeta.Labels = labelsCopy
 			pod.ObjectMeta.Labels["uuid"] = "my-uuid"
 			pod.ObjectMeta.Labels["job-name"] = job.Name
 			toRegister := false
