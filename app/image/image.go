@@ -153,6 +153,22 @@ func GetImageWebProcessName(imageName string) (string, error) {
 	return processName, nil
 }
 
+func AllAppProcesses(appName string) ([]string, error) {
+	var processes []string
+	imgID, err := AppCurrentImageName(appName)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	data, err := GetImageCustomData(imgID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for procName := range data.Processes {
+		processes = append(processes, procName)
+	}
+	return processes, nil
+}
+
 func GetImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
 	var customData struct {
 		Customdata provision.TsuruYamlData

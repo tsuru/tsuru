@@ -5,6 +5,7 @@
 package image_test
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -405,4 +406,22 @@ func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
 	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
 		"w1": {"has", "priority"},
 	})
+}
+
+func (s *S) TestAllAppProcesses(c *check.C) {
+	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-myapp:v1",
+		Processes: map[string][]string{
+			"worker1": {"python myapp.py"},
+			"worker2": {"worker2"},
+		},
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	procs, err := image.AllAppProcesses("myapp")
+	c.Assert(err, check.IsNil)
+	sort.Strings(procs)
+	c.Assert(procs, check.DeepEquals, []string{"worker1", "worker2"})
 }
