@@ -1625,8 +1625,9 @@ func (f *Filter) Query() bson.M {
 	if len(f.Pools) > 0 {
 		query["pool"] = bson.M{"$in": f.Pools}
 	}
-	if f.Tags != nil && len(f.Tags) > 0 {
-		query["tags"] = bson.M{"$all": f.Tags}
+	tags := processTags(f.Tags)
+	if len(tags) > 0 {
+		query["tags"] = bson.M{"$all": tags}
 	}
 	return query
 }
