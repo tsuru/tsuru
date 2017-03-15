@@ -1576,7 +1576,7 @@ type Filter struct {
 	Pools       []string
 	Statuses    []string
 	Locked      bool
-	Tag         string
+	Tags        []string
 	Extra       map[string][]string
 }
 
@@ -1625,8 +1625,8 @@ func (f *Filter) Query() bson.M {
 	if len(f.Pools) > 0 {
 		query["pool"] = bson.M{"$in": f.Pools}
 	}
-	if f.Tag != "" {
-		query["tags"] = f.Tag
+	if f.Tags != nil && len(f.Tags) > 0 {
+		query["tags"] = bson.M{"$all": f.Tags}
 	}
 	return query
 }

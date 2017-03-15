@@ -3079,21 +3079,24 @@ func (s *S) TestListFilteringByTag(c *check.C) {
 	app1 := App{Name: "app1", TeamOwner: s.team.Name, Tags: []string{"tag 1"}}
 	err := CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	app2 := App{Name: "app2", TeamOwner: s.team.Name, Tags: []string{"tag 2", "tag 3"}}
+	app2 := App{Name: "app2", TeamOwner: s.team.Name, Tags: []string{"tag 1", "tag 2", "tag 3"}}
 	err = CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	app3 := App{Name: "app3", TeamOwner: s.team.Name, Tags: []string{"tag 3"}}
+	app3 := App{Name: "app3", TeamOwner: s.team.Name, Tags: []string{"tag 4"}}
 	err = CreateApp(&app3, s.user)
 	c.Assert(err, check.IsNil)
-	resultApps, err := List(&Filter{Tag: "tag 2"})
+	resultApps, err := List(&Filter{Tags: []string{"tag 1"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(resultApps, check.HasLen, 2)
+	c.Assert(resultApps[0].Name, check.Equals, app1.Name)
+	c.Assert(resultApps[1].Name, check.Equals, app2.Name)
+	resultApps, err = List(&Filter{Tags: []string{"tag 3", "tag 1"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(resultApps, check.HasLen, 1)
 	c.Assert(resultApps[0].Name, check.Equals, app2.Name)
-	resultApps, err = List(&Filter{Tag: "tag 3"})
+	resultApps, err = List(&Filter{Tags: []string{"tag 1", "tag 4"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(resultApps, check.HasLen, 2)
-	c.Assert(resultApps[0].Name, check.Equals, app2.Name)
-	c.Assert(resultApps[1].Name, check.Equals, app3.Name)
+	c.Assert(resultApps, check.HasLen, 0)
 }
 
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
