@@ -54,6 +54,12 @@ type recordManager struct {
 	calls        []managerCall
 }
 
+func (m *recordManager) reset() {
+	m.deployErrMap = nil
+	m.removeErrMap = nil
+	m.calls = nil
+}
+
 func (m *recordManager) DeployService(a provision.App, processName string, count ProcessState, image string) error {
 	call := managerCall{
 		action:      "deploy",
@@ -114,6 +120,59 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 	imgName, err := image.AppCurrentImageName(fakeApp.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(imgName, check.Equals, "newImage")
+}
+
+func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
+	m := &recordManager{}
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	err := image.SaveImageCustomData("oldImage", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":     "python web1",
+			"worker1": "python worker1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(fakeApp.GetName(), "oldImage")
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("newImage", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":     "python web2",
+			"worker2": "python worker2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = RunServicePipeline(m, fakeApp, "newImage", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(m.calls, check.DeepEquals, []managerCall{
+		{action: "deploy", app: fakeApp, processName: "web", image: "newImage", count: ProcessState{Start: true}},
+		{action: "deploy", app: fakeApp, processName: "worker2", image: "newImage", count: ProcessState{Start: true}},
+		{action: "remove", app: fakeApp, processName: "worker1"},
+	})
+	imgName, err := image.AppCurrentImageName(fakeApp.GetName())
+	c.Assert(err, check.IsNil)
+	c.Assert(imgName, check.Equals, "newImage")
+}
+
+func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
+	m := &recordManager{}
+	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
+	err := image.SaveImageCustomData("oldImage", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":     "python web1",
+			"worker1": "python worker1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(fakeApp.GetName(), "oldImage")
+	c.Assert(err, check.IsNil)
+	err = RunServicePipeline(m, fakeApp, "oldImage", ProcessSpec{
+		"web": ProcessState{Restart: true},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.calls, check.DeepEquals, []managerCall{
+		{action: "deploy", app: fakeApp, processName: "web", image: "oldImage", count: ProcessState{Restart: true}},
+		{action: "deploy", app: fakeApp, processName: "worker1", image: "oldImage", count: ProcessState{}},
+	})
 }
 
 func (s *S) TestActionUpdateServicesForward(c *check.C) {
