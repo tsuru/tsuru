@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
@@ -1024,6 +1025,62 @@ func (s *S) TestImageDeploy(c *check.C) {
 		"8888/tcp": {{HostIP: "", HostPort: ""}},
 	}
 	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
+}
+
+func (s *S) TestImageDeployInPoolWithoutNode(c *check.C) {
+	var p dockerProvisioner
+	var err error
+	s.extraServer, err = dtesting.NewServer("localhost:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	opts := provision.AddPoolOptions{Name: "cpool", Public: true}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	p.storage = &cluster.MapStorage{}
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &p
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "cpool"
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	w := safe.NewBuffer(make([]byte, 2048))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        imageName,
+		Event:        evt,
+	})
+	c.Assert(err.Error(), check.Equals, "No nodes found with one of the following metadata: pool=cpool")
 }
 
 func (s *S) TestImageDeployWithProcfile(c *check.C) {
