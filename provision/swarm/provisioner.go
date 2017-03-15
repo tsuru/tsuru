@@ -85,7 +85,7 @@ func (p *swarmProvisioner) Destroy(a provision.App) error {
 		return err
 	}
 	multiErrors := tsuruErrors.NewMultiError()
-	processes, err := allAppProcesses(a.GetName())
+	processes, err := image.AllAppProcesses(a.GetName())
 	if err != nil {
 		multiErrors.Add(err)
 	}
@@ -110,89 +110,54 @@ func (p *swarmProvisioner) Destroy(a provision.App) error {
 	return nil
 }
 
-func changeUnits(a provision.App, units int, processName string, w io.Writer) error {
-	if a.GetDeploys() == 0 {
-		return errors.New("units can only be modified after the first deploy")
-	}
-	if units == 0 {
-		return errors.New("cannot change 0 units")
-	}
+func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
 	}
-	imageId, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return err
-	}
-	if processName == "" {
-		_, processName, err = dockercommon.ProcessCmdForImage(processName, imageId)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return deployProcesses(client, a, imageId, servicecommon.ProcessSpec{processName: servicecommon.ProcessState{Increment: units}})
-}
-
-func (p *swarmProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	return changeUnits(a, int(units), processName, w)
+	return servicecommon.ChangeUnits(&serviceManager{
+		client: client,
+	}, a, int(units), processName)
 }
 
 func (p *swarmProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	return changeUnits(a, -int(units), processName, w)
-}
-
-func changeAppState(a provision.App, process string, state servicecommon.ProcessState) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return err
 	}
-	var processes []string
-	if process == "" {
-		processes, err = allAppProcesses(a.GetName())
-		if err != nil {
-			return err
-		}
-	} else {
-		processes = []string{process}
-	}
-	imgID, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	spec := servicecommon.ProcessSpec{}
-	for _, procName := range processes {
-		spec[procName] = state
-	}
-	return deployProcesses(client, a, imgID, spec)
+	return servicecommon.ChangeUnits(&serviceManager{
+		client: client,
+	}, a, -int(units), processName)
 }
 
 func (p *swarmProvisioner) Restart(a provision.App, process string, w io.Writer) error {
-	return changeAppState(a, process, servicecommon.ProcessState{Start: true, Restart: true})
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Start: true, Restart: true})
 }
 
 func (p *swarmProvisioner) Start(a provision.App, process string) error {
-	return changeAppState(a, process, servicecommon.ProcessState{Start: true})
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Start: true})
 }
 
 func (p *swarmProvisioner) Stop(a provision.App, process string) error {
-	return changeAppState(a, process, servicecommon.ProcessState{Stop: true})
-}
-
-func allAppProcesses(appName string) ([]string, error) {
-	var processes []string
-	imgID, err := image.AppCurrentImageName(appName)
+	client, err := chooseDBSwarmNode()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return err
 	}
-	data, err := image.GetImageCustomData(imgID)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	for procName := range data.Processes {
-		processes = append(processes, procName)
-	}
-	return processes, nil
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Stop: true})
 }
 
 var stateMap = map[swarm.TaskState]provision.Status{
