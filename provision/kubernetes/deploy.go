@@ -192,20 +192,39 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*labelSet, error) {
 	replicas := 0
 	restartCount := 0
+	isStopped := false
 	if oldDeployment != nil {
 		oldLabels := labelSetFromMeta(&oldDeployment.Spec.Template.ObjectMeta)
 		// Use label instead of .Spec.Replicas because stopped apps will have
 		// always 0 .Spec.Replicas.
 		replicas = oldLabels.AppReplicas()
 		restartCount = oldLabels.Restarts()
+		isStopped = oldLabels.IsStopped()
 	}
 	if pState.Increment != 0 {
 		replicas += pState.Increment
 		if replicas < 0 {
 			return nil, errors.New("cannot have less than 0 units")
 		}
-	} else if replicas == 0 && pState.Start {
-		replicas = 1
+	}
+	if pState.Start || pState.Restart {
+		if replicas == 0 {
+			replicas = 1
+		}
+		isStopped = false
+	}
+	labels, err := podLabels(a, process, "", replicas)
+	if err != nil {
+		return nil, err
+	}
+	realReplicas := int32(replicas)
+	if isStopped || pState.Stop {
+		realReplicas = 0
+		labels.SetStopped()
+	}
+	if pState.Restart {
+		restartCount++
+		labels.SetRestarts(restartCount)
 	}
 	extra := []string{extraRegisterCmds(a)}
 	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, imageName, a, extra)
@@ -225,18 +244,6 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	}...)
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
-	labels, err := podLabels(a, process, "", replicas)
-	if err != nil {
-		return nil, err
-	}
-	realReplicas := int32(replicas)
-	if pState.Stop {
-		realReplicas = 0
-	}
-	if pState.Restart {
-		restartCount++
-		labels.SetRestarts(restartCount)
-	}
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
 	if err != nil {
 		return nil, errors.WithStack(err)

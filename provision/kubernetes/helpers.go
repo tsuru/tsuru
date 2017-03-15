@@ -218,8 +218,17 @@ func (s *labelSet) BuildImage() string {
 	return s.getLabel("build-image")
 }
 
+func (s *labelSet) IsStopped() bool {
+	stopped, _ := strconv.ParseBool(s.getLabel("is-stopped"))
+	return stopped
+}
+
 func (s *labelSet) SetRestarts(count int) {
 	s.addLabel("restarts", strconv.Itoa(count))
+}
+
+func (s *labelSet) SetStopped() {
+	s.addLabel("is-stopped", strconv.FormatBool(true))
 }
 
 func (s *labelSet) addLabel(k, v string) {
@@ -259,6 +268,7 @@ func podLabels(a provision.App, process, buildImg string, replicas int) (*labelS
 		labels: map[string]string{
 			"is-tsuru":             strconv.FormatBool(true),
 			"is-build":             strconv.FormatBool(buildImg != ""),
+			"is-stopped":           strconv.FormatBool(false),
 			"app-name":             a.GetName(),
 			"app-process":          process,
 			"app-process-replicas": strconv.Itoa(replicas),
