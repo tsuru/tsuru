@@ -7,10 +7,14 @@ TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
-LINTER_ARGS = \
+LINTER_ARGS_SLOW = \
 	-j 4 --enable-gc -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
 	--disable=structcheck --deadline=60m --tests
+
+LINTER_ARGS = \
+	$(LINTER_ARGS_SLOW) --disable=staticcheck --disable=unused --disable=gosimple
+
 
 .PHONY: all check-path test race docs install
 
