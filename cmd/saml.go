@@ -147,10 +147,8 @@ func (c *login) samlLogin(context *Context, client *Client) error {
 	case nil:
 		writeToken(token)
 		fmt.Fprintln(context.Stdout, "\nSuccessfully logged in!")
-		break
 	case saml.ErrRequestWaitingForCredentials:
 		fmt.Fprintln(context.Stdout, "\nLogin failed! Timeout waiting for credentials from IDP, please try again.")
-		break
 	default:
 		fmt.Fprintln(context.Stdout, "\nLogin failed for some reason, please try again: "+err.Error())
 	}

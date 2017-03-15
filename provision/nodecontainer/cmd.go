@@ -143,7 +143,7 @@ func (c *dockerCmd) toValues() (url.Values, error) {
 	for k, v := range portBindings {
 		var val []docker.PortBinding
 		for _, b := range v {
-			val = append(val, docker.PortBinding{HostIP: b.HostIP, HostPort: b.HostPort})
+			val = append(val, docker.PortBinding(b))
 		}
 		c.config.HostConfig.PortBindings[docker.Port(k)] = val
 	}

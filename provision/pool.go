@@ -64,7 +64,7 @@ func (p *Pool) GetTeams() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, _ := allowedValues["team"]; len(c) > 0 {
+	if c := allowedValues["team"]; len(c) > 0 {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoTeam
@@ -75,7 +75,7 @@ func (p *Pool) GetRouters() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c, _ := allowedValues["router"]; len(c) > 0 {
+	if c := allowedValues["router"]; len(c) > 0 {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoRouter

@@ -730,7 +730,7 @@ func (p *FakeProvisioner) Provisioned(app provision.App) bool {
 
 func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
 	p.mut.RLock()
-	pApp, _ := p.apps[app.GetName()]
+	pApp := p.apps[app.GetName()]
 	p.mut.RUnlock()
 	return pApp.units
 }

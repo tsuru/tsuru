@@ -60,7 +60,7 @@ func getPasswordToken(token string) (*passwordToken, error) {
 	if err != nil {
 		return nil, auth.ErrInvalidToken
 	}
-	if t.Creation.Add(24*time.Hour).Sub(time.Now()) < time.Minute {
+	if time.Until(t.Creation.Add(24*time.Hour)) < time.Minute {
 		return nil, auth.ErrInvalidToken
 	}
 	return &t, nil

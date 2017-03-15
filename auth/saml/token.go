@@ -170,7 +170,7 @@ func getToken(header string) (*Token, error) {
 		}
 		return nil, err
 	}
-	if t.Expires > 0 && t.Creation.Add(t.Expires).Sub(time.Now()) < 1 {
+	if t.Expires > 0 && time.Until(t.Creation.Add(t.Expires)) < 1 {
 		return nil, auth.ErrInvalidToken
 	}
 	return &t, nil

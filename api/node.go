@@ -49,7 +49,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 	response := make(map[string]string)
 	var address string
 	if params.Register {
-		address, _ = params.Metadata["address"]
+		address = params.Metadata["address"]
 		delete(params.Metadata, "address")
 	} else {
 		desc, _ := iaas.Describe(params.Metadata["iaas"])

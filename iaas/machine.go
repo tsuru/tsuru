@@ -73,7 +73,7 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
 	if iaasName == "" {
-		iaasName, _ = params["iaas"]
+		iaasName = params["iaas"]
 	}
 	if iaasName == "" {
 		defaultIaaS, err := getDefaultIaasName()
