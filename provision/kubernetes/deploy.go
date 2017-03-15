@@ -225,7 +225,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	}...)
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
-	labels, err := podLabels(a, process, "", int(replicas))
+	labels, err := podLabels(a, process, "", replicas)
 	if err != nil {
 		return nil, err
 	}
