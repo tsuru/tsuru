@@ -7,9 +7,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/io"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 )
@@ -44,11 +44,11 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 				Message: err.Error(),
 			}
 		}
-		fileSize, err = file.Seek(0, os.SEEK_END)
+		fileSize, err = file.Seek(0, io.SeekEnd)
 		if err != nil {
 			return errors.Wrap(err, "unable to find uploaded file size")
 		}
-		file.Seek(0, os.SEEK_SET)
+		file.Seek(0, io.SeekStart)
 		defer file.Close()
 	}
 	archiveURL := r.FormValue("archive-url")
@@ -147,7 +147,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	opts.Event = evt
-	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
 	opts.OutputStream = writer
 	imageID, err = app.Deploy(opts)
@@ -186,7 +186,7 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 //   403: Forbidden
 //   404: Not found
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	writer := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer writer.Stop()
 	fmt.Fprint(w, "Saving the difference between the old and new code\n")
 	appName := r.URL.Query().Get(":appname")
@@ -243,9 +243,9 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		}
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	opts := app.DeployOptions{
 		App:          instance,
 		OutputStream: writer,
@@ -276,7 +276,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	opts.Event = evt
 	imageID, err = app.Deploy(opts)
 	if err != nil {
-		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
 	return nil
 }
@@ -365,9 +365,9 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	opts := app.DeployOptions{
 		App:          instance,
 		OutputStream: writer,
@@ -396,7 +396,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	opts.Event = evt
 	imageID, err = app.Deploy(opts)
 	if err != nil {
-		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
 	return nil
 }

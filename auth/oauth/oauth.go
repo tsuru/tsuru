@@ -152,7 +152,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	if email == "" {
 		return nil, ErrEmptyUserEmail
 	}
-	user, err := auth.GetUserByEmail(email)
+	_, err = auth.GetUserByEmail(email)
 	if err != nil {
 		if err != auth.ErrUserNotFound {
 			return nil, err
@@ -161,7 +161,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 		if !registrationEnabled {
 			return nil, err
 		}
-		user = &auth.User{Email: email}
+		user := &auth.User{Email: email}
 		err = user.Create()
 		if err != nil {
 			return nil, err

@@ -84,10 +84,10 @@ func (s *S) TestCollectionEnsureIdxDupEntries(c *check.C) {
 	coll.DropIndex("address")
 	err = coll.Insert(Machine{Id: "id1", Address: "addr1"}, Machine{Id: "id2", Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	collEnsure, err := collectionEnsureIdx()
+	_, err = collectionEnsureIdx()
 	c.Assert(err, check.ErrorMatches, `(?s)Could not create index on address for machines collection.*`)
 	coll.RemoveAll(nil)
-	collEnsure, err = collectionEnsureIdx()
+	collEnsure, err := collectionEnsureIdx()
 	c.Assert(err, check.IsNil)
 	defer collEnsure.Close()
 }

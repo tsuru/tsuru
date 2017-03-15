@@ -71,7 +71,7 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 					os.Exit(1)
 				}
 			}(sigChan)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 		}
 	}
 	queryString := make(url.Values)

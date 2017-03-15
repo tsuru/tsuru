@@ -1636,6 +1636,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 		"tsuruteam",
 		"nodockerforme",
 	})
+	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
