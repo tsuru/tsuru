@@ -1044,23 +1044,6 @@ func (s *S) TestImageDeployInPoolWithoutNode(c *check.C) {
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
-	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hijacker, ok := w.(http.Hijacker)
-		if !ok {
-			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
-		w.WriteHeader(http.StatusOK)
-		conn, _, cErr := hijacker.Hijack()
-		if cErr != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
-		fmt.Fprintf(outStream, "")
-		conn.Close()
-	}))
 	a := s.newApp("otherapp")
 	a.Quota = quota.Unlimited
 	a.Pool = "cpool"
