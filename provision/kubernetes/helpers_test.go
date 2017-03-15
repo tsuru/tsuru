@@ -49,7 +49,7 @@ func (s *S) TestWaitForJobContainerRunning(c *check.C) {
 	c.Assert(podName, check.Equals, "")
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
 	reaction, podReady := s.jobWithPodReaction(a, c)
-	defer func() { <-podReady }()
+	defer podReady.Wait()
 	s.client.PrependReactor("create", "jobs", reaction)
 	done := make(chan struct{})
 	go func() {
@@ -86,7 +86,7 @@ func (s *S) TestWaitForJob(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `Job.batch "job1" not found`)
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
 	reaction, podReady := s.jobWithPodReaction(a, c)
-	defer func() { <-podReady }()
+	defer podReady.Wait()
 	s.client.PrependReactor("create", "jobs", reaction)
 	_, err = s.client.Batch().Jobs(tsuruNamespace).Create(&batch.Job{
 		ObjectMeta: v1.ObjectMeta{
@@ -152,7 +152,7 @@ func (s *S) TestCleanupJob(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	<-podReady
+	podReady.Wait()
 	err = cleanupJob(s.client, "job1")
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})

@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -19,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"golang.org/x/crypto/bcrypt"
@@ -30,6 +33,8 @@ import (
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
+	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/labels"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -159,9 +164,40 @@ func (s *S) createDeployReadyServer(c *check.C) *httptest.Server {
 	return srv
 }
 
-func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, <-chan struct{}) {
-	podReady := make(chan struct{})
+func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	wg := sync.WaitGroup{}
+	counter := 0
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		wg.Add(1)
+		dep := action.(ktesting.CreateAction).GetObject().(*extensions.Deployment)
+		go func() {
+			defer wg.Done()
+			pod := &v1.Pod{
+				ObjectMeta: dep.Spec.Template.ObjectMeta,
+				Spec:       dep.Spec.Template.Spec,
+			}
+			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
+			pod.ObjectMeta.Namespace = dep.Namespace
+			pod.Spec.NodeName = "n1"
+			err := cleanupPods(s.client, v1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
+			})
+			c.Assert(err, check.IsNil)
+			for i := int32(1); i <= *dep.Spec.Replicas; i++ {
+				counter++
+				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, counter, i)
+				_, err = s.client.Core().Pods(dep.Namespace).Create(pod)
+				c.Assert(err, check.IsNil)
+			}
+		}()
+		return false, nil, nil
+	}, &wg
+}
+
+func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	wg := sync.WaitGroup{}
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		wg.Add(1)
 		job := action.(ktesting.CreateAction).GetObject().(*batch.Job)
 		job.Status.Succeeded = int32(1)
 		job.Spec.Selector = &unversioned.LabelSelector{
@@ -172,10 +208,12 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 			labelsCopy[k] = v
 		}
 		go func() {
+			defer wg.Done()
 			pod := &v1.Pod{
 				ObjectMeta: job.Spec.Template.ObjectMeta,
 				Spec:       job.Spec.Template.Spec,
 			}
+			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
 			pod.ObjectMeta.Name += "-pod"
 			pod.ObjectMeta.Namespace = job.Namespace
 			pod.ObjectMeta.Labels = labelsCopy
@@ -204,8 +242,24 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 				})
 				c.Assert(err, check.IsNil)
 			}
-			podReady <- struct{}{}
 		}()
 		return false, nil, nil
-	}, podReady
+	}, &wg
+}
+
+func (s *S) defaultReactions(c *check.C) (provision.App, func()) {
+	srv := s.createDeployReadyServer(c)
+	s.mockfakeNodes(c, srv.URL)
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	a.Deploys = 1
+	jobReaction, jobPodReady := s.jobWithPodReaction(a, c)
+	depReaction, depPodReady := s.deploymentWithPodReaction(c)
+	s.client.PrependReactor("create", "jobs", jobReaction)
+	s.client.PrependReactor("create", "deployments", depReaction)
+	s.client.PrependReactor("update", "deployments", depReaction)
+	return a, func() {
+		depPodReady.Wait()
+		jobPodReady.Wait()
+		srv.Close()
+	}
 }

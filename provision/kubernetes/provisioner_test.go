@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -123,16 +124,104 @@ func (s *S) TestGetNodeWithoutCluster(c *check.C) {
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
-func (s *S) TestUploadDeploy(c *check.C) {
-	srv := s.createDeployReadyServer(c)
-	defer srv.Close()
-	s.mockfakeNodes(c, srv.URL)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
+func (s *S) TestAddUnits(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
 	c.Assert(err, check.IsNil)
-	reaction, podReady := s.jobWithPodReaction(a, c)
-	defer func() { <-podReady }()
-	s.client.PrependReactor("create", "jobs", reaction)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+}
+
+func (s *S) TestRemoveUnits(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 3, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
+	err = s.p.RemoveUnits(a, 2, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestRestart(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	id := units[0].ID
+	err = s.p.Restart(a, "", nil)
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units[0].ID, check.Not(check.Equals), id)
+}
+
+func (s *S) TestStopStart(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = s.p.Stop(a, "")
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestUploadDeploy(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
 	data := []byte("archivedata")
 	archive := ioutil.NopCloser(bytes.NewReader(data))
 	evt, err := event.New(&event.Opts{
@@ -154,4 +243,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	}
 	sort.Strings(depNames)
 	c.Assert(depNames, check.DeepEquals, []string{"myapp-web", "myapp-worker"})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(units, check.HasLen, 2)
 }

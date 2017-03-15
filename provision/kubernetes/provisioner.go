@@ -81,24 +81,54 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	return nil
 }
 
-func (p *kubernetesProvisioner) AddUnits(provision.App, uint, string, io.Writer) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeUnits(&serviceManager{
+		client: client,
+	}, a, int(units), processName)
 }
 
-func (p *kubernetesProvisioner) RemoveUnits(provision.App, uint, string, io.Writer) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeUnits(&serviceManager{
+		client: client,
+	}, a, -int(units), processName)
 }
 
-func (p *kubernetesProvisioner) Restart(provision.App, string, io.Writer) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) Restart(a provision.App, process string, w io.Writer) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Start: true, Restart: true})
 }
 
-func (p *kubernetesProvisioner) Start(provision.App, string) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) Start(a provision.App, process string) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Start: true})
 }
 
-func (p *kubernetesProvisioner) Stop(provision.App, string) error {
-	return errNotImplemented
+func (p *kubernetesProvisioner) Stop(a provision.App, process string) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Stop: true})
 }
 
 var stateMap = map[v1.PodPhase]provision.Status{
@@ -122,7 +152,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	nodeMap := map[string]*v1.Node{}
 	units := make([]provision.Unit, len(pods.Items))
@@ -132,7 +162,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 		if !ok {
 			node, err = client.Core().Nodes().Get(pod.Spec.NodeName)
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 			nodeMap[pod.Spec.NodeName] = node
 		}
