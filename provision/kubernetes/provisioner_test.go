@@ -130,7 +130,8 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	s.client.PrependReactor("create", "jobs", s.jobWithPodReaction(a, c))
+	reaction, _ := s.jobWithPodReaction(a, c)
+	s.client.PrependReactor("create", "jobs", reaction)
 	data := []byte("archivedata")
 	archive := ioutil.NopCloser(bytes.NewReader(data))
 	evt, err := event.New(&event.Opts{

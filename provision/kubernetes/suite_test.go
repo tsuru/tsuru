@@ -159,7 +159,8 @@ func (s *S) createDeployReadyServer(c *check.C) *httptest.Server {
 	return srv
 }
 
-func (s *S) jobWithPodReaction(a provision.App, c *check.C) ktesting.ReactionFunc {
+func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, <-chan struct{}) {
+	podReady := make(chan struct{})
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		job := action.(ktesting.CreateAction).GetObject().(*batch.Job)
 		job.Status.Succeeded = int32(1)
@@ -201,7 +202,8 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) ktesting.ReactionFun
 				})
 				c.Assert(err, check.IsNil)
 			}
+			podReady <- struct{}{}
 		}()
 		return false, nil, nil
-	}
+	}, podReady
 }
