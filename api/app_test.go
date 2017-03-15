@@ -201,6 +201,51 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	}
 }
 
+func (s *S) TestAppListFilteringByTags(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	u, _ := token.User()
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
+	err := app.CreateApp(&app1, u)
+	c.Assert(err, check.IsNil)
+	platform := app.Platform{Name: "python"}
+	s.conn.Platforms().Insert(platform)
+	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
+	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"tag2", "tag3"}}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps?tag=tag3", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	apps := []app.App{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, app2.Name)
+	request, err = http.NewRequest("GET", "/apps?tag=tag2&tag=tag1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder = httptest.NewRecorder()
+	m = RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	apps = []app.App{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+}
+
 func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, s.user)
