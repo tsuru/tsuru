@@ -28,11 +28,8 @@ func (p *dockerProvisioner) buildImage(app provision.App, archiveFile io.ReadClo
 			AttachStdout: true,
 			AttachStderr: true,
 			AttachStdin:  true,
-			OpenStdin:    true,
-			StdinOnce:    true,
 			User:         user,
 			Image:        imageName,
-			Cmd:          []string{"/bin/bash", "-c", "tail -f /dev/null"},
 		},
 	}
 	cluster := p.Cluster()
@@ -53,19 +50,7 @@ func (p *dockerProvisioner) buildImage(app provision.App, archiveFile io.ReadClo
 		cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
 		done()
 	}()
-	done := p.ActionLimiter().Start(hostAddr)
-	err = cluster.StartContainer(cont.ID, nil)
-	done()
-	if err != nil {
-		return "", "", err
-	}
 	intermediateImageID, fileURI, err := dockercommon.UploadToContainer(cluster, cont.ID, archiveFile)
-	done = p.ActionLimiter().Start(hostAddr)
-	stopErr := cluster.StopContainer(cont.ID, 10)
-	done()
-	if stopErr != nil {
-		return "", "", stopErr
-	}
 	if err != nil {
 		return "", "", err
 	}
@@ -83,7 +68,6 @@ func (p *dockerProvisioner) rebuildImage(app provision.App) (string, string, err
 			AttachStdout: true,
 			AttachStderr: true,
 			Image:        imageName,
-			Cmd:          []string{"true"},
 		},
 	}
 	cluster := p.Cluster()

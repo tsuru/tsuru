@@ -594,14 +594,9 @@ func (s *DockerServer) statsContainer(w http.ResponseWriter, r *http.Request) {
 
 func (s *DockerServer) uploadToContainer(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	container, _, err := s.findContainer(id)
+	_, _, err := s.findContainer(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	if !container.State.Running {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Container %s is not running", id)
 		return
 	}
 	path := r.URL.Query().Get("path")
