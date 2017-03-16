@@ -129,7 +129,7 @@ func (s *S) TearDownTest(c *check.C) {
 	context.Purge(-1)
 }
 
-func (s *S) TestDownSuite(c *check.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()

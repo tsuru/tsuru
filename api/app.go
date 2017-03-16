@@ -175,6 +175,9 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if status, ok := r.URL.Query()["status"]; ok {
 		filter.Statuses = status
 	}
+	if tags, ok := r.URL.Query()["tag"]; ok {
+		filter.Tags = tags
+	}
 	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
