@@ -5,6 +5,12 @@
 package kubernetes
 
 import (
+	"net/url"
+
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -106,6 +112,53 @@ func (s *S) TestNodeProvisioner(c *check.C) {
 		prov: s.p,
 	}
 	c.Assert(node.Provisioner(), check.Equals, s.p)
+}
+
+func (s *S) TestNodeUnits(c *check.C) {
+	fakeApp, rollback := s.defaultReactions(c)
+	defer rollback()
+	routertest.FakeRouter.Reset()
+	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	imgName := "myapp:v1"
+	err = image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	node, err := s.p.GetNode("192.168.99.1")
+	c.Assert(err, check.IsNil)
+	units, err := node.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{
+			ID:          "myapp-web-pod-1-1",
+			Name:        "myapp-web-pod-1-1",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			Ip:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+		},
+		{
+			ID:          "myapp-worker-pod-2-1",
+			Name:        "myapp-worker-pod-2-1",
+			AppName:     "myapp",
+			ProcessName: "worker",
+			Type:        "python",
+			Ip:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+		},
+	})
 }
 
 func (s *S) TestClusterNode(c *check.C) {

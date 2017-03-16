@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -23,7 +24,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
-	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/pkg/labels"
 )
 
@@ -33,8 +33,6 @@ const (
 	dockerImageName        = "docker:1.11.2"
 	defaultBuildJobTimeout = 30 * time.Minute
 )
-
-var errNotImplemented = errors.New("not implemented")
 
 type kubernetesProvisioner struct{}
 
@@ -139,6 +137,84 @@ var stateMap = map[v1.PodPhase]provision.Status{
 	v1.PodUnknown:   provision.StatusError,
 }
 
+func (p *kubernetesProvisioner) podsToUnits(client kubernetes.Interface, pods []v1.Pod, baseApp provision.App, baseNode *v1.Node) ([]provision.Unit, error) {
+	var err error
+	if len(pods) == 0 {
+		return nil, nil
+	}
+	nodeMap := map[string]*v1.Node{}
+	appMap := map[string]provision.App{}
+	webProcMap := map[string]string{}
+	portMap := map[string]int32{}
+	if baseApp != nil {
+		appMap[baseApp.GetName()] = baseApp
+	}
+	if baseNode != nil {
+		nodeMap[baseNode.Name] = baseNode
+	}
+	units := make([]provision.Unit, len(pods))
+	for i, pod := range pods {
+		l := labelSetFromMeta(&pod.ObjectMeta)
+		node, ok := nodeMap[pod.Spec.NodeName]
+		if !ok {
+			node, err = client.Core().Nodes().Get(pod.Spec.NodeName)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			nodeMap[pod.Spec.NodeName] = node
+		}
+		podApp, ok := appMap[l.AppName()]
+		if !ok {
+			podApp, err = app.GetByName(l.AppName())
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			appMap[podApp.GetName()] = podApp
+		}
+		webProcessName, ok := webProcMap[podApp.GetName()]
+		if !ok {
+			var imageName string
+			imageName, err = image.AppCurrentImageName(podApp.GetName())
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			webProcessName, err = image.GetImageWebProcessName(imageName)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			webProcMap[podApp.GetName()] = webProcessName
+		}
+		wrapper := kubernetesNodeWrapper{node: node, prov: p}
+		url := &url.URL{
+			Scheme: "http",
+			Host:   wrapper.Address(),
+		}
+		if l.AppProcess() == webProcessName {
+			srvName := deploymentNameForApp(podApp, webProcessName)
+			port, ok := portMap[srvName]
+			if !ok {
+				port, err = getServicePort(client, srvName)
+				if err != nil {
+					return nil, err
+				}
+				portMap[srvName] = port
+			}
+			url.Host = fmt.Sprintf("%s:%d", url.Host, port)
+		}
+		units[i] = provision.Unit{
+			ID:          pod.Name,
+			Name:        pod.Name,
+			AppName:     l.AppName(),
+			ProcessName: l.AppProcess(),
+			Type:        l.AppPlatform(),
+			Ip:          wrapper.Address(),
+			Status:      stateMap[pod.Status.Phase],
+			Address:     url,
+		}
+	}
+	return units, nil
+}
+
 func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error) {
 	client, err := getClusterClient()
 	if err != nil {
@@ -154,68 +230,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if len(pods.Items) == 0 {
-		return nil, nil
-	}
-	imageName, err := image.AppCurrentImageName(a.GetName())
-	if err != nil {
-		if err != image.ErrNoImagesAvailable {
-			return nil, err
-		}
-		return nil, nil
-	}
-	webProcessName, err := image.GetImageWebProcessName(imageName)
-	if err != nil {
-		return nil, err
-	}
-	nodeMap := map[string]*v1.Node{}
-	units := make([]provision.Unit, len(pods.Items))
-	for i, pod := range pods.Items {
-		l := labelSetFromMeta(&pod.ObjectMeta)
-		node, ok := nodeMap[pod.Spec.NodeName]
-		if !ok {
-			node, err = client.Core().Nodes().Get(pod.Spec.NodeName)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			nodeMap[pod.Spec.NodeName] = node
-		}
-		wrapper := kubernetesNodeWrapper{node: node, prov: p}
-		url := &url.URL{
-			Scheme: "http",
-			Host:   wrapper.Address(),
-		}
-		if l.AppProcess() == webProcessName {
-			port, err := getServicePort(client, a, webProcessName)
-			if err != nil {
-				return nil, err
-			}
-			url.Host = fmt.Sprintf("%s:%d", url.Host, port)
-		}
-		units[i] = provision.Unit{
-			ID:          pod.Name,
-			Name:        pod.Name,
-			AppName:     a.GetName(),
-			ProcessName: l.AppProcess(),
-			Type:        l.AppPlatform(),
-			Ip:          wrapper.Address(),
-			Status:      stateMap[pod.Status.Phase],
-			Address:     url,
-		}
-	}
-	return units, nil
-}
-
-func getServicePort(client kubernetes.Interface, a provision.App, process string) (int32, error) {
-	depName := deploymentNameForApp(a, process)
-	srv, err := client.Core().Services(tsuruNamespace).Get(depName)
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-	if len(srv.Spec.Ports) == 0 {
-		return 0, nil
-	}
-	return srv.Spec.Ports[0].NodePort, nil
+	return p.podsToUnits(client, pods.Items, a, nil)
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
@@ -237,7 +252,8 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if webProcessName == "" {
 		return nil, nil
 	}
-	pubPort, err := getServicePort(client, a, webProcessName)
+	srvName := deploymentNameForApp(a, webProcessName)
+	pubPort, err := getServicePort(client, srvName)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +354,7 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return addClusterNode(opts)
 	}
 	// TODO(cezarsa): Start kubelet, kube-proxy and add labels
-	return errNotImplemented
+	return errors.New("adding nodes to cluster not supported yet on kubernetes")
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
@@ -360,16 +376,12 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		var podList *v1.PodList
-		podList, err = client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
-			FieldSelector: fields.SelectorFromSet(fields.Set{
-				"spec.nodeName": node.Name,
-			}).String(),
-		})
+		var pods []v1.Pod
+		pods, err = podsFromNode(client, node.Name)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
-		for _, pod := range podList.Items {
+		for _, pod := range pods {
 			err = client.Core().Pods(tsuruNamespace).Evict(&policy.Eviction{
 				ObjectMeta: v1.ObjectMeta{
 					Name:      pod.Name,

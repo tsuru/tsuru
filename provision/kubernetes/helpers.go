@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/pkg/labels"
 )
 
@@ -153,6 +154,29 @@ func cleanupJob(client kubernetes.Interface, jobName string) error {
 	})
 }
 
+func podsFromNode(client kubernetes.Interface, nodeName string) ([]v1.Pod, error) {
+	podList, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+		FieldSelector: fields.SelectorFromSet(fields.Set{
+			"spec.nodeName": nodeName,
+		}).String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return podList.Items, nil
+}
+
+func getServicePort(client kubernetes.Interface, srvName string) (int32, error) {
+	srv, err := client.Core().Services(tsuruNamespace).Get(srvName)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	if len(srv.Spec.Ports) == 0 {
+		return 0, nil
+	}
+	return srv.Spec.Ports[0].NodePort, nil
+}
+
 type labelSet struct {
 	labels      map[string]string
 	annotations map[string]string
@@ -194,6 +218,10 @@ func (s *labelSet) ToSelector() map[string]string {
 
 func (s *labelSet) ToAppSelector() map[string]string {
 	return withPrefix(subMap(s.labels, "app-name"))
+}
+
+func (s *labelSet) AppName() string {
+	return s.getLabel("app-name")
 }
 
 func (s *labelSet) AppProcess() string {
