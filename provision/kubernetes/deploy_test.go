@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -271,6 +272,55 @@ func (s *S) TestServiceManagerDeployServiceUpdateRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
 	c.Assert(ls.Restarts(), check.Equals, 2)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
+	m := serviceManager{client: s.client}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+		"healthcheck": provision.TsuruYamlHealthcheck{
+			Path: "/hc",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &v1.Probe{
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/hc",
+				Port: intstr.FromInt(8888),
+			},
+		},
+	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
+	m := serviceManager{client: s.client}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+		"healthcheck": provision.TsuruYamlHealthcheck{
+			Path:   "/hc",
+			Method: "POST",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
+	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
 }
 
 func (s *S) TestServiceManagerRemoveService(c *check.C) {

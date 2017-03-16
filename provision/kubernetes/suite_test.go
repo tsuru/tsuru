@@ -113,7 +113,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) mockfakeNodes(c *check.C, urls ...string) {
-	url := "https://anything"
+	url := "https://clusteraddr"
 	if len(urls) > 0 {
 		url = urls[0]
 	}
@@ -129,6 +129,9 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 		_, err = s.client.Core().Nodes().Create(&v1.Node{
 			ObjectMeta: v1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
+				Labels: map[string]string{
+					labelNodePoolName: "test-default",
+				},
 			},
 			Status: v1.NodeStatus{
 				Addresses: []v1.NodeAddress{
@@ -176,6 +179,7 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 				ObjectMeta: dep.Spec.Template.ObjectMeta,
 				Spec:       dep.Spec.Template.Spec,
 			}
+			pod.Status.Phase = v1.PodRunning
 			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
 			pod.Spec.NodeName = "n1"
@@ -192,6 +196,18 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 		}()
 		return false, nil, nil
 	}, &wg
+}
+
+func (s *S) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		srv := action.(ktesting.CreateAction).GetObject().(*v1.Service)
+		srv.Spec.Ports = []v1.ServicePort{
+			{
+				NodePort: int32(30000),
+			},
+		}
+		return false, nil, nil
+	}
 }
 
 func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
@@ -254,9 +270,11 @@ func (s *S) defaultReactions(c *check.C) (provision.App, func()) {
 	a.Deploys = 1
 	jobReaction, jobPodReady := s.jobWithPodReaction(a, c)
 	depReaction, depPodReady := s.deploymentWithPodReaction(c)
+	servReaction := s.serviceWithPortReaction(c)
 	s.client.PrependReactor("create", "jobs", jobReaction)
 	s.client.PrependReactor("create", "deployments", depReaction)
 	s.client.PrependReactor("update", "deployments", depReaction)
+	s.client.PrependReactor("create", "services", servReaction)
 	return a, func() {
 		depPodReady.Wait()
 		jobPodReady.Wait()

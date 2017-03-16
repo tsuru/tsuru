@@ -154,6 +154,20 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if len(pods.Items) == 0 {
+		return nil, nil
+	}
+	imageName, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		if err != image.ErrNoImagesAvailable {
+			return nil, err
+		}
+		return nil, nil
+	}
+	webProcessName, err := image.GetImageWebProcessName(imageName)
+	if err != nil {
+		return nil, err
+	}
 	nodeMap := map[string]*v1.Node{}
 	units := make([]provision.Unit, len(pods.Items))
 	for i, pod := range pods.Items {
@@ -167,19 +181,41 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 			nodeMap[pod.Spec.NodeName] = node
 		}
 		wrapper := kubernetesNodeWrapper{node: node, prov: p}
+		url := &url.URL{
+			Scheme: "http",
+			Host:   wrapper.Address(),
+		}
+		if l.AppProcess() == webProcessName {
+			port, err := getServicePort(client, a, webProcessName)
+			if err != nil {
+				return nil, err
+			}
+			url.Host = fmt.Sprintf("%s:%d", url.Host, port)
+		}
 		units[i] = provision.Unit{
 			ID:          pod.Name,
+			Name:        pod.Name,
 			AppName:     a.GetName(),
 			ProcessName: l.AppProcess(),
 			Type:        l.AppPlatform(),
 			Ip:          wrapper.Address(),
 			Status:      stateMap[pod.Status.Phase],
-			Address: &url.URL{
-				Host: wrapper.Address(),
-			},
+			Address:     url,
 		}
 	}
 	return units, nil
+}
+
+func getServicePort(client kubernetes.Interface, a provision.App, process string) (int32, error) {
+	depName := deploymentNameForApp(a, process)
+	srv, err := client.Core().Services(tsuruNamespace).Get(depName)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	if len(srv.Spec.Ports) == 0 {
+		return 0, nil
+	}
+	return srv.Spec.Ports[0].NodePort, nil
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
@@ -187,29 +223,24 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
-	imgID, err := image.AppCurrentImageName(a.GetName())
+	imageName, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		if err != image.ErrNoImagesAvailable {
 			return nil, err
 		}
 		return nil, nil
 	}
-	webProcessName, err := image.GetImageWebProcessName(imgID)
+	webProcessName, err := image.GetImageWebProcessName(imageName)
 	if err != nil {
 		return nil, err
 	}
 	if webProcessName == "" {
 		return nil, nil
 	}
-	depName := deploymentNameForApp(a, webProcessName)
-	srv, err := client.Core().Services(tsuruNamespace).Get(depName)
+	pubPort, err := getServicePort(client, a, webProcessName)
 	if err != nil {
 		return nil, err
 	}
-	if len(srv.Spec.Ports) == 0 {
-		return nil, nil
-	}
-	pubPort := srv.Spec.Ports[0].NodePort
 	nodes, err := client.Core().Nodes().List(v1.ListOptions{
 		LabelSelector: fmt.Sprintf("pool=%s", a.GetPool()),
 	})

@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"io/ioutil"
+	"net/url"
 	"sort"
 
 	"github.com/tsuru/tsuru/app"
@@ -14,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"
@@ -25,7 +27,7 @@ func (s *S) TestListNodes(c *check.C) {
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
-	c.Assert(nodes[0].Address(), check.Equals, "https://anything")
+	c.Assert(nodes[0].Address(), check.Equals, "https://clusteraddr")
 	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.1")
 	c.Assert(nodes[2].Address(), check.Equals, "192.168.99.2")
 }
@@ -71,6 +73,27 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(nodes, check.HasLen, 2)
 }
 
+func (s *S) TestRemoveNodeCluster(c *check.C) {
+	s.mockfakeNodes(c)
+	opts := provision.RemoveNodeOptions{
+		Address: "https://clusteraddr",
+	}
+	err := s.p.RemoveNode(opts)
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes([]string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 0)
+}
+
+func (s *S) TestRemoveNodeNotFound(c *check.C) {
+	s.mockfakeNodes(c)
+	opts := provision.RemoveNodeOptions{
+		Address: "192.168.99.99",
+	}
+	err := s.p.RemoveNode(opts)
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	s.mockfakeNodes(c)
 	_, err := s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
@@ -98,6 +121,47 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 }
 
 func (s *S) TestUnits(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "myworker",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.DeepEquals, []provision.Unit{
+		{
+			ID:          "myapp-web-pod-1-1",
+			Name:        "myapp-web-pod-1-1",
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			Ip:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
+		},
+		{
+			ID:          "myapp-worker-pod-2-1",
+			Name:        "myapp-worker-pod-2-1",
+			AppName:     "myapp",
+			ProcessName: "worker",
+			Type:        "python",
+			Ip:          "192.168.99.1",
+			Status:      "started",
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1"},
+		},
+	})
+}
+
+func (s *S) TestUnitsEmpty(c *check.C) {
 	s.mockfakeNodes(c)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -217,6 +281,71 @@ func (s *S) TestStopStart(c *check.C) {
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestProvisionerDestroy(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	data := []byte("archivedata")
+	archive := ioutil.NopCloser(bytes.NewReader(data))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
+	c.Assert(err, check.IsNil)
+	err = s.p.Destroy(a)
+	c.Assert(err, check.IsNil)
+	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 0)
+	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 0)
+	replicas, err := s.client.Extensions().ReplicaSets(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(replicas.Items, check.HasLen, 0)
+	services, err := s.client.Core().Services(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(services.Items, check.HasLen, 0)
+}
+
+func (s *S) TestProvisionerDestroyNothingToDo(c *check.C) {
+	s.mockfakeNodes(c)
+	a := provisiontest.NewFakeApp("myapp", "plat", 0)
+	err := s.p.Destroy(a)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
+	a, rollback := s.defaultReactions(c)
+	defer rollback()
+	data := []byte("archivedata")
+	archive := ioutil.NopCloser(bytes.NewReader(data))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
+	c.Assert(err, check.IsNil)
+	addrs, err := s.p.RoutableAddresses(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(addrs, check.DeepEquals, []url.URL{
+		{
+			Scheme: "http",
+			Host:   "192.168.99.1:30000",
+		},
+		{
+			Scheme: "http",
+			Host:   "192.168.99.2:30000",
+		},
+	})
 }
 
 func (s *S) TestUploadDeploy(c *check.C) {

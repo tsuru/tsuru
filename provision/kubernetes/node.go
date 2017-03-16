@@ -75,7 +75,7 @@ func (n *clusterNode) Address() string {
 }
 
 func (n *clusterNode) Status() string {
-	return ""
+	return "Ready"
 }
 
 func (n *clusterNode) Metadata() map[string]string {
