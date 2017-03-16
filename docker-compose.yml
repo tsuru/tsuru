@@ -67,6 +67,14 @@ services:
             - "32768-32772:32768-32772"
         networks:
             - tsuru_net
+    service1:
+        build:
+            context: https://github.com/tsuru/eviaas.git
+        ports:
+            - 8888:8888
+        networks:
+            tsuru_net:
+                ipv4_address: 172.42.0.20
 
 networks:
   tsuru_net:
