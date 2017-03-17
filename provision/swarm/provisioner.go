@@ -591,7 +591,7 @@ func (p *swarmProvisioner) ArchiveDeploy(a provision.App, archiveURL string, evt
 	if err != nil {
 		return "", err
 	}
-	err = deployProcesses(client, a, buildingImage, nil)
+	err = deployProcesses(a, buildingImage, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -631,86 +631,24 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 		return "", err
 	}
 	a.SetUpdatePlatform(true)
-	err = deployProcesses(client, a, newImage, nil)
+	err = deployProcesses(a, newImage, nil)
 	if err != nil {
 		return "", err
 	}
 	return newImage, nil
 }
 
-func (p *swarmProvisioner) UploadDeploy(a provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
-	defer archiveFile.Close()
+func (p *swarmProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
 	if build {
 		return "", errors.New("running UploadDeploy with build=true is not yet supported")
 	}
-	client, err := chooseDBSwarmNode()
-	if err != nil {
-		return "", err
-	}
-	baseImage := image.GetBuildImage(a)
-	buildingImage, err := image.AppNewImageName(a.GetName())
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	spec, err := serviceSpecForApp(tsuruServiceOpts{
-		app:        a,
-		image:      baseImage,
-		isDeploy:   true,
-		buildImage: buildingImage,
-	})
-	if err != nil {
-		return "", err
-	}
-	spec.TaskTemplate.ContainerSpec.Command = []string{"/usr/bin/tail", "-f", "/dev/null"}
-	spec.TaskTemplate.RestartPolicy.Condition = swarm.RestartPolicyConditionNone
-	srv, err := client.CreateService(docker.CreateServiceOptions{
-		ServiceSpec: *spec,
-	})
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	tasks, err := waitForTasks(client, srv.ID, swarm.TaskStateRunning)
-	if err != nil {
-		return "", err
-	}
-	client, err = clientForNode(client, tasks[0].NodeID)
-	if err != nil {
-		return "", err
-	}
-	contID := tasks[0].Status.ContainerStatus.ContainerID
 	tarFile := dockercommon.AddDeployTarFile(archiveFile, fileSize, "archive.tar.gz")
-	imageID, fileURI, err := dockercommon.UploadToContainer(client, contID, tarFile)
-	removeErr := client.RemoveService(docker.RemoveServiceOptions{
-		ID: srv.ID,
-	})
-	if removeErr != nil {
-		return "", errors.WithStack(removeErr)
-	}
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	cmds := dockercommon.ArchiveDeployCmds(a, fileURI)
-	opts := tsuruServiceOpts{
-		app:        a,
-		image:      imageID,
-		isDeploy:   true,
-		buildImage: buildingImage,
-		constraints: []string{
-			fmt.Sprintf("node.id == %s", tasks[0].NodeID),
-		},
-	}
-	srvID, task, err := runOnceCmds(client, opts, cmds, evt, evt)
-	if srvID != "" {
-		defer removeServiceAndLog(client, srvID)
-	}
+	defer tarFile.Close()
+	buildingImage, err := p.buildImage(app, tarFile, evt)
 	if err != nil {
 		return "", err
 	}
-	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, a)
-	if err != nil {
-		return "", err
-	}
-	err = deployProcesses(client, a, buildingImage, nil)
+	err = deployProcesses(app, buildingImage, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -929,7 +867,11 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 	return out, nil
 }
 
-func deployProcesses(client *docker.Client, a provision.App, newImg string, updateSpec servicecommon.ProcessSpec) error {
+func deployProcesses(a provision.App, newImg string, updateSpec servicecommon.ProcessSpec) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
 	manager := &serviceManager{
 		client: client,
 	}
