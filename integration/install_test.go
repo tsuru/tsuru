@@ -59,8 +59,6 @@ hosts:
   apps:
     size: 2
 components:
-  tsuru:
-    version: latest
     install-dashboard: false
 `
 
@@ -78,17 +76,30 @@ func platformsToInstall() ExecFlow {
 
 func installerConfigTest() ExecFlow {
 	flow := ExecFlow{
-		provides: []string{"installerconfig"},
+		provides: []string{"installerconfig", "installercompose"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		f, err := ioutil.TempFile("", "installer-config")
 		c.Assert(err, check.IsNil)
 		defer f.Close()
+		composeFile, err := ioutil.TempFile("", "installer-compose")
+		c.Assert(err, check.IsNil)
+		defer composeFile.Close()
+		res := T("install-config-init", f.Name(), composeFile.Name()).Run(env)
+		c.Assert(res, ResultOk)
 		f.Write([]byte(installerConfig))
+		composeData, err := ioutil.ReadFile(composeFile.Name())
+		c.Assert(err, check.IsNil)
+		composeData = []byte(strings.Replace(string(composeData), "tsuru/api:v1", "tsuru/api:latest", 1))
+		err = ioutil.WriteFile(composeFile.Name(), composeData, 0644)
+		c.Assert(err, check.IsNil)
 		env.Set("installerconfig", f.Name())
+		env.Set("installercompose", composeFile.Name())
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		res := NewCommand("rm", "{{.installerconfig}}").Run(env)
+		c.Check(res, ResultOk)
+		res = NewCommand("rm", "{{.installercompose}}").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -99,13 +110,13 @@ func installerTest() ExecFlow {
 		provides: []string{"targetaddr"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("install", "--config", "{{.installerconfig}}").WithTimeout(30 * time.Minute).Run(env)
+		res := T("install", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(30 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		targetHost := parts[1]
-		regex = regexp.MustCompile(`(?si).*Tsuru API.*?\|\s(\d+)`)
+		regex = regexp.MustCompile(`(?si).*tsuru_tsuru.*?\|\s(\d+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		targetPort := parts[1]
