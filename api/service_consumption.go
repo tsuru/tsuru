@@ -160,7 +160,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	defer func() { evt.Done(err) }()
 	si.Description = description
-	return service.UpdateService(si)
+	return si.Update(*si)
 }
 
 // title: remove service instance

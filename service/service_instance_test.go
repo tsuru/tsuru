@@ -520,8 +520,8 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	instance.Description = "desc"
-	instance.Tags = []string{"tag2", " ", " tag2 "}
-	err = UpdateService(&instance)
+	instance.Tags = []string{"tag2"}
+	err = instance.Update(instance)
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
