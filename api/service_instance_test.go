@@ -424,6 +424,42 @@ func (s *ConsumptionSuite) TestCreateInstanceWithDescription(c *check.C) {
 	c.Assert(si.Description, check.Equals, "desc")
 }
 
+func (s *ConsumptionSuite) TestCreateServiceInstanceWithTags(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan":         "small",
+		"owner":        s.team.Name,
+		"tag":          "tag a",
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	var si service.ServiceInstance
+	err := s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan_name":    "small",
+	}).One(&si)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.Name, check.Equals, "brainSQL")
+	c.Assert(si.ServiceName, check.Equals, "mysql")
+	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag a"})
+}
+
 func makeRequestToUpdateInstanceHandler(params map[string]string, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	values := url.Values{}
 	for k, v := range params {
@@ -479,7 +515,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescriptio
 	c.Assert(instance.ServiceName, check.Equals, "mysql")
 	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
-	c.Assert(instance.Description, check.DeepEquals, "changed")
+	c.Assert(instance.Description, check.Equals, "changed")
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainSQL"),
 		Owner:  token.GetUserName(),
@@ -490,7 +526,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescriptio
 	}, eventtest.HasEvent)
 }
 
-func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(c *check.C) {
+func (s *ConsumptionSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -506,10 +542,11 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(
 		ServiceName: "mysql",
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
+		Tags:        []string{"tag a"},
 	}
 	si.Create()
 	params := map[string]string{
-		"description": "changed",
+		"tag": "tag b",
 	}
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
@@ -529,7 +566,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNoDescription(
 	c.Assert(instance.ServiceName, check.Equals, "mysql")
 	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
-	c.Assert(instance.Description, check.DeepEquals, "changed")
+	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b"})
 }
 
 func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNotExist(c *check.C) {

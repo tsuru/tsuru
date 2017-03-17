@@ -62,6 +62,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		PlanName:    r.FormValue("plan"),
 		TeamOwner:   r.FormValue("owner"),
 		Description: r.FormValue("description"),
+		Tags:        []string{r.FormValue("tag")},
 	}
 	var teamOwner string
 	if instance.TeamOwner == "" {
@@ -131,7 +132,8 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
-	if description == "" {
+	tag := r.FormValue("tag")
+	if description == "" && tag == "" {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid value for description",
@@ -159,7 +161,12 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	si.Description = description
+	if description != "" {
+		si.Description = description
+	}
+	if tag != "" {
+		si.Tags = []string{tag}
+	}
 	return si.Update(*si)
 }
 
