@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"sort"
 	"strconv"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	"k8s.io/client-go/kubernetes"
@@ -490,4 +492,44 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 		return "", errors.WithStack(err)
 	}
 	return buildingImage, nil
+}
+
+func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
+	poolsToRun := []string{"", pool}
+	if pool == "" {
+		poolMap, err := nodecontainer.LoadNodeContainersForPools(name)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		poolsToRun = make([]string, 0, len(poolMap))
+		for k := range poolMap {
+			poolsToRun = append(poolsToRun, k)
+		}
+	}
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	sort.Strings(poolsToRun)
+	multiErr := tsuruErrors.NewMultiError()
+	for _, v := range poolsToRun {
+		dsName := daemonSetName(name, v)
+		fmt.Fprintf(writer, "upserting DaemonSet %q for node container %q [%s]\n", dsName, name, v)
+		err = deamonSetForNodeContainer(client, name, v, v == "" && pool != "")
+		if err != nil {
+			multiErr.Add(err)
+		}
+	}
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	return nil
+}
+
+func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return cleanupDaemonSet(client, name, pool)
 }

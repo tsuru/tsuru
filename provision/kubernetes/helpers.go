@@ -25,6 +25,13 @@ func deployJobNameForApp(a provision.App) string {
 	return fmt.Sprintf("%s-deploy", a.GetName())
 }
 
+func daemonSetName(name, pool string) string {
+	if pool == "" {
+		return fmt.Sprintf("node-container-%s-all", name)
+	}
+	return fmt.Sprintf("node-container-%s-pool-%s", name, pool)
+}
+
 func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 	timeoutCh := time.After(timeout)
 	for {
@@ -121,7 +128,7 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 	err := client.Extensions().Deployments(tsuruNamespace).Delete(depName, &v1.DeleteOptions{
 		OrphanDependents: &falseVar,
 	})
-	if err != nil {
+	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
 	l, err := podLabels(a, process, "", 0)
@@ -130,6 +137,21 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 	}
 	return cleanupReplicas(client, v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
+	})
+}
+
+func cleanupDaemonSet(client kubernetes.Interface, name, pool string) error {
+	dsName := daemonSetName(name, pool)
+	falseVar := false
+	err := client.Extensions().DaemonSets(tsuruNamespace).Delete(dsName, &v1.DeleteOptions{
+		OrphanDependents: &falseVar,
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	ls := nodeContainerPodLabels(name, pool)
+	return cleanupPods(client, v1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
 	})
 }
 

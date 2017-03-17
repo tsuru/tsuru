@@ -28,6 +28,11 @@ func (s *S) TestDeployJobNameForApp(c *check.C) {
 	c.Assert(name, check.Equals, "myapp-deploy")
 }
 
+func (s *S) TestDaemonSetName(c *check.C) {
+	c.Assert(daemonSetName("d1", ""), check.Equals, "node-container-d1-all")
+	c.Assert(daemonSetName("d1", "p1"), check.Equals, "node-container-d1-pool-p1")
+}
+
 func (s *S) TestWaitFor(c *check.C) {
 	err := waitFor(100*time.Millisecond, func() (bool, error) {
 		return true, nil
@@ -237,4 +242,31 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 	replicas, err := s.client.Extensions().ReplicaSets(tsuruNamespace).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
+}
+
+func (s *S) TestCleanupDaemonSet(c *check.C) {
+	ls := nodeContainerPodLabels("bs", "p1")
+	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "node-container-bs-pool-p1",
+			Namespace: tsuruNamespace,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "node-container-bs-pool-p1-xyz",
+			Namespace: tsuruNamespace,
+			Labels:    ls.ToLabels(),
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = cleanupDaemonSet(s.client, "bs", "p1")
+	c.Assert(err, check.IsNil)
+	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 0)
+	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 0)
 }

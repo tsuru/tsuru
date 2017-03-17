@@ -62,6 +62,10 @@ func (s *labelSet) ToAppSelector() map[string]string {
 	return withPrefix(subMap(s.labels, "app-name"))
 }
 
+func (s *labelSet) ToNodeContainerSelector() map[string]string {
+	return withPrefix(subMap(s.labels, "node-container-name", "node-container-pool"))
+}
+
 func (s *labelSet) AppName() string {
 	return s.getLabel("app-name")
 }
@@ -153,4 +157,16 @@ func podLabels(a provision.App, process, buildImg string, replicas int) (*labelS
 		},
 	}
 	return set, nil
+}
+
+func nodeContainerPodLabels(name, pool string) *labelSet {
+	return &labelSet{
+		labels: map[string]string{
+			"is-tsuru":            strconv.FormatBool(true),
+			"is-node-container":   strconv.FormatBool(true),
+			"provisioner":         "kubernetes",
+			"node-container-name": name,
+			"node-container-pool": pool,
+		},
+	}
 }

@@ -84,6 +84,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					NodeSelector: map[string]string{
 						labelNodePoolName: "bonehunters",
 					},
+					RestartPolicy: "Always",
 					Containers: []v1.Container{
 						{
 							Name:  "myapp-p1",
