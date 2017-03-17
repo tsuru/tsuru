@@ -506,7 +506,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag1"})
 }
 
-func (s *InstanceSuite) TestUpdateService(c *check.C) {
+func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -529,6 +529,28 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Description, check.Equals, "desc")
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
+}
+
+func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.IsNil)
+	instance.Tags = []string{"tag2", " ", " tag2 "}
+	err = instance.Update(instance)
+	c.Assert(err, check.IsNil)
+	var si ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
 }
 

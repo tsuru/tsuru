@@ -146,6 +146,12 @@ func (si *ServiceInstance) Update(updateData ServiceInstance) error {
 		return err
 	}
 	defer conn.Close()
+	tags := processTags(updateData.Tags)
+	if tags == nil {
+		updateData.Tags = si.Tags
+	} else {
+		updateData.Tags = tags
+	}
 	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, updateData)
 }
 
