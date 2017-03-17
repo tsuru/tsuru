@@ -344,7 +344,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name}
+	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance("mongodb", "instance")
@@ -353,6 +353,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag1", "tag2"})
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C) {
@@ -486,6 +487,25 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	}
 }
 
+func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"", "  tag1 ", "tag1", "  "}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.IsNil)
+	si, err := GetServiceInstance("mongodb", "instance")
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag1"})
+}
+
 func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -496,10 +516,11 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name}
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
 	instance.Description = "desc"
+	instance.Tags = []string{"tag2", " ", " tag2 "}
 	err = UpdateService(&instance)
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
@@ -508,6 +529,7 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Description, check.Equals, "desc")
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
 }
 
 func (s *InstanceSuite) TestStatus(c *check.C) {

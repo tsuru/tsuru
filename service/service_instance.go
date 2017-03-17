@@ -9,6 +9,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -44,6 +45,7 @@ type ServiceInstance struct {
 	Teams       []string
 	TeamOwner   string
 	Description string
+	Tags        []string
 }
 
 // DeleteInstance deletes the service instance from the database.
@@ -315,6 +317,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 		return ErrTeamMandatory
 	}
 	instance.Teams = []string{instance.TeamOwner}
+	instance.Tags = processTags(instance.Tags)
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(*service, instance, user.Email, requestID)
@@ -326,6 +329,7 @@ func UpdateService(si *ServiceInstance) error {
 		return err
 	}
 	defer conn.Close()
+	si.Tags = processTags(si.Tags)
 	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, si)
 }
 
@@ -380,4 +384,20 @@ func GetServiceInstance(serviceName string, instanceName string) (*ServiceInstan
 		return nil, ErrServiceInstanceNotFound
 	}
 	return &instance, nil
+}
+
+func processTags(tags []string) []string {
+	if tags == nil {
+		return nil
+	}
+	processedTags := []string{}
+	usedTags := make(map[string]bool)
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if len(tag) > 0 && !usedTags[tag] {
+			processedTags = append(processedTags, tag)
+			usedTags[tag] = true
+		}
+	}
+	return processedTags
 }
