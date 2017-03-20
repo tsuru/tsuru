@@ -475,7 +475,7 @@ func makeRequestToUpdateInstanceHandler(params map[string]string, serviceName, i
 	return recorder, request
 }
 
-func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceWithDescription(c *check.C) {
+func (s *ConsumptionSuite) TestUpdateServiceInstanceWithDescription(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -569,7 +569,7 @@ func (s *ConsumptionSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b"})
 }
 
-func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNotExist(c *check.C) {
+func (s *ConsumptionSuite) TestUpdateServiceInstanceNotExist(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -590,7 +590,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerServiceInstanceNotExist(c *ch
 	c.Assert(recorder.Body.String(), check.Equals, "service instance not found\n")
 }
 
-func (s *ConsumptionSuite) TestUpdateServiceHandlerWithoutPermissions(c *check.C) {
+func (s *ConsumptionSuite) TestUpdateServiceInstanceWithoutPermissions(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -619,7 +619,7 @@ func (s *ConsumptionSuite) TestUpdateServiceHandlerWithoutPermissions(c *check.C
 	c.Assert(recorder.Body.String(), check.Equals, permission.ErrUnauthorized.Error()+"\n")
 }
 
-func (s *ConsumptionSuite) TestUpdateServiceHandlerInvalidDescription(c *check.C) {
+func (s *ConsumptionSuite) TestUpdateServiceInstanceInvalidDescription(c *check.C) {
 	params := map[string]string{
 		"description": "",
 	}
@@ -771,7 +771,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceWithSameInstaceName(c *check
 	c.Assert(n, check.Equals, 0)
 }
 
-func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *check.C) {
+func (s *ConsumptionSuite) TestRemoveServiceInstanceWithoutPermissionShouldReturn401(c *check.C) {
 	se := service.Service{Name: "foo-service"}
 	err := se.Create()
 	c.Assert(err, check.IsNil)
@@ -785,7 +785,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *check.C) {
+func (s *ConsumptionSuite) TestRemoveServiceInstanceWIthAssociatedAppsShouldFailAndReturnError(c *check.C) {
 	se := service.Service{Name: "foo"}
 	err := se.Create()
 	c.Assert(err, check.IsNil)
@@ -818,7 +818,7 @@ func makeRequestToRemoveInstanceHandlerWithUnbind(service, instance string, c *c
 	return recorder, request
 }
 
-func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithUnbindAll(c *check.C) {
+func (s *ConsumptionSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUnbindAll(c *check.C) {
 	err := s.conn.Services().RemoveId(s.service.Name)
 	c.Assert(err, check.IsNil)
 	var called int32
@@ -871,7 +871,7 @@ func makeRequestToRemoveInstanceHandlerWithNoUnbind(service, instance string, c 
 	return recorder, request
 }
 
-func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbindAll(c *check.C) {
+func (s *ConsumptionSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNoUnbindAll(c *check.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
@@ -913,7 +913,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	c.Assert(err, check.Equals, service.ErrServiceInstanceBound)
 }
 
-func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbindAllListAllApp(c *check.C) {
+func (s *ConsumptionSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNoUnbindAllListAllApp(c *check.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
