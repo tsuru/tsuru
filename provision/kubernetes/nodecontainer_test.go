@@ -40,6 +40,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	c.Assert(daemons.Items, check.HasLen, 1)
 	daemon, err := s.client.Extensions().DaemonSets(tsuruNamespace).Get("node-container-bs-all")
 	c.Assert(err, check.IsNil)
+	trueVar := true
 	c.Assert(daemon, check.DeepEquals, &extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-all",
@@ -86,6 +87,9 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 							},
 							VolumeMounts: []v1.VolumeMount{
 								{Name: "volume-0", MountPath: "/abc", ReadOnly: true},
+							},
+							SecurityContext: &v1.SecurityContext{
+								Privileged: &trueVar,
 							},
 						},
 					},

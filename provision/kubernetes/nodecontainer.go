@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisioncommon"
@@ -99,6 +100,20 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		volumes = append(volumes, vol)
 		volumeMounts = append(volumeMounts, mount)
 	}
+	var secCtx *v1.SecurityContext
+	if config.HostConfig.Privileged {
+		trueVar := true
+		secCtx = &v1.SecurityContext{
+			Privileged: &trueVar,
+		}
+	}
+	restartPolicy := v1.RestartPolicyAlways
+	switch config.HostConfig.RestartPolicy.Name {
+	case docker.RestartOnFailure(0).Name:
+		restartPolicy = v1.RestartPolicyOnFailure
+	case docker.NeverRestart().Name:
+		restartPolicy = v1.RestartPolicyNever
+	}
 	ds := &extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      dsName,
@@ -115,17 +130,19 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 				},
 				Spec: v1.PodSpec{
 					Volumes:       volumes,
-					RestartPolicy: v1.RestartPolicyAlways,
+					RestartPolicy: restartPolicy,
+					HostNetwork:   config.HostConfig.NetworkMode == "host",
 					Containers: []v1.Container{
 						{
-							Name:         config.Name,
-							Image:        config.Image(),
-							Command:      config.Config.Entrypoint,
-							Args:         config.Config.Cmd,
-							Env:          envVars,
-							WorkingDir:   config.Config.WorkingDir,
-							TTY:          config.Config.Tty,
-							VolumeMounts: volumeMounts,
+							Name:            config.Name,
+							Image:           config.Image(),
+							Command:         config.Config.Entrypoint,
+							Args:            config.Config.Cmd,
+							Env:             envVars,
+							WorkingDir:      config.Config.WorkingDir,
+							TTY:             config.Config.Tty,
+							VolumeMounts:    volumeMounts,
+							SecurityContext: secCtx,
 						},
 					},
 				},
