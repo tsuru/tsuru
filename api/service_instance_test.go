@@ -1290,6 +1290,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoHandler(c *check.C) {
 		TeamOwner:   s.team.Name,
 		PlanName:    "small",
 		Description: "desc",
+		Tags:        []string{"tag 1"},
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
@@ -1312,6 +1313,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoHandler(c *check.C) {
 		PlanName:        "small",
 		PlanDescription: "not space left for you",
 		Description:     si.Description,
+		Tags:            []string{"tag 1"},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1330,6 +1332,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomIn
 		Apps:        []string{"app1", "app2"},
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
+		Tags:        []string{"tag 1", "tag 2"},
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
@@ -1347,6 +1350,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoHandlerNoPlanAndNoCustomIn
 		PlanName:        "",
 		PlanDescription: "",
 		Description:     si.Description,
+		Tags:            []string{"tag 1", "tag 2"},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
