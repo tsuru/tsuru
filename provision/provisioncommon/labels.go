@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package kubernetes
+package provisioncommon
 
 import (
 	"strconv"
@@ -12,16 +12,15 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/set"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
 	tsuruLabelPrefix = "tsuru.io/"
 )
 
-type labelSet struct {
-	labels      map[string]string
-	annotations map[string]string
+type LabelSet struct {
+	Labels      map[string]string
+	Annotations map[string]string
 }
 
 func withPrefix(m map[string]string) map[string]string {
@@ -46,90 +45,86 @@ func subMap(m map[string]string, keys ...string) map[string]string {
 	return result
 }
 
-func (s *labelSet) ToLabels() map[string]string {
-	return withPrefix(s.labels)
+func (s *LabelSet) ToLabels() map[string]string {
+	return withPrefix(s.Labels)
 }
 
-func (s *labelSet) ToAnnotations() map[string]string {
-	return withPrefix(s.annotations)
+func (s *LabelSet) ToAnnotations() map[string]string {
+	return withPrefix(s.Annotations)
 }
 
-func (s *labelSet) ToSelector() map[string]string {
-	return withPrefix(subMap(s.labels, "app-name", "app-process", "is-build"))
+func (s *LabelSet) ToSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, "app-name", "app-process", "is-build"))
 }
 
-func (s *labelSet) ToAppSelector() map[string]string {
-	return withPrefix(subMap(s.labels, "app-name"))
+func (s *LabelSet) ToAppSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, "app-name"))
 }
 
-func (s *labelSet) ToNodeContainerSelector() map[string]string {
-	return withPrefix(subMap(s.labels, "node-container-name", "node-container-pool"))
+func (s *LabelSet) ToNodeContainerSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, "node-container-name", "node-container-pool"))
 }
 
-func (s *labelSet) AppName() string {
+func (s *LabelSet) AppName() string {
 	return s.getLabel("app-name")
 }
 
-func (s *labelSet) AppProcess() string {
+func (s *LabelSet) AppProcess() string {
 	return s.getLabel("app-process")
 }
 
-func (s *labelSet) AppPlatform() string {
+func (s *LabelSet) AppPlatform() string {
 	return s.getLabel("app-platform")
 }
 
-func (s *labelSet) AppReplicas() int {
+func (s *LabelSet) AppReplicas() int {
 	replicas, _ := strconv.Atoi(s.getLabel("app-process-replicas"))
 	return replicas
 }
 
-func (s *labelSet) Restarts() int {
+func (s *LabelSet) Restarts() int {
 	restarts, _ := strconv.Atoi(s.getLabel("restarts"))
 	return restarts
 }
 
-func (s *labelSet) BuildImage() string {
+func (s *LabelSet) BuildImage() string {
 	return s.getLabel("build-image")
 }
 
-func (s *labelSet) IsStopped() bool {
+func (s *LabelSet) IsStopped() bool {
 	stopped, _ := strconv.ParseBool(s.getLabel("is-stopped"))
 	return stopped
 }
 
-func (s *labelSet) SetRestarts(count int) {
+func (s *LabelSet) SetRestarts(count int) {
 	s.addLabel("restarts", strconv.Itoa(count))
 }
 
-func (s *labelSet) SetStopped() {
+func (s *LabelSet) SetStopped() {
 	s.addLabel("is-stopped", strconv.FormatBool(true))
 }
 
-func (s *labelSet) addLabel(k, v string) {
-	s.labels[k] = v
+func (s *LabelSet) addLabel(k, v string) {
+	s.Labels[k] = v
 }
 
-func (s *labelSet) getLabel(k string) string {
-	if v, ok := s.labels[tsuruLabelPrefix+k]; ok {
+func (s *LabelSet) getLabel(k string) string {
+	if v, ok := s.Labels[tsuruLabelPrefix+k]; ok {
 		return v
 	}
-	if v, ok := s.labels[k]; ok {
+	if v, ok := s.Labels[k]; ok {
 		return v
 	}
-	if v, ok := s.annotations[tsuruLabelPrefix+k]; ok {
+	if v, ok := s.Annotations[tsuruLabelPrefix+k]; ok {
 		return v
 	}
-	if v, ok := s.annotations[k]; ok {
+	if v, ok := s.Annotations[k]; ok {
 		return v
 	}
 	return ""
 }
 
-func labelSetFromMeta(meta *v1.ObjectMeta) *labelSet {
-	return &labelSet{labels: meta.Labels, annotations: meta.Annotations}
-}
-
-func podLabels(a provision.App, process, buildImg string, replicas int) (*labelSet, error) {
+func PodLabels(a provision.App, process, buildImg string, replicas int) (*LabelSet, error) {
 	routerName, err := a.GetRouterName()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -138,8 +133,8 @@ func podLabels(a provision.App, process, buildImg string, replicas int) (*labelS
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	set := &labelSet{
-		labels: map[string]string{
+	set := &LabelSet{
+		Labels: map[string]string{
 			"is-tsuru":             strconv.FormatBool(true),
 			"is-build":             strconv.FormatBool(buildImg != ""),
 			"is-stopped":           strconv.FormatBool(false),
@@ -152,16 +147,16 @@ func podLabels(a provision.App, process, buildImg string, replicas int) (*labelS
 			"router-type":          routerType,
 			"provisioner":          "kubernetes",
 		},
-		annotations: map[string]string{
+		Annotations: map[string]string{
 			"build-image": buildImg,
 		},
 	}
 	return set, nil
 }
 
-func nodeContainerPodLabels(name, pool string) *labelSet {
-	return &labelSet{
-		labels: map[string]string{
+func NodeContainerPodLabels(name, pool string) *LabelSet {
+	return &LabelSet{
+		Labels: map[string]string{
 			"is-tsuru":            strconv.FormatBool(true),
 			"is-node-container":   strconv.FormatBool(true),
 			"provisioner":         "kubernetes",

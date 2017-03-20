@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
@@ -131,7 +132,7 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	l, err := podLabels(a, process, "", 0)
+	l, err := provisioncommon.PodLabels(a, process, "", 0)
 	if err != nil {
 		return err
 	}
@@ -149,7 +150,7 @@ func cleanupDaemonSet(client kubernetes.Interface, name, pool string) error {
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	ls := nodeContainerPodLabels(name, pool)
+	ls := provisioncommon.NodeContainerPodLabels(name, pool)
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
 	})
@@ -189,4 +190,8 @@ func getServicePort(client kubernetes.Interface, srvName string) (int32, error) 
 		return 0, nil
 	}
 	return srv.Spec.Ports[0].NodePort, nil
+}
+
+func labelSetFromMeta(meta *v1.ObjectMeta) *provisioncommon.LabelSet {
+	return &provisioncommon.LabelSet{Labels: meta.Labels, Annotations: meta.Annotations}
 }

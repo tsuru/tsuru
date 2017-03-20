@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -338,7 +339,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
 	c.Assert(err, check.IsNil)
-	ls, err := podLabels(a, "p1", "", 0)
+	ls, err := provisioncommon.PodLabels(a, "p1", "", 0)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{

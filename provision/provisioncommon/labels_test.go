@@ -2,18 +2,27 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package kubernetes
+package provisioncommon
 
 import (
+	"testing"
+
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
+type S struct{}
+
+var _ = check.Suite(S{})
+
+func Test(t *testing.T) {
+	check.TestingT(t)
+}
+
 func (s *S) TestLabelSetConversion(c *check.C) {
-	ls := labelSet{
-		labels:      map[string]string{"l1": "v1", "l2": "v2"},
-		annotations: map[string]string{"a1": "v1", "a2": "v2"},
+	ls := LabelSet{
+		Labels:      map[string]string{"l1": "v1", "l2": "v2"},
+		Annotations: map[string]string{"a1": "v1", "a2": "v2"},
 	}
 	c.Assert(ls.ToLabels(), check.DeepEquals, map[string]string{
 		"tsuru.io/l1": "v1",
@@ -26,8 +35,8 @@ func (s *S) TestLabelSetConversion(c *check.C) {
 }
 
 func (s *S) TestLabelSetSelectors(c *check.C) {
-	ls := labelSet{
-		labels: map[string]string{
+	ls := LabelSet{
+		Labels: map[string]string{
 			"l1":          "v1",
 			"l2":          "v2",
 			"app-name":    "app",
@@ -46,14 +55,14 @@ func (s *S) TestLabelSetSelectors(c *check.C) {
 }
 
 func (s *S) TestLabelSetGetLabel(c *check.C) {
-	ls := labelSet{
-		labels: map[string]string{
+	ls := LabelSet{
+		Labels: map[string]string{
 			"l1":                "v1",
 			"l2":                "v2",
 			"tsuru.io/app-name": "app1",
 			"app-name":          "app2",
 		},
-		annotations: map[string]string{
+		Annotations: map[string]string{
 			"l1":                "v3",
 			"l3":                "v4",
 			"tsuru.io/l3":       "v5",
@@ -68,36 +77,12 @@ func (s *S) TestLabelSetGetLabel(c *check.C) {
 	c.Assert(ls.getLabel("l4"), check.Equals, "v6")
 }
 
-func (s *S) TestLabelSetFromMeta(c *check.C) {
-	meta := v1.ObjectMeta{
-		Labels: map[string]string{
-			"tsuru.io/x": "a",
-			"y":          "b",
-		},
-		Annotations: map[string]string{
-			"tsuru.io/a": "1",
-			"b":          "2",
-		},
-	}
-	ls := labelSetFromMeta(&meta)
-	c.Assert(ls, check.DeepEquals, &labelSet{
-		labels: map[string]string{
-			"tsuru.io/x": "a",
-			"y":          "b",
-		},
-		annotations: map[string]string{
-			"tsuru.io/a": "1",
-			"b":          "2",
-		},
-	})
-}
-
 func (s *S) TestPodLabels(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
-	ls, err := podLabels(a, "p1", "myimg", 3)
+	ls, err := PodLabels(a, "p1", "myimg", 3)
 	c.Assert(err, check.IsNil)
-	c.Assert(ls, check.DeepEquals, &labelSet{
-		labels: map[string]string{
+	c.Assert(ls, check.DeepEquals, &LabelSet{
+		Labels: map[string]string{
 			"is-tsuru":             "true",
 			"is-build":             "true",
 			"is-stopped":           "false",
@@ -110,14 +95,14 @@ func (s *S) TestPodLabels(c *check.C) {
 			"router-type":          "fake",
 			"provisioner":          "kubernetes",
 		},
-		annotations: map[string]string{
+		Annotations: map[string]string{
 			"build-image": "myimg",
 		},
 	})
-	ls, err = podLabels(a, "p1", "", 3)
+	ls, err = PodLabels(a, "p1", "", 3)
 	c.Assert(err, check.IsNil)
-	c.Assert(ls, check.DeepEquals, &labelSet{
-		labels: map[string]string{
+	c.Assert(ls, check.DeepEquals, &LabelSet{
+		Labels: map[string]string{
 			"is-tsuru":             "true",
 			"is-build":             "false",
 			"is-stopped":           "false",
@@ -130,7 +115,7 @@ func (s *S) TestPodLabels(c *check.C) {
 			"router-type":          "fake",
 			"provisioner":          "kubernetes",
 		},
-		annotations: map[string]string{
+		Annotations: map[string]string{
 			"build-image": "",
 		},
 	})

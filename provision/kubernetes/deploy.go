@@ -16,6 +16,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
@@ -83,7 +84,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 	parallelism := int32(1)
 	dockerSockPath := "/var/run/docker.sock"
 	baseName := deployJobNameForApp(params.app)
-	labels, err := podLabels(params.app, "", params.destinationImage, 0)
+	labels, err := provisioncommon.PodLabels(params.app, "", params.destinationImage, 0)
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +190,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*labelSet, error) {
+func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*provisioncommon.LabelSet, error) {
 	replicas := 0
 	restartCount := 0
 	isStopped := false
@@ -213,7 +214,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		}
 		isStopped = false
 	}
-	labels, err := podLabels(a, process, "", replicas)
+	labels, err := provisioncommon.PodLabels(a, process, "", replicas)
 	if err != nil {
 		return nil, err
 	}

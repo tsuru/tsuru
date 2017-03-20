@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -170,7 +171,7 @@ func (s *S) TestCleanupJob(c *check.C) {
 
 func (s *S) TestCleanupDeployment(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	ls, err := podLabels(a, "p1", "", 0)
+	ls, err := provisioncommon.PodLabels(a, "p1", "", 0)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
@@ -245,7 +246,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ls := nodeContainerPodLabels("bs", "p1")
+	ls := provisioncommon.NodeContainerPodLabels("bs", "p1")
 	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
@@ -269,4 +270,28 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
+}
+
+func (s *S) TestLabelSetFromMeta(c *check.C) {
+	meta := v1.ObjectMeta{
+		Labels: map[string]string{
+			"tsuru.io/x": "a",
+			"y":          "b",
+		},
+		Annotations: map[string]string{
+			"tsuru.io/a": "1",
+			"b":          "2",
+		},
+	}
+	ls := labelSetFromMeta(&meta)
+	c.Assert(ls, check.DeepEquals, &provisioncommon.LabelSet{
+		Labels: map[string]string{
+			"tsuru.io/x": "a",
+			"y":          "b",
+		},
+		Annotations: map[string]string{
+			"tsuru.io/a": "1",
+			"b":          "2",
+		},
+	})
 }
