@@ -149,7 +149,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 	}
-	if len(tags) > 0 {
+	if tags != nil {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
 	}
 	if len(wantedPerms) == 0 {
@@ -181,7 +181,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		si.Description = description
 	}
-	if len(tags) > 0 {
+	if tags != nil {
 		si.Tags = tags
 	}
 	return si.Update(*si)

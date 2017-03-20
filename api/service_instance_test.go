@@ -574,6 +574,39 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b", "tag c"})
 }
 
+func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	si := service.ServiceInstance{
+		Name:        "brainSQL",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+		Tags:        []string{"tag a"},
+	}
+	si.Create()
+	params := map[string]interface{}{
+		"tag": []string{""},
+	}
+	token := customUserWithPermission(c, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdate,
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+	})
+	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", token.GetValue(), c)
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var instance service.ServiceInstance
+	err := s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+	}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Tags, check.HasLen, 0)
+}
+
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceNotExist(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
@@ -612,7 +645,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 	c.Assert(recorder.Body.String(), check.Equals, permission.ErrUnauthorized.Error()+"\n")
 }
 
-func (s *ServiceInstanceSuite) TestUpdateServiceInstanceInvalidDescription(c *check.C) {
+func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyDescription(c *check.C) {
 	si := service.ServiceInstance{
 		Name:        "brainSQL",
 		ServiceName: "mysql",
