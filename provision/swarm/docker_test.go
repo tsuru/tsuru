@@ -19,6 +19,7 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 )
 
@@ -241,7 +242,9 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	}
 	err := nodecontainer.AddNewContainer("", &c1)
 	c.Assert(err, check.IsNil)
-	serviceSpec, err := serviceSpecForNodeContainer("swarmbs", "")
+	loadedC1, err := nodecontainer.LoadNodeContainer("", "swarmbs")
+	c.Assert(err, check.IsNil)
+	serviceSpec, err := serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
 	c.Assert(err, check.IsNil)
 	expectedLabels := map[string]string{
 		"label1":                   "val1",
@@ -278,10 +281,10 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = nodecontainer.AddNewContainer("p2", &c1)
 	c.Assert(err, check.IsNil)
-	serviceSpec, err = serviceSpecForNodeContainer("swarmbs", "p1")
+	serviceSpec, err = serviceSpecForNodeContainer(loadedC1, "p1", servicecommon.PoolFilter{Include: []string{"p1"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceSpec.TaskTemplate.Placement.Constraints, check.DeepEquals, []string{"node.labels.pool == p1"})
-	serviceSpec, err = serviceSpecForNodeContainer("swarmbs", "")
+	serviceSpec, err = serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{Exclude: []string{"p1", "p2"}})
 	c.Assert(err, check.IsNil)
 	constraints := sort.StringSlice(serviceSpec.TaskTemplate.Placement.Constraints)
 	constraints.Sort()

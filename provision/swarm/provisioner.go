@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types/swarm"
@@ -21,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -491,7 +489,8 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return err
 	}
 	if init {
-		return p.ensureNodeContainersCreated()
+		m := nodeContainerManager{client: existingClient}
+		return servicecommon.EnsureNodeContainersCreated(&m, ioutil.Discard)
 	}
 	return nil
 }
@@ -776,6 +775,23 @@ func (p *swarmProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a pr
 	return err
 }
 
+type nodeContainerManager struct {
+	client *docker.Client
+}
+
+func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	serviceSpec, err := serviceSpecForNodeContainer(config, pool, filter)
+	if err != nil {
+		return err
+	}
+	_, err = upsertService(serviceSpec, m.client, placementOnly)
+	if err != nil {
+		return err
+
+	}
+	return nil
+}
+
 func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
@@ -784,41 +800,8 @@ func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer
 		}
 		return err
 	}
-	poolsToRun := []string{"", pool}
-	if pool == "" {
-		poolMap, errLoad := nodecontainer.LoadNodeContainersForPools(name)
-		if errLoad != nil {
-			return errors.WithStack(errLoad)
-		}
-		poolsToRun = make([]string, 0, len(poolMap))
-		for k, v := range poolMap {
-			if !v.Valid() {
-				continue
-			}
-			poolsToRun = append(poolsToRun, k)
-		}
-	}
-	sort.Strings(poolsToRun)
-	var allErrors []error
-	for _, v := range poolsToRun {
-		serviceSpec, errUpsert := serviceSpecForNodeContainer(name, v)
-		if errUpsert != nil {
-			errUpsert = errors.Wrapf(errUpsert, "[node containers] failed retrieve service spec for node container %q [%s]", name, v)
-			allErrors = append(allErrors, errUpsert)
-		}
-		placementOnly := v == "" && pool != ""
-		log.Debugf("[node containers] upserting service %q for node container %s [%s]", serviceSpec.Name, name, v)
-		fmt.Fprintf(writer, "upserting service %q for node container %q [%s]\n", serviceSpec.Name, name, v)
-		errUpsert, _ = upsertService(serviceSpec, client, placementOnly)
-		if errUpsert != nil {
-			errUpsert = errors.Wrapf(errUpsert, "[node containers] failed upsert service %q for node container %q [%s]", serviceSpec.Name, name, v)
-			allErrors = append(allErrors, errUpsert)
-		}
-	}
-	if len(allErrors) == 0 {
-		return nil
-	}
-	return tsuruErrors.NewMultiError(allErrors...)
+	m := nodeContainerManager{client: client}
+	return servicecommon.UpgradeNodeContainer(&m, name, pool, writer)
 }
 
 func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
@@ -831,20 +814,6 @@ func (p *swarmProvisioner) RemoveNodeContainer(name string, pool string, writer 
 	}
 	err = client.RemoveService(docker.RemoveServiceOptions{ID: nodeContainerServiceName(name, pool)})
 	return errors.WithStack(err)
-}
-
-func (p *swarmProvisioner) ensureNodeContainersCreated() error {
-	names, err := nodecontainer.AllNodeContainersNames()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	for _, n := range names {
-		err = p.UpgradeNodeContainer(n, "", ioutil.Discard)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (p *swarmProvisioner) StartupMessage() (string, error) {

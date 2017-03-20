@@ -234,8 +234,8 @@ func (s *S) TestAddNodeFirstNodeStartsNodeContainers(c *check.C) {
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
 	c.Assert(err, check.IsNil)
-	c.Assert(srv1Calls, check.HasLen, 11)
-	c.Assert(srv1Calls[7:], check.DeepEquals, []string{
+	c.Assert(srv1Calls, check.HasLen, 10)
+	c.Assert(srv1Calls[6:], check.DeepEquals, []string{
 		"GET /services/node-container-bs-all",
 		"POST /services/create",
 		"GET /services/node-container-bs-p1",

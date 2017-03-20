@@ -531,24 +531,16 @@ func execInTaskContainer(c *docker.Client, t *swarm.Task, stdout, stderr io.Writ
 	return nil
 }
 
-func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) {
-	config, err := nodecontainer.LoadNodeContainer(pool, name)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter) (*swarm.ServiceSpec, error) {
 	var constraints []string
-	if pool == "" {
-		otherConfigs, err := nodecontainer.LoadNodeContainersForPools(name)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		for p := range otherConfigs {
-			if p != "" {
-				constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", labelNodePoolName, p))
-			}
+	if len(filter.Exclude) > 0 {
+		for _, v := range filter.Exclude {
+			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", labelNodePoolName, v))
 		}
 	} else {
-		constraints = []string{fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, pool)}
+		for _, v := range filter.Include {
+			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, v))
+		}
 	}
 	var mounts []mount.Mount
 	for _, b := range config.HostConfig.Binds {
@@ -574,12 +566,12 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 		labels = make(map[string]string)
 	}
 	labels[labelNodeContainer.String()] = strconv.FormatBool(true)
-	labels[labelNodeContainerName.String()] = name
+	labels[labelNodeContainerName.String()] = config.Name
 	labels[labelPoolName.String()] = pool
 	labels[labelProvisionerName.String()] = "swarm"
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
-			Name:   nodeContainerServiceName(name, pool),
+			Name:   nodeContainerServiceName(config.Name, pool),
 			Labels: labels,
 		},
 		Mode: swarm.ServiceMode{Global: &swarm.GlobalService{}},
@@ -602,18 +594,18 @@ func serviceSpecForNodeContainer(name, pool string) (*swarm.ServiceSpec, error) 
 	return service, nil
 }
 
-func upsertService(spec *swarm.ServiceSpec, client *docker.Client, placementOnly bool) (error, bool) {
+func upsertService(spec *swarm.ServiceSpec, client *docker.Client, placementOnly bool) (bool, error) {
 	currService, err := client.InspectService(spec.Name)
 	if err != nil {
 		if _, ok := err.(*docker.NoSuchService); !ok {
-			return errors.WithStack(err), false
+			return false, errors.WithStack(err)
 		}
 		opts := docker.CreateServiceOptions{ServiceSpec: *spec}
 		_, errCreate := client.CreateService(opts)
 		if errCreate != nil {
-			return errors.WithStack(errCreate), false
+			return false, errors.WithStack(errCreate)
 		}
-		return nil, true
+		return true, nil
 	}
 	if placementOnly {
 		currService.Spec.TaskTemplate.Placement = spec.TaskTemplate.Placement
@@ -623,7 +615,7 @@ func upsertService(spec *swarm.ServiceSpec, client *docker.Client, placementOnly
 		ServiceSpec: *spec,
 		Version:     currService.Version.Index,
 	}
-	return errors.WithStack(client.UpdateService(currService.ID, opts)), false
+	return false, errors.WithStack(client.UpdateService(currService.ID, opts))
 }
 
 func nodeContainerServiceName(name, pool string) string {
