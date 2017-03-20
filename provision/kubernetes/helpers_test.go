@@ -246,7 +246,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ls := provisioncommon.NodeContainerPodLabels("bs", "p1")
+	ls := provisioncommon.NodeContainerLabels("bs", "p1", provisionerName, nil)
 	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",

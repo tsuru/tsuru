@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
@@ -65,7 +66,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Update(oldDs)
 		return errors.WithStack(err)
 	}
-	ls := nodeContainerPodLabels(config.Name, pool)
+	ls := provisioncommon.NodeContainerLabels(config.Name, pool, provisionerName, config.Config.Labels)
 	envVars := make([]v1.EnvVar, len(config.Config.Env))
 	for i, v := range config.Config.Env {
 		parts := strings.SplitN(v, "=", 2)

@@ -150,7 +150,7 @@ func cleanupDaemonSet(client kubernetes.Interface, name, pool string) error {
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	ls := provisioncommon.NodeContainerPodLabels(name, pool)
+	ls := provisioncommon.NodeContainerLabels(name, pool, provisionerName, nil)
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
 	})

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 )
@@ -155,12 +156,8 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	}{
 		{
 			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "A=1", "B=2"}, Image: "bsimg",
-				Labels: map[string]string{
-					"tsuru.node.address":     server.URL(),
-					"tsuru.node.pool":        "p-0",
-					"tsuru.node.provisioner": "fake",
-					"tsuru.nodecontainer":    "true",
-				}},
+				Labels: provisioncommon.NodeContainerLabels("bs", "p-0", "fake", nil).ToLabels(),
+			},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
 				Privileged:    true,
@@ -170,12 +167,8 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 		},
 		{
 			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "X=Z"}, Image: "sysdigimg",
-				Labels: map[string]string{
-					"tsuru.node.address":     server.URL(),
-					"tsuru.node.pool":        "p-0",
-					"tsuru.node.provisioner": "fake",
-					"tsuru.nodecontainer":    "true",
-				}},
+				Labels: provisioncommon.NodeContainerLabels("sysdig", "p-0", "fake", nil).ToLabels(),
+			},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
 				Privileged:    true,

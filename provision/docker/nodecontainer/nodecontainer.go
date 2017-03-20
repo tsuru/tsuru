@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
 	"sync"
 	"time"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision/docker/fix"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 )
 
 type DockerProvisioner interface {
@@ -150,13 +150,7 @@ func create(c *nodecontainer.NodeContainerConfig, node *cluster.Node, poolName s
 		return err
 	}
 	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + node.Address}, c.Config.Env...)
-	if c.Config.Labels == nil {
-		c.Config.Labels = map[string]string{}
-	}
-	c.Config.Labels["tsuru.nodecontainer"] = strconv.FormatBool(true)
-	c.Config.Labels["tsuru.node.pool"] = poolName
-	c.Config.Labels["tsuru.node.address"] = node.Address
-	c.Config.Labels["tsuru.node.provisioner"] = p.GetName()
+	c.Config.Labels = provisioncommon.NodeContainerLabels(c.Name, poolName, p.GetName(), c.Config.Labels).ToLabels()
 	opts := docker.CreateContainerOptions{
 		Name:       c.Name,
 		HostConfig: &c.HostConfig,

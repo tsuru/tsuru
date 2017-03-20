@@ -19,6 +19,7 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 )
@@ -246,13 +247,7 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	serviceSpec, err := serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
 	c.Assert(err, check.IsNil)
-	expectedLabels := map[string]string{
-		"label1":                   "val1",
-		"tsuru.nodecontainer.name": "swarmbs",
-		"tsuru.nodecontainer":      "true",
-		"tsuru.node.pool":          "",
-		"tsuru.node.provisioner":   "swarm",
-	}
+	expectedLabels := provisioncommon.NodeContainerLabels("swarmbs", "", "swarm", map[string]string{"label1": "val1"}).ToLabels()
 	expected := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   "node-container-swarmbs-all",

@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
@@ -561,14 +562,7 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 			Retries:  config.Config.Healthcheck.Retries,
 		}
 	}
-	labels := config.Config.Labels
-	if labels == nil {
-		labels = make(map[string]string)
-	}
-	labels[labelNodeContainer.String()] = strconv.FormatBool(true)
-	labels[labelNodeContainerName.String()] = config.Name
-	labels[labelPoolName.String()] = pool
-	labels[labelProvisionerName.String()] = "swarm"
+	labels := provisioncommon.NodeContainerLabels(config.Name, pool, "swarm", config.Config.Labels).ToLabels()
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   nodeContainerServiceName(config.Name, pool),

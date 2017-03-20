@@ -154,14 +154,16 @@ func PodLabels(a provision.App, process, buildImg string, replicas int) (*LabelS
 	return set, nil
 }
 
-func NodeContainerPodLabels(name, pool string) *LabelSet {
-	return &LabelSet{
-		Labels: map[string]string{
-			"is-tsuru":            strconv.FormatBool(true),
-			"is-node-container":   strconv.FormatBool(true),
-			"provisioner":         "kubernetes",
-			"node-container-name": name,
-			"node-container-pool": pool,
-		},
+func NodeContainerLabels(name, pool, provisioner string, extraLabels map[string]string) *LabelSet {
+	labels := map[string]string{
+		"is-tsuru":            strconv.FormatBool(true),
+		"is-node-container":   strconv.FormatBool(true),
+		"provisioner":         provisioner,
+		"node-container-name": name,
+		"node-container-pool": pool,
 	}
+	for k, v := range extraLabels {
+		labels[k] = v
+	}
+	return &LabelSet{Labels: labels}
 }
