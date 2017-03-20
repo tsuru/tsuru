@@ -143,11 +143,26 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateDescription,
-		contextsForServiceInstance(si, serviceName)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
+	var wantedPerms []*permission.PermissionScheme
+	if description != "" {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
+	}
+	if tag != "" {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
+	}
+	if len(wantedPerms) == 0 {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Neither the description or tags were set. You must define at least one.",
+		}
+	}
+	for _, perm := range wantedPerms {
+		allowed := permission.Check(t, perm,
+			contextsForServiceInstance(si, serviceName)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
