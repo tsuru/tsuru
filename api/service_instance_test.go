@@ -82,7 +82,8 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		Teams:    []string{s.team.Name},
 		Endpoint: map[string]string{"production": s.ts.URL},
 	}
-	s.service.Create()
+	err = s.service.Create()
+	c.Assert(err, check.IsNil)
 	s.m = RunServer(true)
 }
 
@@ -99,17 +100,26 @@ func (s *ServiceInstanceSuite) TearDownSuite(c *check.C) {
 	conn.Apps().Database.DropDatabase()
 }
 
-func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+func makeRequestToCreateInstanceHandler(params map[string]interface{}, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	values := url.Values{}
 	url := fmt.Sprintf("/services/%s/instances", params["service_name"])
 	delete(params, "service_name")
 	for k, v := range params {
-		values.Add(k, v)
+		switch v.(type) {
+		case string:
+			values.Add(k, v.(string))
+		case []string:
+			for _, str := range v.([]string) {
+				values.Add(k, str)
+			}
+		}
 	}
 	b := strings.NewReader(values.Encode())
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", params["token"])
+	if token, ok := params["token"].(string); ok {
+		request.Header.Set("Authorization", token)
+	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	return recorder, request
@@ -129,7 +139,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 	}
 	se.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -165,7 +175,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 		Endpoint: map[string]string{"production": ts.URL},
 	}
 	se.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -201,7 +211,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = user.AddRole(role.Name, p.Context.Value)
 	c.Assert(err, check.IsNil)
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"token":        "bearer " + s.token.GetValue(),
@@ -214,7 +224,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceInvalidName(c *check.C) {
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "1brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -228,7 +238,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceInvalidName(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -247,7 +257,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceNameAlreadyExists(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -271,7 +281,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceHandlerHasAccessToTheServiceInT
 	t := auth.Team{Name: "judaspriest"}
 	err := s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -290,7 +300,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceHandlerHasAccessToTheServiceInT
 func (s *ServiceInstanceSuite) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *check.C) {
 	service := service.Service{Name: "mysqlrestricted", IsRestricted: true}
 	service.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysqlrestricted",
 		"owner":        s.team.Name,
@@ -303,7 +313,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceHandlerReturnsErrorWhenUserCann
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *check.C) {
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"owner":        s.team.Name,
@@ -335,7 +345,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceHandlerNoPermission(c *check.C)
 	srvc := service.Service{Name: "mysqlnoperms"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysqlnoperms",
 		"token":        token.GetValue(),
@@ -347,7 +357,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceHandlerNoPermission(c *check.C)
 }
 
 func (s *ServiceInstanceSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *check.C) {
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "notfound",
 		"owner":        s.team.Name,
@@ -365,7 +375,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceA
 	srvc := service.Service{Name: "mysqlerror", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysqlerror",
 		"owner":        s.team.Name,
@@ -399,7 +409,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 	}
 	se.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan":         "small",
@@ -435,12 +445,12 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 		Endpoint: map[string]string{"production": ts.URL},
 	}
 	se.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"name":         "brainSQL",
 		"service_name": "mysql",
 		"plan":         "small",
 		"owner":        s.team.Name,
-		"tag":          "tag a",
+		"tag":          []string{"tag a", "tag b"},
 	}
 	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -457,13 +467,20 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 	c.Assert(si.Name, check.Equals, "brainSQL")
 	c.Assert(si.ServiceName, check.Equals, "mysql")
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
-	c.Assert(si.Tags, check.DeepEquals, []string{"tag a"})
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag a", "tag b"})
 }
 
-func makeRequestToUpdateInstanceHandler(params map[string]string, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+func makeRequestToUpdateInstanceHandler(params map[string]interface{}, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	values := url.Values{}
 	for k, v := range params {
-		values.Add(k, v)
+		switch v.(type) {
+		case string:
+			values.Add(k, v.(string))
+		case []string:
+			for _, str := range v.([]string) {
+				values.Add(k, str)
+			}
+		}
 	}
 	b := strings.NewReader(values.Encode())
 	url := fmt.Sprintf("/services/%s/instances/%s", serviceName, instanceName)
@@ -480,12 +497,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Endpoint: map[string]string{"production": ts.URL},
-	}
-	se.Create()
 	si := service.ServiceInstance{
 		Name:        "brainSQL",
 		ServiceName: "mysql",
@@ -494,12 +505,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Description: "desc",
 	}
 	si.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"description": "changed",
 	}
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName(se.Name, si.Name)),
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", token.GetValue(), c)
 	m := RunServer(true)
@@ -531,12 +542,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Endpoint: map[string]string{"production": ts.URL},
-	}
-	se.Create()
 	si := service.ServiceInstance{
 		Name:        "brainSQL",
 		ServiceName: "mysql",
@@ -545,12 +550,12 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		Tags:        []string{"tag a"},
 	}
 	si.Create()
-	params := map[string]string{
-		"tag": "tag b",
+	params := map[string]interface{}{
+		"tag": []string{"tag b", "tag c"},
 	}
 	token := customUserWithPermission(c, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
-		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName(se.Name, si.Name)),
+		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", token.GetValue(), c)
 	m := RunServer(true)
@@ -566,7 +571,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(instance.ServiceName, check.Equals, "mysql")
 	c.Assert(instance.Teams, check.DeepEquals, si.Teams)
 	c.Assert(instance.Apps, check.DeepEquals, si.Apps)
-	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b"})
+	c.Assert(instance.Tags, check.DeepEquals, []string{"tag b", "tag c"})
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceNotExist(c *check.C) {
@@ -574,13 +579,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceNotExist(c *check.C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Endpoint: map[string]string{"production": ts.URL},
-	}
-	se.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"description": "changed",
 	}
 	recorder, request := makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", s.token.GetValue(), c)
@@ -595,12 +594,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	se := service.Service{
-		Name:     "mysql",
-		Teams:    []string{s.team.Name},
-		Endpoint: map[string]string{"production": ts.URL},
-	}
-	se.Create()
 	si := service.ServiceInstance{
 		Name:        "brainSQL",
 		ServiceName: "mysql",
@@ -608,7 +601,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 		Teams:       []string{s.team.Name},
 	}
 	si.Create()
-	params := map[string]string{
+	params := map[string]interface{}{
 		"description": "changed",
 	}
 	token := customUserWithPermission(c, "myuser")
@@ -620,6 +613,13 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceInvalidDescription(c *check.C) {
+	si := service.ServiceInstance{
+		Name:        "brainSQL",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+	}
+	si.Create()
 	params := map[string]interface{}{
 		"description": "",
 	}
@@ -627,14 +627,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceInvalidDescription(c *ch
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Invalid value for description\n")
-	params = map[string]string{
-		"desc": "desc",
-	}
-	recorder, request = makeRequestToUpdateInstanceHandler(params, "mysql", "brainSQL", s.token.GetValue(), c)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Invalid value for description\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Neither the description or tags were set. You must define at least one.\n")
 }
 
 func makeRequestToRemoveInstanceHandler(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {

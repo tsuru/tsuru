@@ -57,12 +57,16 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
+	err = r.ParseForm()
+	if err != nil {
+		return err
+	}
 	instance := service.ServiceInstance{
 		Name:        r.FormValue("name"),
 		PlanName:    r.FormValue("plan"),
 		TeamOwner:   r.FormValue("owner"),
 		Description: r.FormValue("description"),
-		Tags:        []string{r.FormValue("tag")},
+		Tags:        r.Form["tag"],
 	}
 	var teamOwner string
 	if instance.TeamOwner == "" {
@@ -129,16 +133,14 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Service instance not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
+	if err != nil {
+		return err
+	}
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
-	tag := r.FormValue("tag")
-	if description == "" && tag == "" {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid value for description",
-		}
-	}
+	tags := r.Form["tag"]
 	si, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
@@ -147,7 +149,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 	}
-	if tag != "" {
+	if len(tags) > 0 {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
 	}
 	if len(wantedPerms) == 0 {
@@ -179,8 +181,8 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if description != "" {
 		si.Description = description
 	}
-	if tag != "" {
-		si.Tags = []string{tag}
+	if len(tags) > 0 {
+		si.Tags = tags
 	}
 	return si.Update(*si)
 }
