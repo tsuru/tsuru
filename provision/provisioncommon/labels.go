@@ -125,6 +125,19 @@ func (s *LabelSet) getLabel(k string) string {
 }
 
 func PodLabels(a provision.App, process, buildImg string, replicas int) (*LabelSet, error) {
+	set, err := ProcessLabels(a, process, "kubernetes")
+	if err != nil {
+		return nil, err
+	}
+	set.Annotations = map[string]string{
+		"build-image": buildImg,
+	}
+	set.Labels["is-build"] = strconv.FormatBool(buildImg != "")
+	set.Labels["app-process-replicas"] = strconv.Itoa(replicas)
+	return set, nil
+}
+
+func ProcessLabels(a provision.App, process, provisioner string) (*LabelSet, error) {
 	routerName, err := a.GetRouterName()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -133,25 +146,19 @@ func PodLabels(a provision.App, process, buildImg string, replicas int) (*LabelS
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	set := &LabelSet{
+	return &LabelSet{
 		Labels: map[string]string{
-			"is-tsuru":             strconv.FormatBool(true),
-			"is-build":             strconv.FormatBool(buildImg != ""),
-			"is-stopped":           strconv.FormatBool(false),
-			"app-name":             a.GetName(),
-			"app-process":          process,
-			"app-process-replicas": strconv.Itoa(replicas),
-			"app-platform":         a.GetPlatform(),
-			"app-pool":             a.GetPool(),
-			"router-name":          routerName,
-			"router-type":          routerType,
-			"provisioner":          "kubernetes",
+			"is-tsuru":     strconv.FormatBool(true),
+			"is-stopped":   strconv.FormatBool(false),
+			"app-name":     a.GetName(),
+			"app-process":  process,
+			"app-platform": a.GetPlatform(),
+			"app-pool":     a.GetPool(),
+			"router-name":  routerName,
+			"router-type":  routerType,
+			"provisioner":  provisioner,
 		},
-		Annotations: map[string]string{
-			"build-image": buildImg,
-		},
-	}
-	return set, nil
+	}, nil
 }
 
 func NodeContainerLabels(name, pool, provisioner string, extraLabels map[string]string) *LabelSet {

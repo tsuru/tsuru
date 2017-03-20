@@ -10,7 +10,6 @@ import (
 	"io"
 	"math/rand"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +22,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -123,15 +122,11 @@ func (c *Container) Create(args *CreateArgs) error {
 	if args.Building {
 		user = c.user()
 	}
-	routerName, err := args.App.GetRouterName()
-	if err != nil {
-		return err
-	}
-	routerType, _, err := router.Type(routerName)
-	if err != nil {
-		return err
-	}
 	hostConf, err := c.hostConfig(args.App, args.Deploy)
+	if err != nil {
+		return err
+	}
+	labelSet, err := provisioncommon.ProcessLabels(args.App, c.ProcessName, "docker")
 	if err != nil {
 		return err
 	}
@@ -148,14 +143,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		CPUShares:    hostConf.CPUShares,
 		SecurityOpts: securityOpts,
 		User:         user,
-		Labels: map[string]string{
-			"tsuru.container":    strconv.FormatBool(true),
-			"tsuru.app.name":     args.App.GetName(),
-			"tsuru.app.platform": args.App.GetPlatform(),
-			"tsuru.process.name": c.ProcessName,
-			"tsuru.router.name":  routerName,
-			"tsuru.router.type":  routerType,
-		},
+		Labels:       labelSet.ToLabels(),
 	}
 	c.addEnvsToConfig(args, strings.TrimSuffix(c.ExposedPort, "/tcp"), &conf)
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &conf, HostConfig: hostConf}
