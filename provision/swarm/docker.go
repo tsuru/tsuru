@@ -56,8 +56,6 @@ var (
 	labelAppPlatform        = tsuruLabel("tsuru.app.platform")
 	labelRouterName         = tsuruLabel("tsuru.router.name")
 	labelRouterType         = tsuruLabel("tsuru.router.type")
-	labelNodeContainer      = tsuruLabel("tsuru.nodecontainer")
-	labelNodeContainerName  = tsuruLabel("tsuru.nodecontainer.name")
 	labelPoolName           = tsuruLabel("tsuru.node.pool")
 	labelProvisionerName    = tsuruLabel("tsuru.node.provisioner")
 )
