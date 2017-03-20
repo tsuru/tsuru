@@ -69,7 +69,6 @@ func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
 func (s *InstanceSuite) TestRetrieveAssociatedService(c *check.C) {
 	service := Service{Name: "my_service"}
 	s.conn.Services().Insert(&service)
-	defer s.conn.Services().RemoveId(service.Name)
 	serviceInstance := &ServiceInstance{
 		Name:        service.Name,
 		ServiceName: service.Name,
@@ -145,15 +144,12 @@ func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
 	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql"}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance2.Name})
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
@@ -164,7 +160,6 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithoutAnyExistingServi
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
 	c.Assert(err, check.IsNil)
 	c.Assert(sInstances, check.DeepEquals, []ServiceInstance(nil))
@@ -174,19 +169,15 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *chec
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	srvc2 := Service{Name: "mongodb"}
 	err = s.conn.Services().Insert(&srvc2)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc2.Name)
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
 	sInstance2 := ServiceInstance{Name: "s9nosql", ServiceName: "mongodb"}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance2.Name})
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc, srvc2})
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
@@ -230,7 +221,6 @@ func (s *InstanceSuite) TestAdditionalInfo(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	info, err := si.Info("")
 	c.Assert(err, check.IsNil)
@@ -249,7 +239,6 @@ func (s *InstanceSuite) TestMarshalJSON(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	data, err := json.Marshal(&si)
 	c.Assert(err, check.IsNil)
@@ -273,7 +262,6 @@ func (s *InstanceSuite) TestMarshalJSONWithoutInfo(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	data, err := json.Marshal(&si)
 	c.Assert(err, check.IsNil)
@@ -297,7 +285,6 @@ func (s *InstanceSuite) TestMarshalJSONWithoutEndpoint(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	data, err := json.Marshal(&si)
 	c.Assert(err, check.IsNil)
@@ -324,7 +311,6 @@ func (s *InstanceSuite) TestDeleteInstance(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
@@ -358,17 +344,16 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
-	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name}
+	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	si, err := GetServiceInstance("mongodb", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag1", "tag2"})
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C) {
@@ -387,11 +372,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 	for _, service := range srv {
 		err := s.conn.Services().Insert(&service)
 		c.Assert(err, check.IsNil)
-		defer s.conn.Services().RemoveId(service.Name)
 		err = CreateServiceInstance(instance, &service, s.user, "")
 		c.Assert(err, check.IsNil)
 	}
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	si, err := GetServiceInstance("mongodb3", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(3))
@@ -413,16 +396,13 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	defer ts.Close()
 	team := auth.Team{Name: "owner"}
 	err := s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err = s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: team.Name}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	si, err := GetServiceInstance("mongodb", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
@@ -438,12 +418,10 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 	defer ts.Close()
 	team := auth.Team{Name: "owner"}
 	err := s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, check.IsNil)
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err = s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", PlanName: "small"}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.Equals, ErrTeamMandatory)
@@ -457,11 +435,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *check.C) 
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance", TeamOwner: s.team.Name}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
@@ -474,7 +450,6 @@ func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "instance"}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.NotNil)
@@ -505,16 +480,14 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	for _, t := range tests {
 		instance := ServiceInstance{Name: t.input, TeamOwner: s.team.Name}
 		err := CreateServiceInstance(instance, &srv, s.user, "")
 		c.Check(err, check.Equals, t.err)
-		defer s.conn.ServiceInstances().Remove(bson.M{"name": t.input})
 	}
 }
 
-func (s *InstanceSuite) TestUpdateService(c *check.C) {
+func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -524,13 +497,31 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
-	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name}
+	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"", "  tag1 ", "tag1", "  "}}
 	err = CreateServiceInstance(instance, &srv, s.user, "")
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	si, err := GetServiceInstance("mongodb", "instance")
+	c.Assert(err, check.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag1"})
+}
+
+func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.IsNil)
 	instance.Description = "desc"
-	err = UpdateService(&instance)
+	instance.Tags = []string{"tag2"}
+	err = instance.Update(instance)
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
@@ -538,6 +529,29 @@ func (s *InstanceSuite) TestUpdateService(c *check.C) {
 	c.Assert(si.PlanName, check.Equals, "small")
 	c.Assert(si.TeamOwner, check.Equals, s.team.Name)
 	c.Assert(si.Description, check.Equals, "desc")
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
+}
+
+func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
+	err = CreateServiceInstance(instance, &srv, s.user, "")
+	c.Assert(err, check.IsNil)
+	instance.Tags = []string{"tag2", " ", " tag2 "}
+	err = instance.Update(instance)
+	c.Assert(err, check.IsNil)
+	var si ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.Tags, check.DeepEquals, []string{"tag2"})
 }
 
 func (s *InstanceSuite) TestStatus(c *check.C) {
@@ -548,7 +562,6 @@ func (s *InstanceSuite) TestStatus(c *check.C) {
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	status, err := si.Status("")
 	c.Assert(err, check.IsNil)
@@ -563,7 +576,6 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 		ServiceInstance{Name: "mongo-4", ServiceName: "mongodb", Teams: []string{s.team.Name}},
 		ServiceInstance{Name: "mongo-5", ServiceName: "mongodb"},
 	)
-	defer s.conn.ServiceInstances().RemoveAll(bson.M{"service_name": "mongodb"})
 	instance, err := GetServiceInstance("mongodb", "mongo-1")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "mongo-1")
@@ -591,12 +603,9 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	team := &auth.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
 	s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(team)
-	defer s.conn.Users().Remove(user)
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	sInstance := ServiceInstance{
 		Name:        "j4sql",
 		ServiceName: srvc.Name,
@@ -614,12 +623,9 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	team := &auth.Team{Name: "test2"}
 	s.conn.Users().Insert(user)
 	s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(team)
-	defer s.conn.Users().Remove(user)
 	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srvc.Name)
 	sInstance := ServiceInstance{
 		Name:        "j4sql",
 		ServiceName: srvc.Name,
@@ -627,7 +633,6 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
 	si, err := GetServiceInstance("mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
@@ -650,7 +655,6 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(serv.Name)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -660,7 +664,6 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
 	err = a.AddInstance(
 		bind.InstanceApp{
@@ -714,7 +717,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(serv.Name)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -724,7 +726,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
 	err = a.AddInstance(
 		bind.InstanceApp{
@@ -778,7 +779,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := serv.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(serv.Name)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -788,7 +788,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	}
 	err = si.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	for i := range units {

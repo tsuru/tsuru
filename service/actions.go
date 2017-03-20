@@ -137,7 +137,7 @@ var bindAppDBAction = &action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		if err := args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}}); err != nil {
+		if err := args.serviceInstance.updateData(bson.M{"$pull": bson.M{"apps": args.app.GetName()}}); err != nil {
 			log.Errorf("[bind-app-db backward] could not remove app from service instance: %s", err)
 		}
 	},
@@ -316,11 +316,11 @@ var unbindAppDB = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
-		return nil, args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
+		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		err := args.serviceInstance.update(bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}})
+		err := args.serviceInstance.updateData(bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}})
 		if err != nil {
 			log.Errorf("[unbind-app-db backward] failed to rebind app in db: %s", err)
 		}

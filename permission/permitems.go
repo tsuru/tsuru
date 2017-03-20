@@ -154,6 +154,7 @@ var (
 	PermServiceInstanceUpdate            = PermissionRegistry.get("service-instance.update")             // [global service-instance team]
 	PermServiceInstanceUpdateBind        = PermissionRegistry.get("service-instance.update.bind")        // [global service-instance team]
 	PermServiceInstanceUpdateDescription = PermissionRegistry.get("service-instance.update.description") // [global service-instance team]
+	PermServiceInstanceUpdateTags        = PermissionRegistry.get("service-instance.update.tags")        // [global service-instance team]
 	PermServiceInstanceUpdateGrant       = PermissionRegistry.get("service-instance.update.grant")       // [global service-instance team]
 	PermServiceInstanceUpdateProxy       = PermissionRegistry.get("service-instance.update.proxy")       // [global service-instance team]
 	PermServiceInstanceUpdateRevoke      = PermissionRegistry.get("service-instance.update.revoke")      // [global service-instance team]

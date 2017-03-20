@@ -57,11 +57,16 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
+	err = r.ParseForm()
+	if err != nil {
+		return err
+	}
 	instance := service.ServiceInstance{
 		Name:        r.FormValue("name"),
 		PlanName:    r.FormValue("plan"),
 		TeamOwner:   r.FormValue("owner"),
 		Description: r.FormValue("description"),
+		Tags:        r.Form["tag"],
 	}
 	var teamOwner string
 	if instance.TeamOwner == "" {
@@ -128,24 +133,38 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Service instance not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	err = r.ParseForm()
+	if err != nil {
+		return err
+	}
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	description := r.FormValue("description")
-	if description == "" {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid value for description",
-		}
-	}
+	tags := r.Form["tag"]
 	si, err := getServiceInstanceOrError(serviceName, instanceName)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateDescription,
-		contextsForServiceInstance(si, serviceName)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
+	var wantedPerms []*permission.PermissionScheme
+	if description != "" {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
+	}
+	if tags != nil {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
+	}
+	if len(wantedPerms) == 0 {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Neither the description or tags were set. You must define at least one.",
+		}
+	}
+	for _, perm := range wantedPerms {
+		allowed := permission.Check(t, perm,
+			contextsForServiceInstance(si, serviceName)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
@@ -159,8 +178,13 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	si.Description = description
-	return service.UpdateService(si)
+	if description != "" {
+		si.Description = description
+	}
+	if tags != nil {
+		si.Tags = tags
+	}
+	return si.Update(*si)
 }
 
 // title: remove service instance
@@ -369,6 +393,7 @@ type serviceInstanceInfo struct {
 	PlanName        string
 	PlanDescription string
 	CustomInfo      map[string]string
+	Tags            []string
 }
 
 // title: service instance info
@@ -410,6 +435,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		PlanName:        plan.Name,
 		PlanDescription: plan.Description,
 		CustomInfo:      info,
+		Tags:            serviceInstance.Tags,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(sInfo)

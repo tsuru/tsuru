@@ -9,6 +9,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -44,6 +45,7 @@ type ServiceInstance struct {
 	Teams       []string
 	TeamOwner   string
 	Description string
+	Tags        []string
 }
 
 // DeleteInstance deletes the service instance from the database.
@@ -137,7 +139,23 @@ func (si *ServiceInstance) FindApp(appName string) int {
 	return index
 }
 
-func (si *ServiceInstance) update(update bson.M) error {
+// Update changes informations of the service instance.
+func (si *ServiceInstance) Update(updateData ServiceInstance) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	tags := processTags(updateData.Tags)
+	if tags == nil {
+		updateData.Tags = si.Tags
+	} else {
+		updateData.Tags = tags
+	}
+	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, updateData)
+}
+
+func (si *ServiceInstance) updateData(update bson.M) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -185,7 +203,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	}
 	err = endpoint.BindUnit(si, app, unit)
 	if err != nil {
-		rollbackErr := si.update(bson.M{"$pull": bson.M{"units": unit.GetID()}})
+		rollbackErr := si.updateData(bson.M{"$pull": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
 			log.Errorf("[bind unit] could not remove stil unbound unit from db after failure: %s", rollbackErr)
 		}
@@ -236,7 +254,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	}
 	err = endpoint.UnbindUnit(si, app, unit)
 	if err != nil {
-		rollbackErr := si.update(bson.M{"$addToSet": bson.M{"units": unit.GetID()}})
+		rollbackErr := si.updateData(bson.M{"$addToSet": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
 			log.Errorf("[unbind unit] could not add bound unit back to db after failure: %s", rollbackErr)
 		}
@@ -259,7 +277,7 @@ func (si *ServiceInstance) Grant(teamName string) error {
 	if err != nil {
 		return err
 	}
-	return si.update(bson.M{"$push": bson.M{"teams": team.Name}})
+	return si.updateData(bson.M{"$push": bson.M{"teams": team.Name}})
 }
 
 func (si *ServiceInstance) Revoke(teamName string) error {
@@ -267,7 +285,7 @@ func (si *ServiceInstance) Revoke(teamName string) error {
 	if err != nil {
 		return err
 	}
-	return si.update(bson.M{"$pull": bson.M{"teams": team.Name}})
+	return si.updateData(bson.M{"$pull": bson.M{"teams": team.Name}})
 }
 
 func genericServiceInstancesFilter(services interface{}, teams []string) bson.M {
@@ -315,18 +333,10 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, user *aut
 		return ErrTeamMandatory
 	}
 	instance.Teams = []string{instance.TeamOwner}
+	instance.Tags = processTags(instance.Tags)
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(*service, instance, user.Email, requestID)
-}
-
-func UpdateService(si *ServiceInstance) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName}, si)
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
@@ -380,4 +390,20 @@ func GetServiceInstance(serviceName string, instanceName string) (*ServiceInstan
 		return nil, ErrServiceInstanceNotFound
 	}
 	return &instance, nil
+}
+
+func processTags(tags []string) []string {
+	if tags == nil {
+		return nil
+	}
+	processedTags := []string{}
+	usedTags := make(map[string]bool)
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if len(tag) > 0 && !usedTags[tag] {
+			processedTags = append(processedTags, tag)
+			usedTags[tag] = true
+		}
+	}
+	return processedTags
 }
