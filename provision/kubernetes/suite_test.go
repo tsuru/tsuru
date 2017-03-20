@@ -262,7 +262,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 	}, &wg
 }
 
-func (s *S) defaultReactions(c *check.C) (provision.App, func()) {
+func (s *S) defaultReactions(c *check.C) (provision.App, func(), func()) {
 	srv := s.createDeployReadyServer(c)
 	s.mockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -275,8 +275,13 @@ func (s *S) defaultReactions(c *check.C) (provision.App, func()) {
 	s.client.PrependReactor("update", "deployments", depReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	return a, func() {
-		depPodReady.Wait()
-		jobPodReady.Wait()
-		srv.Close()
-	}
+			depPodReady.Wait()
+			jobPodReady.Wait()
+		}, func() {
+			if srv == nil {
+				return
+			}
+			srv.Close()
+			srv = nil
+		}
 }

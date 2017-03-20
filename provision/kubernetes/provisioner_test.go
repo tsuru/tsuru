@@ -121,7 +121,7 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 }
 
 func (s *S) TestUnits(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -135,6 +135,7 @@ func (s *S) TestUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
@@ -189,7 +190,7 @@ func (s *S) TestGetNodeWithoutCluster(c *check.C) {
 }
 
 func (s *S) TestAddUnits(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -202,13 +203,14 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -221,18 +223,20 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	err = s.p.RemoveUnits(a, 2, "web", nil)
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 }
 
 func (s *S) TestRestart(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -245,12 +249,14 @@ func (s *S) TestRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	id := units[0].ID
 	err = s.p.Restart(a, "", nil)
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -258,7 +264,7 @@ func (s *S) TestRestart(c *check.C) {
 }
 
 func (s *S) TestStopStart(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	imgName := "myapp:v1"
 	err := image.SaveImageCustomData(imgName, map[string]interface{}{
@@ -271,20 +277,23 @@ func (s *S) TestStopStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
+	wait()
 	err = s.p.Stop(a, "")
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
+	wait()
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	data := []byte("archivedata")
 	archive := ioutil.NopCloser(bytes.NewReader(data))
@@ -297,6 +306,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
 	c.Assert(err, check.IsNil)
+	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
 	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
@@ -321,7 +331,7 @@ func (s *S) TestProvisionerDestroyNothingToDo(c *check.C) {
 }
 
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	data := []byte("archivedata")
 	archive := ioutil.NopCloser(bytes.NewReader(data))
@@ -334,6 +344,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
 	c.Assert(err, check.IsNil)
+	wait()
 	addrs, err := s.p.RoutableAddresses(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(addrs, check.DeepEquals, []url.URL{
@@ -349,7 +360,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 }
 
 func (s *S) TestUploadDeploy(c *check.C) {
-	a, rollback := s.defaultReactions(c)
+	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	data := []byte("archivedata")
 	archive := ioutil.NopCloser(bytes.NewReader(data))
@@ -363,6 +374,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	img, err := s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
 	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 2)

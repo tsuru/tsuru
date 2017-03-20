@@ -115,7 +115,7 @@ func (s *S) TestNodeProvisioner(c *check.C) {
 }
 
 func (s *S) TestNodeUnits(c *check.C) {
-	fakeApp, rollback := s.defaultReactions(c)
+	fakeApp, wait, rollback := s.defaultReactions(c)
 	defer rollback()
 	routertest.FakeRouter.Reset()
 	a := &app.App{Name: fakeApp.GetName(), TeamOwner: s.team.Name, Platform: fakeApp.GetPlatform()}
@@ -133,6 +133,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.Start(a, "")
 	c.Assert(err, check.IsNil)
+	wait()
 	node, err := s.p.GetNode("192.168.99.1")
 	c.Assert(err, check.IsNil)
 	units, err := node.Units()
