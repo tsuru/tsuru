@@ -7,13 +7,14 @@ package provisioncommon
 import (
 	"testing"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
 type S struct{}
 
-var _ = check.Suite(S{})
+var _ = check.Suite(&S{})
 
 func Test(t *testing.T) {
 	check.TestingT(t)
@@ -78,6 +79,8 @@ func (s *S) TestLabelSetGetLabel(c *check.C) {
 }
 
 func (s *S) TestPodLabels(c *check.C) {
+	config.Set("routers:fake:type", "fake")
+	defer config.Unset("routers")
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
 	ls, err := PodLabels(a, "p1", "myimg", 3)
 	c.Assert(err, check.IsNil)
@@ -117,6 +120,28 @@ func (s *S) TestPodLabels(c *check.C) {
 		},
 		Annotations: map[string]string{
 			"build-image": "",
+		},
+	})
+}
+
+func (s *S) TestNodeContainerLabels(c *check.C) {
+	c.Assert(NodeContainerLabels("name", "pool", "provisioner", nil), check.DeepEquals, &LabelSet{
+		Labels: map[string]string{
+			"is-tsuru":            "true",
+			"is-node-container":   "true",
+			"provisioner":         "provisioner",
+			"node-container-name": "name",
+			"node-container-pool": "pool",
+		},
+	})
+	c.Assert(NodeContainerLabels("name", "pool", "provisioner", map[string]string{"a": "1"}), check.DeepEquals, &LabelSet{
+		Labels: map[string]string{
+			"is-tsuru":            "true",
+			"is-node-container":   "true",
+			"provisioner":         "provisioner",
+			"node-container-name": "name",
+			"node-container-pool": "pool",
+			"a": "1",
 		},
 	})
 }
