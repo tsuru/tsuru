@@ -10,14 +10,17 @@ import (
 	"net/url"
 	"sort"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
+	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -387,4 +390,62 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 2)
+}
+
+func (s *S) TestUpgradeNodeContainer(c *check.C) {
+	s.mockfakeNodes(c)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+		HostConfig: docker.HostConfig{
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			Binds:         []string{"/xyz:/abc:ro"},
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	c2 := c1
+	c2.Config.Env = []string{"e1=v1"}
+	err = nodecontainer.AddNewContainer("p1", &c2)
+	c.Assert(err, check.IsNil)
+	c3 := c1
+	err = nodecontainer.AddNewContainer("p2", &c3)
+	c.Assert(err, check.IsNil)
+	buf := &bytes.Buffer{}
+	err = s.p.UpgradeNodeContainer("bs", "", buf)
+	c.Assert(err, check.IsNil)
+	daemons, err := s.client.Extensions().DaemonSets(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 3)
+}
+
+func (s *S) TestRemoveNodeContainer(c *check.C) {
+	s.mockfakeNodes(c)
+	ls := nodeContainerPodLabels("bs", "p1")
+	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "node-container-bs-pool-p1",
+			Namespace: tsuruNamespace,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "node-container-bs-pool-p1-xyz",
+			Namespace: tsuruNamespace,
+			Labels:    ls.ToLabels(),
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	daemons, err := s.client.Extensions().DaemonSets(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 0)
+	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 0)
 }

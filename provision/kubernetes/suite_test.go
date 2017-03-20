@@ -278,6 +278,8 @@ func (s *S) defaultReactions(c *check.C) (provision.App, func(), func()) {
 			depPodReady.Wait()
 			jobPodReady.Wait()
 		}, func() {
+			depPodReady.Wait()
+			jobPodReady.Wait()
 			if srv == nil {
 				return
 			}

@@ -7,8 +7,8 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
-	"sort"
 	"strconv"
 	"time"
 
@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	"k8s.io/client-go/kubernetes"
@@ -353,7 +352,16 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	isCluster, _ := strconv.ParseBool(opts.Metadata["cluster"])
 	if isCluster {
-		return addClusterNode(opts)
+		err := addClusterNode(opts)
+		if err != nil {
+			return err
+		}
+		client, err := getClusterClient()
+		if err != nil {
+			return err
+		}
+		m := nodeContainerManager{client: client}
+		return servicecommon.EnsureNodeContainersCreated(&m, ioutil.Discard)
 	}
 	// TODO(cezarsa): Start kubelet, kube-proxy and add labels
 	return errors.New("adding nodes to cluster not supported yet on kubernetes")
@@ -495,40 +503,23 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 }
 
 func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
-	poolsToRun := []string{"", pool}
-	if pool == "" {
-		poolMap, err := nodecontainer.LoadNodeContainersForPools(name)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		poolsToRun = make([]string, 0, len(poolMap))
-		for k := range poolMap {
-			poolsToRun = append(poolsToRun, k)
-		}
-	}
 	client, err := getClusterClient()
 	if err != nil {
+		if err == errNoCluster {
+			return nil
+		}
 		return err
 	}
-	sort.Strings(poolsToRun)
-	multiErr := tsuruErrors.NewMultiError()
-	for _, v := range poolsToRun {
-		dsName := daemonSetName(name, v)
-		fmt.Fprintf(writer, "upserting DaemonSet %q for node container %q [%s]\n", dsName, name, v)
-		err = deamonSetForNodeContainer(client, name, v, v == "" && pool != "")
-		if err != nil {
-			multiErr.Add(err)
-		}
-	}
-	if multiErr.Len() > 0 {
-		return multiErr
-	}
-	return nil
+	m := nodeContainerManager{client: client}
+	return servicecommon.UpgradeNodeContainer(&m, name, pool, writer)
 }
 
 func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
 	client, err := getClusterClient()
 	if err != nil {
+		if err == errNoCluster {
+			return nil
+		}
 		return err
 	}
 	return cleanupDaemonSet(client, name, pool)
