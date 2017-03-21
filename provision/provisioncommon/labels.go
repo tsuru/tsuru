@@ -18,6 +18,30 @@ const (
 	tsuruLabelPrefix = "tsuru.io/"
 )
 
+var (
+	labelIsTsuru         = "is-tsuru"
+	labelIsStopped       = "is-stopped"
+	labelIsBuild         = "is-build"
+	labelIsNodeContainer = "is-node-container"
+
+	labelAppName            = "app-name"
+	labelAppProcess         = "app-process"
+	labelAppProcessReplicas = "app-process-replicas"
+	labelAppPool            = "app-pool"
+	labelAppPlatform        = "app-platform"
+
+	labelNodeContainerName = "node-container-name"
+	labelNodeContainerPool = "node-container-pool"
+
+	labelRouterName = "router-name"
+	labelRouterType = "router-type"
+
+	labelBuildImage = "build-image"
+	labelRestarts   = "restarts"
+
+	labelProvisioner = "provisioner"
+)
+
 type LabelSet struct {
 	Labels      map[string]string
 	Annotations map[string]string
@@ -54,54 +78,54 @@ func (s *LabelSet) ToAnnotations() map[string]string {
 }
 
 func (s *LabelSet) ToSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, "app-name", "app-process", "is-build"))
+	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild))
 }
 
 func (s *LabelSet) ToAppSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, "app-name"))
+	return withPrefix(subMap(s.Labels, labelAppName))
 }
 
 func (s *LabelSet) ToNodeContainerSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, "node-container-name", "node-container-pool"))
+	return withPrefix(subMap(s.Labels, labelNodeContainerName, labelNodeContainerPool))
 }
 
 func (s *LabelSet) AppName() string {
-	return s.getLabel("app-name")
+	return s.getLabel(labelAppName)
 }
 
 func (s *LabelSet) AppProcess() string {
-	return s.getLabel("app-process")
+	return s.getLabel(labelAppProcess)
 }
 
 func (s *LabelSet) AppPlatform() string {
-	return s.getLabel("app-platform")
+	return s.getLabel(labelAppPlatform)
 }
 
 func (s *LabelSet) AppReplicas() int {
-	replicas, _ := strconv.Atoi(s.getLabel("app-process-replicas"))
+	replicas, _ := strconv.Atoi(s.getLabel(labelAppProcessReplicas))
 	return replicas
 }
 
 func (s *LabelSet) Restarts() int {
-	restarts, _ := strconv.Atoi(s.getLabel("restarts"))
+	restarts, _ := strconv.Atoi(s.getLabel(labelRestarts))
 	return restarts
 }
 
 func (s *LabelSet) BuildImage() string {
-	return s.getLabel("build-image")
+	return s.getLabel(labelBuildImage)
 }
 
 func (s *LabelSet) IsStopped() bool {
-	stopped, _ := strconv.ParseBool(s.getLabel("is-stopped"))
+	stopped, _ := strconv.ParseBool(s.getLabel(labelIsStopped))
 	return stopped
 }
 
 func (s *LabelSet) SetRestarts(count int) {
-	s.addLabel("restarts", strconv.Itoa(count))
+	s.addLabel(labelRestarts, strconv.Itoa(count))
 }
 
 func (s *LabelSet) SetStopped() {
-	s.addLabel("is-stopped", strconv.FormatBool(true))
+	s.addLabel(labelIsStopped, strconv.FormatBool(true))
 }
 
 func (s *LabelSet) addLabel(k, v string) {
@@ -130,10 +154,10 @@ func PodLabels(a provision.App, process, buildImg string, replicas int) (*LabelS
 		return nil, err
 	}
 	set.Annotations = map[string]string{
-		"build-image": buildImg,
+		labelBuildImage: buildImg,
 	}
-	set.Labels["is-build"] = strconv.FormatBool(buildImg != "")
-	set.Labels["app-process-replicas"] = strconv.Itoa(replicas)
+	set.Labels[labelIsBuild] = strconv.FormatBool(buildImg != "")
+	set.Labels[labelAppProcessReplicas] = strconv.Itoa(replicas)
 	return set, nil
 }
 
@@ -148,26 +172,26 @@ func ProcessLabels(a provision.App, process, provisioner string) (*LabelSet, err
 	}
 	return &LabelSet{
 		Labels: map[string]string{
-			"is-tsuru":     strconv.FormatBool(true),
-			"is-stopped":   strconv.FormatBool(false),
-			"app-name":     a.GetName(),
-			"app-process":  process,
-			"app-platform": a.GetPlatform(),
-			"app-pool":     a.GetPool(),
-			"router-name":  routerName,
-			"router-type":  routerType,
-			"provisioner":  provisioner,
+			labelIsTsuru:     strconv.FormatBool(true),
+			labelIsStopped:   strconv.FormatBool(false),
+			labelAppName:     a.GetName(),
+			labelAppProcess:  process,
+			labelAppPlatform: a.GetPlatform(),
+			labelAppPool:     a.GetPool(),
+			labelRouterName:  routerName,
+			labelRouterType:  routerType,
+			labelProvisioner: provisioner,
 		},
 	}, nil
 }
 
 func NodeContainerLabels(name, pool, provisioner string, extraLabels map[string]string) *LabelSet {
 	labels := map[string]string{
-		"is-tsuru":            strconv.FormatBool(true),
-		"is-node-container":   strconv.FormatBool(true),
-		"provisioner":         provisioner,
-		"node-container-name": name,
-		"node-container-pool": pool,
+		labelIsTsuru:           strconv.FormatBool(true),
+		labelIsNodeContainer:   strconv.FormatBool(true),
+		labelProvisioner:       provisioner,
+		labelNodeContainerName: name,
+		labelNodeContainerPool: pool,
 	}
 	for k, v := range extraLabels {
 		labels[k] = v
