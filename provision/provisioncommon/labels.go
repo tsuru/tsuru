@@ -143,25 +143,34 @@ func (s *LabelSet) getLabel(k string) string {
 	if v, ok := s.Labels[k]; ok {
 		return v
 	}
-	if v, ok := s.Annotations[tsuruLabelPrefix+k]; ok {
-		return v
-	}
-	if v, ok := s.Annotations[k]; ok {
-		return v
-	}
 	return ""
 }
 
-func PodLabels(a provision.App, process, buildImg string, replicas int) (*LabelSet, error) {
-	set, err := ProcessLabels(a, process, "kubernetes")
+type ServiceLabelsOpts struct {
+	App           provision.App
+	BuildImage    string
+	Process       string
+	Provisioner   string
+	Replicas      int
+	RestartCount  int
+	IsDeploy      bool
+	IsIsolatedRun bool
+	IsBuild       bool
+}
+
+func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
+	set, err := ProcessLabels(opts.App, opts.Process, opts.Provisioner)
 	if err != nil {
 		return nil, err
 	}
-	set.Annotations = map[string]string{
-		labelBuildImage: buildImg,
+	if opts.BuildImage != "" {
+		set.Labels[labelBuildImage] = opts.BuildImage
 	}
-	set.Labels[labelIsBuild] = strconv.FormatBool(buildImg != "")
-	set.Labels[labelAppProcessReplicas] = strconv.Itoa(replicas)
+	set.Labels[labelAppProcessReplicas] = strconv.Itoa(opts.Replicas)
+	set.Labels[labelRestarts] = strconv.Itoa(opts.RestartCount)
+	set.Labels[labelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
+	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
+	set.Labels[labelIsBuild] = strconv.FormatBool(opts.IsBuild)
 	return set, nil
 }
 

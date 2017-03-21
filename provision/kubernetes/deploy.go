@@ -84,10 +84,16 @@ func createBuildJob(params buildJobParams) (string, error) {
 	parallelism := int32(1)
 	dockerSockPath := "/var/run/docker.sock"
 	baseName := deployJobNameForApp(params.app)
-	labels, err := provisioncommon.PodLabels(params.app, "", params.destinationImage, 0)
+	labels, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         params.app,
+		IsBuild:     true,
+		Provisioner: provisionerName,
+	})
 	if err != nil {
 		return "", err
 	}
+	buildImageLabel := &provisioncommon.LabelSet{}
+	buildImageLabel.SetBuildImage(params.destinationImage)
 	job := &batch.Job{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      baseName,
@@ -100,7 +106,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:        baseName,
 					Labels:      labels.ToLabels(),
-					Annotations: labels.ToAnnotations(),
+					Annotations: buildImageLabel.ToLabels(),
 				},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
@@ -214,7 +220,12 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		}
 		isStopped = false
 	}
-	labels, err := provisioncommon.PodLabels(a, process, "", replicas)
+	labels, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		Process:     process,
+		Replicas:    replicas,
+		Provisioner: provisionerName,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -277,8 +288,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
-					Labels:      labels.ToLabels(),
-					Annotations: labels.ToAnnotations(),
+					Labels: labels.ToLabels(),
 				},
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyAlways,
@@ -347,10 +357,9 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 	portInt, _ := strconv.Atoi(port)
 	_, err = m.client.Core().Services(tsuruNamespace).Create(&v1.Service{
 		ObjectMeta: v1.ObjectMeta{
-			Name:        depName,
-			Namespace:   tsuruNamespace,
-			Labels:      labels.ToLabels(),
-			Annotations: labels.ToAnnotations(),
+			Name:      depName,
+			Namespace: tsuruNamespace,
+			Labels:    labels.ToLabels(),
 		},
 		Spec: v1.ServiceSpec{
 			Selector: labels.ToSelector(),

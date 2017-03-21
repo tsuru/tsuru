@@ -54,36 +54,35 @@ func (s *S) TestLabelSetGetLabel(c *check.C) {
 	ls := LabelSet{
 		Labels: map[string]string{
 			"l1":                "v1",
-			"l2":                "v2",
 			"tsuru.io/app-name": "app1",
 			"app-name":          "app2",
-		},
-		Annotations: map[string]string{
-			"l1":                "v3",
-			"l3":                "v4",
-			"tsuru.io/l3":       "v5",
-			"l4":                "v6",
-			"tsuru.io/app-name": "appan1",
-			"app-name":          "appan2",
 		},
 	}
 	c.Assert(ls.getLabel("app-name"), check.Equals, "app1")
 	c.Assert(ls.getLabel("l1"), check.Equals, "v1")
-	c.Assert(ls.getLabel("l3"), check.Equals, "v5")
-	c.Assert(ls.getLabel("l4"), check.Equals, "v6")
 }
 
-func (s *S) TestPodLabels(c *check.C) {
+func (s *S) TestServiceLabels(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
-	ls, err := PodLabels(a, "p1", "myimg", 3)
+	opts := ServiceLabelsOpts{
+		App:         a,
+		Replicas:    3,
+		Process:     "p1",
+		BuildImage:  "myimg",
+		IsBuild:     true,
+		Provisioner: "kubernetes",
+	}
+	ls, err := ServiceLabels(opts)
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":             "true",
 			"is-build":             "true",
 			"is-stopped":           "false",
+			"is-isolated-run":      "false",
+			"is-deploy":            "false",
 			"app-name":             "myapp",
 			"app-process":          "p1",
 			"app-process-replicas": "3",

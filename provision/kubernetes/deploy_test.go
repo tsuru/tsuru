@@ -68,6 +68,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/is-tsuru":             "true",
 						"tsuru.io/is-build":             "false",
 						"tsuru.io/is-stopped":           "false",
+						"tsuru.io/is-deploy":            "false",
+						"tsuru.io/is-isolated-run":      "false",
+						"tsuru.io/restarts":             "0",
 						"tsuru.io/app-name":             "myapp",
 						"tsuru.io/app-process":          "p1",
 						"tsuru.io/app-process-replicas": "1",
@@ -76,9 +79,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/router-type":          "fake",
 						"tsuru.io/router-name":          "fake",
 						"tsuru.io/provisioner":          "kubernetes",
-					},
-					Annotations: map[string]string{
-						"tsuru.io/build-image": "",
 					},
 				},
 				Spec: v1.PodSpec{
@@ -117,6 +117,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-build":             "false",
 				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/restarts":             "0",
 				"tsuru.io/app-name":             "myapp",
 				"tsuru.io/app-process":          "p1",
 				"tsuru.io/app-process-replicas": "1",
@@ -125,9 +128,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/router-type":          "fake",
 				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/build-image": "",
 			},
 		},
 		Spec: v1.ServiceSpec{
@@ -340,7 +340,11 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
 	c.Assert(err, check.IsNil)
-	ls, err := provisioncommon.PodLabels(a, "p1", "", 0)
+	ls, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		Process:     "p1",
+		Provisioner: provisionerName,
+	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{

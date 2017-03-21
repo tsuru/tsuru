@@ -171,7 +171,11 @@ func (s *S) TestCleanupJob(c *check.C) {
 
 func (s *S) TestCleanupDeployment(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	ls, err := provisioncommon.PodLabels(a, "p1", "", 0)
+	ls, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		Process:     "p1",
+		Provisioner: provisionerName,
+	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
@@ -288,8 +292,6 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 		Labels: map[string]string{
 			"tsuru.io/x": "a",
 			"y":          "b",
-		},
-		Annotations: map[string]string{
 			"tsuru.io/a": "1",
 			"b":          "2",
 		},

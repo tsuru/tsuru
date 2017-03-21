@@ -132,7 +132,11 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	l, err := provisioncommon.PodLabels(a, process, "", 0)
+	l, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		Process:     process,
+		Provisioner: provisionerName,
+	})
 	if err != nil {
 		return err
 	}
@@ -193,5 +197,9 @@ func getServicePort(client kubernetes.Interface, srvName string) (int32, error) 
 }
 
 func labelSetFromMeta(meta *v1.ObjectMeta) *provisioncommon.LabelSet {
-	return &provisioncommon.LabelSet{Labels: meta.Labels, Annotations: meta.Annotations}
+	merged := meta.Labels
+	for k, v := range meta.Annotations {
+		merged[k] = v
+	}
+	return &provisioncommon.LabelSet{Labels: merged}
 }
