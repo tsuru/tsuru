@@ -155,7 +155,14 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		},
 	}
 	if oldDs != nil {
-		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Update(ds)
+		// TODO(cezarsa): This is only needed because kubernetes <=1.5 does not
+		// support rolling updating daemon sets. Once 1.6 is out we can drop
+		// the cleanup call and configure DaemonSetUpdateStrategy accordingly.
+		err = cleanupDaemonSet(m.client, config.Name, pool)
+		if err != nil {
+			return err
+		}
+		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Create(ds)
 	} else {
 		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Create(ds)
 	}
