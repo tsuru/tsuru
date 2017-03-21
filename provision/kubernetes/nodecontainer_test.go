@@ -133,3 +133,46 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 		"scheduler.alpha.kubernetes.io/affinity": "{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"pool\",\"operator\":\"In\",\"values\":[\"p1\"]}]}]}}}",
 	})
 }
+
+func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
+	s.mockfakeNodes(c)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: nodecontainer.BsDefaultName,
+		Config: docker.Config{
+			Image: "img1",
+		},
+		HostConfig: docker.HostConfig{},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	m := nodeContainerManager{client: s.client}
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	daemons, err := s.client.Extensions().DaemonSets(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemon, err := s.client.Extensions().DaemonSets(tsuruNamespace).Get("node-container-big-sibling-all")
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, []v1.Volume{
+		{
+			Name: "volume-0",
+			VolumeSource: v1.VolumeSource{
+				HostPath: &v1.HostPathVolumeSource{
+					Path: "/var/log",
+				},
+			},
+		},
+		{
+			Name: "volume-1",
+			VolumeSource: v1.VolumeSource{
+				HostPath: &v1.HostPathVolumeSource{
+					Path: "/var/lib/docker/containers",
+				},
+			},
+		},
+	})
+	c.Assert(daemon.Spec.Template.Spec.Containers[0].VolumeMounts, check.DeepEquals, []v1.VolumeMount{
+		{Name: "volume-0", MountPath: "/var/log", ReadOnly: true},
+		{Name: "volume-1", MountPath: "/var/lib/docker/containers", ReadOnly: true},
+	})
+}

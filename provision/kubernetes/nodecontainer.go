@@ -78,6 +78,11 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	}
 	var volumes []v1.Volume
 	var volumeMounts []v1.VolumeMount
+	if config.Name == nodecontainer.BsDefaultName {
+		config.HostConfig.Binds = append(config.HostConfig.Binds,
+			"/var/log:/var/log:ro",
+			"/var/lib/docker/containers:/var/lib/docker/containers:ro")
+	}
 	for i, b := range config.HostConfig.Binds {
 		parts := strings.SplitN(b, ":", 3)
 		vol := v1.Volume{
