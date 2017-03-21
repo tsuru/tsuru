@@ -120,7 +120,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory+app.Swap)
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
 	sort.Strings(container.Config.Env)
-	expectedLabels, err := provisioncommon.ProcessLabels(app, "myprocess1", "docker")
+	expectedLabels, err := provisioncommon.ProcessLabels(app, "myprocess1", "docker", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Config.Labels, check.DeepEquals, expectedLabels.ToLabels())
 	c.Assert(container.Config.Env, check.DeepEquals, []string{

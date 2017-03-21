@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/safe"
 )
 
@@ -36,28 +35,6 @@ const (
 	dockerFullTimeout  = 15 * time.Minute
 	dockerTCPKeepALive = 30 * time.Second
 	maxSwarmManagers   = 7
-)
-
-type tsuruLabel string
-
-func (l tsuruLabel) String() string {
-	return string(l)
-}
-
-var (
-	labelService            = tsuruLabel("tsuru.service")
-	labelServiceDeploy      = tsuruLabel("tsuru.service.deploy")
-	labelServiceIsolatedRun = tsuruLabel("tsuru.service.isolated.run")
-	labelServiceBuildImage  = tsuruLabel("tsuru.service.buildImage")
-	labelServiceRestart     = tsuruLabel("tsuru.service.restart")
-	labelAppName            = tsuruLabel("tsuru.app.name")
-	labelAppProcess         = tsuruLabel("tsuru.app.process")
-	labelProcessReplicas    = tsuruLabel("tsuru.app.process.replicas")
-	labelAppPlatform        = tsuruLabel("tsuru.app.platform")
-	labelRouterName         = tsuruLabel("tsuru.router.name")
-	labelRouterType         = tsuruLabel("tsuru.router.type")
-	labelPoolName           = tsuruLabel("tsuru.node.pool")
-	labelProvisionerName    = tsuruLabel("tsuru.node.provisioner")
 )
 
 func newClient(address string) (*docker.Client, error) {
@@ -173,7 +150,8 @@ func listValidNodes(cli *docker.Client) ([]swarm.Node, error) {
 		return nil, errors.WithStack(err)
 	}
 	for i := 0; i < len(nodes); i++ {
-		if _, ok := nodes[i].Spec.Annotations.Labels[labelNodeDockerAddr.String()]; !ok {
+		l := provisioncommon.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
+		if addr := l.NodeAddr(); addr == "" {
 			nodes[i] = nodes[len(nodes)-1]
 			nodes = nodes[:len(nodes)-1]
 			i--
@@ -374,11 +352,12 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	restartCount := 0
 	replicas := 0
 	if opts.baseSpec != nil {
-		replicas, err = strconv.Atoi(opts.baseSpec.Labels[labelProcessReplicas.String()])
-		if err != nil && opts.baseSpec.Mode.Replicated != nil {
+		oldLabels := provisioncommon.LabelSet{Labels: opts.baseSpec.Labels}
+		replicas = oldLabels.AppReplicas()
+		if replicas == 0 && opts.baseSpec.Mode.Replicated != nil {
 			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
 		}
-		restartCount, _ = strconv.Atoi(opts.baseSpec.Labels[labelServiceRestart.String()])
+		restartCount = oldLabels.Restarts()
 	}
 	if opts.processState.Increment != 0 {
 		replicas += opts.processState.Increment
@@ -387,14 +366,6 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		}
 	} else if replicas == 0 && opts.processState.Start {
 		replicas = 1
-	}
-	routerName, err := opts.app.GetRouterName()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	routerType, _, err := router.Type(routerName)
-	if err != nil {
-		return nil, errors.WithStack(err)
 	}
 	srvName := serviceNameForApp(opts.app, opts.process)
 	if opts.isDeploy {
@@ -412,32 +383,30 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	if opts.processState.Restart {
 		restartCount++
 	}
-	labels := map[string]string{
-		labelService.String():            strconv.FormatBool(true),
-		labelServiceDeploy.String():      strconv.FormatBool(opts.isDeploy),
-		labelServiceIsolatedRun.String(): strconv.FormatBool(opts.isIsolatedRun),
-		labelServiceBuildImage.String():  opts.buildImage,
-		labelAppName.String():            opts.app.GetName(),
-		labelAppProcess.String():         opts.process,
-		labelAppPlatform.String():        opts.app.GetPlatform(),
-		labelRouterName.String():         routerName,
-		labelRouterType.String():         routerType,
-		labelProcessReplicas.String():    strconv.Itoa(replicas),
-		labelServiceRestart.String():     strconv.Itoa(restartCount),
-		labelPoolName.String():           opts.app.GetPool(),
-		labelProvisionerName.String():    "swarm",
+	labels, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:           opts.app,
+		IsDeploy:      opts.isDeploy,
+		IsIsolatedRun: opts.isIsolatedRun,
+		BuildImage:    opts.buildImage,
+		Process:       opts.process,
+		Provisioner:   provisionerName,
+		Replicas:      replicas,
+		RestartCount:  restartCount,
+	}, "")
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	user, err := config.GetString("docker:user")
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
 	}
-	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, opts.app.GetPool()))
+	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", provisioncommon.LabelNodePool, opts.app.GetPool()))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
 				Image:       opts.image,
 				Env:         envs,
-				Labels:      labels,
+				Labels:      labels.ToLabels(),
 				Command:     cmds,
 				User:        user,
 				Healthcheck: healthConfig,
@@ -454,7 +423,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		EndpointSpec: endpointSpec,
 		Annotations: swarm.Annotations{
 			Name:   srvName,
-			Labels: labels,
+			Labels: labels.ToLabels(),
 		},
 		Mode: swarm.ServiceMode{
 			Replicated: &swarm.ReplicatedService{
@@ -479,12 +448,13 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return newClient(node.Spec.Annotations.Labels[labelNodeDockerAddr.String()])
+	l := provisioncommon.LabelSet{Labels: node.Spec.Annotations.Labels}
+	return newClient(l.NodeAddr())
 }
 
 func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
 	filters := map[string][]string{
-		"label":         {fmt.Sprintf("%s=%s", labelAppName, a.GetName())},
+		"label":         {fmt.Sprintf("%s=%s", provisioncommon.LabelAppName, a.GetName())},
 		"desired-state": {string(swarm.TaskStateRunning)},
 	}
 	if taskID != "" {
@@ -535,11 +505,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	var constraints []string
 	if len(filter.Exclude) > 0 {
 		for _, v := range filter.Exclude {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", labelNodePoolName, v))
+			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", provisioncommon.LabelNodePool, v))
 		}
 	} else {
 		for _, v := range filter.Include {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", labelNodePoolName, v))
+			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", provisioncommon.LabelNodePool, v))
 		}
 	}
 	var mounts []mount.Mount
@@ -561,7 +531,7 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 			Retries:  config.Config.Healthcheck.Retries,
 		}
 	}
-	labels := provisioncommon.NodeContainerLabels(config.Name, pool, "swarm", config.Config.Labels).ToLabels()
+	labels := provisioncommon.NodeContainerLabels(config.Name, pool, "swarm", "", config.Config.Labels).ToLabels()
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   nodeContainerServiceName(config.Name, pool),

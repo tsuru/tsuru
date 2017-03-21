@@ -18,6 +18,10 @@ import (
 	"k8s.io/client-go/pkg/labels"
 )
 
+const (
+	tsuruLabelPrefix = "tsuru.io/"
+)
+
 func deploymentNameForApp(a provision.App, process string) string {
 	return fmt.Sprintf("%s-%s", a.GetName(), process)
 }
@@ -136,7 +140,7 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 		App:         a,
 		Process:     process,
 		Provisioner: provisionerName,
-	})
+	}, tsuruLabelPrefix)
 	if err != nil {
 		return err
 	}
@@ -154,7 +158,7 @@ func cleanupDaemonSet(client kubernetes.Interface, name, pool string) error {
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	ls := provisioncommon.NodeContainerLabels(name, pool, provisionerName, nil)
+	ls := provisioncommon.NodeContainerLabels(name, pool, provisionerName, tsuruLabelPrefix, nil)
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
 	})
@@ -201,5 +205,5 @@ func labelSetFromMeta(meta *v1.ObjectMeta) *provisioncommon.LabelSet {
 	for k, v := range meta.Annotations {
 		merged[k] = v
 	}
-	return &provisioncommon.LabelSet{Labels: merged}
+	return &provisioncommon.LabelSet{Labels: merged, Prefix: tsuruLabelPrefix}
 }

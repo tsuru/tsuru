@@ -175,7 +175,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		App:         a,
 		Process:     "p1",
 		Provisioner: provisionerName,
-	})
+	}, tsuruLabelPrefix)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
@@ -250,7 +250,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ls := provisioncommon.NodeContainerLabels("bs", "p1", provisionerName, nil)
+	ls := provisioncommon.NodeContainerLabels("bs", "p1", provisionerName, tsuruLabelPrefix, nil)
 	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
@@ -295,5 +295,6 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 			"tsuru.io/a": "1",
 			"b":          "2",
 		},
+		Prefix: tsuruLabelPrefix,
 	})
 }

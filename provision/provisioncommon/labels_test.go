@@ -23,6 +23,7 @@ func Test(t *testing.T) {
 func (s *S) TestLabelSetConversion(c *check.C) {
 	ls := LabelSet{
 		Labels: map[string]string{"l1": "v1", "l2": "v2"},
+		Prefix: "tsuru.io/",
 	}
 	c.Assert(ls.ToLabels(), check.DeepEquals, map[string]string{
 		"tsuru.io/l1": "v1",
@@ -39,6 +40,7 @@ func (s *S) TestLabelSetSelectors(c *check.C) {
 			"app-process": "proc",
 			"is-build":    "false",
 		},
+		Prefix: "tsuru.io/",
 	}
 	c.Assert(ls.ToSelector(), check.DeepEquals, map[string]string{
 		"tsuru.io/app-name":    "app",
@@ -57,6 +59,7 @@ func (s *S) TestLabelSetGetLabel(c *check.C) {
 			"tsuru.io/app-name": "app1",
 			"app-name":          "app2",
 		},
+		Prefix: "tsuru.io/",
 	}
 	c.Assert(ls.getLabel("app-name"), check.Equals, "app1")
 	c.Assert(ls.getLabel("l1"), check.Equals, "v1")
@@ -74,12 +77,13 @@ func (s *S) TestServiceLabels(c *check.C) {
 		IsBuild:     true,
 		Provisioner: "kubernetes",
 	}
-	ls, err := ServiceLabels(opts)
+	ls, err := ServiceLabels(opts, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":             "true",
 			"is-build":             "true",
+			"is-service":           "true",
 			"is-stopped":           "false",
 			"is-isolated-run":      "false",
 			"is-deploy":            "false",
@@ -98,7 +102,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 }
 
 func (s *S) TestNodeContainerLabels(c *check.C) {
-	c.Assert(NodeContainerLabels("name", "pool", "provisioner", nil), check.DeepEquals, &LabelSet{
+	c.Assert(NodeContainerLabels("name", "pool", "provisioner", "", nil), check.DeepEquals, &LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",
@@ -107,7 +111,7 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 			"node-container-pool": "pool",
 		},
 	})
-	c.Assert(NodeContainerLabels("name", "pool", "provisioner", map[string]string{"a": "1"}), check.DeepEquals, &LabelSet{
+	c.Assert(NodeContainerLabels("name", "pool", "provisioner", "", map[string]string{"a": "1"}), check.DeepEquals, &LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",

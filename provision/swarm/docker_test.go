@@ -188,7 +188,7 @@ func (s *S) TestListValidNodes(c *check.C) {
 	mockNodes := []swarm.Node{
 		{},
 		{},
-		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{labelNodeDockerAddr.String(): "myaddr"}}}},
+		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{provisioncommon.LabelNodeAddr: "myaddr"}}}},
 		{},
 	}
 	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +247,7 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	serviceSpec, err := serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
 	c.Assert(err, check.IsNil)
-	expectedLabels := provisioncommon.NodeContainerLabels("swarmbs", "", "swarm", map[string]string{"label1": "val1"}).ToLabels()
+	expectedLabels := provisioncommon.NodeContainerLabels("swarmbs", "", "swarm", "", map[string]string{"label1": "val1"}).ToLabels()
 	expected := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   "node-container-swarmbs-all",

@@ -126,7 +126,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	if err != nil {
 		return err
 	}
-	labelSet, err := provisioncommon.ProcessLabels(args.App, c.ProcessName, "docker")
+	labelSet, err := provisioncommon.ProcessLabels(args.App, c.ProcessName, "docker", "")
 	if err != nil {
 		return err
 	}

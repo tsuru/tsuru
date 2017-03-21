@@ -66,6 +66,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				ObjectMeta: v1.ObjectMeta{
 					Labels: map[string]string{
 						"tsuru.io/is-tsuru":             "true",
+						"tsuru.io/is-service":           "true",
 						"tsuru.io/is-build":             "false",
 						"tsuru.io/is-stopped":           "false",
 						"tsuru.io/is-deploy":            "false",
@@ -83,7 +84,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				},
 				Spec: v1.PodSpec{
 					NodeSelector: map[string]string{
-						labelNodePoolName: "bonehunters",
+						provisioncommon.LabelNodePool: "bonehunters",
 					},
 					RestartPolicy: "Always",
 					Containers: []v1.Container{
@@ -115,6 +116,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Namespace: tsuruNamespace,
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/is-service":           "true",
 				"tsuru.io/is-build":             "false",
 				"tsuru.io/is-stopped":           "false",
 				"tsuru.io/is-deploy":            "false",
@@ -344,7 +346,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		App:         a,
 		Process:     "p1",
 		Provisioner: provisionerName,
-	})
+	}, tsuruLabelPrefix)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{

@@ -88,7 +88,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 		App:         params.app,
 		IsBuild:     true,
 		Provisioner: provisionerName,
-	})
+	}, tsuruLabelPrefix)
 	if err != nil {
 		return "", err
 	}
@@ -225,7 +225,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		Process:     process,
 		Replicas:    replicas,
 		Provisioner: provisionerName,
-	})
+	}, tsuruLabelPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyAlways,
 					NodeSelector: map[string]string{
-						labelNodePoolName: a.GetPool(),
+						provisioncommon.LabelNodePool: a.GetPool(),
 					},
 					Containers: []v1.Container{
 						{

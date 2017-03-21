@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -74,7 +75,7 @@ func (s *S) TestAddNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "m2": "v2", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -104,7 +105,7 @@ func (s *S) TestAddNodeAlreadyInSwarm(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = initSwarm(cli, srv.URL())
 	c.Assert(err, check.IsNil)
-	metadata := map[string]string{"m1": "v1", "m2": "v2", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -131,7 +132,7 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
 		defer srv.Stop()
-		metadata := map[string]string{"count": fmt.Sprintf("%d", i), labelNodePoolName.String(): "p1"}
+		metadata := map[string]string{"count": fmt.Sprintf("%d", i), provisioncommon.LabelNodePool: "p1"}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
 			Metadata: metadata,
@@ -144,8 +145,8 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 	c.Assert(nodes, check.HasLen, 5)
 	for i, n := range nodes {
 		c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-			"count":                    fmt.Sprintf("%d", i),
-			labelNodePoolName.String(): "p1",
+			"count": fmt.Sprintf("%d", i),
+			provisioncommon.LabelNodePool: "p1",
 		})
 	}
 }
@@ -155,7 +156,7 @@ func (s *S) TestAddNodeMultipleRoleCheck(c *check.C) {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
 		defer srv.Stop()
-		metadata := map[string]string{labelNodePoolName.String(): "p1"}
+		metadata := map[string]string{provisioncommon.LabelNodePool: "p1"}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
 			Metadata: metadata,
@@ -193,7 +194,7 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	defer srv.Stop()
 	url := srv.URL()
 	url = strings.Replace(url, "http://", "https://", 1)
-	metadata := map[string]string{"m1": "v1", "m2": "v2", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:    url,
 		Metadata:   metadata,
@@ -262,7 +263,7 @@ func (s *S) TestListNodes(c *check.C) {
 	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv2.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -288,7 +289,7 @@ func (s *S) TestListNodesOnlyValid(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -386,7 +387,8 @@ func (s *S) TestRestartExisting(c *check.C) {
 	c.Assert(err, check.IsNil)
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
-	c.Assert(service.Spec.TaskTemplate.ContainerSpec.Labels[labelServiceRestart.String()], check.Equals, "1")
+	l := provisioncommon.LabelSet{Labels: service.Spec.TaskTemplate.ContainerSpec.Labels}
+	c.Assert(l.Restarts(), check.Equals, 1)
 }
 
 func (s *S) TestStopStart(c *check.C) {
@@ -892,7 +894,7 @@ func (s *S) TestGetNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -919,7 +921,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv2.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -949,7 +951,7 @@ func (s *S) TestRemoveLastNodeLeaveSwarm(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -981,7 +983,7 @@ func (s *S) TestRemoveNodeRebalance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer srv2.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -1018,7 +1020,7 @@ func (s *S) TestUpdateNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -1035,7 +1037,7 @@ func (s *S) TestUpdateNode(c *check.C) {
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
 		"m1": "v2",
 		"m2": "v3",
-		labelNodePoolName.String(): "p1",
+		provisioncommon.LabelNodePool: "p1",
 	})
 }
 
@@ -1043,7 +1045,7 @@ func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", labelNodePoolName.String(): "p1"}
+	metadata := map[string]string{"m1": "v1", provisioncommon.LabelNodePool: "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -1059,7 +1061,7 @@ func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
 		"m1": "v1",
-		labelNodePoolName.String(): "p1",
+		provisioncommon.LabelNodePool: "p1",
 	})
 	c.Assert(node.Status(), check.Equals, "ready (pause)")
 	err = s.p.UpdateNode(provision.UpdateNodeOptions{
@@ -1091,26 +1093,23 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cli, err := chooseDBSwarmNode()
 	c.Assert(err, check.IsNil)
+	set, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		IsDeploy:    true,
+		BuildImage:  "app:v1",
+		Provisioner: provisionerName,
+	}, "")
+	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
 				ContainerSpec: swarm.ContainerSpec{
-					Labels: map[string]string{
-						labelAppName.String():           a.Name,
-						labelService.String():           "true",
-						labelServiceDeploy.String():     "true",
-						labelServiceBuildImage.String(): "app:v1",
-					},
+					Labels: set.ToLabels(),
 				},
 			},
 			Annotations: swarm.Annotations{
-				Name: "myapp-web",
-				Labels: map[string]string{
-					labelAppName.String():           a.Name,
-					labelService.String():           "true",
-					labelServiceDeploy.String():     "true",
-					labelServiceBuildImage.String(): "app:v1",
-				},
+				Name:   "myapp-web",
+				Labels: set.ToLabels(),
 			},
 		},
 	})
@@ -1150,24 +1149,22 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cli, err := chooseDBSwarmNode()
 	c.Assert(err, check.IsNil)
+	set, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		BuildImage:  "notset:v1",
+		Provisioner: provisionerName,
+	}, "")
+	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
 				ContainerSpec: swarm.ContainerSpec{
-					Labels: map[string]string{
-						labelAppName.String():           a.Name,
-						labelService.String():           "true",
-						labelServiceBuildImage.String(): "notset:v1",
-					},
+					Labels: set.ToLabels(),
 				},
 			},
 			Annotations: swarm.Annotations{
-				Name: "myapp-web",
-				Labels: map[string]string{
-					labelAppName.String():           a.Name,
-					labelService.String():           "true",
-					labelServiceBuildImage.String(): "notset:v1",
-				},
+				Name:   "myapp-web",
+				Labels: set.ToLabels(),
 			},
 		},
 	})
@@ -1207,24 +1204,22 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cli, err := chooseDBSwarmNode()
 	c.Assert(err, check.IsNil)
+	set, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+		App:         a,
+		Provisioner: provisionerName,
+		IsDeploy:    true,
+	}, "")
+	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
 			TaskTemplate: swarm.TaskSpec{
 				ContainerSpec: swarm.ContainerSpec{
-					Labels: map[string]string{
-						labelAppName.String():       a.Name,
-						labelService.String():       "true",
-						labelServiceDeploy.String(): "true",
-					},
+					Labels: set.ToLabels(),
 				},
 			},
 			Annotations: swarm.Annotations{
-				Name: "myapp-web",
-				Labels: map[string]string{
-					labelAppName.String():       a.Name,
-					labelService.String():       "true",
-					labelServiceDeploy.String(): "true",
-				},
+				Name:   "myapp-web",
+				Labels: set.ToLabels(),
 			},
 		},
 	})
@@ -1792,7 +1787,8 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(cont.Image, check.Equals, "myapp:v1")
 	_, err = client.InspectService("myapp-isolated-run")
 	c.Assert(err, check.DeepEquals, &docker.NoSuchService{ID: "myapp-isolated-run"})
-	c.Assert(service.Spec.Labels[labelServiceIsolatedRun.String()], check.Equals, "true")
+	l := provisioncommon.LabelSet{Labels: service.Spec.Labels}
+	c.Assert(l.IsIsolatedRun(), check.Equals, true)
 }
 
 func (s *S) TestExecuteCommandIsolatedNoDeploys(c *check.C) {
