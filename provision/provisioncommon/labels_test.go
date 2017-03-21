@@ -22,16 +22,11 @@ func Test(t *testing.T) {
 
 func (s *S) TestLabelSetConversion(c *check.C) {
 	ls := LabelSet{
-		Labels:      map[string]string{"l1": "v1", "l2": "v2"},
-		Annotations: map[string]string{"a1": "v1", "a2": "v2"},
+		Labels: map[string]string{"l1": "v1", "l2": "v2"},
 	}
 	c.Assert(ls.ToLabels(), check.DeepEquals, map[string]string{
 		"tsuru.io/l1": "v1",
 		"tsuru.io/l2": "v2",
-	})
-	c.Assert(ls.ToAnnotations(), check.DeepEquals, map[string]string{
-		"tsuru.io/a1": "v1",
-		"tsuru.io/a2": "v2",
 	})
 }
 
@@ -97,29 +92,8 @@ func (s *S) TestPodLabels(c *check.C) {
 			"router-name":          "fake",
 			"router-type":          "fake",
 			"provisioner":          "kubernetes",
-		},
-		Annotations: map[string]string{
-			"build-image": "myimg",
-		},
-	})
-	ls, err = PodLabels(a, "p1", "", 3)
-	c.Assert(err, check.IsNil)
-	c.Assert(ls, check.DeepEquals, &LabelSet{
-		Labels: map[string]string{
-			"is-tsuru":             "true",
-			"is-build":             "false",
-			"is-stopped":           "false",
-			"app-name":             "myapp",
-			"app-process":          "p1",
-			"app-process-replicas": "3",
-			"app-platform":         "cobol",
-			"app-pool":             "test-default",
-			"router-name":          "fake",
-			"router-type":          "fake",
-			"provisioner":          "kubernetes",
-		},
-		Annotations: map[string]string{
-			"build-image": "",
+			"restarts":             "0",
+			"build-image":          "myimg",
 		},
 	})
 }

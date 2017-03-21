@@ -22,6 +22,8 @@ var (
 	labelIsTsuru         = "is-tsuru"
 	labelIsStopped       = "is-stopped"
 	labelIsBuild         = "is-build"
+	labelIsDeploy        = "is-deploy"
+	labelIsIsolatedRun   = "is-isolated-run"
 	labelIsNodeContainer = "is-node-container"
 
 	labelAppName            = "app-name"
@@ -43,8 +45,7 @@ var (
 )
 
 type LabelSet struct {
-	Labels      map[string]string
-	Annotations map[string]string
+	Labels map[string]string
 }
 
 func withPrefix(m map[string]string) map[string]string {
@@ -71,10 +72,6 @@ func subMap(m map[string]string, keys ...string) map[string]string {
 
 func (s *LabelSet) ToLabels() map[string]string {
 	return withPrefix(s.Labels)
-}
-
-func (s *LabelSet) ToAnnotations() map[string]string {
-	return withPrefix(s.Annotations)
 }
 
 func (s *LabelSet) ToSelector() map[string]string {
@@ -128,7 +125,14 @@ func (s *LabelSet) SetStopped() {
 	s.addLabel(labelIsStopped, strconv.FormatBool(true))
 }
 
+func (s *LabelSet) SetBuildImage(image string) {
+	s.addLabel(labelBuildImage, image)
+}
+
 func (s *LabelSet) addLabel(k, v string) {
+	if s.Labels == nil {
+		s.Labels = make(map[string]string)
+	}
 	s.Labels[k] = v
 }
 
