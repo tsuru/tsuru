@@ -81,7 +81,9 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	if config.Name == nodecontainer.BsDefaultName {
 		config.HostConfig.Binds = append(config.HostConfig.Binds,
 			"/var/log:/var/log:ro",
-			"/var/lib/docker/containers:/var/lib/docker/containers:ro")
+			"/var/lib/docker/containers:/var/lib/docker/containers:ro",
+			// This last one is for out of the box compatibility with minikube.
+			"/mnt/sda1/var/lib/docker/containers:/mnt/sda1/var/lib/docker/containers:ro")
 	}
 	for i, b := range config.HostConfig.Binds {
 		parts := strings.SplitN(b, ":", 3)
