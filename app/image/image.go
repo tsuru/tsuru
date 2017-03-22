@@ -115,6 +115,24 @@ func SaveImageCustomData(imageName string, customData map[string]interface{}) er
 	return data.Save()
 }
 
+func UpdateImageCustomData(appName, imageName string, customData map[string]interface{}) error {
+	data, err := customDataToImageMetadata(imageName, customData)
+	if err != nil {
+		return err
+	}
+	dataColl, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	defer dataColl.Close()
+	coll, err := appImagesColl()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	return coll.UpdateId(appName, data)
+}
+
 func GetImageCustomData(imageName string) (ImageMetadata, error) {
 	coll, err := imageCustomDataColl()
 	if err != nil {
