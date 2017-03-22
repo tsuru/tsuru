@@ -141,7 +141,8 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 		App:         a,
 		Process:     process,
 		Provisioner: provisionerName,
-	}, tsuruLabelPrefix)
+		Prefix:      tsuruLabelPrefix,
+	})
 	if err != nil {
 		return err
 	}

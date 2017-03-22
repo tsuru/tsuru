@@ -392,7 +392,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		Provisioner:   provisionerName,
 		Replicas:      replicas,
 		RestartCount:  restartCount,
-	}, "")
+	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

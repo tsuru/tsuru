@@ -222,7 +222,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
-	l, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{App: a, Provisioner: provisionerName}, tsuruLabelPrefix)
+	l, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{App: a, Provisioner: provisionerName, Prefix: tsuruLabelPrefix})
 	if err != nil {
 		return nil, err
 	}

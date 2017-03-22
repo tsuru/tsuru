@@ -1098,7 +1098,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 		IsDeploy:    true,
 		BuildImage:  "app:v1",
 		Provisioner: provisionerName,
-	}, "")
+	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
@@ -1153,7 +1153,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 		App:         a,
 		BuildImage:  "notset:v1",
 		Provisioner: provisionerName,
-	}, "")
+	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{
@@ -1208,7 +1208,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 		App:         a,
 		Provisioner: provisionerName,
 		IsDeploy:    true,
-	}, "")
+	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
 		ServiceSpec: swarm.ServiceSpec{

@@ -189,6 +189,7 @@ type ServiceLabelsOpts struct {
 	BuildImage    string
 	Process       string
 	Provisioner   string
+	Prefix        string
 	Replicas      int
 	RestartCount  int
 	IsDeploy      bool
@@ -196,8 +197,13 @@ type ServiceLabelsOpts struct {
 	IsBuild       bool
 }
 
-func ServiceLabels(opts ServiceLabelsOpts, prefix string) (*LabelSet, error) {
-	set, err := ProcessLabels(opts.App, opts.Process, opts.Provisioner, prefix)
+func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
+	set, err := ProcessLabels(ProcessLabelsOpts{
+		App:         opts.App,
+		Process:     opts.Process,
+		Provisioner: opts.Provisioner,
+		Prefix:      opts.Prefix,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -213,8 +219,15 @@ func ServiceLabels(opts ServiceLabelsOpts, prefix string) (*LabelSet, error) {
 	return set, nil
 }
 
-func ProcessLabels(a provision.App, process, provisioner, prefix string) (*LabelSet, error) {
-	routerName, err := a.GetRouterName()
+type ProcessLabelsOpts struct {
+	App         provision.App
+	Process     string
+	Provisioner string
+	Prefix      string
+}
+
+func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
+	routerName, err := opts.App.GetRouterName()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -226,15 +239,15 @@ func ProcessLabels(a provision.App, process, provisioner, prefix string) (*Label
 		Labels: map[string]string{
 			labelIsTsuru:     strconv.FormatBool(true),
 			labelIsStopped:   strconv.FormatBool(false),
-			LabelAppName:     a.GetName(),
-			labelAppProcess:  process,
-			labelAppPlatform: a.GetPlatform(),
-			labelAppPool:     a.GetPool(),
+			LabelAppName:     opts.App.GetName(),
+			labelAppProcess:  opts.Process,
+			labelAppPlatform: opts.App.GetPlatform(),
+			labelAppPool:     opts.App.GetPool(),
 			labelRouterName:  routerName,
 			labelRouterType:  routerType,
-			labelProvisioner: provisioner,
+			labelProvisioner: opts.Provisioner,
 		},
-		Prefix: prefix,
+		Prefix: opts.Prefix,
 	}, nil
 }
 

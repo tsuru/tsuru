@@ -346,7 +346,8 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		App:         a,
 		Process:     "p1",
 		Provisioner: provisionerName,
-	}, tsuruLabelPrefix)
+		Prefix:      tsuruLabelPrefix,
+	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{

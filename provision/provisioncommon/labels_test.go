@@ -79,7 +79,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 		IsBuild:     true,
 		Provisioner: "kubernetes",
 	}
-	ls, err := ServiceLabels(opts, "")
+	ls, err := ServiceLabels(opts)
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &LabelSet{
 		Labels: map[string]string{

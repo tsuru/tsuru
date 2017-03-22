@@ -88,7 +88,8 @@ func createBuildJob(params buildJobParams) (string, error) {
 		App:         params.app,
 		IsBuild:     true,
 		Provisioner: provisionerName,
-	}, tsuruLabelPrefix)
+		Prefix:      tsuruLabelPrefix,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -225,7 +226,8 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		Process:     process,
 		Replicas:    replicas,
 		Provisioner: provisionerName,
-	}, tsuruLabelPrefix)
+		Prefix:      tsuruLabelPrefix,
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -176,7 +176,8 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		App:         a,
 		Process:     "p1",
 		Provisioner: provisionerName,
-	}, tsuruLabelPrefix)
+		Prefix:      tsuruLabelPrefix,
+	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
