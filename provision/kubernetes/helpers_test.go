@@ -9,8 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -172,7 +171,7 @@ func (s *S) TestCleanupJob(c *check.C) {
 
 func (s *S) TestCleanupDeployment(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	ls, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+	ls, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         a,
 		Process:     "p1",
 		Provisioner: provisionerName,
@@ -252,8 +251,8 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      &nodecontainer.NodeContainerConfig{Name: "bs"},
+	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:        "bs",
 		Pool:        "p1",
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -295,7 +294,7 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 		},
 	}
 	ls := labelSetFromMeta(&meta)
-	c.Assert(ls, check.DeepEquals, &provisioncommon.LabelSet{
+	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"tsuru.io/x": "a",
 			"y":          "b",

@@ -19,7 +19,6 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 )
@@ -188,7 +187,7 @@ func (s *S) TestListValidNodes(c *check.C) {
 	mockNodes := []swarm.Node{
 		{},
 		{},
-		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{provisioncommon.LabelNodeAddr: "myaddr"}}}},
+		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{provision.LabelNodeAddr: "myaddr"}}}},
 		{},
 	}
 	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -247,9 +246,10 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	serviceSpec, err := serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
 	c.Assert(err, check.IsNil)
-	expectedLabels := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      &c1,
-		Provisioner: "swarm",
+	expectedLabels := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:         c1.Name,
+		CustomLabels: c1.Config.Labels,
+		Provisioner:  "swarm",
 	}).ToLabels()
 	expected := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{

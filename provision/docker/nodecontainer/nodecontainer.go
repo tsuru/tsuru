@@ -19,9 +19,9 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/fix"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 )
 
 type DockerProvisioner interface {
@@ -150,10 +150,11 @@ func create(c *nodecontainer.NodeContainerConfig, node *cluster.Node, poolName s
 		return err
 	}
 	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + node.Address}, c.Config.Env...)
-	c.Config.Labels = provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      c,
-		Pool:        poolName,
-		Provisioner: p.GetName(),
+	c.Config.Labels = provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:         c.Name,
+		CustomLabels: c.Config.Labels,
+		Pool:         poolName,
+		Provisioner:  p.GetName(),
 	}).ToLabels()
 	opts := docker.CreateContainerOptions{
 		Name:       c.Name,

@@ -11,7 +11,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 )
 
 type swarmNodeWrapper struct {
@@ -20,12 +19,12 @@ type swarmNodeWrapper struct {
 }
 
 func (n *swarmNodeWrapper) Pool() string {
-	l := provisioncommon.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
 	return l.NodePool()
 }
 
 func (n *swarmNodeWrapper) Address() string {
-	l := provisioncommon.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
 	return l.NodeAddr()
 }
 
@@ -41,7 +40,7 @@ func (n *swarmNodeWrapper) Status() string {
 }
 
 func (n *swarmNodeWrapper) Metadata() map[string]string {
-	labels := provisioncommon.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	labels := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
 	return labels.PublicNodeLabels()
 }
 
@@ -53,7 +52,7 @@ func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"node":  {n.ID},
-			"label": {fmt.Sprintf("%s=true", provisioncommon.LabelIsService)},
+			"label": {fmt.Sprintf("%s=true", provision.LabelIsService)},
 		},
 	})
 	if err != nil {

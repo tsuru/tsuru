@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -425,8 +424,8 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
 	s.mockfakeNodes(c)
-	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      &nodecontainer.NodeContainerConfig{Name: "bs"},
+	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:        "bs",
 		Pool:        "p1",
 		Provisioner: "kubernetes",
 		Prefix:      tsuruLabelPrefix,

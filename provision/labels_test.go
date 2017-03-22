@@ -2,28 +2,17 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package provisioncommon
+package provision_test
 
 import (
-	"testing"
-
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
-type S struct{}
-
-var _ = check.Suite(&S{})
-
-func Test(t *testing.T) {
-	check.TestingT(t)
-}
-
 func (s *S) TestLabelSetConversion(c *check.C) {
-	ls := LabelSet{
+	ls := provision.LabelSet{
 		Labels: map[string]string{"l1": "v1", "l2": "v2"},
 		Prefix: "tsuru.io/",
 	}
@@ -34,7 +23,7 @@ func (s *S) TestLabelSetConversion(c *check.C) {
 }
 
 func (s *S) TestLabelSetSelectors(c *check.C) {
-	ls := LabelSet{
+	ls := provision.LabelSet{
 		Labels: map[string]string{
 			"l1":          "v1",
 			"l2":          "v2",
@@ -54,24 +43,11 @@ func (s *S) TestLabelSetSelectors(c *check.C) {
 	})
 }
 
-func (s *S) TestLabelSetGetLabel(c *check.C) {
-	ls := LabelSet{
-		Labels: map[string]string{
-			"l1":                "v1",
-			"tsuru.io/app-name": "app1",
-			"app-name":          "app2",
-		},
-		Prefix: "tsuru.io/",
-	}
-	c.Assert(ls.getLabel("app-name"), check.Equals, "app1")
-	c.Assert(ls.getLabel("l1"), check.Equals, "v1")
-}
-
 func (s *S) TestServiceLabels(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
-	opts := ServiceLabelsOpts{
+	opts := provision.ServiceLabelsOpts{
 		App:         a,
 		Replicas:    3,
 		Process:     "p1",
@@ -79,9 +55,9 @@ func (s *S) TestServiceLabels(c *check.C) {
 		IsBuild:     true,
 		Provisioner: "kubernetes",
 	}
-	ls, err := ServiceLabels(opts)
+	ls, err := provision.ServiceLabels(opts)
 	c.Assert(err, check.IsNil)
-	c.Assert(ls, check.DeepEquals, &LabelSet{
+	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":             "true",
 			"is-build":             "true",
@@ -104,8 +80,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 }
 
 func (s *S) TestNodeContainerLabels(c *check.C) {
-	c.Assert(NodeContainerLabels(NodeContainerLabelsOpts{
-		Config: &nodecontainer.NodeContainerConfig{Name: "name"}, Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &LabelSet{
+	c.Assert(provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{Name: "name", Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",
@@ -114,11 +89,7 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 			"node-container-pool": "pool",
 		},
 	})
-	c.Assert(NodeContainerLabels(NodeContainerLabelsOpts{
-		Config: &nodecontainer.NodeContainerConfig{
-			Name:   "name",
-			Config: docker.Config{Labels: map[string]string{"a": "1"}},
-		}, Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &LabelSet{
+	c.Assert(provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{Name: "name", CustomLabels: map[string]string{"a": "1"}, Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",

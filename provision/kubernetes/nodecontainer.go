@@ -11,8 +11,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
@@ -35,7 +35,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		oldDs = nil
 	}
 	nodeReq := v1.NodeSelectorRequirement{
-		Key: provisioncommon.LabelNodePool,
+		Key: provision.LabelNodePool,
 	}
 	if len(filter.Exclude) > 0 {
 		nodeReq.Operator = v1.NodeSelectorOpNotIn
@@ -67,11 +67,12 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Update(oldDs)
 		return errors.WithStack(err)
 	}
-	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      config,
-		Pool:        pool,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:         config.Name,
+		CustomLabels: config.Config.Labels,
+		Pool:         pool,
+		Provisioner:  provisionerName,
+		Prefix:       tsuruLabelPrefix,
 	})
 	envVars := make([]v1.EnvVar, len(config.Config.Env))
 	for i, v := range config.Config.Env {

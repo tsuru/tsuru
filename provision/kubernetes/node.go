@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -19,7 +18,7 @@ func (n *kubernetesNodeWrapper) Pool() string {
 	if n.node.Labels == nil {
 		return ""
 	}
-	return n.node.Labels[provisioncommon.LabelNodePool]
+	return n.node.Labels[provision.LabelNodePool]
 }
 
 func (n *kubernetesNodeWrapper) Address() string {

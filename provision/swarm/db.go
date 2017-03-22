@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -87,7 +86,7 @@ func updateDBSwarmNodes(client *docker.Client) error {
 		if n.ManagerStatus == nil {
 			continue
 		}
-		labels := provisioncommon.LabelSet{Labels: n.Spec.Annotations.Labels}
+		labels := provision.LabelSet{Labels: n.Spec.Annotations.Labels}
 		addr := labels.NodeAddr()
 		if addr == "" {
 			continue

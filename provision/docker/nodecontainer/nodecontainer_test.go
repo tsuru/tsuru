@@ -19,9 +19,9 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 )
@@ -156,7 +156,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	}{
 		{
 			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "A=1", "B=2"}, Image: "bsimg",
-				Labels: provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{Config: &c1, Pool: "p-0", Provisioner: "fake"}).ToLabels(),
+				Labels: provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{Name: c1.Name, Pool: "p-0", Provisioner: "fake"}).ToLabels(),
 			},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
@@ -167,7 +167,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 		},
 		{
 			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "X=Z"}, Image: "sysdigimg",
-				Labels: provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{Config: &c2, Pool: "p-0", Provisioner: "fake"}).ToLabels(),
+				Labels: provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{Name: c2.Name, Pool: "p-0", Provisioner: "fake"}).ToLabels(),
 			},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},

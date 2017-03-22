@@ -10,8 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
@@ -137,7 +135,7 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	l, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         a,
 		Process:     process,
 		Provisioner: provisionerName,
@@ -160,8 +158,8 @@ func cleanupDaemonSet(client kubernetes.Interface, name, pool string) error {
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      &nodecontainer.NodeContainerConfig{Name: name},
+	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:        name,
 		Pool:        pool,
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -207,10 +205,10 @@ func getServicePort(client kubernetes.Interface, srvName string) (int32, error) 
 	return srv.Spec.Ports[0].NodePort, nil
 }
 
-func labelSetFromMeta(meta *v1.ObjectMeta) *provisioncommon.LabelSet {
+func labelSetFromMeta(meta *v1.ObjectMeta) *provision.LabelSet {
 	merged := meta.Labels
 	for k, v := range meta.Annotations {
 		merged[k] = v
 	}
-	return &provisioncommon.LabelSet{Labels: merged, Prefix: tsuruLabelPrefix}
+	return &provision.LabelSet{Labels: merged, Prefix: tsuruLabelPrefix}
 }

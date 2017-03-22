@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/safe"
 )
@@ -150,7 +149,7 @@ func listValidNodes(cli *docker.Client) ([]swarm.Node, error) {
 		return nil, errors.WithStack(err)
 	}
 	for i := 0; i < len(nodes); i++ {
-		l := provisioncommon.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
+		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
 		if addr := l.NodeAddr(); addr == "" {
 			nodes[i] = nodes[len(nodes)-1]
 			nodes = nodes[:len(nodes)-1]
@@ -352,7 +351,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	restartCount := 0
 	replicas := 0
 	if opts.baseSpec != nil {
-		oldLabels := provisioncommon.LabelSet{Labels: opts.baseSpec.Labels}
+		oldLabels := provision.LabelSet{Labels: opts.baseSpec.Labels}
 		replicas = oldLabels.AppReplicas()
 		if replicas == 0 && opts.baseSpec.Mode.Replicated != nil {
 			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
@@ -383,7 +382,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	if opts.processState.Restart {
 		restartCount++
 	}
-	labels, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:           opts.app,
 		IsDeploy:      opts.isDeploy,
 		IsIsolatedRun: opts.isIsolatedRun,
@@ -400,7 +399,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
 	}
-	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", provisioncommon.LabelNodePool, opts.app.GetPool()))
+	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, opts.app.GetPool()))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{
 			ContainerSpec: swarm.ContainerSpec{
@@ -448,13 +447,13 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	l := provisioncommon.LabelSet{Labels: node.Spec.Annotations.Labels}
+	l := provision.LabelSet{Labels: node.Spec.Annotations.Labels}
 	return newClient(l.NodeAddr())
 }
 
 func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
 	filters := map[string][]string{
-		"label":         {fmt.Sprintf("%s=%s", provisioncommon.LabelAppName, a.GetName())},
+		"label":         {fmt.Sprintf("%s=%s", provision.LabelAppName, a.GetName())},
 		"desired-state": {string(swarm.TaskStateRunning)},
 	}
 	if taskID != "" {
@@ -505,11 +504,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 	var constraints []string
 	if len(filter.Exclude) > 0 {
 		for _, v := range filter.Exclude {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", provisioncommon.LabelNodePool, v))
+			constraints = append(constraints, fmt.Sprintf("node.labels.%s != %s", provision.LabelNodePool, v))
 		}
 	} else {
 		for _, v := range filter.Include {
-			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", provisioncommon.LabelNodePool, v))
+			constraints = append(constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, v))
 		}
 	}
 	var mounts []mount.Mount
@@ -531,10 +530,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 			Retries:  config.Config.Healthcheck.Retries,
 		}
 	}
-	labels := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
-		Config:      config,
-		Pool:        pool,
-		Provisioner: "swarm",
+	labels := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
+		Name:         config.Name,
+		CustomLabels: config.Config.Labels,
+		Pool:         pool,
+		Provisioner:  "swarm",
 	}).ToLabels()
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{

@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -130,7 +129,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 			ObjectMeta: v1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
-					provisioncommon.LabelNodePool: "test-default",
+					provision.LabelNodePool: "test-default",
 				},
 			},
 			Status: v1.NodeStatus{

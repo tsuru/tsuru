@@ -10,7 +10,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"gopkg.in/check.v1"
 )
 
@@ -19,8 +18,8 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 		Spec: swarm.NodeSpec{
 			Annotations: swarm.Annotations{
 				Labels: map[string]string{
-					provisioncommon.LabelNodeAddr: "myaddr:1234",
-					provisioncommon.LabelNodePool: "p1",
+					provision.LabelNodeAddr: "myaddr:1234",
+					provision.LabelNodePool: "p1",
 					"l1": "v1",
 				},
 			},
@@ -31,7 +30,7 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	}
 	node := swarmNodeWrapper{Node: swarmNode}
 	c.Assert(node.Address(), check.Equals, "myaddr:1234")
-	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{provisioncommon.LabelNodePool: "p1", "l1": "v1"})
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{provision.LabelNodePool: "p1", "l1": "v1"})
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
 	swarmNode.Status.Message = "msg1"

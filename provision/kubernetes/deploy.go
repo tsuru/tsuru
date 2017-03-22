@@ -16,7 +16,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
@@ -84,7 +83,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 	parallelism := int32(1)
 	dockerSockPath := "/var/run/docker.sock"
 	baseName := deployJobNameForApp(params.app)
-	labels, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         params.app,
 		IsBuild:     true,
 		Provisioner: provisionerName,
@@ -93,7 +92,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	buildImageLabel := &provisioncommon.LabelSet{}
+	buildImageLabel := &provision.LabelSet{}
 	buildImageLabel.SetBuildImage(params.destinationImage)
 	job := &batch.Job{
 		ObjectMeta: v1.ObjectMeta{
@@ -197,7 +196,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*provisioncommon.LabelSet, error) {
+func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*provision.LabelSet, error) {
 	replicas := 0
 	restartCount := 0
 	isStopped := false
@@ -221,7 +220,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		}
 		isStopped = false
 	}
-	labels, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         a,
 		Process:     process,
 		Replicas:    replicas,
@@ -295,7 +294,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyAlways,
 					NodeSelector: map[string]string{
-						provisioncommon.LabelNodePool: a.GetPool(),
+						provision.LabelNodePool: a.GetPool(),
 					},
 					Containers: []v1.Container{
 						{

@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 )
 
@@ -176,9 +175,9 @@ var stateMap = map[swarm.TaskState]provision.Status{
 }
 
 func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a provision.App) provision.Unit {
-	nodeLabels := provisioncommon.LabelSet{Labels: node.Spec.Labels}
+	nodeLabels := provision.LabelSet{Labels: node.Spec.Labels}
 	host := tsuruNet.URLToHost(nodeLabels.NodeAddr())
-	labels := provisioncommon.LabelSet{Labels: service.Spec.Annotations.Labels}
+	labels := provision.LabelSet{Labels: service.Spec.Annotations.Labels}
 	return provision.Unit{
 		ID:          task.ID,
 		AppName:     a.GetName(),
@@ -196,7 +195,7 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 	appsMap := map[string]provision.App{}
 	units := []provision.Unit{}
 	for _, t := range tasks {
-		labels := provisioncommon.LabelSet{Labels: t.Spec.ContainerSpec.Labels}
+		labels := provision.LabelSet{Labels: t.Spec.ContainerSpec.Labels}
 		if !labels.IsService() {
 			continue
 		}
@@ -220,7 +219,7 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 			serviceMap[t.ServiceID] = service
 		}
 		service := serviceMap[t.ServiceID]
-		serviceLabels := provisioncommon.LabelSet{Labels: service.Spec.Annotations.Labels}
+		serviceLabels := provision.LabelSet{Labels: service.Spec.Annotations.Labels}
 		appName := serviceLabels.AppName()
 		if _, ok := appsMap[appName]; !ok {
 			a, err := app.GetByName(appName)
@@ -244,7 +243,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": {fmt.Sprintf("%s=%s", provisioncommon.LabelAppName, app.GetName())},
+			"label": {fmt.Sprintf("%s=%s", provision.LabelAppName, app.GetName())},
 		},
 	})
 	if err != nil {
@@ -289,7 +288,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 		return nil, err
 	}
 	for i := len(nodes) - 1; i >= 0; i-- {
-		l := provisioncommon.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
+		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
 		if l.NodePool() != a.GetPool() {
 			nodes[i], nodes[len(nodes)-1] = nodes[len(nodes)-1], nodes[i]
 			nodes = nodes[:len(nodes)-1]
@@ -297,7 +296,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	}
 	addrs := make([]url.URL, len(nodes))
 	for i, n := range nodes {
-		l := provisioncommon.LabelSet{Labels: n.Spec.Labels}
+		l := provision.LabelSet{Labels: n.Spec.Labels}
 		host := tsuruNet.URLToHost(l.NodeAddr())
 		addrs[i] = url.URL{
 			Scheme: "http",
@@ -331,7 +330,7 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": {provisioncommon.LabelAppName + "=" + a.GetName()},
+			"label": {provision.LabelAppName + "=" + a.GetName()},
 		},
 	})
 	if err != nil {
@@ -352,7 +351,7 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if customData == nil {
 		return nil
 	}
-	labels := provisioncommon.LabelSet{Labels: task.Spec.ContainerSpec.Labels}
+	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels}
 	if !labels.IsDeploy() {
 		return nil
 	}
@@ -478,7 +477,7 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return errors.WithStack(err)
 	}
 	nodeData.Spec.Annotations.Labels = map[string]string{
-		provisioncommon.LabelNodeAddr: opts.Address,
+		provision.LabelNodeAddr: opts.Address,
 	}
 	for k, v := range opts.Metadata {
 		nodeData.Spec.Annotations.Labels[k] = v
@@ -836,7 +835,7 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 		return "", err
 	}
 	for _, node := range nodeList {
-		l := provisioncommon.LabelSet{Labels: node.Spec.Labels}
+		l := provision.LabelSet{Labels: node.Spec.Labels}
 		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", l.NodeAddr(), node.Status.State, node.Spec.Role)
 	}
 	return out, nil

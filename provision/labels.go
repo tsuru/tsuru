@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package provisioncommon
+package provision
 
 import (
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/set"
 )
@@ -185,7 +183,7 @@ func (s *LabelSet) getBoolLabel(k string) bool {
 }
 
 type ServiceLabelsOpts struct {
-	App           provision.App
+	App           App
 	BuildImage    string
 	Process       string
 	Provisioner   string
@@ -220,7 +218,7 @@ func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
 }
 
 type ProcessLabelsOpts struct {
-	App         provision.App
+	App         App
 	Process     string
 	Provisioner string
 	Prefix      string
@@ -252,10 +250,11 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 }
 
 type NodeContainerLabelsOpts struct {
-	Config      *nodecontainer.NodeContainerConfig
-	Pool        string
-	Provisioner string
-	Prefix      string
+	Name         string
+	CustomLabels map[string]string
+	Pool         string
+	Provisioner  string
+	Prefix       string
 }
 
 func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
@@ -263,10 +262,10 @@ func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
 		labelIsTsuru:           strconv.FormatBool(true),
 		labelIsNodeContainer:   strconv.FormatBool(true),
 		labelProvisioner:       opts.Provisioner,
-		labelNodeContainerName: opts.Config.Name,
+		labelNodeContainerName: opts.Name,
 		labelNodeContainerPool: opts.Pool,
 	}
-	for k, v := range opts.Config.Config.Labels {
+	for k, v := range opts.CustomLabels {
 		labels[k] = v
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}

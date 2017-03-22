@@ -9,7 +9,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -84,7 +83,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				},
 				Spec: v1.PodSpec{
 					NodeSelector: map[string]string{
-						provisioncommon.LabelNodePool: "bonehunters",
+						provision.LabelNodePool: "bonehunters",
 					},
 					RestartPolicy: "Always",
 					Containers: []v1.Container{
@@ -342,7 +341,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
 	c.Assert(err, check.IsNil)
-	ls, err := provisioncommon.ServiceLabels(provisioncommon.ServiceLabelsOpts{
+	ls, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         a,
 		Process:     "p1",
 		Provisioner: provisionerName,
