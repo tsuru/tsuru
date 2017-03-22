@@ -531,7 +531,11 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 			Retries:  config.Config.Healthcheck.Retries,
 		}
 	}
-	labels := provisioncommon.NodeContainerLabels(config.Name, pool, "swarm", "", config.Config.Labels).ToLabels()
+	labels := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      config,
+		Pool:        pool,
+		Provisioner: "swarm",
+	}).ToLabels()
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   nodeContainerServiceName(config.Name, pool),

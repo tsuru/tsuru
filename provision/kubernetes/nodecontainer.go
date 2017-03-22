@@ -67,7 +67,12 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Update(oldDs)
 		return errors.WithStack(err)
 	}
-	ls := provisioncommon.NodeContainerLabels(config.Name, pool, provisionerName, tsuruLabelPrefix, config.Config.Labels)
+	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      config,
+		Pool:        pool,
+		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
+	})
 	envVars := make([]v1.EnvVar, len(config.Config.Env))
 	for i, v := range config.Config.Env {
 		parts := strings.SplitN(v, "=", 2)

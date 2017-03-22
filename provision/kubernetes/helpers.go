@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
@@ -158,7 +159,12 @@ func cleanupDaemonSet(client kubernetes.Interface, name, pool string) error {
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	ls := provisioncommon.NodeContainerLabels(name, pool, provisionerName, tsuruLabelPrefix, nil)
+	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      &nodecontainer.NodeContainerConfig{Name: name},
+		Pool:        pool,
+		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
+	})
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
 	})

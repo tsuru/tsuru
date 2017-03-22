@@ -425,7 +425,12 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
 	s.mockfakeNodes(c)
-	ls := provisioncommon.NodeContainerLabels("bs", "p1", "kubernetes", tsuruLabelPrefix, nil)
+	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      &nodecontainer.NodeContainerConfig{Name: "bs"},
+		Pool:        "p1",
+		Provisioner: "kubernetes",
+		Prefix:      tsuruLabelPrefix,
+	})
 	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",

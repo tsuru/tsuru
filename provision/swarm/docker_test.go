@@ -247,7 +247,10 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	serviceSpec, err := serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
 	c.Assert(err, check.IsNil)
-	expectedLabels := provisioncommon.NodeContainerLabels("swarmbs", "", "swarm", "", map[string]string{"label1": "val1"}).ToLabels()
+	expectedLabels := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      &c1,
+		Provisioner: "swarm",
+	}).ToLabels()
 	expected := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
 			Name:   "node-container-swarmbs-all",

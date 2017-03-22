@@ -150,7 +150,11 @@ func create(c *nodecontainer.NodeContainerConfig, node *cluster.Node, poolName s
 		return err
 	}
 	c.Config.Env = append([]string{"DOCKER_ENDPOINT=" + node.Address}, c.Config.Env...)
-	c.Config.Labels = provisioncommon.NodeContainerLabels(c.Name, poolName, p.GetName(), "", c.Config.Labels).ToLabels()
+	c.Config.Labels = provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      c,
+		Pool:        poolName,
+		Provisioner: p.GetName(),
+	}).ToLabels()
 	opts := docker.CreateContainerOptions{
 		Name:       c.Name,
 		HostConfig: &c.HostConfig,

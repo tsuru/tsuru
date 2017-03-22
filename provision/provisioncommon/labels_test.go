@@ -7,7 +7,9 @@ package provisioncommon
 import (
 	"testing"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -102,7 +104,8 @@ func (s *S) TestServiceLabels(c *check.C) {
 }
 
 func (s *S) TestNodeContainerLabels(c *check.C) {
-	c.Assert(NodeContainerLabels("name", "pool", "provisioner", "", nil), check.DeepEquals, &LabelSet{
+	c.Assert(NodeContainerLabels(NodeContainerLabelsOpts{
+		Config: &nodecontainer.NodeContainerConfig{Name: "name"}, Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",
@@ -111,7 +114,11 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 			"node-container-pool": "pool",
 		},
 	})
-	c.Assert(NodeContainerLabels("name", "pool", "provisioner", "", map[string]string{"a": "1"}), check.DeepEquals, &LabelSet{
+	c.Assert(NodeContainerLabels(NodeContainerLabelsOpts{
+		Config: &nodecontainer.NodeContainerConfig{
+			Name:   "name",
+			Config: docker.Config{Labels: map[string]string{"a": "1"}},
+		}, Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",

@@ -156,7 +156,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	}{
 		{
 			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "A=1", "B=2"}, Image: "bsimg",
-				Labels: provisioncommon.NodeContainerLabels("bs", "p-0", "fake", "", nil).ToLabels(),
+				Labels: provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{Config: &c1, Pool: "p-0", Provisioner: "fake"}).ToLabels(),
 			},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},
@@ -167,7 +167,7 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 		},
 		{
 			Config: docker.Config{Env: []string{"DOCKER_ENDPOINT=" + server.URL(), "X=Z"}, Image: "sysdigimg",
-				Labels: provisioncommon.NodeContainerLabels("sysdig", "p-0", "fake", "", nil).ToLabels(),
+				Labels: provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{Config: &c2, Pool: "p-0", Provisioner: "fake"}).ToLabels(),
 			},
 			HostConfig: docker.HostConfig{
 				Binds:         []string{"/xyz:/abc:rw"},

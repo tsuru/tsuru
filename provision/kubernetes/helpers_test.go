@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
@@ -250,7 +251,12 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ls := provisioncommon.NodeContainerLabels("bs", "p1", provisionerName, tsuruLabelPrefix, nil)
+	ls := provisioncommon.NodeContainerLabels(provisioncommon.NodeContainerLabelsOpts{
+		Config:      &nodecontainer.NodeContainerConfig{Name: "bs"},
+		Pool:        "p1",
+		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
+	})
 	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",

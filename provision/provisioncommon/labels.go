@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/set"
 )
@@ -237,16 +238,23 @@ func ProcessLabels(a provision.App, process, provisioner, prefix string) (*Label
 	}, nil
 }
 
-func NodeContainerLabels(name, pool, provisioner, prefix string, extraLabels map[string]string) *LabelSet {
+type NodeContainerLabelsOpts struct {
+	Config      *nodecontainer.NodeContainerConfig
+	Pool        string
+	Provisioner string
+	Prefix      string
+}
+
+func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
 	labels := map[string]string{
 		labelIsTsuru:           strconv.FormatBool(true),
 		labelIsNodeContainer:   strconv.FormatBool(true),
-		labelProvisioner:       provisioner,
-		labelNodeContainerName: name,
-		labelNodeContainerPool: pool,
+		labelProvisioner:       opts.Provisioner,
+		labelNodeContainerName: opts.Config.Name,
+		labelNodeContainerPool: opts.Pool,
 	}
-	for k, v := range extraLabels {
+	for k, v := range opts.Config.Config.Labels {
 		labels[k] = v
 	}
-	return &LabelSet{Labels: labels, Prefix: prefix}
+	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
