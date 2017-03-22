@@ -411,7 +411,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *
 		OutputStream:      w,
 		InactivityTimeout: net.StreamInactivityTimeout,
 	}
-	nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
+	nodes, err := p.Nodes(app)
 	if err != nil {
 		return "", err
 	}
