@@ -49,10 +49,12 @@ func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
+	l := provision.LabelSet{}
+	l.SetIsService()
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"node":  {n.ID},
-			"label": provision.ServiceSelectors(),
+			"label": toLabelSelectors(l.ToIsServiceSelector()),
 		},
 	})
 	if err != nil {

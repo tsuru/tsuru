@@ -452,8 +452,14 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 }
 
 func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
+		App: a,
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	filters := map[string][]string{
-		"label":         provision.AppSelectors(a),
+		"label":         toLabelSelectors(l.ToAppSelector()),
 		"desired-state": {string(swarm.TaskStateRunning)},
 	}
 	if taskID != "" {
@@ -590,4 +596,12 @@ func nodeContainerServiceName(name, pool string) string {
 		return fmt.Sprintf("node-container-%s-all", name)
 	}
 	return fmt.Sprintf("node-container-%s-%s", name, pool)
+}
+
+func toLabelSelectors(m map[string]string) []string {
+	var selectors []string
+	for k, v := range m {
+		selectors = append(selectors, fmt.Sprintf("%s=%s", k, v))
+	}
+	return selectors
 }

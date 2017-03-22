@@ -241,9 +241,13 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 		}
 		return nil, err
 	}
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: app})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": provision.AppSelectors(app),
+			"label": toLabelSelectors(l.ToAppSelector()),
 		},
 	})
 	if err != nil {
@@ -328,9 +332,13 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: a})
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": provision.AppSelectors(a),
+			"label": toLabelSelectors(l.ToAppSelector()),
 		},
 	})
 	if err != nil {

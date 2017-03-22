@@ -5,7 +5,6 @@
 package provision
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -68,6 +67,10 @@ func (s *LabelSet) ToNodeContainerSelector() map[string]string {
 
 func (s *LabelSet) ToNodeSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, LabelNodePool, labelNodeAddr), s.Prefix)
+}
+
+func (s *LabelSet) ToIsServiceSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelIsService), s.Prefix)
 }
 
 func (s *LabelSet) AppName() string {
@@ -137,6 +140,10 @@ func (s *LabelSet) SetRestarts(count int) {
 
 func (s *LabelSet) SetStopped() {
 	s.addLabel(labelIsStopped, strconv.FormatBool(true))
+}
+
+func (s *LabelSet) SetIsService() {
+	s.addLabel(labelIsService, strconv.FormatBool(true))
 }
 
 func (s *LabelSet) SetBuildImage(image string) {
@@ -270,14 +277,6 @@ func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 		labels[k] = v
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
-}
-
-func AppSelectors(app App) []string {
-	return []string{fmt.Sprintf("%s=%s", labelAppName, app.GetName())}
-}
-
-func ServiceSelectors() []string {
-	return []string{fmt.Sprintf("%s=true", labelIsService)}
 }
 
 func withPrefix(m map[string]string, prefix string) map[string]string {
