@@ -43,6 +43,32 @@ func (s *S) TestLabelSetSelectors(c *check.C) {
 	})
 }
 
+func (s *S) TestProcessLabels(c *check.C) {
+	config.Set("routers:fake:type", "fake")
+	defer config.Unset("routers")
+	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
+	opts := provision.ProcessLabelsOpts{
+		App:         a,
+		Process:     "p1",
+		Provisioner: "kubernetes",
+	}
+	ls, err := provision.ProcessLabels(opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
+		Labels: map[string]string{
+			"is-tsuru":     "true",
+			"is-stopped":   "false",
+			"app-name":     "myapp",
+			"app-process":  "p1",
+			"app-platform": "cobol",
+			"app-pool":     "test-default",
+			"router-name":  "fake",
+			"router-type":  "fake",
+			"provisioner":  "kubernetes",
+		},
+	})
+}
+
 func (s *S) TestServiceLabels(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
@@ -99,6 +125,21 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 			"node-container-name": "name",
 			"node-container-pool": "pool",
 			"a": "1",
+		},
+	})
+}
+
+func (s *S) TestNodeLabels(c *check.C) {
+	opts := provision.NodeLabelsOpts{
+		Addr:         "localhost:80",
+		Pool:         "mypool",
+		CustomLabels: map[string]string{"data": "1"},
+	}
+	c.Assert(provision.NodeLabels(opts), check.DeepEquals, &provision.LabelSet{
+		Labels: map[string]string{
+			"tsuru-internal-node-addr": "localhost:80",
+			"pool": "mypool",
+			"data": "1",
 		},
 	})
 }
