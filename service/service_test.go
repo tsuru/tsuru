@@ -245,20 +245,24 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 	sm := []ServiceModel{
 		{Service: "mysql"},
-		{Service: "mongo"},
+		{Service: "mongo", ServiceInstances: []ServiceInstanceModel{
+			ServiceInstanceModel{Name: "my instance", Tags: []string{"my tag"}},
+		}},
 	}
 	data, err := json.Marshal(&sm)
 	c.Assert(err, check.IsNil)
 	expected := make([]map[string]interface{}, 2)
 	expected[0] = map[string]interface{}{
-		"service":   "mysql",
-		"instances": nil,
-		"plans":     nil,
+		"service":           "mysql",
+		"instances":         nil,
+		"plans":             nil,
+		"service_instances": nil,
 	}
 	expected[1] = map[string]interface{}{
-		"service":   "mongo",
-		"instances": nil,
-		"plans":     nil,
+		"service":           "mongo",
+		"instances":         nil,
+		"plans":             nil,
+		"service_instances": []interface{}{map[string]interface{}{"name": "my instance", "tags": []interface{}{"my tag"}}},
 	}
 	result := make([]map[string]interface{}, 2)
 	err = json.Unmarshal(data, &result)

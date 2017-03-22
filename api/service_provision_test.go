@@ -83,20 +83,23 @@ func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) {
 	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
-	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
-	si.Create()
-	defer service.DeleteInstance(&si, "")
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}, Tags: []string{"tag 1"}}
+	err := si.Create()
+	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	services := make([]service.ServiceModel, 1)
-	err := json.Unmarshal(recorder.Body.Bytes(), &services)
+	err = json.Unmarshal(recorder.Body.Bytes(), &services)
 	c.Assert(err, check.IsNil)
-	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"my_nosql"}},
-	}
+	expected := []service.ServiceModel{{
+		Service:   "mongodb",
+		Instances: []string{"my_nosql"},
+		ServiceInstances: []service.ServiceInstanceModel{
+			service.ServiceInstanceModel{Name: "my_nosql", Tags: []string{"tag 1"}},
+		},
+	}}
 	c.Assert(services, check.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 }

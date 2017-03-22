@@ -347,7 +347,7 @@ func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error
 	}
 	defer conn.Close()
 	query := genericServiceInstancesFilter(services, []string{})
-	f := bson.M{"name": 1, "service_name": 1}
+	f := bson.M{"name": 1, "service_name": 1, "tags": 1}
 	err = conn.ServiceInstances().Find(query).Select(f).All(&instances)
 	return instances, err
 }

@@ -147,12 +147,12 @@ func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql"}
+	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql", Tags: []string{}}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
 	c.Assert(err, check.IsNil)
-	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
+	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql", Tags: []string{}}, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
 }
 
@@ -175,12 +175,12 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *chec
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	sInstance2 := ServiceInstance{Name: "s9nosql", ServiceName: "mongodb"}
+	sInstance2 := ServiceInstance{Name: "s9nosql", ServiceName: "mongodb", Tags: []string{"tag 1", "tag 2"}}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc, srvc2})
 	c.Assert(err, check.IsNil)
-	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
+	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql", Tags: []string{}}, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
 }
 
