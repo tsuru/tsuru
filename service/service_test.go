@@ -57,7 +57,6 @@ func (s *S) TestCreateService(c *check.C) {
 func (s *S) TestDeleteService(c *check.C) {
 	s.createService()
 	err := s.service.Delete()
-	defer s.conn.Services().Remove(bson.M{"_id": s.service.Name})
 	c.Assert(err, check.IsNil)
 	l, err := s.conn.Services().Find(bson.M{"_id": s.service.Name}).Count()
 	c.Assert(err, check.IsNil)
@@ -178,7 +177,6 @@ func (s *S) TestUpdateService(c *check.C) {
 	service := Service{Name: "something"}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": service.Name})
 	service.Doc = "doc"
 	err = service.Update()
 	c.Assert(err, check.IsNil)
@@ -197,11 +195,9 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	defer srvc.Delete()
 	srvc2 := Service{Name: "mysql", Teams: []string{s.team.Name}}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
-	defer srvc2.Delete()
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
 	c.Assert(err, check.IsNil)
 	expected := []Service{srvc}
@@ -281,7 +277,6 @@ func (s *S) TestProxy(c *check.C) {
 	}
 	err := s.conn.Services().Insert(service)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(service.Name)
 	request, err := http.NewRequest("DELETE", "/something", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
