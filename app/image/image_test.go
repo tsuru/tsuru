@@ -2,54 +2,26 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package image_test
+package image
 
 import (
+	"fmt"
 	"sort"
-	"testing"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { check.TestingT(t) }
-
-type S struct {
-	storage *db.Storage
-}
-
-var _ = check.Suite(&S{})
-
-func (s *S) SetUpSuite(c *check.C) {
-	config.Set("log:disable-syslog", true)
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "app_image_tests")
-	config.Set("docker:collection", "docker")
-	config.Set("docker:repository-namespace", "tsuru")
-	var err error
-	s.storage, err = db.Conn()
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TearDownTest(c *check.C) {
-	s.storage.Apps().Database.DropDatabase()
-}
-
-func (s *S) TearDownSuite(c *check.C) {
-	s.storage.Close()
-}
-
 func (s *S) TestAppNewImageName(c *check.C) {
-	img1, err := image.AppNewImageName("myapp")
+	img1, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
-	img2, err := image.AppNewImageName("myapp")
+	img2, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
-	img3, err := image.AppNewImageName("myapp")
+	img3, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img3, check.Equals, "tsuru/app-myapp:v3")
 }
@@ -57,44 +29,44 @@ func (s *S) TestAppNewImageName(c *check.C) {
 func (s *S) TestAppNewImageNameWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	img1, err := image.AppNewImageName("myapp")
+	img1, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "localhost:3030/tsuru/app-myapp:v1")
-	img2, err := image.AppNewImageName("myapp")
+	img2, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "localhost:3030/tsuru/app-myapp:v2")
-	img3, err := image.AppNewImageName("myapp")
+	img3, err := AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img3, check.Equals, "localhost:3030/tsuru/app-myapp:v3")
 }
 
 func (s *S) TestAppCurrentImageNameWithoutImage(c *check.C) {
-	img1, err := image.AppCurrentImageName("myapp")
+	img1, err := AppCurrentImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "tsuru/app-myapp")
 }
 
 func (s *S) TestAppendAppImageChangeImagePosition(c *check.C) {
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	images, err := image.ListAppImages("myapp")
+	images, err := ListAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v1"})
 }
 
 func (s *S) TestAppCurrentImageName(c *check.C) {
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	img1, err := image.AppCurrentImageName("myapp")
+	img1, err := AppCurrentImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	img2, err := image.AppCurrentImageName("myapp")
+	img2, err := AppCurrentImageName("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
 }
@@ -116,11 +88,11 @@ func (s *S) TestAppCurrentImageVersion(c *check.C) {
 }
 
 func (s *S) TestListAppImages(c *check.C) {
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	images, err := image.ListAppImages("myapp")
+	images, err := ListAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:v2"})
 }
@@ -128,49 +100,49 @@ func (s *S) TestListAppImages(c *check.C) {
 func (s *S) TestValidListAppImages(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v3")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v3")
 	c.Assert(err, check.IsNil)
-	images, err := image.ListValidAppImages("myapp")
+	images, err := ListValidAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v3"})
 }
 
 func (s *S) TestPlatformImageName(c *check.C) {
-	platName := image.PlatformImageName("python")
+	platName := PlatformImageName("python")
 	c.Assert(platName, check.Equals, "tsuru/python:latest")
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	platName = image.PlatformImageName("ruby")
+	platName = PlatformImageName("ruby")
 	c.Assert(platName, check.Equals, "localhost:3030/tsuru/ruby:latest")
 }
 
 func (s *S) TestDeleteAllAppImageNames(c *check.C) {
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	err = image.DeleteAllAppImageNames("myapp")
+	err = DeleteAllAppImageNames("myapp")
 	c.Assert(err, check.IsNil)
-	_, err = image.ListAppImages("myapp")
+	_, err = ListAppImages("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
 func (s *S) TestDeleteAllAppImageNamesRemovesCustomData(c *check.C) {
 	imgName := "tsuru/app-myapp:v1"
-	err := image.AppendAppImageName("myapp", imgName)
+	err := AppendAppImageName("myapp", imgName)
 	c.Assert(err, check.IsNil)
 	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
-	err = image.SaveImageCustomData(imgName, data)
+	err = SaveImageCustomData(imgName, data)
 	c.Assert(err, check.IsNil)
-	err = image.DeleteAllAppImageNames("myapp")
+	err = DeleteAllAppImageNames("myapp")
 	c.Assert(err, check.IsNil)
-	_, err = image.ListAppImages("myapp")
+	_, err = ListAppImages("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
-	yamlData, err := image.GetImageTsuruYamlData(imgName)
+	yamlData, err := GetImageTsuruYamlData(imgName)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
@@ -178,35 +150,35 @@ func (s *S) TestDeleteAllAppImageNamesRemovesCustomData(c *check.C) {
 func (s *S) TestDeleteAllAppImageNamesRemovesCustomDataWithoutImages(c *check.C) {
 	imgName := "tsuru/app-myapp:v1"
 	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
-	err := image.SaveImageCustomData(imgName, data)
+	err := SaveImageCustomData(imgName, data)
 	c.Assert(err, check.IsNil)
-	err = image.DeleteAllAppImageNames("myapp")
+	err = DeleteAllAppImageNames("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
-	yamlData, err := image.GetImageTsuruYamlData(imgName)
+	yamlData, err := GetImageTsuruYamlData(imgName)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
 
 func (s *S) TestDeleteAllAppImageNamesSimilarApps(c *check.C) {
 	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("tsuru/app-myapp:v1", data)
+	err = SaveImageCustomData("tsuru/app-myapp:v1", data)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp-dev", "tsuru/app-myapp-dev:v1")
+	err = AppendAppImageName("myapp-dev", "tsuru/app-myapp-dev:v1")
 	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("tsuru/app-myapp-dev:v1", data)
+	err = SaveImageCustomData("tsuru/app-myapp-dev:v1", data)
 	c.Assert(err, check.IsNil)
-	err = image.DeleteAllAppImageNames("myapp")
+	err = DeleteAllAppImageNames("myapp")
 	c.Assert(err, check.IsNil)
-	_, err = image.ListAppImages("myapp")
+	_, err = ListAppImages("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
-	_, err = image.ListAppImages("myapp-dev")
+	_, err = ListAppImages("myapp-dev")
 	c.Assert(err, check.IsNil)
-	yamlData, err := image.GetImageTsuruYamlData("tsuru/app-myapp:v1")
+	yamlData, err := GetImageTsuruYamlData("tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
-	yamlData, err = image.GetImageTsuruYamlData("tsuru/app-myapp-dev:v1")
+	yamlData, err = GetImageTsuruYamlData("tsuru/app-myapp-dev:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{
 		Healthcheck: provision.TsuruYamlHealthcheck{Path: "/test"},
@@ -214,36 +186,36 @@ func (s *S) TestDeleteAllAppImageNamesSimilarApps(c *check.C) {
 }
 
 func (s *S) TestPullAppImageNames(c *check.C) {
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v3")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v3")
 	c.Assert(err, check.IsNil)
-	err = image.PullAppImageNames("myapp", []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:v3"})
+	err = PullAppImageNames("myapp", []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:v3"})
 	c.Assert(err, check.IsNil)
-	images, err := image.ListAppImages("myapp")
+	images, err := ListAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v2"})
 }
 
 func (s *S) TestPullAppImageNamesRemovesCustomData(c *check.C) {
 	img1Name := "tsuru/app-myapp:v1"
-	err := image.AppendAppImageName("myapp", img1Name)
+	err := AppendAppImageName("myapp", img1Name)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v2")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v2")
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v3")
+	err = AppendAppImageName("myapp", "tsuru/app-myapp:v3")
 	c.Assert(err, check.IsNil)
 	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
-	err = image.SaveImageCustomData(img1Name, data)
+	err = SaveImageCustomData(img1Name, data)
 	c.Assert(err, check.IsNil)
-	err = image.PullAppImageNames("myapp", []string{img1Name})
+	err = PullAppImageNames("myapp", []string{img1Name})
 	c.Assert(err, check.IsNil)
-	images, err := image.ListAppImages("myapp")
+	images, err := ListAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v3"})
-	yamlData, err := image.GetImageTsuruYamlData(img1Name)
+	yamlData, err := GetImageTsuruYamlData(img1Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
@@ -256,7 +228,7 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 			"worker": "someworker",
 		},
 	}
-	err := image.SaveImageCustomData(img1, customData1)
+	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
 	img2 := "tsuru/app-myapp:v2"
 	customData2 := map[string]interface{}{
@@ -265,7 +237,7 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 			"worker2": "someworker",
 		},
 	}
-	err = image.SaveImageCustomData(img2, customData2)
+	err = SaveImageCustomData(img2, customData2)
 	c.Assert(err, check.IsNil)
 	img3 := "tsuru/app-myapp:v3"
 	customData3 := map[string]interface{}{
@@ -273,26 +245,26 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 			"api": "python myapi.py",
 		},
 	}
-	err = image.SaveImageCustomData(img3, customData3)
+	err = SaveImageCustomData(img3, customData3)
 	c.Assert(err, check.IsNil)
 	img4 := "tsuru/app-myapp:v4"
 	customData4 := map[string]interface{}{}
-	err = image.SaveImageCustomData(img4, customData4)
+	err = SaveImageCustomData(img4, customData4)
 	c.Assert(err, check.IsNil)
-	web1, err := image.GetImageWebProcessName(img1)
+	web1, err := GetImageWebProcessName(img1)
 	c.Check(err, check.IsNil)
 	c.Check(web1, check.Equals, "web")
-	web2, err := image.GetImageWebProcessName(img2)
+	web2, err := GetImageWebProcessName(img2)
 	c.Check(err, check.IsNil)
 	c.Check(web2, check.Equals, "web")
-	web3, err := image.GetImageWebProcessName(img3)
+	web3, err := GetImageWebProcessName(img3)
 	c.Check(err, check.IsNil)
 	c.Check(web3, check.Equals, "api")
-	web4, err := image.GetImageWebProcessName(img4)
+	web4, err := GetImageWebProcessName(img4)
 	c.Check(err, check.IsNil)
 	c.Check(web4, check.Equals, "")
 	img5 := "tsuru/app-myapp:v5"
-	web5, err := image.GetImageWebProcessName(img5)
+	web5, err := GetImageWebProcessName(img5)
 	c.Check(err, check.IsNil)
 	c.Check(web5, check.Equals, "")
 }
@@ -302,9 +274,9 @@ func (s *S) TestSavePortInImageCustomData(c *check.C) {
 	customData1 := map[string]interface{}{
 		"exposedPort": "3434",
 	}
-	err := image.SaveImageCustomData(img1, customData1)
+	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := image.GetImageCustomData(img1)
+	imageMetaData, err := GetImageCustomData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 }
@@ -318,9 +290,9 @@ func (s *S) TestSaveImageCustomData(c *check.C) {
 			"worker2": "someworker",
 		},
 	}
-	err := image.SaveImageCustomData(img1, customData1)
+	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := image.GetImageCustomData(img1)
+	imageMetaData, err := GetImageCustomData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
@@ -335,9 +307,9 @@ func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
 		"exposedPort": "3434",
 		"procfile":    "worker1: python myapp.py\nworker2: someworker",
 	}
-	err := image.SaveImageCustomData(img1, customData1)
+	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := image.GetImageCustomData(img1)
+	imageMetaData, err := GetImageCustomData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
@@ -355,15 +327,57 @@ func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 			"worker2": []string{"worker", "arg", "arg2"},
 		},
 	}
-	err := image.SaveImageCustomData(img1, customData1)
+	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := image.GetImageCustomData(img1)
+	imageMetaData, err := GetImageCustomData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
 		"worker2": {"worker", "arg", "arg2"},
 	})
+}
+
+func (s *S) TestUpdateImageCustomData(c *check.C) {
+	data := ImageMetadata{
+		Name: "tsuru/app-myapp:v1",
+		CustomData: map[string]interface{}{
+			"App":      "myapp",
+			"Image":    "v1",
+			"Rollback": "false",
+		},
+	}
+	data2 := ImageMetadata{
+		Name: "tsuru/app-myapp:v2",
+		CustomData: map[string]interface{}{
+			"App":      "myapp",
+			"Image":    "v2",
+			"Rollback": "true",
+		},
+	}
+	err := data.Save()
+	c.Assert(err, check.IsNil)
+	err = data2.Save()
+	c.Assert(err, check.IsNil)
+	dbMetadata, err := GetImageCustomData(data.Name)
+	c.Check(err, check.IsNil)
+	c.Check(dbMetadata.CustomData, check.DeepEquals, map[string]interface{}{
+		"App":      "myapp",
+		"Image":    "v1",
+		"Rollback": "false",
+	})
+	coll, _ := imageCustomDataColl()
+	cd := map[string]interface{}{
+		"App":      "myapp",
+		"Image":    "v2",
+		"Rollback": "false",
+	}
+	var data3, data4 []ImageMetadata
+	coll.FindId(data.Name).All(&data3)
+	coll.FindId(data2.Name).All(&data4)
+	fmt.Printf("v1: %v\nv2: %v\n", data3, data4)
+	err = UpdateImageCustomData("myapp", "v2", cd)
+	c.Check(err, check.IsNil)
 }
 
 func (s *S) TestGetProcessesFromProcfile(c *check.C) {
@@ -391,13 +405,13 @@ func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 		}},
 	}
 	for i, t := range tests {
-		v := image.GetProcessesFromProcfile(t.procfile)
+		v := GetProcessesFromProcfile(t.procfile)
 		c.Check(v, check.DeepEquals, t.expected, check.Commentf("failed test %d", i))
 	}
 }
 
 func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
-	data := image.ImageMetadata{
+	data := ImageMetadata{
 		Name: "tsuru/app-myapp:v1",
 		LegacyProcesses: map[string]string{
 			"worker1": "python myapp.py",
@@ -406,7 +420,7 @@ func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
 	}
 	err := data.Save()
 	c.Assert(err, check.IsNil)
-	dbMetadata, err := image.GetImageCustomData(data.Name)
+	dbMetadata, err := GetImageCustomData(data.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
@@ -418,7 +432,7 @@ func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
 	}
 	err = data.Save()
 	c.Assert(err, check.IsNil)
-	dbMetadata, err = image.GetImageCustomData(data.Name)
+	dbMetadata, err = GetImageCustomData(data.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
 		"w1": {"has", "priority"},

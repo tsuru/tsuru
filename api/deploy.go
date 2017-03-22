@@ -125,14 +125,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Build:      build,
 		Message:    message,
 	}
-	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {
 		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 		if !canDeploy {
 			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 		}
 	}
-	var imageID string
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
@@ -145,11 +143,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
-	opts.Event = evt
-	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
+	opts.Event = evt
 	opts.OutputStream = writer
+	var imageID string
+	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	imageID, err = app.Deploy(opts)
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
@@ -254,12 +253,10 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Origin:       origin,
 		Rollback:     true,
 	}
-	opts.GetKind()
 	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canRollback {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
-	var imageID string
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
@@ -272,9 +269,10 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	opts.Event = evt
+	var imageID string
 	imageID, err = app.Deploy(opts)
+	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
@@ -398,5 +396,47 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
+	return nil
+}
+
+// title: rollback update
+// path: /apps/{appname}/deploy/rollback/update
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Rollback updated
+//   400: Invalid data
+//   403: Forbidden
+//   404: Not found
+func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.\n", appName)}
+	}
+	image := r.FormValue("image")
+	if image == "" {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you must specify a image",
+		}
+	}
+	e := r.FormValue("enabled")
+	enabled, err := strconv.ParseBool(e)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", e),
+		}
+	}
+	opts := app.DeployOptions{
+		App:      instance,
+		Image:    image,
+		User:     t.GetUserName(),
+		Origin:   origin,
+		Rollback: enabled,
+		Message:  r.FormValue("reason"),
+	}
+
 	return nil
 }
