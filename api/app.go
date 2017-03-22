@@ -105,6 +105,7 @@ type miniApp struct {
 	CName []string          `json:"cname"`
 	Ip    string            `json:"ip"`
 	Lock  provision.AppLock `json:"lock"`
+	Tags  []string          `json:"tags"`
 }
 
 func minifyApp(app app.App) (miniApp, error) {
@@ -119,6 +120,7 @@ func minifyApp(app app.App) (miniApp, error) {
 		CName: app.CName,
 		Ip:    app.Ip,
 		Lock:  &app.Lock,
+		Tags:  app.Tags,
 	}, nil
 }
 

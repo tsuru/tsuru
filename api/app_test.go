@@ -95,12 +95,12 @@ A/dGIKt8r4IkvjGdt2myS/A=
 )
 
 func (s *S) TestAppListFilteringByPlatform(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	platform := app.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
-	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name}
+	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"b", "c"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps?platform=zend", nil)
@@ -124,17 +124,18 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
 func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag 1"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	team2 := auth.Team{Name: "angra"}
 	err = s.conn.Teams().Insert(team2)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name}
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: team2.Name, Tags: []string{"tag 2"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?teamOwner=%s", s.team.Name), nil)
@@ -158,6 +159,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -167,12 +169,12 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
 	u, _ := token.User()
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(&app1, u)
 	c.Assert(err, check.IsNil)
 	platform := app.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
-	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name}
+	app2 := app.App{Name: "app2", Platform: "python", TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?owner=%s", u.Email), nil)
@@ -196,6 +198,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -225,6 +228,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Name, check.Equals, app2.Name)
+	c.Assert(apps[0].Tags, check.DeepEquals, app2.Tags)
 	request, err = http.NewRequest("GET", "/apps?tag=tag2&tag=tag1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -239,6 +243,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
 }
 
 func (s *S) TestAppListFilteringByLockState(c *check.C) {
@@ -252,6 +257,7 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 		Platform:  "python",
 		TeamOwner: s.team.Name,
 		Lock:      app.AppLock{Locked: true},
+		Tags:      []string{"mytag"},
 	}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -276,6 +282,7 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -288,10 +295,10 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 		err := provision.AddPool(opt)
 		c.Assert(err, check.IsNil)
 	}
-	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, TeamOwner: s.team.Name, Tags: []string{"mytag"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", Pool: opts[1].Name, TeamOwner: s.team.Name}
+	app2 := app.App{Name: "app2", Platform: "zend", Pool: opts[1].Name, TeamOwner: s.team.Name, Tags: []string{""}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?pool=%s", opts[1].Name), nil)
@@ -315,13 +322,14 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	requestBody := strings.NewReader("units=2&process=web")
@@ -336,7 +344,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	requestBody = strings.NewReader("units=1&process=web")
@@ -369,13 +377,14 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
 func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	requestBody := strings.NewReader("units=2&process=web")
@@ -389,7 +398,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	requestBody = strings.NewReader("units=1&process=web")
@@ -419,6 +428,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 		expectedUnits, err := expected[i].Units()
 		c.Assert(err, check.IsNil)
 		c.Assert(units, check.DeepEquals, expectedUnits)
+		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
 	}
 }
 
@@ -433,6 +443,7 @@ func (s *S) TestAppList(c *check.C) {
 		TeamOwner: s.team.Name,
 		CName:     []string{"cname.app1"},
 		Pool:      "pool1",
+		Tags:      []string{},
 	}
 	err = app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -449,6 +460,7 @@ func (s *S) TestAppList(c *check.C) {
 			Owner:       s.user.Email,
 			AcquireDate: acquireDate,
 		},
+		Tags: []string{"a"},
 	}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -469,10 +481,12 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
 	c.Assert(apps[0].Ip, check.Equals, app1.Ip)
 	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
+	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
 	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
 	c.Assert(apps[1].Pool, check.Equals, app2.Pool)
+	c.Assert(apps[1].Tags, check.DeepEquals, app2.Tags)
 }
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {
