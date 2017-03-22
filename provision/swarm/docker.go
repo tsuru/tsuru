@@ -453,7 +453,7 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 
 func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
 	filters := map[string][]string{
-		"label":         {fmt.Sprintf("%s=%s", provision.LabelAppName, a.GetName())},
+		"label":         provision.AppSelectors(a),
 		"desired-state": {string(swarm.TaskStateRunning)},
 	}
 	if taskID != "" {

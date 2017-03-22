@@ -80,7 +80,8 @@ func (s *S) TestServiceLabels(c *check.C) {
 }
 
 func (s *S) TestNodeContainerLabels(c *check.C) {
-	c.Assert(provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{Name: "name", Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &provision.LabelSet{
+	opts := provision.NodeContainerLabelsOpts{Name: "name", Pool: "pool", Provisioner: "provisioner"}
+	c.Assert(provision.NodeContainerLabels(opts), check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",
@@ -89,7 +90,8 @@ func (s *S) TestNodeContainerLabels(c *check.C) {
 			"node-container-pool": "pool",
 		},
 	})
-	c.Assert(provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{Name: "name", CustomLabels: map[string]string{"a": "1"}, Pool: "pool", Provisioner: "provisioner"}), check.DeepEquals, &provision.LabelSet{
+	opts.CustomLabels = map[string]string{"a": "1"}
+	c.Assert(provision.NodeContainerLabels(opts), check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":            "true",
 			"is-node-container":   "true",

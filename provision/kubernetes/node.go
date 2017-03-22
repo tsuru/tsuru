@@ -18,7 +18,8 @@ func (n *kubernetesNodeWrapper) Pool() string {
 	if n.node.Labels == nil {
 		return ""
 	}
-	return n.node.Labels[provision.LabelNodePool]
+	l := provision.LabelSet{Labels: n.node.Labels}
+	return l.NodePool()
 }
 
 func (n *kubernetesNodeWrapper) Address() string {

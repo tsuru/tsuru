@@ -187,7 +187,7 @@ func (s *S) TestListValidNodes(c *check.C) {
 	mockNodes := []swarm.Node{
 		{},
 		{},
-		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: map[string]string{provision.LabelNodeAddr: "myaddr"}}}},
+		{Spec: swarm.NodeSpec{Annotations: swarm.Annotations{Labels: provision.NodeLabels(provision.NodeLabelsOpts{Addr: "myaddr"}).ToLabels()}}},
 		{},
 	}
 	srv.CustomHandler("/nodes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

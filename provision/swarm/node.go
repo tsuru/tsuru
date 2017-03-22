@@ -52,7 +52,7 @@ func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"node":  {n.ID},
-			"label": {fmt.Sprintf("%s=true", provision.LabelIsService)},
+			"label": provision.ServiceSelectors(),
 		},
 	})
 	if err != nil {

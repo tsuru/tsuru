@@ -14,14 +14,14 @@ import (
 )
 
 func (s *S) TestSwarmNodeWrapper(c *check.C) {
+	labels := provision.NodeLabels(provision.NodeLabelsOpts{
+		Addr:         "myaddr:1234",
+		CustomLabels: map[string]string{provision.LabelNodePool: "p1", "l1": "v1"},
+	})
 	swarmNode := &swarm.Node{
 		Spec: swarm.NodeSpec{
 			Annotations: swarm.Annotations{
-				Labels: map[string]string{
-					provision.LabelNodeAddr: "myaddr:1234",
-					provision.LabelNodePool: "p1",
-					"l1": "v1",
-				},
+				Labels: labels.ToLabels(),
 			},
 		},
 		Status: swarm.NodeStatus{

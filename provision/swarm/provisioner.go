@@ -243,7 +243,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": {fmt.Sprintf("%s=%s", provision.LabelAppName, app.GetName())},
+			"label": provision.AppSelectors(app),
 		},
 	})
 	if err != nil {
@@ -330,7 +330,7 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": {provision.LabelAppName + "=" + a.GetName()},
+			"label": provision.AppSelectors(a),
 		},
 	})
 	if err != nil {
@@ -476,12 +476,10 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	nodeData.Spec.Annotations.Labels = map[string]string{
-		provision.LabelNodeAddr: opts.Address,
-	}
-	for k, v := range opts.Metadata {
-		nodeData.Spec.Annotations.Labels[k] = v
-	}
+	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
+		Addr:         opts.Address,
+		CustomLabels: opts.Metadata,
+	}).ToLabels()
 	err = existingClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,

@@ -39,6 +39,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	ten := int32(10)
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   "bonehunters",
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeSelector()
 	c.Assert(dep, check.DeepEquals, &extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
@@ -82,9 +86,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					},
 				},
 				Spec: v1.PodSpec{
-					NodeSelector: map[string]string{
-						provision.LabelNodePool: "bonehunters",
-					},
+					NodeSelector:  nodeSelector,
 					RestartPolicy: "Always",
 					Containers: []v1.Container{
 						{
