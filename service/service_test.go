@@ -242,7 +242,7 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 	sm := []ServiceModel{
 		{Service: "mysql"},
 		{Service: "mongo", ServiceInstances: []ServiceInstanceModel{
-			ServiceInstanceModel{Name: "my instance", Tags: []string{"my tag"}},
+			{Name: "my instance", Tags: []string{"my tag"}},
 		}},
 	}
 	data, err := json.Marshal(&sm)
