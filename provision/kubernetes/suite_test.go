@@ -129,7 +129,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 			ObjectMeta: v1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
-					provision.LabelNodePool: "test-default",
+					"pool": "test-default",
 				},
 			},
 			Status: v1.NodeStatus{

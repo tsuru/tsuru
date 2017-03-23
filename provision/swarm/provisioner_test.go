@@ -74,7 +74,7 @@ func (s *S) TestAddNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", "m2": "v2", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -104,7 +104,7 @@ func (s *S) TestAddNodeAlreadyInSwarm(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = initSwarm(cli, srv.URL())
 	c.Assert(err, check.IsNil)
-	metadata := map[string]string{"m1": "v1", "m2": "v2", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -131,7 +131,7 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
 		defer srv.Stop()
-		metadata := map[string]string{"count": fmt.Sprintf("%d", i), provision.LabelNodePool: "p1"}
+		metadata := map[string]string{"count": fmt.Sprintf("%d", i), "pool": "p1"}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
 			Metadata: metadata,
@@ -144,8 +144,8 @@ func (s *S) TestAddNodeMultiple(c *check.C) {
 	c.Assert(nodes, check.HasLen, 5)
 	for i, n := range nodes {
 		c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-			"count":                 fmt.Sprintf("%d", i),
-			provision.LabelNodePool: "p1",
+			"count": fmt.Sprintf("%d", i),
+			"pool":  "p1",
 		})
 	}
 }
@@ -155,7 +155,7 @@ func (s *S) TestAddNodeMultipleRoleCheck(c *check.C) {
 		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 		c.Assert(err, check.IsNil)
 		defer srv.Stop()
-		metadata := map[string]string{provision.LabelNodePool: "p1"}
+		metadata := map[string]string{"pool": "p1"}
 		opts := provision.AddNodeOptions{
 			Address:  srv.URL(),
 			Metadata: metadata,
@@ -193,7 +193,7 @@ func (s *S) TestAddNodeTLS(c *check.C) {
 	defer srv.Stop()
 	url := srv.URL()
 	url = strings.Replace(url, "http://", "https://", 1)
-	metadata := map[string]string{"m1": "v1", "m2": "v2", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "m2": "v2", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:    url,
 		Metadata:   metadata,
@@ -262,7 +262,7 @@ func (s *S) TestListNodes(c *check.C) {
 	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv2.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -288,7 +288,7 @@ func (s *S) TestListNodesOnlyValid(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -893,7 +893,7 @@ func (s *S) TestGetNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -920,7 +920,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	srv2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv2.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -950,7 +950,7 @@ func (s *S) TestRemoveLastNodeLeaveSwarm(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -982,7 +982,7 @@ func (s *S) TestRemoveNodeRebalance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer srv2.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -1019,7 +1019,7 @@ func (s *S) TestUpdateNode(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -1034,9 +1034,9 @@ func (s *S) TestUpdateNode(c *check.C) {
 	node, err := s.p.GetNode(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"m1": "v2",
-		"m2": "v3",
-		provision.LabelNodePool: "p1",
+		"m1":   "v2",
+		"m2":   "v3",
+		"pool": "p1",
 	})
 }
 
@@ -1044,7 +1044,7 @@ func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	metadata := map[string]string{"m1": "v1", provision.LabelNodePool: "p1"}
+	metadata := map[string]string{"m1": "v1", "pool": "p1"}
 	opts := provision.AddNodeOptions{
 		Address:  srv.URL(),
 		Metadata: metadata,
@@ -1059,8 +1059,8 @@ func (s *S) TestUpdateNodeDisableEnable(c *check.C) {
 	node, err := s.p.GetNode(srv.URL())
 	c.Assert(err, check.IsNil)
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"m1": "v1",
-		provision.LabelNodePool: "p1",
+		"m1":   "v1",
+		"pool": "p1",
 	})
 	c.Assert(node.Status(), check.Equals, "ready (pause)")
 	err = s.p.UpdateNode(provision.UpdateNodeOptions{
