@@ -70,11 +70,6 @@ func findValidImages(apps ...App) (set.Set, error) {
 
 // ListDeploys returns the list of deploy that match a given filter.
 func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
 	appsList, err := List(filter)
 	if err != nil {
 		return nil, err
