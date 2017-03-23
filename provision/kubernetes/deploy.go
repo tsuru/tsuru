@@ -272,7 +272,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   a.GetPool(),
 		Prefix: tsuruLabelPrefix,
-	}).ToNodeSelector()
+	}).ToNodeByPoolSelector()
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,

@@ -39,10 +39,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	ten := int32(10)
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   "bonehunters",
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeSelector()
 	c.Assert(dep, check.DeepEquals, &extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
@@ -86,7 +82,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					},
 				},
 				Spec: v1.PodSpec{
-					NodeSelector:  nodeSelector,
+					NodeSelector: map[string]string{
+						"tsuru.io/pool": "bonehunters",
+					},
 					RestartPolicy: "Always",
 					Containers: []v1.Container{
 						{
@@ -343,18 +341,28 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
 	c.Assert(err, check.IsNil)
-	ls, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		Process:     "p1",
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
-	})
-	c.Assert(err, check.IsNil)
+	expectedLabels := map[string]string{
+		"tsuru.io/is-tsuru":             "true",
+		"tsuru.io/is-build":             "false",
+		"tsuru.io/is-stopped":           "false",
+		"tsuru.io/is-service":           "true",
+		"tsuru.io/is-deploy":            "false",
+		"tsuru.io/is-isolated-run":      "false",
+		"tsuru.io/app-name":             a.GetName(),
+		"tsuru.io/app-process":          "p1",
+		"tsuru.io/app-process-replicas": "1",
+		"tsuru.io/restarts":             "0",
+		"tsuru.io/app-platform":         a.GetPlatform(),
+		"tsuru.io/app-pool":             a.GetPool(),
+		"tsuru.io/router-name":          "fake",
+		"tsuru.io/router-type":          "fake",
+		"tsuru.io/provisioner":          provisionerName,
+	}
 	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -362,7 +370,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)

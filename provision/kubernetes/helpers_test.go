@@ -171,14 +171,24 @@ func (s *S) TestCleanupJob(c *check.C) {
 
 func (s *S) TestCleanupDeployment(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	ls, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		Process:     "p1",
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
+	expectedLabels := map[string]string{
+		"tsuru.io/is-tsuru":             "true",
+		"tsuru.io/is-service":           "true",
+		"tsuru.io/is-build":             "false",
+		"tsuru.io/is-stopped":           "false",
+		"tsuru.io/is-deploy":            "false",
+		"tsuru.io/is-isolated-run":      "false",
+		"tsuru.io/restarts":             "0",
+		"tsuru.io/app-name":             "myapp",
+		"tsuru.io/app-process":          "p1",
+		"tsuru.io/app-process-replicas": "1",
+		"tsuru.io/app-platform":         "plat",
+		"tsuru.io/app-pool":             "test-default",
+		"tsuru.io/router-type":          "fake",
+		"tsuru.io/router-name":          "fake",
+		"tsuru.io/provisioner":          "kubernetes",
+	}
+	_, err := s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: tsuruNamespace,
@@ -189,7 +199,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -197,7 +207,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -251,12 +261,6 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
-		Name:        "bs",
-		Pool:        "p1",
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
-	})
 	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
@@ -268,7 +272,13 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-node-container":   "true",
+				"tsuru.io/provisioner":         provisionerName,
+				"tsuru.io/node-container-name": "bs",
+				"tsuru.io/node-container-pool": "p1",
+			},
 		},
 	})
 	c.Assert(err, check.IsNil)

@@ -69,6 +69,10 @@ func (s *LabelSet) ToNodeSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, LabelNodePool, labelNodeAddr), s.Prefix)
 }
 
+func (s *LabelSet) ToNodeByPoolSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, LabelNodePool), s.Prefix)
+}
+
 func (s *LabelSet) ToIsServiceSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, labelIsService), s.Prefix)
 }

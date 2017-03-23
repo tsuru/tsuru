@@ -14,14 +14,14 @@ import (
 )
 
 func (s *S) TestSwarmNodeWrapper(c *check.C) {
-	labels := provision.NodeLabels(provision.NodeLabelsOpts{
-		Addr:         "myaddr:1234",
-		CustomLabels: map[string]string{provision.LabelNodePool: "p1", "l1": "v1"},
-	})
 	swarmNode := &swarm.Node{
 		Spec: swarm.NodeSpec{
 			Annotations: swarm.Annotations{
-				Labels: labels.ToLabels(),
+				Labels: map[string]string{
+					"tsuru-internal-node-addr": "myaddr:1234",
+					"pool": "p1",
+					"l1":   "v1",
+				},
 			},
 		},
 		Status: swarm.NodeStatus{
@@ -30,7 +30,7 @@ func (s *S) TestSwarmNodeWrapper(c *check.C) {
 	}
 	node := swarmNodeWrapper{Node: swarmNode}
 	c.Assert(node.Address(), check.Equals, "myaddr:1234")
-	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{provision.LabelNodePool: "p1", "l1": "v1"})
+	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{"pool": "p1", "l1": "v1"})
 	c.Assert(node.Pool(), check.Equals, "p1")
 	c.Assert(node.Status(), check.Equals, "ready")
 	swarmNode.Status.Message = "msg1"
