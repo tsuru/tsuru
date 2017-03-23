@@ -83,7 +83,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				},
 				Spec: v1.PodSpec{
 					NodeSelector: map[string]string{
-						"tsuru.io/pool": "bonehunters",
+						"pool": "bonehunters",
 					},
 					RestartPolicy: "Always",
 					Containers: []v1.Container{

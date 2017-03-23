@@ -268,7 +268,6 @@ func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
 type NodeLabelsOpts struct {
 	Addr         string
 	Pool         string
-	Prefix       string
 	CustomLabels map[string]string
 }
 
@@ -280,7 +279,7 @@ func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 	for k, v := range opts.CustomLabels {
 		labels[k] = v
 	}
-	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
+	return &LabelSet{Labels: labels}
 }
 
 func withPrefix(m map[string]string, prefix string) map[string]string {

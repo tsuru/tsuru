@@ -270,8 +270,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   a.GetPool(),
-		Prefix: tsuruLabelPrefix,
+		Pool: a.GetPool(),
 	}).ToNodeByPoolSelector()
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
