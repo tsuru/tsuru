@@ -1,4 +1,4 @@
-FROM alpine:3.4
+FROM golang:1.8
 ADD build/tsurud /bin/tsurud
 ADD /etc/tsuru-compose.conf /etc/tsuru/tsuru.conf
 EXPOSE 8080
