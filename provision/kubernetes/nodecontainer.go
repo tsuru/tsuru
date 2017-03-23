@@ -80,7 +80,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	var volumeMounts []v1.VolumeMount
 	if config.Name == nodecontainer.BsDefaultName {
 		config.HostConfig.Binds = append(config.HostConfig.Binds,
-			"/var/log:/var/log:ro",
+			"/var/log:/var/log:rw",
 			"/var/lib/docker/containers:/var/lib/docker/containers:ro",
 			// This last one is for out of the box compatibility with minikube.
 			"/mnt/sda1/var/lib/docker/containers:/mnt/sda1/var/lib/docker/containers:ro")

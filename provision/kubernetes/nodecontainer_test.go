@@ -180,7 +180,7 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 		},
 	})
 	c.Assert(daemon.Spec.Template.Spec.Containers[0].VolumeMounts, check.DeepEquals, []v1.VolumeMount{
-		{Name: "volume-0", MountPath: "/var/log", ReadOnly: true},
+		{Name: "volume-0", MountPath: "/var/log", ReadOnly: false},
 		{Name: "volume-1", MountPath: "/var/lib/docker/containers", ReadOnly: true},
 		{Name: "volume-2", MountPath: "/mnt/sda1/var/lib/docker/containers", ReadOnly: true},
 	})
