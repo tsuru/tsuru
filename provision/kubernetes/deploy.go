@@ -236,6 +236,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	for _, envData := range a.Envs() {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
+	envs = append(envs, v1.EnvVar{Name: "TSURU_PROCESSNAME", Value: process})
 	host, _ := config.GetString("host")
 	port := dockercommon.WebProcessDefaultPort()
 	envs = append(envs, []v1.EnvVar{

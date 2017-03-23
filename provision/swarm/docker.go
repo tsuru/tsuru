@@ -335,6 +335,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	for _, envData := range opts.app.Envs() {
 		envs = append(envs, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
 	}
+	envs = append(envs, fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", opts.process))
 	host, _ := config.GetString("host")
 	envs = append(envs, fmt.Sprintf("%s=%s", "TSURU_HOST", host))
 	var cmds []string
