@@ -192,6 +192,59 @@ func (s *S) TestGetNodeWithoutCluster(c *check.C) {
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
+func (s *S) TestRegisterUnit(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	err = s.p.RegisterUnit(a, units[0].ID, nil)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(a.HasBind(&units[0]), check.Equals, true)
+}
+
+func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
+	a, _, rollback := s.defaultReactions(c)
+	defer rollback()
+	podID, err := createBuildJob(buildJobParams{
+		client:           s.client,
+		app:              a,
+		sourceImage:      "myimg",
+		destinationImage: "destimg",
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.RegisterUnit(a, podID, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "w1",
+			"worker": "w2",
+		},
+	})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	meta, err := image.GetImageCustomData("destimg")
+	c.Assert(err, check.IsNil)
+	c.Assert(meta, check.DeepEquals, image.ImageMetadata{
+		Name:            "destimg",
+		CustomData:      map[string]interface{}{},
+		LegacyProcesses: map[string]string{},
+		Processes: map[string][]string{
+			"web":    {"w1"},
+			"worker": {"w2"},
+		},
+	})
+}
+
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()

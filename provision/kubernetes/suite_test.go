@@ -229,6 +229,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 				Spec:       job.Spec.Template.Spec,
 			}
 			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
+			pod.Spec.NodeName = "n1"
 			pod.ObjectMeta.Name += "-pod"
 			pod.ObjectMeta.Namespace = job.Namespace
 			pod.ObjectMeta.Labels = labelsCopy
@@ -262,7 +263,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 	}, &wg
 }
 
-func (s *S) defaultReactions(c *check.C) (provision.App, func(), func()) {
+func (s *S) defaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	srv := s.createDeployReadyServer(c)
 	s.mockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)

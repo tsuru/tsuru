@@ -18,6 +18,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -190,7 +191,8 @@ func (p *kubernetesProvisioner) podsToUnits(client kubernetes.Interface, pods []
 			Scheme: "http",
 			Host:   wrapper.Address(),
 		}
-		if l.AppProcess() == webProcessName {
+		appProcess := l.AppProcess()
+		if appProcess != "" && appProcess == webProcessName {
 			srvName := deploymentNameForApp(podApp, webProcessName)
 			port, ok := portMap[srvName]
 			if !ok {
@@ -206,9 +208,9 @@ func (p *kubernetesProvisioner) podsToUnits(client kubernetes.Interface, pods []
 			ID:          pod.Name,
 			Name:        pod.Name,
 			AppName:     l.AppName(),
-			ProcessName: l.AppProcess(),
+			ProcessName: appProcess,
 			Type:        l.AppPlatform(),
-			Ip:          wrapper.Address(),
+			Ip:          tsuruNet.URLToHost(wrapper.Address()),
 			Status:      stateMap[pod.Status.Phase],
 			Address:     url,
 		}
@@ -282,7 +284,18 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	}
 	pod, err := client.Core().Pods(tsuruNamespace).Get(unitID)
 	if err != nil {
+		return errors.WithStack(err)
+	}
+	units, err := p.podsToUnits(client, []v1.Pod{*pod}, a, nil)
+	if err != nil {
 		return err
+	}
+	if len(units) == 0 {
+		return errors.Errorf("unable to convert pod to unit: %#v", pod)
+	}
+	err = a.BindUnit(&units[0])
+	if err != nil {
+		return errors.WithStack(err)
 	}
 	if customData == nil {
 		return nil
@@ -292,7 +305,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if buildingImage == "" {
 		return nil
 	}
-	return image.SaveImageCustomData(buildingImage, customData)
+	return errors.WithStack(image.SaveImageCustomData(buildingImage, customData))
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
