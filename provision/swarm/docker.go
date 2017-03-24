@@ -309,24 +309,18 @@ func extraRegisterCmds(app provision.App) string {
 
 func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	var envs []string
-	for _, envData := range opts.app.Envs() {
+	appEnvs := provision.EnvsForApp(opts.app, opts.process, opts.isDeploy)
+	for _, envData := range appEnvs {
 		envs = append(envs, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
 	}
-	envs = append(envs, fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", opts.process))
-	host, _ := config.GetString("host")
-	envs = append(envs, fmt.Sprintf("%s=%s", "TSURU_HOST", host))
 	var cmds []string
 	var err error
 	var endpointSpec *swarm.EndpointSpec
 	var networks []swarm.NetworkAttachmentConfig
 	var healthConfig *container.HealthConfig
-	port := dockercommon.WebProcessDefaultPort()
+	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
 	if !opts.isDeploy && !opts.isIsolatedRun {
-		envs = append(envs, []string{
-			fmt.Sprintf("%s=%s", "port", port),
-			fmt.Sprintf("%s=%s", "PORT", port),
-		}...)
 		endpointSpec = &swarm.EndpointSpec{
 			Mode: swarm.ResolutionModeVIP,
 			Ports: []swarm.PortConfig{

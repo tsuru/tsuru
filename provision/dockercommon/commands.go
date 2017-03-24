@@ -111,11 +111,3 @@ func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, 
 	}
 	return allCmds, processName, nil
 }
-
-func WebProcessDefaultPort() string {
-	port, err := config.Get("docker:run-cmd:port")
-	if err != nil {
-		return "8888"
-	}
-	return fmt.Sprint(port)
-}

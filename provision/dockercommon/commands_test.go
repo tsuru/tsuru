@@ -212,15 +212,3 @@ func (s *S) TestLeanContainerCmdsManyCmds(c *check.C) {
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec $0 \"$@\"", "python", "web.py"}
 	c.Assert(cmds, check.DeepEquals, expected)
 }
-
-func (s *S) TestWebProcessDefaultPort(c *check.C) {
-	port := WebProcessDefaultPort()
-	c.Assert(port, check.Equals, "8888")
-}
-
-func (s *S) TestWebProcessDefaultPortWithConfig(c *check.C) {
-	config.Set("docker:run-cmd:port", "9191")
-	defer config.Unset("docker:run-cmd:port")
-	port := WebProcessDefaultPort()
-	c.Assert(port, check.Equals, "9191")
-}

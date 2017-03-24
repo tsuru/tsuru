@@ -94,6 +94,11 @@ func createBuildJob(params buildJobParams) (string, error) {
 	}
 	buildImageLabel := &provision.LabelSet{}
 	buildImageLabel.SetBuildImage(params.destinationImage)
+	appEnvs := provision.EnvsForApp(params.app, "", true)
+	var envs []v1.EnvVar
+	for _, envData := range appEnvs {
+		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
+	}
 	job := &batch.Job{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      baseName,
@@ -127,6 +132,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 							Command:   params.buildCmd,
 							Stdin:     true,
 							StdinOnce: true,
+							Env:       envs,
 						},
 						{
 							Name:  "committer-cont",
@@ -244,24 +250,18 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	appEnvs := provision.EnvsForApp(a, process, false)
 	var envs []v1.EnvVar
-	for _, envData := range a.Envs() {
+	for _, envData := range appEnvs {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
-	envs = append(envs, v1.EnvVar{Name: "TSURU_PROCESSNAME", Value: process})
-	host, _ := config.GetString("host")
-	port := dockercommon.WebProcessDefaultPort()
-	envs = append(envs, []v1.EnvVar{
-		{Name: "TSURU_HOST", Value: host},
-		{Name: "port", Value: port},
-		{Name: "PORT", Value: port},
-	}...)
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
 	probe, err := probeFromHC(yamlData.Healthcheck, portInt)
 	if err != nil {
@@ -355,7 +355,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 	if err != nil {
 		return err
 	}
-	port := dockercommon.WebProcessDefaultPort()
+	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
 	_, err = m.client.Core().Services(tsuruNamespace).Create(&v1.Service{
 		ObjectMeta: v1.ObjectMeta{

@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -101,7 +101,7 @@ func (s *S) newContainer(opts newContainerOpts, p *fakeDockerProvisioner) (*Cont
 	routertest.FakeRouter.AddBackend(container.AppName)
 	routertest.FakeRouter.AddRoute(container.AppName, container.Address())
 	ports := map[docker.Port]struct{}{
-		docker.Port(dockercommon.WebProcessDefaultPort() + "/tcp"): {},
+		docker.Port(provision.WebProcessDefaultPort() + "/tcp"): {},
 	}
 	config := docker.Config{
 		Image:        container.Image,

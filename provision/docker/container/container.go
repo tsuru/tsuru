@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/dockercommon"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -111,7 +110,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	var exposedPorts map[docker.Port]struct{}
 	if !args.Deploy {
 		if c.ExposedPort == "" {
-			c.ExposedPort = dockercommon.WebProcessDefaultPort() + "/tcp"
+			c.ExposedPort = provision.WebProcessDefaultPort() + "/tcp"
 		}
 		exposedPorts = map[docker.Port]struct{}{
 			docker.Port(c.ExposedPort): {},
@@ -179,18 +178,10 @@ func (c *Container) Create(args *CreateArgs) error {
 }
 
 func (c *Container) addEnvsToConfig(args *CreateArgs, port string, cfg *docker.Config) {
-	if !args.Deploy {
-		for _, envData := range args.App.Envs() {
-			cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
-		}
-		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", c.ProcessName))
+	envs := provision.EnvsForApp(args.App, c.ProcessName, args.Deploy)
+	for _, envData := range envs {
+		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
 	}
-	host, _ := config.GetString("host")
-	cfg.Env = append(cfg.Env, []string{
-		fmt.Sprintf("%s=%s", "port", port),
-		fmt.Sprintf("%s=%s", "PORT", port),
-		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
-	}...)
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	if sharedMount != "" && sharedBasedir != "" {

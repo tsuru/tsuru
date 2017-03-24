@@ -371,9 +371,7 @@ func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Strings(container.Config.Env)
 	c.Assert(container.Config.Env, check.DeepEquals, []string{
-		"PORT=",
 		"TSURU_HOST=my.cool.tsuru.addr:8080",
-		"port=",
 	})
 }
 
