@@ -175,9 +175,9 @@ var stateMap = map[swarm.TaskState]provision.Status{
 }
 
 func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a provision.App) provision.Unit {
-	nodeLabels := provision.LabelSet{Labels: node.Spec.Labels}
+	nodeLabels := provision.LabelSet{Labels: node.Spec.Labels, Prefix: tsuruLabelPrefix}
 	host := tsuruNet.URLToHost(nodeLabels.NodeAddr())
-	labels := provision.LabelSet{Labels: service.Spec.Annotations.Labels}
+	labels := provision.LabelSet{Labels: service.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return provision.Unit{
 		ID:          task.ID,
 		AppName:     a.GetName(),
@@ -195,7 +195,7 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 	appsMap := map[string]provision.App{}
 	units := []provision.Unit{}
 	for _, t := range tasks {
-		labels := provision.LabelSet{Labels: t.Spec.ContainerSpec.Labels}
+		labels := provision.LabelSet{Labels: t.Spec.ContainerSpec.Labels, Prefix: tsuruLabelPrefix}
 		if !labels.IsService() {
 			continue
 		}
@@ -219,7 +219,7 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 			serviceMap[t.ServiceID] = service
 		}
 		service := serviceMap[t.ServiceID]
-		serviceLabels := provision.LabelSet{Labels: service.Spec.Annotations.Labels}
+		serviceLabels := provision.LabelSet{Labels: service.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 		appName := serviceLabels.AppName()
 		if _, ok := appsMap[appName]; !ok {
 			a, err := app.GetByName(appName)
@@ -241,7 +241,7 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 		}
 		return nil, err
 	}
-	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: app})
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: app, Prefix: tsuruLabelPrefix})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -292,7 +292,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 		return nil, err
 	}
 	for i := len(nodes) - 1; i >= 0; i-- {
-		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
+		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 		if l.NodePool() != a.GetPool() {
 			nodes[i], nodes[len(nodes)-1] = nodes[len(nodes)-1], nodes[i]
 			nodes = nodes[:len(nodes)-1]
@@ -300,7 +300,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	}
 	addrs := make([]url.URL, len(nodes))
 	for i, n := range nodes {
-		l := provision.LabelSet{Labels: n.Spec.Labels}
+		l := provision.LabelSet{Labels: n.Spec.Labels, Prefix: tsuruLabelPrefix}
 		host := tsuruNet.URLToHost(l.NodeAddr())
 		addrs[i] = url.URL{
 			Scheme: "http",
@@ -332,7 +332,7 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
-	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: a})
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: a, Prefix: tsuruLabelPrefix})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -359,7 +359,7 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if customData == nil {
 		return nil
 	}
-	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels}
+	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels, Prefix: tsuruLabelPrefix}
 	if !labels.IsDeploy() {
 		return nil
 	}
@@ -841,7 +841,7 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 		return "", err
 	}
 	for _, node := range nodeList {
-		l := provision.LabelSet{Labels: node.Spec.Labels}
+		l := provision.LabelSet{Labels: node.Spec.Labels, Prefix: tsuruLabelPrefix}
 		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", l.NodeAddr(), node.Status.State, node.Spec.Role)
 	}
 	return out, nil

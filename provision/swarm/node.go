@@ -19,12 +19,12 @@ type swarmNodeWrapper struct {
 }
 
 func (n *swarmNodeWrapper) Pool() string {
-	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return l.NodePool()
 }
 
 func (n *swarmNodeWrapper) Address() string {
-	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return l.NodeAddr()
 }
 
@@ -40,7 +40,7 @@ func (n *swarmNodeWrapper) Status() string {
 }
 
 func (n *swarmNodeWrapper) Metadata() map[string]string {
-	labels := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	labels := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return labels.PublicNodeLabels()
 }
 
@@ -49,7 +49,7 @@ func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := provision.LabelSet{}
+	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	l.SetIsService()
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{

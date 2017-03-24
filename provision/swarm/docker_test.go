@@ -247,12 +247,12 @@ func (s *S) TestServiceSpecForNodeContainer(c *check.C) {
 	serviceSpec, err := serviceSpecForNodeContainer(loadedC1, "", servicecommon.PoolFilter{})
 	c.Assert(err, check.IsNil)
 	expectedLabels := map[string]string{
-		"is-tsuru":            "true",
-		"is-node-container":   "true",
-		"provisioner":         "swarm",
-		"label1":              "val1",
-		"node-container-name": "swarmbs",
-		"node-container-pool": "",
+		"tsuru.is-tsuru":            "true",
+		"tsuru.is-node-container":   "true",
+		"tsuru.provisioner":         "swarm",
+		"tsuru.label1":              "val1",
+		"tsuru.node-container-name": "swarmbs",
+		"tsuru.node-container-pool": "",
 	}
 	expected := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{

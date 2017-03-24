@@ -386,7 +386,7 @@ func (s *S) TestRestartExisting(c *check.C) {
 	c.Assert(err, check.IsNil)
 	service, err := cli.InspectService("myapp-web")
 	c.Assert(err, check.IsNil)
-	l := provision.LabelSet{Labels: service.Spec.TaskTemplate.ContainerSpec.Labels}
+	l := provision.LabelSet{Labels: service.Spec.TaskTemplate.ContainerSpec.Labels, Prefix: tsuruLabelPrefix}
 	c.Assert(l.Restarts(), check.Equals, 1)
 }
 
@@ -1097,6 +1097,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 		IsDeploy:    true,
 		BuildImage:  "app:v1",
 		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
 	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
@@ -1152,6 +1153,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 		App:         a,
 		BuildImage:  "notset:v1",
 		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
 	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
@@ -1207,6 +1209,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 		App:         a,
 		Provisioner: provisionerName,
 		IsDeploy:    true,
+		Prefix:      tsuruLabelPrefix,
 	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
@@ -1786,7 +1789,7 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(cont.Image, check.Equals, "myapp:v1")
 	_, err = client.InspectService("myapp-isolated-run")
 	c.Assert(err, check.DeepEquals, &docker.NoSuchService{ID: "myapp-isolated-run"})
-	l := provision.LabelSet{Labels: service.Spec.Labels}
+	l := provision.LabelSet{Labels: service.Spec.Labels, Prefix: tsuruLabelPrefix}
 	c.Assert(l.IsIsolatedRun(), check.Equals, true)
 }
 

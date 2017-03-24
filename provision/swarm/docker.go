@@ -34,6 +34,7 @@ const (
 	dockerFullTimeout  = 15 * time.Minute
 	dockerTCPKeepALive = 30 * time.Second
 	maxSwarmManagers   = 7
+	tsuruLabelPrefix   = "tsuru."
 )
 
 func newClient(address string) (*docker.Client, error) {
@@ -149,7 +150,7 @@ func listValidNodes(cli *docker.Client) ([]swarm.Node, error) {
 		return nil, errors.WithStack(err)
 	}
 	for i := 0; i < len(nodes); i++ {
-		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
+		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 		if addr := l.NodeAddr(); addr == "" {
 			nodes[i] = nodes[len(nodes)-1]
 			nodes = nodes[:len(nodes)-1]
@@ -345,7 +346,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	restartCount := 0
 	replicas := 0
 	if opts.baseSpec != nil {
-		oldLabels := provision.LabelSet{Labels: opts.baseSpec.Labels}
+		oldLabels := provision.LabelSet{Labels: opts.baseSpec.Labels, Prefix: tsuruLabelPrefix}
 		replicas = oldLabels.AppReplicas()
 		if replicas == 0 && opts.baseSpec.Mode.Replicated != nil {
 			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
@@ -385,6 +386,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		Provisioner:   provisionerName,
 		Replicas:      replicas,
 		RestartCount:  restartCount,
+		Prefix:        tsuruLabelPrefix,
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -441,13 +443,14 @@ func clientForNode(baseClient *docker.Client, nodeID string) (*docker.Client, er
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	l := provision.LabelSet{Labels: node.Spec.Annotations.Labels}
+	l := provision.LabelSet{Labels: node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return newClient(l.NodeAddr())
 }
 
 func runningTasksForApp(client *docker.Client, a provision.App, taskID string) ([]swarm.Task, error) {
 	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
-		App: a,
+		App:    a,
+		Prefix: tsuruLabelPrefix,
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -535,6 +538,7 @@ func serviceSpecForNodeContainer(config *nodecontainer.NodeContainerConfig, pool
 		CustomLabels: config.Config.Labels,
 		Pool:         pool,
 		Provisioner:  "swarm",
+		Prefix:       tsuruLabelPrefix,
 	}).ToLabels()
 	service := &swarm.ServiceSpec{
 		Annotations: swarm.Annotations{
