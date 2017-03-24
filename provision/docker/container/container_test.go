@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -120,7 +119,11 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory+app.Swap)
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
 	sort.Strings(container.Config.Env)
-	expectedLabels, err := provisioncommon.ProcessLabels(app, "myprocess1", "docker")
+	expectedLabels, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
+		App:         app,
+		Process:     "myprocess1",
+		Provisioner: "docker",
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Config.Labels, check.DeepEquals, expectedLabels.ToLabels())
 	c.Assert(container.Config.Env, check.DeepEquals, []string{

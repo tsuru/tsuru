@@ -6,21 +6,11 @@ package swarm
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-)
-
-const (
-	labelNodeInternalPrefix = "tsuru.internal."
-)
-
-var (
-	labelNodeDockerAddr = tsuruLabel(labelNodeInternalPrefix + "docker-addr")
-	labelNodePoolName   = tsuruLabel("pool")
 )
 
 type swarmNodeWrapper struct {
@@ -29,11 +19,13 @@ type swarmNodeWrapper struct {
 }
 
 func (n *swarmNodeWrapper) Pool() string {
-	return n.Node.Spec.Annotations.Labels[labelNodePoolName.String()]
+	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	return l.NodePool()
 }
 
 func (n *swarmNodeWrapper) Address() string {
-	return n.Node.Spec.Annotations.Labels[labelNodeDockerAddr.String()]
+	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	return l.NodeAddr()
 }
 
 func (n *swarmNodeWrapper) Status() string {
@@ -48,14 +40,8 @@ func (n *swarmNodeWrapper) Status() string {
 }
 
 func (n *swarmNodeWrapper) Metadata() map[string]string {
-	metadata := map[string]string{}
-	for k, v := range n.Node.Spec.Annotations.Labels {
-		if strings.HasPrefix(k, labelNodeInternalPrefix) {
-			continue
-		}
-		metadata[k] = v
-	}
-	return metadata
+	labels := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels}
+	return labels.PublicNodeLabels()
 }
 
 func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
@@ -63,10 +49,12 @@ func (n *swarmNodeWrapper) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
+	l := provision.LabelSet{}
+	l.SetIsService()
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
 			"node":  {n.ID},
-			"label": {fmt.Sprintf("%s=true", labelService)},
+			"label": toLabelSelectors(l.ToIsServiceSelector()),
 		},
 	})
 	if err != nil {

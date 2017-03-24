@@ -9,10 +9,6 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
-const (
-	labelNodePoolName = "pool"
-)
-
 type kubernetesNodeWrapper struct {
 	node *v1.Node
 	prov *kubernetesProvisioner
@@ -22,7 +18,8 @@ func (n *kubernetesNodeWrapper) Pool() string {
 	if n.node.Labels == nil {
 		return ""
 	}
-	return n.node.Labels[labelNodePoolName]
+	l := provision.LabelSet{Labels: n.node.Labels}
+	return l.NodePool()
 }
 
 func (n *kubernetesNodeWrapper) Address() string {

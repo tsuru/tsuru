@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -126,7 +125,11 @@ func (c *Container) Create(args *CreateArgs) error {
 	if err != nil {
 		return err
 	}
-	labelSet, err := provisioncommon.ProcessLabels(args.App, c.ProcessName, "docker")
+	labelSet, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
+		App:         args.App,
+		Process:     c.ProcessName,
+		Provisioner: "docker",
+	})
 	if err != nil {
 		return err
 	}

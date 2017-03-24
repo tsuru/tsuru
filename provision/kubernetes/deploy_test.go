@@ -9,7 +9,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisioncommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -66,8 +65,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				ObjectMeta: v1.ObjectMeta{
 					Labels: map[string]string{
 						"tsuru.io/is-tsuru":             "true",
+						"tsuru.io/is-service":           "true",
 						"tsuru.io/is-build":             "false",
 						"tsuru.io/is-stopped":           "false",
+						"tsuru.io/is-deploy":            "false",
+						"tsuru.io/is-isolated-run":      "false",
+						"tsuru.io/restarts":             "0",
 						"tsuru.io/app-name":             "myapp",
 						"tsuru.io/app-process":          "p1",
 						"tsuru.io/app-process-replicas": "1",
@@ -77,13 +80,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/router-name":          "fake",
 						"tsuru.io/provisioner":          "kubernetes",
 					},
-					Annotations: map[string]string{
-						"tsuru.io/build-image": "",
-					},
 				},
 				Spec: v1.PodSpec{
 					NodeSelector: map[string]string{
-						labelNodePoolName: "bonehunters",
+						"pool": "bonehunters",
 					},
 					RestartPolicy: "Always",
 					Containers: []v1.Container{
@@ -115,8 +115,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Namespace: tsuruNamespace,
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":             "true",
+				"tsuru.io/is-service":           "true",
 				"tsuru.io/is-build":             "false",
 				"tsuru.io/is-stopped":           "false",
+				"tsuru.io/is-deploy":            "false",
+				"tsuru.io/is-isolated-run":      "false",
+				"tsuru.io/restarts":             "0",
 				"tsuru.io/app-name":             "myapp",
 				"tsuru.io/app-process":          "p1",
 				"tsuru.io/app-process-replicas": "1",
@@ -125,9 +129,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/router-type":          "fake",
 				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/build-image": "",
 			},
 		},
 		Spec: v1.ServiceSpec{
@@ -340,13 +341,28 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
 	c.Assert(err, check.IsNil)
-	ls, err := provisioncommon.PodLabels(a, "p1", "", 0)
-	c.Assert(err, check.IsNil)
+	expectedLabels := map[string]string{
+		"tsuru.io/is-tsuru":             "true",
+		"tsuru.io/is-build":             "false",
+		"tsuru.io/is-stopped":           "false",
+		"tsuru.io/is-service":           "true",
+		"tsuru.io/is-deploy":            "false",
+		"tsuru.io/is-isolated-run":      "false",
+		"tsuru.io/app-name":             a.GetName(),
+		"tsuru.io/app-process":          "p1",
+		"tsuru.io/app-process-replicas": "1",
+		"tsuru.io/restarts":             "0",
+		"tsuru.io/app-platform":         a.GetPlatform(),
+		"tsuru.io/app-pool":             a.GetPool(),
+		"tsuru.io/router-name":          "fake",
+		"tsuru.io/router-type":          "fake",
+		"tsuru.io/provisioner":          provisionerName,
+	}
 	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -354,7 +370,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: tsuruNamespace,
-			Labels:    ls.ToLabels(),
+			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)

@@ -86,7 +86,8 @@ func updateDBSwarmNodes(client *docker.Client) error {
 		if n.ManagerStatus == nil {
 			continue
 		}
-		addr := n.Spec.Annotations.Labels[labelNodeDockerAddr.String()]
+		labels := provision.LabelSet{Labels: n.Spec.Annotations.Labels}
+		addr := labels.NodeAddr()
 		if addr == "" {
 			continue
 		}

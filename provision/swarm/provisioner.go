@@ -175,12 +175,13 @@ var stateMap = map[swarm.TaskState]provision.Status{
 }
 
 func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a provision.App) provision.Unit {
-	addr := node.Spec.Labels[labelNodeDockerAddr.String()]
-	host := tsuruNet.URLToHost(addr)
+	nodeLabels := provision.LabelSet{Labels: node.Spec.Labels}
+	host := tsuruNet.URLToHost(nodeLabels.NodeAddr())
+	labels := provision.LabelSet{Labels: service.Spec.Annotations.Labels}
 	return provision.Unit{
 		ID:          task.ID,
 		AppName:     a.GetName(),
-		ProcessName: service.Spec.Annotations.Labels[labelAppProcess.String()],
+		ProcessName: labels.AppProcess(),
 		Type:        a.GetPlatform(),
 		Ip:          host,
 		Status:      stateMap[task.Status.State],
@@ -194,7 +195,8 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 	appsMap := map[string]provision.App{}
 	units := []provision.Unit{}
 	for _, t := range tasks {
-		if t.Spec.ContainerSpec.Labels[labelService.String()] != "true" {
+		labels := provision.LabelSet{Labels: t.Spec.ContainerSpec.Labels}
+		if !labels.IsService() {
 			continue
 		}
 		if t.DesiredState == swarm.TaskStateShutdown ||
@@ -217,7 +219,8 @@ func tasksToUnits(client *docker.Client, tasks []swarm.Task) ([]provision.Unit, 
 			serviceMap[t.ServiceID] = service
 		}
 		service := serviceMap[t.ServiceID]
-		appName := service.Spec.Annotations.Labels[labelAppName.String()]
+		serviceLabels := provision.LabelSet{Labels: service.Spec.Annotations.Labels}
+		appName := serviceLabels.AppName()
 		if _, ok := appsMap[appName]; !ok {
 			a, err := app.GetByName(appName)
 			if err != nil {
@@ -238,9 +241,13 @@ func (p *swarmProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 		}
 		return nil, err
 	}
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: app})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": {fmt.Sprintf("%s=%s", labelAppName, app.GetName())},
+			"label": toLabelSelectors(l.ToAppSelector()),
 		},
 	})
 	if err != nil {
@@ -285,15 +292,16 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 		return nil, err
 	}
 	for i := len(nodes) - 1; i >= 0; i-- {
-		if nodes[i].Spec.Annotations.Labels[labelNodePoolName.String()] != a.GetPool() {
+		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels}
+		if l.NodePool() != a.GetPool() {
 			nodes[i], nodes[len(nodes)-1] = nodes[len(nodes)-1], nodes[i]
 			nodes = nodes[:len(nodes)-1]
 		}
 	}
 	addrs := make([]url.URL, len(nodes))
 	for i, n := range nodes {
-		addr := n.Spec.Labels[labelNodeDockerAddr.String()]
-		host := tsuruNet.URLToHost(addr)
+		l := provision.LabelSet{Labels: n.Spec.Labels}
+		host := tsuruNet.URLToHost(l.NodeAddr())
 		addrs[i] = url.URL{
 			Scheme: "http",
 			Host:   fmt.Sprintf("%s:%d", host, pubPort),
@@ -324,9 +332,13 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
+	l, err := provision.ProcessLabels(provision.ProcessLabelsOpts{App: a})
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{
 		Filters: map[string][]string{
-			"label": {labelAppName.String() + "=" + a.GetName()},
+			"label": toLabelSelectors(l.ToAppSelector()),
 		},
 	})
 	if err != nil {
@@ -347,10 +359,11 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if customData == nil {
 		return nil
 	}
-	if task.Spec.ContainerSpec.Labels[labelServiceDeploy.String()] != "true" {
+	labels := provision.LabelSet{Labels: task.Spec.ContainerSpec.Labels}
+	if !labels.IsDeploy() {
 		return nil
 	}
-	buildingImage := task.Spec.ContainerSpec.Labels[labelServiceBuildImage.String()]
+	buildingImage := labels.BuildImage()
 	if buildingImage == "" {
 		return errors.Errorf("invalid build image label for build task: %#v", task)
 	}
@@ -471,12 +484,10 @@ func (p *swarmProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	nodeData.Spec.Annotations.Labels = map[string]string{
-		labelNodeDockerAddr.String(): opts.Address,
-	}
-	for k, v := range opts.Metadata {
-		nodeData.Spec.Annotations.Labels[k] = v
-	}
+	nodeData.Spec.Annotations.Labels = provision.NodeLabels(provision.NodeLabelsOpts{
+		Addr:         opts.Address,
+		CustomLabels: opts.Metadata,
+	}).ToLabels()
 	err = existingClient.UpdateNode(dockerInfo.Swarm.NodeID, docker.UpdateNodeOptions{
 		Version:  nodeData.Version.Index,
 		NodeSpec: nodeData.Spec,
@@ -830,8 +841,8 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 		return "", err
 	}
 	for _, node := range nodeList {
-		addr := node.Spec.Labels[labelNodeDockerAddr.String()]
-		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", addr, node.Status.State, node.Spec.Role)
+		l := provision.LabelSet{Labels: node.Spec.Labels}
+		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", l.NodeAddr(), node.Status.State, node.Spec.Role)
 	}
 	return out, nil
 }
