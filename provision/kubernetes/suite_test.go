@@ -6,9 +6,11 @@ package kubernetes
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -30,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
@@ -49,6 +52,13 @@ type S struct {
 	client   *fake.Clientset
 	lastConf *rest.Config
 	t        *testing.T
+	stream   streamResult
+}
+
+type streamResult struct {
+	stdin  string
+	resize string
+	url    url.URL
 }
 
 var suiteInstance = &S{}
@@ -75,6 +85,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	s.stream = streamResult{}
 	s.client = fake.NewSimpleClientset()
 	clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
@@ -149,21 +160,56 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 	}
 }
 
-func (s *S) createDeployReadyServer(c *check.C) *httptest.Server {
+func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGroup) {
+	wg := sync.WaitGroup{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wg.Add(1)
+		defer wg.Done()
+		tty := r.FormValue("tty") == "true"
+		stdin := r.FormValue("stdin") == "true"
+		stdout := r.FormValue("stdout") == "true"
+		stderr := r.FormValue("stderr") == "true"
+		expected := 1
+		if stdin {
+			expected++
+		}
+		if stdout {
+			expected++
+		}
+		if stderr || tty {
+			expected++
+		}
+		s.stream.url = *r.URL
 		_, streamErr := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
 		c.Assert(streamErr, check.IsNil)
 		upgrader := spdy.NewResponseUpgrader()
-		streams := make(chan httpstream.Stream, 4)
+		streams := make(chan httpstream.Stream, expected)
 		upgrader.UpgradeResponse(w, r, func(stream httpstream.Stream, replySent <-chan struct{}) error {
 			streams <- stream
 			return nil
 		})
+		inStreams := 0
 		for stream := range streams {
+			switch stream.Headers()["Streamtype"][0] {
+			case api.StreamTypeStderr:
+				stream.Write([]byte("stderr data"))
+			case api.StreamTypeStdout:
+				stream.Write([]byte("stdout data"))
+			case api.StreamTypeResize:
+				data, _ := ioutil.ReadAll(stream)
+				s.stream.resize = string(data)
+			case api.StreamTypeStdin:
+				data, _ := ioutil.ReadAll(stream)
+				s.stream.stdin = string(data)
+			}
 			stream.Close()
+			inStreams++
+			if inStreams >= expected {
+				break
+			}
 		}
 	}))
-	return srv
+	return srv, &wg
 }
 
 func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
@@ -264,7 +310,7 @@ func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFu
 }
 
 func (s *S) defaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
-	srv := s.createDeployReadyServer(c)
+	srv, wg := s.createDeployReadyServer(c)
 	s.mockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
@@ -278,9 +324,11 @@ func (s *S) defaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()
 	return a, func() {
 			depPodReady.Wait()
 			jobPodReady.Wait()
+			wg.Wait()
 		}, func() {
 			depPodReady.Wait()
 			jobPodReady.Wait()
+			wg.Wait()
 			if srv == nil {
 				return
 			}

@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/url"
 	"sort"
@@ -18,11 +19,13 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/kubernetes/pkg/util/term"
 )
 
 func (s *S) TestListNodes(c *check.C) {
@@ -506,4 +509,112 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
+}
+
+func (s *S) TestShell(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	err = s.p.Shell(provision.ShellOptions{
+		App:    a,
+		Conn:   conn,
+		Width:  99,
+		Height: 42,
+	})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	rollback()
+	c.Assert(s.stream.stdin, check.Equals, "echo test")
+	var sz term.Size
+	err = json.Unmarshal([]byte(s.stream.resize), &sz)
+	c.Assert(err, check.IsNil)
+	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
+	c.Assert(s.stream.url.Path, check.Equals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+}
+
+func (s *S) TestShellSpecificUnit(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 2, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	err = s.p.Shell(provision.ShellOptions{
+		App:    a,
+		Conn:   conn,
+		Width:  99,
+		Height: 42,
+		Unit:   "myapp-web-pod-2-2",
+	})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	rollback()
+	c.Assert(s.stream.stdin, check.Equals, "echo test")
+	var sz term.Size
+	err = json.Unmarshal([]byte(s.stream.resize), &sz)
+	c.Assert(err, check.IsNil)
+	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
+	c.Assert(s.stream.url.Path, check.Equals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
+}
+
+func (s *S) TestShellSpecificUnitNotFound(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	err = s.p.Shell(provision.ShellOptions{
+		App:    a,
+		Conn:   conn,
+		Width:  99,
+		Height: 42,
+		Unit:   "invalid-unit",
+	})
+	c.Assert(err, check.DeepEquals, &provision.UnitNotFoundError{ID: "invalid-unit"})
+}
+
+func (s *S) TestShellNoUnits(c *check.C) {
+	a, _, rollback := s.defaultReactions(c)
+	defer rollback()
+	buf := safe.NewBuffer([]byte("echo test"))
+	conn := &provisiontest.FakeConn{Buf: buf}
+	err := s.p.Shell(provision.ShellOptions{
+		App:    a,
+		Conn:   conn,
+		Width:  99,
+		Height: 42,
+	})
+	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }

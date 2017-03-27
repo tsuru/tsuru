@@ -24,9 +24,15 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
+	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	"k8s.io/client-go/pkg/labels"
+	"k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
+	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	"k8s.io/kubernetes/pkg/util/term"
 )
 
 const (
@@ -536,4 +542,97 @@ func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, wr
 		return err
 	}
 	return cleanupDaemonSet(client, name, pool)
+}
+
+type fixedSizeQueue struct {
+	sz *term.Size
+}
+
+func (q *fixedSizeQueue) Next() *term.Size {
+	defer func() { q.sz = nil }()
+	return q.sz
+}
+
+var _ term.TerminalSizeQueue = &fixedSizeQueue{}
+
+func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
+	client, cfg, err := getClusterClientWithCfg()
+	if err != nil {
+		return err
+	}
+	var chosenPod *v1.Pod
+	if opts.Unit != "" {
+		chosenPod, err = client.Core().Pods(tsuruNamespace).Get(opts.Unit)
+		if err != nil {
+			if k8sErrors.IsNotFound(errors.Cause(err)) {
+				return &provision.UnitNotFoundError{ID: opts.Unit}
+			}
+			return errors.WithStack(err)
+		}
+	} else {
+		l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+			App:         opts.App,
+			Provisioner: provisionerName,
+			Prefix:      tsuruLabelPrefix,
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if len(pods.Items) == 0 {
+			return provision.ErrEmptyApp
+		}
+		chosenPod = &pods.Items[0]
+	}
+	restCli, err := rest.RESTClientFor(cfg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	l := labelSetFromMeta(&chosenPod.ObjectMeta)
+	if l.AppName() != opts.App.GetName() {
+		return errors.Errorf("pod %q do not belong to app %q", chosenPod.Name, l.AppName())
+	}
+	containerName := deploymentNameForApp(opts.App, l.AppProcess())
+	req := restCli.Post().
+		Resource("pods").
+		Name(chosenPod.Name).
+		Namespace(tsuruNamespace).
+		SubResource("exec").
+		Param("container", containerName)
+	cmds := []string{"/usr/bin/env", "TERM=" + opts.Term, "bash", "-l"}
+	req.VersionedParams(&api.PodExecOptions{
+		Container: containerName,
+		Command:   cmds,
+		Stdin:     true,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       true,
+	}, api.ParameterCodec)
+	exec, err := remotecommand.NewExecutor(cfg, "POST", req.URL())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	sizeQueue := &fixedSizeQueue{
+		sz: &term.Size{
+			Width:  uint16(opts.Width),
+			Height: uint16(opts.Height),
+		},
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
+		Stdin:              opts.Conn,
+		Stdout:             opts.Conn,
+		Stderr:             opts.Conn,
+		Tty:                true,
+		TerminalSizeQueue:  sizeQueue,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
