@@ -209,8 +209,6 @@ type App interface {
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 
-	Units() ([]Unit, error)
-
 	Envs() map[string]bind.EnvVar
 
 	GetMemory() int64

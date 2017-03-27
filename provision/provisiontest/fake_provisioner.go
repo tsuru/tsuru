@@ -1125,7 +1125,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
-	units, err := app.Units()
+	units, err := p.Units(app)
 	if err != nil {
 		return err
 	}

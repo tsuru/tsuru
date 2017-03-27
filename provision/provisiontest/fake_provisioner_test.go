@@ -870,11 +870,15 @@ func (s *S) TestRemoveUnitsFailure(c *check.C) {
 func (s *S) TestExecuteCommand(c *check.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
-	app := NewFakeApp("grand-designs", "rush", 2)
+	app := NewFakeApp("grand-designs", "rush", 0)
 	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.AddUnits(app, 2, "web", nil)
+	c.Assert(err, check.IsNil)
 	p.PrepareOutput(output)
 	p.PrepareOutput(output)
-	err := p.ExecuteCommand(&buf, nil, app, "ls", "-l")
+	err = p.ExecuteCommand(&buf, nil, app, "ls", "-l")
 	c.Assert(err, check.IsNil)
 	cmds := p.GetCmds("ls", app)
 	c.Assert(cmds, check.HasLen, 1)
@@ -883,30 +887,42 @@ func (s *S) TestExecuteCommand(c *check.C) {
 }
 
 func (s *S) TestExecuteCommandFailureNoOutput(c *check.C) {
-	app := NewFakeApp("manhattan-project", "rush", 1)
+	app := NewFakeApp("manhattan-project", "rush", 0)
 	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.AddUnits(app, 1, "web", nil)
+	c.Assert(err, check.IsNil)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
-	err := p.ExecuteCommand(nil, nil, app, "ls", "-l")
+	err = p.ExecuteCommand(nil, nil, app, "ls", "-l")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to run command.")
 }
 
 func (s *S) TestExecuteCommandWithOutputAndFailure(c *check.C) {
 	var buf bytes.Buffer
-	app := NewFakeApp("marathon", "rush", 1)
+	app := NewFakeApp("marathon", "rush", 0)
 	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.AddUnits(app, 1, "web", nil)
+	c.Assert(err, check.IsNil)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
 	p.PrepareOutput([]byte("myoutput!"))
-	err := p.ExecuteCommand(nil, &buf, app, "ls", "-l")
+	err = p.ExecuteCommand(nil, &buf, app, "ls", "-l")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to run command.")
 	c.Assert(buf.String(), check.Equals, "myoutput!")
 }
 
 func (s *S) TestExecuteComandTimeout(c *check.C) {
-	app := NewFakeApp("territories", "rush", 1)
+	app := NewFakeApp("territories", "rush", 0)
 	p := NewFakeProvisioner()
-	err := p.ExecuteCommand(nil, nil, app, "ls -l")
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	err = p.AddUnits(app, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = p.ExecuteCommand(nil, nil, app, "ls -l")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "FakeProvisioner timed out waiting for output.")
 }
