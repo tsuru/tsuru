@@ -570,7 +570,8 @@ func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
 			return errors.WithStack(err)
 		}
 	} else {
-		l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		var l *provision.LabelSet
+		l, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
 			App:         opts.App,
 			Provisioner: provisionerName,
 			Prefix:      tsuruLabelPrefix,
@@ -578,7 +579,8 @@ func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+		var pods *v1.PodList
+		pods, err = client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 		})
 		if err != nil {
