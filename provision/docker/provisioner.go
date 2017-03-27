@@ -304,7 +304,6 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	toAdd := make(map[string]*containersToAdd, len(containers))
 	for _, c := range containers {
 		if _, ok := toAdd[c.ProcessName]; !ok {
@@ -313,7 +312,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Quantity++
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
-	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
+	_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
 	return err
 }
 
@@ -688,7 +687,6 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	imageId, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
@@ -697,7 +695,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return err
 	}
-	_, err = p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
+	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
 	return err
 }
 

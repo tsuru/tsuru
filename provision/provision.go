@@ -202,9 +202,6 @@ type App interface {
 	BindUnit(*Unit) error
 	UnbindUnit(*Unit) error
 
-	// Log should be used to log messages in the app.
-	Log(message, source, unit string) error
-
 	// GetPlatform returns the platform (type) of the app. It is equivalent
 	// to the Unit `Type` field.
 	GetPlatform() string
@@ -213,11 +210,6 @@ type App interface {
 	GetDeploys() uint
 
 	Units() ([]Unit, error)
-
-	// Run executes the command in app units. Commands executed with this
-	// method should have access to environment variables defined in the
-	// app.
-	Run(cmd string, w io.Writer, args RunArgs) error
 
 	Envs() map[string]bind.EnvVar
 
