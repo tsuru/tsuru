@@ -16,7 +16,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -415,7 +414,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if img == "" {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "you must specify a image",
+			Message: "you must specify an image",
 		}
 	}
 	rb := r.FormValue("enabled")
@@ -426,5 +425,5 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", rb),
 		}
 	}
-	return image.UpdateAppImageRollback(appName, img, rollback)
+	return app.RollbackUpdate(appName, img, rollback)
 }

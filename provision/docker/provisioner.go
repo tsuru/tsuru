@@ -367,20 +367,18 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
-	validImgs, err := image.ListValidAppImages(a.GetName())
-	if err != nil {
+func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event.Event) (string, error) {
+	valid, err := image.ValidateAppImage(a.GetName(), imageId)
+	if (!valid) || (err != nil) {
 		return "", err
 	}
-	valid := false
-	for _, img := range validImgs {
-		if img == imageID {
-			valid = true
-			break
-		}
-	}
-	if !valid {
-		return "", errors.Errorf("Image %q not found in app", imageID)
+	return imageId, p.deploy(a, imageId, evt)
+}
+
+func (p *dockerProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
+	intermediateimageID, fileURI, err := p.rebuildImage(app)
+	if err != nil {
+		return "", err
 	}
 	return imageID, p.deploy(a, imageID, evt)
 }

@@ -491,3 +491,21 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	}
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
+
+func ValidateAppImage(appName, imageId string) (bool, error) {
+	validImgs, err := ListValidAppImages(appName)
+	if err != nil {
+		return false, err
+	}
+	valid := false
+	for _, img := range validImgs {
+		if img == imageId {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return false, errors.Errorf("Image %q not found in app", imageId)
+	}
+	return true, nil
+}
