@@ -18,6 +18,10 @@ type swarmNodeWrapper struct {
 	provisioner *swarmProvisioner
 }
 
+var (
+	_ provision.Node = &swarmNodeWrapper{}
+)
+
 func (n *swarmNodeWrapper) Pool() string {
 	l := provision.LabelSet{Labels: n.Node.Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 	return l.NodePool()

@@ -87,6 +87,29 @@ type dockerProvisioner struct {
 	clientKey      []byte
 }
 
+var (
+	_ provision.Provisioner              = &dockerProvisioner{}
+	_ provision.ArchiveDeployer          = &dockerProvisioner{}
+	_ provision.UploadDeployer           = &dockerProvisioner{}
+	_ provision.ImageDeployer            = &dockerProvisioner{}
+	_ provision.RollbackableDeployer     = &dockerProvisioner{}
+	_ provision.RebuildableDeployer      = &dockerProvisioner{}
+	_ provision.MetricsProvisioner       = &dockerProvisioner{}
+	_ provision.ShellProvisioner         = &dockerProvisioner{}
+	_ provision.ExecutableProvisioner    = &dockerProvisioner{}
+	_ provision.SleepableProvisioner     = &dockerProvisioner{}
+	_ provision.MessageProvisioner       = &dockerProvisioner{}
+	_ provision.InitializableProvisioner = &dockerProvisioner{}
+	_ provision.OptionalLogsProvisioner  = &dockerProvisioner{}
+	_ provision.UnitStatusProvisioner    = &dockerProvisioner{}
+	_ provision.NodeProvisioner          = &dockerProvisioner{}
+	_ provision.NodeRebalanceProvisioner = &dockerProvisioner{}
+	_ provision.NodeContainerProvisioner = &dockerProvisioner{}
+	_ provision.UnitFinderProvisioner    = &dockerProvisioner{}
+	_ provision.AppFilterProvisioner     = &dockerProvisioner{}
+	_ provision.ExtensibleProvisioner    = &dockerProvisioner{}
+)
+
 type hookHealer struct {
 	p *dockerProvisioner
 }
@@ -1127,8 +1150,10 @@ func (p *dockerProvisioner) FilterAppsByUnitStatus(apps []provision.App, status 
 	return result, nil
 }
 
-var _ provision.Node = &clusterNodeWrapper{}
-var _ provision.NodeHealthChecker = &clusterNodeWrapper{}
+var (
+	_ provision.Node              = &clusterNodeWrapper{}
+	_ provision.NodeHealthChecker = &clusterNodeWrapper{}
+)
 
 type clusterNodeWrapper struct {
 	*cluster.Node

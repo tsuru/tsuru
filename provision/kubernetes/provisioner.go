@@ -44,6 +44,28 @@ const (
 
 type kubernetesProvisioner struct{}
 
+var (
+	_ provision.Provisioner              = &kubernetesProvisioner{}
+	_ provision.UploadDeployer           = &kubernetesProvisioner{}
+	_ provision.ShellProvisioner         = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
+	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
+	// _ provision.ImageDeployer            = &kubernetesProvisioner{}
+	// _ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
+	// _ provision.MessageProvisioner       = &kubernetesProvisioner{}
+	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
+	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
+	// _ provision.RebuildableDeployer      = &kubernetesProvisioner{}
+	// _ provision.MetricsProvisioner       = &kubernetesProvisioner{}
+	// _ provision.SleepableProvisioner     = &kubernetesProvisioner{}
+	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
+	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
+	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
+	// _ provision.AppFilterProvisioner     = &kubernetesProvisioner{}
+	// _ provision.ExtensibleProvisioner    = &kubernetesProvisioner{}
+)
+
 func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return &kubernetesProvisioner{}, nil

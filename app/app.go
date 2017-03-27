@@ -132,6 +132,10 @@ type App struct {
 	provisioner provision.Provisioner
 }
 
+var (
+	_ provision.App = &App{}
+)
+
 func (app *App) getProvisioner() (provision.Provisioner, error) {
 	if app.provisioner == nil {
 		if app.Pool == "" {

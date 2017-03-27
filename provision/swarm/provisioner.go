@@ -35,6 +35,28 @@ var swarmConfig swarmProvisionerConfig
 
 type swarmProvisioner struct{}
 
+var (
+	_ provision.Provisioner              = &swarmProvisioner{}
+	_ provision.ArchiveDeployer          = &swarmProvisioner{}
+	_ provision.UploadDeployer           = &swarmProvisioner{}
+	_ provision.ImageDeployer            = &swarmProvisioner{}
+	_ provision.ShellProvisioner         = &swarmProvisioner{}
+	_ provision.ExecutableProvisioner    = &swarmProvisioner{}
+	_ provision.MessageProvisioner       = &swarmProvisioner{}
+	_ provision.InitializableProvisioner = &swarmProvisioner{}
+	_ provision.NodeProvisioner          = &swarmProvisioner{}
+	_ provision.NodeContainerProvisioner = &swarmProvisioner{}
+	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
+	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
+	// _ provision.MetricsProvisioner       = &swarmProvisioner{}
+	// _ provision.SleepableProvisioner     = &swarmProvisioner{}
+	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
+	// _ provision.UnitStatusProvisioner    = &swarmProvisioner{}
+	// _ provision.NodeRebalanceProvisioner = &swarmProvisioner{}
+	// _ provision.AppFilterProvisioner     = &swarmProvisioner{}
+	// _ provision.ExtensibleProvisioner    = &swarmProvisioner{}
+)
+
 type swarmProvisionerConfig struct {
 	swarmPort int
 }

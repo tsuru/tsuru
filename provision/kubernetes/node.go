@@ -14,6 +14,10 @@ type kubernetesNodeWrapper struct {
 	prov *kubernetesProvisioner
 }
 
+var (
+	_ provision.Node = &kubernetesNodeWrapper{}
+)
+
 func (n *kubernetesNodeWrapper) Pool() string {
 	if n.node.Labels == nil {
 		return ""
