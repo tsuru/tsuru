@@ -133,7 +133,8 @@ type App struct {
 }
 
 var (
-	_ provision.App = &App{}
+	_ provision.App      = &App{}
+	_ rebuild.RebuildApp = &App{}
 )
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
