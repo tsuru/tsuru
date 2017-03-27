@@ -101,6 +101,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 type miniApp struct {
 	Name  string            `json:"name"`
 	Pool  string            `json:"pool"`
+	Plan  app.Plan          `json:"plan"`
 	Units []provision.Unit  `json:"units"`
 	CName []string          `json:"cname"`
 	Ip    string            `json:"ip"`
@@ -116,6 +117,7 @@ func minifyApp(app app.App) (miniApp, error) {
 	return miniApp{
 		Name:  app.Name,
 		Pool:  app.Pool,
+		Plan:  app.Plan,
 		Units: units,
 		CName: app.CName,
 		Ip:    app.Ip,
