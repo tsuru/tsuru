@@ -16,6 +16,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -143,7 +144,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
 	opts.Event = evt
 	opts.OutputStream = writer
@@ -410,33 +411,20 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Not found
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.\n", appName)}
-	}
-	image := r.FormValue("image")
-	if image == "" {
+	img := r.FormValue("image")
+	if img == "" {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you must specify a image",
 		}
 	}
-	e := r.FormValue("enabled")
-	enabled, err := strconv.ParseBool(e)
+	rb := r.FormValue("enabled")
+	rollback, err := strconv.ParseBool(rb)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusForbidden,
-			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", e),
+			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", rb),
 		}
 	}
-	opts := app.DeployOptions{
-		App:      instance,
-		Image:    image,
-		User:     t.GetUserName(),
-		Origin:   origin,
-		Rollback: enabled,
-		Message:  r.FormValue("reason"),
-	}
-
-	return nil
+	return image.UpdateAppImageRollback(appName, img, rollback)
 }

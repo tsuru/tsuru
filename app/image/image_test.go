@@ -5,11 +5,10 @@
 package image
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
+
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 )
@@ -72,17 +71,17 @@ func (s *S) TestAppCurrentImageName(c *check.C) {
 }
 
 func (s *S) TestAppCurrentImageVersion(c *check.C) {
-	img1, err := image.AppCurrentImageVersion("myapp")
+	img1, err := AppCurrentImageVersion("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "v1")
-	_, err = image.AppNewImageName("myapp")
+	_, err = AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
-	img1, err = image.AppCurrentImageVersion("myapp")
+	img1, err = AppCurrentImageVersion("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "v1")
-	_, err = image.AppNewImageName("myapp")
+	_, err = AppNewImageName("myapp")
 	c.Assert(err, check.IsNil)
-	img2, err := image.AppCurrentImageVersion("myapp")
+	img2, err := AppCurrentImageVersion("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "v2")
 }
@@ -338,48 +337,6 @@ func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 	})
 }
 
-func (s *S) TestUpdateImageCustomData(c *check.C) {
-	data := ImageMetadata{
-		Name: "tsuru/app-myapp:v1",
-		CustomData: map[string]interface{}{
-			"App":      "myapp",
-			"Image":    "v1",
-			"Rollback": "false",
-		},
-	}
-	data2 := ImageMetadata{
-		Name: "tsuru/app-myapp:v2",
-		CustomData: map[string]interface{}{
-			"App":      "myapp",
-			"Image":    "v2",
-			"Rollback": "true",
-		},
-	}
-	err := data.Save()
-	c.Assert(err, check.IsNil)
-	err = data2.Save()
-	c.Assert(err, check.IsNil)
-	dbMetadata, err := GetImageCustomData(data.Name)
-	c.Check(err, check.IsNil)
-	c.Check(dbMetadata.CustomData, check.DeepEquals, map[string]interface{}{
-		"App":      "myapp",
-		"Image":    "v1",
-		"Rollback": "false",
-	})
-	coll, _ := imageCustomDataColl()
-	cd := map[string]interface{}{
-		"App":      "myapp",
-		"Image":    "v2",
-		"Rollback": "false",
-	}
-	var data3, data4 []ImageMetadata
-	coll.FindId(data.Name).All(&data3)
-	coll.FindId(data2.Name).All(&data4)
-	fmt.Printf("v1: %v\nv2: %v\n", data3, data4)
-	err = UpdateImageCustomData("myapp", "v2", cd)
-	c.Check(err, check.IsNil)
-}
-
 func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 	tests := []struct {
 		procfile string
@@ -440,9 +397,9 @@ func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
 }
 
 func (s *S) TestAllAppProcesses(c *check.C) {
-	err := image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	data := image.ImageMetadata{
+	data := ImageMetadata{
 		Name: "tsuru/app-myapp:v1",
 		Processes: map[string][]string{
 			"worker1": {"python myapp.py"},
@@ -451,8 +408,25 @@ func (s *S) TestAllAppProcesses(c *check.C) {
 	}
 	err = data.Save()
 	c.Assert(err, check.IsNil)
-	procs, err := image.AllAppProcesses("myapp")
+	procs, err := AllAppProcesses("myapp")
 	c.Assert(err, check.IsNil)
 	sort.Strings(procs)
 	c.Assert(procs, check.DeepEquals, []string{"worker1", "worker2"})
+}
+
+func (s *S) TestUpdateAppImageRollback(c *check.C) {
+	data := ImageMetadata{
+		Name:        "tsuru/app-myapp:v1",
+		CanRollback: true,
+	}
+	err := data.Save()
+	c.Assert(err, check.IsNil)
+	dbMetadata, err := GetImageCustomData(data.Name)
+	c.Check(err, check.IsNil)
+	c.Check(dbMetadata.CanRollback, check.Equals, true)
+	err = UpdateAppImageRollback("myapp", "v1", false)
+	c.Check(err, check.IsNil)
+	dbMetadata, err = GetImageCustomData(data.Name)
+	c.Check(err, check.IsNil)
+	c.Check(dbMetadata.CanRollback, check.Equals, false)
 }

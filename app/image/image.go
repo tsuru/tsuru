@@ -25,6 +25,7 @@ type ImageMetadata struct {
 	LegacyProcesses map[string]string   `bson:"processes"`
 	Processes       map[string][]string `bson:"processes_list"`
 	ExposedPort     string
+	CanRollback     bool `bson:"canrollback"`
 }
 
 type appImages struct {
@@ -97,9 +98,10 @@ func customDataToImageMetadata(imageName string, customData map[string]interface
 		delete(customData, "procfile")
 	}
 	data := ImageMetadata{
-		Name:       imageName,
-		Processes:  processes,
-		CustomData: customData,
+		Name:        imageName,
+		Processes:   processes,
+		CustomData:  customData,
+		CanRollback: true,
 	}
 	if exposedPort, ok := customData["exposedPort"]; ok {
 		data.ExposedPort = exposedPort.(string)
@@ -113,24 +115,6 @@ func SaveImageCustomData(imageName string, customData map[string]interface{}) er
 		return err
 	}
 	return data.Save()
-}
-
-func UpdateImageCustomData(appName, imageName string, customData map[string]interface{}) error {
-	data, err := customDataToImageMetadata(imageName, customData)
-	if err != nil {
-		return err
-	}
-	dataColl, err := imageCustomDataColl()
-	if err != nil {
-		return err
-	}
-	defer dataColl.Close()
-	coll, err := appImagesColl()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	return coll.UpdateId(appName, data)
 }
 
 func GetImageCustomData(imageName string) (ImageMetadata, error) {
@@ -337,6 +321,19 @@ func DeleteAllAppImageNames(appName string) error {
 	}
 	defer coll.Close()
 	return coll.RemoveId(appName)
+}
+
+func UpdateAppImageRollback(appName, img string, rollback bool) error {
+	dataColl, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	defer dataColl.Close()
+	err = dataColl.Update(bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)}, bson.M{"$set": bson.M{"canrollback": rollback}})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func PullAppImageNames(appName string, images []string) error {
