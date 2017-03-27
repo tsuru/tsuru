@@ -17,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -222,14 +221,7 @@ type App interface {
 
 	GetPool() string
 
-	GetTeamOwner() string
-
-	GetTeamsName() []string
-
-	GetQuota() quota.Quota
 	SetQuotaInUse(int) error
-
-	GetCname() []string
 
 	GetIp() string
 

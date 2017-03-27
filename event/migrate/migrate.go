@@ -89,13 +89,17 @@ func setAllowed(evt *event.Event) (err error) {
 		if err != nil {
 			return err
 		}
-		var a provision.App
+		var a *app.App
 		for _, p := range provisioners {
 			if finderProv, ok := p.(provision.UnitFinderProvisioner); ok {
-				a, err = finderProv.GetAppFromUnitID(evt.Target.Value)
+				var provApp provision.App
+				provApp, err = finderProv.GetAppFromUnitID(evt.Target.Value)
 				_, isNotFound := err.(*provision.UnitNotFoundError)
 				if err == nil || !isNotFound {
-					break
+					a, err = app.GetByName(provApp.GetName())
+					if err == nil {
+						break
+					}
 				}
 			}
 		}

@@ -350,14 +350,6 @@ func (app *FakeApp) GetRouterName() (string, error) {
 	return "fake", nil
 }
 
-func (app *FakeApp) GetTeamsName() []string {
-	return app.Teams
-}
-
-func (app *FakeApp) GetTeamOwner() string {
-	return app.TeamOwner
-}
-
 type Cmd struct {
 	Cmd  string
 	Args []string
@@ -933,12 +925,6 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer
 		defer conn.Close()
 		err = conn.Apps().Update(bson.M{"name": app.GetName()}, bson.M{"$set": bson.M{"ip": newAddr}})
 		if err != nil {
-			return err
-		}
-	}
-	for _, cname := range app.GetCname() {
-		err = r.SetCName(cname, app.GetName())
-		if err != nil && err != router.ErrCNameExists {
 			return err
 		}
 	}
