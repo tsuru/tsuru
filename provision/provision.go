@@ -222,12 +222,6 @@ type App interface {
 	GetPool() string
 
 	SetQuotaInUse(int) error
-
-	GetIp() string
-
-	GetLock() AppLock
-
-	GetRouterOpts() map[string]string
 }
 
 type AppLock interface {
