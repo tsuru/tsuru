@@ -6,15 +6,21 @@ package kubernetes
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/fields"
 	"k8s.io/client-go/pkg/labels"
+	"k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
+	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	"k8s.io/kubernetes/pkg/util/term"
 )
 
 const (
@@ -211,4 +217,109 @@ func labelSetFromMeta(meta *v1.ObjectMeta) *provision.LabelSet {
 		merged[k] = v
 	}
 	return &provision.LabelSet{Labels: merged, Prefix: tsuruLabelPrefix}
+}
+
+type fixedSizeQueue struct {
+	sz *term.Size
+}
+
+func (q *fixedSizeQueue) Next() *term.Size {
+	defer func() { q.sz = nil }()
+	return q.sz
+}
+
+var _ term.TerminalSizeQueue = &fixedSizeQueue{}
+
+type execOpts struct {
+	app      provision.App
+	unit     string
+	cmds     []string
+	stdout   io.Writer
+	stderr   io.Writer
+	stdin    io.Reader
+	termSize *term.Size
+	tty      bool
+}
+
+func execCommand(opts execOpts) error {
+	client, cfg, err := getClusterClientWithCfg()
+	if err != nil {
+		return err
+	}
+	var chosenPod *v1.Pod
+	if opts.unit != "" {
+		chosenPod, err = client.Core().Pods(tsuruNamespace).Get(opts.unit)
+		if err != nil {
+			if k8sErrors.IsNotFound(errors.Cause(err)) {
+				return &provision.UnitNotFoundError{ID: opts.unit}
+			}
+			return errors.WithStack(err)
+		}
+	} else {
+		var l *provision.LabelSet
+		l, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
+			App:         opts.app,
+			Provisioner: provisionerName,
+			Prefix:      tsuruLabelPrefix,
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		var pods *v1.PodList
+		pods, err = client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
+		})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if len(pods.Items) == 0 {
+			return provision.ErrEmptyApp
+		}
+		chosenPod = &pods.Items[0]
+	}
+	restCli, err := rest.RESTClientFor(cfg)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	l := labelSetFromMeta(&chosenPod.ObjectMeta)
+	if l.AppName() != opts.app.GetName() {
+		return errors.Errorf("pod %q do not belong to app %q", chosenPod.Name, l.AppName())
+	}
+	containerName := deploymentNameForApp(opts.app, l.AppProcess())
+	req := restCli.Post().
+		Resource("pods").
+		Name(chosenPod.Name).
+		Namespace(tsuruNamespace).
+		SubResource("exec").
+		Param("container", containerName)
+	req.VersionedParams(&api.PodExecOptions{
+		Container: containerName,
+		Command:   opts.cmds,
+		Stdin:     opts.stdin != nil,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       opts.tty,
+	}, api.ParameterCodec)
+	exec, err := remotecommand.NewExecutor(cfg, "POST", req.URL())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	var sizeQueue *fixedSizeQueue
+	if opts.termSize != nil {
+		sizeQueue = &fixedSizeQueue{
+			sz: opts.termSize,
+		}
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
+		Stdin:              opts.stdin,
+		Stdout:             opts.stdout,
+		Stderr:             opts.stderr,
+		Tty:                opts.tty,
+		TerminalSizeQueue:  sizeQueue,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }

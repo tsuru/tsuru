@@ -58,7 +58,7 @@ type S struct {
 type streamResult struct {
 	stdin  string
 	resize string
-	url    url.URL
+	urls   []url.URL
 }
 
 var suiteInstance = &S{}
@@ -179,7 +179,7 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 		if stderr || tty {
 			expected++
 		}
-		s.stream.url = *r.URL
+		s.stream.urls = append(s.stream.urls, *r.URL)
 		_, streamErr := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
 		c.Assert(streamErr, check.IsNil)
 		upgrader := spdy.NewResponseUpgrader()
