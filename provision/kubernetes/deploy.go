@@ -195,6 +195,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	replicas := 0
 	restartCount := 0
 	isStopped := false
+	isAsleep := false
 	if oldDeployment != nil {
 		oldLabels := labelSetFromMeta(&oldDeployment.Spec.Template.ObjectMeta)
 		// Use label instead of .Spec.Replicas because stopped apps will have
@@ -202,6 +203,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 		replicas = oldLabels.AppReplicas()
 		restartCount = oldLabels.Restarts()
 		isStopped = oldLabels.IsStopped()
+		isAsleep = oldLabels.IsAsleep()
 	}
 	if pState.Increment != 0 {
 		replicas += pState.Increment
@@ -214,6 +216,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 			replicas = 1
 		}
 		isStopped = false
+		isAsleep = false
 	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         a,
@@ -229,6 +232,9 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	if isStopped || pState.Stop {
 		realReplicas = 0
 		labels.SetStopped()
+	}
+	if isAsleep || pState.Sleep {
+		labels.SetAsleep()
 	}
 	if pState.Restart {
 		restartCount++

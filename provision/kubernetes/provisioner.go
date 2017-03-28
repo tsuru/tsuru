@@ -47,12 +47,12 @@ var (
 	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
 	_ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
 	// _ provision.ImageDeployer            = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	// _ provision.RebuildableDeployer      = &kubernetesProvisioner{}
-	// _ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
@@ -714,4 +714,14 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 		out += fmt.Sprintf("    Kubernetes node: %s\n", node.Address())
 	}
 	return out, nil
+}
+
+func (p *kubernetesProvisioner) Sleep(a provision.App, process string) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
 }

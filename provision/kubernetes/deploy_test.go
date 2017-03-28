@@ -151,7 +151,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	})
 }
 
-func (s *S) TestServiceManagerDeployServiceUpdateIncrement(c *check.C) {
+func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	m := serviceManager{client: s.client}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -163,121 +163,121 @@ func (s *S) TestServiceManagerDeployServiceUpdateIncrement(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Increment: 1}, "myimg")
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
-	c.Assert(err, check.IsNil)
-	c.Assert(*dep.Spec.Replicas, check.Equals, int32(2))
-}
-
-func (s *S) TestServiceManagerDeployServiceUpdateStop(c *check.C) {
-	m := serviceManager{client: s.client}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
+	tests := []struct {
+		states []servicecommon.ProcessState
+		fn     func(dep *extensions.Deployment)
+	}{
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 1},
+			},
+			fn: func(dep *extensions.Deployment) {
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(2))
+			},
 		},
-	})
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Increment: 2}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Stop: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
-	c.Assert(err, check.IsNil)
-	c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
-	ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
-	c.Assert(ls.AppReplicas(), check.Equals, 3)
-}
-
-func (s *S) TestServiceManagerDeployServiceUpdateStopStart(c *check.C) {
-	m := serviceManager{client: s.client}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Stop: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.AppReplicas(), check.Equals, 3)
+				c.Assert(ls.IsStopped(), check.Equals, true)
+			},
 		},
-	})
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Increment: 2}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Stop: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
-	c.Assert(err, check.IsNil)
-	c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Stop: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Restart: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	dep, err = s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
-	c.Assert(err, check.IsNil)
-	c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
-}
-
-func (s *S) TestServiceManagerDeployServiceUpdateStopNoAction(c *check.C) {
-	m := serviceManager{client: s.client}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Sleep: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.IsAsleep(), check.Equals, true)
+			},
 		},
-	})
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Increment: 2}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Stop: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
-	c.Assert(err, check.IsNil)
-	c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
-	ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
-	c.Assert(ls.AppReplicas(), check.Equals, 3)
-}
-
-func (s *S) TestServiceManagerDeployServiceUpdateRestart(c *check.C) {
-	m := serviceManager{client: s.client}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.IsStopped(), check.Equals, false)
+			},
 		},
-	})
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Restart: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Restart: true}, "myimg")
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
-	c.Assert(err, check.IsNil)
-	ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
-	c.Assert(ls.Restarts(), check.Equals, 2)
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Sleep: true}, {Start: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.IsAsleep(), check.Equals, false)
+			},
+		},
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Stop: true}, {Restart: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.IsStopped(), check.Equals, false)
+			},
+		},
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Sleep: true}, {Restart: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.IsAsleep(), check.Equals, false)
+			},
+		},
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Stop: true}, {},
+			},
+			fn: func(dep *extensions.Deployment) {
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.AppReplicas(), check.Equals, 3)
+				c.Assert(ls.IsStopped(), check.Equals, true)
+			},
+		},
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Increment: 2}, {Sleep: true}, {},
+			},
+			fn: func(dep *extensions.Deployment) {
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.IsAsleep(), check.Equals, true)
+			},
+		},
+		{
+			states: []servicecommon.ProcessState{
+				{Start: true}, {Restart: true}, {Restart: true},
+			},
+			fn: func(dep *extensions.Deployment) {
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
+				ls := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
+				c.Assert(ls.Restarts(), check.Equals, 2)
+			},
+		},
+	}
+	for _, tt := range tests {
+		for _, s := range tt.states {
+			err = m.DeployService(a, "p1", s, "myimg")
+			c.Assert(err, check.IsNil)
+		}
+		var dep *extensions.Deployment
+		dep, err = s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
+		c.Assert(err, check.IsNil)
+		tt.fn(dep)
+		err = cleanupDeployment(s.client, a, "p1")
+		c.Assert(err, check.IsNil)
+		err = cleanupDeployment(s.client, a, "p2")
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
