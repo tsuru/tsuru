@@ -240,12 +240,12 @@ func Deploy(opts DeployOptions) (string, error) {
 	return imageID, nil
 }
 
-func RollbackUpdate(appName, imgId string, rollback bool) error {
-	valid, err := image.ValidateAppImage(appName, imgId)
-	if (!valid) || (err != nil) {
+func RollbackUpdate(appName, imgId, reason string, rollback bool) error {
+	err := image.ValidateAppImage(appName, imgId)
+	if err != nil {
 		return err
 	}
-	return image.UpdateAppImageRollback(appName, imgId, rollback)
+	return image.UpdateAppImageRollback(appName, imgId, reason, rollback)
 }
 
 func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {

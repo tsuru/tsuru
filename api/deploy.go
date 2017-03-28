@@ -418,6 +418,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 	}
 	rb := r.FormValue("enabled")
+	reason := r.FormValue("reason")
 	rollback, err := strconv.ParseBool(rb)
 	if err != nil {
 		return &tsuruErrors.HTTP{
@@ -425,5 +426,5 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", rb),
 		}
 	}
-	return app.RollbackUpdate(appName, img, rollback)
+	return app.RollbackUpdate(appName, img, reason, rollback)
 }

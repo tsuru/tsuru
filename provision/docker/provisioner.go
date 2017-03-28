@@ -368,9 +368,16 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 }
 
 func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event.Event) (string, error) {
-	valid, err := image.ValidateAppImage(a.GetName(), imageId)
-	if (!valid) || (err != nil) {
+	err := image.ValidateAppImage(a.GetName(), imageId)
+	if err != nil {
 		return "", err
+	}
+	imgMetaData, err := image.GetImageCustomData(imageId)
+	if err != nil {
+		return "", err
+	}
+	if imgMetaData.DisableRollback {
+		return "", errors.New(fmt.Sprintf("Can't Rollback image %s, reason: %s", imageId, imgMetaData.Reason))
 	}
 	return imageId, p.deploy(a, imageId, evt)
 }
