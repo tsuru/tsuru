@@ -377,7 +377,7 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 		return "", err
 	}
 	if imgMetaData.DisableRollback {
-		return "", errors.New(fmt.Sprintf("Can't Rollback image %s, reason: %s", imageId, imgMetaData.Reason))
+		return "", fmt.Errorf("Can't Rollback image %s, reason: %s", imageId, imgMetaData.Reason)
 	}
 	return imageId, p.deploy(a, imageId, evt)
 }
