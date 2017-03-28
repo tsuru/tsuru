@@ -35,6 +35,10 @@ func deployJobNameForApp(a provision.App) string {
 	return fmt.Sprintf("%s-deploy", a.GetName())
 }
 
+func execCommandJobNameForApp(a provision.App) string {
+	return fmt.Sprintf("%s-isolated-run", a.GetName())
+}
+
 func daemonSetName(name, pool string) string {
 	if pool == "" {
 		return fmt.Sprintf("node-container-%s-all", name)
@@ -58,6 +62,38 @@ func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
+}
+
+func waitForPodStart(client kubernetes.Interface, podName string, timeout time.Duration) error {
+	return waitFor(timeout, func() (bool, error) {
+		pod, err := client.Core().Pods(tsuruNamespace).Get(podName)
+		if err != nil {
+			return true, err
+		}
+		if pod.Status.Phase == v1.PodPending {
+			return false, nil
+		}
+		switch pod.Status.Phase {
+		case v1.PodUnknown:
+			fallthrough
+		case v1.PodFailed:
+			eventsInterface := client.Core().Events(tsuruNamespace)
+			ns := tsuruNamespace
+			selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
+			options := v1.ListOptions{FieldSelector: selector.String()}
+			var events *v1.EventList
+			events, err = eventsInterface.List(options)
+			if err != nil {
+				return true, errors.Wrapf(err, "error listing pod %q events invalid phase %q", podName, pod.Status.Phase)
+			}
+			if len(events.Items) == 0 {
+				return true, errors.Errorf("invalid pod phase %q", pod.Status.Phase)
+			}
+			lastEvt := events.Items[len(events.Items)-1]
+			return true, errors.Errorf("invalid pod phase %q: %s", pod.Status.Phase, lastEvt.Message)
+		}
+		return true, nil
+	})
 }
 
 func waitForJobContainerRunning(client kubernetes.Interface, matchLabels map[string]string, container string, timeout time.Duration) (string, error) {
@@ -186,6 +222,14 @@ func cleanupJob(client kubernetes.Interface, jobName string) error {
 	return cleanupPods(client, v1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
 	})
+}
+
+func cleanupPod(client kubernetes.Interface, podName string) error {
+	err := client.Core().Pods(tsuruNamespace).Delete(podName, &v1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func podsFromNode(client kubernetes.Interface, nodeName string) ([]v1.Pod, error) {

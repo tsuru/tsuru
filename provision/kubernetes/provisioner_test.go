@@ -533,6 +533,7 @@ func (s *S) TestShell(c *check.C) {
 		Conn:   conn,
 		Width:  99,
 		Height: 42,
+		Term:   "xterm",
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
@@ -543,6 +544,7 @@ func (s *S) TestShell(c *check.C) {
 	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
 	c.Assert(s.stream.urls, check.HasLen, 1)
 	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.stream.urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
 }
 
 func (s *S) TestShellSpecificUnit(c *check.C) {
@@ -645,6 +647,8 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	c.Assert(s.stream.urls, check.HasLen, 2)
 	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
 	c.Assert(s.stream.urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
+	c.Assert(s.stream.urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+	c.Assert(s.stream.urls[1].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandOnce(c *check.C) {
@@ -670,4 +674,52 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 	c.Assert(stderr.String(), check.Equals, "stderr data")
 	c.Assert(s.stream.urls, check.HasLen, 1)
 	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.stream.urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+}
+
+func (s *S) TestExecuteCommandIsolated(c *check.C) {
+	a, _, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
+	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(stdout.String(), check.Equals, "my log message")
+	c.Assert(stderr.String(), check.Equals, "")
+	c.Assert(s.stream.urls, check.HasLen, 1)
+	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/log")
+	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 0)
+}
+
+func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
+	a, _, rollback := s.defaultReactions(c)
+	defer rollback()
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		c.Assert(ok, check.Equals, true)
+		pod.Status.Phase = v1.PodFailed
+		return false, nil, nil
+	})
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
+	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
+	c.Assert(err, check.ErrorMatches, `invalid pod phase "Failed"`)
 }

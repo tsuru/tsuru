@@ -56,9 +56,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			RevisionHistoryLimit: &ten,
 			Selector: &unversioned.LabelSelector{
 				MatchLabels: map[string]string{
-					"tsuru.io/app-name":    "myapp",
-					"tsuru.io/app-process": "p1",
-					"tsuru.io/is-build":    "false",
+					"tsuru.io/app-name":        "myapp",
+					"tsuru.io/app-process":     "p1",
+					"tsuru.io/is-build":        "false",
+					"tsuru.io/is-isolated-run": "false",
 				},
 			},
 			Template: v1.PodTemplateSpec{
@@ -133,9 +134,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		},
 		Spec: v1.ServiceSpec{
 			Selector: map[string]string{
-				"tsuru.io/app-name":    "myapp",
-				"tsuru.io/app-process": "p1",
-				"tsuru.io/is-build":    "false",
+				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/app-process":     "p1",
+				"tsuru.io/is-build":        "false",
+				"tsuru.io/is-isolated-run": "false",
 			},
 			Ports: []v1.ServicePort{
 				{

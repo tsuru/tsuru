@@ -31,10 +31,11 @@ import (
 )
 
 const (
-	provisionerName        = "kubernetes"
-	tsuruNamespace         = "default"
-	dockerImageName        = "docker:1.11.2"
-	defaultBuildJobTimeout = 30 * time.Minute
+	provisionerName           = "kubernetes"
+	tsuruNamespace            = "default"
+	dockerImageName           = "docker:1.11.2"
+	defaultBuildJobTimeout    = 30 * time.Minute
+	defaultRunPodReadyTimeout = time.Minute
 )
 
 type kubernetesProvisioner struct{}
@@ -603,7 +604,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, app pro
 		err = execCommand(execOpts{
 			unit:   pod.Name,
 			app:    app,
-			cmds:   append([]string{"/bin/bash", "-lc", cmd}, args...),
+			cmds:   append([]string{"/bin/sh", "-lc", cmd}, args...),
 			stdout: stdout,
 			stderr: stderr,
 		})
@@ -617,13 +618,80 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, app pro
 func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	return execCommand(execOpts{
 		app:    app,
-		cmds:   append([]string{"/bin/bash", "-lc", cmd}, args...),
+		cmds:   append([]string{"/bin/sh", "-lc", cmd}, args...),
 		stdout: stdout,
 		stderr: stderr,
 	})
 }
 
-func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	// TODO(cezarsa)
-	return errors.New("not implemented yet")
+func runJob(client kubernetes.Interface, a provision.App, out io.Writer, cmds []string) error {
+	baseName := execCommandJobNameForApp(a)
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App:           a,
+		Provisioner:   provisionerName,
+		IsIsolatedRun: true,
+		Prefix:        tsuruLabelPrefix,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	imgName, err := image.AppCurrentImageName(a.GetName())
+	if err != nil {
+		return err
+	}
+	appEnvs := provision.EnvsForApp(a, "", false)
+	var envs []v1.EnvVar
+	for _, envData := range appEnvs {
+		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
+	}
+	pod := &v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      baseName,
+			Namespace: tsuruNamespace,
+			Labels:    labels.ToLabels(),
+		},
+		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{
+				{
+					Name:    baseName,
+					Image:   imgName,
+					Command: cmds,
+					Env:     envs,
+				},
+			},
+		},
+	}
+	_, err = client.Core().Pods(tsuruNamespace).Create(pod)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer cleanupPod(client, pod.Name)
+	err = waitForPodStart(client, pod.Name, defaultRunPodReadyTimeout)
+	if err != nil {
+		return err
+	}
+	req := client.Core().Pods(tsuruNamespace).GetLogs(pod.Name, &v1.PodLogOptions{
+		Follow:    true,
+		Container: baseName,
+	})
+	reader, err := req.Stream()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer reader.Close()
+	_, err = io.Copy(out, reader)
+	if err != nil && err != io.EOF {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	cmds := append([]string{"/bin/sh", "-c", cmd}, args...)
+	return runJob(client, a, stdout, cmds)
 }

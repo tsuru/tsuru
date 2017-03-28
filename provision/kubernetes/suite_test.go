@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
@@ -49,7 +50,7 @@ type S struct {
 	user     *auth.User
 	team     *auth.Team
 	token    auth.Token
-	client   *fake.Clientset
+	client   *clientWrapper
 	lastConf *rest.Config
 	t        *testing.T
 	stream   streamResult
@@ -84,9 +85,38 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
+type clientWrapper struct {
+	*fake.Clientset
+}
+
+func (c *clientWrapper) Core() v1core.CoreV1Interface {
+	core := c.Clientset.Core()
+	return &clientCoreWrapper{core}
+}
+
+type clientCoreWrapper struct {
+	v1core.CoreV1Interface
+}
+
+func (c *clientCoreWrapper) Pods(namespace string) v1core.PodInterface {
+	pods := c.CoreV1Interface.Pods(namespace)
+	return &clientPodsWrapper{pods}
+}
+
+type clientPodsWrapper struct {
+	v1core.PodInterface
+}
+
+func (c *clientPodsWrapper) GetLogs(name string, opts *v1.PodLogOptions) *rest.Request {
+	c.PodInterface.GetLogs(name, opts)
+	cfg, _ := getClusterRestConfig()
+	cli, _ := rest.RESTClientFor(cfg)
+	return cli.Get().Namespace(tsuruNamespace).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, api.ParameterCodec)
+}
+
 func (s *S) SetUpTest(c *check.C) {
 	s.stream = streamResult{}
-	s.client = fake.NewSimpleClientset()
+	s.client = &clientWrapper{fake.NewSimpleClientset()}
 	clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
 		return s.client, nil
@@ -161,10 +191,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 }
 
 func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGroup) {
-	wg := sync.WaitGroup{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wg.Add(1)
-		defer wg.Done()
+	attachFn := func(w http.ResponseWriter, r *http.Request) {
 		tty := r.FormValue("tty") == "true"
 		stdin := r.FormValue("stdin") == "true"
 		stdout := r.FormValue("stdout") == "true"
@@ -179,7 +206,6 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 		if stderr || tty {
 			expected++
 		}
-		s.stream.urls = append(s.stream.urls, *r.URL)
 		_, streamErr := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
 		c.Assert(streamErr, check.IsNil)
 		upgrader := spdy.NewResponseUpgrader()
@@ -207,6 +233,18 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 			if inStreams >= expected {
 				break
 			}
+		}
+	}
+	wg := sync.WaitGroup{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wg.Add(1)
+		defer wg.Done()
+		s.stream.urls = append(s.stream.urls, *r.URL)
+		if strings.HasSuffix(r.URL.Path, "/attach") || strings.HasSuffix(r.URL.Path, "/exec") {
+			attachFn(w, r)
+		} else if strings.HasSuffix(r.URL.Path, "/log") {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "my log message")
 		}
 	}))
 	return srv, &wg

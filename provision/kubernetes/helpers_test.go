@@ -15,6 +15,8 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/runtime"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func (s *S) TestDeploymentNameForApp(c *check.C) {
@@ -103,6 +105,63 @@ func (s *S) TestWaitForJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = waitForJob(s.client, "job1", 2*time.Minute)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestWaitForPodStart(c *check.C) {
+	err := waitForPodStart(s.client, "pod1", 100*time.Millisecond)
+	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
+	var wantedPhase v1.PodPhase
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		c.Assert(ok, check.Equals, true)
+		pod.Status.Phase = wantedPhase
+		return false, nil, nil
+	})
+	tests := []struct {
+		phase v1.PodPhase
+		err   string
+		evt   *v1.Event
+	}{
+		{phase: v1.PodRunning},
+		{phase: v1.PodSucceeded},
+		{phase: v1.PodPending, err: `timeout after .*`},
+		{phase: v1.PodFailed, err: `invalid pod phase "Failed"`},
+		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
+		{phase: v1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &v1.Event{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "pod1.evt1",
+				Namespace: tsuruNamespace,
+			},
+			InvolvedObject: v1.ObjectReference{
+				Kind:      "Pod",
+				Name:      "pod1",
+				Namespace: tsuruNamespace,
+			},
+			Message: "my evt message",
+		}},
+	}
+	for _, tt := range tests {
+		wantedPhase = tt.phase
+		_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: tsuruNamespace,
+			},
+		})
+		c.Assert(err, check.IsNil)
+		if tt.evt != nil {
+			_, err = s.client.Core().Events(tsuruNamespace).Create(tt.evt)
+			c.Assert(err, check.IsNil)
+		}
+		err = waitForPodStart(s.client, "pod1", 100*time.Millisecond)
+		if tt.err == "" {
+			c.Assert(err, check.IsNil)
+		} else {
+			c.Assert(err, check.ErrorMatches, tt.err)
+		}
+		err = cleanupPod(s.client, "pod1")
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *S) TestCleanupPods(c *check.C) {

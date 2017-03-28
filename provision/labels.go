@@ -54,7 +54,7 @@ func (s *LabelSet) ToLabels() map[string]string {
 }
 
 func (s *LabelSet) ToSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild), s.Prefix)
+	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun), s.Prefix)
 }
 
 func (s *LabelSet) ToAppSelector() map[string]string {
