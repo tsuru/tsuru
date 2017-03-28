@@ -10,7 +10,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 	bsHostProc         = "/prochost"
 )
 
-func InitializeBS() (bool, error) {
+func InitializeBS(authScheme auth.Scheme, appUser string) (bool, error) {
 	bsNodeContainer, err := LoadNodeContainer("", BsDefaultName)
 	if err != nil {
 		return false, err
@@ -27,7 +27,7 @@ func InitializeBS() (bool, error) {
 	if len(bsNodeContainer.Config.Env) > 0 {
 		return false, nil
 	}
-	tokenData, err := app.AuthScheme.AppLogin(app.InternalAppName)
+	tokenData, err := authScheme.AppLogin(appUser)
 	if err != nil {
 		return false, err
 	}
@@ -38,7 +38,7 @@ func InitializeBS() (bool, error) {
 	})
 	if !isSet {
 		// Already set by someone else, just bail out.
-		app.AuthScheme.Logout(token)
+		authScheme.Logout(token)
 		return false, nil
 	}
 	bsNodeContainer, err = LoadNodeContainer("", BsDefaultName)

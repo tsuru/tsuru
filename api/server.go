@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"golang.org/x/net/websocket"
@@ -463,6 +464,10 @@ func startServer(handler http.Handler) {
 		fatal(err)
 	}
 	fmt.Printf("Using %q auth scheme.\n", scheme)
+	_, err = nodecontainer.InitializeBS(app.AuthScheme, app.InternalAppName)
+	if err != nil {
+		fatal(err)
+	}
 	err = provision.InitializeAll()
 	if err != nil {
 		fatal(err)

@@ -94,7 +94,6 @@ var (
 	_ provision.ImageDeployer            = &dockerProvisioner{}
 	_ provision.RollbackableDeployer     = &dockerProvisioner{}
 	_ provision.RebuildableDeployer      = &dockerProvisioner{}
-	_ provision.MetricsProvisioner       = &dockerProvisioner{}
 	_ provision.ShellProvisioner         = &dockerProvisioner{}
 	_ provision.ExecutableProvisioner    = &dockerProvisioner{}
 	_ provision.SleepableProvisioner     = &dockerProvisioner{}
@@ -303,10 +302,6 @@ func (p *dockerProvisioner) Initialize() error {
 	err := internalNodeContainer.RegisterQueueTask(p)
 	if err != nil {
 		return err
-	}
-	_, err = nodecontainer.InitializeBS()
-	if err != nil {
-		return errors.Wrap(err, "unable to initialize bs node container")
 	}
 	return p.initDockerCluster()
 }
@@ -1052,20 +1047,6 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 		return nodes, nil
 	}
 	return nil, errors.Errorf("No nodes found with one of the following metadata: pool=%s", poolName)
-}
-
-func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
-	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
-	if err != nil {
-		return map[string]string{}
-	}
-	envs := bsContainer.EnvMap()
-	for envName := range envs {
-		if !strings.HasPrefix(envName, "METRICS_") {
-			delete(envs, envName)
-		}
-	}
-	return envs
 }
 
 func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error) {

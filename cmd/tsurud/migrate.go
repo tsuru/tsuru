@@ -335,7 +335,7 @@ func migrateBSEnvs() error {
 	if err != nil {
 		return err
 	}
-	_, err = nodecontainer.InitializeBS()
+	_, err = nodecontainer.InitializeBS(app.AuthScheme, app.InternalAppName)
 	if err != nil {
 		return err
 	}

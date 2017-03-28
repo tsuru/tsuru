@@ -10,6 +10,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"gopkg.in/check.v1"
 )
 
@@ -18,7 +20,8 @@ func (s *S) TestInitializeBS(c *check.C) {
 	config.Set("docker:bs:image", "tsuru/bs:v10")
 	defer config.Unset("host")
 	defer config.Unset("docker:bs:image")
-	initialized, err := InitializeBS()
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	initialized, err := InitializeBS(nativeScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	c.Assert(initialized, check.Equals, true)
 	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
@@ -42,13 +45,14 @@ func (s *S) TestInitializeBS(c *check.C) {
 			Binds:         []string{"/proc:/prochost:ro"},
 		},
 	})
-	initialized, err = InitializeBS()
+	initialized, err = InitializeBS(nativeScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	c.Assert(initialized, check.Equals, false)
 }
 
 func (s *S) TestInitializeBSStress(c *check.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	nTimes := 100
 	initializedCh := make(chan bool, nTimes)
 	wg := sync.WaitGroup{}
@@ -56,7 +60,7 @@ func (s *S) TestInitializeBSStress(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			initialized, err := InitializeBS()
+			initialized, err := InitializeBS(nativeScheme, "tsr")
 			c.Assert(err, check.IsNil)
 			initializedCh <- initialized
 		}()

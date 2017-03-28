@@ -38,7 +38,7 @@ const (
 
 func (s *S) TestRecreateNamedContainers(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -236,7 +236,7 @@ func (s *S) TestEnsureContainersStartedMaxWorkers(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -281,7 +281,7 @@ func (s *S) TestEnsureContainersStartedPinImg(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedNoDigestNoPin(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -409,7 +409,7 @@ func (s *S) TestEnsureContainersStartedPinImgInChild(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedAlreadyPinned(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	cont, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
 	c.Assert(err, check.IsNil)
@@ -494,7 +494,7 @@ func (s *S) TestEnsureContainersStartedOnlyChild(c *check.C) {
 }
 
 func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -521,7 +521,7 @@ func (s *S) TestClusterHookBeforeCreateContainer(c *check.C) {
 }
 
 func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C) {
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -554,7 +554,7 @@ func (s *S) TestClusterHookBeforeCreateContainerIgnoresExistingError(c *check.C)
 }
 
 func (s *S) TestClusterHookBeforeCreateContainerStartsStopped(c *check.C) {
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -622,7 +622,7 @@ func (s *S) TestLoadNodeContainersForPoolsNotFound(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedWithoutRelaunch(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	var reqs []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -671,7 +671,7 @@ func (s *S) TestEnsureContainersStartedWithoutRelaunch(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedGracefullyStop(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	var reqs []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -724,7 +724,7 @@ func (s *S) TestEnsureContainersStartedGracefullyStop(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedForceStopOnlyOnFailure(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	var reqs []*http.Request
 	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
@@ -785,7 +785,7 @@ func (s *S) TestEnsureContainersStartedForceStopOnlyOnFailure(c *check.C) {
 
 func (s *S) TestEnsureContainersStartedTryCreatingAfterRmFailure(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -809,7 +809,7 @@ func (s *S) TestEnsureContainersStartedTryCreatingAfterRmFailure(c *check.C) {
 }
 
 func (s *S) TestRecreateBsContainers(c *check.C) {
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -849,7 +849,7 @@ relaunching node container "big-sibling" in the node %s []
 }
 
 func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
@@ -881,7 +881,7 @@ func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
 
 func (s *S) TestRemoveNamedContainers(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	_, err := nodecontainer.InitializeBS()
+	_, err := nodecontainer.InitializeBS(s.authScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)

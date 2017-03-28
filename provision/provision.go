@@ -325,13 +325,6 @@ type Provisioner interface {
 	RegisterUnit(App, string, map[string]interface{}) error
 }
 
-// MetricsProvisioner is a provisioner that exposes environment variables
-// related to metrics.
-type MetricsProvisioner interface {
-	// Returns the metric backend environs for the app.
-	MetricEnvs(App) map[string]string
-}
-
 // ShellProvisioner is a provisioner that allows opening a shell to existing
 // units.
 type ShellProvisioner interface {

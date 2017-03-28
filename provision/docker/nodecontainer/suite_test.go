@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -23,7 +22,9 @@ func Test(t *testing.T) {
 
 var _ = check.Suite(&S{})
 
-type S struct{}
+type S struct {
+	authScheme auth.Scheme
+}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
@@ -31,7 +32,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_docker_nodecontainer_tests_cluster_stor")
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	app.AuthScheme = nativeScheme
+	s.authScheme = nativeScheme
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()

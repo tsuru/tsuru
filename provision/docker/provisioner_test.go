@@ -2978,31 +2978,6 @@ func (s *S) TestDryMode(c *check.C) {
 	c.Assert(contsNew, check.HasLen, 5)
 }
 
-func (s *S) TestMetricEnvs(c *check.C) {
-	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
-		Name: nodecontainer.BsDefaultName,
-		Config: docker.Config{
-			Image: "img1",
-			Env: []string{
-				"OTHER_ENV=asd",
-				"METRICS_BACKEND=LOGSTASH",
-				"METRICS_LOGSTASH_URI=localhost:2222",
-			},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	appInstance := &app.App{
-		Name: "impius",
-		Pool: "mypool",
-	}
-	envs := s.p.MetricEnvs(appInstance)
-	expected := map[string]string{
-		"METRICS_LOGSTASH_URI": "localhost:2222",
-		"METRICS_BACKEND":      "LOGSTASH",
-	}
-	c.Assert(envs, check.DeepEquals, expected)
-}
-
 func (s *S) TestAddContainerDefaultProcess(c *check.C) {
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{

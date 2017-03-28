@@ -1291,14 +1291,6 @@ func (s *S) TestFakeProvisionerShellNoUnits(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "app has no units")
 }
 
-func (s *S) TestFakeProvisionerMetricEnvs(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	envs := p.MetricEnvs(app)
-	expected := map[string]string{"METRICS_BACKEND": "fake"}
-	c.Assert(envs, check.DeepEquals, expected)
-}
-
 func (s *S) TestFakeProvisionerAddNode(c *check.C) {
 	p := NewFakeProvisioner()
 	p.AddNode(provision.AddNodeOptions{Address: "mynode", Metadata: map[string]string{

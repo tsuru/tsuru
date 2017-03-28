@@ -52,7 +52,6 @@ var (
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	// _ provision.RebuildableDeployer      = &kubernetesProvisioner{}
-	// _ provision.MetricsProvisioner       = &kubernetesProvisioner{}
 	// _ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ajg/form"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -29,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -5333,8 +5335,19 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: nodecontainer.BsDefaultName,
+		Config: docker.Config{
+			Image: "img1",
+			Env: []string{
+				"OTHER_ENV=asd",
+				"METRICS_BACKEND=fake",
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
 	c.Assert(err, check.IsNil)

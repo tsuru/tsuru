@@ -645,13 +645,6 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 	return true, nil
 }
 
-// MetricEnvs returns the metric envs for the app
-func (p *FakeProvisioner) MetricEnvs(app provision.App) map[string]string {
-	return map[string]string{
-		"METRICS_BACKEND": "fake",
-	}
-}
-
 // Restarts returns the number of restarts for a given app.
 func (p *FakeProvisioner) Restarts(a provision.App, process string) int {
 	p.mut.RLock()

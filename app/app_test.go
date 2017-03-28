@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -26,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -3921,14 +3923,25 @@ func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
 }
 
 func (s *S) TestAppMetricEnvs(c *check.C) {
+	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
+		Name: nodecontainer.BsDefaultName,
+		Config: docker.Config{
+			Image: "img1",
+			Env: []string{
+				"OTHER_ENV=asd",
+				"METRICS_BACKEND=LOGSTASH",
+				"METRICS_LOGSTASH_URI=localhost:2222",
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
 	a := App{Name: "app-name", Platform: "python"}
 	envs, err := a.MetricEnvs()
 	c.Assert(err, check.IsNil)
-	prov, err := a.getProvisioner()
-	c.Assert(err, check.IsNil)
-	metricProv, ok := prov.(provision.MetricsProvisioner)
-	c.Assert(ok, check.Equals, true)
-	expected := metricProv.MetricEnvs(&a)
+	expected := map[string]string{
+		"METRICS_LOGSTASH_URI": "localhost:2222",
+		"METRICS_BACKEND":      "LOGSTASH",
+	}
 	c.Assert(envs, check.DeepEquals, expected)
 }
 

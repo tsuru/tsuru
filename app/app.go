@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
@@ -1776,15 +1777,17 @@ func (app *App) GetRouter() (router.Router, error) {
 }
 
 func (app *App) MetricEnvs() (map[string]string, error) {
-	prov, err := app.getProvisioner()
+	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
 	if err != nil {
 		return nil, err
 	}
-	if metricProv, ok := prov.(provision.MetricsProvisioner); ok {
-		return metricProv.MetricEnvs(app), nil
-	} else {
-		return nil, provision.ProvisionerNotSupported{Prov: prov, Action: "metrics"}
+	envs := bsContainer.EnvMap()
+	for envName := range envs {
+		if !strings.HasPrefix(envName, "METRICS_") {
+			delete(envs, envName)
+		}
 	}
+	return envs, nil
 }
 
 func (app *App) Shell(opts provision.ShellOptions) error {
