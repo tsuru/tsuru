@@ -426,5 +426,12 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", rb),
 		}
 	}
-	return app.RollbackUpdate(appName, img, reason, rollback)
+	err = app.RollbackUpdate(appName, img, reason, rollback)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	return err
 }
