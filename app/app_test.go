@@ -2639,6 +2639,35 @@ func (s *S) TestRunIsolated(c *check.C) {
 	c.Assert(cmds, check.HasLen, 1)
 }
 
+func (s *S) TestRunWithoutUnits(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	app := App{
+		Name:      "myapp",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	args := provision.RunArgs{Once: false, Isolated: false}
+	err = app.Run("ls -lh", &buf, args)
+	c.Assert(err, check.ErrorMatches, `App must be available to run non-isolated commands`)
+}
+
+func (s *S) TestRunWithoutUnitsIsolated(c *check.C) {
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	app := App{
+		Name:      "myapp",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	args := provision.RunArgs{Once: false, Isolated: true}
+	err = app.Run("ls -lh", &buf, args)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "a lot of files")
+}
+
 func (s *S) TestRunWithoutEnv(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{

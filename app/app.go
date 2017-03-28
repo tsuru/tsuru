@@ -987,8 +987,8 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 // Run executes the command in app units, sourcing apprc before running the
 // command.
 func (app *App) Run(cmd string, w io.Writer, args provision.RunArgs) error {
-	if !app.available() {
-		return errors.New("App must be available to run commands")
+	if !args.Isolated && !app.available() {
+		return errors.New("App must be available to run non-isolated commands")
 	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru", "api")
 	logWriter := LogWriter{App: app, Source: "app-run"}
