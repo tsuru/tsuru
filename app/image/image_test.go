@@ -416,17 +416,22 @@ func (s *S) TestAllAppProcesses(c *check.C) {
 
 func (s *S) TestUpdateAppImageRollback(c *check.C) {
 	data := ImageMetadata{
-		Name:        "tsuru/app-myapp:v1",
-		CanRollback: true,
+		Name:            "tsuru/app-myapp:v1",
+		Reason:          "buggy version",
+		DisableRollback: true,
 	}
 	err := data.Save()
 	c.Assert(err, check.IsNil)
 	dbMetadata, err := GetImageCustomData(data.Name)
 	c.Check(err, check.IsNil)
-	c.Check(dbMetadata.CanRollback, check.Equals, true)
-	err = UpdateAppImageRollback("myapp", "v1", false)
+	c.Check(dbMetadata.DisableRollback, check.Equals, true)
+	c.Check(dbMetadata.Reason, check.Equals, "buggy version")
+	err = UpdateAppImageRollback("myapp", "v1", "", false)
 	c.Check(err, check.IsNil)
 	dbMetadata, err = GetImageCustomData(data.Name)
 	c.Check(err, check.IsNil)
-	c.Check(dbMetadata.CanRollback, check.Equals, false)
+	c.Check(dbMetadata.DisableRollback, check.Equals, false)
+	c.Check(dbMetadata.Reason, check.Equals, "")
+	err = UpdateAppImageRollback("myapp", "v10", "", false)
+	c.Check(err, check.NotNil)
 }

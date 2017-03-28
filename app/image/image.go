@@ -25,7 +25,8 @@ type ImageMetadata struct {
 	LegacyProcesses map[string]string   `bson:"processes"`
 	Processes       map[string][]string `bson:"processes_list"`
 	ExposedPort     string
-	CanRollback     bool `bson:"canrollback"`
+	DisableRollback bool
+	Reason          string
 }
 
 type appImages struct {
@@ -98,10 +99,9 @@ func customDataToImageMetadata(imageName string, customData map[string]interface
 		delete(customData, "procfile")
 	}
 	data := ImageMetadata{
-		Name:        imageName,
-		Processes:   processes,
-		CustomData:  customData,
-		CanRollback: true,
+		Name:       imageName,
+		Processes:  processes,
+		CustomData: customData,
 	}
 	if exposedPort, ok := customData["exposedPort"]; ok {
 		data.ExposedPort = exposedPort.(string)
@@ -323,13 +323,17 @@ func DeleteAllAppImageNames(appName string) error {
 	return coll.RemoveId(appName)
 }
 
-func UpdateAppImageRollback(appName, img string, rollback bool) error {
+func UpdateAppImageRollback(appName, img, reason string, rollback bool) error {
 	dataColl, err := imageCustomDataColl()
 	if err != nil {
 		return err
 	}
 	defer dataColl.Close()
-	err = dataColl.Update(bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)}, bson.M{"$set": bson.M{"canrollback": rollback}})
+	err = dataColl.Update(bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)}, bson.M{"$set": bson.M{"disablerollback": rollback}})
+	if err != nil {
+		return err
+	}
+	err = dataColl.Update(bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)}, bson.M{"$set": bson.M{"reason": reason}})
 	if err != nil {
 		return err
 	}
@@ -492,10 +496,10 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
 
-func ValidateAppImage(appName, imageId string) (bool, error) {
+func ValidateAppImage(appName, imageId string) error {
 	validImgs, err := ListValidAppImages(appName)
 	if err != nil {
-		return false, err
+		return err
 	}
 	valid := false
 	for _, img := range validImgs {
@@ -505,7 +509,7 @@ func ValidateAppImage(appName, imageId string) (bool, error) {
 		}
 	}
 	if !valid {
-		return false, errors.Errorf("Image %q not found in app", imageId)
+		return errors.Errorf("Image %q not found in app", imageId)
 	}
-	return true, nil
+	return nil
 }
