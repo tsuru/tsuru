@@ -34,7 +34,6 @@ const (
 	provisionerName           = "kubernetes"
 	tsuruNamespace            = "default"
 	dockerImageName           = "docker:1.11.2"
-	defaultBuildJobTimeout    = 30 * time.Minute
 	defaultRunPodReadyTimeout = time.Minute
 )
 
@@ -496,7 +495,7 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if build {
 		return "", errors.New("running UploadDeploy with build=true is not yet supported")
 	}
-	deployJobName := deployJobNameForApp(a)
+	deployPodName := deployPodNameForApp(a)
 	baseImage := image.GetBuildImage(a)
 	buildingImage, err := image.AppNewImageName(a.GetName())
 	if err != nil {
@@ -506,13 +505,13 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if err != nil {
 		return "", err
 	}
-	defer cleanupJob(client, deployJobName)
+	defer cleanupPod(client, deployPodName)
 	cmds := dockercommon.ArchiveDeployCmds(a, "file:///home/application/archive.tar.gz")
 	if len(cmds) != 3 {
 		return "", errors.Errorf("unexpected cmds list: %#v", cmds)
 	}
 	cmds[2] = fmt.Sprintf("cat >/home/application/archive.tar.gz && %s", cmds[2])
-	params := buildJobParams{
+	params := buildPodParams{
 		app:              a,
 		client:           client,
 		buildCmd:         cmds,
@@ -521,11 +520,11 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 		attachInput:      archiveFile,
 		attachOutput:     evt,
 	}
-	_, err = createBuildJob(params)
+	err = createBuildPod(params)
 	if err != nil {
 		return "", err
 	}
-	err = waitForJob(client, deployJobName, defaultBuildJobTimeout)
+	err = waitForPod(client, deployPodName, false, defaultRunPodReadyTimeout)
 	if err != nil {
 		return "", err
 	}
@@ -624,8 +623,8 @@ func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app
 	})
 }
 
-func runJob(client kubernetes.Interface, a provision.App, out io.Writer, cmds []string) error {
-	baseName := execCommandJobNameForApp(a)
+func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []string) error {
+	baseName := execCommandPodNameForApp(a)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:           a,
 		Provisioner:   provisionerName,
@@ -667,7 +666,7 @@ func runJob(client kubernetes.Interface, a provision.App, out io.Writer, cmds []
 		return errors.WithStack(err)
 	}
 	defer cleanupPod(client, pod.Name)
-	err = waitForPodStart(client, pod.Name, defaultRunPodReadyTimeout)
+	err = waitForPod(client, pod.Name, true, defaultRunPodReadyTimeout)
 	if err != nil {
 		return err
 	}
@@ -693,5 +692,5 @@ func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer,
 		return err
 	}
 	cmds := append([]string{"/bin/sh", "-c", cmd}, args...)
-	return runJob(client, a, stdout, cmds)
+	return runPod(client, a, stdout, cmds)
 }

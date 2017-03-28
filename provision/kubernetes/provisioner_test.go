@@ -221,13 +221,14 @@ func (s *S) TestRegisterUnit(c *check.C) {
 func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
-	podID, err := createBuildJob(buildJobParams{
+	err := createBuildPod(buildPodParams{
 		client:           s.client,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
 	})
 	c.Assert(err, check.IsNil)
+	podID := deployPodNameForApp(a)
 	err = s.p.RegisterUnit(a, podID, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "w1",
@@ -364,7 +365,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = s.p.UploadDeploy(a, archive, int64(len(data)), false, evt)
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)

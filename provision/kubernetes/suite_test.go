@@ -36,7 +36,6 @@ import (
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
-	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/labels"
 	"k8s.io/client-go/pkg/runtime"
@@ -293,56 +292,35 @@ func (s *S) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 	}
 }
 
-func (s *S) jobWithPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		wg.Add(1)
-		job := action.(ktesting.CreateAction).GetObject().(*batch.Job)
-		job.Status.Succeeded = int32(1)
-		job.Spec.Selector = &unversioned.LabelSelector{
-			MatchLabels: map[string]string{"uuid": "my-uuid"},
+		pod := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		if !strings.HasSuffix(pod.Name, "-deploy") {
+			return false, nil, nil
 		}
-		labelsCopy := make(map[string]string, len(job.Spec.Template.ObjectMeta.Labels))
-		for k, v := range job.Spec.Template.ObjectMeta.Labels {
-			labelsCopy[k] = v
+		pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
+		pod.Status.Phase = v1.PodSucceeded
+		pod.Spec.NodeName = "n1"
+		toRegister := false
+		for _, cont := range pod.Spec.Containers {
+			if strings.Contains(strings.Join(cont.Command, " "), "unit_agent") {
+				toRegister = true
+			}
 		}
-		go func() {
-			defer wg.Done()
-			pod := &v1.Pod{
-				ObjectMeta: job.Spec.Template.ObjectMeta,
-				Spec:       job.Spec.Template.Spec,
-			}
-			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
-			pod.Spec.NodeName = "n1"
-			pod.ObjectMeta.Name += "-pod"
-			pod.ObjectMeta.Namespace = job.Namespace
-			pod.ObjectMeta.Labels = labelsCopy
-			pod.ObjectMeta.Labels["uuid"] = "my-uuid"
-			pod.ObjectMeta.Labels["job-name"] = job.Name
-			toRegister := false
-			for _, cont := range pod.Spec.Containers {
-				pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, v1.ContainerStatus{
-					Name: cont.Name,
-					State: v1.ContainerState{
-						Running: &v1.ContainerStateRunning{},
-					},
-				})
-				if strings.Contains(strings.Join(cont.Command, " "), "unit_agent") {
-					toRegister = true
-				}
-			}
-			_, err := s.client.Core().Pods(job.Namespace).Create(pod)
-			c.Assert(err, check.IsNil)
-			if toRegister {
-				err = s.p.RegisterUnit(a, pod.Name, map[string]interface{}{
+		if toRegister {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				err := s.p.RegisterUnit(a, pod.Name, map[string]interface{}{
 					"processes": map[string]interface{}{
 						"web":    "python myapp.py",
 						"worker": "python myworker.py",
 					},
 				})
 				c.Assert(err, check.IsNil)
-			}
-		}()
+			}()
+		}
 		return false, nil, nil
 	}, &wg
 }
@@ -352,20 +330,20 @@ func (s *S) defaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()
 	s.mockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
-	jobReaction, jobPodReady := s.jobWithPodReaction(a, c)
+	podReaction, deployPodReady := s.deployPodReaction(a, c)
 	depReaction, depPodReady := s.deploymentWithPodReaction(c)
 	servReaction := s.serviceWithPortReaction(c)
-	s.client.PrependReactor("create", "jobs", jobReaction)
+	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "deployments", depReaction)
 	s.client.PrependReactor("update", "deployments", depReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	return a, func() {
 			depPodReady.Wait()
-			jobPodReady.Wait()
+			deployPodReady.Wait()
 			wg.Wait()
 		}, func() {
 			depPodReady.Wait()
-			jobPodReady.Wait()
+			deployPodReady.Wait()
 			wg.Wait()
 			if srv == nil {
 				return

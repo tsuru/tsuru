@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/pkg/api/v1"
-	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
@@ -25,10 +24,16 @@ func (s *S) TestDeploymentNameForApp(c *check.C) {
 	c.Assert(name, check.Equals, "myapp-p1")
 }
 
-func (s *S) TestDeployJobNameForApp(c *check.C) {
+func (s *S) TestDeployPodNameForApp(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	name := deployJobNameForApp(a)
+	name := deployPodNameForApp(a)
 	c.Assert(name, check.Equals, "myapp-deploy")
+}
+
+func (s *S) TestExecCommandPodNameForApp(c *check.C) {
+	a := provisiontest.NewFakeApp("myapp", "plat", 1)
+	name := execCommandPodNameForApp(a)
+	c.Assert(name, check.Equals, "myapp-isolated-run")
 }
 
 func (s *S) TestDaemonSetName(c *check.C) {
@@ -51,64 +56,8 @@ func (s *S) TestWaitFor(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `myerr`)
 }
 
-func (s *S) TestWaitForJobContainerRunning(c *check.C) {
-	podName, err := waitForJobContainerRunning(s.client, map[string]string{"a": "x"}, "cont1", 100*time.Millisecond)
-	c.Assert(err, check.ErrorMatches, `timeout after .*`)
-	c.Assert(podName, check.Equals, "")
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	reaction, podReady := s.jobWithPodReaction(a, c)
-	defer podReady.Wait()
-	s.client.PrependReactor("create", "jobs", reaction)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		_, jErr := s.client.Batch().Jobs(tsuruNamespace).Create(&batch.Job{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      "job1",
-				Namespace: tsuruNamespace,
-			},
-			Spec: batch.JobSpec{
-				Template: v1.PodTemplateSpec{
-					ObjectMeta: v1.ObjectMeta{
-						Name:   "job1",
-						Labels: map[string]string{"a": "x"},
-					},
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{Name: "cont1"},
-						},
-					},
-				},
-			},
-		})
-		c.Assert(jErr, check.IsNil)
-	}()
-	podName, err = waitForJobContainerRunning(s.client, map[string]string{"a": "x"}, "cont1", 2*time.Minute)
-	c.Assert(err, check.IsNil)
-	c.Assert(podName, check.Equals, "job1-pod")
-	<-done
-}
-
-func (s *S) TestWaitForJob(c *check.C) {
-	err := waitForJob(s.client, "job1", 100*time.Millisecond)
-	c.Assert(err, check.ErrorMatches, `Job.batch "job1" not found`)
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	reaction, podReady := s.jobWithPodReaction(a, c)
-	defer podReady.Wait()
-	s.client.PrependReactor("create", "jobs", reaction)
-	_, err = s.client.Batch().Jobs(tsuruNamespace).Create(&batch.Job{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "job1",
-			Namespace: tsuruNamespace,
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = waitForJob(s.client, "job1", 2*time.Minute)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestWaitForPodStart(c *check.C) {
-	err := waitForPodStart(s.client, "pod1", 100*time.Millisecond)
+func (s *S) TestWaitForPod(c *check.C) {
+	err := waitForPod(s.client, "pod1", false, 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
 	var wantedPhase v1.PodPhase
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -118,12 +67,14 @@ func (s *S) TestWaitForPodStart(c *check.C) {
 		return false, nil, nil
 	})
 	tests := []struct {
-		phase v1.PodPhase
-		err   string
-		evt   *v1.Event
+		phase   v1.PodPhase
+		err     string
+		evt     *v1.Event
+		running bool
 	}{
-		{phase: v1.PodRunning},
 		{phase: v1.PodSucceeded},
+		{phase: v1.PodRunning, err: `timeout after .*`},
+		{phase: v1.PodRunning, running: true},
 		{phase: v1.PodPending, err: `timeout after .*`},
 		{phase: v1.PodFailed, err: `invalid pod phase "Failed"`},
 		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
@@ -153,7 +104,7 @@ func (s *S) TestWaitForPodStart(c *check.C) {
 			_, err = s.client.Core().Events(tsuruNamespace).Create(tt.evt)
 			c.Assert(err, check.IsNil)
 		}
-		err = waitForPodStart(s.client, "pod1", 100*time.Millisecond)
+		err = waitForPod(s.client, "pod1", tt.running, 100*time.Millisecond)
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 		} else {
@@ -192,40 +143,6 @@ func (s *S) TestCleanupPods(c *check.C) {
 			Labels:    map[string]string{"a": "y"},
 		},
 	}})
-}
-
-func (s *S) TestCleanupJob(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	reaction, podReady := s.jobWithPodReaction(a, c)
-	s.client.PrependReactor("create", "jobs", reaction)
-	_, err := s.client.Batch().Jobs(tsuruNamespace).Create(&batch.Job{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "job1",
-			Namespace: tsuruNamespace,
-		},
-		Spec: batch.JobSpec{
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "job1",
-				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{Name: "cont1"},
-					},
-				},
-			},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	podReady.Wait()
-	err = cleanupJob(s.client, "job1")
-	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
-	jobs, err := s.client.Batch().Jobs(tsuruNamespace).List(v1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(jobs.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupDeployment(c *check.C) {

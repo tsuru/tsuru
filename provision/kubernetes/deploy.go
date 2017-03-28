@@ -22,7 +22,6 @@ import (
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
-	batch "k8s.io/client-go/pkg/apis/batch/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/rest"
@@ -30,7 +29,7 @@ import (
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 )
 
-func doAttach(params buildJobParams, podName, containerName string) error {
+func doAttach(params buildPodParams, podName, containerName string) error {
 	cfg, err := getClusterRestConfig()
 	if err != nil {
 		return err
@@ -69,7 +68,7 @@ func doAttach(params buildJobParams, podName, containerName string) error {
 	return nil
 }
 
-type buildJobParams struct {
+type buildPodParams struct {
 	client           kubernetes.Interface
 	app              provision.App
 	buildCmd         []string
@@ -79,10 +78,9 @@ type buildJobParams struct {
 	attachOutput     io.Writer
 }
 
-func createBuildJob(params buildJobParams) (string, error) {
-	parallelism := int32(1)
+func createBuildPod(params buildPodParams) error {
 	dockerSockPath := "/var/run/docker.sock"
-	baseName := deployJobNameForApp(params.app)
+	baseName := deployPodNameForApp(params.app)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:         params.app,
 		IsBuild:     true,
@@ -90,7 +88,7 @@ func createBuildJob(params buildJobParams) (string, error) {
 		Prefix:      tsuruLabelPrefix,
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
 	buildImageLabel := &provision.LabelSet{}
 	buildImageLabel.SetBuildImage(params.destinationImage)
@@ -99,77 +97,68 @@ func createBuildJob(params buildJobParams) (string, error) {
 	for _, envData := range appEnvs {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
-	job := &batch.Job{
+	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      baseName,
-			Namespace: tsuruNamespace,
+			Name:        baseName,
+			Namespace:   tsuruNamespace,
+			Labels:      labels.ToLabels(),
+			Annotations: buildImageLabel.ToLabels(),
 		},
-		Spec: batch.JobSpec{
-			Parallelism: &parallelism,
-			Completions: &parallelism,
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
-					Name:        baseName,
-					Labels:      labels.ToLabels(),
-					Annotations: buildImageLabel.ToLabels(),
-				},
-				Spec: v1.PodSpec{
-					Volumes: []v1.Volume{
-						{
-							Name: "dockersock",
-							VolumeSource: v1.VolumeSource{
-								HostPath: &v1.HostPathVolumeSource{
-									Path: dockerSockPath,
-								},
-							},
+		Spec: v1.PodSpec{
+			Volumes: []v1.Volume{
+				{
+					Name: "dockersock",
+					VolumeSource: v1.VolumeSource{
+						HostPath: &v1.HostPathVolumeSource{
+							Path: dockerSockPath,
 						},
 					},
-					RestartPolicy: v1.RestartPolicyNever,
-					Containers: []v1.Container{
-						{
-							Name:      baseName,
-							Image:     params.sourceImage,
-							Command:   params.buildCmd,
-							Stdin:     true,
-							StdinOnce: true,
-							Env:       envs,
-						},
-						{
-							Name:  "committer-cont",
-							Image: dockerImageName,
-							VolumeMounts: []v1.VolumeMount{
-								{Name: "dockersock", MountPath: dockerSockPath},
-							},
-							Command: []string{
-								"sh", "-c",
-								fmt.Sprintf(`
-									while id=$(docker ps -aq -f 'label=io.kubernetes.container.name=%s' -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z $id ]; do
-										sleep 1;
-									done;
-									docker wait $id && docker commit $id %s && docker push %s
-								`, baseName, params.destinationImage, params.destinationImage),
-							},
-						},
+				},
+			},
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{
+				{
+					Name:      baseName,
+					Image:     params.sourceImage,
+					Command:   params.buildCmd,
+					Stdin:     true,
+					StdinOnce: true,
+					Env:       envs,
+				},
+				{
+					Name:  "committer-cont",
+					Image: dockerImageName,
+					VolumeMounts: []v1.VolumeMount{
+						{Name: "dockersock", MountPath: dockerSockPath},
+					},
+					Command: []string{
+						"sh", "-c",
+						fmt.Sprintf(`
+							while id=$(docker ps -aq -f 'label=io.kubernetes.container.name=%s' -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z $id ]; do
+								sleep 1;
+							done;
+							docker wait $id && docker commit $id %s && docker push %s
+						`, baseName, params.destinationImage, params.destinationImage),
 					},
 				},
 			},
 		},
 	}
-	createdJob, err := params.client.Batch().Jobs(tsuruNamespace).Create(job)
+	_, err = params.client.Core().Pods(tsuruNamespace).Create(pod)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
-	if createdJob.Spec.Selector == nil {
-		return "", errors.Errorf("empty selector for created job %q", job.Name)
-	}
-	podName, err := waitForJobContainerRunning(params.client, createdJob.Spec.Selector.MatchLabels, baseName, defaultBuildJobTimeout)
+	err = waitForPod(params.client, pod.Name, true, defaultRunPodReadyTimeout)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if params.attachInput != nil {
-		return podName, doAttach(params, podName, baseName)
+		err = doAttach(params, pod.Name, baseName)
+		if err != nil {
+			return err
+		}
 	}
-	return podName, nil
+	return nil
 }
 
 func extraRegisterCmds(a provision.App) string {
