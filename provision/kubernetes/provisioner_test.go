@@ -724,3 +724,17 @@ func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
 	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
 	c.Assert(err, check.ErrorMatches, `invalid pod phase "Failed"`)
 }
+
+func (s *S) TestStartupMessage(c *check.C) {
+	msg, err := s.p.StartupMessage()
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.Equals, "")
+	s.mockfakeNodes(c)
+	msg, err = s.p.StartupMessage()
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster https://clusteraddr:
+    Kubernetes node: https://clusteraddr
+    Kubernetes node: 192.168.99.1
+    Kubernetes node: 192.168.99.2
+`)
+}

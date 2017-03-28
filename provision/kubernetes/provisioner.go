@@ -46,9 +46,9 @@ var (
 	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
 	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
 	_ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
 	// _ provision.ImageDeployer            = &kubernetesProvisioner{}
-	// _ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	// _ provision.RebuildableDeployer      = &kubernetesProvisioner{}
@@ -693,4 +693,26 @@ func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer,
 	}
 	cmds := append([]string{"/bin/sh", "-c", cmd}, args...)
 	return runPod(client, a, stdout, cmds)
+}
+
+func (p *kubernetesProvisioner) StartupMessage() (string, error) {
+	cfg, err := getClusterRestConfig()
+	if err != nil {
+		if err == errNoCluster {
+			return "", nil
+		}
+		return "", err
+	}
+	nodeList, err := p.ListNodes(nil)
+	if err != nil {
+		return "", err
+	}
+	out := fmt.Sprintf("Kubernetes provisioner on cluster %s:\n", cfg.Host)
+	if len(nodeList) == 0 {
+		out += fmt.Sprint("    No Kubernetes nodes available\n")
+	}
+	for _, node := range nodeList {
+		out += fmt.Sprintf("    Kubernetes node: %s\n", node.Address())
+	}
+	return out, nil
 }
