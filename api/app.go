@@ -99,14 +99,15 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // miniApp is a minimal representation of the app, created to make appList
 // faster and transmit less data.
 type miniApp struct {
-	Name  string            `json:"name"`
-	Pool  string            `json:"pool"`
-	Plan  app.Plan          `json:"plan"`
-	Units []provision.Unit  `json:"units"`
-	CName []string          `json:"cname"`
-	Ip    string            `json:"ip"`
-	Lock  provision.AppLock `json:"lock"`
-	Tags  []string          `json:"tags"`
+	Name      string            `json:"name"`
+	Pool      string            `json:"pool"`
+	TeamOwner string            `json:"teamowner"`
+	Plan      app.Plan          `json:"plan"`
+	Units     []provision.Unit  `json:"units"`
+	CName     []string          `json:"cname"`
+	Ip        string            `json:"ip"`
+	Lock      provision.AppLock `json:"lock"`
+	Tags      []string          `json:"tags"`
 }
 
 func minifyApp(app app.App) (miniApp, error) {
@@ -115,14 +116,15 @@ func minifyApp(app app.App) (miniApp, error) {
 		return miniApp{}, err
 	}
 	return miniApp{
-		Name:  app.Name,
-		Pool:  app.Pool,
-		Plan:  app.Plan,
-		Units: units,
-		CName: app.CName,
-		Ip:    app.Ip,
-		Lock:  &app.Lock,
-		Tags:  app.Tags,
+		Name:      app.Name,
+		Pool:      app.Pool,
+		Plan:      app.Plan,
+		TeamOwner: app.TeamOwner,
+		Units:     units,
+		CName:     app.CName,
+		Ip:        app.Ip,
+		Lock:      &app.Lock,
+		Tags:      app.Tags,
 	}, nil
 }
 
