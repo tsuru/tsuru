@@ -19,6 +19,7 @@ type ProcessState struct {
 	Stop      bool
 	Start     bool
 	Restart   bool
+	Sleep     bool
 	Increment int
 }
 

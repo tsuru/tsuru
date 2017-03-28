@@ -16,6 +16,7 @@ import (
 var (
 	labelIsTsuru         = "is-tsuru"
 	labelIsStopped       = "is-stopped"
+	labelIsAsleep        = "is-asleep"
 	labelIsBuild         = "is-build"
 	labelIsDeploy        = "is-deploy"
 	labelIsIsolatedRun   = "is-isolated-run"
@@ -126,6 +127,10 @@ func (s *LabelSet) IsStopped() bool {
 	return s.getBoolLabel(labelIsStopped)
 }
 
+func (s *LabelSet) IsAsleep() bool {
+	return s.getBoolLabel(labelIsAsleep)
+}
+
 func (s *LabelSet) IsDeploy() bool {
 	return s.getBoolLabel(labelIsDeploy)
 }
@@ -144,6 +149,10 @@ func (s *LabelSet) SetRestarts(count int) {
 
 func (s *LabelSet) SetStopped() {
 	s.addLabel(labelIsStopped, strconv.FormatBool(true))
+}
+
+func (s *LabelSet) SetAsleep() {
+	s.addLabel(labelIsAsleep, strconv.FormatBool(true))
 }
 
 func (s *LabelSet) SetIsService() {
