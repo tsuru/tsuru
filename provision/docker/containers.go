@@ -84,7 +84,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageData, err := image.GetImageCustomData(imageID)
+	imageData, err := image.GetImageMetaData(imageID)
 	if err != nil {
 		return nil, err
 	}

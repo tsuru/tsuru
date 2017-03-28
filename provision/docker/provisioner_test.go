@@ -921,7 +921,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
-	imd, err := image.GetImageCustomData(appCurrentImage)
+	imd, err := image.GetImageMetaData(appCurrentImage)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -2398,7 +2398,7 @@ func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py"}
 	err = s.p.RegisterUnit(a, container.ID, data)
 	c.Assert(err, check.IsNil)
-	image, err := image.GetImageCustomData(container.BuildingImage)
+	image, err := image.GetImageMetaData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(image.CustomData, check.DeepEquals, data)
 	expectedProcesses := map[string][]string{"web": {"python myapp.py"}}
@@ -2429,7 +2429,7 @@ func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
 	}
 	err = s.p.RegisterUnit(a, container.ID, data)
 	c.Assert(err, check.IsNil)
-	image, err := image.GetImageCustomData(container.BuildingImage)
+	image, err := image.GetImageMetaData(container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(image.CustomData, check.DeepEquals, data)
 	expectedProcesses := map[string][]string{"web": {"python web.py"}, "worker": {"python worker.py"}}

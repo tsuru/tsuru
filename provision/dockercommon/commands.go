@@ -48,7 +48,7 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 }
 
 func ProcessCmdForImage(processName, imageID string) ([]string, string, error) {
-	data, err := image.GetImageCustomData(imageID)
+	data, err := image.GetImageMetaData(imageID)
 	if err != nil {
 		return nil, "", err
 	}

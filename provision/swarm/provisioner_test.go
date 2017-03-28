@@ -856,7 +856,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	data, err := image.GetImageCustomData("app:v1")
+	data, err := image.GetImageMetaData("app:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data.Processes, check.DeepEquals, map[string][]string{"web": {"python myapp.py"}})
 }
@@ -900,7 +900,7 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	data, err := image.GetImageCustomData("notset:v1")
+	data, err := image.GetImageMetaData("notset:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, image.ImageMetadata{})
 }

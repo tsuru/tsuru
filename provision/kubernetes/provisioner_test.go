@@ -342,7 +342,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	meta, err := image.GetImageCustomData("destimg")
+	meta, err := image.GetImageMetaData("destimg")
 	c.Assert(err, check.IsNil)
 	c.Assert(meta, check.DeepEquals, image.ImageMetadata{
 		Name:            "destimg",

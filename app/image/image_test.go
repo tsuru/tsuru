@@ -275,7 +275,7 @@ func (s *S) TestSavePortInImageCustomData(c *check.C) {
 	}
 	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := GetImageCustomData(img1)
+	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 }
@@ -291,7 +291,7 @@ func (s *S) TestSaveImageCustomData(c *check.C) {
 	}
 	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := GetImageCustomData(img1)
+	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
@@ -308,7 +308,7 @@ func (s *S) TestSaveImageCustomDataProcfile(c *check.C) {
 	}
 	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := GetImageCustomData(img1)
+	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
@@ -328,7 +328,7 @@ func (s *S) TestSaveImageCustomDataProcessList(c *check.C) {
 	}
 	err := SaveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
-	imageMetaData, err := GetImageCustomData(img1)
+	imageMetaData, err := GetImageMetaData(img1)
 	c.Check(err, check.IsNil)
 	c.Check(imageMetaData.ExposedPort, check.Equals, "3434")
 	c.Check(imageMetaData.Processes, check.DeepEquals, map[string][]string{
@@ -367,7 +367,7 @@ func (s *S) TestGetProcessesFromProcfile(c *check.C) {
 	}
 }
 
-func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
+func (s *S) TestGetImageMetaDataLegacyProcesses(c *check.C) {
 	data := ImageMetadata{
 		Name: "tsuru/app-myapp:v1",
 		LegacyProcesses: map[string]string{
@@ -377,7 +377,7 @@ func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
 	}
 	err := data.Save()
 	c.Assert(err, check.IsNil)
-	dbMetadata, err := GetImageCustomData(data.Name)
+	dbMetadata, err := GetImageMetaData(data.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
 		"worker1": {"python myapp.py"},
@@ -389,7 +389,7 @@ func (s *S) TestGetImageCustomDataLegacyProcesses(c *check.C) {
 	}
 	err = data.Save()
 	c.Assert(err, check.IsNil)
-	dbMetadata, err = GetImageCustomData(data.Name)
+	dbMetadata, err = GetImageMetaData(data.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbMetadata.Processes, check.DeepEquals, map[string][]string{
 		"w1": {"has", "priority"},
@@ -422,13 +422,13 @@ func (s *S) TestUpdateAppImageRollback(c *check.C) {
 	}
 	err := data.Save()
 	c.Assert(err, check.IsNil)
-	dbMetadata, err := GetImageCustomData(data.Name)
+	dbMetadata, err := GetImageMetaData(data.Name)
 	c.Check(err, check.IsNil)
 	c.Check(dbMetadata.DisableRollback, check.Equals, true)
 	c.Check(dbMetadata.Reason, check.Equals, "buggy version")
 	err = UpdateAppImageRollback("myapp", "v1", "", false)
 	c.Check(err, check.IsNil)
-	dbMetadata, err = GetImageCustomData(data.Name)
+	dbMetadata, err = GetImageMetaData(data.Name)
 	c.Check(err, check.IsNil)
 	c.Check(dbMetadata.DisableRollback, check.Equals, false)
 	c.Check(dbMetadata.Reason, check.Equals, "")

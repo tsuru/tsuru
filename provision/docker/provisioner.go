@@ -372,7 +372,7 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 	if err != nil {
 		return "", err
 	}
-	imgMetaData, err := image.GetImageCustomData(imageId)
+	imgMetaData, err := image.GetImageMetaData(imageId)
 	if err != nil {
 		return "", err
 	}
@@ -425,7 +425,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.E
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageCustomData(imageID)
+	imageData, err := image.GetImageMetaData(imageID)
 	if err != nil {
 		return err
 	}
@@ -629,7 +629,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageCustomData(imageID)
+	imageData, err := image.GetImageMetaData(imageID)
 	if err != nil {
 		return err
 	}
@@ -648,11 +648,11 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imgId, err := image.AppCurrentImageName(a.GetName())
+	imgID, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
-	_, processName, err = dockercommon.ProcessCmdForImage(processName, imgId)
+	_, processName, err = dockercommon.ProcessCmdForImage(processName, imgID)
 	if err != nil {
 		return err
 	}
