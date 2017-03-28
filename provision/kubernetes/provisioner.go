@@ -143,7 +143,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	data, err := image.GetImageCustomData(imgID)
+	data, err := image.GetImageMetaData(imgID)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -117,7 +117,7 @@ func SaveImageCustomData(imageName string, customData map[string]interface{}) er
 	return data.Save()
 }
 
-func GetImageCustomData(imageName string) (ImageMetadata, error) {
+func GetImageMetaData(imageName string) (ImageMetadata, error) {
 	coll, err := imageCustomDataColl()
 	if err != nil {
 		return ImageMetadata{}, err
@@ -140,7 +140,7 @@ func GetImageCustomData(imageName string) (ImageMetadata, error) {
 
 func GetImageWebProcessName(imageName string) (string, error) {
 	processName := "web"
-	data, err := GetImageCustomData(imageName)
+	data, err := GetImageMetaData(imageName)
 	if err != nil {
 		return processName, err
 	}
@@ -161,7 +161,7 @@ func AllAppProcesses(appName string) ([]string, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	data, err := GetImageCustomData(imgID)
+	data, err := GetImageMetaData(imgID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -153,7 +153,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -213,7 +213,7 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd.ExposedPort, check.DeepEquals, "80/tcp")
 }
@@ -311,7 +311,7 @@ func (s *S) TestBuilderImageIDMWithProcfile(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"test.sh"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
@@ -368,7 +368,7 @@ func (s *S) TestBuilderImageIDMWithEntrypointAndCmd(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
-	imd, err := image.GetImageCustomData(imgID)
+	imd, err := image.GetImageMetaData(imgID)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)

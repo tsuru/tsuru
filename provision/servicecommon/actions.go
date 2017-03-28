@@ -50,7 +50,7 @@ func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, 
 	if err != nil {
 		return err
 	}
-	currentImageData, err := image.GetImageCustomData(curImg)
+	currentImageData, err := image.GetImageMetaData(curImg)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, 
 	for p := range currentImageData.Processes {
 		currentSpec[p] = ProcessState{}
 	}
-	newImageData, err := image.GetImageCustomData(newImg)
+	newImageData, err := image.GetImageMetaData(newImg)
 	if err != nil {
 		return err
 	}

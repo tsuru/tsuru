@@ -46,7 +46,7 @@ func (s *S) TestPrepareImageForDeploy(c *check.C) {
 Pushing...
 Pushed
 `)
-	imd, err := image.GetImageCustomData(newImg)
+	imd, err := image.GetImageMetaData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
 		Name:            "my.registry/tsuru/app-myapp:v1",
@@ -95,7 +95,7 @@ func (s *S) TestPrepareImageForDeployNoProcfile(c *check.C) {
 Pushing...
 Pushed
 `)
-	imd, err := image.GetImageCustomData(newImg)
+	imd, err := image.GetImageMetaData(newImg)
 	c.Assert(err, check.IsNil)
 	c.Assert(imd, check.DeepEquals, image.ImageMetadata{
 		Name:            "my.registry/tsuru/app-myapp:v1",
