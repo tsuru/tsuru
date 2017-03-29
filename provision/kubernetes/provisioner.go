@@ -103,54 +103,44 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	return nil
 }
 
-func (p *kubernetesProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
+func changeState(a provision.App, process string, state servicecommon.ProcessState) error {
+	client, err := getClusterClient()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, state)
+}
+
+func changeUnits(a provision.App, units int, processName string) error {
 	client, err := getClusterClient()
 	if err != nil {
 		return err
 	}
 	return servicecommon.ChangeUnits(&serviceManager{
 		client: client,
-	}, a, int(units), processName)
+	}, a, units, processName)
+}
+
+func (p *kubernetesProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
+	return changeUnits(a, int(units), processName)
 }
 
 func (p *kubernetesProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	client, err := getClusterClient()
-	if err != nil {
-		return err
-	}
-	return servicecommon.ChangeUnits(&serviceManager{
-		client: client,
-	}, a, -int(units), processName)
+	return changeUnits(a, -int(units), processName)
 }
 
 func (p *kubernetesProvisioner) Restart(a provision.App, process string, w io.Writer) error {
-	client, err := getClusterClient()
-	if err != nil {
-		return err
-	}
-	return servicecommon.ChangeAppState(&serviceManager{
-		client: client,
-	}, a, process, servicecommon.ProcessState{Start: true, Restart: true})
+	return changeState(a, process, servicecommon.ProcessState{Start: true, Restart: true})
 }
 
 func (p *kubernetesProvisioner) Start(a provision.App, process string) error {
-	client, err := getClusterClient()
-	if err != nil {
-		return err
-	}
-	return servicecommon.ChangeAppState(&serviceManager{
-		client: client,
-	}, a, process, servicecommon.ProcessState{Start: true})
+	return changeState(a, process, servicecommon.ProcessState{Start: true})
 }
 
 func (p *kubernetesProvisioner) Stop(a provision.App, process string) error {
-	client, err := getClusterClient()
-	if err != nil {
-		return err
-	}
-	return servicecommon.ChangeAppState(&serviceManager{
-		client: client,
-	}, a, process, servicecommon.ProcessState{Stop: true})
+	return changeState(a, process, servicecommon.ProcessState{Stop: true})
 }
 
 var stateMap = map[v1.PodPhase]provision.Status{
@@ -717,11 +707,5 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *kubernetesProvisioner) Sleep(a provision.App, process string) error {
-	client, err := getClusterClient()
-	if err != nil {
-		return err
-	}
-	return servicecommon.ChangeAppState(&serviceManager{
-		client: client,
-	}, a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
+	return changeState(a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
 }
