@@ -132,6 +132,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 		}
 	}
+	var imageID string
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
@@ -149,7 +150,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
 	opts.OutputStream = writer
-	var imageID string
 	imageID, err = app.Deploy(opts)
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
@@ -411,6 +411,36 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Not found
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+	}
+	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
+	if !canUpdateRollback {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: "User does not have permission to do this action in this app",
+		}
+	}
+	opts := app.DeployOptions{
+		App:  instance,
+		User: t.GetUserName(),
+		Kind: app.DeployRollback,
+	}
+	var imageID string
+	evt, err := event.New(&event.Opts{
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdate,
+		Owner:         t,
+		CustomData:    opts,
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Cancelable:    true,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	img := r.FormValue("image")
 	if img == "" {
 		return &tsuruErrors.HTTP{
@@ -419,14 +449,21 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 	}
 	rb := r.FormValue("enabled")
-	reason := r.FormValue("reason")
 	rollback, err := strconv.ParseBool(rb)
 	if err != nil {
 		return &tsuruErrors.HTTP{
-			Code:    http.StatusForbidden,
+			Code:    http.StatusBadRequest,
 			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", rb),
 		}
 	}
+	reason := r.FormValue("reason")
+	if (reason == "") && (rollback == false) {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Reason cannot be empty while enabling rollback",
+		}
+	}
+
 	err = app.RollbackUpdate(appName, img, reason, rollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
