@@ -125,6 +125,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Build:      build,
 		Message:    message,
 	}
+	opts.GetKind()
 	if t.GetAppName() != app.InternalAppName {
 		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 		if !canDeploy {
@@ -143,12 +144,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
+	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	opts.Event = evt
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
-	opts.Event = evt
 	opts.OutputStream = writer
 	var imageID string
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	imageID, err = app.Deploy(opts)
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
@@ -269,10 +270,10 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
+	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	opts.Event = evt
 	var imageID string
 	imageID, err = app.Deploy(opts)
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
