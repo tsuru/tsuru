@@ -738,3 +738,32 @@ func (s *S) TestStartupMessage(c *check.C) {
     Kubernetes node: 192.168.99.2
 `)
 }
+
+func (s *S) TestSleepStart(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	imgName := "myapp:v1"
+	err := image.SaveImageCustomData(imgName, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(a.GetName(), imgName)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(a, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	err = s.p.Sleep(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+	err = s.p.Start(a, "")
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err = s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+}
