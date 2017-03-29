@@ -345,6 +345,8 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	}
 	restartCount := 0
 	replicas := 0
+	isStopped := false
+	isAsleep := false
 	if opts.baseSpec != nil {
 		oldLabels := provision.LabelSet{Labels: opts.baseSpec.Labels, Prefix: tsuruLabelPrefix}
 		replicas = oldLabels.AppReplicas()
@@ -352,14 +354,21 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 			replicas = int(*opts.baseSpec.Mode.Replicated.Replicas)
 		}
 		restartCount = oldLabels.Restarts()
+		isStopped = oldLabels.IsStopped()
+		isAsleep = oldLabels.IsAsleep()
 	}
 	if opts.processState.Increment != 0 {
 		replicas += opts.processState.Increment
 		if replicas < 0 {
 			return nil, errors.New("cannot have less than 0 units")
 		}
-	} else if replicas == 0 && opts.processState.Start {
-		replicas = 1
+	}
+	if opts.processState.Start || opts.processState.Restart {
+		if replicas == 0 {
+			replicas = 1
+		}
+		isStopped = false
+		isAsleep = false
 	}
 	srvName := serviceNameForApp(opts.app, opts.process)
 	if opts.isDeploy {
@@ -369,10 +378,6 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	if opts.isIsolatedRun {
 		replicas = 1
 		srvName = fmt.Sprintf("%sisolated-run", srvName)
-	}
-	uReplicas := uint64(replicas)
-	if opts.processState.Stop {
-		uReplicas = 0
 	}
 	if opts.processState.Restart {
 		restartCount++
@@ -390,6 +395,14 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+	uReplicas := uint64(replicas)
+	if isStopped || opts.processState.Stop {
+		uReplicas = 0
+		labels.SetStopped()
+	}
+	if isAsleep || opts.processState.Sleep {
+		labels.SetAsleep()
 	}
 	user, err := config.GetString("docker:user")
 	if err != nil {

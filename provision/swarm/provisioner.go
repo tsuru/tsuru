@@ -46,9 +46,9 @@ var (
 	_ provision.InitializableProvisioner = &swarmProvisioner{}
 	_ provision.NodeProvisioner          = &swarmProvisioner{}
 	_ provision.NodeContainerProvisioner = &swarmProvisioner{}
+	_ provision.SleepableProvisioner     = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
-	// _ provision.SleepableProvisioner     = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
 	// _ provision.UnitStatusProvisioner    = &swarmProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &swarmProvisioner{}
@@ -984,4 +984,14 @@ func runOnceCmds(client *docker.Client, opts tsuruServiceOpts, cmds []string, st
 		return createdID, nil, errors.Errorf("unexpected result code for build container: %d", exitCode)
 	}
 	return createdID, &tasks[0], nil
+}
+
+func (p *swarmProvisioner) Sleep(a provision.App, process string) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return err
+	}
+	return servicecommon.ChangeAppState(&serviceManager{
+		client: client,
+	}, a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
 }
