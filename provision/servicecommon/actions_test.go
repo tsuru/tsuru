@@ -350,6 +350,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 		Process:  "worker2",
 		Replicas: 0,
 	})
+	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", image: "image", replicas: 5, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", image: "image", replicas: 0, labels: labelsWorker},
