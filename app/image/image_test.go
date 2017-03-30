@@ -445,6 +445,18 @@ func (s *S) TestUpdateAppImageRollback(c *check.C) {
 	c.Check(err, check.IsNil)
 	dbMetadata, err = GetImageMetaData(data.Name)
 	c.Check(err, check.IsNil)
-	c.Check(dbMetadata.DisableRollback, check.Equals, true)
+	c.Check(dbMetadata.DisableRollback, check.Equals, false)
 	c.Check(dbMetadata.Reason, check.Equals, "")
+}
+
+func (s *S) TestValidateAppImage(c *check.C) {
+	config.Set("docker:image-history-size", 1)
+	defer config.Unset("docker:image-history-size")
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	err = ValidateAppImage("myapp", "v1")
+	c.Assert(err, check.IsNil)
+	err = ValidateAppImage("myapp", "v4")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Image \"v4\" not found in app \"myapp\"")
 }

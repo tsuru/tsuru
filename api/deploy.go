@@ -258,6 +258,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if !canRollback {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
+	var imageID string
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
@@ -272,7 +273,6 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	opts.Event = evt
-	var imageID string
 	imageID, err = app.Deploy(opts)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
@@ -413,7 +413,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s was not found", appName)}
 	}
 	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
 	if !canUpdateRollback {
@@ -464,7 +464,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 	}
 
-	err = app.RollbackUpdate(appName, img, reason, rollback)
+	err = app.RollbackUpdate(instance, img, reason, rollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusNotFound,
