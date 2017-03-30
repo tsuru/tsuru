@@ -254,6 +254,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Origin:       origin,
 		Rollback:     true,
 	}
+	opts.GetKind()
 	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canRollback {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
