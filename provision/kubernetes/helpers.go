@@ -141,10 +141,12 @@ func cleanupDeployment(client kubernetes.Interface, a provision.App, process str
 		return errors.WithStack(err)
 	}
 	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		Process:     process,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
 	})
 	if err != nil {
 		return err
@@ -252,9 +254,11 @@ func execCommand(opts execOpts) error {
 	} else {
 		var l *provision.LabelSet
 		l, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
-			App:         opts.app,
-			Provisioner: provisionerName,
-			Prefix:      tsuruLabelPrefix,
+			App: opts.app,
+			ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+				Prefix:      tsuruLabelPrefix,
+				Provisioner: provisionerName,
+			},
 		})
 		if err != nil {
 			return errors.WithStack(err)

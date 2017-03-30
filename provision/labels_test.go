@@ -74,12 +74,14 @@ func (s *S) TestServiceLabels(c *check.C) {
 	defer config.Unset("routers")
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
 	opts := provision.ServiceLabelsOpts{
-		App:         a,
-		Replicas:    3,
-		Process:     "p1",
-		BuildImage:  "myimg",
-		IsBuild:     true,
-		Provisioner: "kubernetes",
+		App:      a,
+		Replicas: 3,
+		Process:  "p1",
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			BuildImage:  "myimg",
+			IsBuild:     true,
+			Provisioner: "kubernetes",
+		},
 	}
 	ls, err := provision.ServiceLabels(opts)
 	c.Assert(err, check.IsNil)
@@ -99,7 +101,6 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"router-name":          "fake",
 			"router-type":          "fake",
 			"provisioner":          "kubernetes",
-			"restarts":             "0",
 			"build-image":          "myimg",
 		},
 	})

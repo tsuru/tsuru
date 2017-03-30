@@ -1093,11 +1093,13 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	cli, err := chooseDBSwarmNode()
 	c.Assert(err, check.IsNil)
 	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		IsDeploy:    true,
-		BuildImage:  "app:v1",
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsDeploy:    true,
+			BuildImage:  "app:v1",
+			Provisioner: provisionerName,
+			Prefix:      tsuruLabelPrefix,
+		},
 	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
@@ -1150,10 +1152,12 @@ func (s *S) TestRegisterUnitNotBuild(c *check.C) {
 	cli, err := chooseDBSwarmNode()
 	c.Assert(err, check.IsNil)
 	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		BuildImage:  "notset:v1",
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			BuildImage:  "notset:v1",
+			Provisioner: provisionerName,
+			Prefix:      tsuruLabelPrefix,
+		},
 	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{
@@ -1206,10 +1210,12 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	cli, err := chooseDBSwarmNode()
 	c.Assert(err, check.IsNil)
 	set, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		Provisioner: provisionerName,
-		IsDeploy:    true,
-		Prefix:      tsuruLabelPrefix,
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Provisioner: provisionerName,
+			IsDeploy:    true,
+			Prefix:      tsuruLabelPrefix,
+		},
 	})
 	c.Assert(err, check.IsNil)
 	_, err = cli.CreateService(docker.CreateServiceOptions{

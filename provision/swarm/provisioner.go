@@ -892,7 +892,19 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	return nil
 }
 
-func (m *serviceManager) DeployService(a provision.App, process string, pState servicecommon.ProcessState, imgID string) error {
+func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
+	srvName := serviceNameForApp(a, process)
+	srv, err := m.client.InspectService(srvName)
+	if err != nil {
+		if _, isNotFound := err.(*docker.NoSuchService); isNotFound {
+			return nil, nil
+		}
+		return nil, errors.WithStack(err)
+	}
+	return &provision.LabelSet{Labels: srv.Spec.Labels, Prefix: tsuruLabelPrefix}, nil
+}
+
+func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, imgID string) error {
 	srvName := serviceNameForApp(a, process)
 	srv, err := m.client.InspectService(srvName)
 	if err != nil {
@@ -905,11 +917,12 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 		baseSpec = &srv.Spec
 	}
 	spec, err := serviceSpecForApp(tsuruServiceOpts{
-		app:          a,
-		process:      process,
-		image:        imgID,
-		baseSpec:     baseSpec,
-		processState: pState,
+		app:      a,
+		process:  process,
+		image:    imgID,
+		baseSpec: baseSpec,
+		labels:   labels,
+		replicas: replicas,
 	})
 	if err != nil {
 		return err

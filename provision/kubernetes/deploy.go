@@ -82,10 +82,12 @@ func createBuildPod(params buildPodParams) error {
 	dockerSockPath := "/var/run/docker.sock"
 	baseName := deployPodNameForApp(params.app)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         params.app,
-		IsBuild:     true,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App: params.app,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsBuild:     true,
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
 	})
 	if err != nil {
 		return err
@@ -191,55 +193,12 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, pState servicecommon.ProcessState) (*provision.LabelSet, error) {
-	replicas := 0
-	restartCount := 0
-	isStopped := false
-	isAsleep := false
-	if oldDeployment != nil {
-		oldLabels := labelSetFromMeta(&oldDeployment.Spec.Template.ObjectMeta)
-		// Use label instead of .Spec.Replicas because stopped apps will have
-		// always 0 .Spec.Replicas.
-		replicas = oldLabels.AppReplicas()
-		restartCount = oldLabels.Restarts()
-		isStopped = oldLabels.IsStopped()
-		isAsleep = oldLabels.IsAsleep()
-	}
-	if pState.Increment != 0 {
-		replicas += pState.Increment
-		if replicas < 0 {
-			return nil, errors.New("cannot have less than 0 units")
-		}
-	}
-	if pState.Start || pState.Restart {
-		if replicas == 0 {
-			replicas = 1
-		}
-		isStopped = false
-		isAsleep = false
-	}
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         a,
-		Process:     process,
-		Replicas:    replicas,
+func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*provision.LabelSet, error) {
+	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
-	if err != nil {
-		return nil, err
-	}
 	realReplicas := int32(replicas)
-	if isStopped || pState.Stop {
-		realReplicas = 0
-		labels.SetStopped()
-	}
-	if isAsleep || pState.Sleep {
-		labels.SetAsleep()
-	}
-	if pState.Restart {
-		restartCount++
-		labels.SetRestarts(restartCount)
-	}
 	extra := []string{extraRegisterCmds(a)}
 	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, imageName, a, extra)
 	if err != nil {
@@ -317,6 +276,8 @@ type serviceManager struct {
 	client kubernetes.Interface
 }
 
+var _ servicecommon.ServiceManager = &serviceManager{}
+
 func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	falseVar := false
 	multiErrors := tsuruErrors.NewMultiError()
@@ -337,7 +298,19 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	return nil
 }
 
-func (m *serviceManager) DeployService(a provision.App, process string, pState servicecommon.ProcessState, image string) error {
+func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
+	depName := deploymentNameForApp(a, process)
+	dep, err := m.client.Extensions().Deployments(tsuruNamespace).Get(depName)
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, errors.WithStack(err)
+	}
+	return labelSetFromMeta(&dep.Spec.Template.ObjectMeta), nil
+}
+
+func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
 	depName := deploymentNameForApp(a, process)
 	dep, err := m.client.Extensions().Deployments(tsuruNamespace).Get(depName)
 	if err != nil {
@@ -346,7 +319,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, pState s
 		}
 		dep = nil
 	}
-	labels, err := createAppDeployment(m.client, dep, a, process, image, pState)
+	labels, err = createAppDeployment(m.client, dep, a, process, image, replicas, labels)
 	if err != nil {
 		return err
 	}

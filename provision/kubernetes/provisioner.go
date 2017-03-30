@@ -235,7 +235,13 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
-	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{App: a, Provisioner: provisionerName, Prefix: tsuruLabelPrefix})
+	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -572,9 +578,11 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, app pro
 		return err
 	}
 	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:         app,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App: app,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
 	})
 	if err != nil {
 		return errors.WithStack(err)
@@ -615,10 +623,12 @@ func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app
 func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []string) error {
 	baseName := execCommandPodNameForApp(a)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:           a,
-		Provisioner:   provisionerName,
-		IsIsolatedRun: true,
-		Prefix:        tsuruLabelPrefix,
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:        tsuruLabelPrefix,
+			Provisioner:   provisionerName,
+			IsIsolatedRun: true,
+		},
 	})
 	if err != nil {
 		return errors.WithStack(err)

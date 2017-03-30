@@ -186,37 +186,43 @@ func (s *LabelSet) getBoolLabel(k string) bool {
 }
 
 type ServiceLabelsOpts struct {
-	App           App
-	BuildImage    string
-	Process       string
+	App      App
+	Process  string
+	Replicas int
+	ServiceLabelExtendedOpts
+}
+
+type ServiceLabelExtendedOpts struct {
 	Provisioner   string
 	Prefix        string
-	Replicas      int
-	RestartCount  int
+	BuildImage    string
 	IsDeploy      bool
 	IsIsolatedRun bool
 	IsBuild       bool
 }
 
+func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
+	set.Prefix = opts.Prefix
+	if opts.BuildImage != "" {
+		set.Labels[labelBuildImage] = opts.BuildImage
+	}
+	set.Labels[labelProvisioner] = opts.Provisioner
+	set.Labels[labelIsService] = strconv.FormatBool(true)
+	set.Labels[labelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
+	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
+	set.Labels[labelIsBuild] = strconv.FormatBool(opts.IsBuild)
+}
+
 func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
 	set, err := ProcessLabels(ProcessLabelsOpts{
-		App:         opts.App,
-		Process:     opts.Process,
-		Provisioner: opts.Provisioner,
-		Prefix:      opts.Prefix,
+		App:     opts.App,
+		Process: opts.Process,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if opts.BuildImage != "" {
-		set.Labels[labelBuildImage] = opts.BuildImage
-	}
-	set.Labels[labelIsService] = strconv.FormatBool(true)
 	set.Labels[labelAppProcessReplicas] = strconv.Itoa(opts.Replicas)
-	set.Labels[labelRestarts] = strconv.Itoa(opts.RestartCount)
-	set.Labels[labelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
-	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
-	set.Labels[labelIsBuild] = strconv.FormatBool(opts.IsBuild)
+	ExtendServiceLabels(set, opts.ServiceLabelExtendedOpts)
 	return set, nil
 }
 

@@ -35,8 +35,9 @@ type pipelineArgs struct {
 }
 
 type ServiceManager interface {
-	DeployService(a provision.App, processName string, count ProcessState, image string) error
 	RemoveService(a provision.App, processName string) error
+	CurrentLabels(a provision.App, processName string) (*provision.LabelSet, error)
+	DeployService(a provision.App, processName string, labels *provision.LabelSet, replicas int, image string) error
 }
 
 func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, updateSpec ProcessSpec) error {
@@ -84,8 +85,8 @@ func RunServicePipeline(manager ServiceManager, a provision.App, newImg string, 
 func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 	for _, processName := range processes {
 		var err error
-		if count, in := args.currentImageSpec[processName]; in {
-			err = args.manager.DeployService(args.app, processName, count, args.currentImage)
+		if state, in := args.currentImageSpec[processName]; in {
+			err = deployService(args, processName, args.currentImage, state)
 		} else {
 			err = args.manager.RemoveService(args.app, processName)
 		}
@@ -93,6 +94,57 @@ func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 			log.Errorf("error rolling back updated service for %s[%s]: %+v", args.app.GetName(), processName, err)
 		}
 	}
+}
+
+func deployService(args *pipelineArgs, processName, image string, pState ProcessState) error {
+	oldLabels, err := args.manager.CurrentLabels(args.app, processName)
+	if err != nil {
+		return err
+	}
+	replicas := 0
+	restartCount := 0
+	isStopped := false
+	isAsleep := false
+	if oldLabels != nil {
+		replicas = oldLabels.AppReplicas()
+		restartCount = oldLabels.Restarts()
+		isStopped = oldLabels.IsStopped()
+		isAsleep = oldLabels.IsAsleep()
+	}
+	if pState.Increment != 0 {
+		replicas += pState.Increment
+		if replicas < 0 {
+			return errors.New("cannot have less than 0 units")
+		}
+	}
+	if pState.Start || pState.Restart {
+		if replicas == 0 {
+			replicas = 1
+		}
+		isStopped = false
+		isAsleep = false
+	}
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App:      args.app,
+		Process:  processName,
+		Replicas: replicas,
+	})
+	if err != nil {
+		return err
+	}
+	realReplicas := replicas
+	if isStopped || pState.Stop {
+		realReplicas = 0
+		labels.SetStopped()
+	}
+	if isAsleep || pState.Sleep {
+		labels.SetAsleep()
+	}
+	if pState.Restart {
+		restartCount++
+		labels.SetRestarts(restartCount)
+	}
+	return args.manager.DeployService(args.app, processName, labels, realReplicas, image)
 }
 
 var updateServices = &action.Action{
@@ -109,7 +161,7 @@ var updateServices = &action.Action{
 		}
 		sort.Strings(toDeployProcesses)
 		for _, processName := range toDeployProcesses {
-			err = args.manager.DeployService(args.app, processName, args.newImageSpec[processName], args.newImage)
+			err = deployService(args, processName, args.newImage, args.newImageSpec[processName])
 			if err != nil {
 				break
 			}

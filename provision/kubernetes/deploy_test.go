@@ -31,7 +31,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
 	c.Assert(err, check.IsNil)
@@ -71,7 +73,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/is-stopped":           "false",
 						"tsuru.io/is-deploy":            "false",
 						"tsuru.io/is-isolated-run":      "false",
-						"tsuru.io/restarts":             "0",
 						"tsuru.io/app-name":             "myapp",
 						"tsuru.io/app-process":          "p1",
 						"tsuru.io/app-process-replicas": "1",
@@ -121,7 +122,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/is-stopped":           "false",
 				"tsuru.io/is-deploy":            "false",
 				"tsuru.io/is-isolated-run":      "false",
-				"tsuru.io/restarts":             "0",
 				"tsuru.io/app-name":             "myapp",
 				"tsuru.io/app-process":          "p1",
 				"tsuru.io/app-process-replicas": "1",
@@ -266,7 +266,9 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	}
 	for _, tt := range tests {
 		for _, s := range tt.states {
-			err = m.DeployService(a, "p1", s, "myimg")
+			err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+				"p1": s,
+			})
 			c.Assert(err, check.IsNil)
 		}
 		var dep *extensions.Deployment
@@ -295,7 +297,9 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
 	c.Assert(err, check.IsNil)
@@ -325,7 +329,9 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{Start: true}, "myimg")
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
 	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
 }
 
@@ -337,11 +343,10 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
-			"p2": "cmd2",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil)
 	c.Assert(err, check.IsNil)
 	expectedLabels := map[string]string{
 		"tsuru.io/is-tsuru":             "true",
@@ -400,11 +405,10 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
-			"p2": "cmd2",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.DeployService(a, "p1", servicecommon.ProcessState{}, "myimg")
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil)
 	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, errors.New("my dep err")
