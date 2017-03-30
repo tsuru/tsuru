@@ -165,8 +165,8 @@ func createBuildPod(params buildPodParams) error {
 	if params.attachInput != nil {
 		errCh := make(chan error)
 		go func() {
-			err = doAttach(nil, params.attachOutput, pod.Name, commitContainer)
-			errCh <- err
+			commitErr := doAttach(nil, params.attachOutput, pod.Name, commitContainer)
+			errCh <- commitErr
 		}()
 		err = doAttach(params.attachInput, params.attachOutput, pod.Name, baseName)
 		if err != nil {

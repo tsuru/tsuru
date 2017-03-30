@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -13,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,7 +54,7 @@ type S struct {
 	client   *clientWrapper
 	lastConf *rest.Config
 	t        *testing.T
-	stream   streamResult
+	stream   map[string]streamResult
 }
 
 type streamResult struct {
@@ -107,14 +109,13 @@ type clientPodsWrapper struct {
 }
 
 func (c *clientPodsWrapper) GetLogs(name string, opts *v1.PodLogOptions) *rest.Request {
-	c.PodInterface.GetLogs(name, opts)
 	cfg, _ := getClusterRestConfig()
 	cli, _ := rest.RESTClientFor(cfg)
 	return cli.Get().Namespace(tsuruNamespace).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, api.ParameterCodec)
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	s.stream = streamResult{}
+	s.stream = make(map[string]streamResult)
 	s.client = &clientWrapper{fake.NewSimpleClientset()}
 	clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
@@ -190,7 +191,8 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 }
 
 func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGroup) {
-	attachFn := func(w http.ResponseWriter, r *http.Request) {
+	mu := sync.Mutex{}
+	attachFn := func(w http.ResponseWriter, r *http.Request, cont string) {
 		tty := r.FormValue("tty") == "true"
 		stdin := r.FormValue("stdin") == "true"
 		stdout := r.FormValue("stdout") == "true"
@@ -205,42 +207,87 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 		if stderr || tty {
 			expected++
 		}
-		_, streamErr := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
-		c.Assert(streamErr, check.IsNil)
+		_, err := httpstream.Handshake(r, w, []string{"v4.channel.k8s.io"})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		upgrader := spdy.NewResponseUpgrader()
-		streams := make(chan httpstream.Stream, expected)
-		upgrader.UpgradeResponse(w, r, func(stream httpstream.Stream, replySent <-chan struct{}) error {
-			streams <- stream
+		type streamAndReply struct {
+			s httpstream.Stream
+			r <-chan struct{}
+		}
+		streams := make(chan streamAndReply, expected)
+		conn := upgrader.UpgradeResponse(w, r, func(stream httpstream.Stream, replySent <-chan struct{}) error {
+			streams <- streamAndReply{s: stream, r: replySent}
 			return nil
 		})
-		inStreams := 0
-		for stream := range streams {
-			switch stream.Headers()["Streamtype"][0] {
-			case api.StreamTypeStderr:
-				stream.Write([]byte("stderr data"))
-			case api.StreamTypeStdout:
-				stream.Write([]byte("stdout data"))
-			case api.StreamTypeResize:
-				data, _ := ioutil.ReadAll(stream)
-				s.stream.resize = string(data)
-			case api.StreamTypeStdin:
-				data, _ := ioutil.ReadAll(stream)
-				s.stream.stdin = string(data)
+		if conn == nil {
+			return
+		}
+		defer conn.Close()
+		waitStreamReply := func(replySent <-chan struct{}, notify chan<- struct{}) {
+			<-replySent
+			notify <- struct{}{}
+		}
+		replyChan := make(chan struct{})
+		streamMap := map[string]httpstream.Stream{}
+		receivedStreams := 0
+		timeout := time.After(5 * time.Second)
+	WaitForStreams:
+		for {
+			select {
+			case stream := <-streams:
+				streamType := stream.s.Headers().Get(api.StreamType)
+				streamMap[streamType] = stream.s
+				go waitStreamReply(stream.r, replyChan)
+			case <-replyChan:
+				receivedStreams++
+				if receivedStreams == expected {
+					break WaitForStreams
+				}
+			case <-timeout:
+				c.Fatalf("timeout waiting for channels, received %d of %d", receivedStreams, expected)
+				return
 			}
-			stream.Close()
-			inStreams++
-			if inStreams >= expected {
-				break
+		}
+		if resize := streamMap[api.StreamTypeResize]; resize != nil {
+			scanner := bufio.NewScanner(resize)
+			if scanner.Scan() {
+				mu.Lock()
+				res := s.stream[cont]
+				res.resize = scanner.Text()
+				s.stream[cont] = res
+				mu.Unlock()
 			}
+		}
+		if stdin := streamMap[api.StreamTypeStdin]; stdin != nil {
+			data, _ := ioutil.ReadAll(stdin)
+			mu.Lock()
+			res := s.stream[cont]
+			res.stdin = string(data)
+			s.stream[cont] = res
+			mu.Unlock()
+		}
+		if stderr := streamMap[api.StreamTypeStderr]; stderr != nil {
+			stderr.Write([]byte("stderr data"))
+		}
+		if stdout := streamMap[api.StreamTypeStdout]; stdout != nil {
+			stdout.Write([]byte("stdout data"))
 		}
 	}
 	wg := sync.WaitGroup{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		defer wg.Done()
-		s.stream.urls = append(s.stream.urls, *r.URL)
+		cont := r.FormValue("container")
+		mu.Lock()
+		res := s.stream[cont]
+		res.urls = append(res.urls, *r.URL)
+		s.stream[cont] = res
+		mu.Unlock()
 		if strings.HasSuffix(r.URL.Path, "/attach") || strings.HasSuffix(r.URL.Path, "/exec") {
-			attachFn(w, r)
+			attachFn(w, r, cont)
 		} else if strings.HasSuffix(r.URL.Path, "/log") {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "my log message")
@@ -251,7 +298,7 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 
 func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
-	counter := 0
+	var counter int32
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		wg.Add(1)
 		dep := action.(ktesting.CreateAction).GetObject().(*extensions.Deployment)
@@ -270,8 +317,8 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 			})
 			c.Assert(err, check.IsNil)
 			for i := int32(1); i <= *dep.Spec.Replicas; i++ {
-				counter++
-				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, counter, i)
+				id := atomic.AddInt32(&counter, 1)
+				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
 				_, err = s.client.Core().Pods(dep.Namespace).Create(pod)
 				c.Assert(err, check.IsNil)
 			}
@@ -309,6 +356,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 			}
 		}
 		if toRegister {
+			pod.Status.Phase = v1.PodRunning
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -318,6 +366,9 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 						"worker": "python myworker.py",
 					},
 				})
+				c.Assert(err, check.IsNil)
+				pod.Status.Phase = v1.PodSucceeded
+				_, err = s.client.Core().Pods(tsuruNamespace).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}

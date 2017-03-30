@@ -538,14 +538,14 @@ func (s *S) TestShell(c *check.C) {
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.stream.stdin, check.Equals, "echo test")
+	c.Assert(s.stream["myapp-web"].stdin, check.Equals, "echo test")
 	var sz term.Size
-	err = json.Unmarshal([]byte(s.stream.resize), &sz)
+	err = json.Unmarshal([]byte(s.stream["myapp-web"].resize), &sz)
 	c.Assert(err, check.IsNil)
 	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
-	c.Assert(s.stream.urls, check.HasLen, 1)
-	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.stream.urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
+	c.Assert(s.stream["myapp-web"].urls, check.HasLen, 1)
+	c.Assert(s.stream["myapp-web"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.stream["myapp-web"].urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
 }
 
 func (s *S) TestShellSpecificUnit(c *check.C) {
@@ -574,13 +574,13 @@ func (s *S) TestShellSpecificUnit(c *check.C) {
 	})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
-	c.Assert(s.stream.stdin, check.Equals, "echo test")
+	c.Assert(s.stream["myapp-web"].stdin, check.Equals, "echo test")
 	var sz term.Size
-	err = json.Unmarshal([]byte(s.stream.resize), &sz)
+	err = json.Unmarshal([]byte(s.stream["myapp-web"].resize), &sz)
 	c.Assert(err, check.IsNil)
 	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
-	c.Assert(s.stream.urls, check.HasLen, 1)
-	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
+	c.Assert(s.stream["myapp-web"].urls, check.HasLen, 1)
+	c.Assert(s.stream["myapp-web"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
 }
 
 func (s *S) TestShellSpecificUnitNotFound(c *check.C) {
@@ -645,11 +645,11 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout datastdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr datastderr data")
-	c.Assert(s.stream.urls, check.HasLen, 2)
-	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.stream.urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
-	c.Assert(s.stream.urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
-	c.Assert(s.stream.urls[1].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+	c.Assert(s.stream["myapp-web"].urls, check.HasLen, 2)
+	c.Assert(s.stream["myapp-web"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.stream["myapp-web"].urls[1].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
+	c.Assert(s.stream["myapp-web"].urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+	c.Assert(s.stream["myapp-web"].urls[1].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandOnce(c *check.C) {
@@ -673,9 +673,9 @@ func (s *S) TestExecuteCommandOnce(c *check.C) {
 	rollback()
 	c.Assert(stdout.String(), check.Equals, "stdout data")
 	c.Assert(stderr.String(), check.Equals, "stderr data")
-	c.Assert(s.stream.urls, check.HasLen, 1)
-	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
-	c.Assert(s.stream.urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
+	c.Assert(s.stream["myapp-web"].urls, check.HasLen, 1)
+	c.Assert(s.stream["myapp-web"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
+	c.Assert(s.stream["myapp-web"].urls[0].Query()["command"], check.DeepEquals, []string{"/bin/sh", "-lc", "mycmd", "arg1", "arg2"})
 }
 
 func (s *S) TestExecuteCommandIsolated(c *check.C) {
@@ -695,8 +695,8 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(stdout.String(), check.Equals, "my log message")
 	c.Assert(stderr.String(), check.Equals, "")
-	c.Assert(s.stream.urls, check.HasLen, 1)
-	c.Assert(s.stream.urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/log")
+	c.Assert(s.stream["myapp-isolated-run"].urls, check.HasLen, 1)
+	c.Assert(s.stream["myapp-isolated-run"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/log")
 	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
