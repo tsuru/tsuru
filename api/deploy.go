@@ -422,25 +422,6 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: "User does not have permission to do this action in this app",
 		}
 	}
-	opts := app.DeployOptions{
-		App:  instance,
-		User: t.GetUserName(),
-		Kind: app.DeployRollback,
-	}
-	var imageID string
-	evt, err := event.New(&event.Opts{
-		Target:        appTarget(appName),
-		Kind:          permission.PermAppUpdate,
-		Owner:         t,
-		CustomData:    opts,
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
-		Cancelable:    true,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	img := r.FormValue("image")
 	if img == "" {
 		return &tsuruErrors.HTTP{
@@ -463,7 +444,19 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: "Reason cannot be empty while enabling rollback",
 		}
 	}
-
+	evt, err := event.New(&event.Opts{
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(r.Form),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Cancelable:    false,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
 	err = app.RollbackUpdate(instance, img, reason, rollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
