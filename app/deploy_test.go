@@ -903,25 +903,3 @@ func (s *S) TestRebuild(c *check.C) {
 	c.Assert(writer.String(), check.Equals, "Builder deploy called")
 	c.Assert(imgID, check.Equals, "app-image")
 }
-
-func (s *S) TestRollbackUpdate(c *check.C) {
-	data := image.ImageMetadata{
-		Name:            "tsuru/app-myapp:v1",
-		Reason:          "buggy version",
-		DisableRollback: true,
-	}
-	err := data.Save()
-	c.Assert(err, check.IsNil)
-	dbMetadata, err := image.GetImageMetaData(data.Name)
-	c.Check(err, check.IsNil)
-	c.Check(dbMetadata.DisableRollback, check.Equals, true)
-	c.Check(dbMetadata.Reason, check.Equals, "buggy version")
-	err = RollbackUpdate("myapp", "v1", "", false)
-	c.Check(err, check.IsNil)
-	dbMetadata, err = image.GetImageMetaData(data.Name)
-	c.Check(err, check.IsNil)
-	c.Check(dbMetadata.DisableRollback, check.Equals, false)
-	c.Check(dbMetadata.Reason, check.Equals, "")
-	err = RollbackUpdate("myapp", "v10", "", false)
-	c.Check(err, check.NotNil)
-}

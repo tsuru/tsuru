@@ -329,13 +329,10 @@ func UpdateAppImageRollback(appName, img, reason string, rollback bool) error {
 		return err
 	}
 	defer dataColl.Close()
-	err = dataColl.Update(bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)},
-		bson.M{"$set": bson.M{"disablerollback": rollback}})
-	if err != nil {
-		return err
-	}
-	err = dataColl.Update(bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)},
-		bson.M{"$set": bson.M{"reason": reason}})
+	err = dataColl.Update(
+		bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)},
+		bson.M{"$set": bson.M{"disablerollback": rollback, "reason": reason}},
+	)
 	if err != nil {
 		return err
 	}
@@ -505,13 +502,13 @@ func ValidateAppImage(appName, imageId string) error {
 	}
 	valid := false
 	for _, img := range validImgs {
-		if img == imageId {
+		if regexp.MustCompile(imageId).MatchString(img) {
 			valid = true
 			break
 		}
 	}
 	if !valid {
-		return errors.Errorf("Image %q not found in app", imageId)
+		return errors.Errorf("Image %q not found in app \"%s\"", imageId, appName)
 	}
 	return nil
 }
