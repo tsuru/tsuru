@@ -519,10 +519,6 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if err != nil {
 		return "", err
 	}
-	err = waitForPod(client, deployPodName, false, defaultRunPodReadyTimeout)
-	if err != nil {
-		return "", err
-	}
 	manager := &serviceManager{
 		client: client,
 	}

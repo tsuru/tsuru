@@ -29,7 +29,7 @@ import (
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 )
 
-func doAttach(params buildPodParams, podName, containerName string) error {
+func doAttach(stdin io.Reader, stdout io.Writer, podName, container string) error {
 	cfg, err := getClusterRestConfig()
 	if err != nil {
 		return err
@@ -44,8 +44,8 @@ func doAttach(params buildPodParams, podName, containerName string) error {
 		Namespace(tsuruNamespace).
 		SubResource("attach")
 	req.VersionedParams(&api.PodAttachOptions{
-		Container: containerName,
-		Stdin:     true,
+		Container: container,
+		Stdin:     stdin != nil,
 		Stdout:    true,
 		Stderr:    true,
 		TTY:       false,
@@ -56,9 +56,9 @@ func doAttach(params buildPodParams, podName, containerName string) error {
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
 		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
-		Stdin:              params.attachInput,
-		Stdout:             params.attachOutput,
-		Stderr:             params.attachOutput,
+		Stdin:              stdin,
+		Stdout:             stdout,
+		Stderr:             stdout,
 		Tty:                false,
 		TerminalSizeQueue:  nil,
 	})
@@ -99,6 +99,7 @@ func createBuildPod(params buildPodParams) error {
 	for _, envData := range appEnvs {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
+	commitContainer := "committer-cont"
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        baseName,
@@ -128,19 +129,26 @@ func createBuildPod(params buildPodParams) error {
 					Env:       envs,
 				},
 				{
-					Name:  "committer-cont",
+					Name:  commitContainer,
 					Image: dockerImageName,
 					VolumeMounts: []v1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
 					},
 					Command: []string{
-						"sh", "-c",
+						"sh", "-ec",
 						fmt.Sprintf(`
-							while id=$(docker ps -aq -f 'label=io.kubernetes.container.name=%s' -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z $id ]; do
+							img="%s"
+							while id=$(docker ps -aq -f "label=io.kubernetes.container.name=%s" -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z ${id} ]; do
 								sleep 1;
 							done;
-							docker wait $id && docker commit $id %s && docker push %s
-						`, baseName, params.destinationImage, params.destinationImage),
+							docker wait $id >/dev/null
+							echo
+							echo '---- Building application image ----'
+							docker commit ${id} ${img} >/dev/null
+							sz=$(docker history ${img} | head -2 | tail -1 | egrep -o '[0-9.]+ [a-zA-Z]{2}')
+							echo " ---> Sending image to repository (${sz})"
+							docker push ${img} >/dev/null
+						`, params.destinationImage, baseName),
 					},
 				},
 			},
@@ -155,12 +163,22 @@ func createBuildPod(params buildPodParams) error {
 		return err
 	}
 	if params.attachInput != nil {
-		err = doAttach(params, pod.Name, baseName)
+		errCh := make(chan error)
+		go func() {
+			err = doAttach(nil, params.attachOutput, pod.Name, commitContainer)
+			errCh <- err
+		}()
+		err = doAttach(params.attachInput, params.attachOutput, pod.Name, baseName)
 		if err != nil {
 			return err
 		}
+		err = <-errCh
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
-	return nil
+	return waitForPod(params.client, pod.Name, false, defaultRunPodReadyTimeout)
 }
 
 func extraRegisterCmds(a provision.App) string {
