@@ -41,6 +41,7 @@ script:
   - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
 after_success:
   - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
+  - test -n "$TRAVIS_TAG" && curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash
 notifications:
   email:
     on_success: change

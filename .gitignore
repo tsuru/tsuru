@@ -4,3 +4,4 @@ cmd/tsurud/tsurud
 docs/_build
 build
 data
+dist/
