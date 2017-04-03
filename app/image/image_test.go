@@ -396,24 +396,6 @@ func (s *S) TestGetImageMetaDataLegacyProcesses(c *check.C) {
 	})
 }
 
-func (s *S) TestAllAppProcesses(c *check.C) {
-	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
-	c.Assert(err, check.IsNil)
-	data := ImageMetadata{
-		Name: "tsuru/app-myapp:v1",
-		Processes: map[string][]string{
-			"worker1": {"python myapp.py"},
-			"worker2": {"worker2"},
-		},
-	}
-	err = data.Save()
-	c.Assert(err, check.IsNil)
-	procs, err := AllAppProcesses("myapp")
-	c.Assert(err, check.IsNil)
-	sort.Strings(procs)
-	c.Assert(procs, check.DeepEquals, []string{"worker1", "worker2"})
-}
-
 func (s *S) TestUpdateAppImageRollback(c *check.C) {
 	data := ImageMetadata{
 		Name:            "tsuru/app-myapp:v1",
@@ -449,14 +431,34 @@ func (s *S) TestUpdateAppImageRollback(c *check.C) {
 	c.Check(dbMetadata.Reason, check.Equals, "")
 }
 
-func (s *S) TestValidateAppImage(c *check.C) {
+func (s *S) TestAllAppProcesses(c *check.C) {
+	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	data := ImageMetadata{
+		Name: "tsuru/app-myapp:v1",
+		Processes: map[string][]string{
+			"worker1": {"python myapp.py"},
+			"worker2": {"worker2"},
+		},
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	procs, err := AllAppProcesses("myapp")
+	c.Assert(err, check.IsNil)
+	sort.Strings(procs)
+	c.Assert(procs, check.DeepEquals, []string{"worker1", "worker2"})
+}
+
+func (s *S) TestGetAppImageBySuffix(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	err := AppendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
-	err = ValidateAppImage("myapp", "v1")
+	imgName, err := GetAppImageBySuffix("myapp", "v1")
 	c.Assert(err, check.IsNil)
-	err = ValidateAppImage("myapp", "v4")
+	c.Assert(imgName, check.Equals, "tsuru/app-myapp:v1")
+	imgName, err = GetAppImageBySuffix("myapp", "v4")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Image \"v4\" not found in app \"myapp\"")
+	c.Assert(imgName, check.Equals, "")
+	c.Assert(err.Error(), check.Equals, "Image: \"v4\", from app: \"myapp\" is not a valid image")
 }
