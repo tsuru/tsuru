@@ -413,11 +413,11 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   409: Conflict
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
+	app, err := app.GetByName(appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s was not found", appName)}
 	}
-	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
+	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(app)...)
 	if !canUpdateRollback {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusForbidden,
@@ -448,18 +448,18 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
-		Kind:          permission.PermAppUpdate,
+		Kind:          permission.PermAppUpdateDeployRollback,
 		Owner:         t,
 		CustomData:    event.FormToCustomData(r.Form),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(app)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(app)...),
 		Cancelable:    false,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.RollbackUpdate(instance, img, reason, rollback)
+	err = app.RollbackUpdate(app, img, reason, rollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusConflict,

@@ -495,20 +495,23 @@ func imageCustomDataColl() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
 
-func ValidateAppImage(appName, imageId string) error {
+func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
+	if !regexp.MustCompile("v[0-9]+$").MatchString(imageIdSuffix) {
+		return "", fmt.Errorf("Image: `%s` not a valid image", imageIdSuffix)
+	}
 	validImgs, err := ListValidAppImages(appName)
 	if err != nil {
-		return err
+		return "", err
 	}
-	valid := false
+	var ImgName string
 	for _, img := range validImgs {
-		if regexp.MustCompile(imageId).MatchString(img) {
-			valid = true
+		if strings.HasSuffix(img, imageIdSuffix) {
+			ImgName = img
 			break
 		}
 	}
-	if !valid {
-		return errors.Errorf("Image %q not found in app \"%s\"", imageId, appName)
+	if ImgName != "" {
+		return ImgName, nil
 	}
-	return nil
+	return "", fmt.Errorf("Image: \"%s\", from app: \"%s\" is not a valid image", imageIdSuffix, appName)
 }
