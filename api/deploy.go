@@ -410,6 +410,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   403: Forbidden
 //   404: Not found
+//   409: Conflict
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
@@ -461,7 +462,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	err = app.RollbackUpdate(instance, img, reason, rollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
-			Code:    http.StatusNotFound,
+			Code:    http.StatusConflict,
 			Message: err.Error(),
 		}
 	}
