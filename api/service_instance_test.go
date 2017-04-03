@@ -1061,7 +1061,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 		{Service: "mongodb", Instances: []string{"mongodb-other"}, Plans: []string{""}},
 		{Service: "redis", Instances: []string{"redis-globo"}, Plans: []string{""}},
 	}
-	sort.Sort(ServiceModelList(instances))
 	c.Assert(instances, check.DeepEquals, expected)
 }
 
