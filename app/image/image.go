@@ -330,7 +330,7 @@ func UpdateAppImageRollback(appName, img, reason string, rollback bool) error {
 	}
 	defer dataColl.Close()
 	err = dataColl.Update(
-		bson.M{"_id": fmt.Sprintf("%s:%s", appBasicImageName(appName), img)},
+		bson.M{"_id": img},
 		bson.M{"$set": bson.M{"disablerollback": rollback, "reason": reason}},
 	)
 	if err != nil {
