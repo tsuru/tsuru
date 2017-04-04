@@ -104,44 +104,46 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	return nil
 }
 
-func changeState(a provision.App, process string, state servicecommon.ProcessState) error {
+func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {
 	client, err := getClusterClient()
 	if err != nil {
 		return err
 	}
 	return servicecommon.ChangeAppState(&serviceManager{
 		client: client,
+		writer: w,
 	}, a, process, state)
 }
 
-func changeUnits(a provision.App, units int, processName string) error {
+func changeUnits(a provision.App, units int, processName string, w io.Writer) error {
 	client, err := getClusterClient()
 	if err != nil {
 		return err
 	}
 	return servicecommon.ChangeUnits(&serviceManager{
 		client: client,
+		writer: w,
 	}, a, units, processName)
 }
 
 func (p *kubernetesProvisioner) AddUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	return changeUnits(a, int(units), processName)
+	return changeUnits(a, int(units), processName, w)
 }
 
 func (p *kubernetesProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
-	return changeUnits(a, -int(units), processName)
+	return changeUnits(a, -int(units), processName, w)
 }
 
 func (p *kubernetesProvisioner) Restart(a provision.App, process string, w io.Writer) error {
-	return changeState(a, process, servicecommon.ProcessState{Start: true, Restart: true})
+	return changeState(a, process, servicecommon.ProcessState{Start: true, Restart: true}, w)
 }
 
 func (p *kubernetesProvisioner) Start(a provision.App, process string) error {
-	return changeState(a, process, servicecommon.ProcessState{Start: true})
+	return changeState(a, process, servicecommon.ProcessState{Start: true}, nil)
 }
 
 func (p *kubernetesProvisioner) Stop(a provision.App, process string) error {
-	return changeState(a, process, servicecommon.ProcessState{Stop: true})
+	return changeState(a, process, servicecommon.ProcessState{Stop: true}, nil)
 }
 
 var stateMap = map[v1.PodPhase]provision.Status{
@@ -715,5 +717,5 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *kubernetesProvisioner) Sleep(a provision.App, process string) error {
-	return changeState(a, process, servicecommon.ProcessState{Stop: true, Sleep: true})
+	return changeState(a, process, servicecommon.ProcessState{Stop: true, Sleep: true}, nil)
 }
