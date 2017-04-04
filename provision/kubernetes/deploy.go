@@ -140,16 +140,16 @@ func createBuildPod(params buildPodParams) error {
 						"sh", "-ec",
 						fmt.Sprintf(`
 							img="%s"
-							while id=$(docker ps -aq -f "label=io.kubernetes.container.name=%s" -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z ${id} ]; do
+							while id=$(docker ps -aq -f "label=io.kubernetes.container.name=%s" -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z "${id}" ]; do
 								sleep 1;
 							done;
-							docker wait $id >/dev/null
+							docker wait "${id}" >/dev/null
 							echo
 							echo '---- Building application image ----'
-							docker commit ${id} ${img} >/dev/null
-							sz=$(docker history ${img} | head -2 | tail -1 | egrep -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
+							docker commit "${id}" "${img}" >/dev/null
+							sz=$(docker history "${img}" | head -2 | tail -1 | grep -E -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
-							docker push ${img} >/dev/null
+							docker push "${img}" >/dev/null
 						`, params.destinationImage, baseName),
 					},
 				},
