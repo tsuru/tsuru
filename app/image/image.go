@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -497,7 +497,7 @@ func imageCustomDataColl() (*storage.Collection, error) {
 
 func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
 	if !regexp.MustCompile("v[0-9]+$").MatchString(imageIdSuffix) {
-		return "", fmt.Errorf("Image: `%s` not a valid image", imageIdSuffix)
+		return "", fmt.Errorf("Image: `%s` is not a valid image", imageIdSuffix)
 	}
 	validImgs, err := ListValidAppImages(appName)
 	if err != nil {

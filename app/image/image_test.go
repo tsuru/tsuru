@@ -1,4 +1,4 @@
-// Copyright 2016 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -460,4 +460,8 @@ func (s *S) TestGetAppImageBySuffix(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(imgName, check.Equals, "")
 	c.Assert(err.Error(), check.Equals, "Image: \"v4\", from app: \"myapp\" is not a valid image")
+	imgName, err = GetAppImageBySuffix("myapp", "x9")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Image: `x9` is not a valid image")
+	c.Assert(imgName, check.Equals, "")
 }

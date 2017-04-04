@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2017 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -902,4 +902,29 @@ func (s *S) TestRebuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Builder deploy called")
 	c.Assert(imgID, check.Equals, "app-image")
+}
+
+func (s *S) TestRollbackUpdate(c *check.C) {
+	app := App{
+		Name:      "myapp",
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-myapp:v1",
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	err = RollbackUpdate(&app, "v1", "my reason", true)
+	c.Assert(err, check.IsNil)
+	imgMD, err := image.GetImageMetaData("tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(imgMD.Reason, check.Equals, "my reason")
+	c.Assert(imgMD.DisableRollback, check.Equals, true)
 }
