@@ -7,8 +7,10 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -145,7 +147,7 @@ func createBuildPod(params buildPodParams) error {
 							echo
 							echo '---- Building application image ----'
 							docker commit ${id} ${img} >/dev/null
-							sz=$(docker history ${img} | head -2 | tail -1 | egrep -o '[0-9.]+ [a-zA-Z]{2}')
+							sz=$(docker history ${img} | head -2 | tail -1 | egrep -o '[0-9.]+\s[a-zA-Z]+\s*$' | sed 's/[[:space:]]*$//g')
 							echo " ---> Sending image to repository (${sz})"
 							docker push ${img} >/dev/null
 						`, params.destinationImage, baseName),
@@ -211,7 +213,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*provision.LabelSet, error) {
+func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*extensions.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -220,7 +222,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	extra := []string{extraRegisterCmds(a)}
 	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, imageName, a, extra)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	appEnvs := provision.EnvsForApp(a, process, false)
 	var envs []v1.EnvVar
@@ -231,13 +233,13 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	tenRevs := int32(10)
 	yamlData, err := image.GetImageTsuruYamlData(imageName)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
 	probe, err := probeFromHC(yamlData.Healthcheck, portInt)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
@@ -282,16 +284,18 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 			},
 		},
 	}
+	var newDep *extensions.Deployment
 	if oldDeployment == nil {
-		_, err = client.Extensions().Deployments(tsuruNamespace).Create(&deployment)
+		newDep, err = client.Extensions().Deployments(tsuruNamespace).Create(&deployment)
 	} else {
-		_, err = client.Extensions().Deployments(tsuruNamespace).Update(&deployment)
+		newDep, err = client.Extensions().Deployments(tsuruNamespace).Update(&deployment)
 	}
-	return labels, errors.WithStack(err)
+	return newDep, labels, errors.WithStack(err)
 }
 
 type serviceManager struct {
 	client kubernetes.Interface
+	writer io.Writer
 }
 
 var _ servicecommon.ServiceManager = &serviceManager{}
@@ -328,6 +332,96 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 	return labelSetFromMeta(&dep.Spec.Template.ObjectMeta), nil
 }
 
+const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
+
+func createDeployTimeoutError(client kubernetes.Interface, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
+	messages, err := notReadyPodEvents(client, a, processName)
+	var msgErrorPart string
+	if err == nil {
+		for _, m := range messages {
+			fmt.Fprintf(w, " ---> Pod not ready in time: %s\n", m)
+		}
+		if len(messages) > 0 {
+			msgErrorPart = ": " + strings.Join(messages, ", ")
+		}
+	}
+	return errors.Errorf("timeout after %v waiting for units%s", timeout, msgErrorPart)
+}
+
+func monitorDeployment(client kubernetes.Interface, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
+	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
+	timeout := time.After(defaultDeploymentProgressTimeout)
+	var err error
+	for dep.Status.ObservedGeneration < dep.Generation {
+		dep, err = client.Extensions().Deployments(tsuruNamespace).Get(dep.Name)
+		if err != nil {
+			return err
+		}
+		select {
+		case <-time.After(100 * time.Millisecond):
+		case <-timeout:
+			return errors.Errorf("timeout waiting for deployment generation to update")
+		}
+	}
+	var specReplicas int32
+	if dep.Spec.Replicas != nil {
+		specReplicas = *dep.Spec.Replicas
+	}
+	oldUpdatedReplicas := int32(-1)
+	oldReadyUnits := int32(-1)
+	oldPendingTermination := int32(-1)
+	maxWaitTime, _ := config.GetInt("docker:healthcheck:max-time")
+	if maxWaitTime == 0 {
+		maxWaitTime = 120
+	}
+	maxWaitTimeDuration := time.Duration(maxWaitTime) * time.Second
+	var healthcheckTimeout <-chan time.Time
+	t0 := time.Now()
+	for {
+		for i := range dep.Status.Conditions {
+			c := dep.Status.Conditions[i]
+			if c.Type == extensions.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
+				return errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
+			}
+		}
+		if oldUpdatedReplicas != dep.Status.UpdatedReplicas {
+			fmt.Fprintf(w, " ---> %d of %d new units created\n", dep.Status.UpdatedReplicas, specReplicas)
+		}
+		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
+			healthcheckTimeout = time.After(maxWaitTimeDuration)
+			fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
+		}
+		readyUnits := dep.Status.UpdatedReplicas - dep.Status.UnavailableReplicas
+		if oldReadyUnits != readyUnits && readyUnits >= 0 {
+			fmt.Fprintf(w, " ---> %d of %d new units ready\n", readyUnits, specReplicas)
+		}
+		pendingTermination := dep.Status.Replicas - dep.Status.UpdatedReplicas
+		if oldPendingTermination != pendingTermination && pendingTermination > 0 {
+			fmt.Fprintf(w, " ---> %d old units pending termination\n", pendingTermination)
+		}
+		oldUpdatedReplicas = dep.Status.UpdatedReplicas
+		oldReadyUnits = readyUnits
+		oldPendingTermination = pendingTermination
+		if readyUnits == specReplicas &&
+			dep.Status.Replicas == specReplicas {
+			break
+		}
+		select {
+		case <-time.After(100 * time.Millisecond):
+		case <-healthcheckTimeout:
+			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
+		case <-timeout:
+			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
+		}
+		dep, err = client.Extensions().Deployments(tsuruNamespace).Get(dep.Name)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Fprintln(w, " ---> Done updating units")
+	return nil
+}
+
 func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
 	depName := deploymentNameForApp(a, process)
 	dep, err := m.client.Extensions().Deployments(tsuruNamespace).Get(depName)
@@ -337,8 +431,22 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		}
 		dep = nil
 	}
-	labels, err = createAppDeployment(m.client, dep, a, process, image, replicas, labels)
+	dep, labels, err = createAppDeployment(m.client, dep, a, process, image, replicas, labels)
 	if err != nil {
+		return err
+	}
+	if m.writer == nil {
+		m.writer = ioutil.Discard
+	}
+	err = monitorDeployment(m.client, dep, a, process, m.writer)
+	if err != nil {
+		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
+		rollbackErr := m.client.Extensions().Deployments(tsuruNamespace).Rollback(&extensions.DeploymentRollback{
+			Name: depName,
+		})
+		if rollbackErr != nil {
+			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
+		}
 		return err
 	}
 	port := provision.WebProcessDefaultPort()

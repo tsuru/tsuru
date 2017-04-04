@@ -64,11 +64,59 @@ func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 	}
 }
 
+func notReadyPodEvents(client kubernetes.Interface, a provision.App, process string) ([]string, error) {
+	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var podsForEvts []string
+podsLoop:
+	for _, pod := range pods.Items {
+		for _, cond := range pod.Status.Conditions {
+			if cond.Type == v1.PodReady && cond.Status != v1.ConditionTrue {
+				podsForEvts = append(podsForEvts, pod.Name)
+				continue podsLoop
+			}
+		}
+	}
+	var messages []string
+	for _, podName := range podsForEvts {
+		eventsInterface := client.Core().Events(tsuruNamespace)
+		ns := tsuruNamespace
+		selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
+		options := v1.ListOptions{FieldSelector: selector.String()}
+		var events *v1.EventList
+		events, err = eventsInterface.List(options)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		if len(events.Items) == 0 {
+			continue
+		}
+		lastEvt := events.Items[len(events.Items)-1]
+		messages = append(messages, fmt.Sprintf("Pod %s: %s - %s", podName, lastEvt.Reason, lastEvt.Message))
+	}
+	return messages, nil
+}
+
 func waitForPod(client kubernetes.Interface, podName string, returnOnRunning bool, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
 		pod, err := client.Core().Pods(tsuruNamespace).Get(podName)
 		if err != nil {
-			return true, err
+			return true, errors.WithStack(err)
 		}
 		if pod.Status.Phase == v1.PodPending {
 			return false, nil

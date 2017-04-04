@@ -300,8 +300,17 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 	wg := sync.WaitGroup{}
 	var counter int32
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		if action.GetSubresource() != "" {
+			return false, nil, nil
+		}
 		wg.Add(1)
 		dep := action.(ktesting.CreateAction).GetObject().(*extensions.Deployment)
+		var specReplicas int32
+		if dep.Spec.Replicas != nil {
+			specReplicas = *dep.Spec.Replicas
+		}
+		dep.Status.UpdatedReplicas = specReplicas
+		dep.Status.Replicas = specReplicas
 		go func() {
 			defer wg.Done()
 			pod := &v1.Pod{
@@ -316,7 +325,7 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
 			})
 			c.Assert(err, check.IsNil)
-			for i := int32(1); i <= *dep.Spec.Replicas; i++ {
+			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
 				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
 				_, err = s.client.Core().Pods(dep.Namespace).Create(pod)
@@ -376,24 +385,31 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 	}, &wg
 }
 
+func (s *S) deploymentReactions(c *check.C) func() {
+	depReaction, depPodReady := s.deploymentWithPodReaction(c)
+	s.client.PrependReactor("create", "deployments", depReaction)
+	s.client.PrependReactor("update", "deployments", depReaction)
+	return func() {
+		depPodReady.Wait()
+	}
+}
+
 func (s *S) defaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	srv, wg := s.createDeployReadyServer(c)
 	s.mockfakeNodes(c, srv.URL)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	a.Deploys = 1
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
-	depReaction, depPodReady := s.deploymentWithPodReaction(c)
 	servReaction := s.serviceWithPortReaction(c)
+	rollbackDeployment := s.deploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
-	s.client.PrependReactor("create", "deployments", depReaction)
-	s.client.PrependReactor("update", "deployments", depReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	return a, func() {
-			depPodReady.Wait()
+			rollbackDeployment()
 			deployPodReady.Wait()
 			wg.Wait()
 		}, func() {
-			depPodReady.Wait()
+			rollbackDeployment()
 			deployPodReady.Wait()
 			wg.Wait()
 			if srv == nil {

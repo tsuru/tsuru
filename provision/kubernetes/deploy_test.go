@@ -5,7 +5,10 @@
 package kubernetes
 
 import (
+	"bytes"
+
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
@@ -20,6 +23,8 @@ import (
 )
 
 func (s *S) TestServiceManagerDeployService(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
 	m := serviceManager{client: s.client}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -45,6 +50,10 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: tsuruNamespace,
+		},
+		Status: extensions.DeploymentStatus{
+			UpdatedReplicas: 1,
+			Replicas:        1,
 		},
 		Spec: extensions.DeploymentSpec{
 			Strategy: extensions.DeploymentStrategy{
@@ -152,6 +161,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
 	m := serviceManager{client: s.client}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -274,6 +285,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		var dep *extensions.Deployment
 		dep, err = s.client.Extensions().Deployments(tsuruNamespace).Get("myapp-p1")
 		c.Assert(err, check.IsNil)
+		waitDep()
 		tt.fn(dep)
 		err = cleanupDeployment(s.client, a, "p1")
 		c.Assert(err, check.IsNil)
@@ -283,6 +295,8 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
 	m := serviceManager{client: s.client}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -335,7 +349,103 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
 }
 
+func (s *S) prepareRollbackTest(c *check.C) (*serviceManager, **extensions.DeploymentRollback, func()) {
+	config.Set("docker:healthcheck:max-time", 1)
+	// defer config.Unset("docker:healthcheck:max-time")
+	waitDep := s.deploymentReactions(c)
+	// defer waitDep()
+	buf := bytes.Buffer{}
+	m := serviceManager{client: s.client, writer: &buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	var rollbackObj *extensions.DeploymentRollback
+	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		if action.GetSubresource() == "rollback" {
+			rollbackObj = obj.(*extensions.DeploymentRollback)
+			return true, rollbackObj, nil
+		}
+		dep := obj.(*extensions.Deployment)
+		dep.Status.UnavailableReplicas = 2
+		return false, nil, nil
+	})
+	return &m, &rollbackObj, func() {
+		waitDep()
+		config.Unset("docker:healthcheck:max-time")
+	}
+}
+
+func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
+	config.Set("docker:healthcheck:max-time", 1)
+	defer config.Unset("docker:healthcheck:max-time")
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
+	buf := bytes.Buffer{}
+	m := serviceManager{client: s.client, writer: &buf}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	var rollbackObj *extensions.DeploymentRollback
+	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		if action.GetSubresource() == "rollback" {
+			rollbackObj = obj.(*extensions.DeploymentRollback)
+			return true, rollbackObj, nil
+		}
+		dep := obj.(*extensions.Deployment)
+		dep.Status.UnavailableReplicas = 2
+		return false, nil, nil
+	})
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		pod.Status.Conditions = append(pod.Status.Conditions, v1.PodCondition{
+			Type:   v1.PodReady,
+			Status: v1.ConditionFalse,
+		})
+		return false, nil, nil
+	})
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.ErrorMatches, "^timeout after .+ waiting for units$")
+	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
+		Name: "myapp-p1",
+	})
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout after .* waiting for units <---\s*$`)
+	cleanupDeployment(s.client, a, "p1")
+	_, err = s.client.Core().Events(tsuruNamespace).Create(&v1.Event{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "pod.evt1",
+			Namespace: tsuruNamespace,
+		},
+		Reason:  "Unhealthy",
+		Message: "my evt message",
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.ErrorMatches, "^timeout after .+ waiting for units: Pod myapp-p1-pod-2-1: Unhealthy - my evt message$")
+}
+
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
 	m := serviceManager{client: s.client}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -348,6 +458,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	expectedLabels := map[string]string{
 		"tsuru.io/is-tsuru":             "true",
 		"tsuru.io/is-build":             "false",
@@ -398,6 +509,8 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 }
 
 func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
 	m := serviceManager{client: s.client}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
@@ -410,6 +523,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", nil)
 	c.Assert(err, check.IsNil)
+	waitDep()
 	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, errors.New("my dep err")
 	})

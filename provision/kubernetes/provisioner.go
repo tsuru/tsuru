@@ -31,10 +31,11 @@ import (
 )
 
 const (
-	provisionerName           = "kubernetes"
-	tsuruNamespace            = "default"
-	dockerImageName           = "docker:1.11.2"
-	defaultRunPodReadyTimeout = time.Minute
+	provisionerName                  = "kubernetes"
+	tsuruNamespace                   = "default"
+	dockerImageName                  = "docker:1.11.2"
+	defaultRunPodReadyTimeout        = time.Minute
+	defaultDeploymentProgressTimeout = 10 * time.Minute
 )
 
 type kubernetesProvisioner struct{}
@@ -521,6 +522,7 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	}
 	manager := &serviceManager{
 		client: client,
+		writer: evt,
 	}
 	err = servicecommon.RunServicePipeline(manager, a, buildingImage, nil)
 	if err != nil {
