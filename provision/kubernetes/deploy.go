@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -31,8 +30,8 @@ import (
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 )
 
-func doAttach(stdin io.Reader, stdout io.Writer, podName, container string) error {
-	cfg, err := getClusterRestConfig()
+func doAttach(cluster *Cluster, stdin io.Reader, stdout io.Writer, podName, container string) error {
+	cfg, err := cluster.getRestConfig()
 	if err != nil {
 		return err
 	}
@@ -43,7 +42,7 @@ func doAttach(stdin io.Reader, stdout io.Writer, podName, container string) erro
 	req := cli.Post().
 		Resource("pods").
 		Name(podName).
-		Namespace(tsuruNamespace).
+		Namespace(cluster.namespace()).
 		SubResource("attach")
 	req.VersionedParams(&api.PodAttachOptions{
 		Container: container,
@@ -71,7 +70,7 @@ func doAttach(stdin io.Reader, stdout io.Writer, podName, container string) erro
 }
 
 type buildPodParams struct {
-	client           kubernetes.Interface
+	client           *Cluster
 	app              provision.App
 	buildCmd         []string
 	sourceImage      string
@@ -105,7 +104,7 @@ func createBuildPod(params buildPodParams) error {
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        baseName,
-			Namespace:   tsuruNamespace,
+			Namespace:   params.client.namespace(),
 			Labels:      labels.ToLabels(),
 			Annotations: buildImageLabel.ToLabels(),
 		},
@@ -156,7 +155,7 @@ func createBuildPod(params buildPodParams) error {
 			},
 		},
 	}
-	_, err = params.client.Core().Pods(tsuruNamespace).Create(pod)
+	_, err = params.client.Core().Pods(params.client.namespace()).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -167,10 +166,10 @@ func createBuildPod(params buildPodParams) error {
 	if params.attachInput != nil {
 		errCh := make(chan error)
 		go func() {
-			commitErr := doAttach(nil, params.attachOutput, pod.Name, commitContainer)
+			commitErr := doAttach(params.client, nil, params.attachOutput, pod.Name, commitContainer)
 			errCh <- commitErr
 		}()
-		err = doAttach(params.attachInput, params.attachOutput, pod.Name, baseName)
+		err = doAttach(params.client, params.attachInput, params.attachOutput, pod.Name, baseName)
 		if err != nil {
 			return err
 		}
@@ -213,7 +212,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*extensions.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(client *Cluster, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*extensions.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -249,7 +248,7 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
-			Namespace: tsuruNamespace,
+			Namespace: client.namespace(),
 		},
 		Spec: extensions.DeploymentSpec{
 			Strategy: extensions.DeploymentStrategy{
@@ -286,15 +285,15 @@ func createAppDeployment(client kubernetes.Interface, oldDeployment *extensions.
 	}
 	var newDep *extensions.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.Extensions().Deployments(tsuruNamespace).Create(&deployment)
+		newDep, err = client.Extensions().Deployments(client.namespace()).Create(&deployment)
 	} else {
-		newDep, err = client.Extensions().Deployments(tsuruNamespace).Update(&deployment)
+		newDep, err = client.Extensions().Deployments(client.namespace()).Update(&deployment)
 	}
 	return newDep, labels, errors.WithStack(err)
 }
 
 type serviceManager struct {
-	client kubernetes.Interface
+	client *Cluster
 	writer io.Writer
 }
 
@@ -308,7 +307,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 		multiErrors.Add(err)
 	}
 	depName := deploymentNameForApp(a, process)
-	err = m.client.Core().Services(tsuruNamespace).Delete(depName, &v1.DeleteOptions{
+	err = m.client.Core().Services(m.client.namespace()).Delete(depName, &v1.DeleteOptions{
 		OrphanDependents: &falseVar,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -322,7 +321,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(tsuruNamespace).Get(depName)
+	dep, err := m.client.Extensions().Deployments(m.client.namespace()).Get(depName)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -334,7 +333,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client kubernetes.Interface, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
+func createDeployTimeoutError(client *Cluster, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
 	messages, err := notReadyPodEvents(client, a, processName)
 	var msgErrorPart string
 	if err == nil {
@@ -348,12 +347,12 @@ func createDeployTimeoutError(client kubernetes.Interface, a provision.App, proc
 	return errors.Errorf("timeout after %v waiting for units%s", timeout, msgErrorPart)
 }
 
-func monitorDeployment(client kubernetes.Interface, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
+func monitorDeployment(client *Cluster, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	timeout := time.After(defaultDeploymentProgressTimeout)
 	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.Extensions().Deployments(tsuruNamespace).Get(dep.Name)
+		dep, err = client.Extensions().Deployments(client.namespace()).Get(dep.Name)
 		if err != nil {
 			return err
 		}
@@ -413,7 +412,7 @@ func monitorDeployment(client kubernetes.Interface, dep *extensions.Deployment, 
 		case <-timeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
 		}
-		dep, err = client.Extensions().Deployments(tsuruNamespace).Get(dep.Name)
+		dep, err = client.Extensions().Deployments(client.namespace()).Get(dep.Name)
 		if err != nil {
 			return err
 		}
@@ -424,7 +423,7 @@ func monitorDeployment(client kubernetes.Interface, dep *extensions.Deployment, 
 
 func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(tsuruNamespace).Get(depName)
+	dep, err := m.client.Extensions().Deployments(m.client.namespace()).Get(depName)
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -441,7 +440,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	err = monitorDeployment(m.client, dep, a, process, m.writer)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.Extensions().Deployments(tsuruNamespace).Rollback(&extensions.DeploymentRollback{
+		rollbackErr := m.client.Extensions().Deployments(m.client.namespace()).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {
@@ -451,10 +450,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	}
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
-	_, err = m.client.Core().Services(tsuruNamespace).Create(&v1.Service{
+	_, err = m.client.Core().Services(m.client.namespace()).Create(&v1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
-			Namespace: tsuruNamespace,
+			Namespace: m.client.namespace(),
 			Labels:    labels.ToLabels(),
 		},
 		Spec: v1.ServiceSpec{

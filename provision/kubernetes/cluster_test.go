@@ -16,13 +16,13 @@ import (
 
 func (s *S) TestClusterSave(c *check.C) {
 	cluster := Cluster{
-		Name:       "c1",
-		Addresses:  []string{"addr1", "addr2"},
-		CaCert:     []byte("cacert"),
-		ClientCert: []byte("clientcert"),
-		ClientKey:  []byte("clientkey"),
-		Namespace:  "ns1",
-		Default:    true,
+		Name:              "c1",
+		Addresses:         []string{"addr1", "addr2"},
+		CaCert:            []byte("cacert"),
+		ClientCert:        []byte("clientcert"),
+		ClientKey:         []byte("clientkey"),
+		ExplicitNamespace: "ns1",
+		Default:           true,
 	}
 	err := cluster.Save()
 	c.Assert(err, check.IsNil)
@@ -93,38 +93,38 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 	}{
 		{
 			c: Cluster{
-				Name:      "  ",
-				Addresses: []string{"addr1", "addr2"},
-				Namespace: "ns1",
-				Default:   true,
+				Name:              "  ",
+				Addresses:         []string{"addr1", "addr2"},
+				ExplicitNamespace: "ns1",
+				Default:           true,
 			},
 			err: "cluster name is mandatory",
 		},
 		{
 			c: Cluster{
-				Name:      "c1",
-				Addresses: []string{},
-				Namespace: "ns1",
-				Default:   true,
+				Name:              "c1",
+				Addresses:         []string{},
+				ExplicitNamespace: "ns1",
+				Default:           true,
 			},
 			err: "at least one address must be present",
 		},
 		{
 			c: Cluster{
-				Name:      "c1",
-				Addresses: []string{"addr1"},
-				Namespace: "ns1",
-				Default:   false,
+				Name:              "c1",
+				Addresses:         []string{"addr1"},
+				ExplicitNamespace: "ns1",
+				Default:           false,
 			},
 			err: "either default or a list of pools must be set",
 		},
 		{
 			c: Cluster{
-				Name:      "c1",
-				Addresses: []string{"addr1"},
-				Namespace: "ns1",
-				Default:   true,
-				Pools:     []string{"p1"},
+				Name:              "c1",
+				Addresses:         []string{"addr1"},
+				ExplicitNamespace: "ns1",
+				Default:           true,
+				Pools:             []string{"p1"},
 			},
 			err: "cannot have both pools and default set",
 		},
@@ -156,7 +156,16 @@ func (s *S) TestAllClusters(c *check.C) {
 	sort.Slice(clusters, func(i, j int) bool {
 		return clusters[i].Name < clusters[j].Name
 	})
-	c.Assert(clusters, check.DeepEquals, []Cluster{c1, c2})
+	c.Assert(clusters, check.HasLen, 2)
+	c.Assert(clusters[0].Interface, check.NotNil)
+	c.Assert(clusters[1].Interface, check.NotNil)
+	c.Assert(clusters[0].restConfig, check.NotNil)
+	c.Assert(clusters[1].restConfig, check.NotNil)
+	clusters[0].Interface = nil
+	clusters[0].restConfig = nil
+	clusters[1].Interface = nil
+	clusters[1].restConfig = nil
+	c.Assert(clusters, check.DeepEquals, []*Cluster{&c1, &c2})
 }
 
 func (s *S) TestClusterForPool(c *check.C) {
@@ -181,28 +190,33 @@ func (s *S) TestClusterForPool(c *check.C) {
 	}
 	err = c3.Save()
 	c.Assert(err, check.IsNil)
-	cluster, err := ClusterForPool("p1")
+	cluster, err := clusterForPool("p1")
 	c.Assert(err, check.IsNil)
+	c.Assert(cluster.Interface, check.NotNil)
+	c.Assert(cluster.restConfig, check.NotNil)
+	cluster.Interface = nil
+	cluster.restConfig = nil
 	c.Assert(cluster, check.DeepEquals, &c1)
-	cluster, err = ClusterForPool("p2")
+	c.Assert(cluster.Name, check.Equals, "c1")
+	cluster, err = clusterForPool("p2")
 	c.Assert(err, check.IsNil)
-	c.Assert(cluster, check.DeepEquals, &c1)
-	cluster, err = ClusterForPool("p3")
+	c.Assert(cluster.Name, check.Equals, "c1")
+	cluster, err = clusterForPool("p3")
 	c.Assert(err, check.IsNil)
-	c.Assert(cluster, check.DeepEquals, &c2)
-	cluster, err = ClusterForPool("p4")
+	c.Assert(cluster.Name, check.Equals, "c2")
+	cluster, err = clusterForPool("p4")
 	c.Assert(err, check.IsNil)
-	c.Assert(cluster, check.DeepEquals, &c3)
-	cluster, err = ClusterForPool("")
+	c.Assert(cluster.Name, check.Equals, "c3")
+	cluster, err = clusterForPool("")
 	c.Assert(err, check.IsNil)
-	c.Assert(cluster, check.DeepEquals, &c3)
+	c.Assert(cluster.Name, check.Equals, "c3")
 	err = DeleteCluster("c3")
 	c.Assert(err, check.IsNil)
-	_, err = ClusterForPool("p4")
-	c.Assert(err, check.Equals, errNoCluster)
+	_, err = clusterForPool("p4")
+	c.Assert(err, check.Equals, ErrNoCluster)
 }
 
-func (s *S) TestClusterGetClientWithCfg(c *check.C) {
+func (s *S) TestClusterInitClient(c *check.C) {
 	c1 := Cluster{
 		Name:       "c1",
 		Addresses:  []string{"addr1"},
@@ -213,9 +227,10 @@ func (s *S) TestClusterGetClientWithCfg(c *check.C) {
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
-	cli, cfg, err := c1.getClientWithCfg()
+	err = c1.initClient()
 	c.Assert(err, check.IsNil)
-	c.Assert(cli, check.NotNil)
+	c.Assert(c1.Interface, check.NotNil)
+	c.Assert(c1.restConfig, check.NotNil)
 	expected := &rest.Config{
 		APIPath: "/api",
 		Host:    "addr1",
@@ -226,8 +241,8 @@ func (s *S) TestClusterGetClientWithCfg(c *check.C) {
 		},
 		Timeout: defaultTimeout,
 	}
-	expected.ContentConfig = cfg.ContentConfig
-	c.Assert(cfg, check.DeepEquals, expected)
+	expected.ContentConfig = c1.restConfig.ContentConfig
+	c.Assert(c1.restConfig, check.DeepEquals, expected)
 }
 
 func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
@@ -245,4 +260,11 @@ func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
 	cfg, err = c1.getRestConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg.Host, check.Equals, "addr2")
+}
+
+func (s *S) TestClusterNamespace(c *check.C) {
+	c1 := Cluster{ExplicitNamespace: "x"}
+	c.Assert(c1.namespace(), check.Equals, "x")
+	c1 = Cluster{ExplicitNamespace: ""}
+	c.Assert(c1.namespace(), check.Equals, "default")
 }

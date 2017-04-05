@@ -57,7 +57,7 @@ func (s *S) TestWaitFor(c *check.C) {
 }
 
 func (s *S) TestWaitForPod(c *check.C) {
-	err := waitForPod(s.client, "pod1", false, 100*time.Millisecond)
+	err := waitForPod(s.client.Cluster, "pod1", false, 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
 	var wantedPhase v1.PodPhase
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -81,36 +81,36 @@ func (s *S) TestWaitForPod(c *check.C) {
 		{phase: v1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &v1.Event{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "pod1.evt1",
-				Namespace: tsuruNamespace,
+				Namespace: s.client.namespace(),
 			},
 			InvolvedObject: v1.ObjectReference{
 				Kind:      "Pod",
 				Name:      "pod1",
-				Namespace: tsuruNamespace,
+				Namespace: s.client.namespace(),
 			},
 			Message: "my evt message",
 		}},
 	}
 	for _, tt := range tests {
 		wantedPhase = tt.phase
-		_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+		_, err = s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "pod1",
-				Namespace: tsuruNamespace,
+				Namespace: s.client.namespace(),
 			},
 		})
 		c.Assert(err, check.IsNil)
 		if tt.evt != nil {
-			_, err = s.client.Core().Events(tsuruNamespace).Create(tt.evt)
+			_, err = s.client.Core().Events(s.client.namespace()).Create(tt.evt)
 			c.Assert(err, check.IsNil)
 		}
-		err = waitForPod(s.client, "pod1", tt.running, 100*time.Millisecond)
+		err = waitForPod(s.client.Cluster, "pod1", tt.running, 100*time.Millisecond)
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 		} else {
 			c.Assert(err, check.ErrorMatches, tt.err)
 		}
-		err = cleanupPod(s.client, "pod1")
+		err = cleanupPod(s.client.Cluster, "pod1")
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -121,25 +121,25 @@ func (s *S) TestCleanupPods(c *check.C) {
 		if i == 2 {
 			labels["a"] = "y"
 		}
-		_, err := s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+		_, err := s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      fmt.Sprintf("pod-%d", i),
-				Namespace: tsuruNamespace,
+				Namespace: s.client.namespace(),
 				Labels:    labels,
 			},
 		})
 		c.Assert(err, check.IsNil)
 	}
-	err := cleanupPods(s.client, v1.ListOptions{
+	err := cleanupPods(s.client.Cluster, v1.ListOptions{
 		LabelSelector: "a=x",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.DeepEquals, []v1.Pod{{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "pod-2",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels:    map[string]string{"a": "y"},
 		},
 	}})
@@ -164,90 +164,90 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/router-name":          "fake",
 		"tsuru.io/provisioner":          "kubernetes",
 	}
-	_, err := s.client.Extensions().Deployments(tsuruNamespace).Create(&extensions.Deployment{
+	_, err := s.client.Extensions().Deployments(s.client.namespace()).Create(&extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
+	_, err = s.client.Extensions().ReplicaSets(s.client.namespace()).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupDeployment(s.client, a, "p1")
+	err = cleanupDeployment(s.client.Cluster, a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(tsuruNamespace).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupReplicas(c *check.C) {
-	_, err := s.client.Extensions().ReplicaSets(tsuruNamespace).Create(&extensions.ReplicaSet{
+	_, err := s.client.Extensions().ReplicaSets(s.client.namespace()).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels: map[string]string{
 				"a": "x",
 			},
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels: map[string]string{
 				"a": "x",
 			},
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupReplicas(s.client, v1.ListOptions{
+	err = cleanupReplicas(s.client.Cluster, v1.ListOptions{
 		LabelSelector: "a=x",
 	})
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(tsuruNamespace).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
+	_, err := s.client.Extensions().DaemonSets(s.client.namespace()).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":            "true",
 				"tsuru.io/is-node-container":   "true",
@@ -258,12 +258,12 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupDaemonSet(s.client, "bs", "p1")
+	err = cleanupDaemonSet(s.client.Cluster, "bs", "p1")
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(tsuruNamespace).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }

@@ -7,9 +7,7 @@ package kubernetes
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	"k8s.io/client-go/pkg/labels"
@@ -32,7 +29,6 @@ import (
 
 const (
 	provisionerName                  = "kubernetes"
-	tsuruNamespace                   = "default"
 	dockerImageName                  = "docker:1.11.2"
 	defaultRunPodReadyTimeout        = time.Minute
 	defaultDeploymentProgressTimeout = 10 * time.Minute
@@ -84,7 +80,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -105,7 +101,7 @@ func (p *kubernetesProvisioner) Destroy(a provision.App) error {
 }
 
 func changeState(a provision.App, process string, state servicecommon.ProcessState, w io.Writer) error {
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -116,7 +112,7 @@ func changeState(a provision.App, process string, state servicecommon.ProcessSta
 }
 
 func changeUnits(a provision.App, units int, processName string, w io.Writer) error {
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -154,7 +150,7 @@ var stateMap = map[v1.PodPhase]provision.Status{
 	v1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnits(client kubernetes.Interface, pods []v1.Pod, baseApp provision.App, baseNode *v1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnits(client *Cluster, pods []v1.Pod, baseApp provision.App, baseNode *v1.Node) ([]provision.Unit, error) {
 	var err error
 	if len(pods) == 0 {
 		return nil, nil
@@ -234,7 +230,7 @@ func (p *kubernetesProvisioner) podsToUnits(client kubernetes.Interface, pods []
 }
 
 func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error) {
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +244,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+	pods, err := client.Core().Pods(client.namespace()).List(v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
@@ -258,7 +254,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 }
 
 func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error) {
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -299,11 +295,11 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 }
 
 func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, customData map[string]interface{}) error {
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
-	pod, err := client.Core().Pods(tsuruNamespace).Get(unitID)
+	pod, err := client.Core().Pods(client.namespace()).Get(unitID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -330,33 +326,43 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 }
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
-	client, cfg, err := getClusterClientWithCfg()
-	if err != nil {
-		if err == errNoCluster {
-			return nil, nil
-		}
-		return nil, err
-	}
 	var nodes []provision.Node
-	var addressSet set.Set
-	if len(addressFilter) > 0 {
-		addressSet = set.FromSlice(addressFilter)
+	err := forEachCluster(func(c *Cluster) error {
+		clusterNodes, err := p.listNodesForCluster(c, addressFilter)
+		if err != nil {
+			return err
+		}
+		nodes = append(nodes, clusterNodes...)
+		return nil
+	})
+	if err == ErrNoCluster {
+		return nil, nil
 	}
-	if addressSet == nil || addressSet.Includes(cfg.Host) {
-		nodes = append(nodes, &clusterNode{address: cfg.Host, prov: p})
-	}
-	nodeList, err := client.Core().Nodes().List(v1.ListOptions{})
 	if err != nil {
 		// TODO(cezarsa): It would be better to return an error to be handled
 		// by the api. Failing to list nodes from one provisioner should not
 		// prevent other nodes from showing up.
 		log.Errorf("unable to list all node from kubernetes cluster: %v", err)
-		return nodes, nil
+		return nil, err
+	}
+	return nodes, nil
+}
+
+func (p *kubernetesProvisioner) listNodesForCluster(cluster *Cluster, addressFilter []string) ([]provision.Node, error) {
+	var nodes []provision.Node
+	var addressSet set.Set
+	if len(addressFilter) > 0 {
+		addressSet = set.FromSlice(addressFilter)
+	}
+	nodeList, err := cluster.Core().Nodes().List(v1.ListOptions{})
+	if err != nil {
+		return nil, err
 	}
 	for i := range nodeList.Items {
 		n := &kubernetesNodeWrapper{
-			node: &nodeList.Items[i],
-			prov: p,
+			node:    &nodeList.Items[i],
+			prov:    p,
+			cluster: cluster,
 		}
 		if addressSet == nil || addressSet.Includes(n.Address()) {
 			nodes = append(nodes, n)
@@ -366,17 +372,7 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 }
 
 func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) {
-	client, cfg, err := getClusterClientWithCfg()
-	if err != nil {
-		if err == errNoCluster {
-			return nil, provision.ErrNodeNotFound
-		}
-		return nil, err
-	}
-	if address == cfg.Host {
-		return &clusterNode{address: cfg.Host, prov: p}, nil
-	}
-	node, err := p.findNodeByAddress(client, address)
+	_, node, err := p.findNodeByAddress(address)
 	if err != nil {
 		return nil, err
 	}
@@ -384,32 +380,12 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	isCluster, _ := strconv.ParseBool(opts.Metadata["cluster"])
-	if isCluster {
-		err := addClusterNode(opts)
-		if err != nil {
-			return err
-		}
-		client, err := getClusterClient()
-		if err != nil {
-			return err
-		}
-		m := nodeContainerManager{client: client}
-		return servicecommon.EnsureNodeContainersCreated(&m, ioutil.Discard)
-	}
 	// TODO(cezarsa): Start kubelet, kube-proxy and add labels
 	return errors.New("adding nodes to cluster not supported yet on kubernetes")
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
-	client, cfg, err := getClusterClientWithCfg()
-	if err != nil {
-		return err
-	}
-	if opts.Address == cfg.Host {
-		return removeClusterNode(opts.Address)
-	}
-	nodeWrapper, err := p.findNodeByAddress(client, opts.Address)
+	client, nodeWrapper, err := p.findNodeByAddress(opts.Address)
 	if err != nil {
 		return err
 	}
@@ -426,10 +402,10 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			return err
 		}
 		for _, pod := range pods {
-			err = client.Core().Pods(tsuruNamespace).Evict(&policy.Eviction{
+			err = client.Core().Pods(client.namespace()).Evict(&policy.Eviction{
 				ObjectMeta: v1.ObjectMeta{
 					Name:      pod.Name,
-					Namespace: tsuruNamespace,
+					Namespace: client.namespace(),
 				},
 			})
 			if err != nil {
@@ -448,26 +424,44 @@ func (p *kubernetesProvisioner) NodeForNodeData(nodeData provision.NodeStatusDat
 	return provision.FindNodeByAddrs(p, nodeData.Addrs)
 }
 
-func (p *kubernetesProvisioner) findNodeByAddress(client kubernetes.Interface, address string) (*kubernetesNodeWrapper, error) {
-	nodeList, err := client.Core().Nodes().List(v1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for i := range nodeList.Items {
-		nodeWrapper := &kubernetesNodeWrapper{node: &nodeList.Items[i], prov: p}
-		if address == nodeWrapper.Address() {
-			return nodeWrapper, nil
+func (p *kubernetesProvisioner) findNodeByAddress(address string) (*Cluster, *kubernetesNodeWrapper, error) {
+	var (
+		foundNode    *kubernetesNodeWrapper
+		foundCluster *Cluster
+	)
+	err := forEachCluster(func(c *Cluster) error {
+		if foundNode != nil {
+			return nil
 		}
+		nodeList, err := c.Core().Nodes().List(v1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for i := range nodeList.Items {
+			nodeWrapper := &kubernetesNodeWrapper{
+				node:    &nodeList.Items[i],
+				prov:    p,
+				cluster: c,
+			}
+			if address == nodeWrapper.Address() {
+				foundNode = nodeWrapper
+				foundCluster = c
+				break
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
 	}
-	return nil, provision.ErrNodeNotFound
+	if foundNode == nil {
+		return nil, nil, provision.ErrNodeNotFound
+	}
+	return foundCluster, foundNode, nil
 }
 
 func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
-	client, err := getClusterClient()
-	if err != nil {
-		return err
-	}
-	nodeWrapper, err := p.findNodeByAddress(client, opts.Address)
+	cluster, nodeWrapper, err := p.findNodeByAddress(opts.Address)
 	if err != nil {
 		return err
 	}
@@ -484,7 +478,7 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 			node.Labels[k] = v
 		}
 	}
-	_, err = client.Core().Nodes().Update(node)
+	_, err = cluster.Core().Nodes().Update(node)
 	return err
 }
 
@@ -499,7 +493,7 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return "", err
 	}
@@ -534,26 +528,14 @@ func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.Rea
 }
 
 func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
-	client, err := getClusterClient()
-	if err != nil {
-		if err == errNoCluster {
-			return nil
-		}
-		return err
-	}
-	m := nodeContainerManager{client: client}
+	m := nodeContainerManager{}
 	return servicecommon.UpgradeNodeContainer(&m, name, pool, writer)
 }
 
 func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
-	client, err := getClusterClient()
-	if err != nil {
-		if err == errNoCluster {
-			return nil
-		}
-		return err
-	}
-	return cleanupDaemonSet(client, name, pool)
+	return forEachCluster(func(cluster *Cluster) error {
+		return cleanupDaemonSet(cluster, name, pool)
+	})
 }
 
 func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
@@ -572,13 +554,13 @@ func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
 	})
 }
 
-func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	client, err := getClusterClient()
+func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
 	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: app,
+		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
@@ -587,7 +569,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, app pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	pods, err := client.Core().Pods(tsuruNamespace).List(v1.ListOptions{
+	pods, err := client.Core().Pods(client.namespace()).List(v1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
@@ -599,7 +581,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, app pro
 	for _, pod := range pods.Items {
 		err = execCommand(execOpts{
 			unit:   pod.Name,
-			app:    app,
+			app:    a,
 			cmds:   append([]string{"/bin/sh", "-lc", cmd}, args...),
 			stdout: stdout,
 			stderr: stderr,
@@ -620,7 +602,7 @@ func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app
 	})
 }
 
-func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []string) error {
+func runPod(client *Cluster, a provision.App, out io.Writer, cmds []string) error {
 	baseName := execCommandPodNameForApp(a)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -645,7 +627,7 @@ func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      baseName,
-			Namespace: tsuruNamespace,
+			Namespace: client.namespace(),
 			Labels:    labels.ToLabels(),
 		},
 		Spec: v1.PodSpec{
@@ -660,7 +642,7 @@ func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []
 			},
 		},
 	}
-	_, err = client.Core().Pods(tsuruNamespace).Create(pod)
+	_, err = client.Core().Pods(client.namespace()).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -669,7 +651,7 @@ func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []
 	if err != nil {
 		return err
 	}
-	req := client.Core().Pods(tsuruNamespace).GetLogs(pod.Name, &v1.PodLogOptions{
+	req := client.Core().Pods(client.namespace()).GetLogs(pod.Name, &v1.PodLogOptions{
 		Follow:    true,
 		Container: baseName,
 	})
@@ -686,7 +668,7 @@ func runPod(client kubernetes.Interface, a provision.App, out io.Writer, cmds []
 }
 
 func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
-	client, err := getClusterClient()
+	client, err := clusterForPool(a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -695,23 +677,26 @@ func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer,
 }
 
 func (p *kubernetesProvisioner) StartupMessage() (string, error) {
-	cfg, err := getClusterRestConfig()
+	clusters, err := AllClusters()
 	if err != nil {
-		if err == errNoCluster {
+		if err == ErrNoCluster {
 			return "", nil
 		}
 		return "", err
 	}
-	nodeList, err := p.ListNodes(nil)
-	if err != nil {
-		return "", err
-	}
-	out := fmt.Sprintf("Kubernetes provisioner on cluster %s:\n", cfg.Host)
-	if len(nodeList) == 0 {
-		out += fmt.Sprint("    No Kubernetes nodes available\n")
-	}
-	for _, node := range nodeList {
-		out += fmt.Sprintf("    Kubernetes node: %s\n", node.Address())
+	var out string
+	for _, c := range clusters {
+		nodeList, err := p.listNodesForCluster(c, nil)
+		if err != nil {
+			return "", err
+		}
+		out += fmt.Sprintf("Kubernetes provisioner on cluster %q - %s:\n", c.Name, c.restConfig.Host)
+		if len(nodeList) == 0 {
+			out += fmt.Sprint("    No Kubernetes nodes available\n")
+		}
+		for _, node := range nodeList {
+			out += fmt.Sprintf("    Kubernetes node: %s\n", node.Address())
+		}
 	}
 	return out, nil
 }

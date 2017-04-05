@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
@@ -21,19 +22,32 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const kubeClusterCollection = "kubernetes_clusters"
+const (
+	kubeClusterCollection = "kubernetes_clusters"
+	defaultTimeout        = time.Minute
+)
 
-var ErrClusterNotFound = errors.New("cluster not found")
+var (
+	ErrClusterNotFound = errors.New("cluster not found")
+	ErrNoCluster       = errors.New("no kubernetes cluster")
+)
+
+var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
+	return kubernetes.NewForConfig(conf)
+}
 
 type Cluster struct {
-	Name       string   `json:"name" bson:"_id"`
-	Addresses  []string `json:"addresses"`
-	CaCert     []byte   `json:"cacert" bson:",omitempty"`
-	ClientCert []byte   `json:"clientcert" bson:",omitempty"`
-	ClientKey  []byte   `json:"-" bson:",omitempty"`
-	Pools      []string `json:"pools" bson:",omitempty"`
-	Namespace  string   `json:"namespace" bson:",omitempty"`
-	Default    bool     `json:"default"`
+	kubernetes.Interface `json:"-" bson:"-"`
+	Name                 string   `json:"name" bson:"_id"`
+	Addresses            []string `json:"addresses"`
+	CaCert               []byte   `json:"cacert" bson:",omitempty"`
+	ClientCert           []byte   `json:"clientcert" bson:",omitempty"`
+	ClientKey            []byte   `json:"-" bson:",omitempty"`
+	Pools                []string `json:"pools" bson:",omitempty"`
+	ExplicitNamespace    string   `json:"namespace" bson:"namespace,omitempty"`
+	Default              bool     `json:"default"`
+
+	restConfig *rest.Config
 }
 
 func clusterCollection() (*storage.Collection, error) {
@@ -113,29 +127,48 @@ func (c *Cluster) getRestConfig() (*rest.Config, error) {
 	}, nil
 }
 
-func (c *Cluster) getClientWithCfg() (kubernetes.Interface, *rest.Config, error) {
+func (c *Cluster) initClient() error {
+	if c.Interface != nil && c.restConfig != nil {
+		return nil
+	}
 	cfg, err := c.getRestConfig()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	client, err := clientForConfig(cfg)
-	return client, cfg, errors.WithStack(err)
+	if err != nil {
+		return err
+	}
+	c.Interface = client
+	c.restConfig = cfg
+	return nil
 }
 
-func (c *Cluster) getClient() (kubernetes.Interface, error) {
-	client, _, err := c.getClientWithCfg()
-	return client, err
+func (c *Cluster) namespace() string {
+	if c.ExplicitNamespace == "" {
+		return "default"
+	}
+	return c.ExplicitNamespace
 }
 
-func AllClusters() ([]Cluster, error) {
+func AllClusters() ([]*Cluster, error) {
 	coll, err := clusterCollection()
 	if err != nil {
 		return nil, err
 	}
-	var clusters []Cluster
+	var clusters []*Cluster
 	err = coll.Find(nil).All(&clusters)
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+	if len(clusters) == 0 {
+		return nil, ErrNoCluster
+	}
+	for i := range clusters {
+		err = clusters[i].initClient()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return clusters, nil
 }
@@ -154,7 +187,7 @@ func DeleteCluster(clusterName string) error {
 	return err
 }
 
-func ClusterForPool(pool string) (*Cluster, error) {
+func clusterForPool(pool string) (*Cluster, error) {
 	coll, err := clusterCollection()
 	if err != nil {
 		return nil, err
@@ -168,9 +201,31 @@ func ClusterForPool(pool string) (*Cluster, error) {
 	}
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNoCluster
+			return nil, ErrNoCluster
 		}
 		return nil, errors.WithStack(err)
 	}
+	err = c.initClient()
+	if err != nil {
+		return nil, err
+	}
 	return &c, nil
+}
+
+func forEachCluster(fn func(cluster *Cluster) error) error {
+	clusters, err := AllClusters()
+	if err != nil {
+		return err
+	}
+	errors := tsuruErrors.NewMultiError()
+	for _, c := range clusters {
+		err = fn(c)
+		if err != nil {
+			errors.Add(err)
+		}
+	}
+	if errors.Len() > 0 {
+		return errors
+	}
+	return nil
 }

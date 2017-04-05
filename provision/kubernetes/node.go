@@ -10,8 +10,9 @@ import (
 )
 
 type kubernetesNodeWrapper struct {
-	node *v1.Node
-	prov *kubernetesProvisioner
+	node    *v1.Node
+	prov    *kubernetesProvisioner
+	cluster *Cluster
 }
 
 var (
@@ -55,15 +56,11 @@ func (n *kubernetesNodeWrapper) Metadata() map[string]string {
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
-	client, err := getClusterClient()
+	pods, err := podsFromNode(n.cluster, n.node.Name)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := podsFromNode(client, n.node.Name)
-	if err != nil {
-		return nil, err
-	}
-	return n.prov.podsToUnits(client, pods, nil, n.node)
+	return n.prov.podsToUnits(n.cluster, pods, nil, n.node)
 }
 
 func (n *kubernetesNodeWrapper) Provisioner() provision.NodeProvisioner {

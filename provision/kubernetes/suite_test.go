@@ -88,43 +88,55 @@ func (s *S) TearDownSuite(c *check.C) {
 
 type clientWrapper struct {
 	*fake.Clientset
+	*Cluster
 }
 
 func (c *clientWrapper) Core() v1core.CoreV1Interface {
 	core := c.Clientset.Core()
-	return &clientCoreWrapper{core}
+	return &clientCoreWrapper{core, c.Cluster}
 }
 
 type clientCoreWrapper struct {
 	v1core.CoreV1Interface
+	cluster *Cluster
 }
 
 func (c *clientCoreWrapper) Pods(namespace string) v1core.PodInterface {
 	pods := c.CoreV1Interface.Pods(namespace)
-	return &clientPodsWrapper{pods}
+	return &clientPodsWrapper{pods, c.cluster}
 }
 
 type clientPodsWrapper struct {
 	v1core.PodInterface
+	cluster *Cluster
 }
 
 func (c *clientPodsWrapper) GetLogs(name string, opts *v1.PodLogOptions) *rest.Request {
-	cfg, _ := getClusterRestConfig()
-	cli, _ := rest.RESTClientFor(cfg)
-	return cli.Get().Namespace(tsuruNamespace).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, api.ParameterCodec)
+	cli, _ := rest.RESTClientFor(c.cluster.restConfig)
+	return cli.Get().Namespace(c.cluster.namespace()).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, api.ParameterCodec)
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	c.Assert(err, check.IsNil)
 	s.stream = make(map[string]streamResult)
-	s.client = &clientWrapper{fake.NewSimpleClientset()}
+	cluster := &Cluster{
+		Name:      "c1",
+		Addresses: []string{"https://clusteraddr"},
+		Default:   true,
+	}
+	err = cluster.Save()
+	c.Assert(err, check.IsNil)
+	err = cluster.initClient()
+	c.Assert(err, check.IsNil)
+	s.client = &clientWrapper{fake.NewSimpleClientset(), cluster}
+	cluster.Interface = s.client
 	clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 		s.lastConf = conf
 		return s.client, nil
 	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
-	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
-	c.Assert(err, check.IsNil)
 	err = provision.AddPool(provision.AddPoolOptions{
 		Name:        "bonehunters",
 		Default:     true,
@@ -153,20 +165,14 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) mockfakeNodes(c *check.C, urls ...string) {
-	url := "https://clusteraddr"
 	if len(urls) > 0 {
-		url = urls[0]
+		s.client.Cluster.Addresses = urls
+		s.client.Cluster.restConfig.Host = urls[0]
+		err := s.client.Cluster.Save()
+		c.Assert(err, check.IsNil)
 	}
-	opts := provision.AddNodeOptions{
-		Address: url,
-		Metadata: map[string]string{
-			"cluster": "true",
-		},
-	}
-	err := s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
 	for i := 1; i <= 2; i++ {
-		_, err = s.client.Core().Nodes().Create(&v1.Node{
+		_, err := s.client.Core().Nodes().Create(&v1.Node{
 			ObjectMeta: v1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
@@ -321,7 +327,7 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
 			pod.Spec.NodeName = "n1"
-			err := cleanupPods(s.client, v1.ListOptions{
+			err := cleanupPods(s.client.Cluster, v1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
 			})
 			c.Assert(err, check.IsNil)
@@ -377,7 +383,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 				})
 				c.Assert(err, check.IsNil)
 				pod.Status.Phase = v1.PodSucceeded
-				_, err = s.client.Core().Pods(tsuruNamespace).Update(pod)
+				_, err = s.client.Core().Pods(s.client.namespace()).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()
 		}

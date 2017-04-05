@@ -32,10 +32,9 @@ func (s *S) TestListNodes(c *check.C) {
 	s.mockfakeNodes(c)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 3)
-	c.Assert(nodes[0].Address(), check.Equals, "https://clusteraddr")
-	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.1")
-	c.Assert(nodes[2].Address(), check.Equals, "192.168.99.2")
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.1")
+	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.2")
 }
 
 func (s *S) TestListNodesWithoutNodes(c *check.C) {
@@ -51,22 +50,6 @@ func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 }
 
-func (s *S) TestAddNodeCluster(c *check.C) {
-	url := "https://clusteraddr"
-	opts := provision.AddNodeOptions{
-		Address: url,
-		Metadata: map[string]string{
-			"cluster": "true",
-		},
-	}
-	err := s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	cli, err := getClusterClient()
-	c.Assert(err, check.IsNil)
-	c.Assert(cli, check.DeepEquals, s.client)
-	c.Assert(s.lastConf.Host, check.Equals, url)
-}
-
 func (s *S) TestRemoveNode(c *check.C) {
 	s.mockfakeNodes(c)
 	opts := provision.RemoveNodeOptions{
@@ -76,19 +59,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
-}
-
-func (s *S) TestRemoveNodeCluster(c *check.C) {
-	s.mockfakeNodes(c)
-	opts := provision.RemoveNodeOptions{
-		Address: "https://clusteraddr",
-	}
-	err := s.p.RemoveNode(opts)
-	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes([]string{})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 0)
+	c.Assert(nodes, check.HasLen, 1)
 }
 
 func (s *S) TestRemoveNodeNotFound(c *check.C) {
@@ -102,8 +73,8 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	s.mockfakeNodes(c)
-	_, err := s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{Name: "p1", Namespace: tsuruNamespace},
+	_, err := s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
+		ObjectMeta: v1.ObjectMeta{Name: "p1", Namespace: s.client.namespace()},
 	})
 	c.Assert(err, check.IsNil)
 	evictionCalled := false
@@ -122,7 +93,7 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(evictionCalled, check.Equals, true)
 }
 
@@ -222,7 +193,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
 	err := createBuildPod(buildPodParams{
-		client:           s.client,
+		client:           s.client.Cluster,
 		app:              a,
 		sourceImage:      "myimg",
 		destinationImage: "destimg",
@@ -369,16 +340,16 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(tsuruNamespace).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-	services, err := s.client.Core().Services(tsuruNamespace).List(v1.ListOptions{})
+	services, err := s.client.Core().Services(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
 }
@@ -435,7 +406,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.Extensions().Deployments(tsuruNamespace).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 2)
 	var depNames []string
@@ -474,24 +445,24 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	buf := &bytes.Buffer{}
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(tsuruNamespace).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 3)
 }
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
 	s.mockfakeNodes(c)
-	_, err := s.client.Extensions().DaemonSets(tsuruNamespace).Create(&extensions.DaemonSet{
+	_, err := s.client.Extensions().DaemonSets(s.client.namespace()).Create(&extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(tsuruNamespace).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: tsuruNamespace,
+			Namespace: s.client.namespace(),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":            "true",
 				"tsuru.io/is-node-container":   "true",
@@ -504,10 +475,10 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(tsuruNamespace).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
@@ -697,7 +668,7 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(stderr.String(), check.Equals, "")
 	c.Assert(s.stream["myapp-isolated-run"].urls, check.HasLen, 1)
 	c.Assert(s.stream["myapp-isolated-run"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/log")
-	pods, err := s.client.Core().Pods(tsuruNamespace).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
@@ -726,17 +697,18 @@ func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
 }
 
 func (s *S) TestStartupMessage(c *check.C) {
+	s.mockfakeNodes(c)
 	msg, err := s.p.StartupMessage()
 	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Equals, "")
-	s.mockfakeNodes(c)
-	msg, err = s.p.StartupMessage()
-	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster https://clusteraddr:
-    Kubernetes node: https://clusteraddr
+	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster "c1" - https://clusteraddr:
     Kubernetes node: 192.168.99.1
     Kubernetes node: 192.168.99.2
 `)
+	err = DeleteCluster("c1")
+	c.Assert(err, check.IsNil)
+	msg, err = s.p.StartupMessage()
+	c.Assert(err, check.IsNil)
+	c.Assert(msg, check.Equals, "")
 }
 
 func (s *S) TestSleepStart(c *check.C) {

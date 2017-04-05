@@ -98,11 +98,11 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	clusters, err := kubernetes.AllClusters()
 	if err != nil {
+		if err == kubernetes.ErrNoCluster {
+			w.WriteHeader(http.StatusNoContent)
+			return nil
+		}
 		return err
-	}
-	if len(clusters) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
 	}
 	return json.NewEncoder(w).Encode(clusters)
 }

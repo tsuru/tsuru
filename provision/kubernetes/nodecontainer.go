@@ -14,20 +14,23 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	"k8s.io/client-go/kubernetes"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-type nodeContainerManager struct {
-	client kubernetes.Interface
-}
+type nodeContainerManager struct{}
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	return forEachCluster(func(cluster *Cluster) error {
+		return m.deployNodeContainerForCluster(cluster, config, pool, filter, placementOnly)
+	})
+}
+
+func (m *nodeContainerManager) deployNodeContainerForCluster(client *Cluster, config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	dsName := daemonSetName(config.Name, pool)
-	oldDs, err := m.client.Extensions().DaemonSets(tsuruNamespace).Get(dsName)
+	oldDs, err := client.Extensions().DaemonSets(client.namespace()).Get(dsName)
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -64,7 +67,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	}
 	if oldDs != nil && placementOnly {
 		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
-		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Update(oldDs)
+		_, err = client.Extensions().DaemonSets(client.namespace()).Update(oldDs)
 		return errors.WithStack(err)
 	}
 	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
@@ -130,7 +133,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	ds := &extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      dsName,
-			Namespace: tsuruNamespace,
+			Namespace: client.namespace(),
 		},
 		Spec: extensions.DaemonSetSpec{
 			Selector: &unversioned.LabelSelector{
@@ -166,13 +169,13 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		// TODO(cezarsa): This is only needed because kubernetes <=1.5 does not
 		// support rolling updating daemon sets. Once 1.6 is out we can drop
 		// the cleanup call and configure DaemonSetUpdateStrategy accordingly.
-		err = cleanupDaemonSet(m.client, config.Name, pool)
+		err = cleanupDaemonSet(client, config.Name, pool)
 		if err != nil {
 			return err
 		}
-		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Create(ds)
+		_, err = client.Extensions().DaemonSets(client.namespace()).Create(ds)
 	} else {
-		_, err = m.client.Extensions().DaemonSets(tsuruNamespace).Create(ds)
+		_, err = client.Extensions().DaemonSets(client.namespace()).Create(ds)
 	}
 	return errors.WithStack(err)
 }
