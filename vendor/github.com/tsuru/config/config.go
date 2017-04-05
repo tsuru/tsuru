@@ -21,8 +21,9 @@ import (
 	"sync"
 	"time"
 
+	yaml "gopkg.in/yaml.v1"
+
 	"github.com/howeyc/fsnotify"
-	"gopkg.in/yaml.v1"
 )
 
 var ErrMismatchConf = errors.New("Your conf is wrong:")
@@ -251,7 +252,7 @@ func GetString(key string) (string, error) {
 			return v, nil
 		}
 	}
-	return "", &invalidValue{key, "string|int|int64"}
+	return "", &InvalidValue{key, "string|int|int64"}
 }
 
 // GetInt works like Get, but does an int type assertion and attempts string
@@ -274,7 +275,7 @@ func GetInt(key string) (int, error) {
 			return int(v), nil
 		}
 	}
-	return 0, &invalidValue{key, "int"}
+	return 0, &InvalidValue{key, "int"}
 }
 
 // GetFloat works like Get, but does a float type assertion and attempts string
@@ -298,18 +299,18 @@ func GetFloat(key string) (float64, error) {
 			return floatVal, nil
 		}
 	}
-	return 0, &invalidValue{key, "float"}
+	return 0, &InvalidValue{key, "float"}
 }
 
 // GetUint parses and returns an unsigned integer from the config file.
 func GetUint(key string) (uint, error) {
 	if v, err := GetInt(key); err == nil {
 		if v < 0 {
-			return 0, &invalidValue{key, "uint"}
+			return 0, &InvalidValue{key, "uint"}
 		}
 		return uint(v), nil
 	}
-	return 0, &invalidValue{key, "uint"}
+	return 0, &InvalidValue{key, "uint"}
 }
 
 // GetDuration parses and returns a duration from the config file. It may be an
@@ -337,7 +338,7 @@ func GetDuration(key string) (time.Duration, error) {
 			return value, nil
 		}
 	}
-	return 0, &invalidValue{key, "duration"}
+	return 0, &InvalidValue{key, "duration"}
 }
 
 // GetBool does a type assertion before returning the requested value
@@ -349,7 +350,7 @@ func GetBool(key string) (bool, error) {
 	if v, ok := value.(bool); ok {
 		return v, nil
 	}
-	return false, &invalidValue{key, "boolean"}
+	return false, &InvalidValue{key, "boolean"}
 }
 
 // GetList works like Get, but returns a slice of strings instead. It must be
@@ -392,7 +393,7 @@ func GetList(key string) ([]string, error) {
 	case []string:
 		return value.([]string), nil
 	}
-	return nil, &invalidValue{key, "list"}
+	return nil, &InvalidValue{key, "list"}
 }
 
 // mergeMaps takes two maps and merge its keys and values recursively.
@@ -480,11 +481,11 @@ func Unset(key string) error {
 	return nil
 }
 
-type invalidValue struct {
+type InvalidValue struct {
 	key  string
 	kind string
 }
 
-func (e *invalidValue) Error() string {
+func (e *InvalidValue) Error() string {
 	return fmt.Sprintf("value for the key %q is not a %s", e.key, e.kind)
 }

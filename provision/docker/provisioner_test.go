@@ -2042,10 +2042,40 @@ func (s *S) TestProvisionerExecuteCommandIsolatedNoImage(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*no such image.*")
 }
 
-func (s *S) TestProvisionCollection(c *check.C) {
+func (s *S) TestProvisionerCollection(c *check.C) {
 	collection := s.p.Collection()
 	defer collection.Close()
 	c.Assert(collection.Name, check.Equals, s.collName)
+}
+
+func (s *S) TestProvisionerCollectionDefaultConfig(c *check.C) {
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	config.Unset("docker:collection")
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	col := p.Collection()
+	c.Assert(col.Name, check.Equals, "dockercluster")
+	config.Set("docker:collection", s.collName)
+}
+
+func (s *S) TestProvisionerCollectionErrorConfig(c *check.C) {
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	config.Set("docker:collection", true)
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.ErrorMatches, ".*value for the key.*is not a string.*")
+	config.Set("docker:collection", s.collName)
 }
 
 func (s *S) TestAdminCommands(c *check.C) {

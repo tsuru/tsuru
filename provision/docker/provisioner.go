@@ -58,7 +58,10 @@ var (
 	ErrDeployCanceled = errors.New("deploy canceled by user action")
 )
 
-const provisionerName = "docker"
+const (
+	provisionerName           = "docker"
+	provisionerCollectionName = "dockercluster"
+)
 
 func init() {
 	mainDockerProvisioner = &dockerProvisioner{}
@@ -136,7 +139,10 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		var name string
 		name, err = config.GetString("docker:collection")
 		if err != nil {
-			return err
+			if serr, ok := err.(*config.InvalidValue); ok {
+				return serr
+			}
+			name = provisionerCollectionName
 		}
 		p.collectionName = name
 	}

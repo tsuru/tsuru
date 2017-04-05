@@ -1377,10 +1377,10 @@
 			"revisionTime": "2015-07-17T10:58:58-03:00"
 		},
 		{
-			"checksumSHA1": "+b65+Jna9gqiCqwWOHTW5qx6Bxo=",
+			"checksumSHA1": "ThIUiNEALTQ8b9KCs4F7FgLsJQQ=",
 			"path": "github.com/tsuru/config",
-			"revision": "0aba5bbb4d731f596e458d51c11219a127f02cf5",
-			"revisionTime": "2016-10-05T16:08:30-03:00"
+			"revision": "313da6e870752f0f660f90e162071db1e70b3a0b",
+			"revisionTime": "2017-04-05T17:36:55Z"
 		},
 		{
 			"checksumSHA1": "4/+umnXEiZSaOI8wWrvxyDRe9d4=",
