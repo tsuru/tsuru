@@ -16,10 +16,10 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -67,7 +67,7 @@ var HasAccessTo check.Checker = &hasAccessToChecker{}
 func (s *S) createUserAndTeam(c *check.C) {
 	// TODO: remove this token from the suite, each test should create their
 	// own user with specific permissions.
-	s.token = customUserWithPermission(c, "super-root-toremove", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-root-toremove", permission.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -141,27 +141,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
-	return customUserWithPermission(c, "majortom", perm...)
-}
-
-func customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) auth.Token {
-	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	for _, p := range perm {
-		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType), "")
-		c.Assert(err, check.IsNil)
-		name := p.Scheme.FullName()
-		if name == "" {
-			name = "*"
-		}
-		err = role.AddPermissions(name)
-		c.Assert(err, check.IsNil)
-		err = user.AddRole(role.Name, p.Context.Value)
-		c.Assert(err, check.IsNil)
-	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom", perm...)
 	return token
 }
 

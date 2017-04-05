@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -803,7 +804,7 @@ func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {
 }
 
 func (s *S) TestGrantAccess(c *check.C) {
-	user := customUserWithPermission(c, "myuser", permission.Permission{
+	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -829,7 +830,7 @@ func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 }
 
 func (s *S) TestRevokeAccess(c *check.C) {
-	user := customUserWithPermission(c, "myuser", permission.Permission{
+	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -858,7 +859,7 @@ func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	team := auth.Team{Name: "abcd"}
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	user := customUserWithPermission(c, "myuser", permission.Permission{
+	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppDeploy,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	}, permission.Permission{

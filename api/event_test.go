@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -346,7 +347,7 @@ func (s *EventSuite) TestEventCancelNotCancelable(c *check.C) {
 }
 
 func (s *EventSuite) TestEventInfoPermission(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -373,7 +374,7 @@ func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, "some-other-team"),
 	})
@@ -395,7 +396,7 @@ func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventCancelPermission(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -421,7 +422,7 @@ func (s *EventSuite) TestEventCancelPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
@@ -447,7 +448,7 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -467,7 +468,7 @@ func (s *EventSuite) TestEventBlockListAllBlocks(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockListFiltered(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -501,7 +502,7 @@ func (s *EventSuite) TestEventBlockListWithoutPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRead,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -516,7 +517,7 @@ func (s *EventSuite) TestEventBlockListEmpty(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockAdd(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockAdd,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -557,7 +558,7 @@ func (s *EventSuite) TestEventBlockAddWithoutPermission(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockAdd,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -579,7 +580,7 @@ func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockRemove(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -608,7 +609,7 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
@@ -624,7 +625,7 @@ func (s *EventSuite) TestEventBlockRemoveInvalidUUID(c *check.C) {
 }
 
 func (s *EventSuite) TestEventBlockRemoveUUIDNotFound(c *check.C) {
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermEventBlockRemove,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})

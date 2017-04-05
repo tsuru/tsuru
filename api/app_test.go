@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
@@ -791,7 +792,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 			Context: permission.PermissionContext{CtxType: permission.CtxTeam, Value: "team2"},
 		},
 	}
-	token := customUserWithPermission(c, "anotheruser", permissions...)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "anotheruser", permissions...)
 	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=zend&teamOwner=team1"
 	b := strings.NewReader(data)

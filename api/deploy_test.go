@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
@@ -699,7 +700,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	team := &auth.Team{Name: "newteam"}
 	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "apponlyg1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "apponlyg1", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxApp, "g1"),
 	})
@@ -847,7 +848,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppReadDeploy,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})

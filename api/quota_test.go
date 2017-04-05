@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
@@ -47,7 +48,7 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	s.team = &auth.Team{Name: "superteam"}
 	err := conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.token = customUserWithPermission(c, "quotauser", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	}, permission.Permission{
@@ -333,7 +334,7 @@ func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *check.C) {
 	err = conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": app.Name})
-	token := customUserWithPermission(c, "other", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "other", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,
 		Context: permission.Context(permission.CtxTeam, "-other-"),
 	})

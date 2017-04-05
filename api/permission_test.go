@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
@@ -410,11 +411,11 @@ func (s *S) TestAssignRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
-	emptyToken := customUserWithPermission(c, "user2")
+	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
 	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{
@@ -443,11 +444,11 @@ func (s *S) TestAssignRole(c *check.C) {
 }
 
 func (s *S) TestAssignRoleNotFound(c *check.C) {
-	emptyToken := customUserWithPermission(c, "user2")
+	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
 	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{
@@ -468,7 +469,7 @@ func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
-	emptyToken := customUserWithPermission(c, "user2")
+	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
 	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
@@ -497,14 +498,14 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.deploy")
 	c.Assert(err, check.IsNil)
-	emptyToken := customUserWithPermission(c, "user2")
+	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myapp", emptyToken.GetUserName()))
 	req, err := http.NewRequest("POST", "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateAssign,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{
@@ -527,11 +528,11 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 }
 
 func (s *S) TestDissociateRoleNotFound(c *check.C) {
-	otherToken := customUserWithPermission(c, "user2")
+	_, otherToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{
@@ -552,7 +553,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
-	otherToken := customUserWithPermission(c, "user2")
+	_, otherToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	otherUser, err := otherToken.User()
 	c.Assert(err, check.IsNil)
 	err = otherUser.AddRole(role.Name, "myteam")
@@ -560,7 +561,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{
@@ -593,7 +594,7 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
-	otherToken := customUserWithPermission(c, "user2")
+	_, otherToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	otherUser, err := otherToken.User()
 	c.Assert(err, check.IsNil)
 	err = otherUser.AddRole(role.Name, "myteam")
@@ -601,7 +602,7 @@ func (s *S) TestDissociateRoleNotAuthorized(c *check.C) {
 	url := fmt.Sprintf("/roles/test/user/%s?context=myteam", otherToken.GetUserName())
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{
@@ -626,7 +627,7 @@ func (s *S) TestDissociateRoleCheckGandalf(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.deploy")
 	c.Assert(err, check.IsNil)
-	otherToken := customUserWithPermission(c, "user2")
+	_, otherToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	otherUser, err := otherToken.User()
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -637,7 +638,7 @@ func (s *S) TestDissociateRoleCheckGandalf(c *check.C) {
 	url := fmt.Sprintf("/roles/test/user/%s?context=myapp", otherToken.GetUserName())
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "user1", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
 		Scheme:  permission.PermRoleUpdateDissociate,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	}, permission.Permission{

@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -61,7 +62,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.team = &auth.Team{Name: "tsuruteam"}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.token = customUserWithPermission(c, "consumption-master-user", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{
 		Scheme:  permission.PermServiceInstance,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	}, permission.Permission{
@@ -341,7 +342,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceNoPermission(c *check.C) {
-	token := customUserWithPermission(c, "cantdoanything")
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "cantdoanything")
 	srvc := service.Service{Name: "mysqlnoperms"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -508,7 +509,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	params := map[string]interface{}{
 		"description": "changed",
 	}
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
 		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -553,7 +554,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	params := map[string]interface{}{
 		"tag": []string{"tag b", "tag c"},
 	}
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
 		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -590,7 +591,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	params := map[string]interface{}{
 		"tag": []string{""},
 	}
-	token := customUserWithPermission(c, "myuser", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdate,
 		Context: permission.Context(permission.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
@@ -637,7 +638,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 	params := map[string]interface{}{
 		"description": "changed",
 	}
-	token := customUserWithPermission(c, "myuser")
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser")
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainSQL", token.GetValue(), c)
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)

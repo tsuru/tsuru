@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
@@ -67,25 +66,6 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 }
 
 var Greater check.Checker = &greaterChecker{}
-
-func customUserWithPermission(c *check.C, baseName string, perm ...permission.Permission) *auth.User {
-	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	for _, p := range perm {
-		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType), "")
-		c.Assert(err, check.IsNil)
-		name := p.Scheme.FullName()
-		if name == "" {
-			name = "*"
-		}
-		err = role.AddPermissions(name)
-		c.Assert(err, check.IsNil)
-		err = user.AddRole(role.Name, p.Context.Value)
-		c.Assert(err, check.IsNil)
-	}
-	return user
-}
 
 func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{

@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"golang.org/x/crypto/bcrypt"
@@ -72,7 +73,7 @@ func (s *ProvisionSuite) createUserAndTeam(c *check.C) {
 	s.team = &auth.Team{Name: "tsuruteam"}
 	err := s.conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
-	s.token = customUserWithPermission(c, "provision-master-user", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provision-master-user", permission.Permission{
 		Scheme:  permission.PermService,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})

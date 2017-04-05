@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
@@ -88,7 +89,7 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 }
 
 func (s *AuthSuite) createUserAndTeam(c *check.C) {
-	s.token = customUserWithPermission(c, "super-auth-toremove", permission.Permission{
+	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "super-auth-toremove", permission.Permission{
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -1565,7 +1566,7 @@ func (s *AuthSuite) TestListUsersLimitedUserWithMoreRoles(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
-	token2 := customUserWithPermission(c, "jerry", permission.Permission{
+	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "jerry", permission.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	}, permission.Permission{
@@ -1710,7 +1711,7 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	for i := 0; i < nUsers; i++ {
 		email := fmt.Sprintf("user-%d", i)
 		expectedNames = append(expectedNames, email+"@groundcontrol.com")
-		t := customUserWithPermission(c, email, perm)
+		_, t := permissiontest.CustomUserWithPermission(c, nativeScheme, email, perm)
 		u, err := t.User()
 		c.Assert(err, check.IsNil)
 		err = u.AddRole(u.Roles[0].Name, "someothervalue")
