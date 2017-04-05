@@ -3,6 +3,7 @@
 build:
   main: ./cmd/tsurud
   binary_name: tsurud
+  ldflags: ' '
   goos:
     - linux
   goarch:
