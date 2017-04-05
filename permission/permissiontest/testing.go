@@ -5,6 +5,8 @@
 package permissiontest
 
 import (
+	"strings"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
@@ -15,9 +17,18 @@ func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, p
 	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
 	_, err := scheme.Create(user)
 	c.Assert(err, check.IsNil)
+	return user, ExistingUserWithPermission(c, scheme, user, perm...)
+}
+
+func ExistingUserWithPermission(c *check.C, scheme auth.Scheme, user *auth.User, perm ...permission.Permission) auth.Token {
 	token, err := scheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	for _, p := range perm {
+		baseName := user.Email
+		idx := strings.Index(baseName, "@")
+		if idx != -1 {
+			baseName = baseName[:idx]
+		}
 		role, err := permission.NewRole(baseName+p.Scheme.FullName()+p.Context.Value, string(p.Context.CtxType), "")
 		c.Assert(err, check.IsNil)
 		name := p.Scheme.FullName()
@@ -29,5 +40,5 @@ func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, p
 		err = user.AddRole(role.Name, p.Context.Value)
 		c.Assert(err, check.IsNil)
 	}
-	return user, token
+	return token
 }
