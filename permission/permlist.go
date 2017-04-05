@@ -189,4 +189,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"event-block.read.events",
 	"event-block.add",
 	"event-block.remove",
+).add(
+	"kubernetes.cluster.read.events",
+	"kubernetes.cluster.update",
+	"kubernetes.cluster.delete",
 )
