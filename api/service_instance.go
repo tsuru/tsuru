@@ -26,11 +26,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 )
 
-const (
-	httpMethodGet  = "GET"
-	httpMethodHead = "HEAD"
-)
-
 func serviceInstanceTarget(name, instance string) event.Target {
 	return event.Target{Type: event.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
 }
@@ -574,7 +569,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return permission.ErrUnauthorized
 	}
 	path := r.URL.Query().Get("callback")
-	if r.Method != httpMethodGet && r.Method != httpMethodHead {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err := event.New(&event.Opts{
 			Target: serviceInstanceTarget(serviceName, instanceName),
 			Kind:   permission.PermServiceInstanceUpdateProxy,
