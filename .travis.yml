@@ -15,6 +15,7 @@ addons:
     packages:
       - rsyslog
       - xmlsec1
+      - rpm
 before_script:
   - rsyslogd &
   - sleep 1
