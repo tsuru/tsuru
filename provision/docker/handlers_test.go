@@ -29,35 +29,15 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 )
-
-func createToken(c *check.C) auth.Token {
-	user := &auth.User{Email: "provisioner-docker@groundcontrol.com", Password: "123456", Quota: quota.Unlimited}
-	nativeScheme.Remove(user)
-	_, err := nativeScheme.Create(user)
-	c.Assert(err, check.IsNil)
-	return createTokenForUser(user, "*", string(permission.CtxGlobal), "", c)
-}
-
-func createTokenForUser(user *auth.User, perm, contextType, contextValue string, c *check.C) auth.Token {
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	role, err := permission.NewRole("provisioner-docker-"+user.Email+perm, contextType, "")
-	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(perm)
-	c.Assert(err, check.IsNil)
-	err = user.AddRole(role.Name, contextValue)
-	c.Assert(err, check.IsNil)
-	return token
-}
 
 type HandlersSuite struct {
 	conn        *db.Storage
@@ -106,11 +86,12 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
-	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "teams"})
+	err = dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, check.IsNil)
-	s.token = createToken(c)
-	s.user, err = s.token.User()
-	c.Assert(err, check.IsNil)
+	s.user, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "provisioner-docker", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
+	})
 }
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
