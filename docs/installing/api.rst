@@ -20,14 +20,21 @@ Adding repositories
 
 Let's start adding the repositories for tsuru.
 
+For debian based distributions (eg. Ubuntu, Debian)
+
 .. highlight:: bash
 
 ::
 
-    sudo apt-get update
-    sudo apt-get install python-software-properties
-    sudo apt-add-repository ppa:tsuru/ppa -y
-    sudo apt-get update
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.deb.sh | sudo bash
+
+For rpm based distributions (eg. RedHat, Fedora)
+
+.. highlight:: bash
+
+::
+
+    $ curl -s https://packagecloud.io/install/repositories/tsuru/stable/script.rpm.sh | sudo bash
 
 
 Installing
@@ -140,6 +147,9 @@ For a description
     # type a password and confirmation (only if using native auth scheme)
 
     $ sudo apt-get install tsuru-client
+    or
+    $ sudo yum install tsuru-client
+
     $ tsuru target-add default http://<your-tsuru-api-addr>:8080
     $ tsuru target-set default
     $ tsuru login myemail@somewhere.com
