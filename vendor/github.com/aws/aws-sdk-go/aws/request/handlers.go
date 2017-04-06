@@ -18,7 +18,6 @@ type Handlers struct {
 	UnmarshalError   HandlerList
 	Retry            HandlerList
 	AfterRetry       HandlerList
-	Complete         HandlerList
 }
 
 // Copy returns of this handler's lists.
@@ -34,7 +33,6 @@ func (h *Handlers) Copy() Handlers {
 		UnmarshalMeta:    h.UnmarshalMeta.copy(),
 		Retry:            h.Retry.copy(),
 		AfterRetry:       h.AfterRetry.copy(),
-		Complete:         h.Complete.copy(),
 	}
 }
 
@@ -50,7 +48,6 @@ func (h *Handlers) Clear() {
 	h.ValidateResponse.Clear()
 	h.Retry.Clear()
 	h.AfterRetry.Clear()
-	h.Complete.Clear()
 }
 
 // A HandlerListRunItem represents an entry in the HandlerList which
@@ -88,17 +85,13 @@ func (l *HandlerList) copy() HandlerList {
 	n := HandlerList{
 		AfterEachFn: l.AfterEachFn,
 	}
-	if len(l.list) == 0 {
-		return n
-	}
-
-	n.list = append(make([]NamedHandler, 0, len(l.list)), l.list...)
+	n.list = append([]NamedHandler{}, l.list...)
 	return n
 }
 
 // Clear clears the handler list.
 func (l *HandlerList) Clear() {
-	l.list = l.list[0:0]
+	l.list = []NamedHandler{}
 }
 
 // Len returns the number of handlers in the list.
@@ -108,54 +101,33 @@ func (l *HandlerList) Len() int {
 
 // PushBack pushes handler f to the back of the handler list.
 func (l *HandlerList) PushBack(f func(*Request)) {
-	l.PushBackNamed(NamedHandler{"__anonymous", f})
-}
-
-// PushBackNamed pushes named handler f to the back of the handler list.
-func (l *HandlerList) PushBackNamed(n NamedHandler) {
-	if cap(l.list) == 0 {
-		l.list = make([]NamedHandler, 0, 5)
-	}
-	l.list = append(l.list, n)
+	l.list = append(l.list, NamedHandler{"__anonymous", f})
 }
 
 // PushFront pushes handler f to the front of the handler list.
 func (l *HandlerList) PushFront(f func(*Request)) {
-	l.PushFrontNamed(NamedHandler{"__anonymous", f})
+	l.list = append([]NamedHandler{{"__anonymous", f}}, l.list...)
+}
+
+// PushBackNamed pushes named handler f to the back of the handler list.
+func (l *HandlerList) PushBackNamed(n NamedHandler) {
+	l.list = append(l.list, n)
 }
 
 // PushFrontNamed pushes named handler f to the front of the handler list.
 func (l *HandlerList) PushFrontNamed(n NamedHandler) {
-	if cap(l.list) == len(l.list) {
-		// Allocating new list required
-		l.list = append([]NamedHandler{n}, l.list...)
-	} else {
-		// Enough room to prepend into list.
-		l.list = append(l.list, NamedHandler{})
-		copy(l.list[1:], l.list)
-		l.list[0] = n
-	}
+	l.list = append([]NamedHandler{n}, l.list...)
 }
 
 // Remove removes a NamedHandler n
 func (l *HandlerList) Remove(n NamedHandler) {
-	l.RemoveByName(n.Name)
-}
-
-// RemoveByName removes a NamedHandler by name.
-func (l *HandlerList) RemoveByName(name string) {
-	for i := 0; i < len(l.list); i++ {
-		m := l.list[i]
-		if m.Name == name {
-			// Shift array preventing creating new arrays
-			copy(l.list[i:], l.list[i+1:])
-			l.list[len(l.list)-1] = NamedHandler{}
-			l.list = l.list[:len(l.list)-1]
-
-			// decrement list so next check to length is correct
-			i--
+	newlist := []NamedHandler{}
+	for _, m := range l.list {
+		if m.Name != n.Name {
+			newlist = append(newlist, m)
 		}
 	}
+	l.list = newlist
 }
 
 // Run executes all handlers in the list with a given request object.
@@ -189,16 +161,6 @@ func HandlerListLogItem(item HandlerListRunItem) bool {
 // to continue iterating.
 func HandlerListStopOnError(item HandlerListRunItem) bool {
 	return item.Request.Error == nil
-}
-
-// WithAppendUserAgent will add a string to the user agent prefixed with a
-// single white space.
-func WithAppendUserAgent(s string) Option {
-	return func(r *Request) {
-		r.Handlers.Build.PushBack(func(r2 *Request) {
-			AddToUserAgent(r, s)
-		})
-	}
 }
 
 // MakeAddToUserAgentHandler will add the name/version pair to the User-Agent request

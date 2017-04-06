@@ -1,4 +1,4 @@
-// +build go1.5
+// +build !go1.5
 
 package request
 
@@ -18,8 +18,6 @@ func copyHTTPRequest(r *http.Request, body io.ReadCloser) *http.Request {
 		Method:        r.Method,
 		Proto:         r.Proto,
 		ContentLength: r.ContentLength,
-		// Cancel will be deprecated in 1.7 and will be replaced with Context
-		Cancel: r.Cancel,
 	}
 
 	*req.URL = *r.URL
