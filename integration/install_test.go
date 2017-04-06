@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"os"
+
 	"gopkg.in/check.v1"
 )
 
@@ -142,9 +144,10 @@ func installerTest() ExecFlow {
 		env.Set("targetaddr", fmt.Sprintf("http://%s:%s", targetHost, targetPort))
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
+		certsDir := fmt.Sprintf("%s/.tsuru/installs/tsuru/certs", os.Getenv("HOME"))
 		for _, parts = range allParts {
 			c.Assert(parts, check.HasLen, 2)
-			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert ~/.tsuru/installs/tsuru/certs/ca.pem --clientcert ~/.tsuru/installs/tsuru/certs/cert.pem --clientkey ~/.tsuru/installs/tsuru/certs/key.pem", parts[1]))
+			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
 			env.Add("nodestoremove", parts[1])
 		}
 		regex = regexp.MustCompile(`Username: ([[:print:]]+)`)
