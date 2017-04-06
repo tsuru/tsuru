@@ -101,9 +101,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repositorytest.Reset()
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	app.AuthScheme = nativeScheme
-	_, err = nativeScheme.Create(s.user)
+	nScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nScheme
+	_, err = nScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "admin"}
 	c.Assert(err, check.IsNil)
