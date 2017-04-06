@@ -1,6 +1,9 @@
 package request
 
 import (
+	"net"
+	"os"
+	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -26,8 +29,13 @@ func WithRetryer(cfg *aws.Config, retryer Retryer) *aws.Config {
 // retryableCodes is a collection of service response codes which are retry-able
 // without any further action.
 var retryableCodes = map[string]struct{}{
-	"RequestError":                           {},
-	"RequestTimeout":                         {},
+	"RequestError":            {},
+	"RequestTimeout":          {},
+	ErrCodeResponseTimeout:    {},
+	"RequestTimeoutException": {}, // Glacier's flavor of RequestTimeout
+}
+
+var throttleCodes = map[string]struct{}{
 	"ProvisionedThroughputExceededException": {},
 	"Throttling":                             {},
 	"ThrottlingException":                    {},
@@ -35,6 +43,7 @@ var retryableCodes = map[string]struct{}{
 	"RequestThrottled":                       {},
 	"LimitExceededException":                 {}, // Deleting 10+ DynamoDb tables at once
 	"TooManyRequestsException":               {}, // Lambda functions
+	"PriorRequestNotComplete":                {}, // Route53
 }
 
 // credsExpiredCodes is a collection of error codes which signify the credentials
@@ -44,6 +53,11 @@ var credsExpiredCodes = map[string]struct{}{
 	"ExpiredToken":          {},
 	"ExpiredTokenException": {},
 	"RequestExpired":        {}, // EC2 Only
+}
+
+func isCodeThrottle(code string) bool {
+	_, ok := throttleCodes[code]
+	return ok
 }
 
 func isCodeRetryable(code string) bool {
@@ -59,12 +73,43 @@ func isCodeExpiredCreds(code string) bool {
 	return ok
 }
 
+func isSerializationErrorRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if aerr, ok := err.(awserr.Error); ok {
+		return isCodeRetryable(aerr.Code())
+	}
+
+	if opErr, ok := err.(*net.OpError); ok {
+		if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
+			return sysErr.Err == syscall.ECONNRESET
+		}
+	}
+
+	return false
+}
+
 // IsErrorRetryable returns whether the error is retryable, based on its Code.
 // Returns false if the request has no Error set.
 func (r *Request) IsErrorRetryable() bool {
 	if r.Error != nil {
-		if err, ok := r.Error.(awserr.Error); ok {
+		if err, ok := r.Error.(awserr.Error); ok && err.Code() != ErrCodeSerialization {
 			return isCodeRetryable(err.Code())
+		} else if ok {
+			return isSerializationErrorRetryable(err.OrigErr())
+		}
+	}
+	return false
+}
+
+// IsErrorThrottle returns whether the error is to be throttled based on its code.
+// Returns false if the request has no Error set
+func (r *Request) IsErrorThrottle() bool {
+	if r.Error != nil {
+		if err, ok := r.Error.(awserr.Error); ok {
+			return isCodeThrottle(err.Code())
 		}
 	}
 	return false
