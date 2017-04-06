@@ -155,7 +155,7 @@ func installerTest() ExecFlow {
 		env.Set("adminpassword", parts[1])
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("uninstall", "-y").Run(env)
+		res := T("uninstall", "--config", "{{.installerconfig}}", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
