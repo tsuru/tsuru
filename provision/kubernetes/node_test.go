@@ -161,20 +161,3 @@ func (s *S) TestNodeUnits(c *check.C) {
 		},
 	})
 }
-
-func (s *S) TestClusterNode(c *check.C) {
-	node := clusterNode{
-		address: "clusterAddr",
-		prov:    s.p,
-	}
-	c.Assert(node.Pool(), check.Equals, "")
-	c.Assert(node.Address(), check.Equals, "clusterAddr")
-	c.Assert(node.Status(), check.Equals, "Ready")
-	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
-		"cluster": "true",
-	})
-	units, err := node.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.IsNil)
-	c.Assert(node.Provisioner(), check.Equals, s.p)
-}
