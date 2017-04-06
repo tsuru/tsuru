@@ -122,13 +122,16 @@ func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
 		if r.URL.Path == "/v2/droplets/503/actions" {
 			fmt.Fprintln(w, `{"action":{"id": 123456, "status": "in-progress", "started_at": "2014-11-04T17:08:03Z", "resource_id": 503, "resource_type": "droplet"}}`)
 		}
+		if r.URL.Path == "/v2/actions/123456" {
+			fmt.Fprintln(w, `{"action":{"id": 123456, "status": "completed", "started_at": "2014-11-04T17:08:03Z", "resource_id": 503, "resource_type": "droplet"}}`)
+		}
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := newDigitalOceanIaas("digitalocean")
 	machine := iaas.Machine{Id: "503", CreationParams: map[string]string{"projectid": "projid"}}
 	err := do.DeleteMachine(&machine)
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
 
 func (s *digitaloceanSuite) TestDeleteMachineFailure(c *check.C) {
@@ -139,6 +142,9 @@ func (s *digitaloceanSuite) TestDeleteMachineFailure(c *check.C) {
 		}
 		if r.URL.Path == "/v2/droplets/13/actions" {
 			fmt.Fprintln(w, `{"action":{"id": 123456, "status": "in-progress", "started_at": "2014-11-04T17:08:03Z", "resource_id": 13, "resource_type": "droplet"}}`)
+		}
+		if r.URL.Path == "/v2/actions/123456" {
+			fmt.Fprintln(w, `{"action":{"id": 123456, "status": "completed", "started_at": "2014-11-04T17:08:03Z", "resource_id": 503, "resource_type": "droplet"}}`)
 		}
 	}))
 	defer fakeServer.Close()

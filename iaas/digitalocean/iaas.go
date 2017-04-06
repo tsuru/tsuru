@@ -152,7 +152,7 @@ func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 		// PowerOff force the shutdown
 		action, _, err = i.client.DropletActions.PowerOff(context.Background(), machineId)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 	u, _ := i.base.GetConfigString("url")
@@ -161,11 +161,11 @@ func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 	defer cancel()
 	err = util.WaitForActive(ctx, i.client, uri)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	resp, err := i.client.Droplets.Delete(context.Background(), machineId)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if resp.StatusCode != 204 {
 		return errors.New("failed to delete machine")
