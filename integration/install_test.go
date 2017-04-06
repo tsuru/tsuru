@@ -131,7 +131,7 @@ func installerTest() ExecFlow {
 		provides: []string{"targetaddr"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("install", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(30 * time.Minute).Run(env)
+		res := T("install", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
