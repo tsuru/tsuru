@@ -38,6 +38,7 @@ var (
 	flows = []ExecFlow{
 		platformsToInstall(),
 		installerConfigTest(),
+		installerComposeTest(),
 		installerTest(),
 		targetTest(),
 		loginTest(),
@@ -76,30 +77,48 @@ func platformsToInstall() ExecFlow {
 
 func installerConfigTest() ExecFlow {
 	flow := ExecFlow{
-		provides: []string{"installerconfig", "installercompose"},
+		provides: []string{"installerconfig"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		f, err := ioutil.TempFile("", "installer-config")
 		c.Assert(err, check.IsNil)
 		defer f.Close()
-		composeFile, err := ioutil.TempFile("", "installer-compose")
-		c.Assert(err, check.IsNil)
-		defer composeFile.Close()
-		res := T("install-config-init", f.Name(), composeFile.Name()).Run(env)
-		c.Assert(res, ResultOk)
 		f.Write([]byte(installerConfig))
-		composeData, err := ioutil.ReadFile(composeFile.Name())
-		c.Assert(err, check.IsNil)
-		composeData = []byte(strings.Replace(string(composeData), "tsuru/api:v1", "tsuru/api:latest", 1))
-		err = ioutil.WriteFile(composeFile.Name(), composeData, 0644)
 		c.Assert(err, check.IsNil)
 		env.Set("installerconfig", f.Name())
-		env.Set("installercompose", composeFile.Name())
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		res := NewCommand("rm", "{{.installerconfig}}").Run(env)
 		c.Check(res, ResultOk)
-		res = NewCommand("rm", "{{.installercompose}}").Run(env)
+	}
+	return flow
+}
+
+func installerComposeTest() ExecFlow {
+	flow := ExecFlow{
+		provides: []string{"installercompose"},
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		composeFile, err := ioutil.TempFile("", "installer-compose")
+		c.Assert(err, check.IsNil)
+		defer composeFile.Close()
+		f, err := ioutil.TempFile("", "installer-config")
+		c.Assert(err, check.IsNil)
+		defer func() {
+			res := NewCommand("rm", f.Name()).Run(env)
+			c.Check(res, ResultOk)
+			f.Close()
+		}()
+		res := T("install-config-init", f.Name(), composeFile.Name()).Run(env)
+		c.Assert(res, ResultOk)
+		composeData, err := ioutil.ReadFile(composeFile.Name())
+		c.Assert(err, check.IsNil)
+		composeData = []byte(strings.Replace(string(composeData), "tsuru/api:v1", "tsuru/api:latest", 1))
+		err = ioutil.WriteFile(composeFile.Name(), composeData, 0644)
+		env.Set("installercompose", composeFile.Name())
+	}
+	flow.backward = func(c *check.C, env *Environment) {
+		res := NewCommand("rm", "{{.installercompose}}").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
