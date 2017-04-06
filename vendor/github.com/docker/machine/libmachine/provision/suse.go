@@ -98,7 +98,7 @@ func (provisioner *SUSEProvisioner) Provision(swarmOptions swarm.Options, authOp
 	provisioner.EngineOptions = engineOptions
 	swarmOptions.Env = engineOptions.Env
 
-	// figure out the filesytem used by /var/lib
+	// figure out the filesystem used by /var/lib
 	fs, err := provisioner.SSHCommand("stat -f -c %T /var/lib/")
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (provisioner *SUSEProvisioner) Provision(swarmOptions swarm.Options, authOp
 	if strings.ToLower(provisioner.OsReleaseInfo.ID) != "opensuse" {
 		// This is a SLE machine, enable the containers module to have access
 		// to the docker packages
-		if _, err := provisioner.SSHCommand("sudo -E SUSEConnect -p sle-module-containers/12/x86_64 -r ''"); err != nil {
+		if _, err := provisioner.SSHCommand("sudo -E SUSEConnect -p sle-module-containers/12/$(uname -m) -r ''"); err != nil {
 			return fmt.Errorf(
 				"Error while adding the 'containers' module, make sure this machine is registered either against SUSE Customer Center (SCC) or to a local Subscription Management Tool (SMT): %v",
 				err)

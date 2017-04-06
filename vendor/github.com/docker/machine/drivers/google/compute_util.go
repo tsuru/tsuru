@@ -27,6 +27,7 @@ type ComputeUtil struct {
 	diskTypeURL       string
 	address           string
 	network           string
+	subnetwork        string
 	preemptible       bool
 	useInternalIP     bool
 	useInternalIPOnly bool
@@ -64,6 +65,7 @@ func newComputeUtil(driver *Driver) (*ComputeUtil, error) {
 		diskTypeURL:       driver.DiskType,
 		address:           driver.Address,
 		network:           driver.Network,
+		subnetwork:        driver.Subnetwork,
 		preemptible:       driver.Preemptible,
 		useInternalIP:     driver.UseInternalIP,
 		useInternalIPOnly: driver.UseInternalIPOnly,
@@ -253,6 +255,10 @@ func (c *ComputeUtil) createInstance(d *Driver) error {
 		Scheduling: &raw.Scheduling{
 			Preemptible: c.preemptible,
 		},
+	}
+
+	if c.subnetwork != "" {
+		instance.NetworkInterfaces[0].Subnetwork = "projects/" + c.project + "/regions/" + c.region() + "/subnetworks/" + c.subnetwork
 	}
 
 	if !c.useInternalIPOnly {

@@ -54,6 +54,7 @@ var (
 	errorNoPrivateSSHKey                 = errors.New("using --amazonec2-keypair-name also requires --amazonec2-ssh-keypath")
 	errorMissingCredentials              = errors.New("amazonec2 driver requires AWS credentials configured with the --amazonec2-access-key and --amazonec2-secret-key options, environment variables, ~/.aws/credentials, or an instance role")
 	errorNoVPCIdFound                    = errors.New("amazonec2 driver requires either the --amazonec2-subnet-id or --amazonec2-vpc-id option or an AWS Account with a default vpc-id")
+	errorNoSubnetsFound                  = errors.New("The desired subnet could not be located in this region. Is '--amazonec2-subnet-id' or AWS_SUBNET_ID configured correctly?")
 	errorDisableSSLWithoutCustomEndpoint = errors.New("using --amazonec2-insecure-transport also requires --amazonec2-endpoint")
 	errorReadingUserData                 = errors.New("unable to read --amazonec2-userdata file")
 )
@@ -406,6 +407,10 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 			return err
 		}
 
+		if subnets == nil || len(subnets.Subnets) == 0 {
+			return errorNoSubnetsFound
+		}
+
 		if *subnets.Subnets[0].VpcId != d.VpcId {
 			return fmt.Errorf("SubnetId: %s does not belong to VpcId: %s", d.SubnetId, d.VpcId)
 		}
@@ -452,7 +457,7 @@ func (d *Driver) checkPrereqs() error {
 				return fmt.Errorf("There is no keypair with the name %s. Please verify the key name provided.", keyName)
 			}
 			if awsErr.Code() == keypairNotFoundCode && !keyShouldExist {
-				// Not a real error for 'NotFound' since we're checking existance
+				// Not a real error for 'NotFound' since we're checking existence
 			}
 		} else {
 			return err
