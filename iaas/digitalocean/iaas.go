@@ -5,12 +5,15 @@
 package digitalocean
 
 import (
+	"context"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/digitalocean/godo"
+	"github.com/digitalocean/godo/util"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
@@ -79,7 +82,7 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 		SSHKeys:           sshKeys,
 		UserData:          userData,
 	}
-	droplet, _, err := i.client.Droplets.Create(createRequest)
+	droplet, _, err := i.client.Droplets.Create(context.Background(), createRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +122,7 @@ func (i *digitalOceanIaas) waitNetworkCreated(droplet *godo.Droplet) (*godo.Drop
 			case <-quit:
 				return
 			default:
-				d, _, err := i.client.Droplets.Get(droplet.ID)
+				d, _, err := i.client.Droplets.Get(context.Background(), droplet.ID)
 				if err != nil {
 					errs <- err
 					return
@@ -144,15 +147,23 @@ func (i *digitalOceanIaas) waitNetworkCreated(droplet *godo.Droplet) (*godo.Drop
 func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 	i.Auth()
 	machineId, _ := strconv.Atoi(m.Id)
-	_, _, err := i.client.DropletActions.Shutdown(machineId)
+	action, _, err := i.client.DropletActions.Shutdown(context.Background(), machineId)
 	if err != nil {
 		// PowerOff force the shutdown
-		_, _, err = i.client.DropletActions.PowerOff(machineId)
+		action, _, err = i.client.DropletActions.PowerOff(context.Background(), machineId)
 		if err != nil {
 			return err
 		}
 	}
-	resp, err := i.client.Droplets.Delete(machineId)
+	u, _ := i.base.GetConfigString("url")
+	uri := fmt.Sprintf("%s/v2/actions/%d", strings.TrimRight(u, "/"), action.ID)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	err = util.WaitForActive(ctx, i.client, uri)
+	if err != nil {
+		return err
+	}
+	resp, err := i.client.Droplets.Delete(context.Background(), machineId)
 	if err != nil {
 		return err
 	}
