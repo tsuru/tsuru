@@ -452,6 +452,9 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*Cluster, *ku
 		return nil
 	})
 	if err != nil {
+		if err == ErrNoCluster {
+			return nil, nil, provision.ErrNodeNotFound
+		}
 		return nil, nil, err
 	}
 	if foundNode == nil {

@@ -162,7 +162,9 @@ func (s *S) TestGetNode(c *check.C) {
 }
 
 func (s *S) TestGetNodeWithoutCluster(c *check.C) {
-	_, err := s.p.GetNode("anything")
+	err := DeleteCluster("c1")
+	c.Assert(err, check.IsNil)
+	_, err = s.p.GetNode("anything")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
