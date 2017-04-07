@@ -58,6 +58,8 @@ var installerConfig = `driver:
   options:
     virtualbox-cpu-count: 2
     virtualbox-memory: 2048
+docker-flags:
+  - experimental
 hosts:
   apps:
     size: 2
