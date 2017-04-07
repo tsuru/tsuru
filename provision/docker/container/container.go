@@ -106,7 +106,6 @@ type CreateArgs struct {
 }
 
 func (c *Container) Create(args *CreateArgs) error {
-	securityOpts, _ := config.GetList("docker:security-opts")
 	var exposedPorts map[docker.Port]struct{}
 	if !args.Deploy {
 		if c.ExposedPort == "" {
@@ -143,7 +142,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		Memory:       hostConf.Memory,
 		MemorySwap:   hostConf.MemorySwap,
 		CPUShares:    hostConf.CPUShares,
-		SecurityOpts: securityOpts,
+		SecurityOpts: hostConf.SecurityOpt,
 		User:         user,
 		Labels:       labelSet.ToLabels(),
 	}
