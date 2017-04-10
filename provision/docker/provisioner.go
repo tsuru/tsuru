@@ -110,6 +110,7 @@ var (
 	_ provision.UnitFinderProvisioner    = &dockerProvisioner{}
 	_ provision.AppFilterProvisioner     = &dockerProvisioner{}
 	_ provision.ExtensibleProvisioner    = &dockerProvisioner{}
+	_ cmd.AdminCommandable               = &dockerProvisioner{}
 )
 
 type hookHealer struct {
