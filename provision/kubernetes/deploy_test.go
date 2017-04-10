@@ -25,7 +25,7 @@ import (
 func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.Cluster}
+	m := serviceManager{client: s.client.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -40,7 +40,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(s.client.namespace()).Get("myapp-p1")
+	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1")
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -49,7 +49,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	c.Assert(dep, check.DeepEquals, &extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
-			Namespace: s.client.namespace(),
+			Namespace: s.client.Namespace(),
 		},
 		Status: extensions.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -118,12 +118,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 		},
 	})
-	srv, err := s.client.Core().Services(s.client.namespace()).Get("myapp-p1")
+	srv, err := s.client.Core().Services(s.client.Namespace()).Get("myapp-p1")
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &v1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1",
-			Namespace: s.client.namespace(),
+			Namespace: s.client.Namespace(),
 			Labels: map[string]string{
 				"tsuru.io/is-tsuru":             "true",
 				"tsuru.io/is-service":           "true",
@@ -163,7 +163,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.Cluster}
+	m := serviceManager{client: s.client.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -283,13 +283,13 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			c.Assert(err, check.IsNil)
 		}
 		var dep *extensions.Deployment
-		dep, err = s.client.Extensions().Deployments(s.client.namespace()).Get("myapp-p1")
+		dep, err = s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1")
 		c.Assert(err, check.IsNil)
 		waitDep()
 		tt.fn(dep)
-		err = cleanupDeployment(s.client.Cluster, a, "p1")
+		err = cleanupDeployment(s.client.clusterClient, a, "p1")
 		c.Assert(err, check.IsNil)
-		err = cleanupDeployment(s.client.Cluster, a, "p2")
+		err = cleanupDeployment(s.client.clusterClient, a, "p2")
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -297,7 +297,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.Cluster}
+	m := serviceManager{client: s.client.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -315,7 +315,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(s.client.namespace()).Get("myapp-p1")
+	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1")
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &v1.Probe{
 		Handler: v1.Handler{
@@ -328,7 +328,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
-	m := serviceManager{client: s.client.Cluster}
+	m := serviceManager{client: s.client.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -353,7 +353,7 @@ func (s *S) prepareRollbackTest(c *check.C) (*serviceManager, **extensions.Deplo
 	config.Set("docker:healthcheck:max-time", 1)
 	waitDep := s.deploymentReactions(c)
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.Cluster, writer: &buf}
+	m := serviceManager{client: s.client.clusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -387,7 +387,7 @@ func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
 	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.Cluster, writer: &buf}
+	m := serviceManager{client: s.client.clusterClient, writer: &buf}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -425,11 +425,11 @@ func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
 		Name: "myapp-p1",
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] ----.*ROLLING BACK AFTER FAILURE.*---> timeout after .* waiting for units <---\s*$`)
-	cleanupDeployment(s.client.Cluster, a, "p1")
-	_, err = s.client.Core().Events(s.client.namespace()).Create(&v1.Event{
+	cleanupDeployment(s.client.clusterClient, a, "p1")
+	_, err = s.client.Core().Events(s.client.Namespace()).Create(&v1.Event{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "pod.evt1",
-			Namespace: s.client.namespace(),
+			Namespace: s.client.Namespace(),
 		},
 		Reason:  "Unhealthy",
 		Message: "my evt message",
@@ -444,7 +444,7 @@ func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
 func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.Cluster}
+	m := serviceManager{client: s.client.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -474,34 +474,34 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/router-type":          "fake",
 		"tsuru.io/provisioner":          provisionerName,
 	}
-	_, err = s.client.Extensions().ReplicaSets(s.client.namespace()).Create(&extensions.ReplicaSet{
+	_, err = s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&extensions.ReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
-			Namespace: s.client.namespace(),
+			Namespace: s.client.Namespace(),
 			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(s.client.namespace()).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
-			Namespace: s.client.namespace(),
+			Namespace: s.client.Namespace(),
 			Labels:    expectedLabels,
 		},
 	})
 	c.Assert(err, check.IsNil)
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(s.client.namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	srvs, err := s.client.Core().Services(s.client.namespace()).List(v1.ListOptions{})
+	srvs, err := s.client.Core().Services(s.client.Namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(s.client.namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(s.client.namespace()).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
@@ -509,7 +509,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.client.Cluster}
+	m := serviceManager{client: s.client.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -527,10 +527,10 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	})
 	err = m.RemoveService(a, "p1")
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
-	deps, err := s.client.Extensions().Deployments(s.client.namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	srvs, err := s.client.Core().Services(s.client.namespace()).List(v1.ListOptions{})
+	srvs, err := s.client.Core().Services(s.client.Namespace()).List(v1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
 }

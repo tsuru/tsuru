@@ -30,19 +30,15 @@ import (
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 )
 
-func doAttach(cluster *Cluster, stdin io.Reader, stdout io.Writer, podName, container string) error {
-	cfg, err := cluster.getRestConfig()
-	if err != nil {
-		return err
-	}
-	cli, err := rest.RESTClientFor(cfg)
+func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
+	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	req := cli.Post().
 		Resource("pods").
 		Name(podName).
-		Namespace(cluster.namespace()).
+		Namespace(client.Namespace()).
 		SubResource("attach")
 	req.VersionedParams(&api.PodAttachOptions{
 		Container: container,
@@ -51,7 +47,7 @@ func doAttach(cluster *Cluster, stdin io.Reader, stdout io.Writer, podName, cont
 		Stderr:    true,
 		TTY:       false,
 	}, api.ParameterCodec)
-	exec, err := remotecommand.NewExecutor(cfg, "POST", req.URL())
+	exec, err := remotecommand.NewExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -70,7 +66,7 @@ func doAttach(cluster *Cluster, stdin io.Reader, stdout io.Writer, podName, cont
 }
 
 type buildPodParams struct {
-	client           *Cluster
+	client           *clusterClient
 	app              provision.App
 	buildCmd         []string
 	sourceImage      string
@@ -104,7 +100,7 @@ func createBuildPod(params buildPodParams) error {
 	pod := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        baseName,
-			Namespace:   params.client.namespace(),
+			Namespace:   params.client.Namespace(),
 			Labels:      labels.ToLabels(),
 			Annotations: buildImageLabel.ToLabels(),
 		},
@@ -155,7 +151,7 @@ func createBuildPod(params buildPodParams) error {
 			},
 		},
 	}
-	_, err = params.client.Core().Pods(params.client.namespace()).Create(pod)
+	_, err = params.client.Core().Pods(params.client.Namespace()).Create(pod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -212,7 +208,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client *Cluster, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*extensions.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*extensions.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -248,7 +244,7 @@ func createAppDeployment(client *Cluster, oldDeployment *extensions.Deployment, 
 	deployment := extensions.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
-			Namespace: client.namespace(),
+			Namespace: client.Namespace(),
 		},
 		Spec: extensions.DeploymentSpec{
 			Strategy: extensions.DeploymentStrategy{
@@ -285,15 +281,15 @@ func createAppDeployment(client *Cluster, oldDeployment *extensions.Deployment, 
 	}
 	var newDep *extensions.Deployment
 	if oldDeployment == nil {
-		newDep, err = client.Extensions().Deployments(client.namespace()).Create(&deployment)
+		newDep, err = client.Extensions().Deployments(client.Namespace()).Create(&deployment)
 	} else {
-		newDep, err = client.Extensions().Deployments(client.namespace()).Update(&deployment)
+		newDep, err = client.Extensions().Deployments(client.Namespace()).Update(&deployment)
 	}
 	return newDep, labels, errors.WithStack(err)
 }
 
 type serviceManager struct {
-	client *Cluster
+	client *clusterClient
 	writer io.Writer
 }
 
@@ -307,7 +303,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 		multiErrors.Add(err)
 	}
 	depName := deploymentNameForApp(a, process)
-	err = m.client.Core().Services(m.client.namespace()).Delete(depName, &v1.DeleteOptions{
+	err = m.client.Core().Services(m.client.Namespace()).Delete(depName, &v1.DeleteOptions{
 		OrphanDependents: &falseVar,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -321,7 +317,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(m.client.namespace()).Get(depName)
+	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -333,7 +329,7 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provis
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(client *Cluster, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
+func createDeployTimeoutError(client *clusterClient, a provision.App, processName string, w io.Writer, timeout time.Duration) error {
 	messages, err := notReadyPodEvents(client, a, processName)
 	var msgErrorPart string
 	if err == nil {
@@ -347,12 +343,12 @@ func createDeployTimeoutError(client *Cluster, a provision.App, processName stri
 	return errors.Errorf("timeout after %v waiting for units%s", timeout, msgErrorPart)
 }
 
-func monitorDeployment(client *Cluster, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
+func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	timeout := time.After(defaultDeploymentProgressTimeout)
 	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.Extensions().Deployments(client.namespace()).Get(dep.Name)
+		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name)
 		if err != nil {
 			return err
 		}
@@ -412,7 +408,7 @@ func monitorDeployment(client *Cluster, dep *extensions.Deployment, a provision.
 		case <-timeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
 		}
-		dep, err = client.Extensions().Deployments(client.namespace()).Get(dep.Name)
+		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name)
 		if err != nil {
 			return err
 		}
@@ -423,7 +419,7 @@ func monitorDeployment(client *Cluster, dep *extensions.Deployment, a provision.
 
 func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(m.client.namespace()).Get(depName)
+	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName)
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -440,7 +436,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	err = monitorDeployment(m.client, dep, a, process, m.writer)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.Extensions().Deployments(m.client.namespace()).Rollback(&extensions.DeploymentRollback{
+		rollbackErr := m.client.Extensions().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {
@@ -450,10 +446,10 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	}
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
-	_, err = m.client.Core().Services(m.client.namespace()).Create(&v1.Service{
+	_, err = m.client.Core().Services(m.client.Namespace()).Create(&v1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      depName,
-			Namespace: m.client.namespace(),
+			Namespace: m.client.Namespace(),
 			Labels:    labels.ToLabels(),
 		},
 		Spec: v1.ServiceSpec{

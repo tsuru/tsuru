@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
@@ -37,18 +36,6 @@ func (s *S) TearDownSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
-}
-
-type CommandableProvisioner struct {
-	*provisiontest.FakeProvisioner
-	cmd *FakeCommand
-}
-
-func (p *CommandableProvisioner) Commands() []cmd.Command {
-	if p.cmd == nil {
-		p.cmd = &FakeCommand{}
-	}
-	return []cmd.Command{p.cmd}
 }
 
 type FakeCommand struct {

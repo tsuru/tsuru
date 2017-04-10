@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package cmds
 
 import (
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"testing"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
@@ -16,6 +17,14 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
 )
+
+func Test(t *testing.T) {
+	check.TestingT(t)
+}
+
+var _ = check.Suite(&S{})
+
+type S struct{}
 
 func (s *S) TestDockerLogUpdateRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
@@ -42,10 +51,10 @@ func (s *S) TestDockerLogUpdateRun(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := dockerLogUpdate{}
-	err := cmd.Flags().Parse(true, []string{"--log-driver", "x", "--log-opt", "a=1", "--log-opt", "b=2"})
+	updateCmd := dockerLogUpdate{}
+	err := updateCmd.Flags().Parse(true, []string{"--log-driver", "x", "--log-opt", "a=1", "--log-opt", "b=2"})
 	c.Assert(err, check.IsNil)
-	err = cmd.Run(&context, client)
+	err = updateCmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "success!!!")
 }
@@ -75,10 +84,10 @@ func (s *S) TestDockerLogUpdateForPoolRun(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := dockerLogUpdate{}
-	err := cmd.Flags().Parse(true, []string{"--pool", "p1", "--log-driver", "x", "--log-opt", "a=1", "--log-opt", "b=2"})
+	updateCmd := dockerLogUpdate{}
+	err := updateCmd.Flags().Parse(true, []string{"--pool", "p1", "--log-driver", "x", "--log-opt", "a=1", "--log-opt", "b=2"})
 	c.Assert(err, check.IsNil)
-	err = cmd.Run(&context, client)
+	err = updateCmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "success!!!")
 }

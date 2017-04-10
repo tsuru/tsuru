@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package cmds
 
 import (
 	"encoding/json"
@@ -17,6 +17,14 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision/docker/container"
 )
+
+func init() {
+	cmd.RegisterExtraCmd(&moveContainerCmd{})
+	cmd.RegisterExtraCmd(&moveContainersCmd{})
+	cmd.RegisterExtraCmd(&listHealingHistoryCmd{})
+	cmd.RegisterExtraCmd(&dockerLogInfo{})
+	cmd.RegisterExtraCmd(&dockerLogUpdate{})
+}
 
 type dockerLogUpdate struct {
 	cmd.ConfirmationCommand

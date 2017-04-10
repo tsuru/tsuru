@@ -9,8 +9,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
@@ -66,16 +64,4 @@ func (s *S) TestGandalfSyncCmdIsRegistered(c *check.C) {
 	sync, ok := cmd.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(sync.Command, check.FitsTypeOf, gandalfSyncCmd{})
-}
-
-func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *check.C) {
-	fp := provisiontest.NewFakeProvisioner()
-	p := CommandableProvisioner{FakeProvisioner: fp}
-	provision.Register("comm", func() (provision.Provisioner, error) { return &p, nil })
-	manager := buildManager()
-	fake, ok := manager.Commands["fake"]
-	c.Assert(ok, check.Equals, true)
-	tsurudFake, ok := fake.(*tsurudCommand)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(tsurudFake.Command, check.FitsTypeOf, &FakeCommand{})
 }

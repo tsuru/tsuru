@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package healer
+package cmds
 
 import (
 	"encoding/json"
@@ -13,15 +13,16 @@ import (
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 )
 
-type ListHealingHistoryCmd struct {
+type listHealingHistoryCmd struct {
 	fs            *gnuflag.FlagSet
 	nodeOnly      bool
 	containerOnly bool
 }
 
-func (c *ListHealingHistoryCmd) Info() *cmd.Info {
+func (c *listHealingHistoryCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-healing-list",
 		Usage: "docker-healing-list [--node] [--container]",
@@ -29,7 +30,7 @@ func (c *ListHealingHistoryCmd) Info() *cmd.Info {
 	}
 }
 
-func renderHistoryTable(history []HealingEvent, filter string, ctx *cmd.Context) {
+func renderHistoryTable(history []healer.HealingEvent, filter string, ctx *cmd.Context) {
 	fmt.Fprintln(ctx.Stdout, strings.ToUpper(filter[:1])+filter[1:]+":")
 	headers := cmd.Row([]string{"Start", "Finish", "Success", "Failing", "Created", "Error"})
 	t := cmd.Table{Headers: headers}
@@ -71,7 +72,7 @@ func renderHistoryTable(history []HealingEvent, filter string, ctx *cmd.Context)
 	ctx.Stdout.Write(t.Bytes())
 }
 
-func (c *ListHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+func (c *listHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	var filter string
 	if c.nodeOnly && !c.containerOnly {
 		filter = "node"
@@ -92,7 +93,7 @@ func (c *ListHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 		return err
 	}
 	defer resp.Body.Close()
-	var history []HealingEvent
+	var history []healer.HealingEvent
 	if resp.StatusCode == http.StatusOK {
 		err = json.NewDecoder(resp.Body).Decode(&history)
 		if err != nil {
@@ -108,7 +109,7 @@ func (c *ListHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 	return nil
 }
 
-func (c *ListHealingHistoryCmd) Flags() *gnuflag.FlagSet {
+func (c *listHealingHistoryCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
 		c.fs.BoolVar(&c.nodeOnly, "node", false, "List only healing process started for nodes")

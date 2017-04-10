@@ -23,14 +23,14 @@ import (
 type nodeContainerManager struct{}
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
-	return forEachCluster(func(cluster *Cluster) error {
+	return forEachCluster(func(cluster *clusterClient) error {
 		return m.deployNodeContainerForCluster(cluster, config, pool, filter, placementOnly)
 	})
 }
 
-func (m *nodeContainerManager) deployNodeContainerForCluster(client *Cluster, config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClient, config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	dsName := daemonSetName(config.Name, pool)
-	oldDs, err := client.Extensions().DaemonSets(client.namespace()).Get(dsName)
+	oldDs, err := client.Extensions().DaemonSets(client.Namespace()).Get(dsName)
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -67,7 +67,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *Cluster, co
 	}
 	if oldDs != nil && placementOnly {
 		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
-		_, err = client.Extensions().DaemonSets(client.namespace()).Update(oldDs)
+		_, err = client.Extensions().DaemonSets(client.Namespace()).Update(oldDs)
 		return errors.WithStack(err)
 	}
 	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
@@ -133,7 +133,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *Cluster, co
 	ds := &extensions.DaemonSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      dsName,
-			Namespace: client.namespace(),
+			Namespace: client.Namespace(),
 		},
 		Spec: extensions.DaemonSetSpec{
 			Selector: &unversioned.LabelSelector{
@@ -173,9 +173,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *Cluster, co
 		if err != nil {
 			return err
 		}
-		_, err = client.Extensions().DaemonSets(client.namespace()).Create(ds)
+		_, err = client.Extensions().DaemonSets(client.Namespace()).Create(ds)
 	} else {
-		_, err = client.Extensions().DaemonSets(client.namespace()).Create(ds)
+		_, err = client.Extensions().DaemonSets(client.Namespace()).Create(ds)
 	}
 	return errors.WithStack(err)
 }

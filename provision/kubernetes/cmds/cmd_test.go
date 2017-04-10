@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package kubernetes
+package cmds
 
 import (
 	"bytes"
@@ -11,12 +11,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
+	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
 	"gopkg.in/check.v1"
 )
+
+func Test(t *testing.T) {
+	check.TestingT(t)
+}
+
+var _ = check.Suite(&S{})
+
+type S struct{}
 
 func (s *S) TestKubernetesClusterUpdateRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
@@ -33,10 +43,10 @@ func (s *S) TestKubernetesClusterUpdateRun(c *check.C) {
 			dec := form.NewDecoder(nil)
 			dec.IgnoreCase(true)
 			dec.IgnoreUnknownKeys(true)
-			var cluster Cluster
-			err = dec.DecodeValues(&cluster, req.Form)
+			var clus cluster.Cluster
+			err = dec.DecodeValues(&clus, req.Form)
 			c.Assert(err, check.IsNil)
-			c.Assert(cluster, check.DeepEquals, Cluster{
+			c.Assert(clus, check.DeepEquals, cluster.Cluster{
 				Name:              "c1",
 				CaCert:            []byte("cadata"),
 				ClientCert:        []byte("certdata"),
@@ -84,7 +94,7 @@ func (s *S) TestKubernetesClusterListRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	clusters := []Cluster{{
+	clusters := []cluster.Cluster{{
 		Name:              "c1",
 		Addresses:         []string{"addr1", "addr2"},
 		CaCert:            []byte("cacert"),

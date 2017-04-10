@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package kubernetes
+package cmds
 
 import (
 	"encoding/json"
@@ -17,7 +17,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
 )
+
+func init() {
+	cmd.RegisterExtraCmd(&kubernetesClusterUpdate{})
+	cmd.RegisterExtraCmd(&kubernetesClusterList{})
+	cmd.RegisterExtraCmd(&kubernetesClusterRemove{})
+}
 
 type kubernetesClusterUpdate struct {
 	fs         *gnuflag.FlagSet
@@ -67,7 +74,7 @@ func (c *kubernetesClusterUpdate) Run(context *cmd.Context, client *cmd.Client) 
 		return err
 	}
 	name := context.Args[0]
-	cluster := Cluster{
+	clus := cluster.Cluster{
 		Name:              name,
 		Addresses:         c.addresses,
 		Pools:             c.pools,
@@ -80,23 +87,23 @@ func (c *kubernetesClusterUpdate) Run(context *cmd.Context, client *cmd.Client) 
 		if err != nil {
 			return err
 		}
-		cluster.CaCert = data
+		clus.CaCert = data
 	}
 	if c.clientcert != "" {
 		data, err = ioutil.ReadFile(c.clientcert)
 		if err != nil {
 			return err
 		}
-		cluster.ClientCert = data
+		clus.ClientCert = data
 	}
 	if c.clientkey != "" {
 		data, err = ioutil.ReadFile(c.clientkey)
 		if err != nil {
 			return err
 		}
-		cluster.ClientKey = data
+		clus.ClientKey = data
 	}
-	values, err := form.EncodeToValues(cluster)
+	values, err := form.EncodeToValues(clus)
 	if err != nil {
 		return err
 	}
@@ -147,7 +154,7 @@ func (c *kubernetesClusterList) Run(context *cmd.Context, client *cmd.Client) er
 	if err != nil {
 		return err
 	}
-	var clusters []Cluster
+	var clusters []cluster.Cluster
 	err = json.Unmarshal(data, &clusters)
 	if err != nil {
 		return errors.Wrapf(err, "unable to parse data %q", string(data))
@@ -157,7 +164,7 @@ func (c *kubernetesClusterList) Run(context *cmd.Context, client *cmd.Client) er
 	tbl.Headers = cmd.Row{"Name", "Addresses", "Namespace", "Default", "Pools"}
 	sort.Slice(clusters, func(i, j int) bool { return clusters[i].Name < clusters[j].Name })
 	for _, c := range clusters {
-		tbl.AddRow(cmd.Row{c.Name, strings.Join(c.Addresses, "\n"), c.namespace(), strconv.FormatBool(c.Default), strings.Join(c.Pools, "\n")})
+		tbl.AddRow(cmd.Row{c.Name, strings.Join(c.Addresses, "\n"), c.Namespace(), strconv.FormatBool(c.Default), strings.Join(c.Pools, "\n")})
 	}
 	fmt.Fprint(context.Stdout, tbl.String())
 	return nil

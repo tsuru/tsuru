@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
-	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -34,7 +33,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/provision/docker/healer"
 	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -2076,30 +2074,6 @@ func (s *S) TestProvisionerCollectionErrorConfig(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.ErrorMatches, ".*value for the key.*is not a string.*")
 	config.Set("docker:collection", s.collName)
-}
-
-func (s *S) TestAdminCommands(c *check.C) {
-	expected := []cmd.Command{
-		&moveContainerCmd{},
-		&moveContainersCmd{},
-		&healer.ListHealingHistoryCmd{},
-		&dockerLogInfo{},
-		&dockerLogUpdate{},
-		&nodecontainer.NodeContainerList{},
-		&nodecontainer.NodeContainerAdd{},
-		&nodecontainer.NodeContainerInfo{},
-		&nodecontainer.NodeContainerUpdate{},
-		&nodecontainer.NodeContainerDelete{},
-		&nodecontainer.NodeContainerUpgrade{},
-		&cmd.RemovedCommand{Name: "bs-env-set", Help: "You should use `tsuru node-container-update big-sibling` instead."},
-		&cmd.RemovedCommand{Name: "bs-info", Help: "You should use `tsuru node-container-info big-sibling` instead."},
-		&cmd.RemovedCommand{Name: "bs-upgrade", Help: "You should use `tsuru node-container-upgrade big-sibling` instead."},
-	}
-	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
-}
-
-func (s *S) TestProvisionerIsAdminCommandable(c *check.C) {
-	var _ cmd.AdminCommandable = &dockerProvisioner{}
 }
 
 func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {

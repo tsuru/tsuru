@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package cmds
 
 import (
 	"bytes"
@@ -36,8 +36,8 @@ func (s *S) TestMoveContainersRun(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := moveContainersCmd{}
-	err := cmd.Run(&context, client)
+	moveCmd := moveContainersCmd{}
+	err := moveCmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	expected := "progress msg"
 	c.Assert(stdout.String(), check.Equals, expected)

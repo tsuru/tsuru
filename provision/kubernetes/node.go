@@ -12,7 +12,7 @@ import (
 type kubernetesNodeWrapper struct {
 	node    *v1.Node
 	prov    *kubernetesProvisioner
-	cluster *Cluster
+	cluster *clusterClient
 }
 
 var (

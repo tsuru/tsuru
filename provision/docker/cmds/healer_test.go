@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package healer
+package cmds
 
 import (
 	"bytes"
@@ -21,8 +21,8 @@ func (s *S) TestListHealingHistoryCmdInfo(c *check.C) {
 		Usage: "docker-healing-list [--node] [--container]",
 		Desc:  "List healing history for nodes or containers.",
 	}
-	cmd := ListHealingHistoryCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
+	historyCmd := listHealingHistoryCmd{}
+	c.Assert(historyCmd.Info(), check.DeepEquals, &expected)
 }
 
 var healingJsonData = `[{
@@ -99,7 +99,7 @@ func (s *S) TestListHealingHistoryCmdRun(c *check.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	healing := &ListHealingHistoryCmd{}
+	healing := &listHealingHistoryCmd{}
 	err := healing.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	expected := fmt.Sprintf(`Node:
@@ -135,7 +135,7 @@ func (s *S) TestListHealingHistoryCmdRunEmpty(c *check.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	healing := &ListHealingHistoryCmd{}
+	healing := &listHealingHistoryCmd{}
 	err := healing.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	expected := `Node:
@@ -161,7 +161,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *check.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := &ListHealingHistoryCmd{}
+	cmd := &listHealingHistoryCmd{}
 	cmd.Flags().Parse(true, []string{"--node"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
@@ -188,7 +188,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *check.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := &ListHealingHistoryCmd{}
+	cmd := &listHealingHistoryCmd{}
 	cmd.Flags().Parse(true, []string{"--container"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
@@ -226,7 +226,7 @@ func (s *S) TestListHealingHistoryInProgressCmdRun(c *check.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := &ListHealingHistoryCmd{}
+	cmd := &listHealingHistoryCmd{}
 	cmd.Flags().Parse(true, []string{"--container"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)

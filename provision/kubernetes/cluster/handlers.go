@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package api
+package cluster
 
 import (
 	"encoding/json"
@@ -15,7 +15,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision/kubernetes"
 )
 
 var (
@@ -46,7 +45,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var cluster kubernetes.Cluster
+	var cluster Cluster
 	err = r.ParseForm()
 	if err == nil {
 		err = dec.DecodeValues(&cluster, r.Form)
@@ -96,9 +95,9 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	clusters, err := kubernetes.AllClusters()
+	clusters, err := AllClusters()
 	if err != nil {
-		if err == kubernetes.ErrNoCluster {
+		if err == ErrNoCluster {
 			w.WriteHeader(http.StatusNoContent)
 			return nil
 		}
@@ -134,9 +133,9 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = kubernetes.DeleteCluster(clusterName)
+	err = DeleteCluster(clusterName)
 	if err != nil {
-		if errors.Cause(err) == kubernetes.ErrClusterNotFound {
+		if errors.Cause(err) == ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),

@@ -366,18 +366,6 @@ type Info struct {
 	fail    bool
 }
 
-// Implementing the Commandable interface allows extending
-// the tsurud command line interface
-type Commandable interface {
-	Commands() []Command
-}
-
-// Implementing the AdminCommandable interface allows extending
-// the tsuru-admin command line interface
-type AdminCommandable interface {
-	AdminCommands() []Command
-}
-
 type help struct {
 	manager *Manager
 }
