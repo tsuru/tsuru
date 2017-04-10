@@ -1302,3 +1302,59 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 }
+
+func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-otherapp:v1",
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("enabled", "true")
+	v.Set("reason", "")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *DeploySuite) TestRollbackUpdateImageNotValid(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("enabled", "true")
+	v.Set("reason", "")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "Image: \"v1\", from app: \"otherapp\" is not a valid image\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+}
