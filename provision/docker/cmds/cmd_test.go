@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/tsuru/tsuru/cmd"
@@ -25,6 +26,10 @@ func Test(t *testing.T) {
 var _ = check.Suite(&S{})
 
 type S struct{}
+
+func (s *S) SetUpSuite(c *check.C) {
+	os.Setenv("TSURU_TARGET", "http://localhost")
+}
 
 func (s *S) TestDockerLogUpdateRun(c *check.C) {
 	var stdout, stderr bytes.Buffer

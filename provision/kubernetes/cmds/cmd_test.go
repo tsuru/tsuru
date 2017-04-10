@@ -28,6 +28,10 @@ var _ = check.Suite(&S{})
 
 type S struct{}
 
+func (s *S) SetUpSuite(c *check.C) {
+	os.Setenv("TSURU_TARGET", "http://localhost")
+}
+
 func (s *S) TestKubernetesClusterUpdateRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
