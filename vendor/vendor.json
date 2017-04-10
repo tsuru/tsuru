@@ -1434,10 +1434,10 @@
 			"revisionTime": "2015-07-17T10:58:58-03:00"
 		},
 		{
-			"checksumSHA1": "ThIUiNEALTQ8b9KCs4F7FgLsJQQ=",
+			"checksumSHA1": "oSqVjeYA3/FVbRHkJIilPjmbVTc=",
 			"path": "github.com/tsuru/config",
-			"revision": "313da6e870752f0f660f90e162071db1e70b3a0b",
-			"revisionTime": "2017-04-05T17:36:55Z"
+			"revision": "0eee1ec3c7a2917396b20453f32ecb41919a2a22",
+			"revisionTime": "2017-04-10T20:51:07Z"
 		},
 		{
 			"checksumSHA1": "4/+umnXEiZSaOI8wWrvxyDRe9d4=",
@@ -1917,13 +1917,6 @@
 			"revisionTime": "2014-12-09T13:38:15+11:00"
 		},
 		{
-			"checksumSHA1": "AMBhAXNq0e9HUcBFbcnSDEU5w5k=",
-			"origin": "github.com/docker/machine/vendor/golang.org/x/crypto/curve25519",
-			"path": "golang.org/x/crypto/curve25519",
-			"revision": "07d63b6ff555ddec6f0458c5a4af3cc711aea75d",
-			"revisionTime": "2017-04-03T21:07:21Z"
-		},
-		{
 			"path": "golang.org/x/crypto/ssh",
 			"revision": "1fbbd62cfec66bd39d91e97749579579d4d3037e",
 			"revisionTime": "2014-12-09T13:38:15+11:00"
@@ -2298,16 +2291,10 @@
 			"revisionTime": "2015-03-29T10:11:00-06:00"
 		},
 		{
-			"path": "gopkg.in/yaml.v1",
-			"revision": "4914593b9558e85597f08346c798aea8f6fb899f",
-			"revisionTime": "2014-03-06T13:54:45-03:00"
-		},
-		{
-			"checksumSHA1": "Hs7pfHDSvTNtnRogAAziW2Lki3M=",
-			"origin": "k8s.io/kubernetes/vendor/gopkg.in/yaml.v2",
+			"checksumSHA1": "fALlQNY1fM99NesfLJ50KguWsio=",
 			"path": "gopkg.in/yaml.v2",
-			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
-			"revisionTime": "2016-10-05T22:38:25Z"
+			"revision": "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b",
+			"revisionTime": "2017-04-07T17:21:22Z"
 		},
 		{
 			"path": "govendor",

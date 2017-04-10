@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	yaml "gopkg.in/yaml.v1"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/howeyc/fsnotify"
 )
@@ -247,10 +247,8 @@ func GetString(key string) (string, error) {
 		return strconv.Itoa(v), nil
 	case int64:
 		return strconv.FormatInt(v, 10), nil
-	default:
-		if v, ok := value.(string); ok {
-			return v, nil
-		}
+	case string:
+		return v, nil
 	}
 	return "", &InvalidValue{key, "string|int|int64"}
 }
@@ -334,8 +332,11 @@ func GetDuration(key string) (time.Duration, error) {
 	case float64:
 		return time.Duration(v), nil
 	case string:
-		if value, err := time.ParseDuration(value.(string)); err == nil {
-			return value, nil
+		if duration, err := time.ParseDuration(v); err == nil {
+			return duration, nil
+		}
+		if number, err := strconv.ParseFloat(v, 64); err == nil {
+			return time.Duration(number), nil
 		}
 	}
 	return 0, &InvalidValue{key, "duration"}
@@ -405,10 +406,10 @@ func mergeMaps(map1, map2 map[interface{}]interface{}) map[interface{}]interface
 		if v1, ok := map1[k]; !ok {
 			result[k] = v2
 		} else {
-			map1, ok1 := v1.(map[interface{}]interface{})
-			map2, ok2 := v2.(map[interface{}]interface{})
+			map1Inner, ok1 := v1.(map[interface{}]interface{})
+			map2Inner, ok2 := v2.(map[interface{}]interface{})
 			if ok1 && ok2 {
-				result[k] = mergeMaps(map1, map2)
+				result[k] = mergeMaps(map1Inner, map2Inner)
 			} else {
 				result[k] = v2
 			}
@@ -418,10 +419,10 @@ func mergeMaps(map1, map2 map[interface{}]interface{}) map[interface{}]interface
 		if v2, ok := map2[k]; !ok {
 			result[k] = v
 		} else {
-			map1, ok1 := v.(map[interface{}]interface{})
-			map2, ok2 := v2.(map[interface{}]interface{})
+			map1Inner, ok1 := v.(map[interface{}]interface{})
+			map2Inner, ok2 := v2.(map[interface{}]interface{})
 			if ok1 && ok2 {
-				result[k] = mergeMaps(map1, map2)
+				result[k] = mergeMaps(map1Inner, map2Inner)
 			}
 		}
 	}
