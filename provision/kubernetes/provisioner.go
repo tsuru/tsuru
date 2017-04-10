@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -45,6 +46,7 @@ var (
 	_ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
+	_ cmd.AdminCommandable               = &kubernetesProvisioner{}
 	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
 	// _ provision.ImageDeployer            = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
@@ -706,4 +708,12 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 
 func (p *kubernetesProvisioner) Sleep(a provision.App, process string) error {
 	return changeState(a, process, servicecommon.ProcessState{Stop: true, Sleep: true}, nil)
+}
+
+func (p *kubernetesProvisioner) AdminCommands() []cmd.Command {
+	return []cmd.Command{
+		&kubernetesClusterUpdate{},
+		&kubernetesClusterList{},
+		&kubernetesClusterRemove{},
+	}
 }

@@ -91,52 +91,6 @@ TSJOiwKBgD0ShhQXpBk6x3InwAoBAPFcqbBhY2y0Ts97h2MkKwt3ZXHxFHMQTp6n
 MZd+pt1LzfT9/E1gf7WYoGlK3N2GS0F0kieMiiAdTiEMPzBu5YXxRmkpSq4uCxD+
 qni/3jTJOxDGMH+x06HZjWietWmbY+aKWkKCyGGVVzlKTEBUMSSU
 -----END RSA PRIVATE KEY-----`)
-
-// 	testServerCert = []byte(`-----BEGIN CERTIFICATE-----
-// MIIC+TCCAeGgAwIBAgIPcIPq45AlSN+Itq+6Ap/dMA0GCSqGSIb3DQEBCwUAMBUx
-// EzARBgNVBAoTCnRzdXJ1IEluYy4wHhcNMTYxMTIxMTg1NDExWhcNMjYxMTE5MTg1
-// NDExWjAVMRMwEQYDVQQKEwp0c3VydSBJbmMuMIIBIjANBgkqhkiG9w0BAQEFAAOC
-// AQ8AMIIBCgKCAQEAyilhi42eWUr2ihmftZrjqD24CPo1bJYtGdL4+4+bXlKvpDSN
-// BADXoyLqDNjOl1ohwmYPR2POqA7HjzNJW3BCMXDHd1SUZF0vTB/HYEEHt4kD/DlQ
-// uujjQZ7dSeVFjZhazNP43Gp+DYTMlSB1sFriG82uIugIBzfObZxxWb+q93s/d2lU
-// HLJv/1Eep1K66A+TEkyEka6KuNs6s2gc2hutqX4krHGaBOCEM1kBw4yzpu0wi8YL
-// Z8Icv+MyAvvXVM5q11b1SAEbOJP32eJOU/NmjtJO772maU8CFh//t8pBV+m9HZPI
-// hX04f3Vj2fH2aWBosvXOL779vYJI5QC3w8DGcQIDAQABo0YwRDAOBgNVHQ8BAf8E
-// BAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAPBgNVHREE
-// CDAGhwR/AAABMA0GCSqGSIb3DQEBCwUAA4IBAQB2R1GNW39NbvKVwEHJ0lDSNbxV
-// 5b2Eucg1nHZ1FxnroC5nha53+ew7a4m3IFejAKzRICG7Kfg6Mb7uq+B9EZG2Xk+1
-// /6CFgzScWeP4uYpj5T+rTNgNUTif02xJWTt6bRCR1ja0ZJm60EcJPAUbs3356JTc
-// U+VZCeXDg0edHlEkrrQykw1nfLr1N+1IRB7+0vU1HtYdFIAyJz9bOS7CR/JLxfX0
-// kL0ycRKXpcLCUip29fQd1A0B9Tziz/wCm2PeRIwC25XenNAgRyJWzPVJPVvfJF9E
-// p7CqJZIvYUuMrGpjHJ6B5E76OUtcXONftzAjb/xmgoCKXgwwiehcivauMvBx
-// -----END CERTIFICATE-----`)
-// 	testServerKey = []byte(`-----BEGIN RSA PRIVATE KEY-----
-// MIIEowIBAAKCAQEAyilhi42eWUr2ihmftZrjqD24CPo1bJYtGdL4+4+bXlKvpDSN
-// BADXoyLqDNjOl1ohwmYPR2POqA7HjzNJW3BCMXDHd1SUZF0vTB/HYEEHt4kD/DlQ
-// uujjQZ7dSeVFjZhazNP43Gp+DYTMlSB1sFriG82uIugIBzfObZxxWb+q93s/d2lU
-// HLJv/1Eep1K66A+TEkyEka6KuNs6s2gc2hutqX4krHGaBOCEM1kBw4yzpu0wi8YL
-// Z8Icv+MyAvvXVM5q11b1SAEbOJP32eJOU/NmjtJO772maU8CFh//t8pBV+m9HZPI
-// hX04f3Vj2fH2aWBosvXOL779vYJI5QC3w8DGcQIDAQABAoIBAD84h6/Lvvxvq//u
-// GXsCkDVZ78am8LQflsUfrAuHknAB7bmtUXgyBz2WOpl/58N/RVV080xBEyyNSq0m
-// vcchqSGrAkX4JlvopFTrDz+ztoUYDS4AgpWhJQitdMiaMZEhVyv9EjNj/j2eDRiJ
-// ySQ4l8NYJB/4biJLunue0/fcL8wqqWnXPFiMChFT5LS7LhQqKfbLghydzEKr81jG
-// mw/cRUZi263M8w99p5aqwUrt6aezB+xqM4AnqG9RXAMh/zq8IgGOIerckN9SeCtk
-// VvTUi0I61bE5TCandkFni/NpVxZvj0QVIL3aawcXrgZVUyUY7TGkD1MqPqVGQiLU
-// C+Zcf50CgYEA2B/ZvOU8dORngeWP0Y2sFTdnG5Bqtrhy3m198bXABiNFb073N+RT
-// pnJA9t2j13whb2MUd3Zxi7QNRfWDkeQl5Bxyn2TvNxepFYWKEVNucSLe6SG6ylWf
-// ffqu7yum4NS/PBme13EmOnz0UXQmQrCyVqe5hXX+H1glLllix5uD5GcCgYEA73YH
-// zOFLTfCbRPA6kFOT/fMCk9WispuQ/jIHpiI0mAPT7nPdxlXzw86Hn7SePq/2/XWP
-// kP2HXnvLMDWD7uTxkEOz1xFEe35+pQ0T+K/8Ds5Qp8Sn2L4QzvQ8P7ag4PvLajL6
-// 3VTnLPTeKirloIe6OG8Fj+VKFUY2c63TvVbcd2cCgYBhu2V3KiKAqZi1AN5cYLhk
-// j70slc3r+tTXCKRfXVUMcX7AqvDYcYPyTNBb0jZ5B0UHXcKvkvwdtLob3L42hvkr
-// gkHDGp2iSCzJ8q1Q0G2s85vhyMLzJG0PRwE8Xn0ERrCDuQI/YodrA35oJyH2HnlG
-// /mnClGzqN634m6szoHuwGQKBgQCGLumoEQcVoaIgO01V2r+vKiFjne8RjsLs7jQD
-// EF/QXzS/BgZcQYXbTzwIbjnOfuQ0m0/bu3XDqDLvzM0lbP1ADfAUsARj/zoQWwe5
-// 70ObOFlR6Yz0k2zvy0SHn1r/N5mA5RhWNmFke8KSdn8+OVBMl0nSnHWq/jE9GUbx
-// bl8UOQKBgAzXEdpWm8BuZsRvVGwbDM+Li5de254Jk6unUkDYcuk+pOqoRa6iAw2A
-// A2B3fIz4r3Q6772hpZvhx4Tkx/Cb9o5Mc6NpgUYD8seIqggxg3S4NfLoBYL5b2Fc
-// X46PqW9WOcNb3P7CbXwhcOTwXpPtGqWdm+O5rjZ287D9jhfBcWoq
-// -----END RSA PRIVATE KEY-----`)
 )
 
 type S struct {
@@ -183,7 +137,7 @@ func (s *S) TestUpdateCluster(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := api.RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated, check.Commentf("body: %q", recorder.Body.String()))
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
 	clusters, err := kubernetes.AllClusters()
 	c.Assert(err, check.IsNil)
 	c.Assert(clusters, check.HasLen, 1)
@@ -213,10 +167,13 @@ func (s *S) TestListClusters(c *check.C) {
 	var retClusters []kubernetes.Cluster
 	err = json.Unmarshal(recorder.Body.Bytes(), &retClusters)
 	c.Assert(err, check.IsNil)
-	c.Assert(retClusters, check.HasLen, 1)
-	c.Assert(retClusters[0].ClientKey, check.HasLen, 0)
-	cluster.ClientKey = nil
-	c.Assert(retClusters[0], check.DeepEquals, cluster)
+	c.Assert(retClusters, check.DeepEquals, []kubernetes.Cluster{{
+		Name:       "c1",
+		Addresses:  []string{"addr1"},
+		CaCert:     testCA,
+		ClientCert: testCert,
+		Default:    true,
+	}})
 }
 
 func (s *S) TestListClustersNoContent(c *check.C) {

@@ -34,7 +34,7 @@ func init() {
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
-//   201: Cluster created
+//   200: Ok
 //   400: Invalid data
 //   401: Unauthorized
 //   409: Cluster already exists
@@ -78,7 +78,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 		return errors.WithStack(err)
 	}
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	return nil
 }
 

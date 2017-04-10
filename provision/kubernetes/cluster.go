@@ -75,7 +75,7 @@ func (c *Cluster) validate() error {
 			return errors.WithStack(&tsuruErrors.ValidationError{Message: "either default or a list of pools must be set"})
 		}
 	}
-	return nil
+	return c.initClient()
 }
 
 func (c *Cluster) Save() error {

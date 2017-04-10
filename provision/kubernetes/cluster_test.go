@@ -26,6 +26,10 @@ func (s *S) TestClusterSave(c *check.C) {
 	}
 	err := cluster.Save()
 	c.Assert(err, check.IsNil)
+	c.Assert(cluster.Interface, check.NotNil)
+	c.Assert(cluster.restConfig, check.NotNil)
+	cluster.Interface = nil
+	cluster.restConfig = nil
 	coll, err := clusterCollection()
 	c.Assert(err, check.IsNil)
 	var dbCluster Cluster
@@ -161,10 +165,6 @@ func (s *S) TestAllClusters(c *check.C) {
 	c.Assert(clusters[1].Interface, check.NotNil)
 	c.Assert(clusters[0].restConfig, check.NotNil)
 	c.Assert(clusters[1].restConfig, check.NotNil)
-	clusters[0].Interface = nil
-	clusters[0].restConfig = nil
-	clusters[1].Interface = nil
-	clusters[1].restConfig = nil
 	c.Assert(clusters, check.DeepEquals, []*Cluster{&c1, &c2})
 }
 
@@ -194,8 +194,6 @@ func (s *S) TestClusterForPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cluster.Interface, check.NotNil)
 	c.Assert(cluster.restConfig, check.NotNil)
-	cluster.Interface = nil
-	cluster.restConfig = nil
 	c.Assert(cluster, check.DeepEquals, &c1)
 	c.Assert(cluster.Name, check.Equals, "c1")
 	cluster, err = clusterForPool("p2")
