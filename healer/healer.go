@@ -31,7 +31,7 @@ func init() {
 
 func Initialize() (*NodeHealer, error) {
 	if HealerInstance != nil {
-		return nil, errors.New("healer alread initialized")
+		return nil, errors.New("healer already initialized")
 	}
 	autoHealingNodes, err := config.GetBool("docker:healing:heal-nodes")
 	if err != nil {
