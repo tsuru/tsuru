@@ -39,6 +39,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/queue"
@@ -660,8 +661,10 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	for processName, cont := range args.toAdd {
 		for i := 0; i < cont.Quantity; i++ {
 			oldContainers = append(oldContainers, container.Container{
-				ProcessName: processName,
-				Status:      cont.Status.String(),
+				Container: types.Container{
+					ProcessName: processName,
+					Status:      cont.Status.String(),
+				},
 			})
 		}
 	}

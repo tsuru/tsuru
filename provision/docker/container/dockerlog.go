@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/scopedconfig"
 )
 
@@ -22,8 +23,7 @@ const (
 )
 
 type DockerLogConfig struct {
-	Driver  string
-	LogOpts map[string]string
+	types.DockerLogConfig
 }
 
 func loadLogConfig() *scopedconfig.ScopedConfig {
@@ -34,7 +34,7 @@ func loadLogConfig() *scopedconfig.ScopedConfig {
 
 func LogOpts(pool string) (string, map[string]string, error) {
 	conf := loadLogConfig()
-	var entry DockerLogConfig
+	var entry types.DockerLogConfig
 	err := conf.Load(pool, &entry)
 	if err != nil {
 		return "", nil, err
@@ -49,7 +49,7 @@ func LogOpts(pool string) (string, map[string]string, error) {
 
 func LogIsBS(pool string) (bool, error) {
 	conf := loadLogConfig()
-	var logConf DockerLogConfig
+	var logConf types.DockerLogConfig
 	err := conf.Load(pool, &logConf)
 	if err != nil {
 		return false, err
@@ -59,9 +59,16 @@ func LogIsBS(pool string) (bool, error) {
 
 func LogLoadAll() (map[string]DockerLogConfig, error) {
 	conf := loadLogConfig()
-	var logConf map[string]DockerLogConfig
+	var logConf map[string]types.DockerLogConfig
 	err := conf.LoadAll(&logConf)
-	return logConf, err
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]DockerLogConfig, len(logConf))
+	for k, v := range logConf {
+		ret[k] = DockerLogConfig{DockerLogConfig: v}
+	}
+	return ret, nil
 }
 
 func (logConf *DockerLogConfig) validate() error {
@@ -82,5 +89,5 @@ func (logConf *DockerLogConfig) Save(pool string) error {
 	if err != nil {
 		return err
 	}
-	return conf.Save(pool, *logConf)
+	return conf.Save(pool, logConf.DockerLogConfig)
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -52,27 +53,7 @@ func (e *SchedulerError) Error() string {
 }
 
 type Container struct {
-	MongoID                 bson.ObjectId `bson:"_id,omitempty"`
-	ID                      string
-	AppName                 string
-	ProcessName             string
-	Type                    string
-	IP                      string
-	HostAddr                string
-	HostPort                string
-	PrivateKey              string
-	Status                  string
-	StatusBeforeError       string
-	Version                 string
-	Image                   string
-	Name                    string
-	User                    string
-	BuildingImage           string
-	LastStatusUpdate        time.Time
-	LastSuccessStatusUpdate time.Time
-	LockedUntil             time.Time
-	Routable                bool `bson:"-"`
-	ExposedPort             string
+	types.Container `bson:",inline"`
 }
 
 func (c *Container) ShortID() string {

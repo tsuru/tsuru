@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/dockertest"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -44,9 +45,9 @@ func (s *S) TestHealContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	containers := []container.Container{
-		{ID: "cont1", AppName: "app1"},
-		{ID: "cont2", AppName: "app1"},
-		{ID: "cont3", AppName: "app2"},
+		{Container: types.Container{ID: "cont1", AppName: "app1"}},
+		{Container: types.Container{ID: "cont2", AppName: "app1"}},
+		{Container: types.Container{ID: "cont3", AppName: "app2"}},
 	}
 	p.SetContainers("localhost", containers)
 	locker := dockertest.NewFakeLocker()
@@ -57,9 +58,9 @@ func (s *S) TestHealContainer(c *check.C) {
 	_, err = healer.healContainer(containers[0])
 	c.Assert(err, check.IsNil)
 	expected := []container.Container{
-		{ID: "cont1-recreated", HostAddr: "localhost", AppName: "app1"},
-		{ID: "cont2", AppName: "app1", HostAddr: "localhost"},
-		{ID: "cont3", AppName: "app2", HostAddr: "localhost"},
+		{Container: types.Container{ID: "cont1-recreated", HostAddr: "localhost", AppName: "app1"}},
+		{Container: types.Container{ID: "cont2", AppName: "app1", HostAddr: "localhost"}},
+		{Container: types.Container{ID: "cont3", AppName: "app2", HostAddr: "localhost"}},
 	}
 	c.Assert(p.Containers("localhost"), check.DeepEquals, expected)
 }
@@ -679,9 +680,9 @@ func (s *S) TestListUnresponsiveContainers(c *check.C) {
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now, HostPort: "80"},
-		container.Container{ID: "c2", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now.Add(-1 * time.Minute), HostPort: "80"},
-		container.Container{ID: "c3", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80"},
+		container.Container{Container: types.Container{ID: "c1", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now, HostPort: "80"}},
+		container.Container{Container: types.Container{ID: "c2", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now.Add(-1 * time.Minute), HostPort: "80"}},
+		container.Container{Container: types.Container{ID: "c3", AppName: "app_time_test", ProcessName: "p", LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80"}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
@@ -699,7 +700,7 @@ func (s *S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-10 * time.Minute)},
+		container.Container{Container: types.Container{ID: "c1", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-10 * time.Minute)}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
@@ -716,10 +717,10 @@ func (s *S) TestListUnresponsiveContainersIncludeStopped(c *check.C) {
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test",
-			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStopped.String()},
-		container.Container{ID: "c2", AppName: "app_time_test",
-			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()},
+		container.Container{Container: types.Container{ID: "c1", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStopped.String()}},
+		container.Container{Container: types.Container{ID: "c2", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)
@@ -739,10 +740,10 @@ func (s *S) TestListUnresponsiveContainersAsleep(c *check.C) {
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
-		container.Container{ID: "c1", AppName: "app_time_test",
-			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusAsleep.String()},
-		container.Container{ID: "c2", AppName: "app_time_test",
-			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()},
+		container.Container{Container: types.Container{ID: "c1", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusAsleep.String()}},
+		container.Container{Container: types.Container{ID: "c2", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
 	result, err = listUnresponsiveContainers(p, 3*time.Minute)

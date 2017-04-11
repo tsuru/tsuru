@@ -18,7 +18,7 @@ import (
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -27,21 +27,6 @@ var (
 	consecutiveHealingsTimeframe        = 5 * time.Minute
 	consecutiveHealingsLimitInTimeframe = 3
 )
-
-type HealingEvent struct {
-	ID               interface{} `bson:"_id"`
-	StartTime        time.Time
-	EndTime          time.Time
-	Action           string
-	Reason           string
-	Extra            interface{}
-	FailingNode      provision.NodeSpec
-	CreatedNode      provision.NodeSpec
-	FailingContainer container.Container
-	CreatedContainer container.Container
-	Successful       bool
-	Error            string
-}
 
 func init() {
 	event.SetThrottling(event.ThrottlingSpec{
@@ -52,8 +37,8 @@ func init() {
 	})
 }
 
-func toHealingEvt(evt *event.Event) (HealingEvent, error) {
-	healingEvt := HealingEvent{
+func toHealingEvt(evt *event.Event) (types.HealingEvent, error) {
+	healingEvt := types.HealingEvent{
 		ID:         evt.UniqueID,
 		StartTime:  evt.StartTime,
 		EndTime:    evt.EndTime,
@@ -93,7 +78,7 @@ func toHealingEvt(evt *event.Event) (HealingEvent, error) {
 	return healingEvt, nil
 }
 
-func ListHealingHistory(filter string) ([]HealingEvent, error) {
+func ListHealingHistory(filter string) ([]types.HealingEvent, error) {
 	evtFilter := event.Filter{
 		KindName: "healer",
 		KindType: event.KindTypeInternal,
@@ -108,7 +93,7 @@ func ListHealingHistory(filter string) ([]HealingEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	healingEvts := make([]HealingEvent, len(evts))
+	healingEvts := make([]types.HealingEvent, len(evts))
 	for i := range evts {
 		healingEvts[i], err = toHealingEvt(&evts[i])
 		if err != nil {
@@ -130,7 +115,7 @@ func oldHealingCollection() (*storage.Collection, error) {
 	return conn.Collection(name), nil
 }
 
-func healingEventToEvent(data *HealingEvent) error {
+func healingEventToEvent(data *types.HealingEvent) error {
 	var evt event.Event
 	evt.UniqueID = data.ID.(bson.ObjectId)
 	var startOpts, endOpts interface{}
@@ -188,7 +173,7 @@ func MigrateHealingToEvents() error {
 	defer coll.Close()
 	coll.Find(nil).Iter()
 	iter := coll.Find(nil).Iter()
-	var data HealingEvent
+	var data types.HealingEvent
 	for iter.Next(&data) {
 		err = healingEventToEvent(&data)
 		if err != nil {

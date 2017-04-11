@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -48,12 +49,14 @@ type newContainerOpts struct {
 
 func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*container.Container, error) {
 	container := container.Container{
-		ID:          "id",
-		IP:          "10.10.10.10",
-		HostPort:    "3333",
-		HostAddr:    "127.0.0.1",
-		ProcessName: "web",
-		ExposedPort: "8888/tcp",
+		Container: types.Container{
+			ID:          "id",
+			IP:          "10.10.10.10",
+			HostPort:    "3333",
+			HostAddr:    "127.0.0.1",
+			ProcessName: "web",
+			ExposedPort: "8888/tcp",
+		},
 	}
 	if p == nil {
 		p = s.p
@@ -144,9 +147,9 @@ func (s *S) TestGetContainer(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "abcdef", Type: "python"},
-		container.Container{ID: "fedajs", Type: "ruby"},
-		container.Container{ID: "wat", Type: "java"},
+		container.Container{Container: types.Container{ID: "abcdef", Type: "python"}},
+		container.Container{Container: types.Container{ID: "fedajs", Type: "ruby"}},
+		container.Container{Container: types.Container{ID: "wat", Type: "java"}},
 	)
 	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	container, err := s.p.GetContainer("abcdef")
@@ -165,9 +168,9 @@ func (s *S) TestGetContainers(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "abcdef", Type: "python", AppName: "something"},
-		container.Container{ID: "fedajs", Type: "python", AppName: "something"},
-		container.Container{ID: "wat", Type: "java", AppName: "otherthing"},
+		container.Container{Container: types.Container{ID: "abcdef", Type: "python", AppName: "something"}},
+		container.Container{Container: types.Container{ID: "fedajs", Type: "python", AppName: "something"}},
+		container.Container{Container: types.Container{ID: "wat", Type: "java", AppName: "otherthing"}},
 	)
 	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	containers, err := s.p.listContainersByApp("something")
@@ -198,7 +201,7 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
 	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	cont := container.Container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}
+	cont := container.Container{Container: types.Container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}}
 	coll := s.p.Collection()
 	err = coll.Insert(cont)
 	c.Assert(err, check.IsNil)
@@ -316,7 +319,7 @@ func (s *S) TestStart(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, &buf, "")
+	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, imageId, &buf, "")
 	c.Assert(err, check.IsNil)
 	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")

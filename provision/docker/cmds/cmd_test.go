@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	tsuruIo "github.com/tsuru/tsuru/io"
-	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
 )
 
@@ -103,7 +103,7 @@ func (s *S) TestDockerLogInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := map[string]container.DockerLogConfig{
+	conf := map[string]types.DockerLogConfig{
 		"":   {Driver: "x", LogOpts: map[string]string{"a": "1", "b": "2"}},
 		"p1": {Driver: "x", LogOpts: map[string]string{"a": "9"}},
 		"p2": {Driver: "bs"},

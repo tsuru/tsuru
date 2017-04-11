@@ -13,7 +13,7 @@ import (
 
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/provision/docker/healer"
+	"github.com/tsuru/tsuru/provision/docker/types"
 )
 
 type listHealingHistoryCmd struct {
@@ -30,7 +30,7 @@ func (c *listHealingHistoryCmd) Info() *cmd.Info {
 	}
 }
 
-func renderHistoryTable(history []healer.HealingEvent, filter string, ctx *cmd.Context) {
+func renderHistoryTable(history []types.HealingEvent, filter string, ctx *cmd.Context) {
 	fmt.Fprintln(ctx.Stdout, strings.ToUpper(filter[:1])+filter[1:]+":")
 	headers := cmd.Row([]string{"Start", "Finish", "Success", "Failing", "Created", "Error"})
 	t := cmd.Table{Headers: headers}
@@ -93,7 +93,7 @@ func (c *listHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 		return err
 	}
 	defer resp.Body.Close()
-	var history []healer.HealingEvent
+	var history []types.HealingEvent
 	if resp.StatusCode == http.StatusOK {
 		err = json.NewDecoder(resp.Body).Decode(&history)
 		if err != nil {

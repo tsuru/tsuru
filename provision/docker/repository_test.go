@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -17,7 +18,7 @@ import (
 func (s *S) getContainerCollection(appName string, containerIds ...string) func() {
 	coll := s.p.Collection()
 	for _, containerId := range containerIds {
-		container := container.Container{AppName: appName, ID: containerId}
+		container := container.Container{Container: types.Container{AppName: appName, ID: containerId}}
 		coll.Insert(container)
 	}
 	return func() {
@@ -33,9 +34,9 @@ func (s *S) TestListContainersByApp(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
-		container.Container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
-		container.Container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
+		container.Container{Container: types.Container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"}},
+		container.Container{Container: types.Container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"}},
+		container.Container{Container: types.Container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listContainersByApp("myapp")
@@ -50,9 +51,9 @@ func (s *S) TestListContainersByProcess(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com", ProcessName: "web"},
-		container.Container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com", ProcessName: "worker"},
-		container.Container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
+		container.Container{Container: types.Container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com", ProcessName: "web"}},
+		container.Container{Container: types.Container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com", ProcessName: "worker"}},
+		container.Container{Container: types.Container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listContainersByProcess("myapp", "web")
@@ -66,9 +67,9 @@ func (s *S) TestListContainersByEmptyProcess(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com", ProcessName: "web"},
-		container.Container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com", ProcessName: "worker"},
-		container.Container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
+		container.Container{Container: types.Container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com", ProcessName: "web"}},
+		container.Container{Container: types.Container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com", ProcessName: "worker"}},
+		container.Container{Container: types.Container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listContainersByProcess("myapp", "")
@@ -96,31 +97,31 @@ func (s *S) TestListContainersByAppAndHost(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "1", AppName: "myapp1", HostAddr: "host1"},
-		container.Container{ID: "2", AppName: "myapp2", HostAddr: "host2"},
-		container.Container{ID: "3", AppName: "other", HostAddr: "host3"},
+		container.Container{Container: types.Container{ID: "1", AppName: "myapp1", HostAddr: "host1"}},
+		container.Container{Container: types.Container{ID: "2", AppName: "myapp2", HostAddr: "host2"}},
+		container.Container{Container: types.Container{ID: "3", AppName: "other", HostAddr: "host3"}},
 	)
 	result, err := s.p.listContainersByAppAndHost([]string{"myapp1", "myapp2"}, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "1", AppName: "myapp1", HostAddr: "host1"},
-		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+		{Container: types.Container{ID: "1", AppName: "myapp1", HostAddr: "host1"}},
+		{Container: types.Container{ID: "2", AppName: "myapp2", HostAddr: "host2"}},
 	})
 	result, err = s.p.listContainersByAppAndHost(nil, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "1", AppName: "myapp1", HostAddr: "host1"},
-		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
-		{ID: "3", AppName: "other", HostAddr: "host3"},
+		{Container: types.Container{ID: "1", AppName: "myapp1", HostAddr: "host1"}},
+		{Container: types.Container{ID: "2", AppName: "myapp2", HostAddr: "host2"}},
+		{Container: types.Container{ID: "3", AppName: "other", HostAddr: "host3"}},
 	})
 	result, err = s.p.listContainersByAppAndHost(nil, []string{"host2", "host3"})
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
-		{ID: "3", AppName: "other", HostAddr: "host3"},
+		{Container: types.Container{ID: "2", AppName: "myapp2", HostAddr: "host2"}},
+		{Container: types.Container{ID: "3", AppName: "other", HostAddr: "host3"}},
 	})
 	result, err = s.p.listContainersByAppAndHost([]string{"myapp1"}, []string{"host2"})
 	c.Assert(err, check.IsNil)
@@ -130,7 +131,7 @@ func (s *S) TestListContainersByAppAndHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+		{Container: types.Container{ID: "2", AppName: "myapp2", HostAddr: "host2"}},
 	})
 }
 
@@ -139,9 +140,9 @@ func (s *S) TestListContainersByHost(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "1", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
-		container.Container{ID: "2", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"},
-		container.Container{ID: "3", Type: "java", AppName: "masoq", HostAddr: "http://cittavld9999.globoi.com"},
+		container.Container{Container: types.Container{ID: "1", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"}},
+		container.Container{Container: types.Container{ID: "2", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"}},
+		container.Container{Container: types.Container{ID: "3", Type: "java", AppName: "masoq", HostAddr: "http://cittavld9999.globoi.com"}},
 	)
 	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
 	result, err := s.p.listContainersByHost("http://cittavld1182.globoi.com")
@@ -252,12 +253,12 @@ func (s *S) TestListRunnableContainersByApp(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{Name: "a", AppName: "myapp", Status: provision.StatusCreated.String()},
-		container.Container{Name: "b", AppName: "myapp", Status: provision.StatusBuilding.String()},
-		container.Container{Name: "c", AppName: "myapp", Status: provision.StatusStarting.String()},
-		container.Container{Name: "d", AppName: "myapp", Status: provision.StatusError.String()},
-		container.Container{Name: "e", AppName: "myapp", Status: provision.StatusStarted.String()},
-		container.Container{Name: "f", AppName: "myapp", Status: provision.StatusStopped.String()},
+		container.Container{Container: types.Container{Name: "a", AppName: "myapp", Status: provision.StatusCreated.String()}},
+		container.Container{Container: types.Container{Name: "b", AppName: "myapp", Status: provision.StatusBuilding.String()}},
+		container.Container{Container: types.Container{Name: "c", AppName: "myapp", Status: provision.StatusStarting.String()}},
+		container.Container{Container: types.Container{Name: "d", AppName: "myapp", Status: provision.StatusError.String()}},
+		container.Container{Container: types.Container{Name: "e", AppName: "myapp", Status: provision.StatusStarted.String()}},
+		container.Container{Container: types.Container{Name: "f", AppName: "myapp", Status: provision.StatusStopped.String()}},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := s.p.listRunnableContainersByApp("myapp")
@@ -276,10 +277,10 @@ func (s *S) TestListContainersByAppAndStatus(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{ID: "1", AppName: "myapp1", Status: "started"},
-		container.Container{ID: "2", AppName: "myapp2", Status: "building"},
-		container.Container{ID: "3", AppName: "myapp3", Status: "stopped"},
-		container.Container{ID: "4", AppName: "myapp2", Status: "started"},
+		container.Container{Container: types.Container{ID: "1", AppName: "myapp1", Status: "started"}},
+		container.Container{Container: types.Container{ID: "2", AppName: "myapp2", Status: "building"}},
+		container.Container{Container: types.Container{ID: "3", AppName: "myapp3", Status: "stopped"}},
+		container.Container{Container: types.Container{ID: "4", AppName: "myapp2", Status: "started"}},
 	)
 	defer coll.RemoveAll(bson.M{
 		"appname": bson.M{
@@ -290,25 +291,25 @@ func (s *S) TestListContainersByAppAndStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "1", AppName: "myapp1", Status: "started"},
-		{ID: "4", AppName: "myapp2", Status: "started"},
+		{Container: types.Container{ID: "1", AppName: "myapp1", Status: "started"}},
+		{Container: types.Container{ID: "4", AppName: "myapp2", Status: "started"}},
 	})
 	result, err = s.p.listContainersByAppAndStatus(nil, nil)
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "1", AppName: "myapp1", Status: "started"},
-		{ID: "2", AppName: "myapp2", Status: "building"},
-		{ID: "3", AppName: "myapp3", Status: "stopped"},
-		{ID: "4", AppName: "myapp2", Status: "started"},
+		{Container: types.Container{ID: "1", AppName: "myapp1", Status: "started"}},
+		{Container: types.Container{ID: "2", AppName: "myapp2", Status: "building"}},
+		{Container: types.Container{ID: "3", AppName: "myapp3", Status: "stopped"}},
+		{Container: types.Container{ID: "4", AppName: "myapp2", Status: "started"}},
 	})
 	result, err = s.p.listContainersByAppAndStatus(nil, []string{"started", "stopped"})
 	c.Assert(err, check.IsNil)
 	sort.Sort(containerByIdList(result))
 	c.Assert(stripMongoID(result), check.DeepEquals, []container.Container{
-		{ID: "1", AppName: "myapp1", Status: "started"},
-		{ID: "3", AppName: "myapp3", Status: "stopped"},
-		{ID: "4", AppName: "myapp2", Status: "started"},
+		{Container: types.Container{ID: "1", AppName: "myapp1", Status: "started"}},
+		{Container: types.Container{ID: "3", AppName: "myapp3", Status: "stopped"}},
+		{Container: types.Container{ID: "4", AppName: "myapp2", Status: "started"}},
 	})
 }
 
@@ -316,12 +317,12 @@ func (s *S) TestListAppsForNodes(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(
-		container.Container{Name: "a", AppName: "app1", HostAddr: "host1.com"},
-		container.Container{Name: "b", AppName: "app2", HostAddr: "host1.com"},
-		container.Container{Name: "c", AppName: "app2", HostAddr: "host1.com"},
-		container.Container{Name: "d", AppName: "app3", HostAddr: "host2.com"},
-		container.Container{Name: "e", AppName: "app4", HostAddr: "host2.com"},
-		container.Container{Name: "f", AppName: "app5", HostAddr: "host3.com"},
+		container.Container{Container: types.Container{Name: "a", AppName: "app1", HostAddr: "host1.com"}},
+		container.Container{Container: types.Container{Name: "b", AppName: "app2", HostAddr: "host1.com"}},
+		container.Container{Container: types.Container{Name: "c", AppName: "app2", HostAddr: "host1.com"}},
+		container.Container{Container: types.Container{Name: "d", AppName: "app3", HostAddr: "host2.com"}},
+		container.Container{Container: types.Container{Name: "e", AppName: "app4", HostAddr: "host2.com"}},
+		container.Container{Container: types.Container{Name: "f", AppName: "app5", HostAddr: "host3.com"}},
 	)
 	nodes := []*cluster.Node{{Address: "http://host1.com"}, {Address: "http://host3.com"}}
 	apps, err := s.p.listAppsForNodes(nodes)

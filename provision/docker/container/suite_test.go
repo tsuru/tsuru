@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -80,14 +81,16 @@ func (s *S) newContainer(opts newContainerOpts, p *fakeDockerProvisioner) (*Cont
 		p = s.p
 	}
 	container := Container{
-		ID:          "id",
-		IP:          "10.10.10.10",
-		HostPort:    "3333",
-		HostAddr:    "127.0.0.1",
-		ProcessName: opts.ProcessName,
-		Image:       opts.Image,
-		AppName:     opts.AppName,
-		ExposedPort: "8888/tcp",
+		Container: types.Container{
+			ID:          "id",
+			IP:          "10.10.10.10",
+			HostPort:    "3333",
+			HostAddr:    "127.0.0.1",
+			ProcessName: opts.ProcessName,
+			Image:       opts.Image,
+			AppName:     opts.AppName,
+			ExposedPort: "8888/tcp",
+		},
 	}
 	if container.AppName == "" {
 		container.AppName = "container"

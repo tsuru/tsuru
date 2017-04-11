@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -142,8 +143,8 @@ func (s *S) TestAllContainers(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont1 := container.Container{ID: "cont1"}
-	cont2 := container.Container{ID: "cont2"}
+	cont1 := container.Container{Container: types.Container{ID: "cont1"}}
+	cont2 := container.Container{Container: types.Container{ID: "cont2"}}
 	p.SetContainers("localhost", []container.Container{cont1})
 	p.SetContainers("remotehost", []container.Container{cont2})
 	cont1.HostAddr = "localhost"
@@ -160,12 +161,12 @@ func (s *S) TestMoveOneContainer(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont := container.Container{ID: "cont1"}
+	cont := container.Container{Container: types.Container{ID: "cont1"}}
 	p.SetContainers("localhost", []container.Container{cont})
-	p.SetContainers("remotehost", []container.Container{{ID: "cont2"}})
+	p.SetContainers("remotehost", []container.Container{{Container: types.Container{ID: "cont2"}}})
 	errors := make(chan error, 1)
 	result := p.MoveOneContainer(cont, "remotehost", errors, nil, nil, nil)
-	expected := container.Container{ID: "cont1-moved", HostAddr: "remotehost"}
+	expected := container.Container{Container: types.Container{ID: "cont1-moved", HostAddr: "remotehost"}}
 	c.Assert(result, check.DeepEquals, expected)
 	select {
 	case err := <-errors:
@@ -175,7 +176,7 @@ func (s *S) TestMoveOneContainer(c *check.C) {
 	containers := p.Containers("localhost")
 	c.Assert(containers, check.HasLen, 0)
 	containers = p.Containers("remotehost")
-	expectedContainers := []container.Container{{ID: "cont2", HostAddr: "remotehost"}, result}
+	expectedContainers := []container.Container{{Container: types.Container{ID: "cont2", HostAddr: "remotehost"}}, result}
 	c.Assert(containers, check.DeepEquals, expectedContainers)
 	expectedMovings := []ContainerMoving{
 		{HostFrom: "localhost", HostTo: "remotehost", ContainerID: cont.ID},
@@ -187,12 +188,12 @@ func (s *S) TestMoveOneContainerRecreate(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont := container.Container{ID: "cont1"}
+	cont := container.Container{Container: types.Container{ID: "cont1"}}
 	p.SetContainers("localhost", []container.Container{cont})
-	p.SetContainers("remotehost", []container.Container{{ID: "cont2"}})
+	p.SetContainers("remotehost", []container.Container{{Container: types.Container{ID: "cont2"}}})
 	errors := make(chan error, 1)
 	result := p.MoveOneContainer(cont, "", errors, nil, nil, nil)
-	expected := container.Container{ID: "cont1-moved", HostAddr: "remotehost"}
+	expected := container.Container{Container: types.Container{ID: "cont1-moved", HostAddr: "remotehost"}}
 	c.Assert(result, check.DeepEquals, expected)
 	select {
 	case err := <-errors:
@@ -202,7 +203,7 @@ func (s *S) TestMoveOneContainerRecreate(c *check.C) {
 	containers := p.Containers("localhost")
 	c.Assert(containers, check.HasLen, 0)
 	containers = p.Containers("remotehost")
-	expectedContainers := []container.Container{{ID: "cont2", HostAddr: "remotehost"}, result}
+	expectedContainers := []container.Container{{Container: types.Container{ID: "cont2", HostAddr: "remotehost"}}, result}
 	c.Assert(containers, check.DeepEquals, expectedContainers)
 	expectedMovings := []ContainerMoving{
 		{HostFrom: "localhost", HostTo: "remotehost", ContainerID: cont.ID},
@@ -214,7 +215,7 @@ func (s *S) TestMoveOneContainerNotFound(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont := container.Container{ID: "something", HostAddr: "localhost"}
+	cont := container.Container{Container: types.Container{ID: "something", HostAddr: "localhost"}}
 	errors := make(chan error, 1)
 	result := p.MoveOneContainer(cont, "remotehost", errors, nil, nil, nil)
 	c.Assert(result, check.DeepEquals, container.Container{})
@@ -229,7 +230,7 @@ func (s *S) TestMoveOneContainerNoActionNeeded(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont := container.Container{ID: "something"}
+	cont := container.Container{Container: types.Container{ID: "something"}}
 	p.SetContainers("localhost", []container.Container{cont})
 	errors := make(chan error, 1)
 	result := p.MoveOneContainer(cont, "localhost", errors, nil, nil, nil)
@@ -246,7 +247,7 @@ func (s *S) TestMoveOneContainerError(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont := container.Container{ID: "something"}
+	cont := container.Container{Container: types.Container{ID: "something"}}
 	p.SetContainers("localhost", []container.Container{cont})
 	err1 := errors.New("error 1")
 	err2 := errors.New("error 2")
@@ -264,10 +265,10 @@ func (s *S) TestMoveContainers(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont1 := container.Container{ID: "cont1"}
-	cont2 := container.Container{ID: "cont2"}
+	cont1 := container.Container{Container: types.Container{ID: "cont1"}}
+	cont2 := container.Container{Container: types.Container{ID: "cont2"}}
 	p.SetContainers("localhost", []container.Container{cont1, cont2})
-	cont3 := container.Container{ID: "cont3"}
+	cont3 := container.Container{Container: types.Container{ID: "cont3"}}
 	p.SetContainers("remotehost", []container.Container{cont3})
 	err = p.MoveContainers("localhost", "remotehost", nil)
 	c.Assert(err, check.IsNil)
@@ -275,9 +276,9 @@ func (s *S) TestMoveContainers(c *check.C) {
 	c.Assert(containers, check.HasLen, 0)
 	containers = p.Containers("remotehost")
 	expected := []container.Container{
-		{ID: "cont3", HostAddr: "remotehost"},
-		{ID: "cont1-moved", HostAddr: "remotehost"},
-		{ID: "cont2-moved", HostAddr: "remotehost"},
+		{Container: types.Container{ID: "cont3", HostAddr: "remotehost"}},
+		{Container: types.Container{ID: "cont1-moved", HostAddr: "remotehost"}},
+		{Container: types.Container{ID: "cont2-moved", HostAddr: "remotehost"}},
 	}
 	c.Assert(containers, check.DeepEquals, expected)
 	expectedMovings := []ContainerMoving{
@@ -291,15 +292,15 @@ func (s *S) TestMoveContainersRecreation(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont1 := container.Container{ID: "cont1"}
-	cont2 := container.Container{ID: "cont2"}
+	cont1 := container.Container{Container: types.Container{ID: "cont1"}}
+	cont2 := container.Container{Container: types.Container{ID: "cont2"}}
 	p.SetContainers("localhost", []container.Container{cont1, cont2})
 	err = p.MoveContainers("localhost", "", nil)
 	c.Assert(err, check.IsNil)
 	containers := p.Containers("localhost")
 	expected := []container.Container{
-		{ID: "cont1-recreated", HostAddr: "localhost"},
-		{ID: "cont2-recreated", HostAddr: "localhost"},
+		{Container: types.Container{ID: "cont1-recreated", HostAddr: "localhost"}},
+		{Container: types.Container{ID: "cont2-recreated", HostAddr: "localhost"}},
 	}
 	c.Assert(containers, check.DeepEquals, expected)
 	expectedMovings := []ContainerMoving{
@@ -313,18 +314,18 @@ func (s *S) TestMoveContainersEmptyDestination(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	cont1 := container.Container{ID: "cont1"}
-	cont2 := container.Container{ID: "cont2"}
+	cont1 := container.Container{Container: types.Container{ID: "cont1"}}
+	cont2 := container.Container{Container: types.Container{ID: "cont2"}}
 	p.SetContainers("localhost", []container.Container{cont1, cont2})
-	cont3 := container.Container{ID: "cont3"}
+	cont3 := container.Container{Container: types.Container{ID: "cont3"}}
 	p.SetContainers("remotehost", []container.Container{cont3})
 	err = p.MoveContainers("localhost", "", nil)
 	c.Assert(err, check.IsNil)
 	containers := p.Containers("remotehost")
 	expected := []container.Container{
-		{ID: "cont3", HostAddr: "remotehost"},
-		{ID: "cont1-moved", HostAddr: "remotehost"},
-		{ID: "cont2-moved", HostAddr: "remotehost"},
+		{Container: types.Container{ID: "cont3", HostAddr: "remotehost"}},
+		{Container: types.Container{ID: "cont1-moved", HostAddr: "remotehost"}},
+		{Container: types.Container{ID: "cont2-moved", HostAddr: "remotehost"}},
 	}
 	c.Assert(containers, check.DeepEquals, expected)
 	containers = p.Containers("localhost")
@@ -371,13 +372,13 @@ func (s *S) TestListContainersPreparedResult(c *check.C) {
 	p, err := NewFakeDockerProvisioner()
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
-	p.PrepareListResult([]container.Container{{ID: "cont1"}}, nil)
+	p.PrepareListResult([]container.Container{{Container: types.Container{ID: "cont1"}}}, nil)
 	query := bson.M{"id": "cont1"}
 	containers, err := p.ListContainers(query)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	containers[0].MongoID = bson.ObjectId("")
-	c.Assert(containers, check.DeepEquals, []container.Container{{ID: "cont1"}})
+	c.Assert(containers, check.DeepEquals, []container.Container{{Container: types.Container{ID: "cont1"}}})
 	c.Assert(p.Queries(), check.DeepEquals, []bson.M{query})
 }
 
@@ -386,7 +387,7 @@ func (s *S) TestListContainersPreparedError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer p.Destroy()
 	prepErr := errors.New("something went not fine")
-	p.PrepareListResult([]container.Container{{ID: "cont1"}}, prepErr)
+	p.PrepareListResult([]container.Container{{Container: types.Container{ID: "cont1"}}}, prepErr)
 	query := bson.M{"id": "abc123", "hostaddr": "127.0.0.1"}
 	containers, err := p.ListContainers(query)
 	c.Assert(err, check.Equals, prepErr)
@@ -444,7 +445,7 @@ func (s *S) TestListContainersStartedAndPreparedContainers(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
-	p.PrepareListResult([]container.Container{{ID: containers[0].ID}}, nil)
+	p.PrepareListResult([]container.Container{{Container: types.Container{ID: containers[0].ID}}}, nil)
 	containers, err = p.ListContainers(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)

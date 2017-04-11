@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -144,14 +145,16 @@ var insertEmptyContainerInDB = action.Action{
 		}
 		contName := args.app.GetName() + "-" + randomString()
 		cont := container.Container{
-			AppName:       args.app.GetName(),
-			ProcessName:   args.processName,
-			Type:          args.app.GetPlatform(),
-			Name:          contName,
-			Status:        initialStatus.String(),
-			Image:         args.imageID,
-			BuildingImage: args.buildingImage,
-			ExposedPort:   args.exposedPort,
+			Container: types.Container{
+				AppName:       args.app.GetName(),
+				ProcessName:   args.processName,
+				Type:          args.app.GetPlatform(),
+				Name:          contName,
+				Status:        initialStatus.String(),
+				Image:         args.imageID,
+				BuildingImage: args.buildingImage,
+				ExposedPort:   args.exposedPort,
+			},
 		}
 		coll := args.provisioner.Collection()
 		defer coll.Close()

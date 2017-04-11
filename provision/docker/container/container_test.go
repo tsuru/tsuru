@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -34,7 +35,7 @@ import (
 )
 
 func (s *S) TestContainerShortID(c *check.C) {
-	container := Container{ID: "abc123"}
+	container := Container{Container: types.Container{ID: "abc123"}}
 	c.Check(container.ShortID(), check.Equals, container.ID)
 	container.ID = "abcdef123456"
 	c.Check(container.ShortID(), check.Equals, "abcdef1234")
@@ -60,7 +61,7 @@ func (s *S) TestContainerAvailable(c *check.C) {
 }
 
 func (s *S) TestContainerAddress(c *check.C) {
-	container := Container{ID: "id123", HostAddr: "10.10.10.10", HostPort: "49153"}
+	container := Container{Container: types.Container{ID: "id123", HostAddr: "10.10.10.10", HostPort: "49153"}}
 	address := container.Address()
 	expected := "http://10.10.10.10:49153"
 	c.Assert(address.String(), check.Equals, expected)
@@ -88,14 +89,14 @@ func (s *S) TestContainerCreate(c *check.C) {
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:        "myName",
 		AppName:     app.GetName(),
 		Type:        app.GetPlatform(),
 		Status:      "created",
 		ProcessName: "myprocess1",
 		ExposedPort: "8888/tcp",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		App:         app,
 		ImageID:     img,
@@ -176,15 +177,15 @@ func (s *S) TestContainerCreateCustomLog(c *check.C) {
 	}
 	for i, testData := range testCases {
 		c.Logf("test %d", i)
-		cont := Container{
+		cont := Container{Container: types.Container{
 			Name:        fmt.Sprintf("myName-%d", i),
 			AppName:     app.GetName(),
 			Type:        app.GetPlatform(),
 			Status:      "created",
 			ProcessName: "myprocess1",
 			ExposedPort: "8888/tcp",
-		}
-		conf := DockerLogConfig{Driver: testData.name, LogOpts: testData.opts}
+		}}
+		conf := DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: testData.name, LogOpts: testData.opts}}
 		err = conf.Save(app.Pool)
 		c.Assert(err, check.IsNil)
 		err := cont.Create(&CreateArgs{
@@ -221,14 +222,14 @@ func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:        "myName",
 		AppName:     app.GetName(),
 		Type:        app.GetPlatform(),
 		Status:      "created",
 		ProcessName: "myprocess1",
 		ExposedPort: "3000/tcp",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		App:         app,
 		Commands:    []string{"docker", "run"},
@@ -263,12 +264,12 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:    "myName",
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 		Status:  "created",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		App:         app,
 		ImageID:     img,
@@ -301,12 +302,12 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:    "myName",
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 		Status:  "created",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		Deploy:      true,
 		App:         app,
@@ -350,12 +351,12 @@ func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:    "myName",
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 		Status:  "created",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		Deploy:      true,
 		App:         app,
@@ -393,12 +394,12 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:    "myName",
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 		Status:  "created",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		App:         app,
 		ImageID:     img,
@@ -428,12 +429,12 @@ func (s *S) TestContainerCreateOverwriteEntrypoint(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	img := "tsuru/brainfuck:latest"
 	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
-	cont := Container{
+	cont := Container{Container: types.Container{
 		Name:    "myName",
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 		Status:  "created",
-	}
+	}}
 	err := cont.Create(&CreateArgs{
 		Deploy:      true,
 		App:         app,
@@ -473,7 +474,7 @@ func (s *S) TestContainerNetworkInfo(c *check.C) {
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)
-	container := Container{ID: "c-01"}
+	container := Container{Container: types.Container{ID: "c-01"}}
 	info, err := container.NetworkInfo(p)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.IP, check.Equals, "10.10.10.10")
@@ -482,7 +483,7 @@ func (s *S) TestContainerNetworkInfo(c *check.C) {
 
 func (s *S) TestContainerSetStatus(c *check.C) {
 	update := time.Date(1989, 2, 2, 14, 59, 32, 0, time.UTC).In(time.UTC)
-	container := Container{ID: "something-300", LastStatusUpdate: update}
+	container := Container{Container: types.Container{ID: "something-300", LastStatusUpdate: update}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(container)
@@ -502,7 +503,7 @@ func (s *S) TestContainerSetStatus(c *check.C) {
 }
 
 func (s *S) TestContainerSetStatusStarted(c *check.C) {
-	container := Container{ID: "telnet"}
+	container := Container{Container: types.Container{ID: "telnet"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(container)
@@ -527,7 +528,7 @@ func (s *S) TestContainerSetStatusStarted(c *check.C) {
 }
 
 func (s *S) TestContainerSetStatusStopped(c *check.C) {
-	container := Container{ID: "telnet"}
+	container := Container{Container: types.Container{ID: "telnet"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(container)
@@ -544,7 +545,7 @@ func (s *S) TestContainerSetStatusStopped(c *check.C) {
 }
 
 func (s *S) TestContainerSetStatusError(c *check.C) {
-	container := Container{ID: "telnet"}
+	container := Container{Container: types.Container{ID: "telnet"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(container)
@@ -573,10 +574,10 @@ func (s *S) TestContainerSetStatusError(c *check.C) {
 }
 
 func (s *S) TestContainerSetStatusBuilding(c *check.C) {
-	c1 := Container{
+	c1 := Container{Container: types.Container{
 		ID:     "something-300",
 		Status: provision.StatusBuilding.String(),
-	}
+	}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(c1)
@@ -592,10 +593,10 @@ func (s *S) TestContainerSetStatusBuilding(c *check.C) {
 }
 
 func (s *S) TestContainerSetStatusNoUpdate(c *check.C) {
-	c1 := Container{
+	c1 := Container{Container: types.Container{
 		ID:     "something-300",
 		Status: provision.StatusBuilding.String(),
-	}
+	}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(c1)
@@ -607,7 +608,7 @@ func (s *S) TestContainerSetStatusNoUpdate(c *check.C) {
 }
 
 func (s *S) TestContainerExpectedStatus(c *check.C) {
-	c1 := Container{ID: "something-300"}
+	c1 := Container{Container: types.Container{ID: "something-300"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(c1)
@@ -627,7 +628,7 @@ func (s *S) TestContainerExpectedStatus(c *check.C) {
 }
 
 func (s *S) TestContainerSetImage(c *check.C) {
-	container := Container{ID: "something-300"}
+	container := Container{Container: types.Container{ID: "something-300"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(container)
@@ -959,13 +960,13 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 		ProcessName: "web",
 		Address:     &url.URL{Scheme: "http", Host: "192.168.50.4:8080"},
 	}
-	container := Container{
+	container := Container{Container: types.Container{
 		ID:          "c-id",
 		Name:        "c-name",
 		HostAddr:    "192.168.50.4",
 		HostPort:    "8080",
 		ProcessName: "web",
-	}
+	}}
 	got := container.AsUnit(app)
 	c.Assert(got, check.DeepEquals, expected)
 	container.Type = "ruby"
@@ -1032,7 +1033,7 @@ func (s *S) TestSafeAttachWaitContainerAttachBlock(c *check.C) {
 
 func (s *S) TestContainerValidAddr(c *check.C) {
 	c.Assert((&Container{}).ValidAddr(), check.Equals, false)
-	c.Assert((&Container{HostAddr: "1.1.1.1"}).ValidAddr(), check.Equals, false)
-	c.Assert((&Container{HostAddr: "1.1.1.1", HostPort: "0"}).ValidAddr(), check.Equals, false)
-	c.Assert((&Container{HostAddr: "1.1.1.1", HostPort: "123"}).ValidAddr(), check.Equals, true)
+	c.Assert((&Container{Container: types.Container{HostAddr: "1.1.1.1"}}).ValidAddr(), check.Equals, false)
+	c.Assert((&Container{Container: types.Container{HostAddr: "1.1.1.1", HostPort: "0"}}).ValidAddr(), check.Equals, false)
+	c.Assert((&Container{Container: types.Container{HostAddr: "1.1.1.1", HostPort: "123"}}).ValidAddr(), check.Equals, true)
 }

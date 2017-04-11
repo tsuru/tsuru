@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -374,17 +375,19 @@ func (p *FakeDockerProvisioner) StartContainers(args StartContainersArgs) ([]con
 				return nil, err
 			}
 			createdContainers = append(createdContainers, container.Container{
-				ID:            cont.ID,
-				AppName:       args.App.GetName(),
-				ProcessName:   processName,
-				Type:          args.App.GetPlatform(),
-				Status:        provision.StatusCreated.String(),
-				HostAddr:      hostAddr,
-				Version:       "v1",
-				Image:         args.Image,
-				User:          "root",
-				BuildingImage: args.Image,
-				Routable:      true,
+				Container: types.Container{
+					ID:            cont.ID,
+					AppName:       args.App.GetName(),
+					ProcessName:   processName,
+					Type:          args.App.GetPlatform(),
+					Status:        provision.StatusCreated.String(),
+					HostAddr:      hostAddr,
+					Version:       "v1",
+					Image:         args.Image,
+					User:          "root",
+					BuildingImage: args.Image,
+					Routable:      true,
+				},
 			})
 		}
 	}

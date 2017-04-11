@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,9 +29,9 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	a2 := app.App{Name: "mirror", Teams: []string{"tsuruteam"}, Pool: "pool1"}
 	a3 := app.App{Name: "dedication", Teams: []string{"nodockerforme"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name}
-	cont2 := container.Container{ID: "2", Name: "mirror1", AppName: a2.Name}
-	cont3 := container.Container{ID: "3", Name: "dedication1", AppName: a3.Name}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a2.Name}}
+	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
@@ -86,9 +87,9 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	a2 := app.App{Name: "mirror", Teams: []string{"tsuruteam"}, Pool: "pool1"}
 	a3 := app.App{Name: "dedication", Teams: []string{"nodockerforme"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name}
-	cont2 := container.Container{ID: "2", Name: "mirror1", AppName: a2.Name}
-	cont3 := container.Container{ID: "3", Name: "dedication1", AppName: a3.Name}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a2.Name}}
+	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
@@ -201,7 +202,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	)
 	c.Assert(err, check.Equals, nil)
 	s.p.cluster = clusterInstance
-	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}}
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
@@ -209,7 +210,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
-		cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
+		cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
 		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
@@ -231,7 +232,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	n, err = contColl.Find(bson.M{"hostaddr": "localhost", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
-	cont := container.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
+	cont := container.Container{Container: types.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}}
 	err = contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{
@@ -290,7 +291,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	)
 	c.Assert(err, check.Equals, nil)
 	s.p.cluster = clusterInstance
-	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}}
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
@@ -298,7 +299,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
-		cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
+		cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
 		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
@@ -320,7 +321,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	n, err = contColl.Find(bson.M{"hostaddr": "localhost", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
-	cont := container.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
+	cont := container.Container{Container: types.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}}
 	err = contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{
@@ -384,7 +385,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	)
 	c.Assert(err, check.Equals, nil)
 	s.p.cluster = clusterInstance
-	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}}
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
@@ -392,7 +393,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
-		cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
+		cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
 		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
@@ -414,7 +415,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	n, err = contColl.Find(bson.M{"hostaddr": "localhost", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
-	cont := container.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
+	cont := container.Container{Container: types.Container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}}
 	err = contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{
@@ -436,10 +437,10 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
-	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "coolapp9", HostAddr: "server1"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "coolapp9", HostAddr: "server1"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
-	cont2 := container.Container{ID: "pre2", Name: "existingUnit2", AppName: "coolapp9", HostAddr: "server2"}
+	cont2 := container.Container{Container: types.Container{ID: "pre2", Name: "existingUnit2", AppName: "coolapp9", HostAddr: "server2"}}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.Equals, nil)
 	numberOfUnits := 58
@@ -450,7 +451,7 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
-			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}
+			cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
 			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "coolapp9", "web")
@@ -482,13 +483,13 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
-	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
-	cont2 := container.Container{ID: "pre2", Name: "existingUnit2", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
+	cont2 := container.Container{Container: types.Container{ID: "pre2", Name: "existingUnit2", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.IsNil)
-	cont3 := container.Container{ID: "pre3", Name: "existingUnit3", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
+	cont3 := container.Container{Container: types.Container{ID: "pre3", Name: "existingUnit3", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err = contColl.Insert(cont3)
 	c.Assert(err, check.IsNil)
 	numberOfUnits := 2
@@ -498,7 +499,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
-			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion", ProcessName: "web"}
+			cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion", ProcessName: "web"}}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
 			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "oblivion", "web")
@@ -529,10 +530,10 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
-	cont1 := container.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
-	cont2 := container.Container{ID: "pre2", Name: "existingUnit2", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
+	cont2 := container.Container{Container: types.Container{ID: "pre2", Name: "existingUnit2", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.Equals, nil)
 	numberOfUnits := 2
@@ -542,7 +543,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
-			cont := container.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "skyrim", ProcessName: "worker"}
+			cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "skyrim", ProcessName: "worker"}}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
 			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "skyrim", "worker")
@@ -583,7 +584,7 @@ func (s *S) TestChooseNodeDistributesNodesConsideringMetadata(c *check.C) {
 		sched := segregatedScheduler{provisioner: s.p}
 		contColl := s.p.Collection()
 		defer contColl.Close()
-		cont := container.Container{Name: fmt.Sprintf("unit%d", i), AppName: app, ProcessName: process}
+		cont := container.Container{Container: types.Container{Name: fmt.Sprintf("unit%d", i), AppName: app, ProcessName: process}}
 		err := contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		node, err := sched.chooseNodeToAdd(nodes, cont.Name, app, process)
@@ -623,29 +624,35 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container.Container{
-		ID:          "pre1",
-		Name:        "existingUnit1",
-		AppName:     "coolapp9",
-		HostAddr:    "server1",
-		ProcessName: "web",
+		Container: types.Container{
+			ID:          "pre1",
+			Name:        "existingUnit1",
+			AppName:     "coolapp9",
+			HostAddr:    "server1",
+			ProcessName: "web",
+		},
 	}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	cont2 := container.Container{
-		ID:          "pre2",
-		Name:        "existingUnit2",
-		AppName:     "coolapp9",
-		HostAddr:    "server2",
-		ProcessName: "web",
+		Container: types.Container{
+			ID:          "pre2",
+			Name:        "existingUnit2",
+			AppName:     "coolapp9",
+			HostAddr:    "server2",
+			ProcessName: "web",
+		},
 	}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.Equals, nil)
 	cont3 := container.Container{
-		ID:          "pre3",
-		Name:        "existingUnit1",
-		AppName:     "coolapp9",
-		HostAddr:    "server1",
-		ProcessName: "web",
+		Container: types.Container{
+			ID:          "pre3",
+			Name:        "existingUnit1",
+			AppName:     "coolapp9",
+			HostAddr:    "server1",
+			ProcessName: "web",
+		},
 	}
 	err = contColl.Insert(cont3)
 	c.Assert(err, check.Equals, nil)
@@ -658,16 +665,16 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 func (s *S) TestAggregateContainersByHostAppProcess(c *check.C) {
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	cont := container.Container{ID: "pre1", AppName: "app1", HostAddr: "server1", ProcessName: "web"}
+	cont := container.Container{Container: types.Container{ID: "pre1", AppName: "app1", HostAddr: "server1", ProcessName: "web"}}
 	err := contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
-	cont = container.Container{ID: "pre2", AppName: "app1", HostAddr: "server1", ProcessName: ""}
+	cont = container.Container{Container: types.Container{ID: "pre2", AppName: "app1", HostAddr: "server1", ProcessName: ""}}
 	err = contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
-	cont = container.Container{ID: "pre3", AppName: "app2", HostAddr: "server1", ProcessName: ""}
+	cont = container.Container{Container: types.Container{ID: "pre3", AppName: "app2", HostAddr: "server1", ProcessName: ""}}
 	err = contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
-	cont = container.Container{ID: "pre4", AppName: "app1", HostAddr: "server2", ProcessName: ""}
+	cont = container.Container{Container: types.Container{ID: "pre4", AppName: "app1", HostAddr: "server2", ProcessName: ""}}
 	err = contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
 	err = contColl.Insert(map[string]string{"id": "pre5", "appname": "app1", "hostaddr": "server2"})
@@ -685,19 +692,19 @@ func (s *S) TestChooseContainerToBeRemovedMultipleProcesses(c *check.C) {
 	}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	cont1 := container.Container{ID: "pre1", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
+	cont1 := container.Container{Container: types.Container{ID: "pre1", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
-	cont2 := container.Container{ID: "pre2", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
+	cont2 := container.Container{Container: types.Container{ID: "pre2", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.IsNil)
-	cont3 := container.Container{ID: "pre3", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
+	cont3 := container.Container{Container: types.Container{ID: "pre3", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}}
 	err = contColl.Insert(cont3)
 	c.Assert(err, check.IsNil)
-	cont4 := container.Container{ID: "pre4", AppName: "coolapp9", HostAddr: "server1", ProcessName: ""}
+	cont4 := container.Container{Container: types.Container{ID: "pre4", AppName: "coolapp9", HostAddr: "server1", ProcessName: ""}}
 	err = contColl.Insert(cont4)
 	c.Assert(err, check.IsNil)
-	cont5 := container.Container{ID: "pre5", AppName: "coolapp9", HostAddr: "server2", ProcessName: ""}
+	cont5 := container.Container{Container: types.Container{ID: "pre5", AppName: "coolapp9", HostAddr: "server2", ProcessName: ""}}
 	err = contColl.Insert(cont5)
 	c.Assert(err, check.IsNil)
 	err = contColl.Insert(map[string]string{"id": "pre6", "appname": "coolapp9", "hostaddr": "server2"})
@@ -713,20 +720,24 @@ func (s *S) TestGetContainerPreferablyFromHost(c *check.C) {
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container.Container{
-		ID:          "pre1",
-		Name:        "existingUnit1",
-		AppName:     "coolapp9",
-		HostAddr:    "server1",
-		ProcessName: "some",
+		Container: types.Container{
+			ID:          "pre1",
+			Name:        "existingUnit1",
+			AppName:     "coolapp9",
+			HostAddr:    "server1",
+			ProcessName: "some",
+		},
 	}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	cont2 := container.Container{
-		ID:          "pre2",
-		Name:        "existingUnit2",
-		AppName:     "coolapp9",
-		HostAddr:    "serverX",
-		ProcessName: "some",
+		Container: types.Container{
+			ID:          "pre2",
+			Name:        "existingUnit2",
+			AppName:     "coolapp9",
+			HostAddr:    "serverX",
+			ProcessName: "some",
+		},
 	}
 	err = contColl.Insert(cont2)
 	c.Assert(err, check.Equals, nil)
@@ -761,11 +772,11 @@ func (s *S) TestGetContainerPreferablyFromHostEmptyProcess(c *check.C) {
 
 func (s *S) TestGetRemovableContainer(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web"}
-	cont2 := container.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker"}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web"}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker"}}
 	a2 := app.App{Name: "notimpius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont3 := container.Container{ID: "3", Name: "dedication1", AppName: a2.Name, ProcessName: "web"}
-	cont4 := container.Container{ID: "4", Name: "dedication2", AppName: a2.Name, ProcessName: "worker"}
+	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a2.Name, ProcessName: "web"}}
+	cont4 := container.Container{Container: types.Container{ID: "4", Name: "dedication2", AppName: a2.Name, ProcessName: "worker"}}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a2)
@@ -857,12 +868,12 @@ func (s *S) TestChooseContainerToBeRemovedTable(c *check.C) {
 				{Address: "http://server2:1234"},
 			},
 			conts: []container.Container{
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server2", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server2", ProcessName: "web"},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server2", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server2", ProcessName: "web"}},
 			},
 			app:      "a2",
 			proc:     "web",
@@ -874,11 +885,11 @@ func (s *S) TestChooseContainerToBeRemovedTable(c *check.C) {
 				{Address: "http://server2:1234"},
 			},
 			conts: []container.Container{
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server2", ProcessName: "web"},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server2", ProcessName: "web"}},
 			},
 			app:      "a2",
 			proc:     "web",
@@ -891,11 +902,11 @@ func (s *S) TestChooseContainerToBeRemovedTable(c *check.C) {
 				{Address: "http://server3:1234", Metadata: map[string]string{"net": "2"}},
 			},
 			conts: []container.Container{
-				{AppName: "a1", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server1", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server2", ProcessName: "web"},
-				{AppName: "a1", HostAddr: "server3", ProcessName: "web"},
+				{Container: types.Container{AppName: "a1", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server1", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server2", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a1", HostAddr: "server3", ProcessName: "web"}},
 			},
 			app:      "a1",
 			proc:     "web",
@@ -908,8 +919,8 @@ func (s *S) TestChooseContainerToBeRemovedTable(c *check.C) {
 				{Address: "http://server3:1234"},
 			},
 			conts: []container.Container{
-				{AppName: "a1", HostAddr: "server3", ProcessName: "web"},
-				{AppName: "a2", HostAddr: "server4", ProcessName: "web"},
+				{Container: types.Container{AppName: "a1", HostAddr: "server3", ProcessName: "web"}},
+				{Container: types.Container{AppName: "a2", HostAddr: "server4", ProcessName: "web"}},
 			},
 			app:      "a2",
 			proc:     "web",

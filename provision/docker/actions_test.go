@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -31,7 +32,7 @@ import (
 
 func (s *S) TestRunInContainers(c *check.C) {
 	conts := []container.Container{
-		{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "4"},
+		{Container: types.Container{ID: "1"}}, {Container: types.Container{ID: "2"}}, {Container: types.Container{ID: "3"}}, {Container: types.Container{ID: "4"}},
 	}
 	var called []string
 	var mtx sync.Mutex
@@ -51,7 +52,7 @@ func (s *S) TestRunInContainersOddMaxWorkers(c *check.C) {
 	config.Set("docker:max-workers", 3)
 	defer config.Unset("docker:max-workers")
 	conts := []container.Container{
-		{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "4"},
+		{Container: types.Container{ID: "1"}}, {Container: types.Container{ID: "2"}}, {Container: types.Container{ID: "3"}}, {Container: types.Container{ID: "4"}},
 	}
 	var called []string
 	var mtx sync.Mutex
@@ -133,7 +134,7 @@ func (s *S) TestInsertEmptyContainerInDBForDeployForward(c *check.C) {
 }
 
 func (s *S) TestInsertEmptyContainerInDBBackward(c *check.C) {
-	cont := container.Container{Name: "myName"}
+	cont := container.Container{Container: types.Container{Name: "myName"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(&cont)
@@ -152,7 +153,7 @@ func (s *S) TestUpdateContainerInDBName(c *check.C) {
 }
 
 func (s *S) TestUpdateContainerInDBForward(c *check.C) {
-	cont := container.Container{Name: "myName"}
+	cont := container.Container{Container: types.Container{Name: "myName"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(cont)
@@ -184,7 +185,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cmds := []string{"ps", "-ef"}
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	cont := container.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	cont := container.Container{Container: types.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}}
 	args := runContainerActionsArgs{
 		app:           app,
 		imageID:       images[0].ID,
@@ -216,7 +217,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	optsPull := docker.PullImageOptions{Repository: images[0].ID, OutputStream: nil}
 	err = s.p.Cluster().PullImage(optsPull, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
-	cont = container.Container{Name: "myName2", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	cont = container.Container{Container: types.Container{Name: "myName2", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}}
 	context = action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err = createContainer.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -252,7 +253,7 @@ func (s *S) TestSetContainerIDName(c *check.C) {
 }
 
 func (s *S) TestSetContainerIDForward(c *check.C) {
-	cont := container.Container{Name: "myName"}
+	cont := container.Container{Container: types.Container{Name: "myName"}}
 	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(cont)
@@ -286,9 +287,9 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}
-	cont3 := container.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}}
+	cont3 := container.Container{Container: types.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}}
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	defer cont3.Remove(s.p)
@@ -328,8 +329,8 @@ func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
 	}
 	err := image.SaveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.1", HostPort: "1234"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.2", HostPort: "4321"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.1", HostPort: "1234"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.2", HostPort: "4321"}}
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	args := changeUnitsPipelineArgs{
@@ -356,8 +357,8 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: "4321"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2", HostPort: "8080"}
+	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: "4321"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2", HostPort: "8080"}}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
 	routertest.FakeRouter.FailForIp(cont2.Address().String())
@@ -383,8 +384,8 @@ func (s *S) TestAddNewRouteForwardDoesNotAddWhenHostPortIsZero(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: "0"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2", HostPort: "4321"}
+	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: "0"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2", HostPort: "4321"}}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
 	args := changeUnitsPipelineArgs{
@@ -405,8 +406,8 @@ func (s *S) TestAddNewRouteForwardDoesNotAddWhenHostPortIsEmpty(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: ""}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2", HostPort: "4321"}
+	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1", HostPort: ""}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2", HostPort: "4321"}}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
 	args := changeUnitsPipelineArgs{
@@ -427,9 +428,9 @@ func (s *S) TestAddNewRouteBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}
-	cont3 := container.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}}
+	cont3 := container.Container{Container: types.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}}
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	defer cont3.Remove(s.p)
@@ -473,7 +474,7 @@ func (s *S) TestSetRouterHealthcheckForward(c *check.C) {
 		provisioner: s.p,
 		imageId:     imageName,
 	}
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
 	r, err := setRouterHealthcheck.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -505,7 +506,7 @@ func (s *S) TestSetRouterHealthcheckForwardNoUseInRouter(c *check.C) {
 		provisioner: s.p,
 		imageId:     imageName,
 	}
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
 	r, err := setRouterHealthcheck.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -535,7 +536,7 @@ func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
 		provisioner: s.p,
 		imageId:     imageName,
 	}
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
 	_, err = setRouterHealthcheck.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -567,9 +568,9 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}
-	cont3 := container.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}}
+	cont3 := container.Container{Container: types.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}}
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	defer cont3.Remove(s.p)
@@ -604,7 +605,7 @@ func (s *S) TestRemoveOldRoutesForwardNoImageData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont1 := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "127.0.0.1", HostPort: ""}
+	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "127.0.0.1", HostPort: ""}}
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toRemove:    []container.Container{cont1},
@@ -633,8 +634,8 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: "1234"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2", HostPort: "1234"}
+	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: "1234"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2", HostPort: "1234"}}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
 	err = routertest.FakeRouter.AddRoute(app.GetName(), cont.Address())
@@ -662,8 +663,8 @@ func (s *S) TestRemoveOldRoutesBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web"}
-	cont2 := container.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web"}
+	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web"}}
+	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web"}}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
 	cont.Routable = true
@@ -764,7 +765,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	p.Provision(app)
 	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
+	coll.Insert(container.Container{Container: types.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}})
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	imageId, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
@@ -833,7 +834,7 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
 	s.p.Provision(app)
 	coll := s.p.Collection()
 	defer coll.Close()
-	cont := container.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}
+	cont := container.Container{Container: types.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}}
 	coll.Insert(cont)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	args := changeUnitsPipelineArgs{
@@ -915,7 +916,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	cont := container.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}}
 	err = cont.Create(&container.CreateArgs{
 		App:         app,
 		ImageID:     "tsuru/python",
@@ -947,7 +948,7 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	cont := container.Container{AppName: "mightyapp"}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
 	err = cont.Create(&container.CreateArgs{
 		App:         app,
 		ImageID:     "tsuru/python",
@@ -972,7 +973,7 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	cont := container.Container{AppName: "mightyapp"}
+	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
 	err = cont.Create(&container.CreateArgs{
 		App:         app,
 		ImageID:     "tsuru/python",

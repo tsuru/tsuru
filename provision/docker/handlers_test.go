@@ -32,7 +32,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/provision/docker/healer"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/check.v1"
@@ -231,11 +231,11 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt3, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
 		InternalKind: "healer",
-		CustomData:   container.Container{ID: "1234"},
+		CustomData:   container.Container{Container: types.Container{ID: "1234"}},
 		Allowed:      event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
+	evt3.DoneCustomData(nil, container.Container{Container: types.Container{ID: "9876"}})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing", nil)
 	c.Assert(err, check.IsNil)
@@ -245,7 +245,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body := recorder.Body.Bytes()
-	var healings []healer.HealingEvent
+	var healings []types.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 3)
@@ -290,11 +290,11 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt3, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
 		InternalKind: "healer",
-		CustomData:   container.Container{ID: "1234"},
+		CustomData:   container.Container{Container: types.Container{ID: "1234"}},
 		Allowed:      event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
+	evt3.DoneCustomData(nil, container.Container{Container: types.Container{ID: "9876"}})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
 	c.Assert(err, check.IsNil)
@@ -303,7 +303,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	var healings []healer.HealingEvent
+	var healings []types.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 1)
@@ -336,11 +336,11 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	evt3, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: "container", Value: "1234"},
 		InternalKind: "healer",
-		CustomData:   container.Container{ID: "1234"},
+		CustomData:   container.Container{Container: types.Container{ID: "1234"}},
 		Allowed:      event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	evt3.DoneCustomData(nil, container.Container{ID: "9876"})
+	evt3.DoneCustomData(nil, container.Container{Container: types.Container{ID: "9876"}})
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
 	c.Assert(err, check.IsNil)
@@ -349,7 +349,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	var healings []healer.HealingEvent
+	var healings []types.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 2)
@@ -407,22 +407,22 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
 	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"": {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
+		"": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 	doReq(values2)
 	entries, err = container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"":      {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
-		"POOL1": {Driver: "bs", LogOpts: map[string]string{}},
+		"":      {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"POOL1": {DockerLogConfig: types.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{}}},
 	})
 	doReq(values3)
 	entries, err = container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"":      {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
-		"POOL1": {Driver: "bs", LogOpts: map[string]string{}},
-		"POOL2": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:2222"}},
+		"":      {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"POOL1": {DockerLogConfig: types.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{}}},
+		"POOL2": {DockerLogConfig: types.DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:2222"}}},
 	})
 }
 
@@ -445,7 +445,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 	entries, err := container.LogLoadAll()
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
-		"": {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
+		"": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 }
 
@@ -490,7 +490,7 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
 		"":      {},
-		"POOL2": {Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}},
+		"POOL2": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 }
 
@@ -509,7 +509,7 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	c.Assert(conf, check.DeepEquals, map[string]container.DockerLogConfig{
 		"": {},
 	})
-	newConf := container.DockerLogConfig{Driver: "syslog"}
+	newConf := container.DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "syslog"}}
 	err = newConf.Save("p1")
 	c.Assert(err, check.IsNil)
 	request, err = http.NewRequest("GET", "/docker/logs", nil)
@@ -523,6 +523,6 @@ func (s *HandlersSuite) TestDockerLogsInfoHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conf2, check.DeepEquals, map[string]container.DockerLogConfig{
 		"":   {},
-		"p1": {Driver: "syslog", LogOpts: map[string]string{}},
+		"p1": {DockerLogConfig: types.DockerLogConfig{Driver: "syslog", LogOpts: map[string]string{}}},
 	})
 }

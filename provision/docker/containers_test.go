@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -36,10 +37,12 @@ func (s *S) TestMoveContainers(c *check.C) {
 	coll := p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{
-		ID:      "container-id",
-		AppName: appInstance.GetName(),
-		Version: "container-version",
-		Image:   "tsuru/python",
+		Container: types.Container{
+			ID:      "container-id",
+			AppName: appInstance.GetName(),
+			Version: "container-version",
+			Image:   "tsuru/python",
+		},
 	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := image.AppCurrentImageName(appInstance.GetName())
@@ -86,7 +89,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	p.Provision(appInstance)
 	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	coll.Insert(container.Container{Container: types.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"}})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -129,10 +132,12 @@ func (s *S) TestMoveContainer(c *check.C) {
 	coll := p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{
-		ID:      "container-id",
-		AppName: appInstance.GetName(),
-		Version: "container-version",
-		Image:   "tsuru/python",
+		Container: types.Container{
+			ID:      "container-id",
+			AppName: appInstance.GetName(),
+			Version: "container-version",
+			Image:   "tsuru/python",
+		},
 	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := image.AppCurrentImageName(appInstance.GetName())

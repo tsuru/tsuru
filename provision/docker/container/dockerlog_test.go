@@ -5,6 +5,7 @@
 package container
 
 import (
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/scopedconfig"
 	"gopkg.in/check.v1"
 )
@@ -13,53 +14,53 @@ func (s *S) TestDockerLogUpdate(c *check.C) {
 	testCases := []struct {
 		pool   string
 		conf   DockerLogConfig
-		result map[string]DockerLogConfig
+		result map[string]types.DockerLogConfig
 		err    error
 	}{
 		{
 			"",
-			DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
-			map[string]DockerLogConfig{
+			DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}}},
+			map[string]types.DockerLogConfig{
 				"": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
 			},
 			nil,
 		},
 		{
 			"",
-			DockerLogConfig{Driver: "bs", LogOpts: map[string]string{"tag": "ahoy"}},
-			map[string]DockerLogConfig{
+			DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "bs", LogOpts: map[string]string{"tag": "ahoy"}}},
+			map[string]types.DockerLogConfig{
 				"": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
 			},
 			ErrLogDriverBSNoParams,
 		},
 		{
 			"",
-			DockerLogConfig{Driver: "", LogOpts: map[string]string{"tag": "ahoy"}},
-			map[string]DockerLogConfig{
+			DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "", LogOpts: map[string]string{"tag": "ahoy"}}},
+			map[string]types.DockerLogConfig{
 				"": {Driver: "fluentd", LogOpts: map[string]string{"fluentd-address": "localhost:24224"}},
 			},
 			ErrLogDriverMandatory,
 		},
 		{
 			"",
-			DockerLogConfig{Driver: "bs", LogOpts: nil},
-			map[string]DockerLogConfig{
+			DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "bs", LogOpts: nil}},
+			map[string]types.DockerLogConfig{
 				"": {Driver: "bs", LogOpts: map[string]string{}},
 			},
 			nil,
 		},
 		{
 			"",
-			DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}},
-			map[string]DockerLogConfig{
+			DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}}},
+			map[string]types.DockerLogConfig{
 				"": {Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}},
 			},
 			nil,
 		},
 		{
 			"p1",
-			DockerLogConfig{Driver: "journald", LogOpts: map[string]string{"tag": "y"}},
-			map[string]DockerLogConfig{
+			DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "journald", LogOpts: map[string]string{"tag": "y"}}},
+			map[string]types.DockerLogConfig{
 				"":   {Driver: "fluentd", LogOpts: map[string]string{"tag": "x"}},
 				"p1": {Driver: "journald", LogOpts: map[string]string{"tag": "y"}},
 			},
@@ -70,7 +71,7 @@ func (s *S) TestDockerLogUpdate(c *check.C) {
 		err := testData.conf.Save(testData.pool)
 		c.Assert(err, check.DeepEquals, testData.err)
 		conf := scopedconfig.FindScopedConfig(dockerLogConfigCollection)
-		var all map[string]DockerLogConfig
+		var all map[string]types.DockerLogConfig
 		err = conf.LoadAll(&all)
 		c.Assert(err, check.IsNil)
 		c.Assert(all, check.DeepEquals, testData.result)

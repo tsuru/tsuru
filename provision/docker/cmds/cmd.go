@@ -15,7 +15,7 @@ import (
 	"github.com/ajg/form"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 )
 
 func init() {
@@ -91,7 +91,7 @@ func (c *dockerLogUpdate) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	conf := container.DockerLogConfig{
+	conf := types.DockerLogConfig{
 		Driver:  c.logDriver,
 		LogOpts: map[string]string(c.logOpts),
 	}
@@ -140,7 +140,7 @@ func (c *dockerLogInfo) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	var conf map[string]container.DockerLogConfig
+	var conf map[string]types.DockerLogConfig
 	err = json.NewDecoder(response.Body).Decode(&conf)
 	if err != nil {
 		return err

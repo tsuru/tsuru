@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -40,7 +40,7 @@ func (s *S) TestListHealingHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evts, err := ListHealingHistory("")
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.DeepEquals, []HealingEvent{
+	c.Assert(evts, check.DeepEquals, []types.HealingEvent{
 		{
 			ID:         evt2.UniqueID,
 			StartTime:  mongoTime(evt2.StartTime),
@@ -62,7 +62,7 @@ func (s *S) TestListHealingHistory(c *check.C) {
 
 func (s *S) TestMigrateHealingToEvents(c *check.C) {
 	now := mongoTime(time.Now())
-	evts := []HealingEvent{
+	evts := []types.HealingEvent{
 		{
 			ID:               bson.NewObjectId(),
 			StartTime:        now.Add(-time.Minute),
@@ -70,8 +70,8 @@ func (s *S) TestMigrateHealingToEvents(c *check.C) {
 			Action:           "container-healing",
 			Successful:       false,
 			Error:            "x",
-			FailingContainer: container.Container{ID: "c1"},
-			CreatedContainer: container.Container{ID: "c2"},
+			FailingContainer: types.Container{ID: "c1"},
+			CreatedContainer: types.Container{ID: "c2"},
 		},
 		{
 			ID:         bson.NewObjectId(),
@@ -103,5 +103,5 @@ func (s *S) TestMigrateHealingToEvents(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbEvts, err := ListHealingHistory("")
 	c.Assert(err, check.IsNil)
-	c.Assert(dbEvts, check.DeepEquals, []HealingEvent{evts[1], evts[0]})
+	c.Assert(dbEvts, check.DeepEquals, []types.HealingEvent{evts[1], evts[0]})
 }

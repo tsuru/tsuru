@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
+	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
@@ -1373,7 +1374,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 	defer s.p.Destroy(a)
 	coll := s.p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
+	coll.Insert(container.Container{Container: types.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"}})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	err = s.p.AddUnits(a, 3, "web", nil)
 	c.Assert(err, check.NotNil)
@@ -1391,7 +1392,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	defer s.p.Destroy(a)
 	coll := s.p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
+	coll.Insert(container.Container{Container: types.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"}})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	err = s.p.AddUnits(a, 0, "web", nil)
 	c.Assert(err, check.NotNil)
@@ -1417,7 +1418,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	defer p.Destroy(a)
 	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container.Container{ID: "xxxfoo", AppName: a.GetName(), Version: "123987", Image: "tsuru/python:latest"})
+	coll.Insert(container.Container{Container: types.Container{ID: "xxxfoo", AppName: a.GetName(), Version: "123987", Image: "tsuru/python:latest"}})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
 	imageID, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
@@ -1470,9 +1471,9 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "1"}
-	cont2 := container.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker", HostAddr: "url0", HostPort: "2"}
-	cont3 := container.Container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "3"}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "1"}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker", HostAddr: "url0", HostPort: "2"}}
+	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "3"}}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -1539,9 +1540,9 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "1"}
-	cont2 := container.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker", HostAddr: "url0", HostPort: "2"}
-	cont3 := container.Container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "3"}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "1"}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker", HostAddr: "url0", HostPort: "2"}}
+	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web", HostAddr: "url0", HostPort: "3"}}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -1609,7 +1610,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -1660,9 +1661,9 @@ func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web"}
-	cont2 := container.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "web"}
-	cont3 := container.Container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web"}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web"}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "web"}}
+	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web"}}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -1710,7 +1711,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam"}, Pool: "pool1"}
-	cont1 := container.Container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "impius1", AppName: a1.Name}}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -2585,13 +2586,15 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 	defer coll.Close()
 	err := coll.Insert(
 		container.Container{
-			ID:       "9930c24f1c4f",
-			AppName:  app.Name,
-			Type:     "python",
-			Status:   provision.StatusBuilding.String(),
-			IP:       "127.0.0.4",
-			HostAddr: "192.168.123.9",
-			HostPort: "9025",
+			Container: types.Container{
+				ID:       "9930c24f1c4f",
+				AppName:  app.Name,
+				Type:     "python",
+				Status:   provision.StatusBuilding.String(),
+				IP:       "127.0.0.4",
+				HostAddr: "192.168.123.9",
+				HostPort: "9025",
+			},
 		},
 	)
 	c.Assert(err, check.IsNil)
@@ -2622,13 +2625,15 @@ func (s *S) TestProvisionerGetAppFromUnitID(c *check.C) {
 	defer coll.Close()
 	err = coll.Insert(
 		container.Container{
-			ID:       "9930c24f1c4f",
-			AppName:  app.Name,
-			Type:     "python",
-			Status:   provision.StatusBuilding.String(),
-			IP:       "127.0.0.4",
-			HostAddr: "192.168.123.9",
-			HostPort: "9025",
+			Container: types.Container{
+				ID:       "9930c24f1c4f",
+				AppName:  app.Name,
+				Type:     "python",
+				Status:   provision.StatusBuilding.String(),
+				IP:       "127.0.0.4",
+				HostAddr: "192.168.123.9",
+				HostPort: "9025",
+			},
 		},
 	)
 	c.Assert(err, check.IsNil)
@@ -2644,13 +2649,15 @@ func (s *S) TestProvisionerGetAppFromUnitIDAppNotFound(c *check.C) {
 	defer coll.Close()
 	err := coll.Insert(
 		container.Container{
-			ID:       "9930c24f1c4f",
-			AppName:  app.Name,
-			Type:     "python",
-			Status:   provision.StatusBuilding.String(),
-			IP:       "127.0.0.4",
-			HostAddr: "192.168.123.9",
-			HostPort: "9025",
+			Container: types.Container{
+				ID:       "9930c24f1c4f",
+				AppName:  app.Name,
+				Type:     "python",
+				Status:   provision.StatusBuilding.String(),
+				IP:       "127.0.0.4",
+				HostAddr: "192.168.123.9",
+				HostPort: "9025",
+			},
 		},
 	)
 	c.Assert(err, check.IsNil)
@@ -2678,22 +2685,26 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	defer coll.Close()
 	err := coll.Insert(
 		container.Container{
-			ID:       "9930c24f1c4f",
-			AppName:  app.Name,
-			Type:     "python",
-			Status:   provision.StatusBuilding.String(),
-			IP:       "127.0.0.4",
-			HostAddr: "10.0.0.7",
-			HostPort: "9025",
+			Container: types.Container{
+				ID:       "9930c24f1c4f",
+				AppName:  app.Name,
+				Type:     "python",
+				Status:   provision.StatusBuilding.String(),
+				IP:       "127.0.0.4",
+				HostAddr: "10.0.0.7",
+				HostPort: "9025",
+			},
 		},
 		container.Container{
-			ID:       "9930c24f1c4j",
-			AppName:  app.Name,
-			Type:     "python",
-			Status:   provision.StatusError.String(),
-			IP:       "127.0.0.4",
-			HostAddr: "10.0.0.7",
-			HostPort: "9025",
+			Container: types.Container{
+				ID:       "9930c24f1c4j",
+				AppName:  app.Name,
+				Type:     "python",
+				Status:   provision.StatusError.String(),
+				IP:       "127.0.0.4",
+				HostAddr: "10.0.0.7",
+				HostPort: "9025",
+			},
 		},
 	)
 	c.Assert(err, check.IsNil)
@@ -2734,13 +2745,15 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 	defer coll.Close()
 	err := coll.Insert(
 		container.Container{
-			ID:       "9930c24f1c4f",
-			AppName:  app.Name,
-			Type:     "python",
-			Status:   provision.StatusBuilding.String(),
-			IP:       "127.0.0.4",
-			HostPort: "9025",
-			HostAddr: "127.0.0.1",
+			Container: types.Container{
+				ID:       "9930c24f1c4f",
+				AppName:  app.Name,
+				Type:     "python",
+				Status:   provision.StatusBuilding.String(),
+				IP:       "127.0.0.4",
+				HostPort: "9025",
+				HostAddr: "127.0.0.1",
+			},
 		},
 	)
 	c.Assert(err, check.IsNil)
@@ -3078,14 +3091,14 @@ func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	fakeApp.Pool = "mypool"
-	logConf := container.DockerLogConfig{Driver: "x"}
+	logConf := container.DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "x"}}
 	err := logConf.Save("")
 	c.Assert(err, check.IsNil)
 	enabled, msg, err := s.p.LogsEnabled(fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(enabled, check.Equals, false)
 	c.Assert(msg, check.Equals, "Logs not available through tsuru. Enabled log driver is \"x\".")
-	logConf = container.DockerLogConfig{Driver: "bs"}
+	logConf = container.DockerLogConfig{DockerLogConfig: types.DockerLogConfig{Driver: "bs"}}
 	err = logConf.Save("")
 	c.Assert(err, check.IsNil)
 	enabled, msg, err = s.p.LogsEnabled(fakeApp)
