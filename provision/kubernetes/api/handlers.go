@@ -15,6 +15,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
 )
 
 var (
@@ -45,10 +46,10 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var cluster Cluster
+	var kubeCluster cluster.Cluster
 	err = r.ParseForm()
 	if err == nil {
-		err = dec.DecodeValues(&cluster, r.Form)
+		err = dec.DecodeValues(&kubeCluster, r.Form)
 	}
 	if err != nil {
 		return &tsuruErrors.HTTP{
@@ -57,7 +58,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: targetTypeCluster, Value: cluster.Name},
+		Target:     event.Target{Type: targetTypeCluster, Value: kubeCluster.Name},
 		Kind:       permission.PermKubernetesClusterUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
@@ -67,7 +68,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = cluster.Save()
+	err = kubeCluster.Save()
 	if err != nil {
 		if _, ok := errors.Cause(err).(*tsuruErrors.ValidationError); ok {
 			return &tsuruErrors.HTTP{
@@ -95,9 +96,9 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	clusters, err := AllClusters()
+	clusters, err := cluster.AllClusters()
 	if err != nil {
-		if err == ErrNoCluster {
+		if err == cluster.ErrNoCluster {
 			w.WriteHeader(http.StatusNoContent)
 			return nil
 		}
@@ -133,9 +134,9 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = DeleteCluster(clusterName)
+	err = cluster.DeleteCluster(clusterName)
 	if err != nil {
-		if errors.Cause(err) == ErrClusterNotFound {
+		if errors.Cause(err) == cluster.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),

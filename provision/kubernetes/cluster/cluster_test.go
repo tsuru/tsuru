@@ -10,15 +10,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/permission/permissiontest"
-	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
 
@@ -90,9 +84,7 @@ qni/3jTJOxDGMH+x06HZjWietWmbY+aKWkKCyGGVVzlKTEBUMSSU
 )
 
 type S struct {
-	conn  *db.Storage
-	user  *auth.User
-	token auth.Token
+	conn *db.Storage
 }
 
 var _ = check.Suite(&S{})
@@ -104,7 +96,6 @@ func Test(t *testing.T) {
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "provision_kubernetes_cluster_tests_s")
-	config.Set("auth:hash-cost", bcrypt.MinCost)
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -113,12 +104,6 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	app.AuthScheme = nativeScheme
-	s.user, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "usr", permission.Permission{
-		Scheme:  permission.PermKubernetesCluster,
-		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
-	})
 }
 
 func (s *S) TearDownSuite(c *check.C) {
