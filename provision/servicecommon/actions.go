@@ -34,6 +34,11 @@ type pipelineArgs struct {
 	currentImageSpec ProcessSpec
 }
 
+type labelReplicas struct {
+	labels       *provision.LabelSet
+	realReplicas int
+}
+
 type ServiceManager interface {
 	RemoveService(a provision.App, processName string) error
 	CurrentLabels(a provision.App, processName string) (*provision.LabelSet, error)
@@ -86,7 +91,11 @@ func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 	for _, processName := range processes {
 		var err error
 		if state, in := args.currentImageSpec[processName]; in {
-			err = deployService(args, processName, args.currentImage, state)
+			var labels *labelReplicas
+			labels, err = labelsForService(args, processName, state)
+			if err == nil {
+				err = args.manager.DeployService(args.app, processName, labels.labels, labels.realReplicas, args.currentImage)
+			}
 		} else {
 			err = args.manager.RemoveService(args.app, processName)
 		}
@@ -96,10 +105,10 @@ func rollbackAddedProcesses(args *pipelineArgs, processes []string) {
 	}
 }
 
-func deployService(args *pipelineArgs, processName, image string, pState ProcessState) error {
+func labelsForService(args *pipelineArgs, processName string, pState ProcessState) (*labelReplicas, error) {
 	oldLabels, err := args.manager.CurrentLabels(args.app, processName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	replicas := 0
 	restartCount := 0
@@ -114,7 +123,7 @@ func deployService(args *pipelineArgs, processName, image string, pState Process
 	if pState.Increment != 0 {
 		replicas += pState.Increment
 		if replicas < 0 {
-			return errors.New("cannot have less than 0 units")
+			return nil, errors.New("cannot have less than 0 units")
 		}
 	}
 	if pState.Start || pState.Restart {
@@ -130,7 +139,7 @@ func deployService(args *pipelineArgs, processName, image string, pState Process
 		Replicas: replicas,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	realReplicas := replicas
 	if isStopped || pState.Stop {
@@ -144,7 +153,7 @@ func deployService(args *pipelineArgs, processName, image string, pState Process
 		restartCount++
 		labels.SetRestarts(restartCount)
 	}
-	return args.manager.DeployService(args.app, processName, labels, realReplicas, image)
+	return &labelReplicas{labels: labels, realReplicas: realReplicas}, nil
 }
 
 var updateServices = &action.Action{
@@ -160,8 +169,24 @@ var updateServices = &action.Action{
 			toDeployProcesses = append(toDeployProcesses, processName)
 		}
 		sort.Strings(toDeployProcesses)
+		totalUnits := 0
+		labelsMap := map[string]*labelReplicas{}
 		for _, processName := range toDeployProcesses {
-			err = deployService(args, processName, args.newImage, args.newImageSpec[processName])
+			var labels *labelReplicas
+			labels, err = labelsForService(args, processName, args.newImageSpec[processName])
+			if err != nil {
+				return nil, err
+			}
+			labelsMap[processName] = labels
+			totalUnits += labels.labels.AppReplicas()
+		}
+		err = args.app.SetQuotaInUse(totalUnits)
+		if err != nil {
+			return nil, err
+		}
+		for _, processName := range toDeployProcesses {
+			labels := labelsMap[processName]
+			err = args.manager.DeployService(args.app, processName, labels.labels, labels.realReplicas, args.newImage)
 			if err != nil {
 				break
 			}

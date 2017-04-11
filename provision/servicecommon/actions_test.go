@@ -246,6 +246,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", image: "image", replicas: 1, labels: labelsWeb},
 	})
+	c.Assert(fakeApp.Quota.InUse, check.Equals, 1)
 }
 
 func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
@@ -255,7 +256,7 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 		manager:          m,
 		app:              fakeApp,
 		newImage:         "image",
-		newImageSpec:     ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
+		newImageSpec:     ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{Start: true}},
 		currentImage:     "oldImage",
 		currentImageSpec: ProcessSpec{"web": ProcessState{}, "worker1": ProcessState{}},
 	}
@@ -271,13 +272,14 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "worker2",
-		Replicas: 0,
+		Replicas: 1,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", image: "image", replicas: 5, labels: labelsWeb},
-		{action: "deploy", app: fakeApp, processName: "worker2", image: "image", replicas: 0, labels: labelsWorker},
+		{action: "deploy", app: fakeApp, processName: "worker2", image: "image", replicas: 1, labels: labelsWorker},
 	})
+	c.Assert(fakeApp.Quota.InUse, check.Equals, 6)
 }
 
 func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
@@ -435,6 +437,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 2)
+				c.Assert(a.Quota.InUse, check.Equals, 2)
 			},
 		},
 		{
@@ -445,6 +448,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 				c.Assert(replicas, check.Equals, 0)
 				c.Assert(ls.AppReplicas(), check.Equals, 3)
 				c.Assert(ls.IsStopped(), check.Equals, true)
+				c.Assert(a.Quota.InUse, check.Equals, 3)
 			},
 		},
 		{
