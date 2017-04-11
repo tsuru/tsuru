@@ -159,7 +159,7 @@ func (a *FakeApp) GetQuota() quota.Quota {
 }
 
 func (a *FakeApp) SetQuotaInUse(inUse int) error {
-	if inUse > a.Quota.Limit {
+	if !a.Quota.Unlimited() && inUse > a.Quota.Limit {
 		return &quota.QuotaExceededError{
 			Requested: uint(inUse),
 			Available: uint(a.Quota.Limit),
