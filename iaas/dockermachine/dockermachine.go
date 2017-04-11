@@ -297,8 +297,8 @@ func newMachine(h *host.Host) (*Machine, error) {
 		Host: h,
 	}
 	address, err := h.Driver.GetIP()
-	if err != nil {
-		return m, errors.Wrap(err, "failed to retrive host ip")
+	if err != nil || address == "" {
+		return nil, errors.Wrap(err, "failed to retrive host ip")
 	}
 	m.Base.Address = address
 	if h.AuthOptions() != nil {
