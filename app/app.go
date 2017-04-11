@@ -626,23 +626,11 @@ func (app *App) RemoveUnits(n uint, process string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 	units, err := app.Units()
 	if err != nil {
 		return err
 	}
-	return conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{
-			"$set": bson.M{
-				"quota.inuse": len(units),
-			},
-		},
-	)
+	return app.SetQuotaInUse(len(units))
 }
 
 // SetUnitStatus changes the status of the given unit.
