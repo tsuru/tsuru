@@ -290,3 +290,32 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 		Prefix: tsuruLabelPrefix,
 	})
 }
+
+func (s *S) TestGetServicePort(c *check.C) {
+	port, err := getServicePort(s.client.clusterClient, "notfound")
+	c.Assert(err, check.IsNil)
+	c.Assert(port, check.Equals, int32(0))
+	_, err = s.client.Core().Services(s.client.Namespace()).Create(&v1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "srv1",
+			Namespace: s.client.Namespace(),
+		},
+	})
+	c.Assert(err, check.IsNil)
+	port, err = getServicePort(s.client.clusterClient, "srv1")
+	c.Assert(err, check.IsNil)
+	c.Assert(port, check.Equals, int32(0))
+	_, err = s.client.Core().Services(s.client.Namespace()).Create(&v1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "srv2",
+			Namespace: s.client.Namespace(),
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{{NodePort: 123}},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	port, err = getServicePort(s.client.clusterClient, "srv2")
+	c.Assert(err, check.IsNil)
+	c.Assert(port, check.Equals, int32(123))
+}

@@ -246,6 +246,9 @@ func podsFromNode(client *clusterClient, nodeName string) ([]v1.Pod, error) {
 func getServicePort(client *clusterClient, srvName string) (int32, error) {
 	srv, err := client.Core().Services(client.Namespace()).Get(srvName)
 	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return 0, nil
+		}
 		return 0, errors.WithStack(err)
 	}
 	if len(srv.Spec.Ports) == 0 {
