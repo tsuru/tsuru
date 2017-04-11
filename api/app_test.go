@@ -22,6 +22,7 @@ import (
 	"github.com/ajg/form"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/types"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -2789,7 +2790,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "localhost"},
 		},
@@ -2834,7 +2835,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "localhost"},
 		},
@@ -2879,7 +2880,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "localhost"},
 		},
@@ -2898,7 +2899,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	d = Envs{
+	d = types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "127.0.0.1"},
 		},
@@ -2942,7 +2943,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "localhost"},
 			{"DATABASE_USER", "root"},
@@ -2997,7 +2998,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "http://foo.com:8080"},
 		},
@@ -3037,7 +3038,7 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "localhost"},
 		},
@@ -3131,7 +3132,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Scheme:  permission.PermAppUpdateEnvSet,
 		Context: permission.Context(permission.CtxApp, "-invalid-"),
 	})
-	d := Envs{
+	d := types.Envs{
 		Envs: []struct{ Name, Value string }{
 			{"DATABASE_HOST", "localhost"},
 		},

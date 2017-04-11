@@ -15,6 +15,7 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/api/context"
+	"github.com/tsuru/tsuru/api/types"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -841,14 +842,6 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 	return json.NewEncoder(w).Encode(result)
 }
 
-// Envs represents the configuration of an environment variable data
-// for the remote API
-type Envs struct {
-	Envs      []struct{ Name, Value string }
-	NoRestart bool
-	Private   bool
-}
-
 // title: set envs
 // path: /apps/{app}/env
 // method: POST
@@ -864,7 +857,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	var e Envs
+	var e types.Envs
 	dec := form.NewDecoder(nil)
 	dec.IgnoreUnknownKeys(true)
 	err = dec.DecodeValues(&e, r.Form)
