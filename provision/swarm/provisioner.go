@@ -50,6 +50,7 @@ var (
 	_ provision.NodeProvisioner          = &swarmProvisioner{}
 	_ provision.NodeContainerProvisioner = &swarmProvisioner{}
 	_ provision.SleepableProvisioner     = &swarmProvisioner{}
+	_ provision.BuilderDeploy            = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
