@@ -82,3 +82,38 @@ func (p *swarmProvisioner) buildImage(app provision.App, archiveFile io.ReadClos
 	}
 	return buildingImage, nil
 }
+
+func (p *swarmProvisioner) Deploy(app provision.App, imageID string, evt *event.Event) (string, error) {
+	err := deployProcesses(app, imageID, nil)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return imageID, nil
+}
+
+func (p *swarmProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func (p *swarmProvisioner) RunHookDeploy(client *docker.Client, app provision.App, imageID string, cmds []string, evt *event.Event) (string, error) {
+	buildingImage, err := image.AppNewImageName(app.GetName())
+	if err != nil {
+		return "", err
+	}
+	srvID, task, err := runOnceBuildCmds(client, app, cmds, imageID, buildingImage, evt)
+	if srvID != "" {
+		defer removeServiceAndLog(client, srvID)
+	}
+	if err != nil {
+		return "", err
+	}
+	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, app)
+	if err != nil {
+		return "", err
+	}
+	return buildingImage, nil
+}
