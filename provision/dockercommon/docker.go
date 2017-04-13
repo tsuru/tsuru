@@ -14,8 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/safe"
 	"golang.org/x/net/context"
 )
 
@@ -167,4 +169,23 @@ func WaitDocker(client *docker.Client) error {
 		close(exit)
 		return errors.Errorf("Docker API at %q didn't respond after %d seconds", client.Endpoint(), timeout)
 	}
+}
+
+func PushImage(client Client, name, tag string, authconfig docker.AuthConfiguration) error {
+	if _, err := config.GetString("docker:registry"); err == nil {
+		var buf safe.Buffer
+		pushOpts := docker.PushImageOptions{
+			Name:              name,
+			Tag:               tag,
+			OutputStream:      &buf,
+			InactivityTimeout: net.StreamInactivityTimeout,
+			RawJSONStream:     true,
+		}
+		err = client.PushImage(pushOpts, authconfig)
+		if err != nil {
+			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
+			return err
+		}
+	}
+	return nil
 }

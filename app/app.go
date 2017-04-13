@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -131,6 +132,7 @@ type App struct {
 	Error          string
 
 	quota.Quota
+	builder     builder.Builder
 	provisioner provision.Provisioner
 }
 
@@ -138,6 +140,26 @@ var (
 	_ provision.App      = &App{}
 	_ rebuild.RebuildApp = &App{}
 )
+
+func (app *App) getBuilder() (builder.Builder, error) {
+	if app.builder == nil {
+		if app.Pool == "" {
+			return builder.GetDefault()
+		}
+		pool, err := provision.GetPoolByName(app.Pool)
+		if err != nil {
+			return nil, err
+		}
+		if pool.Builder == "" {
+			return builder.GetDefault()
+		}
+		app.builder, err = builder.Get(pool.Builder)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return app.builder, nil
+}
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
 	if app.provisioner == nil {
