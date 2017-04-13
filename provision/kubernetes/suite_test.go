@@ -56,6 +56,7 @@ type S struct {
 	lastConf *rest.Config
 	t        *testing.T
 	stream   map[string]streamResult
+	logHook  func(w http.ResponseWriter, r *http.Request)
 }
 
 type streamResult struct {
@@ -120,6 +121,7 @@ func (c *clientPodsWrapper) GetLogs(name string, opts *v1.PodLogOptions) *rest.R
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
+	s.logHook = nil
 	s.stream = make(map[string]streamResult)
 	clus := &cluster.Cluster{
 		Name:      "c1",
@@ -296,6 +298,10 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 		if strings.HasSuffix(r.URL.Path, "/attach") || strings.HasSuffix(r.URL.Path, "/exec") {
 			attachFn(w, r, cont)
 		} else if strings.HasSuffix(r.URL.Path, "/log") {
+			if s.logHook != nil {
+				s.logHook(w, r)
+				return
+			}
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "my log message")
 		}

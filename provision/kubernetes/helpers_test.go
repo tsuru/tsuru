@@ -60,14 +60,17 @@ func (s *S) TestWaitForPod(c *check.C) {
 	err := waitForPod(s.client.clusterClient, "pod1", false, 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
 	var wantedPhase v1.PodPhase
+	var wantedMessage string
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = wantedPhase
+		pod.Status.Message = wantedMessage
 		return false, nil, nil
 	})
 	tests := []struct {
 		phase   v1.PodPhase
+		msg     string
 		err     string
 		evt     *v1.Event
 		running bool
@@ -77,6 +80,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		{phase: v1.PodRunning, running: true},
 		{phase: v1.PodPending, err: `timeout after .*`},
 		{phase: v1.PodFailed, err: `invalid pod phase "Failed"`},
+		{phase: v1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
 		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
 		{phase: v1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &v1.Event{
 			ObjectMeta: v1.ObjectMeta{
@@ -93,6 +97,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 	}
 	for _, tt := range tests {
 		wantedPhase = tt.phase
+		wantedMessage = tt.msg
 		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "pod1",

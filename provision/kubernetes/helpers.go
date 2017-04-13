@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"k8s.io/client-go/pkg/api"
 	k8sErrors "k8s.io/client-go/pkg/api/errors"
@@ -128,6 +129,10 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 		case v1.PodUnknown:
 			fallthrough
 		case v1.PodFailed:
+			phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
+			if pod.Status.Message != "" {
+				phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
+			}
 			eventsInterface := client.Core().Events(client.Namespace())
 			ns := client.Namespace()
 			selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
@@ -135,13 +140,13 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 			var events *v1.EventList
 			events, err = eventsInterface.List(options)
 			if err != nil {
-				return true, errors.Wrapf(err, "error listing pod %q events invalid phase %q", podName, pod.Status.Phase)
+				return true, errors.Wrapf(err, "error listing pod %q events invalid phase %s", podName, phaseWithMsg)
 			}
 			if len(events.Items) == 0 {
-				return true, errors.Errorf("invalid pod phase %q", pod.Status.Phase)
+				return true, errors.Errorf("invalid pod phase %s", phaseWithMsg)
 			}
 			lastEvt := events.Items[len(events.Items)-1]
-			return true, errors.Errorf("invalid pod phase %q: %s", pod.Status.Phase, lastEvt.Message)
+			return true, errors.Errorf("invalid pod phase %s: %s", phaseWithMsg, lastEvt.Message)
 		}
 		return true, nil
 	})
@@ -224,7 +229,10 @@ func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 }
 
 func cleanupPod(client *clusterClient, podName string) error {
-	err := client.Core().Pods(client.Namespace()).Delete(podName, &v1.DeleteOptions{})
+	noWait := int64(0)
+	err := client.Core().Pods(client.Namespace()).Delete(podName, &v1.DeleteOptions{
+		GracePeriodSeconds: &noWait,
+	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -370,4 +378,82 @@ func execCommand(opts execOpts) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+type runSinglePodArgs struct {
+	client     *clusterClient
+	stdout     io.Writer
+	labels     *provision.LabelSet
+	cmds       []string
+	envs       []v1.EnvVar
+	name       string
+	image      string
+	dockerSock bool
+}
+
+func runPod(args runSinglePodArgs) error {
+	pod := &v1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      args.name,
+			Namespace: args.client.Namespace(),
+			Labels:    args.labels.ToLabels(),
+		},
+		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{
+				{
+					Name:    args.name,
+					Image:   args.image,
+					Command: args.cmds,
+					Env:     args.envs,
+				},
+			},
+		},
+	}
+	if args.dockerSock {
+		pod.Spec.Volumes = []v1.Volume{
+			{
+				Name: "dockersock",
+				VolumeSource: v1.VolumeSource{
+					HostPath: &v1.HostPathVolumeSource{
+						Path: dockerSockPath,
+					},
+				},
+			},
+		}
+		pod.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
+			{Name: "dockersock", MountPath: dockerSockPath},
+		}
+	}
+	_, err := args.client.Core().Pods(args.client.Namespace()).Create(pod)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer cleanupPod(args.client, pod.Name)
+	multiErr := tsuruErrors.NewMultiError()
+	err = waitForPod(args.client, pod.Name, true, defaultPullRunPodReadyTimeout)
+	if err != nil {
+		multiErr.Add(err)
+	}
+	err = args.client.SetTimeout(defaultPullRunPodReadyTimeout)
+	if err != nil {
+		multiErr.Add(errors.WithStack(err))
+		return multiErr
+	}
+	req := args.client.Core().Pods(args.client.Namespace()).GetLogs(pod.Name, &v1.PodLogOptions{
+		Follow:    true,
+		Container: args.name,
+	})
+	reader, err := req.Stream()
+	if err != nil {
+		multiErr.Add(errors.WithStack(err))
+		return multiErr
+	}
+	defer reader.Close()
+	_, err = io.Copy(args.stdout, reader)
+	if err != nil && err != io.EOF {
+		multiErr.Add(errors.WithStack(err))
+		return multiErr
+	}
+	return multiErr.ToError()
 }

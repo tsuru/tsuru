@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +30,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+)
+
+const (
+	dockerSockPath = "/var/run/docker.sock"
 )
 
 func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
@@ -76,7 +82,6 @@ type buildPodParams struct {
 }
 
 func createBuildPod(params buildPodParams) error {
-	dockerSockPath := "/var/run/docker.sock"
 	baseName := deployPodNameForApp(params.app)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: params.app,
@@ -155,7 +160,7 @@ func createBuildPod(params buildPodParams) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = waitForPod(params.client, pod.Name, true, defaultRunPodReadyTimeout)
+	err = waitForPod(params.client, pod.Name, true, defaultPullRunPodReadyTimeout)
 	if err != nil {
 		return err
 	}
@@ -468,4 +473,83 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 		return nil
 	}
 	return err
+}
+
+func procfileInspectPod(client *clusterClient, a provision.App, image string) (string, error) {
+	deployPodName := deployPodNameForApp(a)
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsBuild:     true,
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	cmds := []string{"sh", "-c", "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"}
+	buf := &bytes.Buffer{}
+	err = runPod(runSinglePodArgs{
+		client: client,
+		stdout: buf,
+		labels: labels,
+		cmds:   cmds,
+		name:   deployPodName,
+		image:  image,
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to inspect Procfile: %q", buf.String())
+	}
+	return buf.String(), nil
+}
+
+type dockerImageSpec struct {
+	Config struct {
+		ExposedPorts map[string]interface{}
+		Entrypoint   []string
+		Cmd          []string
+	}
+}
+
+func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage string) (*dockerImageSpec, error) {
+	deployPodName := deployPodNameForApp(a)
+	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			IsBuild:     true,
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	buf := &bytes.Buffer{}
+	err = runPod(runSinglePodArgs{
+		client: client,
+		stdout: buf,
+		labels: labels,
+		cmds: []string{"sh", "-ec", fmt.Sprintf(`
+			docker pull %[1]s >/dev/null
+			docker inspect %[1]s
+			docker tag %[1]s %[2]s
+			docker push %[2]s
+`, oldImage, newImage)},
+		name:       deployPodName,
+		image:      dockerImageName,
+		dockerSock: true,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to pull and tag image: %q", buf.String())
+	}
+	var imgs []dockerImageSpec
+	err = json.NewDecoder(buf).Decode(&imgs)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid image inspect response: %q", buf.String())
+	}
+	if len(imgs) != 1 {
+		return nil, errors.Errorf("unexpected image inspect response: %q", buf.String())
+	}
+	return &imgs[0], nil
 }

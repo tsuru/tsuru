@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"sort"
 
@@ -423,6 +424,71 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 2)
 }
 
+func (s *S) TestImageDeploy(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"Config": {"Cmd": ["arg1"], "Entrypoint": ["run", "mycmd"], "ExposedPorts": null}}]`))
+	}
+	img, err := s.p.ImageDeploy(a, "myimg", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	containers := deps.Items[0].Spec.Template.Spec.Containers
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{"run", "mycmd", "arg1"})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestImageDeployWithProcfile(c *check.C) {
+	a, wait, rollback := s.defaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	calls := 0
+	s.logHook = func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.Write([]byte(`[{"Config": {"Cmd": null, "Entrypoint": null, "ExposedPorts": null}}]`))
+		} else {
+			w.Write([]byte(`web: my awesome cmd`))
+		}
+	}
+	img, err := s.p.ImageDeploy(a, "myimg", evt)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(calls, check.Equals, 2)
+	wait()
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	containers := deps.Items[0].Spec.Template.Spec.Containers
+	c.Assert(containers, check.HasLen, 1)
+	c.Assert(containers[0].Command[len(containers[0].Command)-1], check.Matches, `.*my awesome cmd$`)
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(units, check.HasLen, 1)
+}
+
 func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	s.mockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
@@ -696,7 +762,7 @@ func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
 	err = s.p.ExecuteCommandIsolated(stdout, stderr, a, "mycmd", "arg1", "arg2")
-	c.Assert(err, check.ErrorMatches, `invalid pod phase "Failed"`)
+	c.Assert(err, check.ErrorMatches, `(?s)invalid pod phase "Failed".*`)
 }
 
 func (s *S) TestStartupMessage(c *check.C) {

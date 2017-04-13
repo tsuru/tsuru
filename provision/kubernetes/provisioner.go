@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,6 +33,7 @@ const (
 	provisionerName                  = "kubernetes"
 	dockerImageName                  = "docker:1.11.2"
 	defaultRunPodReadyTimeout        = time.Minute
+	defaultPullRunPodReadyTimeout    = 10 * time.Minute
 	defaultDeploymentProgressTimeout = 10 * time.Minute
 )
 
@@ -46,8 +48,8 @@ var (
 	_ provision.ExecutableProvisioner    = &kubernetesProvisioner{}
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
+	_ provision.ImageDeployer            = &kubernetesProvisioner{}
 	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
-	// _ provision.ImageDeployer            = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
 	// _ provision.RebuildableDeployer      = &kubernetesProvisioner{}
@@ -486,6 +488,65 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 	return err
 }
 
+func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt *event.Event) (string, error) {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(imageID, ":") {
+		imageID = fmt.Sprintf("%s:latest", imageID)
+	}
+	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
+	newImage, err := image.AppNewImageName(a.GetName())
+	if err != nil {
+		return "", err
+	}
+	imageInspect, err := imageTagAndPush(client, a, imageID, newImage)
+	if err != nil {
+		return "", err
+	}
+	if len(imageInspect.Config.ExposedPorts) > 1 {
+		return "", errors.Errorf("too many ports exposed in Dockerfile, only one allowed: %+v", imageInspect.Config.ExposedPorts)
+	}
+	procfileRaw, err := procfileInspectPod(client, a, imageID)
+	if err != nil {
+		return "", err
+	}
+	procfile := image.GetProcessesFromProcfile(procfileRaw)
+	if len(procfile) == 0 {
+		fmt.Fprintln(evt, " ---> Procfile not found, using entrypoint and cmd")
+		cmds := append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
+		if len(cmds) == 0 {
+			return "", errors.New("neither Procfile nor entrypoint and cmd set")
+		}
+		procfile["web"] = cmds
+	}
+	for k, v := range procfile {
+		fmt.Fprintf(evt, " ---> Process %q found with commands: %q\n", k, v)
+	}
+	imageData := image.ImageMetadata{
+		Name:      newImage,
+		Processes: procfile,
+	}
+	for k := range imageInspect.Config.ExposedPorts {
+		imageData.ExposedPort = string(k)
+	}
+	err = imageData.Save()
+	if err != nil {
+		return "", err
+	}
+	a.SetUpdatePlatform(true)
+	manager := &serviceManager{
+		client: client,
+		writer: evt,
+	}
+	err = servicecommon.RunServicePipeline(manager, a, newImage, nil)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return newImage, nil
+}
+
 func (p *kubernetesProvisioner) UploadDeploy(a provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
 	defer archiveFile.Close()
 	if build {
@@ -606,7 +667,7 @@ func (p *kubernetesProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app
 	})
 }
 
-func runPod(client *clusterClient, a provision.App, out io.Writer, cmds []string) error {
+func runIsolatedCmdPod(client *clusterClient, a provision.App, out io.Writer, cmds []string) error {
 	baseName := execCommandPodNameForApp(a)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
@@ -628,47 +689,15 @@ func runPod(client *clusterClient, a provision.App, out io.Writer, cmds []string
 	for _, envData := range appEnvs {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
-	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      baseName,
-			Namespace: client.Namespace(),
-			Labels:    labels.ToLabels(),
-		},
-		Spec: v1.PodSpec{
-			RestartPolicy: v1.RestartPolicyNever,
-			Containers: []v1.Container{
-				{
-					Name:    baseName,
-					Image:   imgName,
-					Command: cmds,
-					Env:     envs,
-				},
-			},
-		},
-	}
-	_, err = client.Core().Pods(client.Namespace()).Create(pod)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer cleanupPod(client, pod.Name)
-	err = waitForPod(client, pod.Name, true, defaultRunPodReadyTimeout)
-	if err != nil {
-		return err
-	}
-	req := client.Core().Pods(client.Namespace()).GetLogs(pod.Name, &v1.PodLogOptions{
-		Follow:    true,
-		Container: baseName,
+	return runPod(runSinglePodArgs{
+		client: client,
+		stdout: out,
+		labels: labels,
+		cmds:   cmds,
+		envs:   envs,
+		name:   baseName,
+		image:  imgName,
 	})
-	reader, err := req.Stream()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer reader.Close()
-	_, err = io.Copy(out, reader)
-	if err != nil && err != io.EOF {
-		return errors.WithStack(err)
-	}
-	return nil
 }
 
 func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer, a provision.App, cmd string, args ...string) error {
@@ -677,7 +706,7 @@ func (p *kubernetesProvisioner) ExecuteCommandIsolated(stdout, stderr io.Writer,
 		return err
 	}
 	cmds := append([]string{"/bin/sh", "-c", cmd}, args...)
-	return runPod(client, a, stdout, cmds)
+	return runIsolatedCmdPod(client, a, stdout, cmds)
 }
 
 func (p *kubernetesProvisioner) StartupMessage() (string, error) {
