@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
@@ -274,6 +275,13 @@ type RollbackableDeployer interface {
 // deployed image.
 type RebuildableDeployer interface {
 	Rebuild(App, *event.Event) (string, error)
+}
+
+// BuilderDeploy is a provisioner that allows deploy builded image.
+type BuilderDeploy interface {
+	Deploy(App, string, *event.Event) (string, error)
+	GetDockerClient(App) (*docker.Client, error)
+	RunHookDeploy(*docker.Client, App, string, []string, *event.Event) (string, error)
 }
 
 // Provisioner is the basic interface of this package.

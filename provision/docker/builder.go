@@ -10,6 +10,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -90,4 +91,37 @@ func (p *dockerProvisioner) rebuildImage(app provision.App) (string, string, err
 	}
 	defer archiveFile.Close()
 	return p.buildImage(app, archiveFile)
+}
+
+func (p *dockerProvisioner) Deploy(app provision.App, imageID string, evt *event.Event) (string, error) {
+	err := p.deployAndClean(app, imageID, evt)
+	if err != nil {
+		return "", err
+	}
+	return imageID, nil
+}
+
+func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+	cluster := p.Cluster()
+	nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
+	if err != nil {
+		return nil, err
+	}
+	nodeAddr, _, err := p.scheduler.minMaxNodes(nodes, app.GetName(), "")
+	if err != nil {
+		return nil, err
+	}
+	node, err := cluster.GetNode(nodeAddr)
+	if err != nil {
+		return nil, err
+	}
+	client, err := node.Client()
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func (p *dockerProvisioner) RunHookDeploy(client *docker.Client, app provision.App, imageID string, cmds []string, evt *event.Event) (string, error) {
+	return p.deployPipeline(app, imageID, cmds, evt)
 }

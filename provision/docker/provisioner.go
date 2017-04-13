@@ -106,6 +106,7 @@ var (
 	_ provision.UnitFinderProvisioner    = &dockerProvisioner{}
 	_ provision.AppFilterProvisioner     = &dockerProvisioner{}
 	_ provision.ExtensibleProvisioner    = &dockerProvisioner{}
+	_ provision.BuilderDeploy            = &dockerProvisioner{}
 )
 
 type hookHealer struct {

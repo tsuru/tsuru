@@ -36,6 +36,7 @@ type Pool struct {
 	Name        string `bson:"_id"`
 	Default     bool
 	Provisioner string
+	Builder     string
 }
 
 type AddPoolOptions struct {
@@ -44,6 +45,7 @@ type AddPoolOptions struct {
 	Default     bool
 	Force       bool
 	Provisioner string
+	Builder     string
 }
 
 type UpdatePoolOptions struct {
@@ -51,6 +53,7 @@ type UpdatePoolOptions struct {
 	Public      *bool
 	Force       bool
 	Provisioner string
+	Builder     string
 }
 
 func (p *Pool) GetProvisioner() (Provisioner, error) {

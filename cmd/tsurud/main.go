@@ -12,6 +12,7 @@ import (
 	"github.com/google/gops/agent"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
+	_ "github.com/tsuru/tsuru/builder/docker"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/iaas/dockermachine"
 	_ "github.com/tsuru/tsuru/provision/docker"

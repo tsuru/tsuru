@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -262,19 +263,47 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 			return deployer.ImageDeploy(opts.App, opts.Image, evt)
 		}
 	case DeployUpload, DeployUploadBuild:
+		if deployer, ok := prov.(provision.BuilderDeploy); ok {
+			return builderDeploy(deployer, opts, evt, false)
+		}
 		if deployer, ok := prov.(provision.UploadDeployer); ok {
 			return deployer.UploadDeploy(opts.App, opts.File, opts.FileSize, opts.Build, evt)
 		}
 	case DeployRebuild:
+		if deployer, ok := prov.(provision.BuilderDeploy); ok {
+			return builderDeploy(deployer, opts, evt, true)
+		}
 		if deployer, ok := prov.(provision.RebuildableDeployer); ok {
 			return deployer.Rebuild(opts.App, evt)
 		}
 	default:
+		if deployer, ok := prov.(provision.BuilderDeploy); ok {
+			return builderDeploy(deployer, opts, evt, false)
+		}
 		if deployer, ok := prov.(provision.ArchiveDeployer); ok {
 			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, evt)
 		}
 	}
 	return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
+}
+
+func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event, isRebuild bool) (string, error) {
+	buildOpts := builder.BuildOpts{
+		BuildFromFile: opts.Build,
+		ArchiveURL:    opts.ArchiveURL,
+		ArchiveFile:   opts.File,
+		ArchiveSize:   opts.FileSize,
+		Rebuild:       isRebuild,
+	}
+	build, err := opts.App.getBuilder()
+	if err != nil {
+		return "", err
+	}
+	imageID, err := build.Build(prov, opts.App, evt, buildOpts)
+	if err != nil {
+		return "", err
+	}
+	return prov.Deploy(opts.App, imageID, evt)
 }
 
 func ValidateOrigin(origin string) bool {
