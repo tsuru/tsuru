@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"math/rand"
+	"time"
 
 	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
 	"gopkg.in/check.v1"
@@ -123,4 +124,16 @@ func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
 	cfg, err = getRestConfig(&c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(cfg.Host, check.Equals, "addr2")
+}
+
+func (s *S) TestClusterClientSetTimeout(c *check.C) {
+	c1 := cluster.Cluster{
+		Name:      "c1",
+		Addresses: []string{"addr1", "addr2"},
+		Default:   true,
+	}
+	client, err := newClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	client.SetTimeout(time.Hour)
+	c.Assert(client.restConfig.Timeout, check.Equals, time.Hour)
 }

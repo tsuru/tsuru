@@ -69,6 +69,16 @@ func newClusterClient(clust *cluster.Cluster) (*clusterClient, error) {
 	}, nil
 }
 
+func (c *clusterClient) SetTimeout(timeout time.Duration) error {
+	c.restConfig.Timeout = timeout
+	client, err := clientForConfig(c.restConfig)
+	if err != nil {
+		return err
+	}
+	c.Interface = client
+	return nil
+}
+
 func clusterForPool(pool string) (*clusterClient, error) {
 	clust, err := cluster.ForPool(pool)
 	if err != nil {
