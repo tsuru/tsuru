@@ -60,6 +60,13 @@ func (m *MultiError) Len() int {
 	return len(m.errors)
 }
 
+func (m *MultiError) ToError() error {
+	if len(m.errors) == 0 {
+		return nil
+	}
+	return m
+}
+
 func (m *MultiError) Error() string {
 	if len(m.errors) == 0 {
 		return "multi error created but no errors added"
