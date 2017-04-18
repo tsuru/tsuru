@@ -698,40 +698,6 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	a := s.newApp("appdeployimagetest")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-<<<<<<< HEAD
-=======
-	w := safe.NewBuffer(make([]byte, 2048))
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		OutputStream: w,
-		Image:        "tsuru/app-otherapp:v1",
-		Rollback:     true,
-		Event:        evt,
-	})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-}
-
-func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
-	c.Assert(err, check.IsNil)
-	a := s.newApp("otherapp")
-	err = s.storage.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	s.p.Provision(&a)
-	defer s.p.Destroy(&a)
->>>>>>> app/image: refactores GetAppImageBySuffix
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))

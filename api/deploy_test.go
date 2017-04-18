@@ -1332,7 +1332,7 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -1363,7 +1363,7 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
@@ -1388,7 +1388,7 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
 	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
-	token := customUserWithPermission(c, "myadmin", permission.Permission{
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
 		Context: permission.Context(permission.CtxGlobal, ""),
 	})
