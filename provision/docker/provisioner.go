@@ -368,7 +368,7 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 }
 
 func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event.Event) (string, error) {
-	err := image.ValidateAppImage(a.GetName(), imageId)
+	imageId, err := image.GetAppImageBySuffix(a.GetName(), imageId)
 	if err != nil {
 		return "", err
 	}

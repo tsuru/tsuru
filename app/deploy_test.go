@@ -724,11 +724,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v1")
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v2")
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("invalid", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2")
+	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-otherapp:v2")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
@@ -747,7 +743,7 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Equals, "Rollback deploy called")
-	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-example:v2")
+	c.Assert(imgID, check.Equals, "registry.somewhere/tsuru/app-otherapp:v2")
 }
 
 func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
@@ -761,10 +757,6 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v1")
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("otherapp", "registry.somewhere/tsuru/app-example:v2")
-	c.Assert(err, check.IsNil)
-	err = image.AppendAppImageName("invalid", "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{

@@ -205,16 +205,12 @@ func Deploy(opts DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in deploy opts")
 	}
-	imgName, err := image.GetAppImageBySuffix(opts.App.Name, opts.Image)
-	if err != nil {
-		return "", err
-	}
-	if opts.Rollback {
-		inputImage := opts.Image
-		opts.Image = imgName
-		if opts.Image == inputImage {
-			return "", errors.Errorf("invalid version: %q", inputImage)
+	if opts.Rollback && !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
+		imageName, err := image.GetAppImageBySuffix(opts.App.Name, opts.Image)
+		if err != nil {
+			return "", err
 		}
+		opts.Image = imageName
 	}
 	logWriter := LogWriter{App: opts.App}
 	logWriter.Async()

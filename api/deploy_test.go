@@ -1146,11 +1146,21 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) 
 
 func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{
+		Name:      "otherapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Teams:     []string{s.team.Name},
+		Router:    "fake",
+	}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	b := app.App{Name: "otherapp2", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(&b, user)
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-otherapp:v1",
+	}
+	err = data.Save()
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("origin", "rollback")
@@ -1334,7 +1344,39 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
-func (s *DeploySuite) TestRollbackUpdateImageNotValid(c *check.C) {
+func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, check.IsNil)
+	data := image.ImageMetadata{
+		Name: "tsuru/app-otherapp:v1",
+	}
+	err = data.Save()
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("enabled", "true")
+	v.Set("reason", "")
+	v.Set("image", "v10")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	token := customUserWithPermission(c, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid version: \"v10\"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+}
+
+func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	user, _ := s.token.User()
 	fakeApp := app.App{Name: "otherapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(&fakeApp, user)
@@ -1355,6 +1397,6 @@ func (s *DeploySuite) TestRollbackUpdateImageNotValid(c *check.C) {
 	server := RunServer(true)
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "Image: \"v1\", from app: \"otherapp\" is not a valid image\n")
+	c.Assert(recorder.Body.String(), check.Equals, "not found\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
