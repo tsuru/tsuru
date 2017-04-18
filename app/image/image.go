@@ -496,23 +496,18 @@ func imageCustomDataColl() (*storage.Collection, error) {
 }
 
 func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
-	var appImageName string
 	inputImage := imageIdSuffix
 	validImgs, err := ListValidAppImages(appName)
-	if err == nil {
-		appImageName = inputImage
-		for _, img := range validImgs {
-			if strings.HasSuffix(img, inputImage) {
-				appImageName = img
-				break
-			}
-			if appImageName == inputImage {
-				return "", errors.Errorf("invalid version: %q", inputImage)
-			}
+	if err != nil {
+		return "", err
+	}
+	if len(validImgs) == 0 {
+		return "", errors.Errorf("Image %q not found in app %q", imageIdSuffix, appName)
+	}
+	for _, img := range validImgs {
+		if strings.HasSuffix(img, inputImage) {
+			return img, nil
 		}
 	}
-	if appImageName == "" {
-		return "", errors.Errorf("invalid version: %q", inputImage)
-	}
-	return appImageName, nil
+	return "", errors.Errorf("invalid version: %q", inputImage)
 }

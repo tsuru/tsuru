@@ -1396,6 +1396,6 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	server := RunServer(true)
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "not found\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Image \"v1\" not found in app \"otherapp\"\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
