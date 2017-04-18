@@ -382,14 +382,6 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 	return imageId, p.deploy(a, imageId, evt)
 }
 
-func (p *dockerProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
-	intermediateimageID, fileURI, err := p.rebuildImage(app)
-	if err != nil {
-		return "", err
-	}
-	return imageID, p.deploy(a, imageID, evt)
-}
-
 func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
 	if !strings.HasSuffix(buildImageID, "-builder") {
 		err := p.deploy(app, buildImageID, evt)
