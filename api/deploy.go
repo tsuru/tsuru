@@ -16,6 +16,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -409,13 +410,15 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Rollback updated
 //   400: Invalid data
 //   403: Forbidden
-//   404: Not found
-//   409: Conflict
+//   500: Internal server error
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s was not found", appName)}
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("App %s was not found", appName),
+		}
 	}
 	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
 	if !canUpdateRollback {
@@ -443,7 +446,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if (reason == "") && (rollback == false) {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "Reason cannot be empty while enabling rollback",
+			Message: "Reason cannot be empty while disabling a rollback",
 		}
 	}
 	evt, err := event.New(&event.Opts{
@@ -461,9 +464,17 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	defer func() { evt.Done(err) }()
 	err = app.RollbackUpdate(instance, img, reason, rollback)
 	if err != nil {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusConflict,
-			Message: err.Error(),
+		switch err {
+		case image.ErrInvalidVersion:
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusInternalServerError,
+				Message: err.Error(),
+			}
+		default:
+			return &tsuruErrors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+			}
 		}
 	}
 	return nil

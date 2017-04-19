@@ -19,6 +19,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var (
+	ErrImageNotFound     = errors.New("Image not found")
+	ErrInvalidVersion    = errors.New("Invalid version")
+	ErrNoImagesAvailable = errors.New("no images available for app")
+	procfileRegex        = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
+)
+
 type ImageMetadata struct {
 	Name            string `bson:"_id"`
 	CustomData      map[string]interface{}
@@ -46,9 +53,6 @@ func (i *ImageMetadata) Save() error {
 	defer coll.Close()
 	return coll.Insert(i)
 }
-
-var procfileRegex = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
-var ErrNoImagesAvailable = errors.New("no images available for app")
 
 // GetBuildImage returns the image name from app or plaftorm.
 // the platform image will be returned if:
@@ -502,12 +506,12 @@ func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
 		return "", err
 	}
 	if len(validImgs) == 0 {
-		return "", errors.Errorf("Image %q not found in app %q", imageIdSuffix, appName)
+		return "", ErrImageNotFound
 	}
 	for _, img := range validImgs {
 		if strings.HasSuffix(img, inputImage) {
 			return img, nil
 		}
 	}
-	return "", errors.Errorf("invalid version: %q", inputImage)
+	return "", ErrInvalidVersion
 }
