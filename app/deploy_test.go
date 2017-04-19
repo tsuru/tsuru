@@ -774,7 +774,7 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `^invalid version: "v20"$`)
+	c.Assert(err, check.Equals, image.ErrInvalidVersion)
 	c.Assert(imgID, check.Equals, "")
 }
 
