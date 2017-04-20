@@ -25,7 +25,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -124,9 +124,10 @@ func (s *S) SetUpTest(c *check.C) {
 	s.logHook = nil
 	s.stream = make(map[string]streamResult)
 	clus := &cluster.Cluster{
-		Name:      "c1",
-		Addresses: []string{"https://clusteraddr"},
-		Default:   true,
+		Name:        "c1",
+		Addresses:   []string{"https://clusteraddr"},
+		Default:     true,
+		Provisioner: provisionerName,
 	}
 	err = clus.Save()
 	c.Assert(err, check.IsNil)

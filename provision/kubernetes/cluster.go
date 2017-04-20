@@ -9,7 +9,7 @@ import (
 	"time"
 
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
@@ -80,7 +80,7 @@ func (c *clusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func clusterForPool(pool string) (*clusterClient, error) {
-	clust, err := cluster.ForPool(pool)
+	clust, err := cluster.ForPool(provisionerName, pool)
 	if err != nil {
 		return nil, err
 	}

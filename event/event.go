@@ -70,6 +70,7 @@ var (
 	TargetTypeNodeContainer   = TargetType("node-container")
 	TargetTypeInstallHost     = TargetType("install-host")
 	TargetTypeEventBlock      = TargetType("event-block")
+	TargetTypeCluster         = TargetType("cluster")
 )
 
 const (

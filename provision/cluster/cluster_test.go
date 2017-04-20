@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	_ "github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
@@ -119,6 +120,7 @@ func (s *S) TestClusterSave(c *check.C) {
 		ClientKey:         testKey,
 		ExplicitNamespace: "ns1",
 		Default:           true,
+		Provisioner:       "fake",
 	}
 	err := cluster.Save()
 	c.Assert(err, check.IsNil)
@@ -132,16 +134,18 @@ func (s *S) TestClusterSave(c *check.C) {
 
 func (s *S) TestClusterSaveRemoveDefaults(c *check.C) {
 	c1 := Cluster{
-		Name:      "c1",
-		Addresses: []string{"addr1"},
-		Default:   true,
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Default:     true,
+		Provisioner: "fake",
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
 	c2 := Cluster{
-		Name:      "c2",
-		Addresses: []string{"addr2"},
-		Default:   true,
+		Name:        "c2",
+		Addresses:   []string{"addr2"},
+		Default:     true,
+		Provisioner: "fake",
 	}
 	err = c2.Save()
 	c.Assert(err, check.IsNil)
@@ -158,16 +162,18 @@ func (s *S) TestClusterSaveRemoveDefaults(c *check.C) {
 
 func (s *S) TestClusterSaveRemovePools(c *check.C) {
 	c1 := Cluster{
-		Name:      "c1",
-		Addresses: []string{"addr1"},
-		Pools:     []string{"p1", "p2"},
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Pools:       []string{"p1", "p2"},
+		Provisioner: "fake",
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
 	c2 := Cluster{
-		Name:      "c2",
-		Addresses: []string{"addr2"},
-		Pools:     []string{"p2", "p3"},
+		Name:        "c2",
+		Addresses:   []string{"addr2"},
+		Pools:       []string{"p2", "p3"},
+		Provisioner: "fake",
 	}
 	err = c2.Save()
 	c.Assert(err, check.IsNil)
@@ -193,6 +199,7 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 				Addresses:         []string{"addr1", "addr2"},
 				ExplicitNamespace: "ns1",
 				Default:           true,
+				Provisioner:       "fake",
 			},
 			err: "cluster name is mandatory",
 		},
@@ -202,6 +209,7 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 				Addresses:         []string{},
 				ExplicitNamespace: "ns1",
 				Default:           true,
+				Provisioner:       "fake",
 			},
 			err: "at least one address must be present",
 		},
@@ -211,6 +219,7 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 				Addresses:         []string{"addr1"},
 				ExplicitNamespace: "ns1",
 				Default:           false,
+				Provisioner:       "fake",
 			},
 			err: "either default or a list of pools must be set",
 		},
@@ -221,8 +230,29 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 				ExplicitNamespace: "ns1",
 				Default:           true,
 				Pools:             []string{"p1"},
+				Provisioner:       "fake",
 			},
 			err: "cannot have both pools and default set",
+		},
+		{
+			c: Cluster{
+				Name:              "c1",
+				Addresses:         []string{"addr1"},
+				ExplicitNamespace: "ns1",
+				Default:           true,
+				Provisioner:       "",
+			},
+			err: "provisioner name is mandatory",
+		},
+		{
+			c: Cluster{
+				Name:              "c1",
+				Addresses:         []string{"addr1"},
+				ExplicitNamespace: "ns1",
+				Default:           true,
+				Provisioner:       "invalid",
+			},
+			err: "unknown provisioner: \"invalid\"",
 		},
 	}
 	for _, tt := range tests {
@@ -234,16 +264,18 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 
 func (s *S) TestAllClusters(c *check.C) {
 	c1 := Cluster{
-		Name:      "c1",
-		Addresses: []string{"addr1"},
-		Pools:     []string{"p1"},
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Pools:       []string{"p1"},
+		Provisioner: "fake",
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
 	c2 := Cluster{
-		Name:      "c2",
-		Addresses: []string{"addr2"},
-		Pools:     []string{"p2"},
+		Name:        "c2",
+		Addresses:   []string{"addr2"},
+		Pools:       []string{"p2"},
+		Provisioner: "fake",
 	}
 	err = c2.Save()
 	c.Assert(err, check.IsNil)
@@ -258,45 +290,50 @@ func (s *S) TestAllClusters(c *check.C) {
 
 func (s *S) TestForPool(c *check.C) {
 	c1 := Cluster{
-		Name:      "c1",
-		Addresses: []string{"addr1"},
-		Pools:     []string{"p1", "p2"},
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		Pools:       []string{"p1", "p2"},
+		Provisioner: "fake",
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
 	c2 := Cluster{
-		Name:      "c2",
-		Addresses: []string{"addr2"},
-		Pools:     []string{"p3"},
+		Name:        "c2",
+		Addresses:   []string{"addr2"},
+		Pools:       []string{"p3"},
+		Provisioner: "fake",
 	}
 	err = c2.Save()
 	c.Assert(err, check.IsNil)
 	c3 := Cluster{
-		Name:      "c3",
-		Addresses: []string{"addr2"},
-		Default:   true,
+		Name:        "c3",
+		Addresses:   []string{"addr2"},
+		Default:     true,
+		Provisioner: "fake",
 	}
 	err = c3.Save()
 	c.Assert(err, check.IsNil)
-	cluster, err := ForPool("p1")
+	cluster, err := ForPool("fake", "p1")
 	c.Assert(err, check.IsNil)
 	c.Assert(cluster, check.DeepEquals, &c1)
 	c.Assert(cluster.Name, check.Equals, "c1")
-	cluster, err = ForPool("p2")
+	cluster, err = ForPool("fake", "p2")
 	c.Assert(err, check.IsNil)
 	c.Assert(cluster.Name, check.Equals, "c1")
-	cluster, err = ForPool("p3")
+	cluster, err = ForPool("fake", "p3")
 	c.Assert(err, check.IsNil)
 	c.Assert(cluster.Name, check.Equals, "c2")
-	cluster, err = ForPool("p4")
+	cluster, err = ForPool("fake", "p4")
 	c.Assert(err, check.IsNil)
 	c.Assert(cluster.Name, check.Equals, "c3")
-	cluster, err = ForPool("")
+	cluster, err = ForPool("fake", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(cluster.Name, check.Equals, "c3")
 	err = DeleteCluster("c3")
 	c.Assert(err, check.IsNil)
-	_, err = ForPool("p4")
+	_, err = ForPool("fake", "p4")
+	c.Assert(err, check.Equals, ErrNoCluster)
+	_, err = ForPool("other", "p3")
 	c.Assert(err, check.Equals, ErrNoCluster)
 }
 

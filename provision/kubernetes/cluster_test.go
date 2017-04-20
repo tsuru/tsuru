@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"gopkg.in/check.v1"
 	"k8s.io/client-go/rest"
 )
@@ -82,12 +82,13 @@ qni/3jTJOxDGMH+x06HZjWietWmbY+aKWkKCyGGVVzlKTEBUMSSU
 
 func (s *S) TestClusterInitClient(c *check.C) {
 	c1 := cluster.Cluster{
-		Name:       "c1",
-		Addresses:  []string{"addr1"},
-		CaCert:     testCA,
-		ClientCert: testCert,
-		ClientKey:  testKey,
-		Default:    true,
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		CaCert:      testCA,
+		ClientCert:  testCert,
+		ClientKey:   testKey,
+		Default:     true,
+		Provisioner: provisionerName,
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
@@ -111,9 +112,10 @@ func (s *S) TestClusterInitClient(c *check.C) {
 
 func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
 	c1 := cluster.Cluster{
-		Name:      "c1",
-		Addresses: []string{"addr1", "addr2"},
-		Default:   true,
+		Name:        "c1",
+		Addresses:   []string{"addr1", "addr2"},
+		Default:     true,
+		Provisioner: provisionerName,
 	}
 	err := c1.Save()
 	c.Assert(err, check.IsNil)
@@ -128,9 +130,10 @@ func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
 
 func (s *S) TestClusterClientSetTimeout(c *check.C) {
 	c1 := cluster.Cluster{
-		Name:      "c1",
-		Addresses: []string{"addr1", "addr2"},
-		Default:   true,
+		Name:        "c1",
+		Addresses:   []string{"addr1", "addr2"},
+		Default:     true,
+		Provisioner: provisionerName,
 	}
 	client, err := newClusterClient(&c1)
 	c.Assert(err, check.IsNil)

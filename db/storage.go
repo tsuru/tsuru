@@ -244,3 +244,8 @@ func (s *Storage) InstallHosts() *storage.Collection {
 	c.EnsureIndex(nameIndex)
 	return c
 }
+
+func (s *Storage) ProvisionerClusters() *storage.Collection {
+	c := s.Collection("provisioner_clusters")
+	return c
+}

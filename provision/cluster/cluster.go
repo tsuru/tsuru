@@ -11,22 +11,20 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	kubeClusterCollection = "kubernetes_clusters"
-)
-
 var (
 	ErrClusterNotFound = errors.New("cluster not found")
-	ErrNoCluster       = errors.New("no kubernetes cluster")
+	ErrNoCluster       = errors.New("no cluster")
 )
 
 type Cluster struct {
 	Name              string   `json:"name" bson:"_id"`
 	Addresses         []string `json:"addresses"`
+	Provisioner       string   `json:"provisioner"`
 	CaCert            []byte   `json:"cacert" bson:",omitempty"`
 	ClientCert        []byte   `json:"clientcert" bson:",omitempty"`
 	ClientKey         []byte   `json:"-" bson:",omitempty"`
@@ -40,13 +38,20 @@ func clusterCollection() (*storage.Collection, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return conn.Collection(kubeClusterCollection), nil
+	return conn.ProvisionerClusters(), nil
 }
 
 func (c *Cluster) validate() error {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "cluster name is mandatory"})
+	}
+	if c.Provisioner == "" {
+		return errors.WithStack(&tsuruErrors.ValidationError{Message: "provisioner name is mandatory"})
+	}
+	_, err := provision.Get(c.Provisioner)
+	if err != nil {
+		return errors.WithStack(&tsuruErrors.ValidationError{Message: err.Error()})
 	}
 	if len(c.Addresses) == 0 {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "at least one address must be present"})
@@ -81,7 +86,7 @@ func (c *Cluster) Save() error {
 		updates["$set"] = bson.M{"default": false}
 	}
 	if len(updates) > 0 {
-		_, err = coll.UpdateAll(nil, updates)
+		_, err = coll.UpdateAll(bson.M{"provisioner": c.Provisioner}, updates)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -98,19 +103,7 @@ func (c *Cluster) Namespace() string {
 }
 
 func AllClusters() ([]*Cluster, error) {
-	coll, err := clusterCollection()
-	if err != nil {
-		return nil, err
-	}
-	var clusters []*Cluster
-	err = coll.Find(nil).All(&clusters)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if len(clusters) == 0 {
-		return nil, ErrNoCluster
-	}
-	return clusters, nil
+	return listClusters(nil)
 }
 
 func DeleteCluster(clusterName string) error {
@@ -127,17 +120,21 @@ func DeleteCluster(clusterName string) error {
 	return err
 }
 
-func ForPool(pool string) (*Cluster, error) {
+func ForProvisioner(provisioner string) ([]*Cluster, error) {
+	return listClusters(bson.M{"provisioner": provisioner})
+}
+
+func ForPool(provisioner, pool string) (*Cluster, error) {
 	coll, err := clusterCollection()
 	if err != nil {
 		return nil, err
 	}
 	var c Cluster
 	if pool != "" {
-		err = coll.Find(bson.M{"pools": pool}).One(&c)
+		err = coll.Find(bson.M{"provisioner": provisioner, "pools": pool}).One(&c)
 	}
 	if pool == "" || err == mgo.ErrNotFound {
-		err = coll.Find(bson.M{"default": true}).One(&c)
+		err = coll.Find(bson.M{"provisioner": provisioner, "default": true}).One(&c)
 	}
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -146,4 +143,20 @@ func ForPool(pool string) (*Cluster, error) {
 		return nil, errors.WithStack(err)
 	}
 	return &c, nil
+}
+
+func listClusters(query bson.M) ([]*Cluster, error) {
+	coll, err := clusterCollection()
+	if err != nil {
+		return nil, err
+	}
+	var clusters []*Cluster
+	err = coll.Find(query).All(&clusters)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if len(clusters) == 0 {
+		return nil, ErrNoCluster
+	}
+	return clusters, nil
 }

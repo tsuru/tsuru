@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package cluster
+package api
 
 import (
 	"encoding/json"
@@ -10,26 +10,15 @@ import (
 
 	"github.com/ajg/form"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision/kubernetes/cluster"
+	"github.com/tsuru/tsuru/provision/cluster"
 )
 
-var (
-	targetTypeCluster = event.TargetType("cluster")
-)
-
-func init() {
-	api.RegisterHandlerVersion("1.3", "/kubernetes/clusters", "POST", api.AuthorizationRequiredHandler(updateCluster))
-	api.RegisterHandlerVersion("1.3", "/kubernetes/clusters", "GET", api.AuthorizationRequiredHandler(listClusters))
-	api.RegisterHandlerVersion("1.3", "/kubernetes/clusters/{name}", "DELETE", api.AuthorizationRequiredHandler(deleteCluster))
-}
-
-// title: create or update kubernetes cluster
-// path: /kubernetes/clusters
+// title: create or update provisioner cluster
+// path: /provisioner/clusters
 // method: POST
 // consume: application/x-www-form-urlencoded
 // produce: application/json
@@ -39,17 +28,17 @@ func init() {
 //   401: Unauthorized
 //   409: Cluster already exists
 func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermKubernetesClusterUpdate)
+	allowed := permission.Check(t, permission.PermClusterUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
 	dec.IgnoreUnknownKeys(true)
-	var kubeCluster cluster.Cluster
+	var provCluster cluster.Cluster
 	err = r.ParseForm()
 	if err == nil {
-		err = dec.DecodeValues(&kubeCluster, r.Form)
+		err = dec.DecodeValues(&provCluster, r.Form)
 	}
 	if err != nil {
 		return &tsuruErrors.HTTP{
@@ -58,17 +47,17 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: targetTypeCluster, Value: kubeCluster.Name},
-		Kind:       permission.PermKubernetesClusterUpdate,
+		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
+		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermKubernetesClusterReadEvents),
+		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = kubeCluster.Save()
+	err = provCluster.Save()
 	if err != nil {
 		if _, ok := errors.Cause(err).(*tsuruErrors.ValidationError); ok {
 			return &tsuruErrors.HTTP{
@@ -82,8 +71,8 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	return nil
 }
 
-// title: list kubernetes clusters
-// path: /kubernetes/clusters
+// title: list provisioner clusters
+// path: /provisioner/clusters
 // method: GET
 // consume: application/x-www-form-urlencoded
 // produce: application/json
@@ -92,7 +81,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   204: No Content
 //   401: Unauthorized
 func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermKubernetesClusterRead)
+	allowed := permission.Check(t, permission.PermClusterRead)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -107,8 +96,8 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	return json.NewEncoder(w).Encode(clusters)
 }
 
-// title: delete kubernetes cluster
-// path: /kubernetes/clusters/{name}
+// title: delete provisioner cluster
+// path: /provisioner/clusters/{name}
 // method: GET
 // consume: application/x-www-form-urlencoded
 // produce: application/json
@@ -117,18 +106,18 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   401: Unauthorized
 //   404: Cluster not found
 func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermKubernetesClusterDelete)
+	allowed := permission.Check(t, permission.PermClusterDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	r.ParseForm()
 	clusterName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: targetTypeCluster, Value: clusterName},
-		Kind:       permission.PermKubernetesClusterDelete,
+		Target:     event.Target{Type: event.TargetTypeCluster, Value: clusterName},
+		Kind:       permission.PermClusterDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermKubernetesClusterReadEvents),
+		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
 	if err != nil {
 		return err

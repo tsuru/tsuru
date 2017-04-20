@@ -310,6 +310,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "Get", "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
+	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(updateCluster))
+	m.Add("1.3", "GET", "/provisioner/clusters", AuthorizationRequiredHandler(listClusters))
+	m.Add("1.3", "DELETE", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(deleteCluster))
+
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.0", "GET", "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
