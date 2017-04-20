@@ -259,6 +259,7 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	pool := provision.Pool{Name: "pool1"}
 	opts := provision.AddPoolOptions{Name: pool.Name, Public: true}
 	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
 	opts = provision.AddPoolOptions{Name: "pool2"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
