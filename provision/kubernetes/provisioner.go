@@ -529,7 +529,7 @@ func (p *kubernetesProvisioner) ImageDeploy(a provision.App, imageID string, evt
 		Processes: procfile,
 	}
 	for k := range imageInspect.Config.ExposedPorts {
-		imageData.ExposedPort = string(k)
+		imageData.ExposedPort = k
 	}
 	err = imageData.Save()
 	if err != nil {
