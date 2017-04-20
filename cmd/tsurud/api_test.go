@@ -34,7 +34,7 @@ func (s *S) TestAPICmdCheckOnlyWarnings(c *check.C) {
 	}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(stderr.String(), check.Matches, "(?s)WARNING: Config entry \"pubsub:redis-host\".*"+
+	c.Assert(stderr.String(), check.Matches, "(?s)WARNING: Neither of the config entries for \"pubsub:redis-\\*\".*"+
 		"WARNING: Config entry \"queue:mongo-url\".*")
 }
 

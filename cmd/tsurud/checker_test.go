@@ -247,7 +247,28 @@ func (w *CheckerSuite) TestCheckPubSubMissing(c *check.C) {
 	config.Unset("pubsub:redis-host")
 	err := checkPubSub()
 	c.Assert(err, check.FitsTypeOf, config.NewWarning(""))
-	c.Assert(err, check.ErrorMatches, ".*Config entry \"pubsub:redis-host\" is not set.*")
+	c.Assert(err, check.ErrorMatches, ".*Neither of the config entries for \"pubsub:redis-\\*\" are set.*")
+}
+
+func (w *CheckerSuite) TestPubSubSentinel(c *check.C) {
+	config.Unset("pubsub:redis-host")
+	config.Set("pubsub:redis-sentinel-addrs", "localhost")
+	err := checkPubSub()
+	c.Assert(err, check.IsNil)
+}
+
+func (w *CheckerSuite) TestPubSubRedisServer(c *check.C) {
+	config.Unset("pubsub:redis-host")
+	config.Set("pubsub:redis-server", "localhost")
+	err := checkPubSub()
+	c.Assert(err, check.IsNil)
+}
+
+func (w *CheckerSuite) TestPubSubRedisCluster(c *check.C) {
+	config.Unset("pubsub:redis-host")
+	config.Set("pubsub:redis-cluster-addrs", "localhost")
+	err := checkPubSub()
+	c.Assert(err, check.IsNil)
 }
 
 func (w *CheckerSuite) TestCheckQueue(c *check.C) {

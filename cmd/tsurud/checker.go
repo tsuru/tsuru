@@ -5,6 +5,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 )
@@ -51,11 +53,14 @@ func checkPubSub() error {
 	if oldConfig != "" {
 		return config.NewWarning(`Using "redis-queue:*" is deprecated. Please change your tsuru.conf to use "pubsub:*" options. See http://docs.tsuru.io/en/latest/reference/config.html#pubsub for more details.`)
 	}
-	redisHost, _ := config.GetString("pubsub:redis-host")
-	if redisHost == "" {
-		return config.NewWarning(`Config entry "pubsub:redis-host" is not set, default "localhost" will be used. Running "tsuru app-log -f" might not work.`)
+	redisConfigs := []string{"redis-host", "redis-sentinel-addrs", "redis-server", "redis-cluster-addrs"}
+	for _, c := range redisConfigs {
+		value, _ := config.GetString(fmt.Sprintf("pubsub:%s", c))
+		if value != "" {
+			return nil
+		}
 	}
-	return nil
+	return config.NewWarning(`Neither of the config entries for "pubsub:redis-*" are set, default "localhost" will be used. Running "tsuru app-log -f" might not work.`)
 }
 
 func checkQueue() error {
