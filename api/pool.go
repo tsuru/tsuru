@@ -28,27 +28,48 @@ import (
 //   404: User not found
 func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teams := []string{}
+	poolNames := []string{}
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
+	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermPoolRead)...)
 	for _, c := range contexts {
 		if c.CtxType == permission.CtxGlobal {
 			teams = nil
+			poolNames = nil
 			break
 		}
-		if c.CtxType != permission.CtxTeam {
-			continue
+		if c.CtxType == permission.CtxTeam {
+			teams = append(teams, c.Value)
 		}
-		teams = append(teams, c.Value)
+		if c.CtxType == permission.CtxPool {
+			poolNames = append(poolNames, c.Value)
+		}
 	}
 	pools, err := provision.ListPossiblePools(teams)
 	if err != nil {
 		return err
 	}
-	if len(pools) == 0 {
+	if len(poolNames) > 0 {
+		namedPools, err := provision.ListPools(poolNames...)
+		if err != nil {
+			return err
+		}
+		pools = append(pools, namedPools...)
+	}
+	poolsMap := make(map[string]struct{})
+	var poolList []provision.Pool
+	for _, p := range pools {
+		if _, ok := poolsMap[p.Name]; ok {
+			continue
+		}
+		poolList = append(poolList, p)
+		poolsMap[p.Name] = struct{}{}
+	}
+	if len(poolList) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(pools)
+	return json.NewEncoder(w).Encode(poolList)
 }
 
 // title: pool create

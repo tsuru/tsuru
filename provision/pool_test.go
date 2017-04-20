@@ -361,12 +361,23 @@ func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
 	c.Assert(constraint.AllowsAll(), check.Equals, true)
 }
 
-func (s *S) TestListPoolAll(c *check.C) {
-	coll := s.storage.Pools()
-	pool := Pool{Name: "pool1", Default: true}
-	err := coll.Insert(pool)
+func (s *S) TestListPool(c *check.C) {
+	err := AddPool(AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveId(pool.Name)
+	err = AddPool(AddPoolOptions{Name: "pool2", Default: true})
+	c.Assert(err, check.IsNil)
+	err = AddPool(AddPoolOptions{Name: "pool3"})
+	c.Assert(err, check.IsNil)
+	pools, err := ListPools("pool1", "pool3")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pools), check.Equals, 2)
+	c.Assert(pools[0].Name, check.Equals, "pool1")
+	c.Assert(pools[1].Name, check.Equals, "pool3")
+}
+
+func (s *S) TestListPossiblePoolsAll(c *check.C) {
+	err := AddPool(AddPoolOptions{Name: "pool1", Default: true})
+	c.Assert(err, check.IsNil)
 	pools, err := ListPossiblePools(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 1)

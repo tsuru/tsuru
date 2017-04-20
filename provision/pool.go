@@ -274,6 +274,10 @@ func RemoveTeamsFromPool(poolName string, teams []string) error {
 	return removePoolConstraint(poolName, "team", teams...)
 }
 
+func ListPools(names ...string) ([]Pool, error) {
+	return listPools(bson.M{"_id": bson.M{"$in": names}})
+}
+
 func ListPossiblePools(teams []string) ([]Pool, error) {
 	return getPoolsSatisfyConstraints(false, "team", teams...)
 }
@@ -484,9 +488,6 @@ func getPoolsSatisfyConstraints(exactCheck bool, field string, values ...string)
 	pools, err := listPools(nil)
 	if err != nil {
 		return nil, err
-	}
-	if len(values) == 0 {
-		return pools, nil
 	}
 	var satisfying []Pool
 loop:
