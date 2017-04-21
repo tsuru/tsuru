@@ -2,7 +2,7 @@
 # Build customization
 build:
   main: ./cmd/tsurud
-  binary_name: tsurud
+  binary: tsurud
   ldflags: ' '
   goos:
     - linux
