@@ -1177,7 +1177,7 @@ func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
 	var body map[string]string
 	err = json.Unmarshal(recorder.Body.Bytes(), &body)
 	c.Assert(err, check.IsNil)
-	c.Assert(body, check.DeepEquals, map[string]string{"Message": "", "Error": image.ErrInvalidVersion.Error()})
+	c.Assert(body, check.DeepEquals, map[string]string{"Message": "", "Error": "Invalid version: v3"})
 }
 
 func (s *DeploySuite) TestDiffDeploy(c *check.C) {
@@ -1371,8 +1371,8 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	server := RunServer(true)
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, image.ErrInvalidVersion.Error()+"\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid version: v10\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
@@ -1396,6 +1396,6 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	server := RunServer(true)
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, image.ErrImageNotFound.Error()+"\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Image v1 not found in app \"otherapp\"\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }

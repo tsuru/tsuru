@@ -459,10 +459,10 @@ func (s *S) TestGetAppImageBySuffix(c *check.C) {
 	imgName, err = GetAppImageBySuffix("myapp", "v4")
 	c.Assert(err, check.NotNil)
 	c.Assert(imgName, check.Equals, "")
-	c.Assert(err, check.Equals, ErrInvalidVersion)
+	c.Assert(err.Error(), check.Equals, "Invalid version: v4")
 	imgName, err = GetAppImageBySuffix("myapp", "x9")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrInvalidVersion)
+	c.Assert(err.Error(), check.Equals, "Invalid version: x9")
 	c.Assert(imgName, check.Equals, "")
 	err = AppendAppImageName("zapp", "registry.somewhere/tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
@@ -474,4 +474,14 @@ func (s *S) TestGetAppImageBySuffix(c *check.C) {
 	imgName, err = GetAppImageBySuffix("zapp", "v2")
 	c.Assert(err, check.IsNil)
 	c.Assert(imgName, check.Equals, "registry.somewhere/tsuru/app-myapp:v2")
+}
+
+func (s *S) TestInvalidVersionError(c *check.C) {
+	var err error = &InvalidVersionErr{Image: "v9"}
+	c.Assert(err.Error(), check.Equals, "Invalid version: v9")
+}
+
+func (s *S) TestImageNotFoundError(c *check.C) {
+	var err error = &ImageNotFoundErr{App: "otherapp", Image: "v9"}
+	c.Assert(err.Error(), check.Equals, "Image v9 not found in app \"otherapp\"")
 }

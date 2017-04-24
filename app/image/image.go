@@ -20,11 +20,25 @@ import (
 )
 
 var (
-	ErrImageNotFound     = errors.New("Image not found")
-	ErrInvalidVersion    = errors.New("Invalid version")
 	ErrNoImagesAvailable = errors.New("no images available for app")
 	procfileRegex        = regexp.MustCompile(`^([A-Za-z0-9_-]+):\s*(.+)$`)
 )
+
+type ImageNotFoundErr struct {
+	App, Image string
+}
+
+func (i *ImageNotFoundErr) Error() string {
+	return fmt.Sprintf("Image %s not found in app %q", i.Image, i.App)
+}
+
+type InvalidVersionErr struct {
+	Image string
+}
+
+func (i *InvalidVersionErr) Error() string {
+	return fmt.Sprintf("Invalid version: %s", i.Image)
+}
 
 type ImageMetadata struct {
 	Name            string `bson:"_id"`
@@ -506,12 +520,12 @@ func GetAppImageBySuffix(appName, imageIdSuffix string) (string, error) {
 		return "", err
 	}
 	if len(validImgs) == 0 {
-		return "", ErrImageNotFound
+		return "", &ImageNotFoundErr{App: appName, Image: inputImage}
 	}
 	for _, img := range validImgs {
 		if strings.HasSuffix(img, inputImage) {
 			return img, nil
 		}
 	}
-	return "", ErrInvalidVersion
+	return "", &InvalidVersionErr{Image: inputImage}
 }

@@ -1801,7 +1801,10 @@ func (s *S) TestProvisionerRollbackNoDeployImage(c *check.C) {
 	a := provisiontest.NewFakeApp("otherapp", "python", 1)
 	_, err := s.p.Rollback(a, "inexist", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, image.ErrImageNotFound)
+	e, ok := err.(*image.ImageNotFoundErr)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.App, check.Equals, "otherapp")
+	c.Assert(e.Image, check.Equals, "inexist")
 }
 
 func (s *S) TestProvisionerStart(c *check.C) {
