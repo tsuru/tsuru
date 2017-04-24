@@ -140,3 +140,18 @@ func (s *S) TestClusterClientSetTimeout(c *check.C) {
 	client.SetTimeout(time.Hour)
 	c.Assert(client.restConfig.Timeout, check.Equals, time.Hour)
 }
+
+func (s *S) TestClusterNamespace(c *check.C) {
+	c1 := cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": "x"}}
+	client, err := newClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Namespace(), check.Equals, "x")
+	c1 = cluster.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"namespace": ""}}
+	client, err = newClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Namespace(), check.Equals, "default")
+	c1 = cluster.Cluster{Addresses: []string{"addr1"}}
+	client, err = newClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Namespace(), check.Equals, "default")
+}

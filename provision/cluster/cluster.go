@@ -22,15 +22,15 @@ var (
 )
 
 type Cluster struct {
-	Name              string   `json:"name" bson:"_id"`
-	Addresses         []string `json:"addresses"`
-	Provisioner       string   `json:"provisioner"`
-	CaCert            []byte   `json:"cacert" bson:",omitempty"`
-	ClientCert        []byte   `json:"clientcert" bson:",omitempty"`
-	ClientKey         []byte   `json:"-" bson:",omitempty"`
-	Pools             []string `json:"pools" bson:",omitempty"`
-	ExplicitNamespace string   `json:"namespace" bson:"namespace,omitempty"`
-	Default           bool     `json:"default"`
+	Name        string            `json:"name" bson:"_id"`
+	Addresses   []string          `json:"addresses"`
+	Provisioner string            `json:"provisioner"`
+	CaCert      []byte            `json:"cacert" bson:",omitempty"`
+	ClientCert  []byte            `json:"clientcert" bson:",omitempty"`
+	ClientKey   []byte            `json:"-" bson:",omitempty"`
+	Pools       []string          `json:"pools" bson:",omitempty"`
+	CustomData  map[string]string `json:"custom_data" bson:",omitempty"`
+	Default     bool              `json:"default"`
 }
 
 func clusterCollection() (*storage.Collection, error) {
@@ -93,13 +93,6 @@ func (c *Cluster) Save() error {
 	}
 	_, err = coll.UpsertId(c.Name, c)
 	return errors.WithStack(err)
-}
-
-func (c *Cluster) Namespace() string {
-	if c.ExplicitNamespace == "" {
-		return "default"
-	}
-	return c.ExplicitNamespace
 }
 
 func AllClusters() ([]*Cluster, error) {

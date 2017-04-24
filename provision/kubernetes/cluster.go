@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"k8s.io/client-go/kubernetes"
@@ -18,7 +19,8 @@ import (
 )
 
 const (
-	defaultTimeout = time.Minute
+	defaultTimeout      = time.Minute
+	namespaceClusterKey = "namespace"
 )
 
 var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
@@ -35,6 +37,9 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 	gv, err := unversioned.ParseGroupVersion("/v1")
 	if err != nil {
 		return nil, err
+	}
+	if len(c.Addresses) == 0 {
+		return nil, errors.New("no addresses for cluster")
 	}
 	addr := c.Addresses[rand.Intn(len(c.Addresses))]
 	return &rest.Config{
@@ -77,6 +82,13 @@ func (c *clusterClient) SetTimeout(timeout time.Duration) error {
 	}
 	c.Interface = client
 	return nil
+}
+
+func (c *clusterClient) Namespace() string {
+	if c.CustomData == nil || c.CustomData["namespace"] == "" {
+		return "default"
+	}
+	return c.CustomData["namespace"]
 }
 
 func clusterForPool(pool string) (*clusterClient, error) {

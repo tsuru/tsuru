@@ -113,14 +113,16 @@ func (s *S) TearDownSuite(c *check.C) {
 
 func (s *S) TestClusterSave(c *check.C) {
 	cluster := Cluster{
-		Name:              "c1",
-		Addresses:         []string{"addr1", "addr2"},
-		CaCert:            testCA,
-		ClientCert:        testCert,
-		ClientKey:         testKey,
-		ExplicitNamespace: "ns1",
-		Default:           true,
-		Provisioner:       "fake",
+		Name:        "c1",
+		Addresses:   []string{"addr1", "addr2"},
+		CaCert:      testCA,
+		ClientCert:  testCert,
+		ClientKey:   testKey,
+		Default:     true,
+		Provisioner: "fake",
+		CustomData: map[string]string{
+			"a": "b",
+		},
 	}
 	err := cluster.Save()
 	c.Assert(err, check.IsNil)
@@ -195,62 +197,56 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 	}{
 		{
 			c: Cluster{
-				Name:              "  ",
-				Addresses:         []string{"addr1", "addr2"},
-				ExplicitNamespace: "ns1",
-				Default:           true,
-				Provisioner:       "fake",
+				Name:        "  ",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
 			},
 			err: "cluster name is mandatory",
 		},
 		{
 			c: Cluster{
-				Name:              "c1",
-				Addresses:         []string{},
-				ExplicitNamespace: "ns1",
-				Default:           true,
-				Provisioner:       "fake",
+				Name:        "c1",
+				Addresses:   []string{},
+				Default:     true,
+				Provisioner: "fake",
 			},
 			err: "at least one address must be present",
 		},
 		{
 			c: Cluster{
-				Name:              "c1",
-				Addresses:         []string{"addr1"},
-				ExplicitNamespace: "ns1",
-				Default:           false,
-				Provisioner:       "fake",
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     false,
+				Provisioner: "fake",
 			},
 			err: "either default or a list of pools must be set",
 		},
 		{
 			c: Cluster{
-				Name:              "c1",
-				Addresses:         []string{"addr1"},
-				ExplicitNamespace: "ns1",
-				Default:           true,
-				Pools:             []string{"p1"},
-				Provisioner:       "fake",
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     true,
+				Pools:       []string{"p1"},
+				Provisioner: "fake",
 			},
 			err: "cannot have both pools and default set",
 		},
 		{
 			c: Cluster{
-				Name:              "c1",
-				Addresses:         []string{"addr1"},
-				ExplicitNamespace: "ns1",
-				Default:           true,
-				Provisioner:       "",
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     true,
+				Provisioner: "",
 			},
 			err: "provisioner name is mandatory",
 		},
 		{
 			c: Cluster{
-				Name:              "c1",
-				Addresses:         []string{"addr1"},
-				ExplicitNamespace: "ns1",
-				Default:           true,
-				Provisioner:       "invalid",
+				Name:        "c1",
+				Addresses:   []string{"addr1"},
+				Default:     true,
+				Provisioner: "invalid",
 			},
 			err: "unknown provisioner: \"invalid\"",
 		},
@@ -335,11 +331,4 @@ func (s *S) TestForPool(c *check.C) {
 	c.Assert(err, check.Equals, ErrNoCluster)
 	_, err = ForPool("other", "p3")
 	c.Assert(err, check.Equals, ErrNoCluster)
-}
-
-func (s *S) TestClusterNamespace(c *check.C) {
-	c1 := Cluster{ExplicitNamespace: "x"}
-	c.Assert(c1.Namespace(), check.Equals, "x")
-	c1 = Cluster{ExplicitNamespace: ""}
-	c.Assert(c1.Namespace(), check.Equals, "default")
 }
