@@ -21,6 +21,9 @@ import (
 const (
 	defaultTimeout      = time.Minute
 	namespaceClusterKey = "namespace"
+	tokenClusterKey     = "token"
+	userClusterKey      = "username"
+	passwordClusterKey  = "password"
 )
 
 var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
@@ -42,6 +45,12 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 		return nil, errors.New("no addresses for cluster")
 	}
 	addr := c.Addresses[rand.Intn(len(c.Addresses))]
+	token, user, password := "", "", ""
+	if c.CustomData != nil {
+		token = c.CustomData[tokenClusterKey]
+		user = c.CustomData[userClusterKey]
+		password = c.CustomData[passwordClusterKey]
+	}
 	return &rest.Config{
 		APIPath: "/api",
 		ContentConfig: rest.ContentConfig{
@@ -54,7 +63,10 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 			CertData: c.ClientCert,
 			KeyData:  c.ClientKey,
 		},
-		Timeout: defaultTimeout,
+		Timeout:     defaultTimeout,
+		BearerToken: token,
+		Username:    user,
+		Password:    password,
 	}, nil
 }
 
