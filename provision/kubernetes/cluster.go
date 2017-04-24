@@ -97,10 +97,10 @@ func (c *clusterClient) SetTimeout(timeout time.Duration) error {
 }
 
 func (c *clusterClient) Namespace() string {
-	if c.CustomData == nil || c.CustomData["namespace"] == "" {
+	if c.CustomData == nil || c.CustomData[namespaceClusterKey] == "" {
 		return "default"
 	}
-	return c.CustomData["namespace"]
+	return c.CustomData[namespaceClusterKey]
 }
 
 func clusterForPool(pool string) (*clusterClient, error) {
