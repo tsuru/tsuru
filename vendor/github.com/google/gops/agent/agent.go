@@ -8,51 +8,67 @@ package agent
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
 	gosignal "os/signal"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 	"strconv"
+	"sync"
 	"time"
+
+	"bufio"
 
 	"github.com/google/gops/internal"
 	"github.com/google/gops/signal"
+	"github.com/kardianos/osext"
 )
 
-// Agent represents an agent that enable the advanced gops features
-type Agent struct {
-	// HandleSignals is a boolean that tells whether the agent should listen to
-	// the Interrupt signal and shutdown the applications after performing the
-	// necessary cleanup.
-	HandleSignals bool
+const defaultAddr = "127.0.0.1:0"
 
+var (
+	mu       sync.Mutex
 	portfile string
 	listener net.Listener
+
+	units = []string{" bytes", "KB", "MB", "GB", "TB", "PB"}
+)
+
+// Options allows configuring the started agent.
+type Options struct {
+	// Addr is the host:port the agent will be listening at.
+	// Optional.
+	Addr string
+
+	// NoShutdownCleanup tells the agent not to automatically cleanup
+	// resources if the running process receives an interrupt.
+	// Optional.
+	NoShutdownCleanup bool
 }
 
-// Start starts the gops agent on a host process. Once agent started, users can
-// use the advanced gops features. The agent will listen to Interrupt signals
-// and exit the process, if you need to perform further work on the Interrupt
-// signal (*Agent).Start() should be used.
+// Listen starts the gops agent on a host process. Once agent started, users
+// can use the advanced gops features. The agent will listen to Interrupt
+// signals and exit the process, if you need to perform further work on the
+// Interrupt signal use the options parameter to configure the agent
+// accordingly.
 //
 // Note: The agent exposes an endpoint via a TCP connection that can be used by
 // any program on the system. Review your security requirements before starting
 // the agent.
-func Start() error {
-	return (&Agent{
-		HandleSignals: true,
-	}).Start()
-}
+func Listen(opts *Options) error {
+	mu.Lock()
+	defer mu.Unlock()
 
-// Start starts the target gops agent on a host process. Once agent started,
-// users can use the advanced gops features.
-//
-// Note: The agent exposes an endpoint via a TCP connection that can be used by
-// any program on the system. Review your security requirements before starting
-// the agent.
-func (a *Agent) Start() error {
+	if opts == nil {
+		opts = &Options{}
+	}
+	if portfile != "" {
+		return fmt.Errorf("gops: agent already listening at: %v", listener.Addr())
+	}
+
 	gopsdir, err := internal.ConfigDir()
 	if err != nil {
 		return err
@@ -61,77 +77,98 @@ func (a *Agent) Start() error {
 	if err != nil {
 		return err
 	}
+	if !opts.NoShutdownCleanup {
+		gracefulShutdown()
+	}
 
-	// TODO(jbd): Expose these endpoints on HTTP. Then, we can enable
-	// the agent on Windows systems.
-	a.listener, err = net.Listen("tcp", "127.0.0.1:0")
+	addr := opts.Addr
+	if addr == "" {
+		addr = defaultAddr
+	}
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
-	port := a.listener.Addr().(*net.TCPAddr).Port
-	a.portfile = fmt.Sprintf("%s/%d", gopsdir, os.Getpid())
-	err = ioutil.WriteFile(a.portfile, []byte(strconv.Itoa(port)), os.ModePerm)
+	listener = ln
+	port := listener.Addr().(*net.TCPAddr).Port
+	portfile = fmt.Sprintf("%s/%d", gopsdir, os.Getpid())
+	err = ioutil.WriteFile(portfile, []byte(strconv.Itoa(port)), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	if a.HandleSignals {
-		c := make(chan os.Signal, 1)
-		gosignal.Notify(c, os.Interrupt)
-		go func() {
-			// cleanup the socket on shutdown.
-			<-c
-			a.Stop()
-			os.Exit(1)
-		}()
-	}
+	go listen()
+	return nil
+}
 
-	listener := a.listener
-	go func() {
-		buf := make([]byte, 1)
-		for {
-			fd, err := listener.Accept()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "gops: %v", err)
-				if netErr, ok := err.(net.Error); ok && !netErr.Temporary() {
-					return
-				}
-				continue
+func listen() {
+	buf := make([]byte, 1)
+	for {
+		fd, err := listener.Accept()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "gops: %v", err)
+			if netErr, ok := err.(net.Error); ok && !netErr.Temporary() {
+				break
 			}
-			if _, err := fd.Read(buf); err != nil {
-				fmt.Fprintf(os.Stderr, "gops: %v", err)
-				continue
-			}
-			if err := handle(fd, buf); err != nil {
-				fmt.Fprintf(os.Stderr, "gops: %v", err)
-				continue
-			}
-			fd.Close()
+			continue
 		}
+		if _, err := fd.Read(buf); err != nil {
+			fmt.Fprintf(os.Stderr, "gops: %v", err)
+			continue
+		}
+		if err := handle(fd, buf); err != nil {
+			fmt.Fprintf(os.Stderr, "gops: %v", err)
+			continue
+		}
+		fd.Close()
+	}
+}
+
+func gracefulShutdown() {
+	c := make(chan os.Signal, 1)
+	gosignal.Notify(c, os.Interrupt)
+	go func() {
+		// cleanup the socket on shutdown.
+		<-c
+		Close()
+		os.Exit(1)
 	}()
-	return err
 }
 
-// Stop stops the agent, removing temporary files and stopping the TCP
-// listener.
-func (a *Agent) Stop() {
-	if a.portfile != "" {
-		os.Remove(a.portfile)
-		a.portfile = ""
+// Close closes the agent, removing temporary files and closing the TCP listener.
+// If no agent is listening, Close does nothing.
+func Close() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if portfile != "" {
+		os.Remove(portfile)
+		portfile = ""
 	}
-	if a.listener != nil {
-		a.listener.Close()
-		a.listener = nil
+	if listener != nil {
+		listener.Close()
 	}
 }
 
-func handle(conn net.Conn, msg []byte) error {
+func formatBytes(val uint64) string {
+	var i int
+	var target uint64
+	for i = range units {
+		target = 1 << uint(10*(i+1))
+		if val < target {
+			break
+		}
+	}
+	if i > 0 {
+		return fmt.Sprintf("%0.2f%s (%d bytes)", float64(val)/(float64(target)/1024), units[i], val)
+	}
+	return fmt.Sprintf("%d bytes", val)
+}
+
+func handle(conn io.Writer, msg []byte) error {
 	switch msg[0] {
 	case signal.StackTrace:
-		buf := make([]byte, 1<<16)
-		n := runtime.Stack(buf, true)
-		_, err := conn.Write(buf[:n])
-		return err
+		return pprof.Lookup("goroutine").WriteTo(conn, 2)
 	case signal.GC:
 		runtime.GC()
 		_, err := conn.Write([]byte("ok"))
@@ -139,41 +176,62 @@ func handle(conn net.Conn, msg []byte) error {
 	case signal.MemStats:
 		var s runtime.MemStats
 		runtime.ReadMemStats(&s)
-		fmt.Fprintf(conn, "alloc: %v bytes\n", s.Alloc)
-		fmt.Fprintf(conn, "total-alloc: %v bytes\n", s.TotalAlloc)
-		fmt.Fprintf(conn, "sys: %v bytes\n", s.Sys)
+		fmt.Fprintf(conn, "alloc: %v\n", formatBytes(s.Alloc))
+		fmt.Fprintf(conn, "total-alloc: %v\n", formatBytes(s.TotalAlloc))
+		fmt.Fprintf(conn, "sys: %v\n", formatBytes(s.Sys))
 		fmt.Fprintf(conn, "lookups: %v\n", s.Lookups)
 		fmt.Fprintf(conn, "mallocs: %v\n", s.Mallocs)
 		fmt.Fprintf(conn, "frees: %v\n", s.Frees)
-		fmt.Fprintf(conn, "heap-alloc: %v bytes\n", s.HeapAlloc)
-		fmt.Fprintf(conn, "heap-sys: %v bytes\n", s.HeapSys)
-		fmt.Fprintf(conn, "heap-idle: %v bytes\n", s.HeapIdle)
-		fmt.Fprintf(conn, "heap-in-use: %v bytes\n", s.HeapInuse)
-		fmt.Fprintf(conn, "heap-released: %v bytes\n", s.HeapReleased)
+		fmt.Fprintf(conn, "heap-alloc: %v\n", formatBytes(s.HeapAlloc))
+		fmt.Fprintf(conn, "heap-sys: %v\n", formatBytes(s.HeapSys))
+		fmt.Fprintf(conn, "heap-idle: %v\n", formatBytes(s.HeapIdle))
+		fmt.Fprintf(conn, "heap-in-use: %v\n", formatBytes(s.HeapInuse))
+		fmt.Fprintf(conn, "heap-released: %v\n", formatBytes(s.HeapReleased))
 		fmt.Fprintf(conn, "heap-objects: %v\n", s.HeapObjects)
-		fmt.Fprintf(conn, "stack-in-use: %v bytes\n", s.StackInuse)
-		fmt.Fprintf(conn, "stack-sys: %v bytes\n", s.StackSys)
-		fmt.Fprintf(conn, "next-gc: when heap-alloc >= %v bytes\n", s.NextGC)
-		fmt.Fprintf(conn, "last-gc: %v ns\n", s.LastGC)
-		fmt.Fprintf(conn, "gc-pause: %v ns\n", s.PauseTotalNs)
+		fmt.Fprintf(conn, "stack-in-use: %v\n", formatBytes(s.StackInuse))
+		fmt.Fprintf(conn, "stack-sys: %v\n", formatBytes(s.StackSys))
+		fmt.Fprintf(conn, "next-gc: when heap-alloc >= %v\n", formatBytes(s.NextGC))
+		lastGC := "-"
+		if s.LastGC != 0 {
+			lastGC = fmt.Sprint(time.Unix(0, int64(s.LastGC)))
+		}
+		fmt.Fprintf(conn, "last-gc: %v\n", lastGC)
+		fmt.Fprintf(conn, "gc-pause: %v\n", time.Duration(s.PauseTotalNs))
 		fmt.Fprintf(conn, "num-gc: %v\n", s.NumGC)
 		fmt.Fprintf(conn, "enable-gc: %v\n", s.EnableGC)
 		fmt.Fprintf(conn, "debug-gc: %v\n", s.DebugGC)
 	case signal.Version:
 		fmt.Fprintf(conn, "%v\n", runtime.Version())
 	case signal.HeapProfile:
-		pprof.Lookup("heap").WriteTo(conn, 0)
+		pprof.WriteHeapProfile(conn)
 	case signal.CPUProfile:
 		if err := pprof.StartCPUProfile(conn); err != nil {
-			return nil
+			return err
 		}
 		time.Sleep(30 * time.Second)
 		pprof.StopCPUProfile()
-	case signal.Vitals:
+	case signal.Stats:
 		fmt.Fprintf(conn, "goroutines: %v\n", runtime.NumGoroutine())
 		fmt.Fprintf(conn, "OS threads: %v\n", pprof.Lookup("threadcreate").Count())
 		fmt.Fprintf(conn, "GOMAXPROCS: %v\n", runtime.GOMAXPROCS(0))
 		fmt.Fprintf(conn, "num CPU: %v\n", runtime.NumCPU())
+	case signal.BinaryDump:
+		path, err := osext.Executable()
+		if err != nil {
+			return err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		_, err = bufio.NewReader(f).WriteTo(conn)
+		return err
+	case signal.Trace:
+		trace.Start(conn)
+		time.Sleep(5 * time.Second)
+		trace.Stop()
 	}
 	return nil
 }

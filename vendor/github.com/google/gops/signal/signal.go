@@ -18,12 +18,18 @@ const (
 	// Version prints the Go version.
 	Version = byte(0x4)
 
-	// HeapProfile starts `go tool pprof`` with the current memory profile.
+	// HeapProfile starts `go tool pprof` with the current memory profile.
 	HeapProfile = byte(0x5)
 
 	// CPUProfile starts `go tool pprof` with the current CPU profile
 	CPUProfile = byte(0x6)
 
-	// Vitals returns Go runtime statistics such as number of goroutines, GOMAXPROCS, and NumCPU.
-	Vitals = byte(0x7)
+	// Stats returns Go runtime statistics such as number of goroutines, GOMAXPROCS, and NumCPU.
+	Stats = byte(0x7)
+
+	// Trace starts the Go execution tracer, waits 5 seconds and launches the trace tool.
+	Trace = byte(0x8)
+
+	// BinaryDump returns running binary file.
+	BinaryDump = byte(0x9)
 )
