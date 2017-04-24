@@ -112,7 +112,7 @@ func clusterForPool(pool string) (*clusterClient, error) {
 }
 
 func allClusters() ([]*clusterClient, error) {
-	clusters, err := cluster.AllClusters()
+	clusters, err := cluster.ForProvisioner(provisionerName)
 	if err != nil {
 		return nil, err
 	}
