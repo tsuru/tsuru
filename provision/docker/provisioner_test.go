@@ -1198,6 +1198,80 @@ func (s *S) TestImageDeployWithEntrypointAndCmd(c *check.C) {
 	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
+func (s *S) TestImageDeployWithExposedPort(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint:   []string{"cmd"},
+				ExposedPorts: map[docker.Port]struct{}{"8000/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	customData := map[string]interface{}{}
+	err = s.newFakeImage(p, imageName, customData)
+	c.Assert(err, check.IsNil)
+	pushOpts := docker.PushImageOptions{
+		Name:     imageName,
+		Registry: s.server.URL(),
+	}
+	err = p.Cluster().PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	a := s.newApp("otherapp")
+	a.Quota = quota.Unlimited
+	a.Pool = "pool1"
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	image.PullAppImageNames(a.Name, []string{imageName})
+	w := safe.NewBuffer(make([]byte, 2048))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        imageName,
+		Event:        evt,
+	})
+	c.Assert(err, check.IsNil)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	appCurrentImage, err := image.AppCurrentImageName(a.GetName())
+	c.Assert(err, check.IsNil)
+	imd, err := image.GetImageCustomData(appCurrentImage)
+	c.Assert(err, check.IsNil)
+	c.Assert(imd.ExposedPort, check.DeepEquals, "8000/tcp")
+	dcli, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	cont, err := dcli.InspectContainer(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.Config.ExposedPorts, check.DeepEquals, map[docker.Port]struct{}{"8000/tcp": {}})
+	err = p.Restart(&a, "", ioutil.Discard)
+	c.Assert(err, check.IsNil)
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	cont, err = dcli.InspectContainer(units[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.Config.ExposedPorts, check.DeepEquals, map[docker.Port]struct{}{"8000/tcp": {}})
+}
+
 func (s *S) TestDeployAndRebuild(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 2)
 	defer func() { <-stopCh }()

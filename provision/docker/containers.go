@@ -84,6 +84,10 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if w == nil {
 		w = ioutil.Discard
 	}
+	imageData, err := image.GetImageCustomData(imageId)
+	if err != nil {
+		return nil, err
+	}
 	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
 		app:         a,
@@ -94,6 +98,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		imageId:     imageId,
 		provisioner: p,
 		event:       evt,
+		exposedPort: imageData.ExposedPort,
 	}
 	var pipeline *action.Pipeline
 	if p.isDryMode {
@@ -113,7 +118,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 			&provisionUnbindOldUnits,
 		)
 	}
-	err := pipeline.Execute(args)
+	err = pipeline.Execute(args)
 	if err != nil {
 		return nil, err
 	}
