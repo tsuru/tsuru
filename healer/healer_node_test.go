@@ -51,6 +51,14 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://addr1:1")
 
+	err = healer.UpdateNodeData(nodes[0], []provision.NodeCheckResult{
+		{
+			Name:       "whatever",
+			Successful: true,
+		},
+	})
+	c.Assert(err, check.IsNil)
+
 	machines, err := iaas.ListMachines()
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
@@ -68,6 +76,12 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "addr2")
+
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	n, err := coll.FindId("http://addr1:1").Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
 }
 
 func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {

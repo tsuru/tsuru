@@ -153,6 +153,10 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	if err != nil {
 		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err, buf.String())
 	}
+	err = h.RemoveNode(node)
+	if err != nil {
+		log.Errorf("Unable to remove node %s status from healer: %s", node.Address(), err)
+	}
 	failingMachine, err := iaas.FindMachineByIdOrAddress(node.Metadata()["iaas-id"], failingHost)
 	if err != nil {
 		return &nodeSpec, errors.Wrapf(err, "Unable to find failing machine %s in IaaS", failingHost)
