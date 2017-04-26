@@ -21,7 +21,6 @@ import (
 func init() {
 	cmd.RegisterExtraCmd(&moveContainerCmd{})
 	cmd.RegisterExtraCmd(&moveContainersCmd{})
-	cmd.RegisterExtraCmd(&listHealingHistoryCmd{})
 	cmd.RegisterExtraCmd(&dockerLogInfo{})
 	cmd.RegisterExtraCmd(&dockerLogUpdate{})
 }
