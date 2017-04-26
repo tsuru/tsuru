@@ -921,4 +921,26 @@ func (s *S) TestRollbackUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgMD.Reason, check.Equals, "my reason")
 	c.Assert(imgMD.DisableRollback, check.Equals, true)
+    err = RollbackUpdate(&app, "v1", "", false)
+	c.Assert(err, check.IsNil)
+	imgMD, err = image.GetImageMetaData("tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+    c.Assert(imgMD.Reason, check.Equals, "")
+    c.Assert(imgMD.DisableRollback, check.Equals, false)
+    err = RollbackUpdate(&app, "v20", "", false)
+    c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Invalid version: v20")
+}
+
+func (s *S) TestRollbackUpdateInvalidApp(c *check.C) {
+    InvalidApp := App{
+        Name:      "otherapp",
+        Platform:  "zend",
+        Teams:     []string{s.team.Name},
+        TeamOwner: s.team.Name,
+        Router:    "fake",
+    }
+    err := RollbackUpdate(&InvalidApp, "v1", "", false)
+    c.Assert(err, check.NotNil)
+    c.Assert(err.Error(), check.Equals, "Image v1 not found in app \"otherapp\"")
 }
