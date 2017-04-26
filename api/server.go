@@ -306,8 +306,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "GET", "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.2", "POST", "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.2", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
-
-	m.Add("1.3", "Get", "/routers", AuthorizationRequiredHandler(listRouters))
+	m.Add("1.3", "GET", "/healing", AuthorizationRequiredHandler(healingHistoryHandler))
+	m.Add("1.3", "GET", "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	m.Add("1.3", "POST", "/provisioner/clusters", AuthorizationRequiredHandler(updateCluster))
@@ -333,6 +333,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "GET", "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.0", "POST", "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.0", "DELETE", "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
+	m.Add("1.0", "GET", "/docker/healing", AuthorizationRequiredHandler(healingHistoryHandler))
 
 	m.Add("1.0", "GET", "/docker/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	m.Add("1.0", "GET", "/docker/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
@@ -342,7 +343,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "DELETE", "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
 	m.Add("1.0", "DELETE", "/docker/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
 
-	m.Add("1.0", "Get", "/plans/routers", AuthorizationRequiredHandler(listRouters))
+	m.Add("1.0", "GET", "/plans/routers", AuthorizationRequiredHandler(listRouters))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

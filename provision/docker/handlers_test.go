@@ -6,7 +6,6 @@ package docker
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,7 +13,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -197,168 +195,6 @@ func (s *HandlersSuite) TestMoveContainerNotFound(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *HandlersSuite) TestHealingHistoryNoContent(c *check.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/docker/healing", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-}
-
-func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
-	evt1, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr1"},
-		InternalKind: "healer",
-		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
-		Allowed:      event.Allowed(permission.PermPool),
-	})
-	c.Assert(err, check.IsNil)
-	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
-	time.Sleep(10 * time.Millisecond)
-	evt2, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr3"},
-		InternalKind: "healer",
-		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
-		Allowed:      event.Allowed(permission.PermPool),
-	})
-	c.Assert(err, check.IsNil)
-	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
-	time.Sleep(10 * time.Millisecond)
-	evt3, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
-		InternalKind: "healer",
-		CustomData:   container.Container{Container: types.Container{ID: "1234"}},
-		Allowed:      event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	evt3.DoneCustomData(nil, container.Container{Container: types.Container{ID: "9876"}})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/docker/healing", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	body := recorder.Body.Bytes()
-	var healings []types.HealingEvent
-	err = json.Unmarshal(body, &healings)
-	c.Assert(err, check.IsNil)
-	c.Assert(healings, check.HasLen, 3)
-	c.Assert(healings[2].StartTime.UTC().Format(time.Stamp), check.Equals, evt1.StartTime.UTC().Format(time.Stamp))
-	c.Assert(healings[2].EndTime.UTC().Format(time.Stamp), check.Equals, evt1.EndTime.UTC().Format(time.Stamp))
-	c.Assert(healings[2].FailingNode.Address, check.Equals, "addr1")
-	c.Assert(healings[2].CreatedNode.Address, check.Equals, "addr2")
-	c.Assert(healings[2].Error, check.Equals, "")
-	c.Assert(healings[2].Successful, check.Equals, true)
-	c.Assert(healings[2].Action, check.Equals, "node-healing")
-	c.Assert(healings[1].FailingNode.Address, check.Equals, "addr3")
-	c.Assert(healings[1].CreatedNode.Address, check.Equals, "")
-	c.Assert(healings[1].Error, check.Equals, "some error")
-	c.Assert(healings[1].Successful, check.Equals, false)
-	c.Assert(healings[1].Action, check.Equals, "node-healing")
-	c.Assert(healings[0].FailingContainer.ID, check.Equals, "1234")
-	c.Assert(healings[0].CreatedContainer.ID, check.Equals, "9876")
-	c.Assert(healings[0].Successful, check.Equals, true)
-	c.Assert(healings[0].Error, check.Equals, "")
-	c.Assert(healings[0].Action, check.Equals, "container-healing")
-}
-
-func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
-	evt1, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr1"},
-		InternalKind: "healer",
-		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
-		Allowed:      event.Allowed(permission.PermPool),
-	})
-	c.Assert(err, check.IsNil)
-	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
-	time.Sleep(10 * time.Millisecond)
-	evt2, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeNode, Value: "addr3"},
-		InternalKind: "healer",
-		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
-		Allowed:      event.Allowed(permission.PermPool),
-	})
-	c.Assert(err, check.IsNil)
-	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
-	time.Sleep(10 * time.Millisecond)
-	evt3, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeContainer, Value: "1234"},
-		InternalKind: "healer",
-		CustomData:   container.Container{Container: types.Container{ID: "1234"}},
-		Allowed:      event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	evt3.DoneCustomData(nil, container.Container{Container: types.Container{ID: "9876"}})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body := recorder.Body.Bytes()
-	var healings []types.HealingEvent
-	err = json.Unmarshal(body, &healings)
-	c.Assert(err, check.IsNil)
-	c.Assert(healings, check.HasLen, 1)
-	c.Assert(healings[0].FailingContainer.ID, check.Equals, "1234")
-	c.Assert(healings[0].CreatedContainer.ID, check.Equals, "9876")
-	c.Assert(healings[0].Successful, check.Equals, true)
-	c.Assert(healings[0].Error, check.Equals, "")
-	c.Assert(healings[0].Action, check.Equals, "container-healing")
-}
-
-func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
-	evt1, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "node", Value: "addr1"},
-		InternalKind: "healer",
-		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr1"}},
-		Allowed:      event.Allowed(permission.PermPool),
-	})
-	c.Assert(err, check.IsNil)
-	evt1.DoneCustomData(nil, cluster.Node{Address: "addr2"})
-	time.Sleep(10 * time.Millisecond)
-	evt2, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "node", Value: "addr3"},
-		InternalKind: "healer",
-		CustomData:   map[string]interface{}{"node": cluster.Node{Address: "addr3"}},
-		Allowed:      event.Allowed(permission.PermPool),
-	})
-	c.Assert(err, check.IsNil)
-	evt2.DoneCustomData(errors.New("some error"), cluster.Node{})
-	time.Sleep(10 * time.Millisecond)
-	evt3, err := event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: "container", Value: "1234"},
-		InternalKind: "healer",
-		CustomData:   container.Container{Container: types.Container{ID: "1234"}},
-		Allowed:      event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	evt3.DoneCustomData(nil, container.Container{Container: types.Container{ID: "9876"}})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	server := api.RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	body := recorder.Body.Bytes()
-	var healings []types.HealingEvent
-	err = json.Unmarshal(body, &healings)
-	c.Assert(err, check.IsNil)
-	c.Assert(healings, check.HasLen, 2)
-	c.Assert(healings[0].Action, check.Equals, "node-healing")
-	c.Assert(healings[0].ID, check.Equals, evt2.UniqueID.Hex())
-	c.Assert(healings[0].FailingNode.Address, check.Equals, "addr3")
-	c.Assert(healings[1].Action, check.Equals, "node-healing")
-	c.Assert(healings[1].ID, check.Equals, evt1.UniqueID.Hex())
-	c.Assert(healings[1].FailingNode.Address, check.Equals, "addr1")
 }
 
 func (s *HandlersSuite) TestDockerLogsUpdateHandler(c *check.C) {
