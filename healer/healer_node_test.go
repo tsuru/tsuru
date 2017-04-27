@@ -79,6 +79,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 
 	coll, err := nodeDataCollection()
 	c.Assert(err, check.IsNil)
+	defer coll.Close()
 	n, err := coll.FindId("http://addr1:1").Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 0)

@@ -104,6 +104,7 @@ func DeleteCluster(clusterName string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	err = coll.RemoveId(clusterName)
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -122,6 +123,7 @@ func ForPool(provisioner, pool string) (*Cluster, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer coll.Close()
 	var c Cluster
 	if pool != "" {
 		err = coll.Find(bson.M{"provisioner": provisioner, "pools": pool}).One(&c)
@@ -143,6 +145,7 @@ func listClusters(query bson.M) ([]*Cluster, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer coll.Close()
 	var clusters []*Cluster
 	err = coll.Find(query).All(&clusters)
 	if err != nil {

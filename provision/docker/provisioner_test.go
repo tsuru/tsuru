@@ -2133,6 +2133,7 @@ func (s *S) TestProvisionerCollectionDefaultConfig(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	col := p.Collection()
+	defer col.Close()
 	c.Assert(col.Name, check.Equals, "dockercluster")
 	config.Set("docker:collection", s.collName)
 }
