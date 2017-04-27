@@ -28,7 +28,7 @@ To install tsuru locally, one can simply run
 
 ::
 
-    $ tsuru install
+    $ tsuru install-create
 
 
 After a couple of minutes you will have a full tsuru installation, inside a local
@@ -139,7 +139,7 @@ And pass it to the install command as:
 
 ::
 
-    $ tsuru install -c config.yml
+    $ tsuru install-create -c config.yml
 
 .. _examples:
 
