@@ -260,7 +260,9 @@ func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
 		c.Assert(img, check.Equals, "")
 	}()
 	time.Sleep(100 * time.Millisecond)
-	err = evt.TryCancel("because yes", "majortom@ground.control")
+	evtDB, err := event.GetByID(evt.UniqueID)
+	c.Assert(err, check.IsNil)
+	err = evtDB.TryCancel("because yes", "majortom@ground.control")
 	c.Assert(err, check.IsNil)
 	<-done
 }
