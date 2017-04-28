@@ -93,3 +93,49 @@ func (S) TestMultiConditionalTransport(c *check.C) {
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(m.ConditionalTransports, check.HasLen, 0)
 }
+
+func (S) TestAnyConditionalTransport(c *check.C) {
+	t1 := ConditionalTransport{
+		Transport: Transport{
+			Message: "some response",
+			Status:  http.StatusUnauthorized,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/foo" && req.Method == http.MethodPost
+		},
+	}
+	t2 := ConditionalTransport{
+		Transport: Transport{
+			Message: "something else",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/bar"
+		},
+	}
+	a := AnyConditionalTransport{
+		ConditionalTransports: []ConditionalTransport{t1, t2},
+	}
+	req, _ := http.NewRequest(http.MethodGet, "/bar", nil)
+	r, err := a.RoundTrip(req)
+	c.Assert(err, check.IsNil)
+	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
+	body, _ := ioutil.ReadAll(r.Body)
+	c.Assert(string(body), check.Equals, "something else")
+	r, err = a.RoundTrip(req)
+	c.Assert(err, check.IsNil)
+	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
+	body, _ = ioutil.ReadAll(r.Body)
+	c.Assert(string(body), check.Equals, "something else")
+	req, _ = http.NewRequest(http.MethodGet, "/foo", nil)
+	r, err = a.RoundTrip(req)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "all conditions failed")
+	c.Assert(r.StatusCode, check.Equals, http.StatusInternalServerError)
+	req, _ = http.NewRequest(http.MethodPost, "/foo", nil)
+	r, err = a.RoundTrip(req)
+	c.Assert(err, check.IsNil)
+	c.Assert(r.StatusCode, check.Equals, http.StatusUnauthorized)
+	body, _ = ioutil.ReadAll(r.Body)
+	c.Assert(string(body), check.Equals, "some response")
+}

@@ -56,3 +56,16 @@ func (m *MultiConditionalTransport) RoundTrip(req *http.Request) (*http.Response
 	m.ConditionalTransports = m.ConditionalTransports[1:]
 	return ct.RoundTrip(req)
 }
+
+type AnyConditionalTransport struct {
+	ConditionalTransports []ConditionalTransport
+}
+
+func (m *AnyConditionalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	for _, ct := range m.ConditionalTransports {
+		if ct.CondFunc(req) {
+			return ct.Transport.RoundTrip(req)
+		}
+	}
+	return &http.Response{Body: nil, StatusCode: 500}, errors.New("all conditions failed")
+}
