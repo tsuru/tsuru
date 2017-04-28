@@ -1615,7 +1615,7 @@ func (s *S) TestShellToAnAppByTaskID(c *check.C) {
 	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
 	exec, err := client.InspectExec(matches[1])
 	c.Assert(err, check.IsNil)
-	c.Assert(exec.Container.ID, check.Equals, task.Status.ContainerStatus.ContainerID)
+	c.Assert(exec.ContainerID, check.Equals, task.Status.ContainerStatus.ContainerID)
 	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
 	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
 }
