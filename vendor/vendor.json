@@ -922,14 +922,14 @@
 		{
 			"checksumSHA1": "LTKfZ0ddnA7tIbIjszlpwKjJJjE=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "3a676990e9e9a61616a9c546222dce396df6e5fb",
-			"revisionTime": "2017-04-27T20:00:43Z"
+			"revision": "122f334aa9063dcf87814c33c7331fccf1d88988",
+			"revisionTime": "2017-04-28T19:28:00Z"
 		},
 		{
-			"checksumSHA1": "VbKb2UwOMbS7KJFGMOe6U6pycuI=",
+			"checksumSHA1": "gW+toYJtBDXKSLcrqQYEfInaHSI=",
 			"path": "github.com/fsouza/go-dockerclient/testing",
-			"revision": "3a676990e9e9a61616a9c546222dce396df6e5fb",
-			"revisionTime": "2017-04-27T20:00:43Z"
+			"revision": "122f334aa9063dcf87814c33c7331fccf1d88988",
+			"revisionTime": "2017-04-28T19:28:00Z"
 		},
 		{
 			"checksumSHA1": "nJYT8dNFeMl0lkIYM9z9OzxP15M=",

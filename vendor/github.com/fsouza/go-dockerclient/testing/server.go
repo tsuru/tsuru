@@ -986,7 +986,11 @@ func (s *DockerServer) pullImage(w http.ResponseWriter, r *http.Request) {
 	s.images = append(s.images, image)
 	if fromImageName != "" {
 		if tag != "" {
-			fromImageName = fmt.Sprintf("%s:%s", fromImageName, tag)
+			separator := ":"
+			if strings.HasPrefix(tag, "sha256") {
+				separator = "@"
+			}
+			fromImageName = fmt.Sprintf("%s%s%s", fromImageName, separator, tag)
 		}
 		s.imgIDs[fromImageName] = image.ID
 	}
