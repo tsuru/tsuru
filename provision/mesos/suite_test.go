@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/andygrunwald/megos"
+	"github.com/gambol99/go-marathon"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -15,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"golang.org/x/crypto/bcrypt"
@@ -22,11 +25,13 @@ import (
 )
 
 type S struct {
-	p     *mesosProvisioner
-	conn  *db.Storage
-	user  *auth.User
-	team  *auth.Team
-	token auth.Token
+	p        *mesosProvisioner
+	conn     *db.Storage
+	user     *auth.User
+	team     *auth.Team
+	token    auth.Token
+	marathon *fakeMarathonClient
+	mesos    *fakeMesosClient
 }
 
 var _ = check.Suite(&S{})
@@ -51,10 +56,56 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
+type fakeMarathonClient struct {
+	marathon.Marathon
+}
+
+type fakeMesosClient struct {
+	mesosClient
+	state megos.State
+}
+
+func (c *fakeMesosClient) GetSlavesFromCluster() (*megos.State, error) {
+	return &c.state, nil
+}
+
+func (s *S) addFakeNodes() {
+	s.mesos.state = megos.State{
+		Slaves: []megos.Slave{
+			{
+				ID:       "m1id",
+				Hostname: "m1",
+			},
+			{
+				ID:       "m2id",
+				Hostname: "m2",
+			},
+		},
+	}
+}
+
 func (s *S) SetUpTest(c *check.C) {
+	s.marathon = &fakeMarathonClient{}
+	s.mesos = &fakeMesosClient{}
+	hookMarathonClient = func(cli marathon.Marathon) marathon.Marathon {
+		s.marathon.Marathon = cli
+		return s.marathon
+	}
+	hookMesosClient = func(cli mesosClient) mesosClient {
+		s.mesos.mesosClient = cli
+		return s.mesos
+	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+	clus := &cluster.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"http://addr1"},
+		Default:     true,
+		Provisioner: provisionerName,
+	}
+	err = clus.Save()
 	c.Assert(err, check.IsNil)
 	err = provision.AddPool(provision.AddPoolOptions{
 		Name:        "bonehunters",

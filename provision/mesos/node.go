@@ -4,10 +4,17 @@
 
 package mesos
 
-import "github.com/tsuru/tsuru/provision"
+import (
+	"fmt"
+
+	"github.com/andygrunwald/megos"
+	"github.com/tsuru/tsuru/provision"
+)
 
 type mesosNodeWrapper struct {
-	Addresses []string
+	slave   *megos.Slave
+	cluster *clusterClient
+	prov    *mesosProvisioner
 }
 
 func (n *mesosNodeWrapper) Pool() string {
@@ -15,7 +22,7 @@ func (n *mesosNodeWrapper) Pool() string {
 }
 
 func (n *mesosNodeWrapper) Address() string {
-	return n.Addresses[0]
+	return n.slave.Hostname
 }
 
 func (n *mesosNodeWrapper) Status() string {
@@ -23,7 +30,11 @@ func (n *mesosNodeWrapper) Status() string {
 }
 
 func (n *mesosNodeWrapper) Metadata() map[string]string {
-	return nil
+	metadata := map[string]string{}
+	for k, v := range n.slave.Attributes {
+		metadata[k] = fmt.Sprintf("%v", v)
+	}
+	return metadata
 }
 
 func (n *mesosNodeWrapper) Units() ([]provision.Unit, error) {

@@ -5,39 +5,20 @@
 package mesos
 
 import (
-	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
+	"sort"
+
+	"github.com/tsuru/tsuru/provision"
 )
 
-func (s *S) TestAddNode(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	node := nodes[0]
-	c.Assert(node.Address(), check.Equals, url)
-}
-
 func (s *S) TestListNodes(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
+	s.addFakeNodes()
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, url)
+	c.Assert(nodes, check.HasLen, 2)
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Address() < nodes[j].Address() })
+	c.Assert(nodes[0].Address(), check.Equals, "m1")
+	c.Assert(nodes[1].Address(), check.Equals, "m2")
 }
 
 func (s *S) TestListNodesWithoutNodes(c *check.C) {
@@ -47,53 +28,22 @@ func (s *S) TestListNodesWithoutNodes(c *check.C) {
 }
 
 func (s *S) TestListNodesFilteringByAddress(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
+	s.addFakeNodes()
+	nodes, err := s.p.ListNodes([]string{"m1"})
 	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
-	nodes, err := s.p.ListNodes([]string{"https://192.168.99.101"})
+	c.Assert(nodes, check.HasLen, 1)
+	nodes, err = s.p.ListNodes([]string{"invalid"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 }
 
 func (s *S) TestGetNode(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
+	s.addFakeNodes()
+	node, err := s.p.GetNode("m1")
 	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
-	node, err := s.p.GetNode(url)
-	c.Assert(err, check.IsNil)
-	c.Assert(node.Address(), check.Equals, url)
-	node, err = s.p.GetNode("http://doesnotexist.com")
+	c.Assert(node.Address(), check.Equals, "m1")
+	node, err = s.p.GetNode("doesnotexist.com")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	c.Assert(node, check.IsNil)
-}
-
-func (s *S) TestImageDeploy(c *check.C) {
-	url := "https://192.168.99.100:8443"
-	opts := provision.AddNodeOptions{
-		Address: url,
-	}
-	err := s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	defer s.p.RemoveNode(provision.RemoveNodeOptions{})
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	s.p.ImageDeploy(a, "imageName", evt)
-	c.Assert(err, check.IsNil)
 }
