@@ -44,6 +44,21 @@ const (
 	ErrCodeUnknown
 )
 
+// InvalidEndpointError indicates a endpoint error in the marathon urls
+type InvalidEndpointError struct {
+	message string
+}
+
+// Error returns the string message
+func (e *InvalidEndpointError) Error() string {
+	return e.message
+}
+
+// newInvalidEndpointError creates a new error
+func newInvalidEndpointError(message string, args ...interface{}) error {
+	return &InvalidEndpointError{message: fmt.Sprintf(message, args)}
+}
+
 // APIError represents a generic API error.
 type APIError struct {
 	// ErrCode specifies the nature of the error.

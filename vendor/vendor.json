@@ -162,6 +162,12 @@
 			"revisionTime": "2016-11-21T14:49:28-02:00"
 		},
 		{
+			"checksumSHA1": "wn4HZVju+nTxPlbwR4ngKRBNM5o=",
+			"path": "github.com/andygrunwald/megos",
+			"revision": "01814b52c25a0ea60ab4908f723cc9ee3bbfc495",
+			"revisionTime": "2016-10-03T11:03:52Z"
+		},
+		{
 			"checksumSHA1": "8wY0Od/oZMtYxA/sUC2J/OTw2j8=",
 			"origin": "github.com/luizbafilho/fusis/vendor/github.com/asaskevich/govalidator",
 			"path": "github.com/asaskevich/govalidator",
@@ -932,10 +938,10 @@
 			"revisionTime": "2017-04-28T19:28:00Z"
 		},
 		{
-			"checksumSHA1": "nJYT8dNFeMl0lkIYM9z9OzxP15M=",
+			"checksumSHA1": "189Oi0abcrqXWak89uQYR1Q66kY=",
 			"path": "github.com/gambol99/go-marathon",
-			"revision": "a9a7bc12777b95cff48f675bc7173c6e6c530082",
-			"revisionTime": "2016-10-14T15:23:29Z"
+			"revision": "cf631873b8c2d4cd3a348a65129951bfc00d9b82",
+			"revisionTime": "2017-04-10T16:10:28Z"
 		},
 		{
 			"checksumSHA1": "17vYJDDMJO63/G/tRFIUuSlMCbE=",

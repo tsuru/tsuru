@@ -50,6 +50,14 @@ marathonURL := "http://10.241.1.71:8080,10.241.1.72:8080,10.241.1.73:8080"
 The first one specified will be used, if that goes offline the member is marked as *"unavailable"* and a
 background process will continue to ping the member until it's back online.
 
+You can also pass a custom path to the URL, which is especially needed in case of DCOS:
+
+```Go
+marathonURL := "http://10.241.1.71:8080/cluster,10.241.1.72:8080/cluster,10.241.1.73:8080/cluster"
+```
+
+If you specify a `DCOSToken` in the configuration file but do not pass a custom URL path, `/marathon` will be used.
+
 ### Custom HTTP Client
 
 If you wish to override the http client (by default http.DefaultClient) used by the API; use cases bypassing TLS verification, load root CA's or change the timeouts etc, you can pass a custom client in the config.

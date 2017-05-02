@@ -30,19 +30,25 @@ type Info struct {
 	} `json:"http_config"`
 	Leader         string `json:"leader"`
 	MarathonConfig struct {
-		Checkpoint                 bool    `json:"checkpoint"`
-		Executor                   string  `json:"executor"`
-		FailoverTimeout            float64 `json:"failover_timeout"`
-		Ha                         bool    `json:"ha"`
-		Hostname                   string  `json:"hostname"`
-		LocalPortMax               float64 `json:"local_port_max"`
-		LocalPortMin               float64 `json:"local_port_min"`
-		Master                     string  `json:"master"`
-		MesosRole                  string  `json:"mesos_role"`
-		MesosUser                  string  `json:"mesos_user"`
-		ReconciliationInitialDelay float64 `json:"reconciliation_initial_delay"`
-		ReconciliationInterval     float64 `json:"reconciliation_interval"`
-		TaskLaunchTimeout          float64 `json:"task_launch_timeout"`
+		Checkpoint                     bool    `json:"checkpoint"`
+		Executor                       string  `json:"executor"`
+		FailoverTimeout                float64 `json:"failover_timeout"`
+		FrameworkName                  string  `json:"framework_name"`
+		Ha                             bool    `json:"ha"`
+		Hostname                       string  `json:"hostname"`
+		LeaderProxyConnectionTimeoutMs float64 `json:"leader_proxy_connection_timeout_ms"`
+		LeaderProxyReadTimeoutMs       float64 `json:"leader_proxy_read_timeout_ms"`
+		LocalPortMax                   float64 `json:"local_port_max"`
+		LocalPortMin                   float64 `json:"local_port_min"`
+		Master                         string  `json:"master"`
+		MesosLeaderUIURL               string  `json:"mesos_leader_ui_url"`
+		WebUIURL                       string  `json:"webui_url"`
+		MesosRole                      string  `json:"mesos_role"`
+		MesosUser                      string  `json:"mesos_user"`
+		ReconciliationInitialDelay     float64 `json:"reconciliation_initial_delay"`
+		ReconciliationInterval         float64 `json:"reconciliation_interval"`
+		TaskLaunchTimeout              float64 `json:"task_launch_timeout"`
+		TaskReservationTimeout         float64 `json:"task_reservation_timeout"`
 	} `json:"marathon_config"`
 	Name            string `json:"name"`
 	Version         string `json:"version"`

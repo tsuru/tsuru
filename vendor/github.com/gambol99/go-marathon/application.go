@@ -34,42 +34,66 @@ type Applications struct {
 	Apps []Application `json:"apps"`
 }
 
+// IPAddressPerTask is used by IP-per-task functionality https://mesosphere.github.io/marathon/docs/ip-per-task.html
+type IPAddressPerTask struct {
+	Groups      *[]string          `json:"groups,omitempty"`
+	Labels      *map[string]string `json:"labels,omitempty"`
+	Discovery   *Discovery         `json:"discovery,omitempty"`
+	NetworkName string             `json:"networkName,omitempty"`
+}
+
+// Discovery provides info about ports expose by IP-per-task functionality
+type Discovery struct {
+	Ports *[]Port `json:"ports,omitempty"`
+}
+
+// Port provides info about ports used by IP-per-task
+type Port struct {
+	Number   int    `json:"number,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
+}
+
 // Application is the definition for an application in marathon
 type Application struct {
-	ID                    string              `json:"id,omitempty"`
-	Cmd                   *string             `json:"cmd,omitempty"`
-	Args                  *[]string           `json:"args,omitempty"`
-	Constraints           *[][]string         `json:"constraints,omitempty"`
-	Container             *Container          `json:"container,omitempty"`
-	CPUs                  float64             `json:"cpus,omitempty"`
-	Disk                  *float64            `json:"disk,omitempty"`
-	Env                   *map[string]string  `json:"env,omitempty"`
-	Executor              *string             `json:"executor,omitempty"`
-	HealthChecks          *[]HealthCheck      `json:"healthChecks,omitempty"`
-	Instances             *int                `json:"instances,omitempty"`
-	Mem                   *float64            `json:"mem,omitempty"`
-	Tasks                 []*Task             `json:"tasks,omitempty"`
-	Ports                 []int               `json:"ports"`
-	PortDefinitions       *[]PortDefinition   `json:"portDefinitions,omitempty"`
-	RequirePorts          *bool               `json:"requirePorts,omitempty"`
-	BackoffSeconds        *float64            `json:"backoffSeconds,omitempty"`
-	BackoffFactor         *float64            `json:"backoffFactor,omitempty"`
-	MaxLaunchDelaySeconds *float64            `json:"maxLaunchDelaySeconds,omitempty"`
-	Deployments           []map[string]string `json:"deployments,omitempty"`
-	Dependencies          []string            `json:"dependencies"`
-	TasksRunning          int                 `json:"tasksRunning,omitempty"`
-	TasksStaged           int                 `json:"tasksStaged,omitempty"`
-	TasksHealthy          int                 `json:"tasksHealthy,omitempty"`
-	TasksUnhealthy        int                 `json:"tasksUnhealthy,omitempty"`
-	User                  string              `json:"user,omitempty"`
-	UpgradeStrategy       *UpgradeStrategy    `json:"upgradeStrategy,omitempty"`
-	Uris                  *[]string           `json:"uris,omitempty"`
-	Version               string              `json:"version,omitempty"`
-	VersionInfo           *VersionInfo        `json:"versionInfo,omitempty"`
-	Labels                *map[string]string  `json:"labels,omitempty"`
-	AcceptedResourceRoles []string            `json:"acceptedResourceRoles,omitempty"`
-	LastTaskFailure       *LastTaskFailure    `json:"lastTaskFailure,omitempty"`
-	Fetch                 *[]Fetch            `json:"fetch,omitempty"`
+	ID                         string               `json:"id,omitempty"`
+	Cmd                        *string              `json:"cmd,omitempty"`
+	Args                       *[]string            `json:"args,omitempty"`
+	Constraints                *[][]string          `json:"constraints,omitempty"`
+	Container                  *Container           `json:"container,omitempty"`
+	CPUs                       float64              `json:"cpus,omitempty"`
+	GPUs                       *float64             `json:"gpus,omitempty"`
+	Disk                       *float64             `json:"disk,omitempty"`
+	Env                        *map[string]string   `json:"env,omitempty"`
+	Executor                   *string              `json:"executor,omitempty"`
+	HealthChecks               *[]HealthCheck       `json:"healthChecks,omitempty"`
+	Instances                  *int                 `json:"instances,omitempty"`
+	Mem                        *float64             `json:"mem,omitempty"`
+	Tasks                      []*Task              `json:"tasks,omitempty"`
+	Ports                      []int                `json:"ports"`
+	PortDefinitions            *[]PortDefinition    `json:"portDefinitions,omitempty"`
+	RequirePorts               *bool                `json:"requirePorts,omitempty"`
+	BackoffSeconds             *float64             `json:"backoffSeconds,omitempty"`
+	BackoffFactor              *float64             `json:"backoffFactor,omitempty"`
+	MaxLaunchDelaySeconds      *float64             `json:"maxLaunchDelaySeconds,omitempty"`
+	TaskKillGracePeriodSeconds *float64             `json:"taskKillGracePeriodSeconds,omitempty"`
+	Deployments                []map[string]string  `json:"deployments,omitempty"`
+	Dependencies               []string             `json:"dependencies"`
+	TasksRunning               int                  `json:"tasksRunning,omitempty"`
+	TasksStaged                int                  `json:"tasksStaged,omitempty"`
+	TasksHealthy               int                  `json:"tasksHealthy,omitempty"`
+	TasksUnhealthy             int                  `json:"tasksUnhealthy,omitempty"`
+	TaskStats                  map[string]TaskStats `json:"taskStats,omitempty"`
+	User                       string               `json:"user,omitempty"`
+	UpgradeStrategy            *UpgradeStrategy     `json:"upgradeStrategy,omitempty"`
+	Uris                       *[]string            `json:"uris,omitempty"`
+	Version                    string               `json:"version,omitempty"`
+	VersionInfo                *VersionInfo         `json:"versionInfo,omitempty"`
+	Labels                     *map[string]string   `json:"labels,omitempty"`
+	AcceptedResourceRoles      []string             `json:"acceptedResourceRoles,omitempty"`
+	LastTaskFailure            *LastTaskFailure     `json:"lastTaskFailure,omitempty"`
+	Fetch                      *[]Fetch             `json:"fetch,omitempty"`
+	IPAddressPerTask           *IPAddressPerTask    `json:"ipAddress,omitempty"`
 }
 
 // ApplicationVersions is a collection of application versions for a specific app in marathon
@@ -109,6 +133,28 @@ type DeleteAppOpts struct {
 	Force bool `url:"force,omitempty"`
 }
 
+// TaskStats is a container for Stats
+type TaskStats struct {
+	Stats Stats `json:"stats"`
+}
+
+// Stats is a collection of aggregate statistics about an application's tasks
+type Stats struct {
+	Counts   map[string]int     `json:"counts"`
+	LifeTime map[string]float64 `json:"lifeTime"`
+}
+
+// SetIPAddressPerTask defines that the application will have a IP address defines by a external agent.
+// This configuration is not allowed to be used with Port or PortDefinitions. Thus, the implementation
+// clears both.
+func (r *Application) SetIPAddressPerTask(ipAddressPerTask IPAddressPerTask) *Application {
+	r.Ports = make([]int, 0)
+	r.EmptyPortDefinitions()
+	r.IPAddressPerTask = &ipAddressPerTask
+
+	return r
+}
+
 // NewDockerApplication creates a default docker application
 func NewDockerApplication() *Application {
 	application := new(Application)
@@ -132,6 +178,22 @@ func (r *Application) Command(cmd string) *Application {
 //		cpu:	the CPU shared (check Docker docs) per instance
 func (r *Application) CPU(cpu float64) *Application {
 	r.CPUs = cpu
+	return r
+}
+
+// SetGPUs set the amount of GPU per instance which is assigned to the application
+//		gpu:	the GPU (check MESOS docs) per instance
+func (r *Application) SetGPUs(gpu float64) *Application {
+	r.GPUs = &gpu
+	return r
+}
+
+// EmptyGPUs explicitly empties GPUs -- use this if you need to empty
+// gpus of an application that already has gpus set (setting port definitions to nil will
+// keep the current value)
+func (r *Application) EmptyGPUs() *Application {
+	g := 0.0
+	r.GPUs = &g
 	return r
 }
 
@@ -206,6 +268,16 @@ func (r *Application) EmptyPortDefinitions() *Application {
 //		count:	the number of instances to run
 func (r *Application) Count(count int) *Application {
 	r.Instances = &count
+
+	return r
+}
+
+// SetTaskKillGracePeriod sets the number of seconds between escalating from SIGTERM to SIGKILL
+// when signalling tasks to terminate. Using this grace period, tasks should perform orderly shut down
+// immediately upon receiving SIGTERM.
+//		seconds:	the number of seconds
+func (r *Application) SetTaskKillGracePeriod(seconds float64) *Application {
+	r.TaskKillGracePeriodSeconds = &seconds
 
 	return r
 }
@@ -443,6 +515,20 @@ func (r *Application) AddFetchURIs(fetchURIs ...Fetch) *Application {
 func (r *Application) EmptyFetchURIs() *Application {
 	r.Fetch = &[]Fetch{}
 
+	return r
+}
+
+// SetUpgradeStrategy sets the upgrade strategy.
+func (r *Application) SetUpgradeStrategy(us UpgradeStrategy) *Application {
+	r.UpgradeStrategy = &us
+	return r
+}
+
+// EmptyUpgradeStrategy explicitly empties the upgrade strategy -- use this if
+// you need to empty the upgrade strategy of an application that already has
+// the upgrade strategy set (setting it to nil will keep the current value).
+func (r *Application) EmptyUpgradeStrategy() *Application {
+	r.UpgradeStrategy = &UpgradeStrategy{}
 	return r
 }
 
@@ -731,4 +817,70 @@ func buildURIWithForceParam(path string, force bool) string {
 
 func buildURI(path string) string {
 	return fmt.Sprintf("%s/%s", marathonAPIApps, trimRootPath(path))
+}
+
+// EmptyLabels explicitly empties labels -- use this if you need to empty
+// labels of an application that already has IP per task with labels defined
+func (i *IPAddressPerTask) EmptyLabels() *IPAddressPerTask {
+	i.Labels = &map[string]string{}
+	return i
+}
+
+// AddLabel adds a label to an IPAddressPerTask
+//    name: The label name
+//   value: The label value
+func (i *IPAddressPerTask) AddLabel(name, value string) *IPAddressPerTask {
+	if i.Labels == nil {
+		i.EmptyLabels()
+	}
+	(*i.Labels)[name] = value
+	return i
+}
+
+// EmptyGroups explicitly empties groups -- use this if you need to empty
+// groups of an application that already has IP per task with groups defined
+func (i *IPAddressPerTask) EmptyGroups() *IPAddressPerTask {
+	i.Groups = &[]string{}
+	return i
+}
+
+// AddGroup adds a group to an IPAddressPerTask
+//  group: The group name
+func (i *IPAddressPerTask) AddGroup(group string) *IPAddressPerTask {
+	if i.Groups == nil {
+		i.EmptyGroups()
+	}
+
+	groups := *i.Groups
+	groups = append(groups, group)
+	i.Groups = &groups
+
+	return i
+}
+
+// SetDiscovery define the discovery to an IPAddressPerTask
+//  discovery: The discovery struct
+func (i *IPAddressPerTask) SetDiscovery(discovery Discovery) *IPAddressPerTask {
+	i.Discovery = &discovery
+	return i
+}
+
+// EmptyPorts explicitly empties discovey port -- use this if you need to empty
+// discovey port of an application that already has IP per task with discovey ports
+// defined
+func (d *Discovery) EmptyPorts() *Discovery {
+	d.Ports = &[]Port{}
+	return d
+}
+
+// AddPort adds a port to the discovery info of a IP per task applicable
+//   port: The discovery port
+func (d *Discovery) AddPort(port Port) *Discovery {
+	if d.Ports == nil {
+		d.EmptyPorts()
+	}
+	ports := *d.Ports
+	ports = append(ports, port)
+	d.Ports = &ports
+	return d
 }

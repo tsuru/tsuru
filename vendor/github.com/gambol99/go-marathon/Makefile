@@ -10,7 +10,7 @@ DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 PACKAGES=$(shell go list ./...)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 
-.PHONY: test examples authors changelog
+.PHONY: test examples authors changelog check-format
 
 build:
 	go build
@@ -44,9 +44,18 @@ format:
 	@echo "--> Running go fmt"
 	@go fmt $(PACKAGES)
 
+check-format:
+	@echo "--> Checking format"
+	@if gofmt -l . 2>&1 | grep -q '.go'; then \
+		echo "found unformatted files:"; \
+		echo; \
+		gofmt -l .; \
+		exit 1; \
+	fi
+
 test: deps
 	@echo "--> Running go tests"
-	@go test -v
+	@go test -race -v
 	@$(MAKE) vet
 	@$(MAKE) cover
 

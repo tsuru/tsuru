@@ -6,6 +6,40 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
+- [#267][PR267] Add DCOS path parameter for additional marathon instances.
+
+## [0.7.1] - 2017-02-20
+### Fixed
+- [#261][PR261] Fix URL parsing for Go 1.8.
+
+## [0.7.0] - 2017-02-17
+### Added
+- [#256][PR256] Expose task state.
+
+### Changed
+- [#259][PR259] Add 'omitempty' to UpgradeStrategy properties.
+
+## [0.6.0] - 2016-12-14
+### Added
+- [#246][PR246] Add TaskKillGracePeriodSeconds support.
+- [#244][PR244] Add taskStats support.
+
+### Changed
+- [#242][PR242] Pointerize IPAddressPerTask.Discovery.
+
+## [0.5.1] - 2016-11-09
+### Fixed
+- [#239][PR239] Fix scheme-less endpoint with port.
+
+## [0.5.0] - 2016-11-07
+### Fixed
+- [#231][PR231] Fixed Marathon cluster code
+- [#229][PR229] Add LastFailureCause field to HealthCheckResult.
+
+## [0.4.0] - 2016-10-28
+### Added
+- [#223][PR223] Add support for IP-per-task.
+- [#220][PR220] Add external volume definition to container.
 - [#211][PR211] Close event channel on event listener removal.
 
 ### Fixed
@@ -74,12 +108,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Initial SemVer release.
 
-[Unreleased]: https://github.com/gambol99/go-marathon/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/gambol99/go-marathon/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/gambol99/go-marathon/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/gambol99/go-marathon/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/gambol99/go-marathon/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/gambol99/go-marathon/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/gambol99/go-marathon/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/gambol99/go-marathon/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/gambol99/go-marathon/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/gambol99/go-marathon/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/gambol99/go-marathon/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/gambol99/go-marathon/compare/v0.0.1...v0.1.0
 
+[PR267]: https://github.com/gambol99/go-marathon/pull/267
+[PR261]: https://github.com/gambol99/go-marathon/pull/261
+[PR259]: https://github.com/gambol99/go-marathon/pull/259
+[PR256]: https://github.com/gambol99/go-marathon/pull/256
+[PR246]: https://github.com/gambol99/go-marathon/pull/246
+[PR244]: https://github.com/gambol99/go-marathon/pull/244
+[PR242]: https://github.com/gambol99/go-marathon/pull/242
+[PR239]: https://github.com/gambol99/go-marathon/pull/239
+[PR231]: https://github.com/gambol99/go-marathon/pull/231
+[PR229]: https://github.com/gambol99/go-marathon/pull/229
+[PR223]: https://github.com/gambol99/go-marathon/pull/223
+[PR220]: https://github.com/gambol99/go-marathon/pull/220
 [PR218]: https://github.com/gambol99/go-marathon/pull/218
 [PR214]: https://github.com/gambol99/go-marathon/pull/214
 [PR211]: https://github.com/gambol99/go-marathon/pull/211

@@ -17,7 +17,6 @@ limitations under the License.
 package marathon
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,192 +26,159 @@ import (
 )
 
 const (
-	marathonNodeUp   = 0
-	marathonNodeDown = 1
+	memberStatusUp   = 0
+	memberStatusDown = 1
 )
 
-// Cluster is the interface for the marathon cluster impl
-type Cluster interface {
-	URL() string
-	// retrieve a member from the cluster
-	GetMember() (string, error)
-	// make the last member as down
-	MarkDown()
-	// the size of the cluster
-	Size() int
-	// the members which are available
-	Active() []string
-	// the members which are NOT available
-	NonActive() []string
-}
+// the status of a member node
+type memberStatus int
 
-type marathonCluster struct {
+// cluster is a collection of marathon nodes
+type cluster struct {
 	sync.RWMutex
-	// the cluster url
-	url string
-	// a link list of members
-	members *marathonNode
-	//  the number of members
-	size int
-	// the protocol
-	protocol string
-	// the current host
-	active *marathonNode
+	// a collection of nodes
+	members []*member
 	// the http client
 	client *http.Client
 }
 
-// String returns a string representation of the cluster
-func (r *marathonCluster) String() string {
-	return fmt.Sprintf("url: %s|%s, members: %s, size: %d, active: %s",
-		r.protocol, r.url, r.members, r.size, r.active)
-}
-
-type marathonNode struct {
+// member represents an individual endpoint
+type member struct {
 	// the name / ip address of the host
-	hostname string
+	endpoint string
 	// the status of the host
-	status int
-	// the next member in the list
-	next *marathonNode
+	status memberStatus
 }
 
-func (member marathonNode) String() string {
-	status := "UP"
-	if member.status == marathonNodeDown {
-		status = "DOWN"
-	}
+// newCluster returns a new marathon cluster
+func newCluster(client *http.Client, marathonURL string, isDCOS bool) (*cluster, error) {
+	// step: extract and basic validate the endpoints
+	var members []*member
+	var defaultProto string
 
-	return fmt.Sprintf("member: %s:%s", member.hostname, status)
-}
+	for _, endpoint := range strings.Split(marathonURL, ",") {
+		// step: check for nothing
+		if endpoint == "" {
+			return nil, newInvalidEndpointError("endpoint is blank")
+		}
+		// step: prepend scheme if missing on (non-initial) endpoint.
+		if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
+			if defaultProto == "" {
+				return nil, newInvalidEndpointError("missing scheme on (first) endpoint")
+			}
 
-func newCluster(client *http.Client, marathonURL string) (Cluster, error) {
-	// step: parse the marathon url
-	marathon, err := url.Parse(marathonURL)
-	if err != nil {
-		return nil, ErrInvalidEndpoint
-	}
-
-	// step: check the protocol
-	if marathon.Scheme != "http" && marathon.Scheme != "https" {
-		return nil, ErrInvalidEndpoint
-	}
-
-	cluster := &marathonCluster{
-		client:   client,
-		protocol: marathon.Scheme,
-		url:      marathonURL,
-	}
-
-	/* step: create a link list of the hosts */
-	var previous *marathonNode
-	for index, host := range strings.SplitN(marathon.Host+marathon.Path, ",", -1) {
-		if len(host) == 0 {
-			return nil, ErrInvalidEndpoint
+			endpoint = fmt.Sprintf("%s://%s", defaultProto, endpoint)
+		}
+		// step: parse the url
+		u, err := url.Parse(endpoint)
+		if err != nil {
+			return nil, newInvalidEndpointError("invalid endpoint '%s': %s", endpoint, err)
+		}
+		if defaultProto == "" {
+			defaultProto = u.Scheme
 		}
 
-		// step: create a new cluster member
-		node := new(marathonNode)
-		node.hostname = host
-		cluster.size++
-		// step: if the first member
-		if index == 0 {
-			cluster.members = node
-			cluster.active = node
-			previous = node
-		} else {
-			previous.next = node
-			previous = node
+		// step: check for empty hosts
+		if u.Host == "" {
+			return nil, newInvalidEndpointError("endpoint: %s must have a host", endpoint)
+		}
+
+		// step: if DCOS is set and no path is given, set the default DCOS path.
+		// done in order to maintain compatibility with automatic addition of the
+		// default DCOS path.
+		if isDCOS && strings.TrimLeft(u.Path, "/") == "" {
+			u.Path = defaultDCOSPath
+		}
+
+		// step: create a new node for this endpoint
+		members = append(members, &member{endpoint: u.String()})
+	}
+
+	return &cluster{
+		client:  client,
+		members: members,
+	}, nil
+}
+
+// retrieve the current member, i.e. the current endpoint in use
+func (c *cluster) getMember() (string, error) {
+	c.RLock()
+	defer c.RUnlock()
+	for _, n := range c.members {
+		if n.status == memberStatusUp {
+			return n.endpoint, nil
 		}
 	}
-	// step: close the link list
-	previous.next = cluster.active
 
-	return cluster, nil
+	return "", ErrMarathonDown
 }
 
-func (r *marathonCluster) URL() string {
-	return r.url
+// markDown marks down the current endpoint
+func (c *cluster) markDown(endpoint string) {
+	c.Lock()
+	defer c.Unlock()
+	for _, n := range c.members {
+		// step: check if this is the node and it's marked as up - The double  checking on the
+		// nodes status ensures the multiple calls don't create multiple checks
+		if n.status == memberStatusUp && n.endpoint == endpoint {
+			n.status = memberStatusDown
+			go c.healthCheckNode(n)
+			break
+		}
+	}
 }
 
-func (r *marathonCluster) Active() []string {
-	return r.memberStatus(marathonNodeUp)
+// healthCheckNode performs a health check on the node and when active updates the status
+func (c *cluster) healthCheckNode(node *member) {
+	// step: wait for the node to become active ... we are assuming a /ping is enough here
+	for {
+		res, err := c.client.Get(fmt.Sprintf("%s/ping", node.endpoint))
+		if err == nil && res.StatusCode == 200 {
+			break
+		}
+		<-time.After(time.Duration(5 * time.Second))
+	}
+	// step: mark the node as active again
+	c.Lock()
+	defer c.Unlock()
+	node.status = memberStatusUp
 }
 
-func (r *marathonCluster) NonActive() []string {
-	return r.memberStatus(marathonNodeDown)
+// activeMembers returns a list of active members
+func (c *cluster) activeMembers() []string {
+	return c.membersList(memberStatusUp)
 }
 
-func (r *marathonCluster) memberStatus(status int) []string {
+// nonActiveMembers returns a list of non-active members in the cluster
+func (c *cluster) nonActiveMembers() []string {
+	return c.membersList(memberStatusDown)
+}
+
+// memberList returns a list of members of a specified status
+func (c *cluster) membersList(status memberStatus) []string {
+	c.RLock()
+	defer c.RUnlock()
 	var list []string
-
-	r.RLock()
-	defer r.RUnlock()
-	member := r.members
-
-	for i := 0; i < r.size; i++ {
-		if member.status == status {
-			list = append(list, member.hostname)
+	for _, m := range c.members {
+		if m.status == status {
+			list = append(list, m.endpoint)
 		}
-		member = member.next
 	}
 
 	return list
 }
 
-// Retrieve the current member, i.e. the current endpoint in use
-func (r *marathonCluster) GetMember() (string, error) {
-	r.Lock()
-	defer r.Unlock()
-	for i := 0; i < r.size; i++ {
-		if r.active.status == marathonNodeUp {
-			return r.GetMarathonURL(r.active), nil
-		}
-		// move to the next member
-		if r.active.next != nil {
-			r.active = r.active.next
-		} else {
-			return "", errors.New("no cluster members available at the moment")
-		}
+// size returns the size of the cluster
+func (c *cluster) size() int {
+	return len(c.members)
+}
+
+// String returns a string representation
+func (m member) String() string {
+	status := "UP"
+	if m.status == memberStatusDown {
+		status = "DOWN"
 	}
 
-	// we reached the end and there were no members available
-	defer r.MarkDown()
-	return "", ErrMarathonDown
-}
-
-// Retrieves the current marathon url
-func (r *marathonCluster) GetMarathonURL(node *marathonNode) string {
-	return fmt.Sprintf("%s://%s", r.protocol, node.hostname)
-}
-
-// MarkDown downs node the current endpoint as down and waits for it to come back only
-func (r *marathonCluster) MarkDown() {
-	r.Lock()
-	defer r.Unlock()
-
-	node := r.active
-	node.status = marathonNodeDown
-
-	// step: create a go-routine to place the member back in
-	go func() {
-		for {
-			response, err := r.client.Get(r.GetMarathonURL(node) + "/ping")
-			if err == nil && response.StatusCode == 200 {
-				node.status = marathonNodeUp
-				return
-			}
-			<-time.After(time.Duration(5 * time.Second))
-		}
-	}()
-
-	// step: move to the next member
-	if r.active.next != nil {
-		r.active = r.active.next
-	}
-}
-
-// Six retrieve the size of the cluster
-func (r *marathonCluster) Size() int {
-	return r.size
+	return fmt.Sprintf("member: %s:%s", m.endpoint, status)
 }

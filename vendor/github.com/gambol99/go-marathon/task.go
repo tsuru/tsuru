@@ -37,6 +37,7 @@ type Task struct {
 	SlaveID            string               `json:"slaveId"`
 	StagedAt           string               `json:"stagedAt"`
 	StartedAt          string               `json:"startedAt"`
+	State              string               `json:"state"`
 	IPAddresses        []*IPAddress         `json:"ipAddresses"`
 	Version            string               `json:"version"`
 }

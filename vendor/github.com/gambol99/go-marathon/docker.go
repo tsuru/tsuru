@@ -52,7 +52,7 @@ type Volume struct {
 	Mode          string          `json:"mode,omitempty"`
 }
 
-// An external volume definition
+// ExternalVolume is an external volume definition
 type ExternalVolume struct {
 	Name     string             `json:"name,omitempty"`
 	Provider string             `json:"provider,omitempty"`
@@ -98,7 +98,7 @@ func (container *Container) EmptyVolumes() *Container {
 	return container
 }
 
-// Define external elements for a volume
+// SetExternalVolume define external elements for a volume
 //      name: the name of the volume
 //      provider: the provider of the volume (e.g. dvdi)
 func (v *Volume) SetExternalVolume(name, provider string) *ExternalVolume {
@@ -110,7 +110,7 @@ func (v *Volume) SetExternalVolume(name, provider string) *ExternalVolume {
 	return ev
 }
 
-// Empty the external volume definition
+// EmptyExternalVolume emptys the external volume definition
 func (v *Volume) EmptyExternalVolume() *Volume {
 	v.External = &ExternalVolume{}
 	return v
