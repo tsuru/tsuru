@@ -5,10 +5,10 @@
 package mesos
 
 import (
-	"gopkg.in/check.v1"
 	"sort"
 
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/check.v1"
 )
 
 func (s *S) TestListNodes(c *check.C) {
