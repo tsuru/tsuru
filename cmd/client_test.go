@@ -238,6 +238,19 @@ version is 0.2.1.
 Please go to http://docs.tsuru.io/en/latest/using/install-client.html
 and download the last version.
 
+If you use one of this tools, you can try:
+
+#OSX - Homebrew
+brew update
+brew upgrade tsuru
+brew upgrade tsuru-admin
+brew upgrade crane
+
+#Ubuntu - PPA
+sudo apt-get install tsuru-client
+sudo apt-get install crane
+sudo apt-get install tsuru-admin
+
 #####################################################################
 
 `
