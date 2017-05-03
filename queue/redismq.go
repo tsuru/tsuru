@@ -108,6 +108,7 @@ func (factory *redisPubSubFactory) getConn() (tsuruRedis.PubSubClient, error) {
 	var ok bool
 	factory.pool, ok = client.(tsuruRedis.PubSubClient)
 	if !ok {
+		client.Close()
 		return nil, errors.Errorf("redis client is not a capable of pubsub: %#v", client)
 	}
 	return factory.pool, nil
