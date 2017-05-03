@@ -99,7 +99,11 @@ func newRedisSentinel(addrs []string, master string, redisConfig *CommonConfig) 
 		IdleTimeout:   redisConfig.IdleTimeout,
 	})
 	err := client.Ping().Err()
-	return &ClientWrapper{Client: client}, err
+	if err != nil {
+		client.Close()
+		return nil, err
+	}
+	return &ClientWrapper{Client: client}, nil
 }
 
 func redisCluster(addrs []string, redisConfig *CommonConfig) (Client, error) {
@@ -114,7 +118,11 @@ func redisCluster(addrs []string, redisConfig *CommonConfig) (Client, error) {
 		IdleTimeout:  redisConfig.IdleTimeout,
 	})
 	err := client.Ping().Err()
-	return &ClusterClientWrapper{ClusterClient: client}, err
+	if err != nil {
+		client.Close()
+		return nil, err
+	}
+	return &ClusterClientWrapper{ClusterClient: client}, nil
 }
 
 func redisServer(addr string, redisConfig *CommonConfig) (Client, error) {
@@ -131,7 +139,11 @@ func redisServer(addr string, redisConfig *CommonConfig) (Client, error) {
 		IdleTimeout:  redisConfig.IdleTimeout,
 	})
 	err := client.Ping().Err()
-	return &ClientWrapper{Client: client}, err
+	if err != nil {
+		client.Close()
+		return nil, err
+	}
+	return &ClientWrapper{Client: client}, nil
 }
 
 func NewRedis(prefix string) (Client, error) {
