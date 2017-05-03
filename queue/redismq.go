@@ -19,6 +19,7 @@ type redisPubSub struct {
 	prefix  string
 	factory *redisPubSubFactory
 	psc     *redis.PubSub
+	quit    chan struct{}
 }
 
 func (r *redisPubSub) Pub(msg []byte) error {
@@ -30,6 +31,7 @@ func (r *redisPubSub) Pub(msg []byte) error {
 }
 
 func (r *redisPubSub) UnSub() error {
+	close(r.quit)
 	return r.psc.Close()
 }
 
@@ -42,6 +44,7 @@ func (r *redisPubSub) Sub() (<-chan []byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	r.quit = make(chan struct{})
 	msgChan := make(chan []byte)
 	go func() {
 		defer close(msgChan)
@@ -53,11 +56,20 @@ func (r *redisPubSub) Sub() (<-chan []byte, error) {
 			}
 			switch v := msg.(type) {
 			case *redis.Message:
-				msgChan <- []byte(v.Payload)
+				select {
+				case msgChan <- []byte(v.Payload):
+				case <-r.quit:
+					return
+				}
 			case *redis.Subscription:
 				if v.Count == 0 {
 					return
 				}
+			}
+			select {
+			case <-r.quit:
+				return
+			default:
 			}
 		}
 	}()
