@@ -18,8 +18,9 @@ var LogPubSubQueuePrefix = "pubsub:"
 var bulkMaxWaitTime = time.Second
 
 type LogListener struct {
-	c <-chan Applog
-	q queue.PubSubQ
+	c    <-chan Applog
+	q    queue.PubSubQ
+	quit chan struct{}
 }
 
 func logQueueName(appName string) string {
@@ -40,9 +41,16 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 		return nil, err
 	}
 	c := make(chan Applog, 10)
+	quit := make(chan struct{})
 	go func() {
 		defer close(c)
-		for msg := range subChan {
+		for {
+			var msg []byte
+			select {
+			case msg = <-subChan:
+			case <-quit:
+				return
+			}
 			applog := Applog{}
 			err := json.Unmarshal(msg, &applog)
 			if err != nil {
@@ -51,11 +59,15 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 			}
 			if (filterLog.Source == "" || filterLog.Source == applog.Source) &&
 				(filterLog.Unit == "" || filterLog.Unit == applog.Unit) {
-				c <- applog
+				select {
+				case c <- applog:
+				case <-quit:
+					return
+				}
 			}
 		}
 	}()
-	l := LogListener{c: c, q: pubSubQ}
+	l := LogListener{c: c, q: pubSubQ, quit: quit}
 	return &l, nil
 }
 
@@ -69,6 +81,7 @@ func (l *LogListener) Close() (err error) {
 			err = errors.Errorf("Recovered panic closing listener (possible double close): %v", r)
 		}
 	}()
+	close(l.quit)
 	err = l.q.UnSub()
 	return
 }
