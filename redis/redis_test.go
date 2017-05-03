@@ -51,9 +51,10 @@ func (s *S) TestNewRedisSimpleServer(c *check.C) {
 func (s *S) TestNewRedisSimpleServerUsePassword(c *check.C) {
 	s.setConfig("redis-server", "localhost:6379")
 	s.setConfig("redis-password", "invalid-password")
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
-	c.Assert(collector.clients[s.prefix], check.NotNil)
+	c.Assert(cli, check.IsNil)
+	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
 func (s *S) TestNewRedisSimpleServerUseDB(c *check.C) {
@@ -75,45 +76,51 @@ func (s *S) TestNewRedisSimpleServerUseDB(c *check.C) {
 func (s *S) TestNewRedisSentinel(c *check.C) {
 	s.setConfig("redis-sentinel-addrs", "127.0.0.1:6380,127.0.0.1:6381")
 	s.setConfig("redis-sentinel-master", "mymaster")
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "redis: all sentinels are unreachable")
-	c.Assert(collector.clients[s.prefix], check.NotNil)
+	c.Assert(cli, check.IsNil)
+	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
 func (s *S) TestNewRedisSentinelNoMaster(c *check.C) {
 	s.setConfig("redis-sentinel-addrs", "127.0.0.1:6380,127.0.0.1:6381")
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "test-redis:redis-sentinel-master must be specified if using redis-sentinel")
+	c.Assert(cli, check.IsNil)
 	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
 func (s *S) TestNewRedisCluster(c *check.C) {
 	s.setConfig("redis-cluster-addrs", "127.0.0.1:6380,127.0.0.1:6381")
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "dial tcp 127.0.0.1:\\d+: getsockopt: connection refused")
-	c.Assert(collector.clients[s.prefix], check.NotNil)
+	c.Assert(cli, check.IsNil)
+	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
 func (s *S) TestNewRedisClusterStripWhitespace(c *check.C) {
 	s.setConfig("redis-cluster-addrs", "  127.0.0.1:6380 , 127.0.0.1:6381")
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "dial tcp 127.0.0.1:\\d+: getsockopt: connection refused")
-	c.Assert(collector.clients[s.prefix], check.NotNil)
+	c.Assert(cli, check.IsNil)
+	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
 func (s *S) TestNewRedisClusterWithMaxRetries(c *check.C) {
 	s.setConfig("redis-cluster-addrs", "127.0.0.1:6380,127.0.0.1:6381")
 	s.setConfig("redis-max-retries", 1)
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "could not initialize redis from \"test-redis\" config, using redis-cluster with max-retries > 0 is not supported")
+	c.Assert(cli, check.IsNil)
 	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
 func (s *S) TestNewRedisClusterWithDB(c *check.C) {
 	s.setConfig("redis-cluster-addrs", "127.0.0.1:6380,127.0.0.1:6381")
 	s.setConfig("redis-db", 1)
-	_, err := NewRedis(s.prefix)
+	cli, err := NewRedis(s.prefix)
 	c.Assert(err, check.ErrorMatches, "could not initialize redis from \"test-redis\" config, using redis-cluster with db != 0 is not supported")
+	c.Assert(cli, check.IsNil)
 	c.Assert(collector.clients[s.prefix], check.IsNil)
 }
 
