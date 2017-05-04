@@ -12,9 +12,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -83,7 +84,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		{phase: v1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
 		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
 		{phase: v1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &v1.Event{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1.evt1",
 				Namespace: s.client.Namespace(),
 			},
@@ -99,7 +100,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 		wantedPhase = tt.phase
 		wantedMessage = tt.msg
 		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
 				Namespace: s.client.Namespace(),
 			},
@@ -127,7 +128,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 			labels["a"] = "y"
 		}
 		_, err := s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("pod-%d", i),
 				Namespace: s.client.Namespace(),
 				Labels:    labels,
@@ -135,14 +136,14 @@ func (s *S) TestCleanupPods(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 	}
-	err := cleanupPods(s.client.clusterClient, v1.ListOptions{
+	err := cleanupPods(s.client.clusterClient, metav1.ListOptions{
 		LabelSelector: "a=x",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.DeepEquals, []v1.Pod{{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod-2",
 			Namespace: s.client.Namespace(),
 			Labels:    map[string]string{"a": "y"},
@@ -170,14 +171,14 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/provisioner":          "kubernetes",
 	}
 	_, err := s.client.Extensions().Deployments(s.client.Namespace()).Create(&extensions.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: s.client.Namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&extensions.ReplicaSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: s.client.Namespace(),
 			Labels:    expectedLabels,
@@ -185,7 +186,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: s.client.Namespace(),
 			Labels:    expectedLabels,
@@ -194,20 +195,20 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cleanupDeployment(s.client.clusterClient, a, "p1")
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupReplicas(c *check.C) {
 	_, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&extensions.ReplicaSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: s.client.Namespace(),
 			Labels: map[string]string{
@@ -217,7 +218,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: s.client.Namespace(),
 			Labels: map[string]string{
@@ -226,31 +227,31 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupReplicas(s.client.clusterClient, v1.ListOptions{
+	err = cleanupReplicas(s.client.clusterClient, metav1.ListOptions{
 		LabelSelector: "a=x",
 	})
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
 	_, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Create(&extensions.DaemonSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: s.client.Namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
 			Namespace: s.client.Namespace(),
 			Labels: map[string]string{
@@ -265,16 +266,16 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cleanupDaemonSet(s.client.clusterClient, "bs", "p1")
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
 
 func (s *S) TestLabelSetFromMeta(c *check.C) {
-	meta := v1.ObjectMeta{
+	meta := metav1.ObjectMeta{
 		Labels: map[string]string{
 			"tsuru.io/x": "a",
 			"y":          "b",
@@ -301,7 +302,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
 	_, err = s.client.Core().Services(s.client.Namespace()).Create(&v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv1",
 			Namespace: s.client.Namespace(),
 		},
@@ -311,7 +312,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
 	_, err = s.client.Core().Services(s.client.Namespace()).Create(&v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv2",
 			Namespace: s.client.Namespace(),
 		},

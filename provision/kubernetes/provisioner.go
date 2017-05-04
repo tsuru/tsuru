@@ -23,9 +23,10 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/pkg/api/v1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
-	"k8s.io/client-go/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/term"
 )
 
@@ -173,7 +174,7 @@ func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []v1.Pod
 		l := labelSetFromMeta(&pod.ObjectMeta)
 		node, ok := nodeMap[pod.Spec.NodeName]
 		if !ok {
-			node, err = client.Core().Nodes().Get(pod.Spec.NodeName)
+			node, err = client.Core().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -247,7 +248,7 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(v1.ListOptions{
+	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {
@@ -280,7 +281,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(a provision.App) ([]url.URL, e
 	if err != nil {
 		return nil, err
 	}
-	nodes, err := client.Core().Nodes().List(v1.ListOptions{
+	nodes, err := client.Core().Nodes().List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("pool=%s", a.GetPool()),
 	})
 	if err != nil {
@@ -302,7 +303,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return err
 	}
-	pod, err := client.Core().Pods(client.Namespace()).Get(unitID)
+	pod, err := client.Core().Pods(client.Namespace()).Get(unitID, metav1.GetOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -357,7 +358,7 @@ func (p *kubernetesProvisioner) listNodesForCluster(cluster *clusterClient, addr
 	if len(addressFilter) > 0 {
 		addressSet = set.FromSlice(addressFilter)
 	}
-	nodeList, err := cluster.Core().Nodes().List(v1.ListOptions{})
+	nodeList, err := cluster.Core().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +407,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 		}
 		for _, pod := range pods {
 			err = client.Core().Pods(client.Namespace()).Evict(&policy.Eviction{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      pod.Name,
 					Namespace: client.Namespace(),
 				},
@@ -416,7 +417,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 			}
 		}
 	}
-	err = client.Core().Nodes().Delete(node.Name, &v1.DeleteOptions{})
+	err = client.Core().Nodes().Delete(node.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -436,7 +437,7 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*clusterClien
 		if foundNode != nil {
 			return nil
 		}
-		nodeList, err := c.Core().Nodes().List(v1.ListOptions{})
+		nodeList, err := c.Core().Nodes().List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -634,7 +635,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(stdout, stderr io.Writer, a provi
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(v1.ListOptions{
+	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 	})
 	if err != nil {

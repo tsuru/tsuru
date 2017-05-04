@@ -23,9 +23,10 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/kubernetes/pkg/util/term"
 )
@@ -76,7 +77,7 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	s.mockfakeNodes(c)
 	_, err := s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{Name: "p1", Namespace: s.client.Namespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: s.client.Namespace()},
 	})
 	c.Assert(err, check.IsNil)
 	evictionCalled := false
@@ -344,16 +345,16 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	wait()
 	err = s.p.Destroy(a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(v1.ListOptions{})
+	replicas, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-	services, err := s.client.Core().Services(s.client.Namespace()).List(v1.ListOptions{})
+	services, err := s.client.Core().Services(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(services.Items, check.HasLen, 0)
 }
@@ -410,7 +411,7 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 2)
 	var depNames []string
@@ -441,7 +442,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	wait()
-	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -477,7 +478,7 @@ func (s *S) TestImageDeployWithProcfile(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(calls, check.Equals, 2)
 	wait()
-	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(v1.ListOptions{})
+	deps, err := s.client.Extensions().Deployments(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
 	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
@@ -514,7 +515,7 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 	buf := &bytes.Buffer{}
 	err = s.p.UpgradeNodeContainer("bs", "", buf)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 3)
 }
@@ -522,14 +523,14 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 func (s *S) TestRemoveNodeContainer(c *check.C) {
 	s.mockfakeNodes(c)
 	_, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Create(&extensions.DaemonSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: s.client.Namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
 			Namespace: s.client.Namespace(),
 			Labels: map[string]string{
@@ -544,10 +545,10 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveNodeContainer("bs", "p1", ioutil.Discard)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
@@ -737,7 +738,7 @@ func (s *S) TestExecuteCommandIsolated(c *check.C) {
 	c.Assert(stderr.String(), check.Equals, "")
 	c.Assert(s.stream["myapp-isolated-run"].urls, check.HasLen, 1)
 	c.Assert(s.stream["myapp-isolated-run"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/log")
-	pods, err := s.client.Core().Pods(s.client.Namespace()).List(v1.ListOptions{})
+	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }

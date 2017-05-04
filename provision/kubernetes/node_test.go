@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -38,7 +39,7 @@ func (s *S) TestNodeAddress(c *check.C) {
 func (s *S) TestNodePool(c *check.C) {
 	node := kubernetesNodeWrapper{
 		node: &v1.Node{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"pool": "p1",
 				},
@@ -93,7 +94,7 @@ func (s *S) TestNodeStatus(c *check.C) {
 func (s *S) TestNodeMetadata(c *check.C) {
 	node := kubernetesNodeWrapper{
 		node: &v1.Node{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"pool": "p1",
 					"m1":   "v1",

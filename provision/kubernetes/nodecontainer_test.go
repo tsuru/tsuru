@@ -9,7 +9,7 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
-	"k8s.io/client-go/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
@@ -35,26 +35,26 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all")
+	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	trueVar := true
 	c.Assert(daemon, check.DeepEquals, &extensions.DaemonSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-all",
 			Namespace: s.client.Namespace(),
 		},
 		Spec: extensions.DaemonSetSpec{
-			Selector: &unversioned.LabelSelector{
+			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/node-container-name": "bs",
 					"tsuru.io/node-container-pool": "",
 				},
 			},
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"tsuru.io/is-tsuru":            "true",
 						"tsuru.io/is-node-container":   "true",
@@ -120,14 +120,14 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1", "p2"}}, false)
 	c.Assert(err, check.IsNil)
-	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all")
+	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
 		"scheduler.alpha.kubernetes.io/affinity": "{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"pool\",\"operator\":\"NotIn\",\"values\":[\"p1\",\"p2\"]}]}]}}}",
 	})
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Include: []string{"p1"}}, false)
 	c.Assert(err, check.IsNil)
-	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all")
+	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
 		"scheduler.alpha.kubernetes.io/affinity": "{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"pool\",\"operator\":\"In\",\"values\":[\"p1\"]}]}]}}}",
@@ -148,10 +148,10 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 	m := nodeContainerManager{}
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, false)
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(v1.ListOptions{})
+	daemons, err := s.client.Extensions().DaemonSets(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 1)
-	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all")
+	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, []v1.Volume{
 		{

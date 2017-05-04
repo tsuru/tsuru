@@ -31,17 +31,17 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/labels"
-	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -177,7 +177,7 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 	}
 	for i := 1; i <= 2; i++ {
 		_, err := s.client.Core().Nodes().Create(&v1.Node{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
 					"pool": "test-default",
@@ -332,10 +332,10 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 				Spec:       dep.Spec.Template.Spec,
 			}
 			pod.Status.Phase = v1.PodRunning
-			pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
+			pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
 			pod.Spec.NodeName = "n1"
-			err := cleanupPods(s.client.clusterClient, v1.ListOptions{
+			err := cleanupPods(s.client.clusterClient, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
 			})
 			c.Assert(err, check.IsNil)
@@ -369,7 +369,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 		if !strings.HasSuffix(pod.Name, "-deploy") {
 			return false, nil, nil
 		}
-		pod.Status.StartTime = &unversioned.Time{Time: time.Now()}
+		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 		pod.Status.Phase = v1.PodSucceeded
 		pod.Spec.NodeName = "n1"
 		toRegister := false

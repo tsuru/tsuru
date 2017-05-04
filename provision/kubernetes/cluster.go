@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/cluster"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/runtime/serializer"
 	"k8s.io/client-go/rest"
 )
 
@@ -37,7 +37,7 @@ type clusterClient struct {
 }
 
 func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
-	gv, err := unversioned.ParseGroupVersion("/v1")
+	gv, err := schema.ParseGroupVersion("/v1")
 	if err != nil {
 		return nil, err
 	}

@@ -12,11 +12,12 @@ import (
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/pkg/api"
-	k8sErrors "k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/fields"
-	"k8s.io/client-go/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
@@ -76,7 +77,7 @@ func notReadyPodEvents(client *clusterClient, a provision.App, process string) (
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	pods, err := client.Core().Pods(client.Namespace()).List(v1.ListOptions{
+	pods, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
 	})
 	if err != nil {
@@ -97,7 +98,7 @@ podsLoop:
 		eventsInterface := client.Core().Events(client.Namespace())
 		ns := client.Namespace()
 		selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
-		options := v1.ListOptions{FieldSelector: selector.String()}
+		options := metav1.ListOptions{FieldSelector: selector.String()}
 		var events *v1.EventList
 		events, err = eventsInterface.List(options)
 		if err != nil {
@@ -114,7 +115,7 @@ podsLoop:
 
 func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
-		pod, err := client.Core().Pods(client.Namespace()).Get(podName)
+		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
@@ -136,7 +137,7 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 			eventsInterface := client.Core().Events(client.Namespace())
 			ns := client.Namespace()
 			selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
-			options := v1.ListOptions{FieldSelector: selector.String()}
+			options := metav1.ListOptions{FieldSelector: selector.String()}
 			var events *v1.EventList
 			events, err = eventsInterface.List(options)
 			if err != nil {
@@ -152,13 +153,13 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 	})
 }
 
-func cleanupPods(client *clusterClient, opts v1.ListOptions) error {
+func cleanupPods(client *clusterClient, opts metav1.ListOptions) error {
 	pods, err := client.Core().Pods(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
-		err = client.Core().Pods(client.Namespace()).Delete(pod.Name, &v1.DeleteOptions{})
+		err = client.Core().Pods(client.Namespace()).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -166,14 +167,14 @@ func cleanupPods(client *clusterClient, opts v1.ListOptions) error {
 	return nil
 }
 
-func cleanupReplicas(client *clusterClient, opts v1.ListOptions) error {
+func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
 	replicas, err := client.Extensions().ReplicaSets(client.Namespace()).List(opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	falseVar := false
 	for _, replica := range replicas.Items {
-		err = client.Extensions().ReplicaSets(client.Namespace()).Delete(replica.Name, &v1.DeleteOptions{
+		err = client.Extensions().ReplicaSets(client.Namespace()).Delete(replica.Name, &metav1.DeleteOptions{
 			OrphanDependents: &falseVar,
 		})
 		if err != nil {
@@ -186,7 +187,7 @@ func cleanupReplicas(client *clusterClient, opts v1.ListOptions) error {
 func cleanupDeployment(client *clusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
 	falseVar := false
-	err := client.Extensions().Deployments(client.Namespace()).Delete(depName, &v1.DeleteOptions{
+	err := client.Extensions().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
 		OrphanDependents: &falseVar,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -203,7 +204,7 @@ func cleanupDeployment(client *clusterClient, a provision.App, process string) e
 	if err != nil {
 		return err
 	}
-	return cleanupReplicas(client, v1.ListOptions{
+	return cleanupReplicas(client, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(l.ToSelector())).String(),
 	})
 }
@@ -211,7 +212,7 @@ func cleanupDeployment(client *clusterClient, a provision.App, process string) e
 func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
 	falseVar := false
-	err := client.Extensions().DaemonSets(client.Namespace()).Delete(dsName, &v1.DeleteOptions{
+	err := client.Extensions().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
 		OrphanDependents: &falseVar,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -223,14 +224,14 @@ func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
-	return cleanupPods(client, v1.ListOptions{
+	return cleanupPods(client, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
 	})
 }
 
 func cleanupPod(client *clusterClient, podName string) error {
 	noWait := int64(0)
-	err := client.Core().Pods(client.Namespace()).Delete(podName, &v1.DeleteOptions{
+	err := client.Core().Pods(client.Namespace()).Delete(podName, &metav1.DeleteOptions{
 		GracePeriodSeconds: &noWait,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -240,7 +241,7 @@ func cleanupPod(client *clusterClient, podName string) error {
 }
 
 func podsFromNode(client *clusterClient, nodeName string) ([]v1.Pod, error) {
-	podList, err := client.Core().Pods(client.Namespace()).List(v1.ListOptions{
+	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 		FieldSelector: fields.SelectorFromSet(fields.Set{
 			"spec.nodeName": nodeName,
 		}).String(),
@@ -252,7 +253,7 @@ func podsFromNode(client *clusterClient, nodeName string) ([]v1.Pod, error) {
 }
 
 func getServicePort(client *clusterClient, srvName string) (int32, error) {
-	srv, err := client.Core().Services(client.Namespace()).Get(srvName)
+	srv, err := client.Core().Services(client.Namespace()).Get(srvName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return 0, nil
@@ -265,7 +266,7 @@ func getServicePort(client *clusterClient, srvName string) (int32, error) {
 	return srv.Spec.Ports[0].NodePort, nil
 }
 
-func labelSetFromMeta(meta *v1.ObjectMeta) *provision.LabelSet {
+func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
 	merged := meta.Labels
 	for k, v := range meta.Annotations {
 		merged[k] = v
@@ -302,7 +303,7 @@ func execCommand(opts execOpts) error {
 	}
 	var chosenPod *v1.Pod
 	if opts.unit != "" {
-		chosenPod, err = client.Core().Pods(client.Namespace()).Get(opts.unit)
+		chosenPod, err = client.Core().Pods(client.Namespace()).Get(opts.unit, metav1.GetOptions{})
 		if err != nil {
 			if k8sErrors.IsNotFound(errors.Cause(err)) {
 				return &provision.UnitNotFoundError{ID: opts.unit}
@@ -322,7 +323,7 @@ func execCommand(opts execOpts) error {
 			return errors.WithStack(err)
 		}
 		var pods *v1.PodList
-		pods, err = client.Core().Pods(client.Namespace()).List(v1.ListOptions{
+		pods, err = client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 		})
 		if err != nil {
@@ -393,7 +394,7 @@ type runSinglePodArgs struct {
 
 func runPod(args runSinglePodArgs) error {
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
 			Namespace: args.client.Namespace(),
 			Labels:    args.labels.ToLabels(),

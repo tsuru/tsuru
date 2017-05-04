@@ -21,12 +21,12 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api"
-	k8sErrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
@@ -103,7 +103,7 @@ func createBuildPod(params buildPodParams) error {
 	}
 	commitContainer := "committer-cont"
 	pod := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
 			Namespace:   params.client.Namespace(),
 			Labels:      labels.ToLabels(),
@@ -247,7 +247,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 		Pool: a.GetPool(),
 	}).ToNodeByPoolSelector()
 	deployment := extensions.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
 			Namespace: client.Namespace(),
 		},
@@ -261,11 +261,11 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 			},
 			Replicas:             &realReplicas,
 			RevisionHistoryLimit: &tenRevs,
-			Selector: &unversioned.LabelSelector{
+			Selector: &metav1.LabelSelector{
 				MatchLabels: labels.ToSelector(),
 			},
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels.ToLabels(),
 				},
 				Spec: v1.PodSpec{
@@ -308,7 +308,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 		multiErrors.Add(err)
 	}
 	depName := deploymentNameForApp(a, process)
-	err = m.client.Core().Services(m.client.Namespace()).Delete(depName, &v1.DeleteOptions{
+	err = m.client.Core().Services(m.client.Namespace()).Delete(depName, &metav1.DeleteOptions{
 		OrphanDependents: &falseVar,
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -322,7 +322,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 
 func (m *serviceManager) CurrentLabels(a provision.App, process string) (*provision.LabelSet, error) {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName)
+	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -353,7 +353,7 @@ func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a prov
 	timeout := time.After(defaultDeploymentProgressTimeout)
 	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
-		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name)
+		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -413,7 +413,7 @@ func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a prov
 		case <-timeout:
 			return createDeployTimeoutError(client, a, processName, w, time.Since(t0))
 		}
-		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name)
+		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -424,7 +424,7 @@ func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a prov
 
 func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
 	depName := deploymentNameForApp(a, process)
-	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName)
+	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -452,7 +452,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
 	_, err = m.client.Core().Services(m.client.Namespace()).Create(&v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
 			Namespace: m.client.Namespace(),
 			Labels:    labels.ToLabels(),

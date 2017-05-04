@@ -14,8 +14,8 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
-	k8sErrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
@@ -30,7 +30,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 
 func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClient, config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	dsName := daemonSetName(config.Name, pool)
-	oldDs, err := client.Extensions().DaemonSets(client.Namespace()).Get(dsName)
+	oldDs, err := client.Extensions().DaemonSets(client.Namespace()).Get(dsName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -131,16 +131,16 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		restartPolicy = v1.RestartPolicyNever
 	}
 	ds := &extensions.DaemonSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
 			Namespace: client.Namespace(),
 		},
 		Spec: extensions.DaemonSetSpec{
-			Selector: &unversioned.LabelSelector{
+			Selector: &metav1.LabelSelector{
 				MatchLabels: ls.ToNodeContainerSelector(),
 			},
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels:      ls.ToLabels(),
 					Annotations: affinityAnnotation,
 				},
