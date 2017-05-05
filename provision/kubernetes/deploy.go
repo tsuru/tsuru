@@ -301,7 +301,6 @@ type serviceManager struct {
 var _ servicecommon.ServiceManager = &serviceManager{}
 
 func (m *serviceManager) RemoveService(a provision.App, process string) error {
-	falseVar := false
 	multiErrors := tsuruErrors.NewMultiError()
 	err := cleanupDeployment(m.client, a, process)
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -309,7 +308,7 @@ func (m *serviceManager) RemoveService(a provision.App, process string) error {
 	}
 	depName := deploymentNameForApp(a, process)
 	err = m.client.Core().Services(m.client.Namespace()).Delete(depName, &metav1.DeleteOptions{
-		OrphanDependents: &falseVar,
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))

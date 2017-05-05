@@ -160,11 +160,15 @@ func cleanupPods(client *clusterClient, opts metav1.ListOptions) error {
 	}
 	for _, pod := range pods.Items {
 		err = client.Core().Pods(client.Namespace()).Delete(pod.Name, &metav1.DeleteOptions{})
-		if err != nil {
+		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
 	}
 	return nil
+}
+
+func propagationPtr(p metav1.DeletionPropagation) *metav1.DeletionPropagation {
+	return &p
 }
 
 func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
@@ -172,12 +176,11 @@ func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	falseVar := false
 	for _, replica := range replicas.Items {
 		err = client.Extensions().ReplicaSets(client.Namespace()).Delete(replica.Name, &metav1.DeleteOptions{
-			OrphanDependents: &falseVar,
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
-		if err != nil {
+		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
 	}
@@ -186,9 +189,8 @@ func cleanupReplicas(client *clusterClient, opts metav1.ListOptions) error {
 
 func cleanupDeployment(client *clusterClient, a provision.App, process string) error {
 	depName := deploymentNameForApp(a, process)
-	falseVar := false
 	err := client.Extensions().Deployments(client.Namespace()).Delete(depName, &metav1.DeleteOptions{
-		OrphanDependents: &falseVar,
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
@@ -211,9 +213,8 @@ func cleanupDeployment(client *clusterClient, a provision.App, process string) e
 
 func cleanupDaemonSet(client *clusterClient, name, pool string) error {
 	dsName := daemonSetName(name, pool)
-	falseVar := false
 	err := client.Extensions().DaemonSets(client.Namespace()).Delete(dsName, &metav1.DeleteOptions{
-		OrphanDependents: &falseVar,
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
