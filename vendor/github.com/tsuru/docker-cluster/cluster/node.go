@@ -214,7 +214,7 @@ func (n *Node) getTLSConfig() (*tls.Config, error) {
 	if n.nodeTLSConfig != nil {
 		return n.nodeTLSConfig, nil
 	}
-	if n.CaCert != nil {
+	if len(n.CaCert) > 0 {
 		tlsCert, err := tls.X509KeyPair(n.ClientCert, n.ClientKey)
 		if err != nil {
 			return nil, err
