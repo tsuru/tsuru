@@ -62,7 +62,6 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 						"tsuru.io/node-container-name": "bs",
 						"tsuru.io/node-container-pool": "",
 					},
-					Annotations: map[string]string{},
 				},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
@@ -122,15 +121,39 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
-		"scheduler.alpha.kubernetes.io/affinity": "{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"pool\",\"operator\":\"NotIn\",\"values\":[\"p1\",\"p2\"]}]}]}}}",
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, &v1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						{
+							Key:      "pool",
+							Operator: v1.NodeSelectorOpNotIn,
+							Values:   []string{"p1", "p2"},
+						},
+					},
+				}},
+			},
+		},
 	})
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Include: []string{"p1"}}, false)
 	c.Assert(err, check.IsNil)
 	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
-		"scheduler.alpha.kubernetes.io/affinity": "{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"pool\",\"operator\":\"In\",\"values\":[\"p1\"]}]}]}}}",
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, &v1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						{
+							Key:      "pool",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"p1"},
+						},
+					},
+				}},
+			},
+		},
 	})
 }
 

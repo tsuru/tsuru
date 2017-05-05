@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -47,9 +46,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		nodeReq.Operator = v1.NodeSelectorOpIn
 		nodeReq.Values = filter.Include
 	}
-	affinityAnnotation := map[string]string{}
+	var affinity *v1.Affinity
 	if len(nodeReq.Values) != 0 {
-		affinity := v1.Affinity{
+		affinity = &v1.Affinity{
 			NodeAffinity: &v1.NodeAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
 					NodeSelectorTerms: []v1.NodeSelectorTerm{{
@@ -58,15 +57,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 				},
 			},
 		}
-		var affinityData []byte
-		affinityData, err = json.Marshal(affinity)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		affinityAnnotation["scheduler.alpha.kubernetes.io/affinity"] = string(affinityData)
 	}
 	if oldDs != nil && placementOnly {
-		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
+		oldDs.Spec.Template.Spec.Affinity = affinity
 		_, err = client.Extensions().DaemonSets(client.Namespace()).Update(oldDs)
 		return errors.WithStack(err)
 	}
@@ -141,10 +134,10 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      ls.ToLabels(),
-					Annotations: affinityAnnotation,
+					Labels: ls.ToLabels(),
 				},
 				Spec: v1.PodSpec{
+					Affinity:      affinity,
 					Volumes:       volumes,
 					RestartPolicy: restartPolicy,
 					HostNetwork:   config.HostConfig.NetworkMode == "host",
