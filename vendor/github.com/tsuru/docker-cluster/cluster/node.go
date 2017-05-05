@@ -29,7 +29,8 @@ type Node struct {
 	CaCert         []byte
 	ClientCert     []byte
 	ClientKey      []byte
-	tlsConfig      *tls.Config
+	defTLSConfig   *tls.Config
+	nodeTLSConfig  *tls.Config
 }
 
 type HealingData struct {
@@ -210,10 +211,10 @@ func (nodes NodeList) filterDisabled() NodeList {
 }
 
 func (n *Node) getTLSConfig() (*tls.Config, error) {
-	if n.tlsConfig != nil {
-		return n.tlsConfig, nil
+	if n.nodeTLSConfig != nil {
+		return n.nodeTLSConfig, nil
 	}
-	if len(n.CaCert) > 0 {
+	if n.CaCert != nil {
 		tlsCert, err := tls.X509KeyPair(n.ClientCert, n.ClientKey)
 		if err != nil {
 			return nil, err
@@ -226,8 +227,8 @@ func (n *Node) getTLSConfig() (*tls.Config, error) {
 			Certificates: []tls.Certificate{tlsCert},
 			RootCAs:      caPool,
 		}
-		n.tlsConfig = config
+		n.nodeTLSConfig = config
 		return config, nil
 	}
-	return nil, nil
+	return n.defTLSConfig, nil
 }

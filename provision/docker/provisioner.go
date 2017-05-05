@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -80,9 +79,6 @@ type dockerProvisioner struct {
 	scheduler      *segregatedScheduler
 	isDryMode      bool
 	actionLimiter  provision.ActionLimiter
-	caCert         []byte
-	clientCert     []byte
-	clientKey      []byte
 }
 
 type hookHealer struct {
@@ -125,21 +121,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		provisioner:         p,
 	}
 	caPath, _ := config.GetString("docker:tls:root-path")
-	if caPath != "" {
-		p.caCert, err = ioutil.ReadFile(filepath.Join(caPath, "ca.pem"))
-		if err != nil {
-			return err
-		}
-		p.clientCert, err = ioutil.ReadFile(filepath.Join(caPath, "cert.pem"))
-		if err != nil {
-			return err
-		}
-		p.clientKey, err = ioutil.ReadFile(filepath.Join(caPath, "key.pem"))
-		if err != nil {
-			return err
-		}
-	}
-	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
+	p.cluster, err = cluster.New(p.scheduler, p.storage, caPath, nodes...)
 	if err != nil {
 		return err
 	}
@@ -214,7 +196,8 @@ func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container.Conta
 		provisioner:         &overridenProvisioner,
 		ignoredContainers:   containerIds,
 	}
-	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage)
+	caPath, _ := config.GetString("docker:tls:root-path")
+	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage, caPath)
 	if err != nil {
 		return nil, err
 	}
@@ -237,9 +220,6 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container.Container) (*d
 		collectionName: "containers_dry_" + randomString(),
 		isDryMode:      true,
 		actionLimiter:  &provision.LocalLimiter{},
-		caCert:         p.caCert,
-		clientCert:     p.clientCert,
-		clientKey:      p.clientKey,
 	}
 	containerIds := make([]string, len(ignoredContainers))
 	for i := range ignoredContainers {
@@ -251,7 +231,8 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container.Container) (*d
 		provisioner:         overridenProvisioner,
 		ignoredContainers:   containerIds,
 	}
-	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage)
+	caPath, _ := config.GetString("docker:tls:root-path")
+	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage, caPath)
 	if err != nil {
 		return nil, err
 	}
@@ -1315,11 +1296,6 @@ func (p *dockerProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		CaCert:         opts.CaCert,
 		ClientCert:     opts.ClientCert,
 		ClientKey:      opts.ClientKey,
-	}
-	if len(opts.CaCert) == 0 && len(p.caCert) > 0 {
-		node.CaCert = p.caCert
-		node.ClientCert = p.clientCert
-		node.ClientKey = p.clientKey
 	}
 	err := p.Cluster().Register(node)
 	if err != nil {

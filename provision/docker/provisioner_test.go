@@ -308,7 +308,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &p
-	p.cluster, err = cluster.New(nil, p.storage,
+	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
 	c.Assert(err, check.IsNil)
@@ -371,7 +371,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &p
-	p.cluster, err = cluster.New(nil, p.storage,
+	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
 	c.Assert(err, check.IsNil)
@@ -1478,7 +1478,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
 	s.p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(&scheduler, s.p.storage)
+	clusterInstance, err := cluster.New(&scheduler, s.p.storage, "")
 	c.Assert(err, check.IsNil)
 	s.p.cluster = clusterInstance
 	s.p.scheduler = &scheduler
@@ -1547,7 +1547,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
 	s.p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(&scheduler, s.p.storage)
+	clusterInstance, err := cluster.New(&scheduler, s.p.storage, "")
 	c.Assert(err, check.IsNil)
 	s.p.cluster = clusterInstance
 	s.p.scheduler = &scheduler
@@ -1611,7 +1611,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
 	s.p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(&scheduler, s.p.storage)
+	clusterInstance, err := cluster.New(&scheduler, s.p.storage, "")
 	c.Assert(err, check.IsNil)
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
@@ -1670,7 +1670,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	s.p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(&scheduler, s.p.storage)
+	clusterInstance, err := cluster.New(&scheduler, s.p.storage, "")
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
@@ -1713,7 +1713,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
 	s.p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(&scheduler, s.p.storage)
+	clusterInstance, err := cluster.New(&scheduler, s.p.storage, "")
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
@@ -2417,7 +2417,7 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
@@ -2449,7 +2449,7 @@ func (s *S) TestProvisionerPlatformAddData(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{Address: server.URL()})
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "", cluster.Node{Address: server.URL()})
 	dockerfile := "FROM tsuru/java"
 	err = p.PlatformAdd(provision.PlatformOptions{
 		Name:   "test",
@@ -2498,7 +2498,7 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = p.PlatformAdd(provision.PlatformOptions{
@@ -2524,7 +2524,7 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	var buf bytes.Buffer
 	err = p.PlatformAdd(provision.PlatformOptions{
@@ -2557,7 +2557,7 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &strg,
+	p.cluster, _ = cluster.New(nil, &strg, "",
 		cluster.Node{Address: server.URL()})
 	err = p.PlatformRemove("test")
 	c.Assert(err, check.NotNil)
@@ -3222,7 +3222,7 @@ func (s *S) TestAddNode(c *check.C) {
 	var p dockerProvisioner
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
 	mainDockerProvisioner = &p
 	opts := provision.AddNodeOptions{
 		Address: server.URL(),
@@ -3248,7 +3248,7 @@ func (s *S) TestAddNodeNoAddress(c *check.C) {
 	var p dockerProvisioner
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
 	mainDockerProvisioner = &p
 	opts := provision.AddNodeOptions{}
 	err = p.AddNode(opts)
@@ -3261,7 +3261,7 @@ func (s *S) TestAddNodeWithWait(c *check.C) {
 	var p dockerProvisioner
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{}, "")
 	mainDockerProvisioner = &p
 	opts := provision.AddNodeOptions{
 		Address: server.URL(),
