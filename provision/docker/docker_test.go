@@ -288,7 +288,7 @@ func (s *S) TestArchiveDeployRegisterRace(c *check.C) {
 	defer config.Unset("docker:registry")
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "tsuru/python:latest", nil)
@@ -379,7 +379,7 @@ func (s *S) TestPushImage(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
@@ -417,7 +417,7 @@ func (s *S) TestPushImageAuth(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
@@ -481,7 +481,7 @@ func (s *S) TestGetNodeByHost(c *check.C) {
 	}, {
 		Address: "h5:30123",
 	}}
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, nodes...)
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "", nodes...)
 	c.Assert(err, check.IsNil)
 	tests := [][]string{
 		{"h1", nodes[0].Address},

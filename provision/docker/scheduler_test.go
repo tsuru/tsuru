@@ -53,7 +53,7 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
-	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -111,7 +111,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
-	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -146,7 +146,7 @@ func (s *S) TestSchedulerNoNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().Remove(bson.M{"name": app.Name})
 	scheduler := segregatedScheduler{provisioner: s.p}
-	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	o := provision.AddPoolOptions{Name: "mypool"}
 	err = provision.AddPool(o)
@@ -190,7 +190,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server2.Stop()
 	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
-	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
+	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server1.URL(), Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
@@ -279,7 +279,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server2.Stop()
 	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
-	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
+	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server1.URL(), Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
@@ -373,7 +373,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	c.Assert(err, check.IsNil)
 	defer server2.Stop()
 	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
-	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
+	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server1.URL(), Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
@@ -801,7 +801,7 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name, cont4.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
-	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)

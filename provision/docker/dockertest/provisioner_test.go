@@ -102,7 +102,7 @@ func (s *S) TestServers(c *check.C) {
 
 func (s *S) TestCluster(c *check.C) {
 	var p FakeDockerProvisioner
-	cluster, err := cluster.New(nil, &cluster.MapStorage{})
+	cluster, err := cluster.New(nil, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	c.Assert(p.Cluster(), check.Equals, cluster)

@@ -60,7 +60,7 @@ func NewFakeDockerProvisioner(servers ...string) (*FakeDockerProvisioner, error)
 	for i, server := range servers {
 		nodes[i] = cluster.Node{Address: server}
 	}
-	p.cluster, err = cluster.New(nil, p.storage, nodes...)
+	p.cluster, err = cluster.New(nil, p.storage, "", nodes...)
 	if err != nil {
 		return nil, err
 	}

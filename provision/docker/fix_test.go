@@ -56,7 +56,7 @@ func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner)
 	if err != nil {
 		panic(err)
 	}
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL},
 	)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *S) TestFixContainer(c *check.C) {
 	p.Provision(appInstance)
 	var storage cluster.MapStorage
 	storage.StoreContainer(cont.ID, server.URL)
-	p.cluster, err = cluster.New(nil, &storage,
+	p.cluster, err = cluster.New(nil, &storage, "",
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)
@@ -129,7 +129,7 @@ func (s *S) TestCheckContainer(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": cont.AppName})
 	var storage cluster.MapStorage
 	storage.StoreContainer(cont.ID, server.URL)
-	p.cluster, err = cluster.New(nil, &storage,
+	p.cluster, err = cluster.New(nil, &storage, "",
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)

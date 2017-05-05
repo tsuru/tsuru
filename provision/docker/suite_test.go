@@ -123,7 +123,7 @@ func (s *S) SetUpTest(c *check.C) {
 	queue.ResetQueue()
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
-	s.p.cluster, err = cluster.New(nil, s.p.storage,
+	s.p.cluster, err = cluster.New(nil, s.p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
 	c.Assert(err, check.IsNil)
@@ -184,7 +184,7 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 		return nil, err
 	}
 	p.storage = &cluster.MapStorage{}
-	p.cluster, err = cluster.New(nil, p.storage,
+	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "test-default"}},
 	)
@@ -218,7 +218,7 @@ func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error)
 	}
 	p.storage = &cluster.MapStorage{}
 	sched := segregatedScheduler{provisioner: &p}
-	p.cluster, err = cluster.New(&sched, p.storage,
+	p.cluster, err = cluster.New(&sched, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
 		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "pool2"}},
 	)

@@ -9,10 +9,13 @@ package cluster
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -110,6 +113,7 @@ type Cluster struct {
 	monitoringDone chan bool
 	dryServer      *testing.DockerServer
 	hooks          map[HookEvent][]Hook
+	tlsConfig      *tls.Config
 }
 
 type DockerNodeError struct {
@@ -148,7 +152,7 @@ func wrapErrorWithCmd(n node, err error, cmd string) error {
 // The scheduler parameter defines the scheduling strategy. It defaults
 // to round robin if nil.
 // The storage parameter is the storage the cluster instance will use.
-func New(scheduler Scheduler, storage Storage, nodes ...Node) (*Cluster, error) {
+func New(scheduler Scheduler, storage Storage, caPath string, nodes ...Node) (*Cluster, error) {
 	var (
 		c   Cluster
 		err error
@@ -158,6 +162,13 @@ func New(scheduler Scheduler, storage Storage, nodes ...Node) (*Cluster, error) 
 	}
 	c.stor = storage
 	c.scheduler = scheduler
+	if caPath != "" {
+		tlsConfig, errTLS := readTLSConfig(caPath)
+		if errTLS != nil {
+			return nil, errTLS
+		}
+		c.tlsConfig = tlsConfig
+	}
 	c.Healer = DefaultHealer{}
 	if scheduler == nil {
 		c.scheduler = &roundRobin{lastUsed: -1}
@@ -173,11 +184,39 @@ func New(scheduler Scheduler, storage Storage, nodes ...Node) (*Cluster, error) 
 	return &c, err
 }
 
+func readTLSConfig(caPath string) (*tls.Config, error) {
+	certPEMBlock, errCert := ioutil.ReadFile(filepath.Join(caPath, "cert.pem"))
+	if errCert != nil {
+		return nil, errCert
+	}
+	keyPEMBlock, errCert := ioutil.ReadFile(filepath.Join(caPath, "key.pem"))
+	if errCert != nil {
+		return nil, errCert
+	}
+	caPEMCert, errCert := ioutil.ReadFile(filepath.Join(caPath, "ca.pem"))
+	if errCert != nil {
+		return nil, errCert
+	}
+	tlsCert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	if err != nil {
+		return nil, err
+	}
+	caPool := x509.NewCertPool()
+	if !caPool.AppendCertsFromPEM(caPEMCert) {
+		return nil, errors.New("Could not add RootCA pem")
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+		RootCAs:      caPool,
+	}, nil
+}
+
 // Register adds new nodes to the cluster.
 func (c *Cluster) Register(node Node) error {
 	if node.Address == "" {
 		return errors.New("Invalid address")
 	}
+	node.defTLSConfig = c.tlsConfig
 	err := c.runHooks(HookEventBeforeNodeRegister, &node)
 	if err != nil {
 		return err
@@ -209,6 +248,7 @@ func (c *Cluster) UpdateNode(node Node) (Node, error) {
 			dbNode.Metadata[k] = v
 		}
 	}
+	dbNode.defTLSConfig = c.tlsConfig
 	return dbNode, c.storage().UpdateNode(dbNode)
 }
 
@@ -236,7 +276,7 @@ func (c *Cluster) UnfilteredNodes() ([]Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nodes, nil
+	return c.setTLSConfigInNodes(nodes), nil
 }
 
 func (c *Cluster) Nodes() ([]Node, error) {
@@ -244,7 +284,7 @@ func (c *Cluster) Nodes() ([]Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NodeList(nodes).filterDisabled(), nil
+	return NodeList(c.setTLSConfigInNodes(nodes)).filterDisabled(), nil
 }
 
 func (c *Cluster) NodesForMetadata(metadata map[string]string) ([]Node, error) {
@@ -252,7 +292,7 @@ func (c *Cluster) NodesForMetadata(metadata map[string]string) ([]Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NodeList(nodes).filterDisabled(), nil
+	return NodeList(c.setTLSConfigInNodes(nodes)).filterDisabled(), nil
 }
 
 func (c *Cluster) GetNode(address string) (Node, error) {
@@ -260,7 +300,15 @@ func (c *Cluster) GetNode(address string) (Node, error) {
 	if err != nil {
 		return Node{}, err
 	}
+	n.defTLSConfig = c.tlsConfig
 	return n, nil
+}
+
+func (c *Cluster) setTLSConfigInNodes(nodes []Node) []Node {
+	for i := range nodes {
+		nodes[i].defTLSConfig = c.tlsConfig
+	}
+	return nodes
 }
 
 func (c *Cluster) UnfilteredNodesForMetadata(metadata map[string]string) ([]Node, error) {
@@ -268,7 +316,7 @@ func (c *Cluster) UnfilteredNodesForMetadata(metadata map[string]string) ([]Node
 	if err != nil {
 		return nil, err
 	}
-	return nodes, nil
+	return c.setTLSConfigInNodes(nodes), nil
 }
 
 func (c *Cluster) StartActiveMonitoring(updateInterval time.Duration) {
@@ -551,7 +599,7 @@ func (c *Cluster) getNodeByAddr(address string) (node, error) {
 	}
 	n, err := c.GetNode(address)
 	if err != nil {
-		n = Node{Address: address}
+		n = Node{Address: address, defTLSConfig: c.tlsConfig}
 	}
 	client, err := n.Client()
 	if err != nil {
@@ -582,6 +630,7 @@ func (c *Cluster) runHookForAddr(evt HookEvent, address string) error {
 	if err != nil {
 		return err
 	}
+	node.defTLSConfig = c.tlsConfig
 	return c.runHooks(evt, &node)
 }
 

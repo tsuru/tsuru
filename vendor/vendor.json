@@ -1345,28 +1345,28 @@
 			"revisionTime": "2017-04-10T20:51:07Z"
 		},
 		{
-			"checksumSHA1": "4/+umnXEiZSaOI8wWrvxyDRe9d4=",
+			"checksumSHA1": "Gpp2zJ34rLKBAGxFT4zgTDQqmUo=",
 			"path": "github.com/tsuru/docker-cluster/cluster",
-			"revision": "d0b3b5fbdc798ea75aeea497e41d4cc857d9be26",
-			"revisionTime": "2017-02-14T11:21:59Z"
+			"revision": "c7c40a8d9365b283de85d075753b8a11e6b33ca8",
+			"revisionTime": "2017-05-05T20:54:50Z"
 		},
 		{
 			"checksumSHA1": "sTjUknyBzJ565jq4GD0bpHmSNIg=",
 			"path": "github.com/tsuru/docker-cluster/log",
-			"revision": "2bf6325acf92505def853dca9982e26ea762e8b6",
-			"revisionTime": "2017-01-31T16:14:47Z"
+			"revision": "c7c40a8d9365b283de85d075753b8a11e6b33ca8",
+			"revisionTime": "2017-05-05T20:54:50Z"
 		},
 		{
 			"checksumSHA1": "gGuKsKxE4abQRAsJzbYMl2DpgzA=",
 			"path": "github.com/tsuru/docker-cluster/storage",
-			"revision": "2bf6325acf92505def853dca9982e26ea762e8b6",
-			"revisionTime": "2017-01-31T16:14:47Z"
+			"revision": "c7c40a8d9365b283de85d075753b8a11e6b33ca8",
+			"revisionTime": "2017-05-05T20:54:50Z"
 		},
 		{
 			"checksumSHA1": "che0MP2JCiqgpjWnyEYLlI+BTEY=",
 			"path": "github.com/tsuru/docker-cluster/storage/mongodb",
-			"revision": "2bf6325acf92505def853dca9982e26ea762e8b6",
-			"revisionTime": "2017-01-31T16:14:47Z"
+			"revision": "c7c40a8d9365b283de85d075753b8a11e6b33ca8",
+			"revisionTime": "2017-05-05T20:54:50Z"
 		},
 		{
 			"checksumSHA1": "in5hjWhIkRA+jmgIoXghwnCh88M=",

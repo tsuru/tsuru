@@ -321,7 +321,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	p.scheduler = &segregatedScheduler{provisioner: p}
-	p.cluster, err = cluster.New(p.scheduler, p.storage,
+	p.cluster, err = cluster.New(p.scheduler, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
 		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool1"}},
 	)
@@ -375,7 +375,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	p.scheduler = &segregatedScheduler{provisioner: p}
-	p.cluster, err = cluster.New(p.scheduler, p.storage,
+	p.cluster, err = cluster.New(p.scheduler, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
 		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool1"}},
 	)
