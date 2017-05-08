@@ -27,6 +27,8 @@ services:
     planb:
         image: tsuru/planb
         command: --read-redis-host=redis --write-redis-host=redis
+        depends_on:
+            - redis
         ports:
             - "8989:8989"
         networks:
