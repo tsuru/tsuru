@@ -202,7 +202,7 @@ var createContainer = action.Action{
 			return nil, err
 		}
 		cont := ctx.Previous.(container.Container)
-		log.Debugf("create container for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
+		log.Debugf("create container for app %s, based on image %s", args.app.GetName(), args.imageID)
 		var building bool
 		if args.buildingImage != "" {
 			building = true

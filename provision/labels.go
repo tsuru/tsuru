@@ -43,6 +43,8 @@ var (
 	labelRestarts   = "restarts"
 
 	labelProvisioner = "provisioner"
+
+	labelBuilder = "builder"
 )
 
 type LabelSet struct {
@@ -230,6 +232,7 @@ type ProcessLabelsOpts struct {
 	App         App
 	Process     string
 	Provisioner string
+	Builder     string
 	Prefix      string
 }
 
@@ -253,6 +256,7 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 			labelRouterName:  routerName,
 			labelRouterType:  routerType,
 			labelProvisioner: opts.Provisioner,
+			labelBuilder:     opts.Builder,
 		},
 		Prefix: opts.Prefix,
 	}, nil

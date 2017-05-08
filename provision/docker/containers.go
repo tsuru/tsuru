@@ -77,6 +77,7 @@ func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Wr
 }
 
 func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageId string, toHosts ...string) ([]container.Container, error) {
+	fmt.Println("runReplaceUnitsPipeline")
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -126,6 +127,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 }
 
 func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId, exposedPort string) ([]container.Container, error) {
+	fmt.Println("runCreateUnitsPipeline")
 	if w == nil {
 		w = ioutil.Discard
 	}

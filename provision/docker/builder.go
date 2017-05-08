@@ -93,8 +93,9 @@ func (p *dockerProvisioner) rebuildImage(app provision.App) (string, string, err
 	return p.buildImage(app, archiveFile)
 }
 
-func (p *dockerProvisioner) Deploy(app provision.App, imageID string, evt *event.Event) (string, error) {
-	err := p.deployAndClean(app, imageID, evt)
+func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
+	imageID, err := p.deployPipeline(app, buildImageID, nil, evt)
+	err = p.deployAndClean(app, imageID, evt)
 	if err != nil {
 		return "", err
 	}
@@ -120,8 +121,4 @@ func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, 
 		return nil, err
 	}
 	return client, nil
-}
-
-func (p *dockerProvisioner) RunHookDeploy(client *docker.Client, app provision.App, imageID string, cmds []string, evt *event.Event) (string, error) {
-	return p.deployPipeline(app, imageID, cmds, evt)
 }

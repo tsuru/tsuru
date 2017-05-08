@@ -77,7 +77,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	buildingImage, err := image.AppNewImageName(app.GetName())
+	deployImage, err := image.AppVersionedImageName(app.GetName())
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
@@ -91,7 +91,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 		commands:      commands,
 		writer:        writer,
 		isDeploy:      true,
-		buildingImage: buildingImage,
+		buildingImage: deployImage,
 		provisioner:   p,
 		event:         evt,
 	}
@@ -100,7 +100,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
 	}
-	return buildingImage, nil
+	return deployImage, nil
 }
 
 func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageId string, w io.Writer, exposedPort string, destinationHosts ...string) (*container.Container, error) {
