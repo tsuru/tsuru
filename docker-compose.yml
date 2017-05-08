@@ -22,6 +22,8 @@ services:
             - ./data/registry:/var/lib/registry
         networks:
             - tsuru_net
+        ports:
+            - 5000:5000
     planb:
         image: tsuru/planb
         command: --read-redis-host=redis --write-redis-host=redis
@@ -61,7 +63,7 @@ services:
     node1:
         image: docker:dind
         privileged: true
-        command: --insecure-registry registry:5000
+        command: --insecure-registry 10.200.10.1:5000
         ports:
             - "2375:2375"
             - "32768-32772:32768-32772"
