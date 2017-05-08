@@ -204,6 +204,20 @@ func AppNewImageName(appName string) (string, error) {
 	return fmt.Sprintf("%s:v%d", appBasicImageName(appName), imgs.Count), nil
 }
 
+func AppVersionedImageName(appName string) (string, error) {
+	coll, err := appImagesColl()
+	if err != nil {
+		return "", err
+	}
+	defer coll.Close()
+	var imgs appImages
+	err = coll.FindId(appName).One(&imgs)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:v%d", appBasicImageName(appName), imgs.Count), nil
+}
+
 func AppCurrentImageName(appName string) (string, error) {
 	coll, err := appImagesColl()
 	if err != nil {

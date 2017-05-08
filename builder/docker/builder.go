@@ -96,7 +96,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		return "", err
 	}
 	cmds := dockercommon.ArchiveDeployCmds(app, fileURI)
-	imageID, err := p.RunHookDeploy(client, app, intermediateImageID, cmds, evt)
+	imageID, err := b.buildPipeline(client, app, intermediateImageID, cmds, evt)
 	if err != nil {
 		return "", err
 	}
