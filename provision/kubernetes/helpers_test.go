@@ -57,6 +57,67 @@ func (s *S) TestWaitFor(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `myerr`)
 }
 
+func (s *S) TestWaitForPodContainersRunning(c *check.C) {
+	err := waitForPodContainersRunning(s.client.clusterClient, "pod1", 100*time.Millisecond)
+	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
+	var wantedPhase v1.PodPhase
+	var wantedStates []v1.ContainerState
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		c.Assert(ok, check.Equals, true)
+		pod.Status.Phase = wantedPhase
+		statuses := make([]v1.ContainerStatus, len(wantedStates))
+		for i, s := range wantedStates {
+			statuses[i] = v1.ContainerStatus{Name: fmt.Sprintf("c-%d", i), State: s}
+		}
+		pod.Status.ContainerStatuses = statuses
+		return false, nil, nil
+	})
+	tests := []struct {
+		states []v1.ContainerState
+		phase  v1.PodPhase
+		err    string
+	}{
+		{phase: v1.PodSucceeded},
+		{phase: v1.PodPending, err: `timeout after .*`},
+		{phase: v1.PodFailed, err: `invalid pod phase "Failed"`},
+		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
+		{phase: v1.PodRunning, states: []v1.ContainerState{
+			{},
+		}, err: `timeout after .*`},
+		{phase: v1.PodRunning, states: []v1.ContainerState{
+			{Running: &v1.ContainerStateRunning{}}, {},
+		}, err: `timeout after .*`},
+		{phase: v1.PodRunning, states: []v1.ContainerState{
+			{Running: &v1.ContainerStateRunning{}}, {Running: &v1.ContainerStateRunning{}},
+		}},
+		{phase: v1.PodRunning, states: []v1.ContainerState{
+			{Running: &v1.ContainerStateRunning{}}, {Terminated: &v1.ContainerStateTerminated{
+				ExitCode: 9, Reason: "x", Message: "y",
+			}},
+		}, err: `unexpected container "c-1" termination: Exit 9 - Reason: "x" - Message: "y"`},
+	}
+	for _, tt := range tests {
+		wantedPhase = tt.phase
+		wantedStates = tt.states
+		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: s.client.Namespace(),
+			},
+		})
+		c.Assert(err, check.IsNil)
+		err = waitForPodContainersRunning(s.client.clusterClient, "pod1", 100*time.Millisecond)
+		if tt.err == "" {
+			c.Assert(err, check.IsNil)
+		} else {
+			c.Assert(err, check.ErrorMatches, tt.err)
+		}
+		err = cleanupPod(s.client.clusterClient, "pod1")
+		c.Assert(err, check.IsNil)
+	}
+}
+
 func (s *S) TestWaitForPod(c *check.C) {
 	err := waitForPod(s.client.clusterClient, "pod1", false, 100*time.Millisecond)
 	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)

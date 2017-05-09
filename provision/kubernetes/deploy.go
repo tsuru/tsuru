@@ -165,7 +165,7 @@ func createBuildPod(params buildPodParams) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = waitForPod(params.client, pod.Name, true, defaultPullRunPodReadyTimeout)
+	err = waitForPodContainersRunning(params.client, pod.Name, defaultPullRunPodReadyTimeout)
 	if err != nil {
 		return err
 	}

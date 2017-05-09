@@ -113,6 +113,33 @@ podsLoop:
 	return messages, nil
 }
 
+func waitForPodContainersRunning(client *clusterClient, podName string, timeout time.Duration) error {
+	return waitFor(timeout, func() (bool, error) {
+		err := waitForPod(client, podName, true, timeout)
+		if err != nil {
+			return true, errors.WithStack(err)
+		}
+		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return true, errors.WithStack(err)
+		}
+		allRunning := true
+		for _, contStatus := range pod.Status.ContainerStatuses {
+			if contStatus.State.Terminated != nil {
+				termData := contStatus.State.Terminated
+				return true, errors.Errorf("unexpected container %q termination: Exit %d - Reason: %q - Message: %q", contStatus.Name, termData.ExitCode, termData.Reason, termData.Message)
+			}
+			if contStatus.State.Running == nil {
+				allRunning = false
+			}
+		}
+		if allRunning {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
 func waitForPod(client *clusterClient, podName string, returnOnRunning bool, timeout time.Duration) error {
 	return waitFor(timeout, func() (bool, error) {
 		pod, err := client.Core().Pods(client.Namespace()).Get(podName, metav1.GetOptions{})
