@@ -13,6 +13,7 @@ const defaultBuilder = "docker"
 type BuildOpts struct {
 	BuildFromFile  bool
 	Rebuild        bool
+	Redeploy       bool
 	ArchiveURL     string
 	ArchiveFile    io.Reader
 	ArchiveTarFile io.ReadCloser
