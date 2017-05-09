@@ -83,8 +83,12 @@ func (p *swarmProvisioner) buildImage(app provision.App, archiveFile io.ReadClos
 	return buildingImage, nil
 }
 
-func (p *swarmProvisioner) Deploy(app provision.App, imageID string, evt *event.Event) (string, error) {
-	err := deployProcesses(app, imageID, nil)
+func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
+	imageID, err := p.runHookDeploy(app, buildImageID, evt)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	err = deployProcesses(app, imageID, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -99,21 +103,25 @@ func (p *swarmProvisioner) GetDockerClient(app provision.App) (*docker.Client, e
 	return client, nil
 }
 
-func (p *swarmProvisioner) RunHookDeploy(client *docker.Client, app provision.App, imageID string, cmds []string, evt *event.Event) (string, error) {
-	buildingImage, err := image.AppNewImageName(app.GetName())
+func (p *swarmProvisioner) runHookDeploy(app provision.App, imageID string, evt *event.Event) (string, error) {
+	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
 	}
-	srvID, task, err := runOnceBuildCmds(client, app, cmds, imageID, buildingImage, evt)
+	deployImage, err := image.AppVersionedImageName(app.GetName())
+	if err != nil {
+		return "", err
+	}
+	srvID, task, err := runOnceBuildCmds(client, app, nil, imageID, deployImage, evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
 	if err != nil {
 		return "", err
 	}
-	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, app)
+	_, err = commitPushBuildImage(client, deployImage, task.Status.ContainerStatus.ContainerID, app)
 	if err != nil {
 		return "", err
 	}
-	return buildingImage, nil
+	return deployImage, nil
 }
