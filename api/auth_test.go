@@ -729,9 +729,6 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *check.C)
 func (s *AuthSuite) TestAddKeyToUserKeyManagerDisabled(c *check.C) {
 	config.Set("repo-manager", "none")
 	defer config.Set("repo-manager", "fake")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	b := strings.NewReader("name=the-key&key=my-key")
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -792,11 +789,8 @@ func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
-	_, err = nativeScheme.Create(u)
+	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
 	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -856,9 +850,6 @@ func (s *AuthSuite) TestRemoveKeyNotFound(c *check.C) {
 func (s *AuthSuite) TestRemoveKeyFromUserKeyManagerDisabled(c *check.C) {
 	config.Set("repo-manager", "none")
 	defer config.Set("repo-manager", "fake")
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	request, err := http.NewRequest("DELETE", "/users/keys/the-key", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -897,8 +888,6 @@ func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 func (s *AuthSuite) TestListKeysKeyManagerDisabled(c *check.C) {
 	config.Set("repo-manager", "none")
 	defer config.Set("repo-manager", "fake")
-	conn, _ := db.Conn()
-	defer conn.Close()
 	request, err := http.NewRequest("GET", "/users/keys", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1624,8 +1613,6 @@ func (s *AuthSuite) TestUserInfo(c *check.C) {
 }
 
 func (s *AuthSuite) TestUserInfoWithoutRoles(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	token := userWithPermission(c)
 	u, err := token.User()
 	c.Assert(err, check.IsNil)
@@ -1658,8 +1645,6 @@ func (l rolePermList) Less(i, j int) bool {
 }
 
 func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
 	token := userWithPermission(c)
 	r, err := permission.NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
