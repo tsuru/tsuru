@@ -34,14 +34,11 @@ running ``docker-compose ps``:
 
     $ docker-compose ps
 
-You have a fresh tsuru installed, so you need to create the admin user running tsurud inside container. 
-For this you need first to kill the running api.
+You have a fresh tsuru installed, so you need to create the admin user running tsurud inside container.
 
 ::
 
-    $ docker-compose stop api
-    $ docker-compose run --entrypoint="/bin/sh -c" api "tsurud root-user-create admin@example.com"
-    $ docker-compose up -d
+    $ docker-compose exec api tsurud root-user-create admin@example.com
 
 Then configure the tsuru target:
 

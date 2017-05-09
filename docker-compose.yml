@@ -60,8 +60,7 @@ services:
             - redis
             - registry
         networks:
-            tsuru_net:
-                ipv4_address: 172.42.0.10
+            - tsuru_net
     node1:
         image: docker:dind
         privileged: true
