@@ -201,6 +201,7 @@ type ServiceLabelExtendedOpts struct {
 	IsDeploy      bool
 	IsIsolatedRun bool
 	IsBuild       bool
+	Builder       string
 }
 
 func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
@@ -213,6 +214,7 @@ func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
 	set.Labels[labelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
 	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
 	set.Labels[labelIsBuild] = strconv.FormatBool(opts.IsBuild)
+	set.Labels[labelBuilder] = opts.Builder
 }
 
 func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
