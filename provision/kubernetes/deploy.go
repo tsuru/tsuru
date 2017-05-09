@@ -123,9 +123,6 @@ func createBuildPod(params buildPodParams) error {
 				},
 			},
 			RestartPolicy: v1.RestartPolicyNever,
-			SecurityContext: &v1.PodSecurityContext{
-				RunAsUser: uid,
-			},
 			Containers: []v1.Container{
 				{
 					Name:      baseName,
@@ -134,6 +131,9 @@ func createBuildPod(params buildPodParams) error {
 					Stdin:     true,
 					StdinOnce: true,
 					Env:       envs,
+					SecurityContext: &v1.SecurityContext{
+						RunAsUser: uid,
+					},
 				},
 				{
 					Name:  commitContainer,
