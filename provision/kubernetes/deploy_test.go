@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -112,6 +113,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								{Name: "TSURU_HOST", Value: ""},
 								{Name: "port", Value: "8888"},
 								{Name: "PORT", Value: "8888"},
+							},
+							Resources: v1.ResourceRequirements{
+								Limits: v1.ResourceList{},
 							},
 						},
 					},
@@ -374,6 +378,34 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	expectedUID := int64(1000)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &v1.PodSecurityContext{
 		RunAsUser: &expectedUID,
+	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithLimits(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.client.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Plan = app.Plan{Memory: 1024}
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceMemory: *expectedMemory,
+		},
 	})
 }
 

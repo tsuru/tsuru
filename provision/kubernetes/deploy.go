@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api"
@@ -251,6 +252,11 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 		Pool: a.GetPool(),
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
+	resourceLimits := v1.ResourceList{}
+	memory := a.GetMemory()
+	if memory != 0 {
+		resourceLimits[v1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
+	}
 	deployment := extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
@@ -286,6 +292,9 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 							Command:        cmds,
 							Env:            envs,
 							ReadinessProbe: probe,
+							Resources: v1.ResourceRequirements{
+								Limits: resourceLimits,
+							},
 						},
 					},
 				},
