@@ -98,4 +98,5 @@ Here is how you can configure a health check in your yaml file:
 
 * ``healthcheck:use_in_router``: Whether this health check path should also be
   registered in the router. Please, ensure that the check is consistent to
-  prevent units being disabled by the router. Defaults to false.
+  prevent units being disabled by the router. Defaults to false. When an app has
+  no explicit healthcheck or use_in_router is false a default healthcheck is configured.
