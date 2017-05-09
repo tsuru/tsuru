@@ -102,6 +102,7 @@ func createBuildPod(params buildPodParams) error {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	commitContainer := "committer-cont"
+	_, uid := dockercommon.UserForContainer()
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -121,6 +122,9 @@ func createBuildPod(params buildPodParams) error {
 				},
 			},
 			RestartPolicy: v1.RestartPolicyNever,
+			SecurityContext: &v1.PodSecurityContext{
+				RunAsUser: uid,
+			},
 			Containers: []v1.Container{
 				{
 					Name:      baseName,
@@ -246,6 +250,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool: a.GetPool(),
 	}).ToNodeByPoolSelector()
+	_, uid := dockercommon.UserForContainer()
 	deployment := extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
@@ -269,6 +274,9 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 					Labels: labels.ToLabels(),
 				},
 				Spec: v1.PodSpec{
+					SecurityContext: &v1.PodSecurityContext{
+						RunAsUser: uid,
+					},
 					RestartPolicy: v1.RestartPolicyAlways,
 					NodeSelector:  nodeSelector,
 					Containers: []v1.Container{

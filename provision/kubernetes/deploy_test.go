@@ -93,6 +93,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					},
 				},
 				Spec: v1.PodSpec{
+					SecurityContext: &v1.PodSecurityContext{},
 					NodeSelector: map[string]string{
 						"pool": "bonehunters",
 					},
@@ -347,6 +348,33 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
+}
+
+func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
+	config.Set("docker:uid", 1000)
+	defer config.Unset("docker:uid")
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.client.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedUID := int64(1000)
+	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &v1.PodSecurityContext{
+		RunAsUser: &expectedUID,
+	})
 }
 
 func (s *S) prepareRollbackTest(c *check.C) (*serviceManager, **extensions.DeploymentRollback, func()) {

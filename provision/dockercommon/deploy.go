@@ -9,6 +9,7 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 )
 
 func writeTarball(tarball *tar.Writer, archive io.Reader, fileSize int64, name string) error {
@@ -41,4 +42,17 @@ func AddDeployTarFile(archive io.Reader, fileSize int64, name string) io.ReadClo
 		}
 	}()
 	return reader
+}
+
+func UserForContainer() (username string, uid *int64) {
+	userid, err := config.GetInt("docker:uid")
+	if err == nil {
+		userid64 := int64(userid)
+		uid = &userid64
+	}
+	username, err = config.GetString("docker:user")
+	if err != nil {
+		username, _ = config.GetString("docker:ssh:user")
+	}
+	return username, uid
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -98,7 +99,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	}
 	var user string
 	if args.Building {
-		user = c.user()
+		user, _ = dockercommon.UserForContainer()
 	}
 	hostConf, err := c.hostConfig(args.App, args.Deploy)
 	if err != nil {
@@ -170,14 +171,6 @@ func (c *Container) addEnvsToConfig(args *CreateArgs, port string, cfg *docker.C
 		}
 		cfg.Env = append(cfg.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
 	}
-}
-
-func (c *Container) user() string {
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
-	return user
 }
 
 type NetworkInfo struct {

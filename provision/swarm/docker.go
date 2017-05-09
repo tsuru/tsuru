@@ -370,10 +370,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 		srvName = fmt.Sprintf("%sisolated-run", srvName)
 	}
 	uReplicas := uint64(opts.replicas)
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
+	user, _ := dockercommon.UserForContainer()
 	opts.constraints = append(opts.constraints, fmt.Sprintf("node.labels.%s == %s", provision.LabelNodePool, opts.app.GetPool()))
 	spec := swarm.ServiceSpec{
 		TaskTemplate: swarm.TaskSpec{

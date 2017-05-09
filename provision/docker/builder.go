@@ -9,7 +9,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -18,10 +17,7 @@ import (
 )
 
 func (p *dockerProvisioner) buildImage(app provision.App, archiveFile io.ReadCloser) (string, string, error) {
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
+	user, _ := dockercommon.UserForContainer()
 	imageName := image.GetBuildImage(app)
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
