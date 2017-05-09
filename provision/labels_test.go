@@ -65,6 +65,7 @@ func (s *S) TestProcessLabels(c *check.C) {
 			"router-name":  "fake",
 			"router-type":  "fake",
 			"provisioner":  "kubernetes",
+			"builder":      "",
 		},
 	})
 }
@@ -81,6 +82,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 			BuildImage:  "myimg",
 			IsBuild:     true,
 			Provisioner: "kubernetes",
+			Builder:     "docker",
 		},
 	}
 	ls, err := provision.ServiceLabels(opts)
@@ -102,6 +104,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"router-type":          "fake",
 			"provisioner":          "kubernetes",
 			"build-image":          "myimg",
+			"builder":              "docker",
 		},
 	})
 }
