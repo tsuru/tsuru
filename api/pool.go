@@ -47,6 +47,9 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var err error
 	if isGlobal {
 		pools, err = provision.ListAllPools()
+		if err != nil {
+			return err
+		}
 	} else {
 		pools, err = provision.ListPossiblePools(teams)
 		if err != nil {
