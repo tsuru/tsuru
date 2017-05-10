@@ -1726,3 +1726,30 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	sort.Strings(expectedNames)
 	c.Assert(names, check.DeepEquals, expectedNames)
 }
+
+func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
+	perm1 := permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}
+	perm2 := permission.Permission{
+		Scheme:  permission.PermTeamCreate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	}
+	token := userWithPermission(c, perm1, perm2)
+	request, err := http.NewRequest("GET", "/users", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var users []apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.HasLen, 1)
+	emails := []string{users[0].Email}
+	expected := []string{token.GetUserName()}
+	c.Assert(emails, check.DeepEquals, expected)
+}
