@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -18,6 +19,8 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
+
+const alphaAffinityAnnotation = "scheduler.alpha.kubernetes.io/affinity"
 
 type nodeContainerManager struct{}
 
@@ -46,6 +49,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		nodeReq.Operator = v1.NodeSelectorOpIn
 		nodeReq.Values = filter.Include
 	}
+	affinityAnnotation := map[string]string{}
 	var affinity *v1.Affinity
 	if len(nodeReq.Values) != 0 {
 		affinity = &v1.Affinity{
@@ -57,8 +61,15 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 				},
 			},
 		}
+		var affinityData []byte
+		affinityData, err = json.Marshal(affinity)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		affinityAnnotation[alphaAffinityAnnotation] = string(affinityData)
 	}
 	if oldDs != nil && placementOnly {
+		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
 		oldDs.Spec.Template.Spec.Affinity = affinity
 		_, err = client.Extensions().DaemonSets(client.Namespace()).Update(oldDs)
 		return errors.WithStack(err)
@@ -134,7 +145,8 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: ls.ToLabels(),
+					Labels:      ls.ToLabels(),
+					Annotations: affinityAnnotation,
 				},
 				Spec: v1.PodSpec{
 					Affinity:      affinity,

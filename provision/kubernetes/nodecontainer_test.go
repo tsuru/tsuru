@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"encoding/json"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -62,6 +64,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 						"tsuru.io/node-container-name": "bs",
 						"tsuru.io/node-container-pool": "",
 					},
+					Annotations: map[string]string{},
 				},
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
@@ -121,7 +124,7 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, &v1.Affinity{
+	expectedAffinity := &v1.Affinity{
 		NodeAffinity: &v1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
 				NodeSelectorTerms: []v1.NodeSelectorTerm{{
@@ -135,12 +138,18 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 				}},
 			},
 		},
+	}
+	affinityData, err := json.Marshal(expectedAffinity)
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
+		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
 	})
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Include: []string{"p1"}}, false)
 	c.Assert(err, check.IsNil)
 	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, &v1.Affinity{
+	expectedAffinity = &v1.Affinity{
 		NodeAffinity: &v1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
 				NodeSelectorTerms: []v1.NodeSelectorTerm{{
@@ -154,7 +163,13 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 				}},
 			},
 		},
+	}
+	affinityData, err = json.Marshal(expectedAffinity)
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
+		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
 	})
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
 }
 
 func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
