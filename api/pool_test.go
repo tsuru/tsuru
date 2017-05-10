@@ -366,6 +366,31 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	c.Assert(pools[1].Name, check.Equals, "pool1")
 }
 
+func (s *S) TestPoolListHandlerWithGlobalContext(c *check.C) {
+	perms := []permission.Permission{
+		{
+			Scheme:  permission.PermAll,
+			Context: permission.Context(permission.CtxGlobal, ""),
+		},
+	}
+	token := userWithPermission(c, perms...)
+	pool := provision.Pool{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: pool.Name, Default: pool.Default}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("GET", "/pools", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = poolList(rec, req, token)
+	c.Assert(err, check.IsNil)
+	var pools []provision.Pool
+	err = json.NewDecoder(rec.Body).Decode(&pools)
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.HasLen, 2)
+	c.Assert(pools[0].Name, check.Equals, "test1")
+	c.Assert(pools[1].Name, check.Equals, "pool1")
+}
+
 func (s *S) TestPoolListHandlerWithPoolReadPermission(c *check.C) {
 	perms := []permission.Permission{
 		{

@@ -278,6 +278,10 @@ func ListPools(names ...string) ([]Pool, error) {
 	return listPools(bson.M{"_id": bson.M{"$in": names}})
 }
 
+func ListAllPools() ([]Pool, error) {
+	return listPools(nil)
+}
+
 func ListPossiblePools(teams []string) ([]Pool, error) {
 	return getPoolsSatisfyConstraints(false, "team", teams...)
 }

@@ -27,14 +27,13 @@ import (
 //   401: Unauthorized
 //   404: User not found
 func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	teams := []string{}
-	poolNames := []string{}
+	var teams, poolNames []string
+	isGlobal := false
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
 	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermPoolRead)...)
 	for _, c := range contexts {
 		if c.CtxType == permission.CtxGlobal {
-			teams = nil
-			poolNames = nil
+			isGlobal = true
 			break
 		}
 		if c.CtxType == permission.CtxTeam {
@@ -44,16 +43,22 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			poolNames = append(poolNames, c.Value)
 		}
 	}
-	pools, err := provision.ListPossiblePools(teams)
-	if err != nil {
-		return err
-	}
-	if len(poolNames) > 0 {
-		namedPools, err := provision.ListPools(poolNames...)
+	var pools []provision.Pool
+	var err error
+	if isGlobal {
+		pools, err = provision.ListAllPools()
+	} else {
+		pools, err = provision.ListPossiblePools(teams)
 		if err != nil {
 			return err
 		}
-		pools = append(pools, namedPools...)
+		if len(poolNames) > 0 {
+			namedPools, err := provision.ListPools(poolNames...)
+			if err != nil {
+				return err
+			}
+			pools = append(pools, namedPools...)
+		}
 	}
 	poolsMap := make(map[string]struct{})
 	var poolList []provision.Pool
