@@ -749,6 +749,21 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
+	if len(apiUsers) == 0 {
+		user, err := t.User()
+		if err != nil {
+			return err
+		}
+		perm, err := user.Permissions()
+		if err != nil {
+			return err
+		}
+		userData, err := createAPIUser(perm, user, nil, true)
+		if err != nil {
+			return err
+		}
+		apiUsers = append(apiUsers, *userData)
+	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(apiUsers)
 }
