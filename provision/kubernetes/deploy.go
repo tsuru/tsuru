@@ -35,7 +35,25 @@ import (
 
 const (
 	dockerSockPath = "/var/run/docker.sock"
+
+	defaultDockerImageName = "docker:1.11.2"
 )
+
+func getDeploySidecarImage() string {
+	img, _ := config.GetString("kubernetes:deploy-sidecar-image")
+	if img != "" {
+		return img
+	}
+	return defaultDockerImageName
+}
+
+func getImageDeployInspectImage() string {
+	img, _ := config.GetString("kubernetes:deploy-inspect-image")
+	if img != "" {
+		return img
+	}
+	return defaultDockerImageName
+}
 
 func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
@@ -137,7 +155,7 @@ func createBuildPod(params buildPodParams) error {
 				},
 				{
 					Name:  commitContainer,
-					Image: dockerImageName,
+					Image: getDeploySidecarImage(),
 					VolumeMounts: []v1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
 					},
@@ -553,7 +571,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 			docker push %[2]s
 `, oldImage, newImage)},
 		name:       deployPodName,
-		image:      dockerImageName,
+		image:      getImageDeployInspectImage(),
 		dockerSock: true,
 	})
 	if err != nil {

@@ -32,7 +32,6 @@ import (
 
 const (
 	provisionerName                  = "kubernetes"
-	dockerImageName                  = "docker:1.11.2"
 	defaultRunPodReadyTimeout        = time.Minute
 	defaultPullRunPodReadyTimeout    = 10 * time.Minute
 	defaultDeploymentProgressTimeout = 10 * time.Minute
