@@ -53,7 +53,7 @@ var (
 	}
 )
 
-var installerConfig = `driver:
+var installerConfig = fmt.Sprintf(`driver:
   name: virtualbox
   options:
     virtualbox-cpu-count: 2
@@ -62,10 +62,10 @@ docker-flags:
   - experimental
 hosts:
   apps:
-    size: 2
+    size: %d
 components:
-    install-dashboard: false
-`
+  install-dashboard: false
+`, len(allProvisioners))
 
 func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
