@@ -64,10 +64,10 @@ func randomString() string {
 
 func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, evt *event.Event) (string, error) {
 	commands := dockercommon.ArchiveDeployCmds(app, archiveURL)
-	return p.deployPipeline(app, image, commands, evt)
+	return p.deployPipeline(app, image, "", commands, evt)
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, deployImage string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -77,9 +77,12 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	deployImage, err := image.AppVersionedImageName(app.GetName())
-	if err != nil {
-		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
+	var err error
+	if deployImage == "" {
+		deployImage, err = image.AppNewImageName(app.GetName())
+		if err != nil {
+			return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
+		}
 	}
 	var writer io.Writer = evt
 	if evt == nil {

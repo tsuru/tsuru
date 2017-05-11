@@ -91,6 +91,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/router-type":          "fake",
 						"tsuru.io/router-name":          "fake",
 						"tsuru.io/provisioner":          "kubernetes",
+						"tsuru.io/builder":              "",
 					},
 				},
 				Spec: v1.PodSpec{
@@ -144,6 +145,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/router-type":          "fake",
 				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/builder":              "",
 			},
 		},
 		Spec: v1.ServiceSpec{
@@ -533,6 +535,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/router-name":          "fake",
 		"tsuru.io/router-type":          "fake",
 		"tsuru.io/provisioner":          provisionerName,
+		"tsuru.io/builder":              "",
 	}
 	_, err = s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&extensions.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{

@@ -224,19 +224,6 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 	c.Assert(img, check.Equals, expected)
 }
 
-func (s *S) TestArchiveDeploy(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	img, err := s.p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-}
-
 func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -305,7 +292,8 @@ func (s *S) TestArchiveDeployRegisterRace(c *check.C) {
 			app := provisiontest.NewFakeApp(name, "python", 1)
 			routertest.FakeRouter.AddBackend(app.GetName())
 			defer routertest.FakeRouter.RemoveBackend(app.GetName())
-			img, _ := p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
+			img, err := p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
+			c.Assert(err, check.IsNil)
 			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
 		}(i)
 	}

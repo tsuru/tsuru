@@ -247,7 +247,7 @@ func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
 	return ch
 }
 
-func (s *S) TestDeploy(c *check.C) {
+func (s *S) TestProvisionerArchiveDeploy(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -256,7 +256,6 @@ func (s *S) TestDeploy(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateRepository(a.Name, nil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
@@ -278,14 +277,9 @@ func (s *S) TestDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	imgID, err := s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -296,7 +290,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
 }
 
-func (s *S) TestDeployWithLimiterActive(c *check.C) {
+func (s *S) TestProvisionerArchiveDeployWithLimiterActive(c *check.C) {
 	config.Set("docker:limit:actions-per-host", 1)
 	defer config.Unset("docker:limit:actions-per-host")
 	var p dockerProvisioner
@@ -315,7 +309,6 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -330,22 +323,11 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	err = p.AddUnits(&a, 10, "web", nil)
-	c.Assert(err, check.IsNil)
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 11)
 	hostAddr := net.URLToHost(s.server.URL())
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 	err = p.Destroy(&a)
@@ -353,7 +335,7 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 }
 
-func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
+func (s *S) TestProvisionerArchiveDeployWithLimiterGlobalActive(c *check.C) {
 	config.Set("docker:limit:mode", "global")
 	config.Set("docker:limit:actions-per-host", 1)
 	defer config.Unset("docker:limit:mode")
@@ -374,7 +356,6 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	a := s.newApp("otherapp")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -389,22 +370,12 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	imgID, err := s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	err = p.AddUnits(&a, 10, "web", nil)
-	c.Assert(err, check.IsNil)
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 11)
 	hostAddr := net.URLToHost(s.server.URL())
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 	err = p.Destroy(&a)
@@ -412,7 +383,7 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 }
 
-func (s *S) TestDeployQuotaExceeded(c *check.C) {
+func (s *S) TestProvisionerArchiveDeployQuotaExceeded(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -422,7 +393,6 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.ChangeQuota(&a, 1)
 	c.Assert(err, check.IsNil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
@@ -445,13 +415,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.NotNil)
 	compErr, ok := err.(*errors.CompositeError)
 	c.Assert(ok, check.Equals, true)
@@ -462,7 +426,7 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	c.Assert(e.Requested, check.Equals, uint(2))
 }
 
-func (s *S) TestDeployErasesOldImages(c *check.C) {
+func (s *S) TestProvisionerArchiveDeployErasesOldImages(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	stopCh := s.stopContainers(s.server.URL(), 3)
@@ -473,7 +437,6 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
-	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -490,13 +453,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -507,13 +464,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -526,7 +477,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 }
 
-func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
+func (s *S) TestProvisionerArchiveDeployErasesOldImagesIfFailed(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -547,7 +498,6 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		}
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
-	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
 		Kind:    permission.PermAppDeploy,
@@ -555,13 +505,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		Commit:       "123",
-		OutputStream: w,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.NotNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -570,7 +514,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	c.Assert("tsuru/python:latest", check.Equals, imgs[0].RepoTags[0])
 }
 
-func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
+func (s *S) TestProvisionerArchiveDeployErasesOldImagesWithLongHistory(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
 	stopCh := s.stopContainers(s.server.URL(), 4)
@@ -580,7 +524,6 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	a := s.newApp("appdeployimagetest")
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -599,13 +542,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -616,13 +553,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -634,13 +565,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	sort.Strings(got)
 	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v2", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -663,7 +588,6 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	a.Quota = quota.Unlimited
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
@@ -686,14 +610,9 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		File:         ioutil.NopCloser(buf),
-		FileSize:     int64(buf.Len()),
-		OutputStream: w,
-		Event:        evt,
-	})
+	imgID, err := s.p.UploadDeploy(&a, ioutil.NopCloser(buf), int64(buf.Len()), false, evt)
 	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -1282,7 +1201,6 @@ func (s *S) TestDeployAndRebuild(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
-	w := safe.NewBuffer(make([]byte, 2048))
 	buf := bytes.NewBufferString("something wrong is not right")
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
@@ -1291,20 +1209,9 @@ func (s *S) TestDeployAndRebuild(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		File:         ioutil.NopCloser(buf),
-		FileSize:     int64(buf.Len()),
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.UploadDeploy(&a, ioutil.NopCloser(buf), int64(buf.Len()), false, evt)
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		OutputStream: w,
-		Event:        evt,
-		Kind:         "rebuild",
-	})
+	_, err = s.p.Rebuild(&a, evt)
 	c.Assert(err, check.IsNil)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -1347,7 +1254,6 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	a.Quota = quota.Unlimited
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python myapp.py",
@@ -1362,13 +1268,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		ArchiveURL:   "https://mystorage.com/archive.tar.gz",
-		Commit:       "123",
-		OutputStream: w,
-		Event:        evt,
-	})
+	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(&a)
 	c.Assert(err, check.IsNil)
