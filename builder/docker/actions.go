@@ -114,7 +114,7 @@ var commitContainer = action.Action{
 		if !ok {
 			return nil, errors.New("previous result must be a container")
 		}
-		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
+		fmt.Fprintf(args.writer, "\n---- Creating Builder image ----\n")
 		imageID, err := c.Commit(args.client, args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
