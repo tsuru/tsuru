@@ -134,7 +134,7 @@ func installerTest() ExecFlow {
 		provides: []string{"targetaddr"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("install", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
+		res := T("install-create", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
 		parts := regex.FindStringSubmatch(res.Stdout.String())
@@ -151,7 +151,7 @@ func installerTest() ExecFlow {
 		for _, parts = range allParts {
 			c.Assert(parts, check.HasLen, 2)
 			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
-			env.Add("nodestoremove", parts[1])
+			env.Add("installernodes", parts[1])
 		}
 		regex = regexp.MustCompile(`Username: ([[:print:]]+)`)
 		parts = regex.FindStringSubmatch(res.Stdout.String())
@@ -161,7 +161,7 @@ func installerTest() ExecFlow {
 		env.Set("adminpassword", parts[1])
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("uninstall", "--config", "{{.installerconfig}}", "-y").Run(env)
+		res := T("install-remove", "--config", "{{.installerconfig}}", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -193,7 +193,7 @@ func loginTest() ExecFlow {
 func removeInstallNodes() ExecFlow {
 	flow := ExecFlow{
 		matrix: map[string]string{
-			"node": "nodestoremove",
+			"node": "installernodes",
 		},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
@@ -243,7 +243,7 @@ func poolAdd() ExecFlow {
 			res := T("pool-add", "--provisioner", prov, poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolnames", poolName)
-			res = T("pool-teams-add", poolName, "{{.team}}").Run(env)
+			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 			res = T("node-add", "{{.nodeopts}}", "pool="+poolName).Run(env)
 			c.Assert(res, ResultOk)
@@ -270,7 +270,7 @@ func poolAdd() ExecFlow {
 		}
 		for _, prov := range allProvisioners {
 			poolName := "ipool-" + prov
-			res := T("pool-teams-remove", poolName, "{{.team}}").Run(env)
+			res := T("pool-constraint-set", poolName, "team", "{{.team}} --blacklist").Run(env)
 			c.Check(res, ResultOk)
 			res = T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
