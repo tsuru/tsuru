@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -94,7 +95,11 @@ func (p *dockerProvisioner) rebuildImage(app provision.App) (string, string, err
 }
 
 func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
-	imageID, err := p.deployPipeline(app, buildImageID, nil, evt)
+	deployImageID, err := image.AppVersionedImageName(app.GetName())
+	if err != nil {
+		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
+	}
+	imageID, err := p.deployPipeline(app, buildImageID, deployImageID, nil, evt)
 	err = p.deployAndClean(app, imageID, evt)
 	if err != nil {
 		return "", err
