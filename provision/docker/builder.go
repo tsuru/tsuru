@@ -100,6 +100,9 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
 	imageID, err := p.deployPipeline(app, buildImageID, deployImageID, nil, evt)
+	if err != nil {
+		return "", err
+	}
 	err = p.deployAndClean(app, imageID, evt)
 	if err != nil {
 		return "", err

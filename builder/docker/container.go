@@ -186,14 +186,6 @@ type Pty struct {
 	Term   string
 }
 
-type execErr struct {
-	code int
-}
-
-func (e *execErr) Error() string {
-	return fmt.Sprintf("unexpected exit code: %d", e.code)
-}
-
 // Commits commits the container, creating an image in Docker. It then returns
 // the image identifier for usage in future container creation.
 func (c *Container) Commit(client *docker.Client, writer io.Writer) (string, error) {

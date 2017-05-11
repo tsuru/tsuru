@@ -33,15 +33,6 @@ type runContainerActionsArgs struct {
 	event            *event.Event
 }
 
-type containersToAdd struct {
-	Quantity int
-	Status   provision.Status
-}
-
-type callbackFunc func(*Container, chan *Container) error
-
-type rollbackFunc func(*Container)
-
 func checkCanceled(evt *event.Event) error {
 	if evt == nil {
 		return nil
