@@ -118,6 +118,9 @@ func downloadFromContainer(client *docker.Client, app provision.App, filePath st
 		},
 	}
 	cont, err := client.CreateContainer(options)
+	if err != nil {
+		return nil, nil, err
+	}
 	archiveFile, err := dockercommon.DownloadFromContainer(client, cont.ID, filePath)
 	if err != nil {
 		return nil, nil, errors.Errorf("App %s raw image not found", app.GetName())
