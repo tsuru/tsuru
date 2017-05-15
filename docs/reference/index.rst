@@ -13,8 +13,6 @@ Reference
     :maxdepth: 1
 
     tsuru-client
-    tsuru-admin
-    crane
     bs
     config
     api

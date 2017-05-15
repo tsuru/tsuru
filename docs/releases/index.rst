@@ -4,11 +4,9 @@
 
 .. note::
 
-    For `tsuru-admin`, `tsuru` and `crane` release notes, check GitHub release history:
+    For `tsuru` release notes, check GitHub release history:
 
-    - crane: https://github.com/tsuru/crane/releases
     - tsuru: https://github.com/tsuru/tsuru-client/releases
-    - tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
 
 =============
 Release notes
@@ -138,27 +136,3 @@ tsuru
 `tsuru` is the tsuru client. For details on releases of the client, check the
 release history in the `tsuru-client repository at GitHub
 <https://github.com/tsuru/tsuru-client/releases>`_.
-
-tsuru-admin
-===========
-
-`tsuru-admin` is the tsuru administrative client. For details on releases of
-tsuru-admin, check the release history in the `tsuru-admin repository at GitHub
-<https://github.com/tsuru/tsuru-admin/releases>`_.
-
-.. warning::
-
-  Since tsuru version 1.2 the ``tsuru-admin`` was fully replaced by
-  the :doc:`tsuru client</reference/tsuru-client>`.
-
-crane
-=====
-
-`crane` is the command line interface used by service providers. For details on
-releases of crane, check the release history in the `crane repository at GitHub
-<https://github.com/tsuru/crane/releases>`_.
-
-.. warning::
-
-  Since tsuru version 1.2 the ``crane`` was fully replaced by
-  the :doc:`tsuru client</reference/tsuru-client>`.
