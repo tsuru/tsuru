@@ -48,6 +48,11 @@ This release adds support to tags in apps and service instances. You can set any
 
 Now you can filter a list of apps by tags. There's also a new command `tag-list` in tsuru client, which shows which apps and service instances have each tag.
 
+Allow rebuilding app images with updated platform (`#1498 <https://github.com/tsuru/tsuru/issues/1498>`_)
+---------------------------------------------------------------------------------------------------------
+
+Now it's possible to rebuild an app image after updating its platform. This may be used to add security fixes in the platform and redeploying the app without end-user intervention.
+
 Support Kubernetes as a provisioner (`#1475 <https://github.com/tsuru/tsuru/issues/1475>`_)
 -------------------------------------------------------------------------------------------
 
