@@ -41,6 +41,18 @@ This release of tsuru adds the capability of blocking certain actions from being
 This can be used in a variety of ways, e.g, blocking every action during a maintenance, blocking
 all actions from a certain user to mitigate a security issue etc.
 
+Enable tagging applications and service instances (`#1550 <https://github.com/tsuru/tsuru/issues/1550>`_)
+---------------------------------------------------------------------------------------------------------
+
+This release adds support to tags in apps and service instances. You can set any number of tags, which can be added when creating (`app-create`, `service-instance-add`) or updating (`app-update`, `service-instance-update`) apps and service instances.
+
+Now you can filter a list of apps by tags. There's also a new command `tag-list` in tsuru client, which shows which apps and service instances have each tag.
+
+Support Kubernetes as a provisioner (`#1475 <https://github.com/tsuru/tsuru/issues/1475>`_)
+-------------------------------------------------------------------------------------------
+
+This release adds experimental support to Kubernetes as a provisioner.
+
 Other improvements
 ------------------
 
@@ -48,6 +60,8 @@ Other improvements
   `#1513 <https://github.com/tsuru/tsuru/issues/1513>`_
 * Addition of several metrics about downstream services consumed by tsuru
   `#1535 <https://github.com/tsuru/tsuru/issues/1535>`_
+* `machine-template-update` command now supports updating the IaaS
+  `#1539 <https://github.com/tsuru/tsuru/issues/1539>`_
 
 .. _migrations-1.3.0:
 
@@ -69,3 +83,7 @@ Bug fixes
 
 * Do not ignore memory limits when auto scale is disabled for the pool
   `#1420 <https://github.com/tsuru/tsuru/issues/1420>`_
+* Image deploy: wrong error message when there are no nodes in application pool
+  `#1482 <https://github.com/tsuru/tsuru/issues/1482>`_
+* `machine-template-add` command doesn't update existing templates
+  `#1519 <https://github.com/tsuru/tsuru/issues/1519>`_
