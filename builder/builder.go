@@ -1,3 +1,7 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package builder
 
 import (
@@ -8,7 +12,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-const defaultBuilder = "docker"
+const defaultDockerBuilder = "docker"
+
+var DefaultBuilder = defaultDockerBuilder
 
 type BuildOpts struct {
 	BuildFromFile  bool
@@ -42,5 +48,14 @@ func Get(name string) (Builder, error) {
 }
 
 func GetDefault() (Builder, error) {
-	return Get(defaultBuilder)
+	return Get(DefaultBuilder)
+}
+
+// Registry returns the list of registered builders.
+func Registry() ([]Builder, error) {
+	registry := make([]Builder, 0, len(builders))
+	for _, b := range builders {
+		registry = append(registry, b)
+	}
+	return registry, nil
 }

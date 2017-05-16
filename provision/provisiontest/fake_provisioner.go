@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -786,6 +787,34 @@ func (p *FakeProvisioner) Reset() {
 
 func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
+}
+
+func (p *FakeProvisioner) Deploy(app provision.App, img string, evt *event.Event) (string, error) {
+	if err := p.getError("Deploy"); err != nil {
+		return "", err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return "", errNotProvisioned
+	}
+	pApp.image = img
+	evt.Write([]byte("Builder deploy called"))
+	p.apps[app.GetName()] = pApp
+	return fakeAppImage, nil
+}
+
+func (p *FakeProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+	for _, node := range p.nodes {
+		client, err := docker.NewClient(node.Addr)
+		if err != nil {
+			return nil, err
+		}
+		return client, nil
+	}
+	return nil, errors.New("No node found")
+
 }
 
 func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
