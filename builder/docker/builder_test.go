@@ -25,6 +25,7 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -54,6 +55,7 @@ func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
 	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -82,6 +84,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
@@ -108,6 +111,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	defer srv.Stop()
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)

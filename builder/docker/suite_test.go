@@ -49,6 +49,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	c.Assert(err, check.IsNil)
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
 }
