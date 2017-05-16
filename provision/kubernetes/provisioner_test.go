@@ -118,6 +118,12 @@ func (s *S) TestAddNode(c *check.C) {
 		"pool": "p1",
 		"m1":   "v1",
 	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
+		"pool": "p1",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
+		"m1": "v1",
+	})
 }
 
 func (s *S) TestAddNodeExisting(c *check.C) {

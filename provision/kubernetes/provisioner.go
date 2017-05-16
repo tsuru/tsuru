@@ -383,20 +383,43 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 	return node, nil
 }
 
+func setNodeMetadata(node *v1.Node, meta map[string]string) {
+	asLabelSet := map[string]struct{}{provision.PoolMetadataName: {}}
+	if node.Labels == nil {
+		node.Labels = map[string]string{}
+	}
+	if node.Annotations == nil {
+		node.Annotations = map[string]string{}
+	}
+	for k, v := range meta {
+		mapToSet := node.Annotations
+		if _, isLabel := asLabelSet[k]; isLabel {
+			mapToSet = node.Labels
+		}
+		if v == "" {
+			delete(mapToSet, k)
+		} else {
+			mapToSet[k] = v
+		}
+	}
+}
+
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	client, err := clusterForPool(opts.Metadata[provision.PoolMetadataName])
 	if err != nil {
 		return err
 	}
-	_, err = client.Core().Nodes().Create(&v1.Node{
+	hostAddr := tsuruNet.URLToHost(opts.Address)
+	node := &v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   opts.Address,
-			Labels: opts.Metadata,
+			Name: hostAddr,
 		},
-	})
+	}
+	setNodeMetadata(node, opts.Metadata)
+	_, err = client.Core().Nodes().Create(node)
 	if k8sErrors.IsAlreadyExists(err) {
 		return p.UpdateNode(provision.UpdateNodeOptions{
-			Address:  opts.Address,
+			Address:  hostAddr,
 			Metadata: opts.Metadata,
 		})
 	}
@@ -494,13 +517,7 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 	} else if opts.Enable {
 		node.Spec.Unschedulable = false
 	}
-	for k, v := range opts.Metadata {
-		if v == "" {
-			delete(node.Labels, k)
-		} else {
-			node.Labels[k] = v
-		}
-	}
+	setNodeMetadata(node, opts.Metadata)
 	_, err = cluster.Core().Nodes().Update(node)
 	return err
 }

@@ -49,10 +49,14 @@ func (n *kubernetesNodeWrapper) Status() string {
 }
 
 func (n *kubernetesNodeWrapper) Metadata() map[string]string {
-	if n.node.Labels == nil {
-		return map[string]string{}
+	metadata := make(map[string]string, len(n.node.Labels)+len(n.node.Annotations))
+	for k, v := range n.node.Annotations {
+		metadata[k] = v
 	}
-	return n.node.Labels
+	for k, v := range n.node.Labels {
+		metadata[k] = v
+	}
+	return metadata
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
