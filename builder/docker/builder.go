@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -133,15 +134,18 @@ func downloadFromURL(url string) (io.ReadCloser, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{Transport: tr, Timeout: time.Second * 10}
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	_, err = io.Copy(&out, resp.Body)
+	s, err := io.Copy(&out, resp.Body)
 	if err != nil {
 		return nil, err
+	}
+	if s == 0 {
+		return nil, errors.New("archive file is empty")
 	}
 	return ioutil.NopCloser(&out), nil
 }

@@ -28,10 +28,10 @@ func (b *dockerBuilder) buildPipeline(client *docker.Client, app provision.App, 
 	}
 	pipeline := action.NewPipeline(actions...)
 	versionImage, err := image.AppNewImageName(app.GetName())
-	buildingImage := fmt.Sprintf("%s-builder", versionImage)
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
+	buildingImage := fmt.Sprintf("%s-builder", versionImage)
 	var writer io.Writer = evt
 	if evt == nil {
 		writer = ioutil.Discard

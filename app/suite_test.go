@@ -12,6 +12,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
+	"github.com/tsuru/tsuru/builder"
+	_ "github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
@@ -94,6 +96,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
 	s.provisioner = provisiontest.ProvisionerInstance
+	builder.DefaultBuilder = "fake"
 	provision.DefaultProvisioner = "fake"
 	AuthScheme = nativeScheme
 	data, err := json.Marshal(AppLock{})

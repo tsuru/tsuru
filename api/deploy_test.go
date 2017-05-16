@@ -20,6 +20,8 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
+	_ "github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -87,6 +89,7 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 func (s *DeploySuite) SetUpTest(c *check.C) {
 	s.provisioner = provisiontest.ProvisionerInstance
 	provision.DefaultProvisioner = "fake"
+	builder.DefaultBuilder = "fake"
 	s.provisioner.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
@@ -119,7 +122,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -139,7 +142,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Archive deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -164,7 +167,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
-	c.Assert(recorder.Body.String(), check.Equals, "Upload deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -184,7 +187,7 @@ func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Upload deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -263,7 +266,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -283,7 +286,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Archive deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -315,7 +318,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Upload deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -335,7 +338,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Upload deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -362,7 +365,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  "fulano",
@@ -383,7 +386,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Archive deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -408,7 +411,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -428,7 +431,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Archive deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -455,7 +458,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  token.GetUserName(),
@@ -476,7 +479,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 		EndCustomData: map[string]interface{}{
 			"image": "app-image",
 		},
-		LogMatches: `Archive deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -616,7 +619,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 }
 
 func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
@@ -1240,7 +1243,7 @@ func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Rebuild deploy called\"}\n")
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Builder deploy called\"}\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),

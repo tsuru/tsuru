@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/app/image"
@@ -423,10 +424,12 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	buf := strings.NewReader("my file")
 	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
+		File:         ioutil.NopCloser(buf),
+		FileSize:     int64(buf.Len()),
 		Origin:       "app-deploy",
 		Event:        evt,
 	})
@@ -454,10 +457,12 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	buf := strings.NewReader("my file")
 	_, err = Deploy(DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
+		File:         ioutil.NopCloser(buf),
+		FileSize:     int64(buf.Len()),
 		Origin:       "drag-and-drop",
 		Event:        evt,
 	})
@@ -532,6 +537,7 @@ func (s *S) TestDeployAsleepApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(DeployOptions{
 		App:          &a,
+		Image:        "myimage",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		OutputStream: writer,
 		Event:        evt,
@@ -599,7 +605,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Archive deploy called")
+	c.Assert(evt.Log, check.Equals, "Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerUpload(c *check.C) {
@@ -611,7 +617,8 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	opts := DeployOptions{App: &a, File: ioutil.NopCloser(bytes.NewBuffer([]byte("my file")))}
+	buf := strings.NewReader("my file")
+	opts := DeployOptions{App: &a, File: ioutil.NopCloser(buf), FileSize: int64(buf.Len())}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
@@ -623,7 +630,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Upload deploy called")
+	c.Assert(evt.Log, check.Equals, "Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerImage(c *check.C) {
@@ -866,6 +873,6 @@ func (s *S) TestRebuild(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(writer.String(), check.Equals, "Rebuild deploy called")
+	c.Assert(writer.String(), check.Equals, "Builder deploy called")
 	c.Assert(imgID, check.Equals, "app-image")
 }

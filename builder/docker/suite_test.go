@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"testing"
 
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -15,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"golang.org/x/crypto/bcrypt"
@@ -22,11 +24,13 @@ import (
 )
 
 type S struct {
-	b     *dockerBuilder
-	conn  *db.Storage
-	user  *auth.User
-	team  *auth.Team
-	token auth.Token
+	b           *dockerBuilder
+	conn        *db.Storage
+	user        *auth.User
+	team        *auth.Team
+	token       auth.Token
+	provisioner *provisiontest.FakeProvisioner
+	server      *dtesting.DockerServer
 }
 
 var _ = check.Suite(&S{})
@@ -44,14 +48,19 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.provisioner = provisiontest.ProvisionerInstance
+	provision.DefaultProvisioner = "fake"
 }
 
 func (s *S) TearDownSuite(c *check.C) {
+	s.conn.Apps().Database.DropDatabase()
 	s.conn.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
+	s.provisioner.Reset()
 	rand.Seed(0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
