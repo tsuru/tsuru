@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/pkg/api/v1"
@@ -383,8 +384,23 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 }
 
 func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
-	// TODO(cezarsa): Start kubelet, kube-proxy and add labels
-	return errors.New("adding nodes to cluster not supported yet on kubernetes")
+	client, err := clusterForPool(opts.Metadata[provision.PoolMetadataName])
+	if err != nil {
+		return err
+	}
+	_, err = client.Core().Nodes().Create(&v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   opts.Address,
+			Labels: opts.Metadata,
+		},
+	})
+	if k8sErrors.IsAlreadyExists(err) {
+		return p.UpdateNode(provision.UpdateNodeOptions{
+			Address:  opts.Address,
+			Metadata: opts.Metadata,
+		})
+	}
+	return err
 }
 
 func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
@@ -446,7 +462,8 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*clusterClien
 				prov:    p,
 				cluster: c,
 			}
-			if address == nodeWrapper.Address() {
+			if address == nodeWrapper.node.Name ||
+				address == nodeWrapper.Address() {
 				foundNode = nodeWrapper
 				foundCluster = c
 				break

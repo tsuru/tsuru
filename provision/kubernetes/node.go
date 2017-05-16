@@ -33,7 +33,7 @@ func (n *kubernetesNodeWrapper) Address() string {
 			return addr.Address
 		}
 	}
-	return ""
+	return n.node.Name
 }
 
 func (n *kubernetesNodeWrapper) Status() string {

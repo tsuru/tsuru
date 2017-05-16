@@ -100,6 +100,46 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	c.Assert(evictionCalled, check.Equals, true)
 }
 
+func (s *S) TestAddNode(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Metadata: map[string]string{
+			"pool": "p1",
+			"m1":   "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].Pool(), check.Equals, "p1")
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"pool": "p1",
+		"m1":   "v1",
+	})
+}
+
+func (s *S) TestAddNodeExisting(c *check.C) {
+	s.mockfakeNodes(c)
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "n1",
+		Metadata: map[string]string{
+			"pool": "Pxyz",
+			"m1":   "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	n, err := s.p.GetNode("n1")
+	c.Assert(err, check.IsNil)
+	c.Assert(n.Address(), check.Equals, "192.168.99.1")
+	c.Assert(n.Pool(), check.Equals, "Pxyz")
+	c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
+		"pool": "Pxyz",
+		"m1":   "v1",
+	})
+}
+
 func (s *S) TestUnits(c *check.C) {
 	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
