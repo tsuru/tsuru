@@ -85,21 +85,25 @@ release:
 		exit 1; \
 	fi
 
-	@if [ ! -f docs/releases/tsurud/$(version).rst ]; then \
-		echo "to release the $(version) version you should create a release notes first."; \
+	$(eval PATCH := $(shell echo $(version) | sed "s/^\([0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/"))
+	$(eval MINOR := $(shell echo $(PATCH) | sed "s/^\([0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/"))
+	@if [ $(MINOR) == $(PATCH) ]; then \
+		echo "invalid version"; \
+		exit 1; \
+	fi
+
+	@if [ ! -f docs/releases/tsurud/$(PATCH).rst ]; then \
+		echo "to release the $(version) version you should create a release notes for version $(PATCH) first."; \
 		exit 1; \
 	fi
 
 	@echo "Releasing tsuru $(version) version."
-
-	$(eval MAJOR := $(shell echo $(version) | sed "s/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/"))
-
 	@echo "Replacing version string."
 	@sed -i "" "s/release = '.*'/release = '$(version)'/g" docs/conf.py
-	@sed -i "" "s/version = '.*'/version = '$(MAJOR)'/g" docs/conf.py
-	@sed -i "" 's/.tsurud., .[^,]*,/"tsurud", "$(version)",/' cmd/tsurud/main.go
+	@sed -i "" "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
+	@sed -i "" 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
 
-	@git add docs/conf.py cmd/tsurud/main.go
+	@git add docs/conf.py api/server.go
 	@git commit -m "bump to $(version)"
 
 	@echo "Creating $(version) tag."
