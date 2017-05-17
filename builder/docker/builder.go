@@ -22,8 +22,7 @@ import (
 
 var _ builder.Builder = &dockerBuilder{}
 
-type dockerBuilder struct {
-}
+type dockerBuilder struct{}
 
 func init() {
 	builder.Register("docker", &dockerBuilder{})
