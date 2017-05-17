@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -245,6 +246,67 @@ func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
 		}
 	}()
 	return ch
+}
+
+func (s *S) TestProvisionerDeploy(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := s.newApp("myapp")
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "http://test.com/myfile.tgz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1-builder")
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(&a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(serviceBodies, check.HasLen, 1)
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
+	cont, err := s.p.Cluster().InspectContainer(units[0].GetID())
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.Config.Cmd, check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; exec python myapp.py",
+	})
 }
 
 func (s *S) TestProvisionerArchiveDeploy(c *check.C) {
