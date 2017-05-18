@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"strings"
+
 	"github.com/tsuru/tsuru/provision"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -48,7 +50,24 @@ func (n *kubernetesNodeWrapper) Status() string {
 	return "Invalid"
 }
 
+func filterMap(m map[string]string, includeDotted bool) map[string]string {
+	for k := range m {
+		if includeDotted != strings.Contains(k, ".") {
+			delete(m, k)
+		}
+	}
+	return m
+}
+
 func (n *kubernetesNodeWrapper) Metadata() map[string]string {
+	return filterMap(n.allMetadata(), false)
+}
+
+func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
+	return filterMap(n.allMetadata(), true)
+}
+
+func (n *kubernetesNodeWrapper) allMetadata() map[string]string {
 	metadata := make(map[string]string, len(n.node.Labels)+len(n.node.Annotations))
 	for k, v := range n.node.Annotations {
 		metadata[k] = v

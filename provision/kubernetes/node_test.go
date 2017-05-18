@@ -96,8 +96,13 @@ func (s *S) TestNodeMetadata(c *check.C) {
 		node: &v1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					"pool": "p1",
-					"m1":   "v1",
+					"pool":  "p1",
+					"m1":    "v1",
+					"m2.m3": "v2",
+				},
+				Annotations: map[string]string{
+					"a1":    "v3",
+					"a2.a3": "v4",
 				},
 			},
 		},
@@ -105,6 +110,11 @@ func (s *S) TestNodeMetadata(c *check.C) {
 	c.Assert(node.Metadata(), check.DeepEquals, map[string]string{
 		"pool": "p1",
 		"m1":   "v1",
+		"a1":   "v3",
+	})
+	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
+		"m2.m3": "v2",
+		"a2.a3": "v4",
 	})
 }
 
