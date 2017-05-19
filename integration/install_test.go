@@ -37,6 +37,9 @@ var (
 		"docker",
 		"swarm",
 	}
+	clusterProvisioners = []clusterManager{
+		&kubernetesClusterManager{},
+	}
 	flows = []ExecFlow{
 		platformsToInstall(),
 		installerConfigTest(),
@@ -65,7 +68,7 @@ hosts:
     size: %d
 components:
   install-dashboard: false
-`, len(allProvisioners))
+`, len(allProvisioners)+len(clusterProvisioners))
 
 func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
@@ -262,8 +265,49 @@ func poolAdd() ExecFlow {
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
 		}
+		for _, cluster := range clusterProvisioners {
+			poolName := "ipool-" + cluster.Provisioner()
+			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
+			c.Assert(res, ResultOk)
+			env.Add("poolName", poolName)
+			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
+			c.Assert(res, ResultOk)
+			res = cluster.Start(env)
+			c.Assert(res, ResultOk)
+			clusterName := "icluster-" + cluster.Provisioner()
+			certFiles := cluster.CertificateFiles()
+			res = T("cluster-update", clusterName, cluster.Provisioner(), "--addr", cluster.Address(env), "--cacert", certFiles["cacert"], "--clientcert", certFiles["clientcert"], "--clientkey", certFiles["clientkey"], "--pool", poolName).Run(env)
+			c.Assert(res, ResultOk)
+			T("cluster-list").Run(env)
+			regex := regexp.MustCompile(cluster.IP(env) + `.*?Ready`)
+			ok := retry(time.Minute, func() bool {
+				res = T("node-list").Run(env)
+				return regex.MatchString(res.Stdout.String())
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
+			res = T("node-update", cluster.IP(env), "pool="+poolName).Run(env)
+			c.Assert(res, ResultOk)
+			res = T("event-list").Run(env)
+			c.Assert(res, ResultOk)
+			nodeopts := env.All("nodeopts")
+			env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
+			regex = regexp.MustCompile(`node.update.*?node:\s+` + cluster.IP(env))
+			c.Assert(regex.MatchString(res.Stdout.String()), check.Equals, true)
+			regex = regexp.MustCompile(cluster.IP(env) + `.*?Ready`)
+			ok = retry(time.Minute, func() bool {
+				res = T("node-list").Run(env)
+				return regex.MatchString(res.Stdout.String())
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
+		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
+		for _, cluster := range clusterProvisioners {
+			res := T("cluster-remove", "icluster-"+cluster.Provisioner()).Run(env)
+			c.Check(res, ResultOk)
+			res = cluster.Delete(env)
+			c.Check(res, ResultOk)
+		}
 		for _, node := range env.All("nodeaddrs") {
 			res := T("node-remove", "-y", "--no-rebalance", node).Run(env)
 			c.Check(res, ResultOk)
