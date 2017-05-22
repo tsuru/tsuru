@@ -303,9 +303,9 @@ func CreateApp(app *App, user *auth.User) error {
 		return err
 	}
 	if app.Router == "" {
-		pool, err := provision.GetPoolByName(app.GetPool())
-		if err != nil {
-			return err
+		pool, errPool := provision.GetPoolByName(app.GetPool())
+		if errPool != nil {
+			return errPool
 		}
 		app.Router, err = pool.GetDefaultRouter()
 	} else {
