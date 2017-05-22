@@ -229,6 +229,29 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
+	provision.SetPoolConstraint(&provision.PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    "router",
+		Values:   []string{"fake-tls", "fake"},
+	})
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	retrievedApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(retrievedApp.Router, check.Equals, "fake-tls")
+}
+
 func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
 	defer s.conn.Plans().Insert(s.defaultPlan)

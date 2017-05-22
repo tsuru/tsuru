@@ -297,16 +297,20 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	if app.Router == "" {
-		app.Router, err = router.Default()
-	} else {
-		_, err = router.Get(app.Router)
-	}
+	app.Plan = *plan
+	err = app.SetPool()
 	if err != nil {
 		return err
 	}
-	app.Plan = *plan
-	err = app.SetPool()
+	if app.Router == "" {
+		pool, err := provision.GetPoolByName(app.GetPool())
+		if err != nil {
+			return err
+		}
+		app.Router, err = pool.GetDefaultRouter()
+	} else {
+		_, err = router.Get(app.Router)
+	}
 	if err != nil {
 		return err
 	}

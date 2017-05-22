@@ -81,6 +81,28 @@ func (p *Pool) GetRouters() ([]string, error) {
 	return nil, ErrPoolHasNoRouter
 }
 
+func (p *Pool) GetDefaultRouter() (string, error) {
+	constraints, err := getConstraintsForPool(p.Name, "router")
+	if err != nil {
+		return "", err
+	}
+	constraint := constraints["router"]
+	if constraint == nil || constraint.Blacklist ||
+		len(constraint.Values) == 0 || strings.Contains(constraint.Values[0], "*") {
+		return router.Default()
+	}
+	routers, err := routersNames()
+	if err != nil {
+		return "", err
+	}
+	for _, r := range routers {
+		if constraint.Values[0] == r {
+			return r, nil
+		}
+	}
+	return router.Default()
+}
+
 func (p *Pool) allowedValues() (map[string][]string, error) {
 	teams, err := teamsNames()
 	if err != nil {

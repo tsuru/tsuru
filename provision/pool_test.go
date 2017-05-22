@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/router"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -528,6 +529,50 @@ func (s *S) TestGetRouters(c *check.C) {
 	routers, err = pool.GetRouters()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []string{"router1", "router2"})
+}
+
+func (s *S) TestGetDefaultRouterFromConstraint(c *check.C) {
+	config.Set("routers:router1:type", "hipache")
+	config.Set("routers:router2:type", "hipache")
+	defer config.Unset("routers")
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: "router", Values: []string{"router2"}, Blacklist: false})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	r, err := pool.GetDefaultRouter()
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, "router2")
+}
+
+func (s *S) TestGetDefaultRouterNoDefault(c *check.C) {
+	config.Set("routers:router1:type", "hipache")
+	config.Set("routers:router2:type", "hipache")
+	defer config.Unset("routers")
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: "router", Values: []string{"*"}, Blacklist: false})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	r, err := pool.GetDefaultRouter()
+	c.Assert(err, check.Equals, router.ErrDefaultRouterNotFound)
+	c.Assert(r, check.Equals, "")
+}
+
+func (s *S) TestGetDefaultFallbackFromConfig(c *check.C) {
+	config.Set("routers:router1:type", "hipache")
+	config.Set("routers:router2:type", "hipache")
+	config.Set("routers:router2:default", true)
+	defer config.Unset("routers")
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	r, err := pool.GetDefaultRouter()
+	c.Assert(err, check.Equals, nil)
+	c.Assert(r, check.Equals, "router2")
 }
 
 func (s *S) TestPoolAllowedValues(c *check.C) {
