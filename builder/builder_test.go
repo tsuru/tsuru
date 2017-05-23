@@ -5,7 +5,6 @@
 package builder
 
 import (
-	"reflect"
 	"testing"
 
 	check "gopkg.in/check.v1"
@@ -35,15 +34,22 @@ func (s S) TestRegisterAndGetBuilder(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expectedMessage)
 }
 
-func (s S) TestRegistry(c *check.C) {
+func (s S) TestGetDefaultBuilder(c *check.C) {
 	var b1, b2 Builder
+	DefaultBuilder = "default-builder"
+	Register("default-builder", b1)
+	Register("other-builder", b2)
+	got, err := GetDefault()
+	c.Check(err, check.IsNil)
+	c.Check(got, check.DeepEquals, b1)
+}
+
+func (s S) TestRegistry(c *check.C) {
+	var b1, b2, b3 Builder
 	Register("my-builder", b1)
 	Register("your-builder", b2)
+	Register("default-builder", b3)
 	builders, err := Registry()
 	c.Assert(err, check.IsNil)
-	alt1 := []Builder{b1, b2}
-	alt2 := []Builder{b2, b1}
-	if !reflect.DeepEqual(builders, alt1) && !reflect.DeepEqual(builders, alt2) {
-		c.Errorf("Registry(): Expected %#v. Got %#v.", alt1, builders)
-	}
+	c.Assert(builders, check.HasLen, 3)
 }

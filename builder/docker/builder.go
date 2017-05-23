@@ -22,6 +22,11 @@ import (
 
 var _ builder.Builder = &dockerBuilder{}
 
+const (
+	defaultArchiveName = "archive.tar.gz"
+	defaultArchivePath = "/home/application"
+)
+
 type dockerBuilder struct{}
 
 func init() {
@@ -29,6 +34,7 @@ func init() {
 }
 
 func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
+	archiveFullPath := fmt.Sprintf("%s/%s", defaultArchivePath, defaultArchiveName)
 	if opts.BuildFromFile {
 		return "", errors.New("build image from Dockerfile is not yet supported")
 	}
@@ -38,10 +44,10 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 	}
 	var tarFile io.ReadCloser
 	if opts.ArchiveFile != nil && opts.ArchiveSize != 0 {
-		tarFile = dockercommon.AddDeployTarFile(opts.ArchiveFile, opts.ArchiveSize, "archive.tar.gz")
+		tarFile = dockercommon.AddDeployTarFile(opts.ArchiveFile, opts.ArchiveSize, defaultArchiveName)
 	} else if opts.Rebuild {
 		var rcont *docker.Container
-		tarFile, rcont, err = downloadFromContainer(client, app, "/home/application/archive.tar.gz")
+		tarFile, rcont, err = downloadFromContainer(client, app, archiveFullPath)
 		if err != nil {
 			return "", err
 		}
