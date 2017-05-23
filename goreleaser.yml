@@ -3,11 +3,13 @@
 build:
   main: ./cmd/tsurud
   binary_name: tsurud
-  ldflags: ' '
+  ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}}
   goos:
     - linux
   goarch:
     - amd64
+  env:
+    - CGO_ENABLED=0
 
 # Archive customization
 archive:
