@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/ajg/form"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	terrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -158,6 +159,16 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return permission.ErrUnauthorized
 	}
 	poolName := r.URL.Query().Get(":name")
+	filter := &app.Filter{}
+	filter.Pool = poolName
+	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
+	apps, err := app.List(appFilterByContext(contexts, filter))
+	if err != nil {
+		return err
+	}
+	if len(apps) > 0 {
+		return &terrors.HTTP{Code: http.StatusForbidden, Message: "You still have apps in this pool, before deleting you need to migrate or delete the apps"}
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolDelete,
