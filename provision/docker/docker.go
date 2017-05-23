@@ -62,11 +62,6 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, evt *event.Event) (string, error) {
-	commands := dockercommon.ArchiveDeployCmds(app, archiveURL)
-	return p.deployPipeline(app, image, "", commands, evt)
-}
-
 func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, deployImage string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
@@ -181,4 +176,25 @@ func (p *dockerProvisioner) RegistryAuthConfig() docker.AuthConfiguration {
 	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
 	authConfig.ServerAddress, _ = config.GetString("docker:registry")
 	return authConfig
+}
+
+func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+	cluster := p.Cluster()
+	nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
+	if err != nil {
+		return nil, err
+	}
+	nodeAddr, _, err := p.scheduler.minMaxNodes(nodes, app.GetName(), "")
+	if err != nil {
+		return nil, err
+	}
+	node, err := cluster.GetNode(nodeAddr)
+	if err != nil {
+		return nil, err
+	}
+	client, err := node.Client()
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }

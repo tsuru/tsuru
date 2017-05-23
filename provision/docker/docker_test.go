@@ -10,12 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"runtime"
 	"sort"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
@@ -24,9 +19,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
@@ -224,83 +217,6 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 	c.Assert(img, check.Equals, expected)
 }
 
-func (s *S) TestArchiveDeployCanceledEvent(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: "app", Value: "myapp"},
-		Kind:          permission.PermAppDeploy,
-		Owner:         s.token,
-		Cancelable:    true,
-		Allowed:       event.Allowed(permission.PermApp),
-		AllowedCancel: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	done := make(chan bool)
-	go func() {
-		defer close(done)
-		img, depErr := s.p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", evt)
-		c.Assert(depErr, check.ErrorMatches, "deploy canceled by user action")
-		c.Assert(img, check.Equals, "")
-	}()
-	time.Sleep(100 * time.Millisecond)
-	evtDB, err := event.GetByID(evt.UniqueID)
-	c.Assert(err, check.IsNil)
-	err = evtDB.TryCancel("because yes", "majortom@ground.control")
-	c.Assert(err, check.IsNil)
-	<-done
-}
-
-func (s *S) TestArchiveDeployRegisterRace(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
-	var p dockerProvisioner
-	var registerCount int64
-	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		go func(path string) {
-			parts := strings.Split(path, "/")
-			if len(parts) == 4 && parts[3] == "start" {
-				registerErr := p.RegisterUnit(nil, parts[2], nil)
-				if registerErr == nil {
-					atomic.AddInt64(&registerCount, 1)
-				}
-			}
-		}(r.URL.Path)
-	})
-	c.Assert(err, check.IsNil)
-	defer server.Stop()
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
-		cluster.Node{Address: server.URL()})
-	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	nTests := 100
-	stopCh := s.stopContainers(server.URL(), uint(nTests))
-	defer func() { <-stopCh }()
-	wg := sync.WaitGroup{}
-	for i := 0; i < nTests; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			name := fmt.Sprintf("myapp-%d", i)
-			app := provisiontest.NewFakeApp(name, "python", 1)
-			routertest.FakeRouter.AddBackend(app.GetName())
-			defer routertest.FakeRouter.RemoveBackend(app.GetName())
-			img, err := p.archiveDeploy(app, image.GetBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", nil)
-			c.Assert(err, check.IsNil)
-			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
-		}(i)
-	}
-	wg.Wait()
-	c.Assert(registerCount, check.Equals, int64(nTests))
-}
-
 func (s *S) TestStart(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -486,4 +402,59 @@ func (s *S) TestGetNodeByHost(c *check.C) {
 	}
 	_, err = p.GetNodeByHost("h6")
 	c.Assert(err, check.ErrorMatches, `node with host "h6" not found`)
+}
+
+func (s *S) TestGetDockerClientNoSuchNode(c *check.C) {
+	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, err = cluster.New(nil, p.storage, "")
+	c.Assert(err, check.IsNil)
+	opts := provision.AddPoolOptions{Name: "test-docker-client"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+		Pool:      "test-docker-client",
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = p.GetDockerClient(&a)
+	c.Assert(err, check.ErrorMatches, "No such node in storage")
+}
+
+func (s *S) TestGetDockerClient(c *check.C) {
+	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	nodes := []cluster.Node{
+		cluster.Node{
+			Address:  "http://h1:80",
+			Metadata: map[string]string{"pool": "test-docker-client"},
+		},
+	}
+	p.cluster, err = cluster.New(nil, p.storage, "", nodes...)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddPoolOptions{Name: "test-docker-client"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+		Pool:      "test-docker-client",
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	client, err := p.GetDockerClient(&a)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Endpoint(), check.Equals, nodes[0].Address)
 }
