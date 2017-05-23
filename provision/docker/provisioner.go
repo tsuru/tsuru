@@ -88,11 +88,8 @@ type dockerProvisioner struct {
 
 var (
 	_ provision.Provisioner              = &dockerProvisioner{}
-	_ provision.ArchiveDeployer          = &dockerProvisioner{}
-	_ provision.UploadDeployer           = &dockerProvisioner{}
 	_ provision.ImageDeployer            = &dockerProvisioner{}
 	_ provision.RollbackableDeployer     = &dockerProvisioner{}
-	_ provision.RebuildableDeployer      = &dockerProvisioner{}
 	_ provision.ShellProvisioner         = &dockerProvisioner{}
 	_ provision.ExecutableProvisioner    = &dockerProvisioner{}
 	_ provision.SleepableProvisioner     = &dockerProvisioner{}
@@ -392,16 +389,20 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 	return imageId, p.deploy(a, imageId, evt)
 }
 
-func (p *dockerProvisioner) Rebuild(app provision.App, evt *event.Event) (string, error) {
-	intermediateimageID, fileURI, err := p.rebuildImage(app)
+func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
+	deployImageID, err := image.AppVersionedImageName(app.GetName())
+	if err != nil {
+		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
+	}
+	imageID, err := p.deployPipeline(app, buildImageID, deployImageID, nil, evt)
 	if err != nil {
 		return "", err
 	}
-	imageID, err := p.archiveDeploy(app, intermediateimageID, fileURI, evt)
+	err = p.deployAndClean(app, imageID, evt)
 	if err != nil {
 		return "", err
 	}
-	return imageID, p.deployAndClean(app, imageID, evt)
+	return imageID, nil
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *event.Event) (string, error) {
@@ -448,31 +449,6 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *
 	}
 	app.SetUpdatePlatform(true)
 	return newImage, p.deploy(app, newImage, evt)
-}
-
-func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, evt *event.Event) (string, error) {
-	imageId, err := p.archiveDeploy(app, image.GetBuildImage(app), archiveURL, evt)
-	if err != nil {
-		return "", err
-	}
-	return imageId, p.deployAndClean(app, imageId, evt)
-}
-
-func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
-	if build {
-		return "", errors.New("running UploadDeploy with build=true is not yet supported")
-	}
-	tarFile := dockercommon.AddDeployTarFile(archiveFile, fileSize, "archive.tar.gz")
-	defer tarFile.Close()
-	intermediateimageID, fileURI, err := p.buildImage(app, tarFile)
-	if err != nil {
-		return "", err
-	}
-	imageID, err := p.archiveDeploy(app, intermediateimageID, fileURI, evt)
-	if err != nil {
-		return "", err
-	}
-	return imageID, p.deployAndClean(app, imageID, evt)
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, evt *event.Event) error {

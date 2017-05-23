@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -39,7 +41,6 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -248,7 +249,7 @@ func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
 	return ch
 }
 
-func (s *S) TestProvisionerDeploy(c *check.C) {
+func (s *S) TestDeploy(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -309,50 +310,7 @@ func (s *S) TestProvisionerDeploy(c *check.C) {
 	})
 }
 
-func (s *S) TestProvisionerArchiveDeploy(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := s.newApp("otherapp")
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	repository.Manager().CreateRepository(a.Name, nil)
-	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		serviceBodies = append(serviceBodies, string(data))
-		w.WriteHeader(http.StatusOK)
-	})
-	defer rollback()
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	}
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	imgID, err := s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
-	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
-}
-
-func (s *S) TestProvisionerArchiveDeployWithLimiterActive(c *check.C) {
+func (s *S) TestDeployWithLimiterActive(c *check.C) {
 	config.Set("docker:limit:actions-per-host", 1)
 	defer config.Unset("docker:limit:actions-per-host")
 	var p dockerProvisioner
@@ -385,7 +343,19 @@ func (s *S) TestProvisionerArchiveDeployWithLimiterActive(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	c.Assert(builderImgID, check.Equals, "tsuru/app-"+a.Name+":v1-builder")
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -397,7 +367,7 @@ func (s *S) TestProvisionerArchiveDeployWithLimiterActive(c *check.C) {
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 }
 
-func (s *S) TestProvisionerArchiveDeployWithLimiterGlobalActive(c *check.C) {
+func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	config.Set("docker:limit:mode", "global")
 	config.Set("docker:limit:actions-per-host", 1)
 	defer config.Unset("docker:limit:mode")
@@ -432,7 +402,18 @@ func (s *S) TestProvisionerArchiveDeployWithLimiterGlobalActive(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	imgID, err := s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
 	units, err := a.Units()
@@ -445,7 +426,7 @@ func (s *S) TestProvisionerArchiveDeployWithLimiterGlobalActive(c *check.C) {
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 }
 
-func (s *S) TestProvisionerArchiveDeployQuotaExceeded(c *check.C) {
+func (s *S) TestDeployQuotaExceeded(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
@@ -477,7 +458,18 @@ func (s *S) TestProvisionerArchiveDeployQuotaExceeded(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.NotNil)
 	compErr, ok := err.(*errors.CompositeError)
 	c.Assert(ok, check.Equals, true)
@@ -488,200 +480,93 @@ func (s *S) TestProvisionerArchiveDeployQuotaExceeded(c *check.C) {
 	c.Assert(e.Requested, check.Equals, uint(2))
 }
 
-func (s *S) TestProvisionerArchiveDeployErasesOldImages(c *check.C) {
-	config.Set("docker:image-history-size", 1)
-	defer config.Unset("docker:image-history-size")
-	stopCh := s.stopContainers(s.server.URL(), 3)
-	defer func() { <-stopCh }()
+func (s *S) TestDeployCanceledEvent(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
-	a := s.newApp("appdeployimagetest")
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.p.Destroy(&a)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	}
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
-	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
+		Target:        event.Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppDeploy,
+		Owner:         s.token,
+		Cancelable:    true,
+		Allowed:       event.Allowed(permission.PermApp),
+		AllowedCancel: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, app, evt, buildOpts)
 	c.Assert(err, check.IsNil)
-	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + app.GetName(),
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/python:latest"}
-	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
-	sort.Strings(got)
-	c.Assert(got, check.DeepEquals, expected)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
+	done := make(chan bool)
+	go func() {
+		defer close(done)
+		img, depErr := s.p.Deploy(app, builderImgID, evt)
+		c.Assert(depErr, check.ErrorMatches, "deploy canceled by user action")
+		c.Assert(img, check.Equals, "")
+	}()
+	time.Sleep(100 * time.Millisecond)
+	evtDB, err := event.GetByID(evt.UniqueID)
 	c.Assert(err, check.IsNil)
-	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	err = evtDB.TryCancel("because yes", "majortom@ground.control")
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
-	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/python:latest"}
-	c.Assert(got, check.DeepEquals, expected)
+	<-done
 }
 
-func (s *S) TestProvisionerArchiveDeployErasesOldImagesIfFailed(c *check.C) {
-	config.Set("docker:image-history-size", 1)
-	defer config.Unset("docker:image-history-size")
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := s.newApp("appdeployimagetest")
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-		var result docker.Config
-		jsonErr := json.Unmarshal(data, &result)
-		if jsonErr == nil {
-			if result.Image == "tsuru/python:latest" {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+func (s *S) TestDeployRegisterRace(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(10))
+	var p dockerProvisioner
+	var registerCount int64
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		go func(path string) {
+			parts := strings.Split(path, "/")
+			if len(parts) == 4 && parts[3] == "start" {
+				registerErr := p.RegisterUnit(nil, parts[2], nil)
+				if registerErr == nil {
+					atomic.AddInt64(&registerCount, 1)
+				}
 			}
-		}
-		s.server.DefaultHandler().ServeHTTP(w, r)
-	}))
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
+		}(r.URL.Path)
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
-	c.Assert(err, check.NotNil)
-	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	err = p.Initialize()
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 1)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert("tsuru/python:latest", check.Equals, imgs[0].RepoTags[0])
-}
-
-func (s *S) TestProvisionerArchiveDeployErasesOldImagesWithLongHistory(c *check.C) {
-	config.Set("docker:image-history-size", 2)
-	defer config.Unset("docker:image-history-size")
-	stopCh := s.stopContainers(s.server.URL(), 4)
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
+		cluster.Node{Address: server.URL()})
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(&p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	nTests := 100
+	stopCh := s.stopContainers(server.URL(), uint(nTests))
 	defer func() { <-stopCh }()
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := s.newApp("appdeployimagetest")
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
+	wg := sync.WaitGroup{}
+	for i := 0; i < nTests; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			name := fmt.Sprintf("myapp-%d", i)
+			app := provisiontest.NewFakeApp(name, "python", 1)
+			routertest.FakeRouter.AddBackend(app.GetName())
+			defer routertest.FakeRouter.RemoveBackend(app.GetName())
+			img, err := p.deployPipeline(app, image.GetBuildImage(app), "", []string{"/bin/test"}, nil)
+			c.Assert(err, check.IsNil)
+			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
+		}(i)
 	}
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
-	c.Assert(err, check.IsNil)
-	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 2)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/python:latest"}
-	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
-	sort.Strings(got)
-	c.Assert(got, check.DeepEquals, expected)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
-	c.Assert(err, check.IsNil)
-	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 3)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
-	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v2", "tsuru/python:latest"}
-	c.Assert(got, check.DeepEquals, expected)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
-	c.Assert(err, check.IsNil)
-	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 3)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
-	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
-	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v3", "tsuru/python:latest"}
-	c.Assert(got, check.DeepEquals, expected)
+	wg.Wait()
+	c.Assert(registerCount, check.Equals, int64(nTests))
 }
-
-func (s *S) TestProvisionerUploadDeploy(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := s.newApp("otherapp")
-	a.Quota = quota.Unlimited
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		serviceBodies = append(serviceBodies, string(data))
-		w.WriteHeader(http.StatusOK)
-	})
-	defer rollback()
-	buf := bytes.NewBufferString("something wrong is not right")
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	}
-	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	imgID, err := s.p.UploadDeploy(&a, ioutil.NopCloser(buf), int64(buf.Len()), false, evt)
-	c.Assert(err, check.IsNil)
-	c.Assert(imgID, check.Equals, "tsuru/app-"+a.Name+":v1")
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
-}
-
 func (s *S) TestRollbackDeploy(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
@@ -1253,35 +1138,6 @@ func (s *S) TestImageDeployWithExposedPort(c *check.C) {
 	c.Assert(cont.Config.ExposedPorts, check.DeepEquals, map[docker.Port]struct{}{"8000/tcp": {}})
 }
 
-func (s *S) TestDeployAndRebuild(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 2)
-	defer func() { <-stopCh }()
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
-	c.Assert(err, check.IsNil)
-	a := s.newApp("otherapp")
-	a.Quota = quota.Unlimited
-	err = app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.p.Destroy(&a)
-	buf := bytes.NewBufferString("something wrong is not right")
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.UploadDeploy(&a, ioutil.NopCloser(buf), int64(buf.Len()), false, evt)
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Rebuild(&a, evt)
-	c.Assert(err, check.IsNil)
-	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 5)
-	c.Assert(imgs[4].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[4].RepoTags[0], check.Equals, "tsuru/app-otherapp:v2")
-}
-
 func (s *S) TestProvisionerDestroy(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
@@ -1330,7 +1186,19 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.ArchiveDeploy(&a, "https://mystorage.com/archive.tar.gz", evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	c.Assert(builderImgID, check.Equals, registryURL+"/tsuru/app-"+a.Name+":v1-builder")
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(&a)
 	c.Assert(err, check.IsNil)
@@ -1344,9 +1212,9 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	c.Assert(registryRequests[0].URL.Path, check.Equals, "/v1/repositories/tsuru/app-mydoomedapp:v1/")
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 1)
-	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[0].RepoTags[0], check.Equals, registryURL+"/tsuru/python:latest")
+	c.Assert(imgs, check.HasLen, 2)
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[1].RepoTags[0], check.Equals, builderImgID)
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *check.C) {
