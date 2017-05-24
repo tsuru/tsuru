@@ -154,7 +154,36 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	m := RunServer(true)
-	expectedError := "You still have apps in this pool, before deleting you need to migrate or delete the apps\n"
+	expectedError := "This pool still have apps, before deleting It's needed to migrate or delete all apps\n"
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
+	c.Assert(rec.Body.String(), check.Equals, expectedError)
+}
+
+func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	newUser := auth.User{
+		Email: "newuser@example.com",
+	}
+	err := newUser.Create()
+	c.Assert(err, check.IsNil)
+	defer newUser.Delete()
+	a := app.App{
+		Name:      "test",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+		Pool:      opts.Name,
+	}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&a, &newUser)
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("DELETE", "/pools/pool1", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	expectedError := "This pool still have apps, before deleting It's needed to migrate or delete all apps\n"
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
 	c.Assert(rec.Body.String(), check.Equals, expectedError)
