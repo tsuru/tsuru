@@ -166,7 +166,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	if len(apps) > 0 {
-		return &terrors.HTTP{Code: http.StatusForbidden, Message: "This pool still have apps, before deleting It's needed to migrate or delete all apps"}
+		return &terrors.HTTP{Code: http.StatusForbidden, Message: "This pool has apps, you need to migrate or remove them before removing the pool"}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
