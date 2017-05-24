@@ -161,13 +161,12 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	poolName := r.URL.Query().Get(":name")
 	filter := &app.Filter{}
 	filter.Pool = poolName
-	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
-	apps, err := app.List(appFilterByContext(contexts, filter))
+	apps, err := app.List(appFilterByContext([]permission.PermissionContext{}, filter))
 	if err != nil {
 		return err
 	}
 	if len(apps) > 0 {
-		return &terrors.HTTP{Code: http.StatusForbidden, Message: "You still have apps in this pool, before deleting you need to migrate or delete the apps"}
+		return &terrors.HTTP{Code: http.StatusForbidden, Message: "This pool still have apps, before deleting It's needed to migrate or delete all apps"}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
