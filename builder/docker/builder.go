@@ -2,12 +2,9 @@ package docker
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -136,10 +133,7 @@ func downloadFromContainer(client *docker.Client, app provision.App, filePath st
 
 func downloadFromURL(url string) (io.ReadCloser, error) {
 	var out bytes.Buffer
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr, Timeout: time.Second * 10}
+	client := net.Dial5Full300Client
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
