@@ -154,7 +154,7 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	m := RunServer(true)
-	expectedError := "This pool still have apps, before deleting It's needed to migrate or delete all apps\n"
+	expectedError := "This pool has apps, you need to migrate or remove them before removing the pool\n"
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
 	c.Assert(rec.Body.String(), check.Equals, expectedError)
@@ -183,7 +183,7 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
 	m := RunServer(true)
-	expectedError := "This pool still have apps, before deleting It's needed to migrate or delete all apps\n"
+	expectedError := "This pool has apps, you need to migrate or remove them before removing the pool\n"
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
 	c.Assert(rec.Body.String(), check.Equals, expectedError)
