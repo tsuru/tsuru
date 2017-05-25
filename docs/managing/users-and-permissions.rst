@@ -171,6 +171,19 @@ event:
 
 .. _migrating_perms:
 
+Adding members to a team
+========================
+
+When managing teams, It's very common to add new members to a team or add members
+to a new team. To do this on Tsuru you'll need to use ``role-assign`` command, as
+follows:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru role-assign <role> <user@email.com> <team>
+
 Migrating
 ---------
 
