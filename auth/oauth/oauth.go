@@ -29,12 +29,12 @@ var (
 	ErrEmptyUserEmail         = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
 
 	requestLatencies = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "tsuru_oath_request_duration_seconds",
-		Help: "The oath requests latency distributions.",
+		Name: "tsuru_oauth_request_duration_seconds",
+		Help: "The oauth requests latency distributions.",
 	})
 	requestErrors = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_oath_request_errors_total",
-		Help: "The total number of oath request errors.",
+		Name: "tsuru_oauth_request_errors_total",
+		Help: "The total number of oauth request errors.",
 	})
 )
 
