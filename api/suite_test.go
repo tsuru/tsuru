@@ -101,6 +101,7 @@ func (s *S) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.logConn.Logs("myapp").Database)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.ProvisionerInstance
 	s.provisioner.Reset()

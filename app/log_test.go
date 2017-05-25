@@ -5,11 +5,11 @@
 package app
 
 import (
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	dto "github.com/prometheus/client_model/go"
 	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
@@ -179,10 +179,11 @@ func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
 }
 
 func (s *S) TestLogDispatcherSend(c *check.C) {
+	logsInQueue.Set(0)
 	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	dispatcher := NewlogDispatcher(2000000, runtime.NumCPU())
+	dispatcher := NewlogDispatcher(2000000)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
@@ -190,33 +191,84 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	}
 	dispatcher.Send(&logMsg)
-	timeout := time.After(5 * time.Second)
-loop:
-	for {
-		logs, logsErr := app.LastLogs(1, Applog{})
-		c.Assert(logsErr, check.IsNil)
-		if len(logs) == 1 {
-			break
-		}
-		select {
-		case <-timeout:
-			c.Fatal("timeout waiting for logs")
-			break loop
-		default:
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
-	dispatcher.Stop()
+	dispatcher.Shutdown()
 	logs, err := app.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.DeepEquals, []Applog{logMsg})
+	err = dispatcher.Send(&logMsg)
+	c.Assert(err, check.ErrorMatches, `log dispatcher is shutting down`)
+	var dtoMetric dto.Metric
+	logsInQueue.Write(&dtoMetric)
+	c.Assert(dtoMetric.Gauge.GetValue(), check.Equals, 0.0)
+}
+
+func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
+	app1 := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
+	err = CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	dispatcher := NewlogDispatcher(2000000)
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := []Applog{
+		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
+		{Date: baseTime, Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit1"},
+	}
+	nConcurrent := 100
+	wg := sync.WaitGroup{}
+	for i := 0; i < nConcurrent; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			dispatcher.Send(&logMsg[i%len(logMsg)])
+		}(i)
+	}
+	wg.Wait()
+	dispatcher.Shutdown()
+	logs, err := app1.LastLogs(nConcurrent/2, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, nConcurrent/2)
+	logs, err = app2.LastLogs(nConcurrent/2, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, nConcurrent/2)
+}
+
+func (s *S) TestLogDispatcherShutdownConcurrent(c *check.C) {
+	logsInQueue.Set(0)
+	app1 := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
+	err = CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	dispatcher := NewlogDispatcher(2000000)
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	logMsg := []Applog{
+		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
+		{Date: baseTime, Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit1"},
+	}
+	nConcurrent := 100
+	for i := 0; i < nConcurrent; i++ {
+		go func(i int) {
+			dispatcher.Send(&logMsg[i%len(logMsg)])
+		}(i)
+	}
+	dispatcher.Shutdown()
+	var dtoMetric dto.Metric
+	logsInQueue.Write(&dtoMetric)
+	c.Assert(dtoMetric.Gauge.GetValue(), check.Equals, 0.0)
 }
 
 func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	dispatcher := NewlogDispatcher(2000000, runtime.NumCPU())
+	dispatcher := NewlogDispatcher(2000000)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
@@ -256,5 +308,5 @@ loop:
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-	dispatcher.Stop()
+	dispatcher.Shutdown()
 }

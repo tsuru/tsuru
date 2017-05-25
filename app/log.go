@@ -6,10 +6,13 @@ package app
 
 import (
 	"encoding/json"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
@@ -18,12 +21,8 @@ import (
 var (
 	LogPubSubQueuePrefix = "pubsub:"
 
-	bulkMaxWaitTime = time.Second
-
-	dispatchersCurrent = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "tsuru_logs_dispatchers_current",
-		Help: "The current number of log dispatchers running.",
-	})
+	bulkMaxWaitTime   = time.Second
+	bulkMaxNumberMsgs = 500
 
 	logsInQueue = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "tsuru_logs_queue_current",
@@ -48,7 +47,6 @@ var (
 
 func init() {
 	prometheus.MustRegister(logsInQueue)
-	prometheus.MustRegister(dispatchersCurrent)
 	prometheus.MustRegister(logsQueueSize)
 	prometheus.MustRegister(logsWritten)
 	prometheus.MustRegister(logsQueueBlockedTotal)
@@ -147,104 +145,129 @@ func notify(appName string, messages []interface{}) {
 	}
 }
 
-type logDispatcher struct {
-	dispatchers map[string]*appLogDispatcher
-	msgCh       chan *msgLog
+type LogDispatcher struct {
+	mu             sync.RWMutex
+	sendMu         sync.Mutex
+	dispatchers    map[string]*appLogDispatcher
+	msgCh          chan *Applog
+	shuttingDown   int32
+	doneProcessing chan struct{}
 }
 
-type msgLog struct {
-	dispatcher *appLogDispatcher
-	msg        *Applog
-}
-
-func NewlogDispatcher(chanSize, numberGoroutines int) *logDispatcher {
-	d := &logDispatcher{
-		dispatchers: make(map[string]*appLogDispatcher),
-		msgCh:       make(chan *msgLog, chanSize),
+func NewlogDispatcher(chanSize int) *LogDispatcher {
+	d := &LogDispatcher{
+		dispatchers:    make(map[string]*appLogDispatcher),
+		msgCh:          make(chan *Applog, chanSize),
+		doneProcessing: make(chan struct{}),
 	}
-	for i := 0; i < numberGoroutines; i++ {
-		go d.runWriter()
-	}
+	go d.runWriter()
+	shutdown.Register(d)
 	logsQueueSize.Set(float64(chanSize))
-	dispatchersCurrent.Inc()
 	return d
 }
 
-func (d *logDispatcher) runWriter() {
-	notifyMessages := make([]interface{}, 1)
-	for msgWithDispatcher := range d.msgCh {
-		logsInQueue.Dec()
-		notifyMessages[0] = msgWithDispatcher.msg
-		notify(msgWithDispatcher.msg.AppName, notifyMessages)
-		select {
-		case msgWithDispatcher.dispatcher.toFlush <- msgWithDispatcher.msg:
-		case <-msgWithDispatcher.dispatcher.done:
-			return
-		}
-	}
-}
-
-func (d *logDispatcher) Send(msg *Applog) {
-	logsInQueue.Inc()
+func (d *LogDispatcher) getMessageDispatcher(msg *Applog) *appLogDispatcher {
 	appName := msg.AppName
+	d.mu.RLock()
 	appD, ok := d.dispatchers[appName]
 	if !ok {
-		appD = newAppLogDispatcher(appName)
-		d.dispatchers[appName] = appD
+		d.mu.RUnlock()
+		d.mu.Lock()
+		appD, ok = d.dispatchers[appName]
+		if !ok {
+			appD = newAppLogDispatcher(appName)
+			d.dispatchers[appName] = appD
+		}
+		d.mu.Unlock()
+	} else {
+		d.mu.RUnlock()
 	}
-	msgWithDispatcher := &msgLog{dispatcher: appD, msg: msg}
-	select {
-	case d.msgCh <- msgWithDispatcher:
-	default:
-		t0 := time.Now()
-		d.msgCh <- msgWithDispatcher
-		logsQueueBlockedTotal.Add(time.Since(t0).Seconds())
+	return appD
+}
+
+func (d *LogDispatcher) runWriter() {
+	defer close(d.doneProcessing)
+	notifyMessages := make([]interface{}, 1)
+	for msg := range d.msgCh {
+		if msg == nil {
+			break
+		}
+		logsInQueue.Dec()
+		appD := d.getMessageDispatcher(msg)
+		notifyMessages[0] = msg
+		notify(msg.AppName, notifyMessages)
+		appD.toFlush <- msg
 	}
 }
 
-func (d *logDispatcher) Stop() {
-	for appName, appD := range d.dispatchers {
-		delete(d.dispatchers, appName)
-		close(appD.done)
+func (d *LogDispatcher) Send(msg *Applog) error {
+	if atomic.LoadInt32(&d.shuttingDown) == 1 {
+		return errors.New("log dispatcher is shutting down")
 	}
-	close(d.msgCh)
-	dispatchersCurrent.Dec()
+	logsInQueue.Inc()
+	select {
+	case d.msgCh <- msg:
+	default:
+		t0 := time.Now()
+		d.msgCh <- msg
+		logsQueueBlockedTotal.Add(time.Since(t0).Seconds())
+	}
+	return nil
+}
+
+func (a *LogDispatcher) String() string {
+	return "log dispatcher"
+}
+
+func (d *LogDispatcher) Shutdown() {
+	atomic.StoreInt32(&d.shuttingDown, 1)
+	d.msgCh <- nil
+	<-d.doneProcessing
+	logsInQueue.Set(0)
+	for _, appD := range d.dispatchers {
+		close(appD.done)
+		<-appD.finished
+	}
 }
 
 type appLogDispatcher struct {
-	appName string
-	done    chan bool
-	toFlush chan *Applog
+	appName  string
+	done     chan struct{}
+	finished chan struct{}
+	toFlush  chan *Applog
 }
 
 func newAppLogDispatcher(appName string) *appLogDispatcher {
 	d := &appLogDispatcher{
-		appName: appName,
-		done:    make(chan bool),
-		toFlush: make(chan *Applog),
+		appName:  appName,
+		done:     make(chan struct{}),
+		finished: make(chan struct{}),
+		toFlush:  make(chan *Applog),
 	}
 	go d.runFlusher()
 	return d
 }
 
 func (d *appLogDispatcher) runFlusher() {
+	defer close(d.finished)
 	t := time.NewTimer(bulkMaxWaitTime)
 	pos := 0
-	sz := 200
-	bulkBuffer := make([]interface{}, sz)
+	bulkBuffer := make([]interface{}, bulkMaxNumberMsgs)
+	shouldReturn := false
 	for {
 		var flush bool
 		select {
 		case <-d.done:
-			return
+			flush = pos > 0
+			shouldReturn = true
 		case msg := <-d.toFlush:
-			if pos == sz {
+			if pos == bulkMaxNumberMsgs {
 				flush = true
 				break
 			}
 			bulkBuffer[pos] = msg
 			pos++
-			flush = sz == pos
+			flush = bulkMaxNumberMsgs == pos
 		case <-t.C:
 			flush = pos > 0
 			t.Reset(bulkMaxWaitTime)
@@ -264,6 +287,9 @@ func (d *appLogDispatcher) runFlusher() {
 			}
 			logsWritten.Add(float64(pos))
 			pos = 0
+		}
+		if shouldReturn {
+			return
 		}
 	}
 }

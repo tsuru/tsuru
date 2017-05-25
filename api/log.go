@@ -7,7 +7,7 @@ package api
 import (
 	"encoding/json"
 	"io"
-	"runtime"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -16,6 +16,22 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"golang.org/x/net/websocket"
 )
+
+var (
+	onceDispatcher   = sync.Once{}
+	globalDispatcher *app.LogDispatcher
+)
+
+func getDispatcher() *app.LogDispatcher {
+	onceDispatcher.Do(func() {
+		queueSize, _ := config.GetInt("server:app-log-buffer-size")
+		if queueSize == 0 {
+			queueSize = 500000
+		}
+		globalDispatcher = app.NewlogDispatcher(queueSize)
+	})
+	return globalDispatcher
+}
 
 func addLogs(ws *websocket.Conn) {
 	var err error
@@ -45,11 +61,7 @@ func addLogs(ws *websocket.Conn) {
 }
 
 func scanLogs(stream io.Reader) error {
-	queueSize, _ := config.GetInt("server:app-log-buffer-size")
-	if queueSize == 0 {
-		queueSize = 500000
-	}
-	dispatcher := app.NewlogDispatcher(queueSize, runtime.NumCPU())
+	dispatcher := getDispatcher()
 	decoder := json.NewDecoder(stream)
 	for {
 		var entry app.Applog
@@ -58,12 +70,13 @@ func scanLogs(stream io.Reader) error {
 			if err == io.EOF {
 				break
 			}
-			dispatcher.Stop()
 			return errors.Wrap(err, "wslogs: parsing log line")
 		}
-		dispatcher.Send(&entry)
+		err = dispatcher.Send(&entry)
+		if err != nil {
+			return err
+		}
 	}
-	dispatcher.Stop()
 	return nil
 }
 

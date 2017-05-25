@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tsuru/config"
@@ -149,6 +150,68 @@ loop:
 	})
 }
 
+func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
+	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a1, s.user)
+	c.Assert(err, check.IsNil)
+	a2 := app.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a2, s.user)
+	c.Assert(err, check.IsNil)
+	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
+	c.Assert(err, check.IsNil)
+	baseTime = baseTime.Local()
+	bodyPart := `
+	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "appname": "myapp1", "unit": "unit1"}
+	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "appname": "myapp2", "unit": "unit2"}
+	`
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	m := RunServer(true)
+	srv := httptest.NewServer(m)
+	defer srv.Close()
+	testServerURL, err := url.Parse(srv.URL)
+	c.Assert(err, check.IsNil)
+	wsURL := fmt.Sprintf("ws://%s/logs", testServerURL.Host)
+	wg := sync.WaitGroup{}
+	nConcurrency := 100
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			config, wsErr := websocket.NewConfig(wsURL, "ws://localhost/")
+			c.Assert(wsErr, check.IsNil)
+			config.Header.Set("Authorization", "bearer "+token.GetValue())
+			wsConn, wsErr := websocket.DialConfig(config)
+			c.Assert(wsErr, check.IsNil)
+			defer wsConn.Close()
+			_, wsErr = wsConn.Write([]byte(bodyPart))
+			c.Assert(err, check.IsNil)
+		}()
+	}
+	wg.Wait()
+	timeout := time.After(5 * time.Second)
+loop:
+	for {
+		var logs1 []app.Applog
+		logs1, err = a1.LastLogs(nConcurrency, app.Applog{})
+		c.Assert(err, check.IsNil)
+		if len(logs1) == nConcurrency {
+			break
+		}
+		select {
+		case <-timeout:
+			c.Fatal("timeout waiting for logs")
+			break loop
+		default:
+		}
+	}
+	logs, err := a1.LastLogs(1, app.Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.DeepEquals, []app.Applog{
+		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
+	})
+}
+
 func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
 	m := RunServer(true)
 	srv := httptest.NewServer(m)
@@ -173,12 +236,11 @@ func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
 func (s *S) BenchmarkScanLogs(c *check.C) {
 	c.StopTimer()
 	var apps []app.App
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 100; i++ {
 		a := app.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
 		apps = append(apps, a)
 		err := app.CreateApp(&a, s.user)
 		c.Assert(err, check.IsNil)
-		defer app.Delete(&a, nil)
 	}
 	baseMsg := `{"date": "2015-06-16T15:00:00.000Z", "message": "msg-%d", "source": "web", "appname": "%s", "unit": "unit1"}` + "\n"
 	for i := range apps {
@@ -186,17 +248,26 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 		err := scanLogs(strings.NewReader(fmt.Sprintf(baseMsg, 0, apps[i].Name)))
 		c.Assert(err, check.IsNil)
 	}
-	r, w := io.Pipe()
-	go func() {
-		for i := 0; i < c.N; i++ {
-			msg := fmt.Sprintf(baseMsg, i, apps[i%len(apps)].Name)
-			_, err := w.Write([]byte(msg))
-			c.Assert(err, check.IsNil)
-		}
-		w.Close()
-	}()
 	c.StartTimer()
-	err := scanLogs(r)
-	c.Assert(err, check.IsNil)
+	r, w := io.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		err := scanLogs(r)
+		if err != nil {
+			c.Fatal(err)
+		}
+	}()
+	for i := 0; i < c.N; i++ {
+		msg := fmt.Sprintf(baseMsg, i, apps[i%len(apps)].Name)
+		_, err := w.Write([]byte(msg))
+		if err != nil {
+			c.Fatal(err)
+		}
+	}
+	w.Close()
+	<-done
 	c.StopTimer()
+	globalDispatcher.Shutdown()
+	onceDispatcher = sync.Once{}
 }
