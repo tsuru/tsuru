@@ -20,7 +20,7 @@ import (
 )
 
 func (s *S) TestPrepareImageForDeploy(c *check.C) {
-	srv, err := testing.NewServer("0.0.0.0:0", nil, nil)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
 	a := &app.App{Name: "myapp"}
@@ -57,7 +57,7 @@ Pushed
 }
 
 func (s *S) TestPrepareImageForDeployNoProcfile(c *check.C) {
-	srv, err := testing.NewServer("0.0.0.0:0", nil, nil)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
 	a := &app.App{Name: "myapp"}
@@ -107,7 +107,7 @@ Pushed
 }
 
 func (s *S) TestUploadToContainer(c *check.C) {
-	srv, err := testing.NewServer("0.0.0.0:0", nil, nil)
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
 	cli, err := docker.NewClient(srv.URL())
