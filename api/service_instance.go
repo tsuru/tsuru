@@ -252,7 +252,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 		return err
 	}
-	writer.Write([]byte("service instance successfully removed"))
+	writer.Write([]byte("service instance successfully removed\n"))
 	return nil
 }
 
