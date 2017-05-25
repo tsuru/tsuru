@@ -39,6 +39,11 @@ var (
 		Help: "The max number of log entries in a dispatcher queue.",
 	})
 
+	logsEnqueued = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_logs_enqueued_total",
+		Help: "The number of log entries enqueued for processing.",
+	})
+
 	logsWritten = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "tsuru_logs_write_total",
 		Help: "The number of log entries written to mongo.",
@@ -48,6 +53,7 @@ var (
 func init() {
 	prometheus.MustRegister(logsInQueue)
 	prometheus.MustRegister(logsQueueSize)
+	prometheus.MustRegister(logsEnqueued)
 	prometheus.MustRegister(logsWritten)
 	prometheus.MustRegister(logsQueueBlockedTotal)
 }
@@ -205,6 +211,7 @@ func (d *LogDispatcher) Send(msg *Applog) error {
 		return errors.New("log dispatcher is shutting down")
 	}
 	logsInQueue.Inc()
+	logsEnqueued.Inc()
 	select {
 	case d.msgCh <- msg:
 	default:
