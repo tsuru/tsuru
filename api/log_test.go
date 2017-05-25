@@ -185,7 +185,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 			c.Assert(wsErr, check.IsNil)
 			defer wsConn.Close()
 			_, wsErr = wsConn.Write([]byte(bodyPart))
-			c.Assert(err, check.IsNil)
+			c.Assert(wsErr, check.IsNil)
 		}()
 	}
 	wg.Wait()
