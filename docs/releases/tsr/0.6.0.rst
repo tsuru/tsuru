@@ -27,8 +27,7 @@ What's new in tsr 0.6.0
 * tsuru now supports managing IaaS providers, this allow tsuru to provision new
   docker nodes making it a lot easier to install and maintain. The behavior of
   ``docker-node-*`` admin commands was changed to receive machine information and
-  new commands have been added. See :doc:`tsuru-admin </reference/tsuru-admin>`
-  for more details.
+  new commands have been added. See tsuru-admin for more details.
 
   Right now, EC2 and Cloudstack are supported as IaaS providers. You can see more
   details about how to configure them in the :doc:`config reference </reference/config>`
