@@ -92,3 +92,7 @@ Bug fixes
   `#1482 <https://github.com/tsuru/tsuru/issues/1482>`_
 * `machine-template-add` command doesn't update existing templates
   `#1519 <https://github.com/tsuru/tsuru/issues/1519>`_
+* `user-list` command should display information of the user that is logged in
+  `#1430 <https://github.com/tsuru/tsuru/issues/1430>`_
+* `app-list` command removing pools with apps
+  `#1575 <https://github.com/tsuru/tsuru/issues/1575>`_
