@@ -48,6 +48,16 @@ var (
 		Name: "tsuru_logs_write_total",
 		Help: "The number of log entries written to mongo.",
 	})
+
+	logsPublishLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "tsuru_logs_publish_duration_seconds",
+		Help: "The latency distributions for log messages to be published.",
+	})
+
+	logsMongoLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "tsuru_logs_mongo_duration_seconds",
+		Help: "The latency distributions for log messages to be stored in database.",
+	})
 )
 
 func init() {
@@ -56,6 +66,8 @@ func init() {
 	prometheus.MustRegister(logsEnqueued)
 	prometheus.MustRegister(logsWritten)
 	prometheus.MustRegister(logsQueueBlockedTotal)
+	prometheus.MustRegister(logsPublishLatency)
+	prometheus.MustRegister(logsMongoLatency)
 }
 
 type LogListener struct {
@@ -155,15 +167,20 @@ type LogDispatcher struct {
 	mu             sync.RWMutex
 	sendMu         sync.Mutex
 	dispatchers    map[string]*appLogDispatcher
-	msgCh          chan *Applog
+	msgCh          chan *msgWithTS
 	shuttingDown   int32
 	doneProcessing chan struct{}
+}
+
+type msgWithTS struct {
+	msg        *Applog
+	arriveTime time.Time
 }
 
 func NewlogDispatcher(chanSize int) *LogDispatcher {
 	d := &LogDispatcher{
 		dispatchers:    make(map[string]*appLogDispatcher),
-		msgCh:          make(chan *Applog, chanSize),
+		msgCh:          make(chan *msgWithTS, chanSize),
 		doneProcessing: make(chan struct{}),
 	}
 	go d.runWriter()
@@ -194,15 +211,16 @@ func (d *LogDispatcher) getMessageDispatcher(msg *Applog) *appLogDispatcher {
 func (d *LogDispatcher) runWriter() {
 	defer close(d.doneProcessing)
 	notifyMessages := make([]interface{}, 1)
-	for msg := range d.msgCh {
-		if msg == nil {
+	for msgExtra := range d.msgCh {
+		if msgExtra == nil {
 			break
 		}
 		logsInQueue.Dec()
-		appD := d.getMessageDispatcher(msg)
-		notifyMessages[0] = msg
-		notify(msg.AppName, notifyMessages)
-		appD.toFlush <- msg
+		appD := d.getMessageDispatcher(msgExtra.msg)
+		notifyMessages[0] = msgExtra.msg
+		notify(msgExtra.msg.AppName, notifyMessages)
+		logsPublishLatency.Observe(time.Since(msgExtra.arriveTime).Seconds())
+		appD.toFlush <- msgExtra
 	}
 }
 
@@ -212,11 +230,12 @@ func (d *LogDispatcher) Send(msg *Applog) error {
 	}
 	logsInQueue.Inc()
 	logsEnqueued.Inc()
+	msgExtra := &msgWithTS{msg: msg, arriveTime: time.Now()}
 	select {
-	case d.msgCh <- msg:
+	case d.msgCh <- msgExtra:
 	default:
 		t0 := time.Now()
-		d.msgCh <- msg
+		d.msgCh <- msgExtra
 		logsQueueBlockedTotal.Add(time.Since(t0).Seconds())
 	}
 	return nil
@@ -241,7 +260,7 @@ type appLogDispatcher struct {
 	appName  string
 	done     chan struct{}
 	finished chan struct{}
-	toFlush  chan *Applog
+	toFlush  chan *msgWithTS
 }
 
 func newAppLogDispatcher(appName string) *appLogDispatcher {
@@ -249,7 +268,7 @@ func newAppLogDispatcher(appName string) *appLogDispatcher {
 		appName:  appName,
 		done:     make(chan struct{}),
 		finished: make(chan struct{}),
-		toFlush:  make(chan *Applog),
+		toFlush:  make(chan *msgWithTS),
 	}
 	go d.runFlusher()
 	return d
@@ -261,18 +280,20 @@ func (d *appLogDispatcher) runFlusher() {
 	pos := 0
 	bulkBuffer := make([]interface{}, bulkMaxNumberMsgs)
 	shouldReturn := false
+	var lastMessage *msgWithTS
 	for {
 		var flush bool
 		select {
 		case <-d.done:
 			flush = pos > 0
 			shouldReturn = true
-		case msg := <-d.toFlush:
+		case msgExtra := <-d.toFlush:
 			if pos == bulkMaxNumberMsgs {
 				flush = true
 				break
 			}
-			bulkBuffer[pos] = msg
+			lastMessage = msgExtra
+			bulkBuffer[pos] = msgExtra.msg
 			pos++
 			flush = bulkMaxNumberMsgs == pos
 		case <-t.C:
@@ -287,6 +308,10 @@ func (d *appLogDispatcher) runFlusher() {
 			}
 			coll := conn.Logs(d.appName)
 			err = coll.Insert(bulkBuffer[:pos]...)
+			if lastMessage != nil {
+				logsMongoLatency.Observe(time.Since(lastMessage.arriveTime).Seconds())
+				lastMessage = nil
+			}
 			coll.Close()
 			if err != nil {
 				log.Errorf("[log flusher] unable to insert logs: %s", err)
