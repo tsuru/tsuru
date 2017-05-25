@@ -235,6 +235,31 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestAddTeamsToPoolWithPoolContextPermission(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermPoolUpdateTeamAdd,
+		Context: permission.Context(permission.CtxPool, "pool1"),
+	})
+	pool := provision.Pool{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader("team=tsuruteam")
+	req, err := http.NewRequest("POST", "/pools/pool1/team", b)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	p, err := provision.GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	teams, err := p.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
+}
+
 func (s *S) TestAddTeamsToPoolNotFound(c *check.C) {
 	b := strings.NewReader("team=test")
 	req, err := http.NewRequest("POST", "/pools/notfound/team", b)
@@ -306,6 +331,36 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 			{"name": "team", "value": "ateam"},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermPoolUpdateTeamRemove,
+		Context: permission.Context(permission.CtxPool, "pool1"),
+	})
+	err := auth.CreateTeam("ateam", s.user)
+	c.Assert(err, check.IsNil)
+	pool := provision.Pool{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, []string{"tsuruteam"})
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, []string{"ateam"})
+	c.Assert(err, check.IsNil)
+	req, err := http.NewRequest("DELETE", "/pools/pool1/team?team=ateam", nil)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusOK)
+	var p provision.Pool
+	err = s.conn.Pools().FindId(pool.Name).One(&p)
+	c.Assert(err, check.IsNil)
+	teams, err := p.GetTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.DeepEquals, []string{"tsuruteam"})
 }
 
 func (s *S) TestPoolListPublicPool(c *check.C) {

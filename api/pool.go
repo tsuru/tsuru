@@ -196,16 +196,15 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   400: Invalid data
 //   404: Pool not found
 func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd)
+	err = r.ParseForm()
+	if err != nil {
+		return &terrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	poolName := r.URL.Query().Get(":name")
+	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd, permission.Context(permission.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	msg := "You must provide the team."
-	err = r.ParseForm()
-	if err != nil {
-		return &terrors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	poolName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamAdd,
@@ -224,7 +223,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 		return err
 	}
-	return &terrors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	return &terrors.HTTP{Code: http.StatusBadRequest, Message: "You must provide the team."}
 }
 
 // title: remove team from pool
@@ -237,11 +236,11 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   404: Pool not found
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	r.ParseForm()
-	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove)
+	poolName := r.URL.Query().Get(":name")
+	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove, permission.Context(permission.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	poolName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamRemove,
