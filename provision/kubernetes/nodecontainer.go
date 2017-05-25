@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
@@ -134,6 +135,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 	case docker.NeverRestart().Name:
 		restartPolicy = v1.RestartPolicyNever
 	}
+	maxUnavailable := intstr.FromString("20%")
 	ds := &extensions.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
@@ -142,6 +144,12 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		Spec: extensions.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: ls.ToNodeContainerSelector(),
+			},
+			UpdateStrategy: extensions.DaemonSetUpdateStrategy{
+				Type: extensions.RollingUpdateDaemonSetStrategyType,
+				RollingUpdate: &extensions.RollingUpdateDaemonSet{
+					MaxUnavailable: &maxUnavailable,
+				},
 			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -171,14 +179,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		},
 	}
 	if oldDs != nil {
-		// TODO(cezarsa): This is only needed because kubernetes <=1.5 does not
-		// support rolling updating daemon sets. Once 1.6 is out we can drop
-		// the cleanup call and configure DaemonSetUpdateStrategy accordingly.
-		err = cleanupDaemonSet(client, config.Name, pool)
-		if err != nil {
-			return err
-		}
-		_, err = client.Extensions().DaemonSets(client.Namespace()).Create(ds)
+		_, err = client.Extensions().DaemonSets(client.Namespace()).Update(ds)
 	} else {
 		_, err = client.Extensions().DaemonSets(client.Namespace()).Create(ds)
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
@@ -43,6 +44,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	trueVar := true
+	maxUnavailable := intstr.FromString("20%")
 	c.Assert(daemon, check.DeepEquals, &extensions.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-all",
@@ -53,6 +55,12 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 				MatchLabels: map[string]string{
 					"tsuru.io/node-container-name": "bs",
 					"tsuru.io/node-container-pool": "",
+				},
+			},
+			UpdateStrategy: extensions.DaemonSetUpdateStrategy{
+				Type: extensions.RollingUpdateDaemonSetStrategyType,
+				RollingUpdate: &extensions.RollingUpdateDaemonSet{
+					MaxUnavailable: &maxUnavailable,
 				},
 			},
 			Template: v1.PodTemplateSpec{
