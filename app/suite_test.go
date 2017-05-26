@@ -150,7 +150,5 @@ func (s *S) SetUpTest(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
-	factory, err := queue.Factory()
-	c.Assert(err, check.IsNil)
-	factory.Reset()
+	queue.Factory().Reset()
 }

@@ -183,6 +183,9 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	app := App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
+	listener, err := NewLogListener(&app, Applog{})
+	c.Assert(err, check.IsNil)
+	defer listener.Close()
 	dispatcher := NewlogDispatcher(2000000)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
@@ -200,6 +203,8 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	var dtoMetric dto.Metric
 	logsInQueue.Write(&dtoMetric)
 	c.Assert(dtoMetric.Gauge.GetValue(), check.Equals, 0.0)
+	ch := listener.ListenChan()
+	c.Assert(<-ch, check.DeepEquals, logMsg)
 }
 
 func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {

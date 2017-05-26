@@ -36,6 +36,7 @@ type baseClient interface {
 	HMSetMap(key string, fields map[string]string) *redis.StatusCmd
 	HLen(key string) *redis.IntCmd
 	Close() error
+	Publish(channel, message string) *redis.IntCmd
 }
 
 type poolStatsClient interface {
@@ -51,7 +52,6 @@ type Client interface {
 type PubSubClient interface {
 	Client
 	Subscribe(channels ...string) (*redis.PubSub, error)
-	Publish(channel, message string) *redis.IntCmd
 }
 
 type Pipeline interface {

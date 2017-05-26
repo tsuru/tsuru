@@ -3721,10 +3721,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	factory, err := queue.Factory()
-	c.Assert(err, check.IsNil)
-	q, err := factory.PubSub(app.LogPubSubQueuePrefix + a.Name)
-	c.Assert(err, check.IsNil)
+	q := queue.Factory().PubSub(app.LogPubSubQueuePrefix + a.Name)
 	err = q.Pub([]byte(`{"message": "x"}`))
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
@@ -3772,10 +3769,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	factory, err := queue.Factory()
-	c.Assert(err, check.IsNil)
-	q, err := factory.PubSub(app.LogPubSubQueuePrefix + a.Name)
-	c.Assert(err, check.IsNil)
+	q := queue.Factory().PubSub(app.LogPubSubQueuePrefix + a.Name)
 	err = q.Pub([]byte(`{"message": "x", "source": "app"}`))
 	c.Assert(err, check.IsNil)
 	err = q.Pub([]byte(`{"message": "y", "source": "web"}`))

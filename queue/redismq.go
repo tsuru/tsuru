@@ -22,6 +22,24 @@ type redisPubSub struct {
 	quit    chan struct{}
 }
 
+func (r *redisPubSub) PubMulti(messages []PubMsg) error {
+	conn, err := r.factory.getConn()
+	if err != nil {
+		return err
+	}
+	pipe := conn.Pipeline()
+	for _, msg := range messages {
+		r.name = msg.Name
+		pipe.Publish(r.key(), string(msg.Message))
+	}
+	_, err = pipe.Exec()
+	pipe.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *redisPubSub) Pub(msg []byte) error {
 	conn, err := r.factory.getConn()
 	if err != nil {
@@ -89,8 +107,8 @@ type redisPubSubFactory struct {
 func (factory *redisPubSubFactory) Reset() {
 }
 
-func (factory *redisPubSubFactory) PubSub(name string) (PubSubQ, error) {
-	return &redisPubSub{name: name, factory: factory}, nil
+func (factory *redisPubSubFactory) PubSub(name string) PubSubQ {
+	return &redisPubSub{name: name, factory: factory}
 }
 
 func (factory *redisPubSubFactory) getConn() (tsuruRedis.PubSubClient, error) {

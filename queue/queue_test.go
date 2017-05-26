@@ -23,20 +23,17 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 func (s *S) TestFactory(c *check.C) {
-	f, err := Factory()
-	c.Assert(err, check.IsNil)
+	f := Factory()
 	_, ok := f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
-	f2, err := Factory()
-	c.Assert(err, check.IsNil)
+	f2 := Factory()
 	_, ok = f2.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(f, check.DeepEquals, f2)
 }
 
 func (s *S) TestFactoryConfigUndefined(c *check.C) {
-	f, err := Factory()
-	c.Assert(err, check.IsNil)
+	f := Factory()
 	_, ok := f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
 }

@@ -29,8 +29,7 @@ func (s *RedismqSuite) SetUpSuite(c *check.C) {
 
 func (s *RedismqSuite) TestFactoryGet(c *check.C) {
 	var factory redisPubSubFactory
-	q, err := factory.PubSub("ancient")
-	c.Assert(err, check.IsNil)
+	q := factory.PubSub("ancient")
 	rq, ok := q.(*redisPubSub)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(rq.name, check.Equals, "ancient")
@@ -38,8 +37,7 @@ func (s *RedismqSuite) TestFactoryGet(c *check.C) {
 
 func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
 	var factory redisPubSubFactory
-	q, err := factory.PubSub("mypubsub")
-	c.Assert(err, check.IsNil)
+	q := factory.PubSub("mypubsub")
 	pubSubQ, ok := q.(PubSubQ)
 	c.Assert(ok, check.Equals, true)
 	msgChan, err := pubSubQ.Sub()
@@ -49,10 +47,30 @@ func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
 	c.Assert(<-msgChan, check.DeepEquals, []byte("entil'zha"))
 }
 
+func (s *RedismqSuite) TestRedisPubMultiSub(c *check.C) {
+	var factory redisPubSubFactory
+	msgChan1, err := factory.PubSub("mypubsub1").Sub()
+	c.Assert(err, check.IsNil)
+	msgChan2, err := factory.PubSub("mypubsub2").Sub()
+	c.Assert(err, check.IsNil)
+	msgs := []PubMsg{
+		{Name: "mypubsub1", Message: []byte("m1")},
+		{Name: "mypubsub", Message: []byte("ignored")},
+		{Name: "mypubsub2", Message: []byte("m2")},
+		{Name: "mypubsub1", Message: []byte("m3")},
+		{Name: "mypubsub2", Message: []byte("m4")},
+	}
+	err = factory.PubSub("").PubMulti(msgs)
+	c.Assert(err, check.IsNil)
+	c.Assert(<-msgChan1, check.DeepEquals, []byte("m1"))
+	c.Assert(<-msgChan1, check.DeepEquals, []byte("m3"))
+	c.Assert(<-msgChan2, check.DeepEquals, []byte("m2"))
+	c.Assert(<-msgChan2, check.DeepEquals, []byte("m4"))
+}
+
 func (s *RedismqSuite) TestRedisPubSubUnsub(c *check.C) {
 	var factory redisPubSubFactory
-	q, err := factory.PubSub("mypubsub")
-	c.Assert(err, check.IsNil)
+	q := factory.PubSub("mypubsub")
 	pubSubQ, ok := q.(PubSubQ)
 	c.Assert(ok, check.Equals, true)
 	msgChan, err := pubSubQ.Sub()
@@ -92,8 +110,7 @@ func (s *RedismqSuite) TestRedisPubSubTimeout(c *check.C) {
 	config.Set("pubsub:redis-read-timeout", 0.1)
 	defer config.Unset("pubsub:redis-read-timeout")
 	var factory redisPubSubFactory
-	q, err := factory.PubSub("mypubsub")
-	c.Assert(err, check.IsNil)
+	q := factory.PubSub("mypubsub")
 	pubSubQ, ok := q.(PubSubQ)
 	c.Assert(ok, check.Equals, true)
 	msgChan, err := pubSubQ.Sub()

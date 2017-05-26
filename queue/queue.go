@@ -31,13 +31,21 @@ type PubSubQ interface {
 	// Unsubscribe the queue, this should make sure the channel returned
 	// by Sub() is closed.
 	UnSub() error
+
+	// Publishes multiple messages in a batch.
+	PubMulti(messages []PubMsg) error
+}
+
+type PubMsg struct {
+	Name    string
+	Message []byte
 }
 
 // PubSubFactory manages queues. It's able to create new queue and handler
 // instances.
 type PubSubFactory interface {
 	// PubSub returns a PubSubQ instance, identified by the given name.
-	PubSub(name string) (PubSubQ, error)
+	PubSub(name string) PubSubQ
 
 	Reset()
 }
@@ -46,8 +54,8 @@ var factoryInstance = &redisPubSubFactory{}
 
 // Factory returns an instance of the PubSubFactory used in tsuru. Only redis
 // pubsub is available.
-func Factory() (PubSubFactory, error) {
-	return factoryInstance, nil
+func Factory() PubSubFactory {
+	return factoryInstance
 }
 
 type queueInstanceData struct {
