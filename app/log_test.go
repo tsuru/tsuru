@@ -204,7 +204,9 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	logsInQueue.Write(&dtoMetric)
 	c.Assert(dtoMetric.Gauge.GetValue(), check.Equals, 0.0)
 	ch := listener.ListenChan()
-	c.Assert(<-ch, check.DeepEquals, logMsg)
+	recvMsg := <-ch
+	recvMsg.Date = baseTime
+	c.Assert(recvMsg, check.DeepEquals, logMsg)
 }
 
 func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
