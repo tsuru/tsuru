@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -113,7 +112,6 @@ func (s *S) SetUpTest(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
-	queue.Factory().Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {

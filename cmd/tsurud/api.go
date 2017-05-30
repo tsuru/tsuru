@@ -23,7 +23,6 @@ func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		checkBeanstalkd,
 		checkBasicConfig,
 		checkGandalf,
-		checkPubSub,
 		checkQueue,
 	}, context.Stderr)
 	if err != nil {

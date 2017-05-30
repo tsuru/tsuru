@@ -22,22 +22,6 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
-func (s *S) TestFactory(c *check.C) {
-	f := Factory()
-	_, ok := f.(*redisPubSubFactory)
-	c.Assert(ok, check.Equals, true)
-	f2 := Factory()
-	_, ok = f2.(*redisPubSubFactory)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(f, check.DeepEquals, f2)
-}
-
-func (s *S) TestFactoryConfigUndefined(c *check.C) {
-	f := Factory()
-	_, ok := f.(*redisPubSubFactory)
-	c.Assert(ok, check.Equals, true)
-}
-
 func (s *S) SetUpTest(c *check.C) {
 	config.Set("queue:mongo-database", "test-queue")
 	ResetQueue()

@@ -230,47 +230,6 @@ func (w *CheckerSuite) TestCheckBeanstalkdQueueServerDefined(c *check.C) {
 	c.Assert(err.Error(), check.Equals, `beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
 }
 
-func (w *CheckerSuite) TestCheckPubSub(c *check.C) {
-	err := checkPubSub()
-	c.Assert(err, check.IsNil)
-}
-
-func (w *CheckerSuite) TestCheckPubSubOld(c *check.C) {
-	config.Unset("pubsub:redis-host")
-	config.Set("redis-queue:host", "localhost")
-	err := checkPubSub()
-	c.Assert(err, check.FitsTypeOf, config.NewWarning(""))
-	c.Assert(err, check.ErrorMatches, ".*Using \"redis-queue:\\*\" is deprecated.*")
-}
-
-func (w *CheckerSuite) TestCheckPubSubMissing(c *check.C) {
-	config.Unset("pubsub:redis-host")
-	err := checkPubSub()
-	c.Assert(err, check.FitsTypeOf, config.NewWarning(""))
-	c.Assert(err, check.ErrorMatches, ".*Neither of the config entries for \"pubsub:redis-\\*\" are set.*")
-}
-
-func (w *CheckerSuite) TestPubSubSentinel(c *check.C) {
-	config.Unset("pubsub:redis-host")
-	config.Set("pubsub:redis-sentinel-addrs", "localhost")
-	err := checkPubSub()
-	c.Assert(err, check.IsNil)
-}
-
-func (w *CheckerSuite) TestPubSubRedisServer(c *check.C) {
-	config.Unset("pubsub:redis-host")
-	config.Set("pubsub:redis-server", "localhost")
-	err := checkPubSub()
-	c.Assert(err, check.IsNil)
-}
-
-func (w *CheckerSuite) TestPubSubRedisCluster(c *check.C) {
-	config.Unset("pubsub:redis-host")
-	config.Set("pubsub:redis-cluster-addrs", "localhost")
-	err := checkPubSub()
-	c.Assert(err, check.IsNil)
-}
-
 func (w *CheckerSuite) TestCheckQueue(c *check.C) {
 	err := checkQueue()
 	c.Assert(err, check.IsNil)

@@ -18,46 +18,6 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 )
 
-// PubSubQ represents an implementation that allows Publishing and
-// Subscribing messages.
-type PubSubQ interface {
-	// Publishes a message using the underlaying queue server.
-	Pub(msg []byte) error
-
-	// Returns a channel that will yield every message published to this
-	// queue.
-	Sub() (<-chan []byte, error)
-
-	// Unsubscribe the queue, this should make sure the channel returned
-	// by Sub() is closed.
-	UnSub() error
-
-	// Publishes multiple messages in a batch.
-	PubMulti(messages []PubMsg) error
-}
-
-type PubMsg struct {
-	Name    string
-	Message []byte
-}
-
-// PubSubFactory manages queues. It's able to create new queue and handler
-// instances.
-type PubSubFactory interface {
-	// PubSub returns a PubSubQ instance, identified by the given name.
-	PubSub(name string) PubSubQ
-
-	Reset()
-}
-
-var factoryInstance = &redisPubSubFactory{}
-
-// Factory returns an instance of the PubSubFactory used in tsuru. Only redis
-// pubsub is available.
-func Factory() PubSubFactory {
-	return factoryInstance
-}
-
 type queueInstanceData struct {
 	sync.RWMutex
 	instance monsterqueue.Queue

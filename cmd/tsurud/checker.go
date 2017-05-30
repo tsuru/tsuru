@@ -5,8 +5,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 )
@@ -46,21 +44,6 @@ func checkBeanstalkd() error {
 		return errors.New(`beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
 	}
 	return nil
-}
-
-func checkPubSub() error {
-	oldConfig, _ := config.GetString("redis-queue:host")
-	if oldConfig != "" {
-		return config.NewWarning(`Using "redis-queue:*" is deprecated. Please change your tsuru.conf to use "pubsub:*" options. See http://docs.tsuru.io/en/latest/reference/config.html#pubsub for more details.`)
-	}
-	redisConfigs := []string{"redis-host", "redis-sentinel-addrs", "redis-server", "redis-cluster-addrs"}
-	for _, c := range redisConfigs {
-		value, _ := config.GetString(fmt.Sprintf("pubsub:%s", c))
-		if value != "" {
-			return nil
-		}
-	}
-	return config.NewWarning(`Neither of the config entries for "pubsub:redis-*" are set, default "localhost" will be used. Running "tsuru app-log -f" might not work.`)
 }
 
 func checkQueue() error {
