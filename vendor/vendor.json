@@ -1068,24 +1068,6 @@
 			"revisionTime": "2015-11-24T09:03:42-08:00"
 		},
 		{
-			"checksumSHA1": "gysU1muo7UXwANQW7zch9fTtA+g=",
-			"path": "github.com/luizbafilho/fusis/api",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
-			"checksumSHA1": "AjEThWb+FqCz2ObEOMTsPAd3vBU=",
-			"path": "github.com/luizbafilho/fusis/api/testing",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
-			"checksumSHA1": "dp6Ojtm66PCTHvKMPvipprRNazY=",
-			"path": "github.com/luizbafilho/fusis/api/types",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
 			"checksumSHA1": "urY45++NYCue4nh4k8OjUFnIGfU=",
 			"origin": "k8s.io/kubernetes/vendor/github.com/mailru/easyjson/buffer",
 			"path": "github.com/mailru/easyjson/buffer",
