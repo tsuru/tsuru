@@ -381,12 +381,6 @@ func (s *S) TestListNodeHandlerNoContent(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
 }
 
-type RawList []json.RawMessage
-
-func (l RawList) Len() int           { return len(l) }
-func (l RawList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l RawList) Less(i, j int) bool { return len(l[i]) < len(l[j]) }
-
 func (s *S) TestListNodeHandler(c *check.C) {
 	err := s.provisioner.AddNode(provision.AddNodeOptions{
 		Address:  "host1.com:2375",
@@ -409,17 +403,14 @@ func (s *S) TestListNodeHandler(c *check.C) {
 	var result listNodeResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	nodes := make([]map[string]interface{}, len(result.Nodes))
-	sort.Sort(RawList(result.Nodes))
-	for i, n := range result.Nodes {
-		err = json.Unmarshal(n, &nodes[i])
-		c.Assert(err, check.IsNil)
-	}
-	c.Assert(nodes, check.DeepEquals, []map[string]interface{}{
-		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool1"}},
-		{"Address": "host1.com:2375", "Pool": "pool1", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool1"}},
-		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
-		{"Address": "host2.com:2375", "Pool": "pool2", "Status": "enabled", "Metadata": map[string]interface{}{"pool": "pool2", "foo": "bar"}},
+	sort.Slice(result.Nodes, func(i, j int) bool {
+		return result.Nodes[i].Address+result.Nodes[i].Pool < result.Nodes[j].Address+result.Nodes[j].Pool
+	})
+	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
+		{Address: "host1.com:2375", Pool: "pool1", Status: "enabled", Metadata: map[string]string{"pool": "pool1"}},
+		{Address: "host1.com:2375", Pool: "pool1", Status: "enabled", Metadata: map[string]string{"pool": "pool1"}},
+		{Address: "host2.com:2375", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"pool": "pool2", "foo": "bar"}},
+		{Address: "host2.com:2375", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"pool": "pool2", "foo": "bar"}},
 	})
 }
 

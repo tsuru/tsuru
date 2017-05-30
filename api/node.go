@@ -231,8 +231,8 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 }
 
 type listNodeResponse struct {
-	Nodes    []json.RawMessage `json:"nodes"`
-	Machines []iaas.Machine    `json:"machines"`
+	Nodes    []provision.NodeSpec `json:"nodes"`
+	Machines []iaas.Machine       `json:"machines"`
 }
 
 // title: list nodes
@@ -252,7 +252,7 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	provNameMap := map[string]string{}
-	var allNodes []provision.Node
+	var allNodes []provision.NodeSpec
 	for _, prov := range provs {
 		nodeProv, ok := prov.(provision.NodeProvisioner)
 		if !ok {
@@ -261,18 +261,22 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		var nodes []provision.Node
 		nodes, err = nodeProv.ListNodes(nil)
 		if err != nil {
-			return err
+			allNodes = append(allNodes, provision.NodeSpec{
+				Address: fmt.Sprintf("%s nodes", prov.GetName()),
+				Status:  fmt.Sprintf("ERROR: %v", err),
+			})
+			continue
 		}
 		for _, n := range nodes {
 			provNameMap[n.Address()] = prov.GetName()
+			allNodes = append(allNodes, provision.NodeToSpec(n))
 		}
-		allNodes = append(allNodes, nodes...)
 	}
 	if pools != nil {
-		filteredNodes := make([]provision.Node, 0, len(allNodes))
+		filteredNodes := make([]provision.NodeSpec, 0, len(allNodes))
 		for _, node := range allNodes {
 			for _, pool := range pools {
-				if node.Pool() == pool {
+				if node.Pool == pool {
 					filteredNodes = append(filteredNodes, node)
 					break
 				}
@@ -304,15 +308,8 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	nodesJson := make([]json.RawMessage, len(allNodes))
-	for i, n := range allNodes {
-		nodesJson[i], err = provision.NodeToJSON(n)
-		if err != nil {
-			return err
-		}
-	}
 	result := listNodeResponse{
-		Nodes:    nodesJson,
+		Nodes:    allNodes,
 		Machines: machines,
 	}
 	w.Header().Set("Content-Type", "application/json")
