@@ -441,6 +441,7 @@ func (p *swarmProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (p
 		if errors.Cause(err) == errNoSwarmNode {
 			return nil, provision.ErrNodeNotFound
 		}
+		return nil, err
 	}
 	tasks, err := client.ListTasks(docker.ListTasksOptions{})
 	if err != nil {
