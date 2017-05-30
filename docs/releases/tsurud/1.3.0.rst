@@ -67,6 +67,8 @@ Other improvements
   `#1535 <https://github.com/tsuru/tsuru/issues/1535>`_
 * `machine-template-update` command now supports updating the IaaS
   `#1539 <https://github.com/tsuru/tsuru/issues/1539>`_
+* Redis is no longer required for log streaming (``tsuru app-log -f``), tail
+  cursors directly on MongoDB will now be used.
 
 .. _migrations-1.3.0:
 

@@ -35,9 +35,6 @@ routers:
   hipache:
     type: hipache
     domain: tsuru-sample.com
-pubsub:
-  redis-host: localhost
-  redis-port: 6379
 queue:
   mongo-url: localhost
   mongo-database: queuedb

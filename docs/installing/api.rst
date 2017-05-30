@@ -66,9 +66,6 @@ configuration is described below, please note that you should replace the values
     database:
         url: <your-mongodb-server>:27017
         name: tsurudb
-    pubsub:
-        redis-host: <your-redis-server>
-        redis-port: 6379
     queue:
         mongo-url: <your-mongodb-server>:27017
         mongo-database: queuedb

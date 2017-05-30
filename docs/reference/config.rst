@@ -470,40 +470,7 @@ name already specified in the connection url.
 pubsub
 ++++++
 
-``pubsub`` configuration is optional and depends on a redis server instance.
-It's used only for following application logs (running ``tsuru app-log -f``). If
-this is not configured tsuru will fail when running ``tsuru app-log -f``.
-
-Previously the configuration for this redis server was inside ``redis-queue:*``
-keys shown below. Using these keys is deprecated and tsuru will start ignoring
-them before 1.0 release.
-
-pubsub:redis-*
-++++++++++++++
-
-The Redis server to be used for pub/sub. For details on all available options
-for connecting to redis check :ref:`common redis configuration
-<config_common_redis>`
-
-redis-queue:host
-++++++++++++++++
-
-Deprecated. See ``pubsub:redis-*``.
-
-redis-queue:port
-++++++++++++++++
-
-Deprecated. See ``pubsub:redis-*``.
-
-redis-queue:password
-++++++++++++++++++++
-
-Deprecated. See ``pubsub:redis-*``.
-
-redis-queue:db
-++++++++++++++
-
-Deprecated. See ``pubsub:redis-*``.
+Deprecated: These settings are obsolete and are ignored as of tsuru 1.3.0.
 
 .. _config_admin_user:
 
@@ -1393,9 +1360,6 @@ Here is a complete example:
     database:
         url: <your-mongodb-server>:27017
         name: tsurudb
-    pubsub:
-        redis-host: <your-redis-server>
-        redis-port: 6379
     queue:
         mongo-url: <your-mongodb-server>:27017
         mongo-database: queuedb
