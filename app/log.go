@@ -5,7 +5,8 @@
 package app
 
 import (
-	"encoding/json"
+	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,27 +16,19 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/queue"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
-	LogPubSubQueuePrefix = "pubsub:"
-
-	bulkMaxWaitMongoTime = 2 * time.Second
-	bulkMaxWaitRedisTime = 500 * time.Millisecond
+	bulkMaxWaitMongoTime = 1 * time.Second
 	bulkMaxNumberMsgs    = 1000
-	notifyGoroutines     = 10
 
 	buckets = append([]float64{0.1, 0.5}, prometheus.ExponentialBuckets(1, 1.6, 15)...)
 
 	logsInQueue = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "tsuru_logs_queue_current",
 		Help: "The current number of log entries in dispatcher queue.",
-	})
-
-	logsInNotifyQueue = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "tsuru_logs_notify_queue_current",
-		Help: "The current number of log entries in notify queue.",
 	})
 
 	logsQueueBlockedTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -58,20 +51,9 @@ var (
 		Help: "The number of log entries written to mongo.",
 	})
 
-	logsPublished = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_logs_published_total",
-		Help: "The number of log entries published to redis.",
-	})
-
-	logsPublishLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "tsuru_logs_publish_duration_seconds",
-		Help:    "The latency distributions for log messages to be published.",
-		Buckets: buckets,
-	})
-
-	logsPublishFullLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "tsuru_logs_publish_full_duration_seconds",
-		Help:    "The latency distributions for log messages to be published since being sent by app.",
+	logsMongoFullLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "tsuru_logs_mongo_full_duration_seconds",
+		Help:    "The latency distributions for log messages to be stored in database.",
 		Buckets: buckets,
 	})
 
@@ -84,61 +66,108 @@ var (
 
 func init() {
 	prometheus.MustRegister(logsInQueue)
-	prometheus.MustRegister(logsInNotifyQueue)
 	prometheus.MustRegister(logsQueueSize)
 	prometheus.MustRegister(logsEnqueued)
 	prometheus.MustRegister(logsWritten)
-	prometheus.MustRegister(logsPublished)
 	prometheus.MustRegister(logsQueueBlockedTotal)
-	prometheus.MustRegister(logsPublishLatency)
-	prometheus.MustRegister(logsPublishFullLatency)
+	prometheus.MustRegister(logsMongoFullLatency)
 	prometheus.MustRegister(logsMongoLatency)
 }
 
 type LogListener struct {
-	c    <-chan Applog
-	q    queue.PubSubQ
-	quit chan struct{}
+	c       <-chan Applog
+	logConn *db.LogStorage
+	quit    chan struct{}
 }
 
-func logQueueName(appName string) string {
-	return LogPubSubQueuePrefix + appName
+func isCappedPositionLost(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "CappedPositionLost")
+}
+
+func isSessionClosed(r interface{}) bool {
+	return fmt.Sprintf("%v", r) == "Session already closed"
 }
 
 func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
-	pubSubQ := queue.Factory().PubSub(logQueueName(a.Name))
-	subChan, err := pubSubQ.Sub()
+	conn, err := db.LogConn()
 	if err != nil {
 		return nil, err
 	}
 	c := make(chan Applog, 10)
 	quit := make(chan struct{})
+	coll := conn.Logs(a.Name)
+	var lastLog Applog
+	err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
+	if err == mgo.ErrNotFound {
+		// Tail cursors do not work correctly if the collection is empty (the
+		// Next() call wouldn't block). So if the collection is empty we insert
+		// the very first log line in it. This is quite rare in the real world
+		// though so the impact of this extra log message is really small.
+		err = a.Log("Logs initialization", "tsuru", "")
+		if err != nil {
+			return nil, err
+		}
+		err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
+	}
+	if err != nil {
+		return nil, err
+	}
+	lastId := lastLog.MongoID
+	mkQuery := func() bson.M {
+		m := bson.M{
+			"_id": bson.M{"$gt": lastId},
+		}
+		if filterLog.Source != "" {
+			m["source"] = filterLog.Source
+		}
+		if filterLog.Unit != "" {
+			m["unit"] = filterLog.Unit
+		}
+		return m
+	}
+	query := coll.Find(mkQuery())
+	tailTimeout := 10 * time.Second
+	iter := query.Sort("$natural").Tail(tailTimeout)
 	go func() {
 		defer close(c)
+		defer func() {
+			if r := recover(); r != nil {
+				if isSessionClosed(r) {
+					return
+				}
+				panic(err)
+			}
+		}()
 		for {
-			var msg []byte
-			select {
-			case msg = <-subChan:
-			case <-quit:
-				return
-			}
-			applog := Applog{}
-			err := json.Unmarshal(msg, &applog)
-			if err != nil {
-				log.Errorf("Unparsable log message, ignoring: %s", string(msg))
-				continue
-			}
-			if (filterLog.Source == "" || filterLog.Source == applog.Source) &&
-				(filterLog.Unit == "" || filterLog.Unit == applog.Unit) {
+			var applog Applog
+			for iter.Next(&applog) {
+				lastId = applog.MongoID
 				select {
 				case c <- applog:
 				case <-quit:
+					iter.Close()
 					return
 				}
 			}
+			if iter.Timeout() {
+				continue
+			}
+			if err := iter.Err(); err != nil {
+				if !isCappedPositionLost(err) {
+					log.Errorf("error tailing logs: %v", err)
+					iter.Close()
+					return
+				}
+			}
+			iter.Close()
+			query = coll.Find(mkQuery())
+			iter = query.Sort("$natural").Tail(tailTimeout)
 		}
 	}()
-	l := LogListener{c: c, q: pubSubQ, quit: quit}
+	l := LogListener{c: c, logConn: conn, quit: quit}
 	return &l, nil
 }
 
@@ -146,41 +175,21 @@ func (l *LogListener) ListenChan() <-chan Applog {
 	return l.c
 }
 
-func (l *LogListener) Close() (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = errors.Errorf("Recovered panic closing listener (possible double close): %v", r)
-		}
-	}()
-	close(l.quit)
-	err = l.q.UnSub()
-	return
-}
-
-func notify(appName string, messages []interface{}) {
-	pubSubQ := queue.Factory().PubSub(logQueueName(appName))
-	for _, msg := range messages {
-		bytes, err := json.Marshal(msg)
-		if err != nil {
-			log.Errorf("Error on logs notify: %s", err)
-			continue
-		}
-		err = pubSubQ.Pub(bytes)
-		if err != nil {
-			log.Errorf("Error on logs notify: %s", err)
-		}
+func (l *LogListener) Close() {
+	l.logConn.Close()
+	if l.quit != nil {
+		close(l.quit)
+		l.quit = nil
 	}
+	return
 }
 
 type LogDispatcher struct {
 	mu             sync.RWMutex
-	sendMu         sync.Mutex
 	dispatchers    map[string]*appLogDispatcher
 	msgCh          chan *msgWithTS
-	notifyMsgCh    chan *msgWithTS
 	shuttingDown   int32
 	doneProcessing chan struct{}
-	doneNotifying  chan struct{}
 }
 
 type msgWithTS struct {
@@ -192,12 +201,9 @@ func NewlogDispatcher(chanSize int) *LogDispatcher {
 	d := &LogDispatcher{
 		dispatchers:    make(map[string]*appLogDispatcher),
 		msgCh:          make(chan *msgWithTS, chanSize),
-		notifyMsgCh:    make(chan *msgWithTS, chanSize),
 		doneProcessing: make(chan struct{}),
-		doneNotifying:  make(chan struct{}),
 	}
 	go d.runWriter()
-	d.runNotifier()
 	shutdown.Register(d)
 	logsQueueSize.Set(float64(chanSize))
 	return d
@@ -222,46 +228,9 @@ func (d *LogDispatcher) getMessageDispatcher(msg *Applog) *appLogDispatcher {
 	return appD
 }
 
-func (d *LogDispatcher) runNotifier() {
-	wg := sync.WaitGroup{}
-	closeAll := make(chan struct{})
-	loopNotifier := func() {
-		nb := newNotifyBulk()
-		defer func() {
-			nb.stopWait()
-			wg.Done()
-		}()
-		for {
-			var msgExtra *msgWithTS
-			select {
-			case msgExtra = <-d.notifyMsgCh:
-				logsInNotifyQueue.Dec()
-			case <-closeAll:
-				return
-			}
-			if msgExtra == nil {
-				close(closeAll)
-				return
-			}
-			nb.send(msgExtra)
-		}
-	}
-	for i := 0; i < notifyGoroutines; i++ {
-		wg.Add(1)
-		go loopNotifier()
-	}
-	go func() {
-		wg.Wait()
-		logsInNotifyQueue.Set(0)
-		close(d.doneNotifying)
-	}()
-}
-
 func (d *LogDispatcher) runWriter() {
 	defer close(d.doneProcessing)
 	for msgExtra := range d.msgCh {
-		logsInNotifyQueue.Inc()
-		d.notifyMsgCh <- msgExtra
 		if msgExtra == nil {
 			break
 		}
@@ -296,51 +265,10 @@ func (d *LogDispatcher) Shutdown() {
 	atomic.StoreInt32(&d.shuttingDown, 1)
 	d.msgCh <- nil
 	<-d.doneProcessing
-	<-d.doneNotifying
 	logsInQueue.Set(0)
 	for _, appD := range d.dispatchers {
 		appD.stopWait()
 	}
-}
-
-type notifyBulk struct {
-	*bulkProcessor
-	pubsubQ queue.PubSubQ
-}
-
-func newNotifyBulk() *notifyBulk {
-	nb := &notifyBulk{
-		bulkProcessor: initBulkProcessor(bulkMaxWaitRedisTime, bulkMaxNumberMsgs),
-		pubsubQ:       queue.Factory().PubSub(""),
-	}
-	nb.bulkProcessor.flushable = nb
-	go nb.run()
-	return nb
-}
-
-func (nb *notifyBulk) flush(msgs []interface{}, lastMessage *msgWithTS) bool {
-	pubMsgs := make([]queue.PubMsg, len(msgs))
-	for i, msg := range msgs {
-		appLogMsg := msg.(*Applog)
-		data, err := json.Marshal(appLogMsg)
-		if err != nil {
-			log.Errorf("Error on logs notify marshal: %s", err)
-			continue
-		}
-		pubMsgs[i] = queue.PubMsg{
-			Message: data,
-			Name:    logQueueName(appLogMsg.AppName),
-		}
-	}
-	err := nb.pubsubQ.PubMulti(pubMsgs)
-	if err != nil {
-		log.Errorf("Error on logs notify publish: %s", err)
-		return false
-	}
-	logsPublishLatency.Observe(time.Since(lastMessage.arriveTime).Seconds())
-	logsPublishFullLatency.Observe(time.Since(lastMessage.msg.Date).Seconds())
-	logsPublished.Add(float64(len(msgs)))
-	return true
 }
 
 type appLogDispatcher struct {
@@ -373,6 +301,7 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) boo
 	}
 	if lastMessage != nil {
 		logsMongoLatency.Observe(time.Since(lastMessage.arriveTime).Seconds())
+		logsMongoFullLatency.Observe(time.Since(lastMessage.msg.Date).Seconds())
 	}
 	logsWritten.Add(float64(len(msgs)))
 	return true

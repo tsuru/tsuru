@@ -49,7 +49,6 @@ func (s *LogSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_log_api_tests")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
-	app.LogPubSubQueuePrefix = "pubsub:api-log-test:"
 }
 
 func (s *LogSuite) SetUpTest(c *check.C) {
@@ -77,6 +76,18 @@ func (s *LogSuite) TearDownSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer logConn.Close()
 	logConn.Logs("myapp").Database.DropDatabase()
+}
+
+func compareLogs(c *check.C, logs1 []app.Applog, logs2 []app.Applog) {
+	for i := range logs1 {
+		logs1[i].MongoID = ""
+		logs1[i].Date = logs1[i].Date.UTC()
+	}
+	for i := range logs2 {
+		logs2[i].MongoID = ""
+		logs2[i].Date = logs2[i].Date.UTC()
+	}
+	c.Assert(logs1, check.DeepEquals, logs2)
 }
 
 func (s *S) TestAddLogsHandler(c *check.C) {
@@ -136,7 +147,7 @@ loop:
 	logs, err := a1.LastLogs(3, app.Applog{})
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
-	c.Assert(logs, check.DeepEquals, []app.Applog{
+	compareLogs(c, logs, []app.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
 		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
 		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", AppName: "myapp1", Unit: "unit3"},
@@ -144,7 +155,7 @@ loop:
 	logs, err = a2.LastLogs(2, app.Applog{})
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
-	c.Assert(logs, check.DeepEquals, []app.Applog{
+	compareLogs(c, logs, []app.Applog{
 		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
 		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", AppName: "myapp2", Unit: "unit4"},
 	})
@@ -207,7 +218,7 @@ loop:
 	}
 	logs, err := a1.LastLogs(1, app.Applog{})
 	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.DeepEquals, []app.Applog{
+	compareLogs(c, logs, []app.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
 	})
 }

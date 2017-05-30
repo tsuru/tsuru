@@ -1131,13 +1131,14 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	logChan := l.ListenChan()
 	for {
 		var logMsg app.Applog
+		var chOpen bool
 		select {
 		case <-closeChan:
 			return nil
-		case logMsg = <-logChan:
+		case logMsg, chOpen = <-logChan:
 		}
-		if logMsg == (app.Applog{}) {
-			break
+		if !chOpen {
+			return nil
 		}
 		err := encoder.Encode([]app.Applog{logMsg})
 		if err != nil {

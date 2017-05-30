@@ -100,7 +100,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(data, &s.zeroLock)
 	c.Assert(err, check.IsNil)
-	LogPubSubQueuePrefix = "pubsub:app-test:"
 }
 
 func (s *S) TearDownSuite(c *check.C) {

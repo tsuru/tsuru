@@ -34,7 +34,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -3707,7 +3706,16 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *check.C)
 	c.Assert(e.Message, check.Equals, `Parameter "lines" must be an integer.`)
 }
 
-func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
+type closeableRecorder struct {
+	*httptest.ResponseRecorder
+	ch chan bool
+}
+
+func (r *closeableRecorder) CloseNotify() <-chan bool {
+	return r.ch
+}
+
+func (s *S) TestAppLogFollow(c *check.C) {
 	a := app.App{Name: "lost1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -3718,11 +3726,11 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
+	recorder := &closeableRecorder{httptest.NewRecorder(), make(chan bool)}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		recorder := httptest.NewRecorder()
 		logErr := appLog(recorder, request, token)
 		c.Assert(logErr, check.IsNil)
 		splitted := strings.Split(strings.TrimSpace(recorder.Body.String()), "\n")
@@ -3747,11 +3755,10 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	q := queue.Factory().PubSub(app.LogPubSubQueuePrefix + a.Name)
-	err = q.Pub([]byte(`{"message": "x"}`))
+	err = a.Log("x", "", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
-	listener.Close()
+	close(recorder.ch)
 	wg.Wait()
 }
 
@@ -3766,11 +3773,11 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
+	recorder := &closeableRecorder{httptest.NewRecorder(), make(chan bool)}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		recorder := httptest.NewRecorder()
 		logErr := appLog(recorder, request, token)
 		c.Assert(logErr, check.IsNil)
 		splitted := strings.Split(strings.TrimSpace(recorder.Body.String()), "\n")
@@ -3795,13 +3802,12 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	q := queue.Factory().PubSub(app.LogPubSubQueuePrefix + a.Name)
-	err = q.Pub([]byte(`{"message": "x", "source": "app"}`))
+	err = a.Log("x", "app", "")
 	c.Assert(err, check.IsNil)
-	err = q.Pub([]byte(`{"message": "y", "source": "web"}`))
+	err = a.Log("y", "web", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
-	listener.Close()
+	close(recorder.ch)
 	wg.Wait()
 }
 

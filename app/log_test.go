@@ -11,26 +11,76 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
 )
+
+func insertLogs(appName string, logs []interface{}) error {
+	conn, err := db.LogConn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Logs(appName).Insert(logs...)
+}
+
+func compareLogs(c *check.C, logs1 []Applog, logs2 []Applog) {
+	for i := range logs1 {
+		logs1[i].MongoID = ""
+		logs1[i].Date = logs1[i].Date.UTC()
+	}
+	for i := range logs2 {
+		logs2[i].MongoID = ""
+		logs2[i].Date = logs2[i].Date.UTC()
+	}
+	c.Assert(logs1, check.DeepEquals, logs2)
+}
 
 func (s *S) TestNewLogListener(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
-	c.Assert(l.q, check.NotNil)
+	c.Assert(l.quit, check.NotNil)
 	c.Assert(l.c, check.NotNil)
-	notify("myapp", []interface{}{Applog{Message: "123"}})
+	err = insertLogs("myapp", []interface{}{Applog{Message: "123"}})
+	c.Assert(err, check.IsNil)
 	logMsg := <-l.c
 	c.Assert(logMsg.Message, check.Equals, "123")
+	err = insertLogs("myapp", []interface{}{Applog{Message: "456"}})
+	c.Assert(err, check.IsNil)
+	logMsg = <-l.c
+	c.Assert(logMsg.Message, check.Equals, "456")
+}
+
+func (s *S) TestNewLogListenerFiltered(c *check.C) {
+	app := App{Name: "myapp"}
+	l, err := NewLogListener(&app, Applog{Source: "web", Unit: "u1"})
+	c.Assert(err, check.IsNil)
+	defer l.Close()
+	c.Assert(l.quit, check.NotNil)
+	c.Assert(l.c, check.NotNil)
+	err = insertLogs("myapp", []interface{}{
+		Applog{Message: "1", Source: "web", Unit: "u1"},
+		Applog{Message: "2", Source: "worker", Unit: "u1"},
+		Applog{Message: "3", Source: "web", Unit: "u1"},
+		Applog{Message: "4", Source: "web", Unit: "u2"},
+		Applog{Message: "5", Source: "web", Unit: "u1"},
+	})
+	c.Assert(err, check.IsNil)
+	logMsg := <-l.c
+	c.Assert(logMsg.Message, check.Equals, "1")
+	logMsg = <-l.c
+	c.Assert(logMsg.Message, check.Equals, "3")
+	logMsg = <-l.c
+	c.Assert(logMsg.Message, check.Equals, "5")
 }
 
 func (s *S) TestNewLogListenerClosingChannel(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
-	c.Assert(l.q, check.NotNil)
+	c.Assert(l.quit, check.NotNil)
 	c.Assert(l.c, check.NotNil)
 	l.Close()
 	_, ok := <-l.c
@@ -41,25 +91,25 @@ func (s *S) TestLogListenerClose(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
-	err = l.Close()
-	c.Assert(err, check.IsNil)
+	l.Close()
 	_, ok := <-l.c
 	c.Assert(ok, check.Equals, false)
 }
 
 func (s *S) TestLogListenerDoubleClose(c *check.C) {
+	defer func() {
+		c.Assert(recover(), check.IsNil)
+	}()
 	app := App{Name: "yourapp"}
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
-	err = l.Close()
-	c.Assert(err, check.IsNil)
-	err = l.Close()
-	c.Assert(err, check.NotNil)
+	l.Close()
+	l.Close()
 }
 
 func (s *S) TestNotify(c *check.C) {
 	var logs struct {
-		l []interface{}
+		l []Applog
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
@@ -78,7 +128,7 @@ func (s *S) TestNotify(c *check.C) {
 		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "some"},
 		Applog{Date: t, Message: "This program has performed an illegal operation.", Source: "tsuru", Unit: "some"},
 	}
-	notify(app.Name, ms)
+	insertLogs(app.Name, ms)
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {
@@ -105,12 +155,12 @@ func (s *S) TestNotify(c *check.C) {
 	}
 	logs.Lock()
 	defer logs.Unlock()
-	c.Assert(logs.l, check.DeepEquals, ms)
+	compareLogs(c, logs.l, []Applog{ms[0].(Applog), ms[1].(Applog)})
 }
 
 func (s *S) TestNotifyFiltered(c *check.C) {
 	var logs struct {
-		l []interface{}
+		l []Applog
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
@@ -130,7 +180,7 @@ func (s *S) TestNotifyFiltered(c *check.C) {
 		Applog{Date: t, Message: "This program has performed an illegal operation.", Source: "other", Unit: "unit1"},
 		Applog{Date: t, Message: "Last one.", Source: "tsuru", Unit: "unit2"},
 	}
-	notify(app.Name, ms)
+	insertLogs(app.Name, ms)
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {
@@ -157,10 +207,9 @@ func (s *S) TestNotifyFiltered(c *check.C) {
 	}
 	logs.Lock()
 	defer logs.Unlock()
-	expected := []interface{}{
-		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1"},
-	}
-	c.Assert(logs.l, check.DeepEquals, expected)
+	compareLogs(c, logs.l, []Applog{
+		{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1"},
+	})
 }
 
 func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
@@ -170,12 +219,11 @@ func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
 	app := App{Name: "fade"}
 	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, check.IsNil)
-	err = l.Close()
-	c.Assert(err, check.IsNil)
+	l.Close()
 	ms := []interface{}{
 		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
 	}
-	notify(app.Name, ms)
+	insertLogs(app.Name, ms)
 }
 
 func (s *S) TestLogDispatcherSend(c *check.C) {
@@ -197,7 +245,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	dispatcher.Shutdown()
 	logs, err := app.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.DeepEquals, []Applog{logMsg})
+	compareLogs(c, logs, []Applog{logMsg})
 	err = dispatcher.Send(&logMsg)
 	c.Assert(err, check.ErrorMatches, `log dispatcher is shutting down`)
 	var dtoMetric dto.Metric
@@ -206,7 +254,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	ch := listener.ListenChan()
 	recvMsg := <-ch
 	recvMsg.Date = baseTime
-	c.Assert(recvMsg, check.DeepEquals, logMsg)
+	compareLogs(c, []Applog{recvMsg}, []Applog{logMsg})
 }
 
 func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {

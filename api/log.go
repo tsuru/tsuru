@@ -72,6 +72,9 @@ func scanLogs(stream io.Reader) error {
 			}
 			return errors.Wrap(err, "wslogs: parsing log line")
 		}
+		if entry.Date.IsZero() || entry.AppName == "" || entry.Message == "" {
+			continue
+		}
 		err = dispatcher.Send(&entry)
 		if err != nil {
 			return err

@@ -205,6 +205,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 
 // Applog represents a log entry.
 type Applog struct {
+	MongoID bson.ObjectId `bson:"_id,omitempty" json:"-"`
 	Date    time.Time
 	Message string
 	Source  string
@@ -1513,7 +1514,6 @@ func (app *App) Log(message, source, unit string) error {
 		}
 	}
 	if len(logs) > 0 {
-		notify(app.Name, logs)
 		conn, err := db.LogConn()
 		if err != nil {
 			return err
