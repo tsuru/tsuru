@@ -128,6 +128,7 @@ type App struct {
 	RouterOpts     map[string]string
 	Deploys        uint
 	Tags           []string
+	Error          string
 
 	quota.Quota
 	provisioner provision.Provisioner
@@ -176,10 +177,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["platform"] = app.Platform
 	result["teams"] = app.Teams
 	units, err := app.Units()
-	if err != nil {
-		return nil, err
+	if err == nil {
+		result["units"] = units
+	} else {
+		result["error"] = fmt.Sprintf("unable to list app units: %+v", err)
 	}
-	result["units"] = units
 	result["repository"] = repo.ReadWriteURL
 	result["ip"] = app.Ip
 	result["cname"] = app.CName

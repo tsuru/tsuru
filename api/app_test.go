@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -491,6 +492,31 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
 	c.Assert(apps[1].Pool, check.Equals, app2.Pool)
 	c.Assert(apps[1].Tags, check.DeepEquals, app2.Tags)
+}
+
+func (s *S) TestAppListUnitsError(c *check.C) {
+	app1 := app.App{
+		Name:      "app1",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	provisiontest.ProvisionerInstance.PrepareFailure("Units", fmt.Errorf("some units error"))
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 1)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Error, check.Equals, "unable to list app units: some units error")
 }
 
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *check.C) {

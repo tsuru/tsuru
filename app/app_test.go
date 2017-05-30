@@ -2586,6 +2586,43 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
+	provisiontest.ProvisionerInstance.PrepareFailure("Units", fmt.Errorf("my err"))
+	app := App{
+		Name: "name",
+	}
+	expected := map[string]interface{}{
+		"name":        "name",
+		"platform":    "",
+		"repository":  "",
+		"teams":       nil,
+		"error":       "unable to list app units: my err",
+		"ip":          "",
+		"cname":       nil,
+		"owner":       "",
+		"deploys":     float64(0),
+		"pool":        "",
+		"description": "",
+		"teamowner":   "",
+		"lock":        s.zeroLock,
+		"plan": map[string]interface{}{
+			"name":     "",
+			"memory":   float64(0),
+			"swap":     float64(0),
+			"cpushare": float64(0),
+			"router":   "",
+		},
+		"router": "",
+		"tags":   nil,
+	}
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+}
+
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{Name: "myapp", TeamOwner: s.team.Name}

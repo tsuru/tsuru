@@ -109,12 +109,14 @@ type miniApp struct {
 	Ip        string            `json:"ip"`
 	Lock      provision.AppLock `json:"lock"`
 	Tags      []string          `json:"tags"`
+	Error     string            `json:"error,omitempty"`
 }
 
 func minifyApp(app app.App) (miniApp, error) {
+	var unitsError string
 	units, err := app.Units()
 	if err != nil {
-		return miniApp{}, err
+		unitsError = fmt.Sprintf("unable to list app units: %+v", err)
 	}
 	return miniApp{
 		Name:      app.Name,
@@ -126,6 +128,7 @@ func minifyApp(app app.App) (miniApp, error) {
 		Ip:        app.Ip,
 		Lock:      &app.Lock,
 		Tags:      app.Tags,
+		Error:     unitsError,
 	}, nil
 }
 

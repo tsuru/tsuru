@@ -1156,6 +1156,9 @@ func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
 }
 
 func (p *FakeProvisioner) Units(app provision.App) ([]provision.Unit, error) {
+	if err := p.getError("Units"); err != nil {
+		return nil, err
+	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	return p.apps[app.GetName()].units, nil
