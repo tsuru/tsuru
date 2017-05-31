@@ -12,6 +12,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,9 +27,13 @@ const alphaAffinityAnnotation = "scheduler.alpha.kubernetes.io/affinity"
 type nodeContainerManager struct{}
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
-	return forEachCluster(func(cluster *clusterClient) error {
+	err := forEachCluster(func(cluster *clusterClient) error {
 		return m.deployNodeContainerForCluster(cluster, config, pool, filter, placementOnly)
 	})
+	if err == cluster.ErrNoCluster {
+		return nil
+	}
+	return err
 }
 
 func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClient, config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {

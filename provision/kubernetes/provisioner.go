@@ -632,9 +632,13 @@ func (p *kubernetesProvisioner) UpgradeNodeContainer(name string, pool string, w
 }
 
 func (p *kubernetesProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
-	return forEachCluster(func(cluster *clusterClient) error {
+	err := forEachCluster(func(cluster *clusterClient) error {
 		return cleanupDaemonSet(cluster, name, pool)
 	})
+	if err == cluster.ErrNoCluster {
+		return nil
+	}
+	return err
 }
 
 func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
