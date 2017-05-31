@@ -433,7 +433,7 @@ func (s *S) TestGetDockerClient(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	nodes := []cluster.Node{
-		cluster.Node{
+		{
 			Address:  "http://h1:80",
 			Metadata: map[string]string{"pool": "test-docker-client"},
 		},

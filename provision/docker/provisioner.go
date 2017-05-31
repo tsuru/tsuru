@@ -390,11 +390,7 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 }
 
 func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
-	deployImageID, err := image.AppVersionedImageName(app.GetName())
-	if err != nil {
-		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
-	}
-	imageID, err := p.deployPipeline(app, buildImageID, deployImageID, nil, evt)
+	imageID, err := p.deployPipeline(app, buildImageID, nil, evt)
 	if err != nil {
 		return "", err
 	}
@@ -454,7 +450,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, evt *event.Event) error {
 	err := p.deploy(a, imageId, evt)
 	if err != nil {
-		p.cleanImage(a.GetName(), imageId)
+		p.CleanImage(a.GetName(), imageId)
 	}
 	return err
 }

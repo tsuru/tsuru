@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 )
 
@@ -39,10 +40,25 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 	} else {
 		return "", errors.New("no valid files found")
 	}
-	versionImage, err := image.AppNewImageName(app.GetName())
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName())
 	if err != nil {
 		return "", fmt.Errorf("error getting new image name for app %s", app.GetName())
 	}
-	buildingImage := fmt.Sprintf("%s-builder", versionImage)
+	err = image.AppendAppBuilderImageName(app.GetName(), buildingImage)
+	if err != nil {
+		return "", fmt.Errorf("unable to save image name. (%s)", err.Error())
+	}
+	imgHistorySize := image.ImageHistorySize()
+	allImages, err := image.ListAppBuilderImages(app.GetName())
+	if err != nil {
+		log.Errorf("Couldn't list images for cleaning: %s", err)
+		return "", nil
+	}
+	limit := len(allImages) - imgHistorySize
+	if limit > 0 {
+		for _, imgName := range allImages[:limit] {
+			p.CleanImage(app.GetName(), imgName)
+		}
+	}
 	return buildingImage, nil
 }

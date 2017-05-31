@@ -49,8 +49,6 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 			return "", err
 		}
 		defer client.RemoveContainer(docker.RemoveContainerOptions{ID: rcont.ID, Force: true})
-	} else if opts.Redeploy {
-		return getCurrentBuilderImage(app.GetName())
 	} else if opts.ArchiveURL != "" {
 		tarFile, err = downloadFromURL(opts.ArchiveURL)
 		if err != nil {
@@ -100,8 +98,9 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 	if err != nil {
 		return "", err
 	}
+	defer client.RemoveImage(intermediateImageID)
 	cmds := dockercommon.ArchiveDeployCmds(app, fileURI)
-	imageID, err := b.buildPipeline(client, app, intermediateImageID, cmds, evt)
+	imageID, err := b.buildPipeline(p, client, app, intermediateImageID, cmds, evt)
 	if err != nil {
 		return "", err
 	}
@@ -109,7 +108,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 }
 
 func downloadFromContainer(client *docker.Client, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
-	imageName, err := getCurrentBuilderImage(app.GetName())
+	imageName, err := image.AppCurrentBuilderImageName(app.GetName())
 	if err != nil {
 		return nil, nil, errors.Errorf("App %s image not found", app.GetName())
 	}
@@ -147,12 +146,4 @@ func downloadFromURL(url string) (io.ReadCloser, error) {
 		return nil, errors.New("archive file is empty")
 	}
 	return ioutil.NopCloser(&out), nil
-}
-
-func getCurrentBuilderImage(app string) (string, error) {
-	builderImage, err := image.AppVersionedImageName(app)
-	if err != nil {
-		return "", errors.Errorf("App %s image not found", app)
-	}
-	return fmt.Sprintf("%s-builder", builderImage), nil
 }

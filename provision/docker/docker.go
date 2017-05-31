@@ -62,7 +62,7 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, deployImage string, commands []string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -72,12 +72,9 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, de
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	var err error
-	if deployImage == "" {
-		deployImage, err = image.AppNewImageName(app.GetName())
-		if err != nil {
-			return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
-		}
+	deployImage, err := image.AppNewImageName(app.GetName())
+	if err != nil {
+		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
 	var writer io.Writer = evt
 	if evt == nil {

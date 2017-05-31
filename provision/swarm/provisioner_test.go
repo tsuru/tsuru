@@ -2051,3 +2051,44 @@ func (s *S) TestSleepStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 }
+
+func (s *S) TestCleanImage(c *check.C) {
+	for i := 0; i < 5; i++ {
+		srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+		c.Assert(err, check.IsNil)
+		defer srv.Stop()
+		metadata := map[string]string{"count": fmt.Sprintf("%d", i), "pool": "p1"}
+		opts := provision.AddNodeOptions{
+			Address:  srv.URL(),
+			Metadata: metadata,
+		}
+		err = s.p.AddNode(opts)
+		c.Assert(err, check.IsNil, check.Commentf("server %d", i))
+		cli, err := docker.NewClient(srv.URL())
+		c.Assert(err, check.IsNil)
+		err = cli.PullImage(docker.PullImageOptions{
+			Repository: "myimg",
+			Tag:        "v1",
+		}, docker.AuthConfiguration{})
+		c.Assert(err, check.IsNil)
+		err = cli.PullImage(docker.PullImageOptions{
+			Repository: "myimg",
+			Tag:        "v2",
+		}, docker.AuthConfiguration{})
+		c.Assert(err, check.IsNil)
+		imgs, err := cli.ListImages(docker.ListImagesOptions{All: true})
+		c.Assert(err, check.IsNil)
+		c.Assert(imgs, check.HasLen, 2)
+	}
+	imageName := "myimg:v1"
+	s.p.CleanImage("teste", imageName)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 5)
+	for _, n := range nodes {
+		cli, err := newClient(n.Address())
+		imgs, err := cli.ListImages(docker.ListImagesOptions{All: true})
+		c.Assert(err, check.IsNil)
+		c.Assert(imgs, check.HasLen, 1)
+	}
+}

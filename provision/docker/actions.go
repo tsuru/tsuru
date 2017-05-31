@@ -825,7 +825,7 @@ var updateAppImage = action.Action{
 				}
 				continue
 			}
-			args.provisioner.cleanImage(args.app.GetName(), imgName)
+			args.provisioner.CleanImage(args.app.GetName(), imgName)
 		}
 		return ctx.Previous, nil
 	},
