@@ -222,10 +222,12 @@ func (s *Storage) Events() *storage.Collection {
 	ownerIndex := mgo.Index{Key: []string{"owner"}}
 	kindIndex := mgo.Index{Key: []string{"kind"}}
 	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}
+	uniqueIdIndex := mgo.Index{Key: []string{"uniqueid"}}
 	c := s.Collection("events")
 	c.EnsureIndex(ownerIndex)
 	c.EnsureIndex(kindIndex)
 	c.EnsureIndex(startTimeIndex)
+	c.EnsureIndex(uniqueIdIndex)
 	return c
 }
 
