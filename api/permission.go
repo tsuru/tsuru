@@ -638,3 +638,40 @@ func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(roles)
 }
+
+// title: list default roles
+// path: /roles
+// method: PUT
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdate) {
+		return permission.ErrUnauthorized
+	}
+	r.ParseForm()
+	roleName := r.FormValue("name")
+	newName := r.FormValue("newName")
+	contextType := r.FormValue("contextType")
+	description := r.FormValue("description")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermRoleUpdate),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = auth.UpdateRoleFromAllUsers(roleName, newName, contextType, description)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	return nil
+}
