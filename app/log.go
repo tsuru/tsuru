@@ -387,10 +387,10 @@ func (p *bulkProcessor) run() {
 			pos++
 			flush = p.bulkSize == pos
 		case <-t.C:
-			flush = pos > 0
+			flush = true
 			t.Reset(p.maxWaitTime)
 		}
-		if flush {
+		if flush && pos > 0 {
 			if p.flushable.flush(bulkBuffer[:pos], lastMessage) {
 				lastMessage = nil
 				pos = 0
