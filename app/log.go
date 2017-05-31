@@ -23,12 +23,18 @@ import (
 var (
 	bulkMaxWaitMongoTime = 1 * time.Second
 	bulkMaxNumberMsgs    = 1000
+	bulkQueueMaxSize     = 10000
 
 	buckets = append([]float64{0.1, 0.5}, prometheus.ExponentialBuckets(1, 1.6, 15)...)
 
 	logsInQueue = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "tsuru_logs_queue_current",
 		Help: "The current number of log entries in dispatcher queue.",
+	})
+
+	logsInAppQueues = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tsuru_logs_app_queues_current",
+		Help: "The current number of log entries in app queues.",
 	})
 
 	logsQueueBlockedTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -51,6 +57,11 @@ var (
 		Help: "The number of log entries written to mongo.",
 	})
 
+	logsDropped = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_logs_dropped_total",
+		Help: "The number of log entries dropped due to full buffers.",
+	})
+
 	logsMongoFullLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "tsuru_logs_mongo_full_duration_seconds",
 		Help:    "The latency distributions for log messages to be stored in database.",
@@ -66,9 +77,11 @@ var (
 
 func init() {
 	prometheus.MustRegister(logsInQueue)
+	prometheus.MustRegister(logsInAppQueues)
 	prometheus.MustRegister(logsQueueSize)
 	prometheus.MustRegister(logsEnqueued)
 	prometheus.MustRegister(logsWritten)
+	prometheus.MustRegister(logsDropped)
 	prometheus.MustRegister(logsQueueBlockedTotal)
 	prometheus.MustRegister(logsMongoFullLatency)
 	prometheus.MustRegister(logsMongoLatency)
@@ -310,9 +323,9 @@ func (d *appLogDispatcher) flush(msgs []interface{}, lastMessage *msgWithTS) boo
 type bulkProcessor struct {
 	maxWaitTime time.Duration
 	bulkSize    int
-	quit        chan struct{}
 	finished    chan struct{}
 	ch          chan *msgWithTS
+	nextNotify  *time.Timer
 	flushable   interface {
 		flush([]interface{}, *msgWithTS) bool
 	}
@@ -322,18 +335,29 @@ func initBulkProcessor(maxWait time.Duration, bulkSize int) *bulkProcessor {
 	return &bulkProcessor{
 		maxWaitTime: maxWait,
 		bulkSize:    bulkSize,
-		quit:        make(chan struct{}),
 		finished:    make(chan struct{}),
-		ch:          make(chan *msgWithTS),
+		ch:          make(chan *msgWithTS, bulkQueueMaxSize),
+		nextNotify:  time.NewTimer(0),
 	}
 }
 
 func (p *bulkProcessor) send(msg *msgWithTS) {
-	p.ch <- msg
+	select {
+	case p.ch <- msg:
+		logsInAppQueues.Set(float64(len(p.ch)))
+	default:
+		logsDropped.Inc()
+		select {
+		case <-p.nextNotify.C:
+			log.Errorf("dropping log messages to mongodb due to full channel buffer. app: %q, len: %d", msg.msg.AppName, len(p.ch))
+			p.nextNotify.Reset(time.Minute)
+		default:
+		}
+	}
 }
 
 func (p *bulkProcessor) stopWait() {
-	close(p.quit)
+	p.ch <- nil
 	<-p.finished
 }
 
@@ -347,10 +371,13 @@ func (p *bulkProcessor) run() {
 	for {
 		var flush bool
 		select {
-		case <-p.quit:
-			flush = pos > 0
-			shouldReturn = true
 		case msgExtra := <-p.ch:
+			logsInAppQueues.Set(float64(len(p.ch)))
+			if msgExtra == nil {
+				flush = true
+				shouldReturn = true
+				break
+			}
 			if pos == p.bulkSize {
 				flush = true
 				break
