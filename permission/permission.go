@@ -59,6 +59,10 @@ var (
 	}
 )
 
+func ParseContext(ctx string) (contextType, error) {
+	return parseContext(ctx)
+}
+
 func parseContext(ctx string) (contextType, error) {
 	for _, t := range ContextTypes {
 		if string(t) == ctx {
