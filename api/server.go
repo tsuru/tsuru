@@ -253,6 +253,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "Put", "/constraints", AuthorizationRequiredHandler(poolConstraintSet))
 
 	m.Add("1.0", "Get", "/roles", AuthorizationRequiredHandler(listRoles))
+	m.Add("1.4", "Put", "/roles", AuthorizationRequiredHandler(roleUpdate))
 	m.Add("1.0", "Post", "/roles", AuthorizationRequiredHandler(addRole))
 	m.Add("1.0", "Get", "/roles/{name}", AuthorizationRequiredHandler(roleInfo))
 	m.Add("1.0", "Delete", "/roles/{name}", AuthorizationRequiredHandler(removeRole))

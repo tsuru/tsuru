@@ -37,7 +37,6 @@ func (s *S) TestAddRole(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
-	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	roles, err := permission.ListRoles()
 	c.Assert(err, check.IsNil)
@@ -861,4 +860,120 @@ func (s *S) BenchmarkAddPermissionToRoleWithoutDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	sort.Strings(users)
 	c.Assert(users, check.DeepEquals, []string{s.user.Email})
+}
+
+func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("r1", "app", "")
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("r1", "app")
+	c.Assert(err, check.IsNil)
+	role := bytes.NewBufferString("name=r1&newName=r2&contextType=team&description=new+desc")
+	req, err := http.NewRequest("PUT", "/roles", role)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "r1"},
+			{"name": "newName", "value": "r2"},
+			{"name": "contextType", "value": "team"},
+			{"name": "description", "value": "new desc"},
+		},
+	}, eventtest.HasEvent)
+	r, err := permission.FindRole("r2")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(r.ContextType), check.Equals, "team")
+	c.Assert(string(r.Description), check.Equals, "new desc")
+	users, err := auth.ListUsersWithRole("r2")
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.HasLen, 1)
+}
+
+func (s *S) TestRoleUpdateUnauthorized(c *check.C) {
+	token := userWithPermission(c)
+	role := bytes.NewBufferString("name=r1&newName=&contextType=app&description=")
+	req, err := http.NewRequest("PUT", "/roles", role)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestRoleUpdateIncorrectContext(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("r1", "app", "")
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("r1", "app")
+	c.Assert(err, check.IsNil)
+	role := bytes.NewBufferString("name=r1&newName=&contextType=yasuo&description=")
+	req, err := http.NewRequest("PUT", "/roles", role)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid context type \"yasuo\"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleUpdateSingleField(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermRoleUpdate,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	user, err := token.User()
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("r1", "app", "Syncopy")
+	c.Assert(err, check.IsNil)
+	err = user.AddRole("r1", "app")
+	c.Assert(err, check.IsNil)
+	role := bytes.NewBufferString("name=r1&newName=&contextType=team&description=")
+	req, err := http.NewRequest("PUT", "/roles", role)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "r1"},
+			{"name": "newName", "value": ""},
+			{"name": "contextType", "value": "team"},
+			{"name": "description", "value": ""},
+		},
+	}, eventtest.HasEvent)
+	r, err := permission.FindRole("r1")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(r.ContextType), check.Equals, "team")
+	c.Assert(string(r.Description), check.Equals, "Syncopy")
+	users, err := auth.ListUsersWithRole("r1")
+	c.Assert(err, check.IsNil)
+	c.Assert(users, check.HasLen, 1)
 }
