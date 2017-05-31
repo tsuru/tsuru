@@ -153,6 +153,7 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 	_, err = s.b.Build(s.provisioner, a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
 	dclient, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
 	imgs, err := dclient.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 2)

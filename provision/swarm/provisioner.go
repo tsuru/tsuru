@@ -40,8 +40,6 @@ type swarmProvisioner struct{}
 
 var (
 	_ provision.Provisioner              = &swarmProvisioner{}
-	_ provision.ArchiveDeployer          = &swarmProvisioner{}
-	_ provision.UploadDeployer           = &swarmProvisioner{}
 	_ provision.ImageDeployer            = &swarmProvisioner{}
 	_ provision.ShellProvisioner         = &swarmProvisioner{}
 	_ provision.ExecutableProvisioner    = &swarmProvisioner{}
@@ -621,33 +619,46 @@ func (p *swarmProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
 	return nil
 }
 
-func (p *swarmProvisioner) ArchiveDeploy(a provision.App, archiveURL string, evt *event.Event) (imgID string, err error) {
-	baseImage := image.GetBuildImage(a)
-	buildingImage, err := image.AppNewImageName(a.GetName())
+func (p *swarmProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
+	client, err := chooseDBSwarmNode()
 	if err != nil {
-		return "", errors.WithStack(err)
+		return nil, err
 	}
+	return client, nil
+}
+
+func (p *swarmProvisioner) CleanImage(appName, imgName string) {
+	p.cleanImageInNodes(imgName)
+}
+
+func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
 	}
-	cmds := dockercommon.ArchiveDeployCmds(a, archiveURL)
-	srvID, task, err := runOnceBuildCmds(client, a, cmds, baseImage, buildingImage, evt)
+	deployImage, err := image.AppNewImageName(app.GetName())
+	if err != nil {
+		return "", err
+	}
+	srvID, task, err := runOnceBuildCmds(client, app, nil, buildImageID, deployImage, evt)
 	if srvID != "" {
 		defer removeServiceAndLog(client, srvID)
 	}
 	if err != nil {
 		return "", err
 	}
-	_, err = commitPushBuildImage(client, buildingImage, task.Status.ContainerStatus.ContainerID, a)
+	_, err = commitPushBuildImage(client, deployImage, task.Status.ContainerStatus.ContainerID, app)
 	if err != nil {
 		return "", err
 	}
-	err = deployProcesses(a, buildingImage, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return buildingImage, nil
+	err = deployProcesses(app, deployImage, nil)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return deployImage, nil
 }
 
 func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
@@ -688,23 +699,6 @@ func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event
 		return "", err
 	}
 	return newImage, nil
-}
-
-func (p *swarmProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, fileSize int64, build bool, evt *event.Event) (string, error) {
-	if build {
-		return "", errors.New("running UploadDeploy with build=true is not yet supported")
-	}
-	tarFile := dockercommon.AddDeployTarFile(archiveFile, fileSize, "archive.tar.gz")
-	defer tarFile.Close()
-	buildingImage, err := p.buildImage(app, tarFile, evt)
-	if err != nil {
-		return "", err
-	}
-	err = deployProcesses(app, buildingImage, nil)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-	return buildingImage, nil
 }
 
 func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {
