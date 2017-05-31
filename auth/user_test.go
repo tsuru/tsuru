@@ -487,3 +487,53 @@ func (s *S) TestAddRolesForEvent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Roles, check.DeepEquals, []RoleInstance{{Name: "r1", ContextValue: "team1"}})
 }
+
+func (s *S) TestUpdateRoleFromAllUsers(c *check.C) {
+	u1 := User{Email: "me1@tsuru.com", Password: "123"}
+	err := u1.Create()
+	c.Assert(err, check.IsNil)
+	u2 := User{Email: "me2@tsuru.com", Password: "123"}
+	err = u2.Create()
+	c.Assert(err, check.IsNil)
+	r1, err := permission.NewRole("r1", "app", "")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions("app.update.env", "app.deploy")
+	c.Assert(err, check.IsNil)
+	err = u1.AddRole("r1", "myapp1")
+	c.Assert(err, check.IsNil)
+	err = u2.AddRole("r1", "myapp2")
+	c.Assert(err, check.IsNil)
+	err = UpdateRoleFromAllUsers("r1", "r2", "team", "")
+	c.Assert(err, check.IsNil)
+	r, err := permission.FindRole("r2")
+	c.Assert(err, check.IsNil)
+	c.Assert(r.Name, check.Equals, "r2")
+	c.Assert(string(r.ContextType), check.Equals, "team")
+	err = UpdateRoleFromAllUsers("r1", "", "app", "")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "role not found")
+}
+
+func (s *S) TestUpdateRoleFromAllUsersWithSameNameAndDifferentDescriptions(c *check.C) {
+	u1 := User{Email: "me1@tsuru.com", Password: "123"}
+	err := u1.Create()
+	c.Assert(err, check.IsNil)
+	u2 := User{Email: "me2@tsuru.com", Password: "123"}
+	err = u2.Create()
+	c.Assert(err, check.IsNil)
+	r1, err := permission.NewRole("r1", "app", "")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions("app.update.env", "app.deploy")
+	c.Assert(err, check.IsNil)
+	err = u1.AddRole("r1", "myapp1")
+	c.Assert(err, check.IsNil)
+	err = u2.AddRole("r1", "myapp2")
+	c.Assert(err, check.IsNil)
+	err = UpdateRoleFromAllUsers("r1", "", "team", "some description")
+	c.Assert(err, check.IsNil)
+	r, err := permission.FindRole("r1")
+	c.Assert(err, check.IsNil)
+	c.Assert(r.Name, check.Equals, "r1")
+	c.Assert(string(r.ContextType), check.Equals, "team")
+	c.Assert(r.Description, check.Equals, "some description")
+}
