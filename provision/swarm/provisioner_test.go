@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -1243,7 +1244,7 @@ func (s *S) TestRegisterUnitNoImageLabel(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `invalid build image label for build task: .*`)
 }
 
-func (s *S) TestUploadDeploy(c *check.C) {
+func (s *S) TestDeploy(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
@@ -1262,7 +1263,22 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
-	imgID, err := s.p.UploadDeploy(a, ioutil.NopCloser(buf), int64(buf.Len()), false, evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveSize: int64(buf.Len()),
+	}
+	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1-builder")
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-myapp",
+		Tag:        "v1-builder",
+	}
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
 	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
@@ -1275,55 +1291,6 @@ func (s *S) TestUploadDeploy(c *check.C) {
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
 	})
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	task, err := cli.InspectTask(units[0].ID)
-	c.Assert(err, check.IsNil)
-	cont, err := cli.InspectContainer(task.Status.ContainerStatus.ContainerID)
-	c.Assert(err, check.IsNil)
-	c.Assert(cont.Config.Entrypoint, check.DeepEquals, []string{
-		"/bin/sh",
-		"-lc",
-		fmt.Sprintf(
-			"[ -d /home/application/current ] && cd /home/application/current; %s && exec python myapp.py",
-			extraRegisterCmds(a),
-		),
-	})
-}
-
-func (s *S) TestArchiveDeploy(c *check.C) {
-	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	defer srv.Stop()
-	opts := provision.AddNodeOptions{Address: srv.URL()}
-	err = s.p.AddNode(opts)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	attached := s.attachRegister(c, srv, true, a)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	imgID, err := s.p.ArchiveDeploy(a, "http://server/myfile.tgz", evt)
-	c.Assert(err, check.IsNil)
-	c.Assert(<-attached, check.Equals, true)
-	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
-	dbImg, err := image.AppCurrentImageName(a.GetName())
-	c.Assert(err, check.IsNil)
-	c.Assert(dbImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
-	units, err := s.p.Units(a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
-	})
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
 	task, err := cli.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
 	cont, err := cli.InspectContainer(task.Status.ContainerStatus.ContainerID)
@@ -1363,7 +1330,21 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	imgID, err := s.p.ArchiveDeploy(a, "http://server/myfile.tgz", evt)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "http://server/myfile.tgz",
+	}
+	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1-builder")
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-myapp",
+		Tag:        "v1-builder",
+	}
+	cli, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
+	imgID, err := s.p.Deploy(a, builderImgID, evt)
 	c.Assert(err, check.IsNil)
 	c.Assert(<-attached, check.Equals, true)
 	c.Assert(imgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
@@ -1376,8 +1357,6 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
 	})
-	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
 	task, err := cli.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(task.Spec.ContainerSpec.Command, check.DeepEquals, []string{
@@ -2087,6 +2066,7 @@ func (s *S) TestCleanImage(c *check.C) {
 	c.Assert(nodes, check.HasLen, 5)
 	for _, n := range nodes {
 		cli, err := newClient(n.Address())
+		c.Assert(err, check.IsNil)
 		imgs, err := cli.ListImages(docker.ListImagesOptions{All: true})
 		c.Assert(err, check.IsNil)
 		c.Assert(imgs, check.HasLen, 1)

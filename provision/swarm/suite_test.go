@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
+	fakebuilder "github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
@@ -27,6 +28,7 @@ import (
 
 type S struct {
 	p     *swarmProvisioner
+	b     *fakebuilder.FakeBuilder
 	conn  *db.Storage
 	user  *auth.User
 	team  *auth.Team
@@ -74,6 +76,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.p = &swarmProvisioner{}
 	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
+	s.b = &fakebuilder.FakeBuilder{}
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme

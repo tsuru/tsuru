@@ -579,3 +579,25 @@ func toLabelSelectors(m map[string]string) []string {
 	}
 	return selectors
 }
+
+func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
+	nodes, err := p.ListNodes(nil)
+	if err != nil {
+		log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+			imgName, errors.WithStack(err))
+		return
+	}
+	for _, n := range nodes {
+		client, err := newClient(n.Address())
+		if err != nil {
+			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+				imgName, errors.WithStack(err))
+			continue
+		}
+		err = client.RemoveImage(imgName)
+		if err != nil {
+			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+				imgName, errors.WithStack(err))
+		}
+	}
+}
