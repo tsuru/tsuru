@@ -79,6 +79,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = p.Save()
 	c.Assert(err, check.IsNil)
 	s.b = &dockerBuilder{}
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
@@ -90,4 +92,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	s.server.Stop()
 }

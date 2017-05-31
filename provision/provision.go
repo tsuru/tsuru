@@ -281,6 +281,7 @@ type RebuildableDeployer interface {
 type BuilderDeploy interface {
 	Deploy(App, string, *event.Event) (string, error)
 	GetDockerClient(App) (*docker.Client, error)
+	CleanImage(appName string, image string)
 }
 
 // Provisioner is the basic interface of this package.

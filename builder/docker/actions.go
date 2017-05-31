@@ -11,6 +11,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -28,6 +29,7 @@ type runContainerActionsArgs struct {
 	isDeploy         bool
 	buildingImage    string
 	builder          *dockerBuilder
+	provisioner      provision.BuilderDeploy
 	client           *docker.Client
 	exposedPort      string
 	event            *event.Event
@@ -105,7 +107,7 @@ var commitContainer = action.Action{
 		if !ok {
 			return nil, errors.New("previous result must be a container")
 		}
-		fmt.Fprintf(args.writer, "\n---- Creating Builder image ----\n")
+		fmt.Fprintf(args.writer, "\n---- Building image ----\n")
 		imageID, err := c.Commit(args.client, args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
@@ -114,6 +116,35 @@ var commitContainer = action.Action{
 		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
 		c.Remove(args.client)
 		return imageID, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
+
+var updateAppBuilderImage = action.Action{
+	Name: "update-app-builder-image",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		if err := checkCanceled(args.event); err != nil {
+			return nil, err
+		}
+		err := image.AppendAppBuilderImageName(args.app.GetName(), args.buildingImage)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to save image name")
+		}
+		imgHistorySize := image.ImageHistorySize()
+		allImages, err := image.ListAppBuilderImages(args.app.GetName())
+		if err != nil {
+			log.Errorf("Couldn't list images for cleaning: %s", err)
+			return ctx.Previous, nil
+		}
+		limit := len(allImages) - imgHistorySize
+		if limit > 0 {
+			for _, imgName := range allImages[:limit] {
+				args.provisioner.CleanImage(args.app.GetName(), imgName)
+			}
+		}
+		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},

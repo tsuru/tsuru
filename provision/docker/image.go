@@ -64,7 +64,7 @@ func MigrateImages() error {
 	return nil
 }
 
-func (p *dockerProvisioner) cleanImage(appName, imgName string) {
+func (p *dockerProvisioner) CleanImage(appName, imgName string) {
 	shouldRemove := true
 	err := p.Cluster().RemoveImage(imgName)
 	if err != nil {

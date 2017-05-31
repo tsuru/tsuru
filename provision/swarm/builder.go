@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 )
@@ -103,12 +104,38 @@ func (p *swarmProvisioner) GetDockerClient(app provision.App) (*docker.Client, e
 	return client, nil
 }
 
+func (p *swarmProvisioner) CleanImage(appName, imgName string) {
+	p.cleanImageInNodes(imgName)
+}
+
+func (p *swarmProvisioner) cleanImageInNodes(imgName string) {
+	nodes, err := p.ListNodes(nil)
+	if err != nil {
+		log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+			imgName, errors.WithStack(err))
+		return
+	}
+	for _, n := range nodes {
+		client, err := newClient(n.Address())
+		if err != nil {
+			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+				imgName, errors.WithStack(err))
+			continue
+		}
+		err = client.RemoveImage(imgName)
+		if err != nil {
+			log.Errorf("ignored error removing image %q: %s. image kept on list to retry later.",
+				imgName, errors.WithStack(err))
+		}
+	}
+}
+
 func (p *swarmProvisioner) runHookDeploy(app provision.App, imageID string, evt *event.Event) (string, error) {
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
 	}
-	deployImage, err := image.AppVersionedImageName(app.GetName())
+	deployImage, err := image.AppNewImageName(app.GetName())
 	if err != nil {
 		return "", err
 	}

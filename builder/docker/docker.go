@@ -21,17 +21,17 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-func (b *dockerBuilder) buildPipeline(client *docker.Client, app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.Client, app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&commitContainer,
+		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)
-	versionImage, err := image.AppNewImageName(app.GetName())
+	buildingImage, err := image.AppNewBuilderImageName(app.GetName())
 	if err != nil {
 		return "", log.WrapError(errors.Errorf("error getting new image name for app %s", app.GetName()))
 	}
-	buildingImage := fmt.Sprintf("%s-builder", versionImage)
 	var writer io.Writer = evt
 	if evt == nil {
 		writer = ioutil.Discard
@@ -41,10 +41,10 @@ func (b *dockerBuilder) buildPipeline(client *docker.Client, app provision.App, 
 		imageID:       imageId,
 		commands:      commands,
 		writer:        writer,
-		isDeploy:      true,
 		buildingImage: buildingImage,
 		client:        client,
 		event:         evt,
+		provisioner:   p,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {

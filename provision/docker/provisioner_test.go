@@ -559,7 +559,7 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 			app := provisiontest.NewFakeApp(name, "python", 1)
 			routertest.FakeRouter.AddBackend(app.GetName())
 			defer routertest.FakeRouter.RemoveBackend(app.GetName())
-			img, err := p.deployPipeline(app, image.GetBuildImage(app), "", []string{"/bin/test"}, nil)
+			img, err := p.deployPipeline(app, image.GetBuildImage(app), []string{"/bin/test"}, nil)
 			c.Assert(err, check.IsNil)
 			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
 		}(i)
@@ -598,6 +598,212 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestDeployErasesOldImages(c *check.C) {
+	config.Set("docker:image-history-size", 1)
+	defer config.Unset("docker:image-history-size")
+	stopCh := s.stopContainers(s.server.URL(), 3)
+	defer func() { <-stopCh }()
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := s.newApp("appdeployimagetest")
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.p.Destroy(&a)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
+	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 3)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v1-builder", "tsuru/python:latest"}
+	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
+	sort.Strings(got)
+	c.Assert(got, check.DeepEquals, expected)
+	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts = docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v2-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
+	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 3)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
+	sort.Strings(got)
+	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v2-builder", "tsuru/python:latest"}
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
+	config.Set("docker:image-history-size", 1)
+	defer config.Unset("docker:image-history-size")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := s.newApp("appdeployimagetest")
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		var result docker.Config
+		jsonErr := json.Unmarshal(data, &result)
+		if jsonErr == nil {
+			if result.Image == "tsuru/python:latest" {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, "tsuru/app-"+a.Name+":v1-builder", evt)
+	c.Assert(err, check.NotNil)
+	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 1)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert("tsuru/python:latest", check.Equals, imgs[0].RepoTags[0])
+}
+
+func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
+	config.Set("docker:image-history-size", 2)
+	defer config.Unset("docker:image-history-size")
+	stopCh := s.stopContainers(s.server.URL(), 4)
+	defer func() { <-stopCh }()
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := s.newApp("appdeployimagetest")
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	}
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	buildOpts := builder.BuildOpts{
+		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+	}
+	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v1-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
+	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 3)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v1-builder", "tsuru/python:latest"}
+	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
+	sort.Strings(got)
+	c.Assert(got, check.DeepEquals, expected)
+	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts = docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v2-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
+	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 5)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[3].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[4].RepoTags, check.HasLen, 1)
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0], imgs[3].RepoTags[0], imgs[4].RepoTags[0]}
+	sort.Strings(got)
+	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v1-builder", "tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v2-builder", "tsuru/python:latest"}
+	c.Assert(got, check.DeepEquals, expected)
+	builderImgID, err = s.b.Build(s.p, &a, evt, buildOpts)
+	c.Assert(err, check.IsNil)
+	pullOpts = docker.PullImageOptions{
+		Repository: "tsuru/app-" + a.Name,
+		Tag:        "v3-builder",
+	}
+	err = s.p.Cluster().PullImage(pullOpts, mainDockerProvisioner.RegistryAuthConfig())
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(&a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
+	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.HasLen, 5)
+	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[3].RepoTags, check.HasLen, 1)
+	c.Assert(imgs[4].RepoTags, check.HasLen, 1)
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0], imgs[3].RepoTags[0], imgs[4].RepoTags[0]}
+	sort.Strings(got)
+	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v2-builder", "tsuru/app-appdeployimagetest:v3", "tsuru/app-appdeployimagetest:v3-builder", "tsuru/python:latest"}
+	c.Assert(got, check.DeepEquals, expected)
 }
 
 func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {

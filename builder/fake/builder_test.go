@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/builder"
@@ -148,6 +149,8 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
 	c.Assert(s.b.IsArchiveFileDeploy, check.Equals, true)
+	_, err = image.AppNewImageName(a.Name)
+	c.Assert(err, check.IsNil)
 	opts = builder.BuildOpts{
 		Rebuild: true,
 	}
