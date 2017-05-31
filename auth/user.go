@@ -277,6 +277,48 @@ func (u *User) AddRole(roleName string, contextValue string) error {
 	return u.Reload()
 }
 
+func UpdateRoleFromAllUsers(name, newName, ctx, desc string) error {
+	role, err := permission.FindRole(name)
+	if err != nil {
+		return permission.ErrRoleNotFound
+	}
+	if (newName != "") && (newName != name) {
+		role.Name = newName
+	}
+	if ctx != "" {
+		role.ContextType, err = permission.ParseContext(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	if desc != "" {
+		role.Description = desc
+	}
+	if newName == "" {
+		return role.Update()
+	}
+	usersWithRole, err := ListUsersWithRole(name)
+	if err != nil {
+		return err
+	}
+	err = permission.DestroyRole(name)
+	if err != nil {
+		return err
+	}
+	err = RemoveRoleFromAllUsers(name)
+	if err != nil {
+		return err
+	}
+	err = role.Add()
+	if err != nil {
+		return err
+	}
+	for _, user := range usersWithRole {
+		user.AddRole(role.Name, string(role.ContextType))
+	}
+	return nil
+}
+
 func RemoveRoleFromAllUsers(roleName string) error {
 	conn, err := db.Conn()
 	if err != nil {
