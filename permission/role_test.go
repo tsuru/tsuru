@@ -208,3 +208,25 @@ func (s *S) TestListRolesForEvent(c *check.C) {
 	c.Assert(roles, check.HasLen, 1)
 	c.Assert(roles[0].Name, check.Equals, "myrole2")
 }
+
+func (s *S) TestUpdate(c *check.C) {
+	_, err := NewRole("myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	newRole := Role{Name: "myrole", ContextType: "app"}
+	err = newRole.Update()
+	c.Assert(err, check.IsNil)
+	inexistentRole := Role{Name: "notaRole", ContextType: "app"}
+	err = inexistentRole.Update()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestAdd(c *check.C) {
+	r := Role{Name: " ", ContextType: "app", Description: "an app"}
+	err := r.Add()
+	c.Assert(err, check.ErrorMatches, "invalid role name")
+	r2 := Role{Name: "app-owner", ContextType: "app", Description: "an app"}
+	err = r2.Add()
+	c.Assert(err, check.IsNil)
+	err = r2.Add()
+	c.Assert(err, check.Equals, ErrRoleAlreadyExists)
+}

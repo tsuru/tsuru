@@ -338,3 +338,34 @@ func rolesCollection() (*storage.Collection, error) {
 	}
 	return conn.Roles(), nil
 }
+
+func (r *Role) Update() error {
+	coll, err := rolesCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = coll.Update(bson.M{"_id": r.Name}, bson.M{"$set": bson.M{"contexttype": r.ContextType, "description": r.Description}})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Role) Add() error {
+	name := strings.TrimSpace(r.Name)
+	if len(name) == 0 {
+		return ErrInvalidRoleName
+	}
+	coll, err := rolesCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	insertRole := Role{Name: name, ContextType: r.ContextType, Description: r.Description, SchemeNames: r.SchemeNames, Events: r.Events}
+	err = coll.Insert(insertRole)
+	if mgo.IsDup(err) {
+		return ErrRoleAlreadyExists
+	}
+	return nil
+}
