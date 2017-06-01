@@ -583,28 +583,6 @@ func Registry() ([]Provisioner, error) {
 	return registry, nil
 }
 
-func FindNode(address string) (Provisioner, Node, error) {
-	provisioners, err := Registry()
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, prov := range provisioners {
-		nodeProv, ok := prov.(NodeProvisioner)
-		if !ok {
-			continue
-		}
-		node, err := nodeProv.GetNode(address)
-		if err == ErrNodeNotFound {
-			continue
-		}
-		if err != nil {
-			return nil, nil, err
-		}
-		return prov, node, nil
-	}
-	return nil, nil, ErrNodeNotFound
-}
-
 func InitializeAll() error {
 	provisioners, err := Registry()
 	if err != nil {

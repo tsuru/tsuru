@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/net"
 )
 
@@ -49,6 +50,33 @@ func FindNodeByAddrs(p NodeProvisioner, addrs []string) (Node, error) {
 		return nil, ErrNodeNotFound
 	}
 	return node, nil
+}
+
+func FindNode(address string) (Provisioner, Node, error) {
+	provisioners, err := Registry()
+	if err != nil {
+		return nil, nil, err
+	}
+	provErrors := tsuruErrors.NewMultiError()
+	for _, prov := range provisioners {
+		nodeProv, ok := prov.(NodeProvisioner)
+		if !ok {
+			continue
+		}
+		node, err := nodeProv.GetNode(address)
+		if err == ErrNodeNotFound {
+			continue
+		}
+		if err != nil {
+			provErrors.Add(err)
+			continue
+		}
+		return prov, node, nil
+	}
+	if provErrors.Len() > 0 {
+		return nil, nil, provErrors
+	}
+	return nil, nil, ErrNodeNotFound
 }
 
 func metadataNoIaasID(n Node) map[string]string {

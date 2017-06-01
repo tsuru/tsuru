@@ -5,6 +5,7 @@
 package provision_test
 
 import (
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
@@ -39,6 +40,65 @@ func (s *S) TestFindNodeByAddrsAmbiguous(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = provision.FindNodeByAddrs(p, []string{"addr1", "addr2"})
 	c.Assert(err, check.ErrorMatches, `addrs match multiple nodes: \[addr1 addr2\]`)
+}
+
+func (s *S) TestFindNode(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p2 := provisiontest.NewFakeProvisioner()
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	provision.Register("fake2", func() (provision.Provisioner, error) {
+		return p2, nil
+	})
+	defer provision.Unregister("fake1")
+	defer provision.Unregister("fake2")
+	err := p1.AddNode(provision.AddNodeOptions{
+		Address: "http://addr1",
+	})
+	c.Assert(err, check.IsNil)
+	err = p2.AddNode(provision.AddNodeOptions{
+		Address: "http://addr2",
+	})
+	c.Assert(err, check.IsNil)
+	prov, n, err := provision.FindNode("http://addr1")
+	c.Assert(err, check.IsNil)
+	c.Assert(n.Address(), check.Equals, "http://addr1")
+	c.Assert(prov, check.Equals, p1)
+	prov, n, err = provision.FindNode("http://addr2")
+	c.Assert(err, check.IsNil)
+	c.Assert(n.Address(), check.Equals, "http://addr2")
+	c.Assert(prov, check.Equals, p2)
+	_, _, err = provision.FindNode("http://addr3")
+	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+}
+
+func (s *S) TestFindNodeIgnoreErrorIfFound(c *check.C) {
+	p1 := provisiontest.NewFakeProvisioner()
+	p2 := provisiontest.NewFakeProvisioner()
+	provision.Register("fake1", func() (provision.Provisioner, error) {
+		return p1, nil
+	})
+	provision.Register("fake2", func() (provision.Provisioner, error) {
+		return p2, nil
+	})
+	defer provision.Unregister("fake1")
+	defer provision.Unregister("fake2")
+	err := p1.AddNode(provision.AddNodeOptions{
+		Address: "http://addr1",
+	})
+	c.Assert(err, check.IsNil)
+	err = p2.AddNode(provision.AddNodeOptions{
+		Address: "http://addr2",
+	})
+	c.Assert(err, check.IsNil)
+	p2.PrepareFailure("GetNode", errors.New("get node error"))
+	prov, n, err := provision.FindNode("http://addr1")
+	c.Assert(err, check.IsNil)
+	c.Assert(n.Address(), check.Equals, "http://addr1")
+	c.Assert(prov, check.Equals, p1)
+	_, _, err = provision.FindNode("http://addr2")
+	c.Assert(err, check.ErrorMatches, `(?s)get node error.*`)
 }
 
 func (s *S) TestSplitMetadata(c *check.C) {
