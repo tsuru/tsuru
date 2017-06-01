@@ -25,10 +25,12 @@ import (
 )
 
 type backend struct {
-	addr      string
-	addresses []string
-	swapWith  string
-	cnameOnly bool
+	addr         string
+	addresses    []string
+	cnames       []string
+	certificates map[string]certData
+	swapWith     string
+	cnameOnly    bool
 }
 
 type fakeRouterAPI struct {
@@ -47,6 +49,12 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}/routes", api.getRoutes).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/routes", api.setRoutes).Methods(http.MethodPut)
 	r.HandleFunc("/backend/{name}/swap", api.swap).Methods(http.MethodPost)
+	r.HandleFunc("/backend/{name}/cname", api.getCnames).Methods(http.MethodGet)
+	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
+	r.HandleFunc("/backend/{name}/cname/{cname}", api.unsetCname).Methods(http.MethodDelete)
+	r.HandleFunc("/backend/{name}/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
+	r.HandleFunc("/backend/{name}/certificate/{cname}", api.addCertificate).Methods(http.MethodPost)
+	r.HandleFunc("/backend/{name}/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
 	listener, err := net.Listen("tcp", "")
 	c.Assert(err, check.IsNil)
 	api.listener = listener
@@ -82,7 +90,8 @@ func (f *fakeRouterAPI) removeBackend(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 	if backend, ok := f.backends[name]; ok {
 		if backend.swapWith != "" {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(router.ErrBackendSwapped.Error()))
 			return
 		}
 		delete(f.backends, name)
@@ -122,12 +131,117 @@ func (f *fakeRouterAPI) setRoutes(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	r.ParseForm()
 	target := r.FormValue("target")
 	cnameOnly := r.FormValue("cnameOnly")
 	if backend, ok := f.backends[name]; ok {
 		backend.swapWith = target
 		backend.cnameOnly, _ = strconv.ParseBool(cnameOnly)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	cname := vars["cname"]
+	if backend, ok := f.backends[name]; ok {
+		var hasCname bool
+		for _, c := range backend.cnames {
+			if c == cname {
+				hasCname = true
+				break
+			}
+		}
+		if hasCname {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		backend.cnames = append(backend.cnames, cname)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) unsetCname(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	cname := vars["cname"]
+	if backend, ok := f.backends[name]; ok {
+		var newCnames []string
+		var found bool
+		for _, c := range backend.cnames {
+			if c == cname {
+				found = true
+				continue
+			}
+			newCnames = append(newCnames, c)
+		}
+		if !found {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(router.ErrCNameNotFound.Error()))
+			return
+		}
+		backend.cnames = newCnames
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) getCnames(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	if backend, ok := f.backends[name]; ok {
+		resp := cnamesResp{Cnames: backend.cnames}
+		json.NewEncoder(w).Encode(&resp)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) getCertificate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	cname := vars["cname"]
+	if backend, ok := f.backends[name]; ok {
+		if cert, ok := backend.certificates[cname]; ok {
+			json.NewEncoder(w).Encode(&cert.Certificate)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(router.ErrCertificateNotFound.Error()))
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) addCertificate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	cname := vars["cname"]
+	cert := r.FormValue("certificate")
+	key := r.FormValue("key")
+	if backend, ok := f.backends[name]; ok {
+		certData := backend.certificates[cname]
+		certData.Certificate = cert
+		certData.Key = key
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) removeCertificate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	cname := vars["cname"]
+	if backend, ok := f.backends[name]; ok {
+		if _, ok := backend.certificates[cname]; !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(router.ErrCertificateNotFound.Error()))
+			return
+		}
+		delete(backend.certificates, cname)
 		return
 	}
 	w.WriteHeader(http.StatusNotFound)
