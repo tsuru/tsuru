@@ -49,6 +49,15 @@ type routesReq struct {
 	Addresses []string `json:"addresses"`
 }
 
+type cnamesResp struct {
+	Cnames []string `json:"cnames"`
+}
+
+type certData struct {
+	Certificate string `json:"certificate"`
+	Key         string `json:"key"`
+}
+
 type backendResp struct {
 	Address string `json:"address"`
 }
