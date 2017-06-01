@@ -16,17 +16,34 @@ import (
 	"strconv"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 )
 
 const routerType = "api"
 
+var (
+	_ router.OptsRouter              = &apiRouter{}
+	_ router.Router                  = &apiRouter{}
+	_ router.MessageRouter           = &apiRouter{}
+	_ router.HealthChecker           = &apiRouter{}
+	_ router.TLSRouter               = &apiRouterWithTLSSupport{}
+	_ router.CNameRouter             = &apiRouterWithCnameSupport{}
+	_ router.CustomHealthcheckRouter = &apiRouterWithHealthcheckSupport{}
+)
+
 type apiRouter struct {
 	routerName string
 	endpoint   string
 	client     *http.Client
 }
+
+type apiRouterWithCnameSupport struct{ *apiRouter }
+
+type apiRouterWithTLSSupport struct{ *apiRouter }
+
+type apiRouterWithHealthcheckSupport struct{ *apiRouter }
 
 type routesReq struct {
 	Addresses []string `json:"addresses"`
@@ -45,16 +62,63 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &apiRouter{
+	baseRouter := &apiRouter{
 		routerName: routerName,
 		endpoint:   endpoint,
 		client:     net.Dial5Full60ClientNoKeepAlive,
-	}, nil
+	}
+	cnameAPI := &apiRouterWithCnameSupport{baseRouter}
+	tlsAPI := &apiRouterWithTLSSupport{baseRouter}
+	hcAPI := &apiRouterWithHealthcheckSupport{baseRouter}
+	ifMap := map[[3]bool]router.Router{
+		{true, false, false}: cnameAPI,
+		{false, true, false}: tlsAPI,
+		{false, false, true}: hcAPI,
+		{true, true, false}: &struct {
+			router.CNameRouter
+			router.TLSRouter
+		}{cnameAPI, tlsAPI},
+		{true, false, true}: &struct {
+			router.CNameRouter
+			router.CustomHealthcheckRouter
+		}{cnameAPI, hcAPI},
+		{false, true, true}: &struct {
+			*apiRouter
+			router.TLSRouter
+			router.CustomHealthcheckRouter
+		}{baseRouter, tlsAPI, hcAPI},
+		{true, true, true}: &struct {
+			router.CNameRouter
+			router.TLSRouter
+			router.CustomHealthcheckRouter
+		}{cnameAPI, tlsAPI, hcAPI},
+	}
+	var supports [3]bool
+	for i, s := range []string{"cname", "tls", "healthcheck"} {
+		var err error
+		supports[i], err = baseRouter.checkSupports(s)
+		if err != nil {
+			log.Errorf("failed to fetch %q support from router %q: %s", s, routerName, err)
+		}
+	}
+	if r, ok := ifMap[supports]; ok {
+		return r, nil
+	}
+	return baseRouter, nil
 }
 
 func (r *apiRouter) AddBackend(name string) (err error) {
+	return r.AddBackendOpts(name, nil)
+}
+
+func (r *apiRouter) AddBackendOpts(name string, opts map[string]string) error {
 	path := fmt.Sprintf("backend/%s", name)
-	_, statusCode, err := r.do(http.MethodPost, path, nil)
+	b, err := json.Marshal(opts)
+	if err != nil {
+		return err
+	}
+	data := bytes.NewReader(b)
+	_, statusCode, err := r.do(http.MethodPost, path, data)
 	if statusCode == http.StatusConflict {
 		return router.ErrBackendExists
 	}
@@ -168,6 +232,21 @@ func (r *apiRouter) Swap(backend1 string, backend2 string, cnameOnly bool) (err 
 	return err
 }
 
+func (r *apiRouter) StartupMessage() (string, error) {
+	return fmt.Sprintf("api router %q with endpoint %q", r.routerName, r.endpoint), nil
+}
+
+func (r *apiRouter) HealthCheck() error {
+	data, code, err := r.do(http.MethodGet, "healthcheck", nil)
+	if err != nil {
+		return err
+	}
+	if code != http.StatusOK {
+		return fmt.Errorf("invalid status code %d from healthcheck %q: %s", code, r.endpoint+"/healthcheck", data)
+	}
+	return nil
+}
+
 func (r *apiRouter) setRoutes(name string, addresses []*url.URL) (err error) {
 	path := fmt.Sprintf("backend/%s/routes", name)
 	req := &routesReq{}
@@ -186,6 +265,18 @@ func (r *apiRouter) setRoutes(name string, addresses []*url.URL) (err error) {
 	default:
 		return err
 	}
+}
+
+func (r *apiRouter) checkSupports(feature string) (bool, error) {
+	path := fmt.Sprintf("support/%s", feature)
+	data, statusCode, err := r.do(http.MethodGet, path, nil)
+	switch statusCode {
+	case http.StatusNotFound:
+		return false, nil
+	case http.StatusOK:
+		return true, nil
+	}
+	return false, fmt.Errorf("failed to check support for %s: %s - %s - %d", feature, err, data, statusCode)
 }
 
 func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code int, err error) {
@@ -212,4 +303,28 @@ func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code i
 		return data, code, fmt.Errorf("failed to request %s - %d - %s", url, code, data)
 	}
 	return data, code, nil
+}
+
+func (r *apiRouterWithCnameSupport) SetCName(cname, name string) error {
+	return nil
+}
+func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
+	return nil
+}
+func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
+	return nil, nil
+}
+
+func (r *apiRouterWithTLSSupport) AddCertificate(cname, certificate, key string) error {
+	return nil
+}
+func (r *apiRouterWithTLSSupport) RemoveCertificate(cname string) error {
+	return nil
+}
+func (r *apiRouterWithTLSSupport) GetCertificate(cname string) (string, error) {
+	return "", nil
+}
+
+func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data router.HealthcheckData) error {
+	return nil
 }

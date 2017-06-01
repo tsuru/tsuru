@@ -18,6 +18,7 @@ import (
 	"sort"
 
 	"github.com/gorilla/mux"
+	"github.com/tsuru/config"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 	check "gopkg.in/check.v1"
@@ -34,6 +35,7 @@ type fakeRouterAPI struct {
 	listener net.Listener
 	backends map[string]*backend
 	endpoint string
+	router   *mux.Router
 }
 
 func newFakeRouter(c *check.C) *fakeRouterAPI {
@@ -49,6 +51,7 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	c.Assert(err, check.IsNil)
 	api.listener = listener
 	api.endpoint = fmt.Sprintf("http://%s", listener.Addr().String())
+	api.router = r
 	go http.Serve(listener, r)
 	return api
 }
@@ -145,22 +148,21 @@ type S struct {
 
 var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *check.C) {
+func (s *S) SetUpTest(c *check.C) {
 	s.apiRouter = newFakeRouter(c)
 	s.testRouter = &apiRouter{
 		endpoint:   s.apiRouter.endpoint,
 		client:     tsuruNet.Dial5Full60ClientNoKeepAlive,
 		routerName: "apirouter",
 	}
-}
-
-func (s *S) SetUpTest(c *check.C) {
+	config.Set("routers:apirouter:endpoint", s.apiRouter.endpoint)
 	s.apiRouter.backends = map[string]*backend{
 		"mybackend": &backend{addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
 }
 
-func (s *S) TearDownSuite(c *check.C) {
+func (s *S) TearDownTest(c *check.C) {
+	config.Unset("routers:apirouter")
 	s.apiRouter.stop()
 }
 
@@ -288,4 +290,47 @@ func (s *S) TestSwap(c *check.C) {
 func (s *S) TestSwapNotFound(c *check.C) {
 	err := s.testRouter.Swap("invalid", "backend2", false)
 	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
+}
+
+func (s *S) TestCreateRouterSupport(c *check.C) {
+	tt := []struct {
+		features    map[string]bool
+		expectCname bool
+		expectTLS   bool
+		expectHC    bool
+	}{
+		{nil, false, false, false},
+		{features: map[string]bool{"cname": true}, expectCname: true},
+		{features: map[string]bool{"tls": true}, expectTLS: true},
+		{features: map[string]bool{"healthcheck": true}, expectHC: true},
+		{features: map[string]bool{"cname": true, "tls": true}, expectCname: true, expectTLS: true},
+		{features: map[string]bool{"cname": true, "tls": true, "healthcheck": true}, expectCname: true, expectTLS: true, expectHC: true},
+		{features: map[string]bool{"cname": true, "healthcheck": true}, expectCname: true, expectHC: true},
+		{features: map[string]bool{"tls": true, "healthcheck": true}, expectTLS: true, expectHC: true},
+	}
+	var i int
+	s.apiRouter.router.HandleFunc("/support/{name}", func(w http.ResponseWriter, r *http.Request) {
+		f := tt[i]
+		v := mux.Vars(r)
+		if f.features == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if b := f.features[v["name"]]; b == true {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	for i = range tt {
+		comment := check.Commentf("case %d: %v", i, tt[i])
+		r, err := createRouter("myrouter", "routers:apirouter")
+		c.Assert(err, check.IsNil, comment)
+		_, ok := r.(router.CNameRouter)
+		c.Assert(ok, check.Equals, tt[i].expectCname, comment)
+		_, ok = r.(router.TLSRouter)
+		c.Assert(ok, check.Equals, tt[i].expectTLS, comment)
+		_, ok = r.(router.CustomHealthcheckRouter)
+		c.Assert(ok, check.Equals, tt[i].expectHC, comment)
+	}
 }
