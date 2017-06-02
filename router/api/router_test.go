@@ -25,19 +25,19 @@ import (
 )
 
 type backend struct {
-	addr         string
-	addresses    []string
-	cnames       []string
-	certificates map[string]certData
-	swapWith     string
-	cnameOnly    bool
+	addr      string
+	addresses []string
+	cnames    []string
+	swapWith  string
+	cnameOnly bool
 }
 
 type fakeRouterAPI struct {
-	listener net.Listener
-	backends map[string]*backend
-	endpoint string
-	router   *mux.Router
+	listener     net.Listener
+	backends     map[string]*backend
+	certificates map[string]certData
+	endpoint     string
+	router       *mux.Router
 }
 
 func newFakeRouter(c *check.C) *fakeRouterAPI {
@@ -52,9 +52,9 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}/cname", api.getCnames).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.unsetCname).Methods(http.MethodDelete)
-	r.HandleFunc("/backend/{name}/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
-	r.HandleFunc("/backend/{name}/certificate/{cname}", api.addCertificate).Methods(http.MethodPost)
-	r.HandleFunc("/backend/{name}/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
+	r.HandleFunc("/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
+	r.HandleFunc("/certificate/{cname}", api.addCertificate).Methods(http.MethodPut)
+	r.HandleFunc("/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
 	listener, err := net.Listen("tcp", "")
 	c.Assert(err, check.IsNil)
 	api.listener = listener
@@ -202,50 +202,35 @@ func (f *fakeRouterAPI) getCnames(w http.ResponseWriter, r *http.Request) {
 
 func (f *fakeRouterAPI) getCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	name := vars["name"]
 	cname := vars["cname"]
-	if backend, ok := f.backends[name]; ok {
-		if cert, ok := backend.certificates[cname]; ok {
-			json.NewEncoder(w).Encode(&cert.Certificate)
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(router.ErrCertificateNotFound.Error()))
+	if cert, ok := f.certificates[cname]; ok {
+		json.NewEncoder(w).Encode(&cert.Certificate)
 		return
 	}
 	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte(router.ErrCertificateNotFound.Error()))
+	return
+
 }
 
 func (f *fakeRouterAPI) addCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	name := vars["name"]
 	cname := vars["cname"]
-	cert := r.FormValue("certificate")
-	key := r.FormValue("key")
-	if backend, ok := f.backends[name]; ok {
-		certData := backend.certificates[cname]
-		certData.Certificate = cert
-		certData.Key = key
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	w.WriteHeader(http.StatusNotFound)
+	var cert certData
+	json.NewDecoder(r.Body).Decode(&cert)
+	f.certificates[cname] = cert
+	w.WriteHeader(http.StatusOK)
 }
 
 func (f *fakeRouterAPI) removeCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	name := vars["name"]
 	cname := vars["cname"]
-	if backend, ok := f.backends[name]; ok {
-		if _, ok := backend.certificates[cname]; !ok {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(router.ErrCertificateNotFound.Error()))
-			return
-		}
-		delete(backend.certificates, cname)
+	if _, ok := f.certificates[cname]; !ok {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(router.ErrCertificateNotFound.Error()))
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	delete(f.certificates, cname)
 }
 
 func (f *fakeRouterAPI) stop() {
@@ -265,6 +250,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
 	s.apiRouter = newFakeRouter(c)
+	s.apiRouter.certificates = make(map[string]certData)
 	s.testRouter = &apiRouter{
 		endpoint:   s.apiRouter.endpoint,
 		client:     tsuruNet.Dial5Full60ClientNoKeepAlive,
@@ -458,6 +444,43 @@ func (s *S) TestCNamesBackendNotFound(c *check.C) {
 	cnames, err := cnameRouter.CNames("invalid")
 	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
 	c.Assert(len(cnames), check.Equals, 0)
+}
+
+func (s *S) TestAddCertificate(c *check.C) {
+	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
+	err := tlsRouter.AddCertificate("cname.com", "cert", "key")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.certificates["cname.com"], check.DeepEquals, certData{Certificate: "cert", Key: "key"})
+}
+
+func (s *S) TestRemoveCertificate(c *check.C) {
+	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
+	err := tlsRouter.AddCertificate("cname.com", "cert", "key")
+	c.Assert(err, check.IsNil)
+	err = tlsRouter.RemoveCertificate("cname.com")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRemoveCertificateNotFound(c *check.C) {
+	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
+	err := tlsRouter.RemoveCertificate("cname.com")
+	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
+}
+
+func (s *S) TestGetCertificate(c *check.C) {
+	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
+	err := tlsRouter.AddCertificate("cname.com", "cert", "key")
+	c.Assert(err, check.IsNil)
+	cert, err := tlsRouter.GetCertificate("cname.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(cert, check.DeepEquals, "cert")
+}
+
+func (s *S) TestGetCertificateNotFound(c *check.C) {
+	tlsRouter := &apiRouterWithTLSSupport{s.testRouter}
+	cert, err := tlsRouter.GetCertificate("cname.com")
+	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
+	c.Assert(cert, check.DeepEquals, "")
 }
 
 func (s *S) TestCreateRouterSupport(c *check.C) {

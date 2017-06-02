@@ -371,13 +371,37 @@ func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
 }
 
 func (r *apiRouterWithTLSSupport) AddCertificate(cname, certificate, key string) error {
-	return nil
+	cert := certData{Certificate: certificate, Key: key}
+	b, err := json.Marshal(&cert)
+	if err != nil {
+		return err
+	}
+	_, _, err = r.do(http.MethodPut, fmt.Sprintf("certificate/%s", cname), bytes.NewReader(b))
+	return err
 }
+
 func (r *apiRouterWithTLSSupport) RemoveCertificate(cname string) error {
-	return nil
+	_, code, err := r.do(http.MethodDelete, fmt.Sprintf("certificate/%s", cname), nil)
+	if code == http.StatusNotFound {
+		return router.ErrCertificateNotFound
+	}
+	return err
 }
+
 func (r *apiRouterWithTLSSupport) GetCertificate(cname string) (string, error) {
-	return "", nil
+	data, code, err := r.do(http.MethodGet, fmt.Sprintf("certificate/%s", cname), nil)
+	switch code {
+	case http.StatusNotFound:
+		return "", router.ErrCertificateNotFound
+	case http.StatusOK:
+		var cert string
+		errJSON := json.Unmarshal(data, &cert)
+		if errJSON != nil {
+			return "", errJSON
+		}
+		return cert, nil
+	}
+	return "", err
 }
 
 func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data router.HealthcheckData) error {
