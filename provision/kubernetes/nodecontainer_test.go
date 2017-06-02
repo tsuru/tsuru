@@ -6,15 +6,18 @@ package kubernetes
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func (s *S) TestManagerDeployNodeContainer(c *check.C) {
@@ -230,4 +233,69 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 		{Name: "volume-1", MountPath: "/var/lib/docker/containers", ReadOnly: true},
 		{Name: "volume-2", MountPath: "/mnt/sda1/var/lib/docker/containers", ReadOnly: true},
 	})
+}
+
+func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
+	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
+		ds := action.(ktesting.CreateAction).GetObject().(*extensions.DaemonSet)
+		ds.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
+		return false, nil, nil
+	}
+	s.client.PrependReactor("create", "daemonsets", reaction)
+	s.client.PrependReactor("update", "daemonsets", reaction)
+	s.mockfakeNodes(c)
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image:      "bsimg",
+			Env:        []string{"a=b"},
+			Entrypoint: []string{"cmd0"},
+			Cmd:        []string{"cmd1"},
+		},
+		HostConfig: docker.HostConfig{
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			Binds:         []string{"/xyz:/abc:ro"},
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{}, true)
+	c.Assert(err, check.IsNil)
+	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{})
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.IsNil)
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
+	c.Assert(err, check.IsNil)
+	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedAffinity := &v1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						{
+							Key:      "pool",
+							Operator: v1.NodeSelectorOpNotIn,
+							Values:   []string{"p1"},
+						},
+					},
+				}},
+			},
+		},
+	}
+	affinityData, err := json.Marshal(expectedAffinity)
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{
+		"scheduler.alpha.kubernetes.io/affinity": string(affinityData),
+	})
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	beforeCreation := daemon.CreationTimestamp
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{"p1"}}, true)
+	c.Assert(err, check.IsNil)
+	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon.CreationTimestamp, check.DeepEquals, beforeCreation)
 }

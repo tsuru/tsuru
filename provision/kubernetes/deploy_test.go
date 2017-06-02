@@ -7,11 +7,13 @@ package kubernetes
 import (
 	"bytes"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -330,6 +332,39 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
+	waitDep := s.deploymentReactions(c)
+	defer waitDep()
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image: "bsimg",
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	m := serviceManager{client: s.client.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	err = image.SaveImageCustomData("myimg", map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep, check.NotNil)
+	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemon, check.NotNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {

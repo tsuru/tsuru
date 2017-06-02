@@ -29,7 +29,7 @@ func EnsureNodeContainersCreated(manager NodeContainerManager, w io.Writer) erro
 		return errors.WithStack(err)
 	}
 	for _, n := range names {
-		err = UpgradeNodeContainer(manager, n, "", w)
+		err = upgradeNodeContainer(manager, n, "", true, w)
 		if err != nil {
 			return err
 		}
@@ -38,6 +38,10 @@ func EnsureNodeContainersCreated(manager NodeContainerManager, w io.Writer) erro
 }
 
 func UpgradeNodeContainer(manager NodeContainerManager, name, poolToUpgrade string, w io.Writer) error {
+	return upgradeNodeContainer(manager, name, poolToUpgrade, false, w)
+}
+
+func upgradeNodeContainer(manager NodeContainerManager, name, poolToUpgrade string, ensureOnly bool, w io.Writer) error {
 	var excludeAllPools []string
 	poolsToRun := []string{"", poolToUpgrade}
 	poolMap, err := nodecontainer.LoadNodeContainersForPools(name)
@@ -75,7 +79,7 @@ func UpgradeNodeContainer(manager NodeContainerManager, name, poolToUpgrade stri
 		} else {
 			filter.Include = []string{poolName}
 		}
-		err = manager.DeployNodeContainer(config, poolName, filter, poolName == "" && poolToUpgrade != "")
+		err = manager.DeployNodeContainer(config, poolName, filter, ensureOnly || (poolName == "" && poolToUpgrade != ""))
 		if err != nil {
 			multiErr.Add(err)
 		}

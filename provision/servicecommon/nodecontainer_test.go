@@ -189,9 +189,9 @@ func (s *S) TestEnsureNodeContainersCreated(c *check.C) {
 	err = EnsureNodeContainersCreated(&m, buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []ncCall{
-		{conf: &c1, pool: "", filter: PoolFilter{Exclude: []string{"p1"}}, placementOnly: false},
-		{conf: &c2, pool: "p1", filter: PoolFilter{Include: []string{"p1"}}, placementOnly: false},
-		{conf: &c3, pool: "", filter: PoolFilter{}, placementOnly: false},
+		{conf: &c1, pool: "", filter: PoolFilter{Exclude: []string{"p1"}}, placementOnly: true},
+		{conf: &c2, pool: "p1", filter: PoolFilter{Include: []string{"p1"}}, placementOnly: true},
+		{conf: &c3, pool: "", filter: PoolFilter{}, placementOnly: true},
 	})
 	c.Assert(buf.String(), check.Matches, `(?s).*upserting node container "bs" \[""\].*upserting node container "bs" \["p1"\].*upserting node container "other" \[""\].*`)
 }

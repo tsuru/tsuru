@@ -457,6 +457,10 @@ func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a prov
 }
 
 func (m *serviceManager) DeployService(a provision.App, process string, labels *provision.LabelSet, replicas int, image string) error {
+	err := ensureNodeContainers()
+	if err != nil {
+		return err
+	}
 	depName := deploymentNameForApp(a, process)
 	dep, err := m.client.Extensions().Deployments(m.client.Namespace()).Get(depName, metav1.GetOptions{})
 	if err != nil {

@@ -5,8 +5,10 @@
 package kubernetes
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
@@ -75,6 +77,10 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		affinityAnnotation[alphaAffinityAnnotation] = string(affinityData)
 	}
 	if oldDs != nil && placementOnly {
+		if reflect.DeepEqual(oldDs.Spec.Template.ObjectMeta.Annotations, affinityAnnotation) &&
+			reflect.DeepEqual(oldDs.Spec.Template.Spec.Affinity, affinity) {
+			return nil
+		}
 		oldDs.Spec.Template.ObjectMeta.Annotations = affinityAnnotation
 		oldDs.Spec.Template.Spec.Affinity = affinity
 		_, err = client.Extensions().DaemonSets(client.Namespace()).Update(oldDs)
@@ -189,4 +195,14 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		_, err = client.Extensions().DaemonSets(client.Namespace()).Create(ds)
 	}
 	return errors.WithStack(err)
+}
+
+func ensureNodeContainers() error {
+	m := nodeContainerManager{}
+	buf := &bytes.Buffer{}
+	err := servicecommon.EnsureNodeContainersCreated(&m, buf)
+	if err != nil {
+		return errors.Wrapf(err, "unable to ensure node containers running: %s", buf.String())
+	}
+	return nil
 }
