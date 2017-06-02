@@ -423,6 +423,9 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 			Metadata: opts.Metadata,
 		})
 	}
+	if err == nil {
+		go refreshNodeTaints(client, hostAddr)
+	}
 	return err
 }
 
@@ -507,7 +510,7 @@ func (p *kubernetesProvisioner) findNodeByAddress(address string) (*clusterClien
 }
 
 func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
-	cluster, nodeWrapper, err := p.findNodeByAddress(opts.Address)
+	client, nodeWrapper, err := p.findNodeByAddress(opts.Address)
 	if err != nil {
 		return err
 	}
@@ -518,7 +521,10 @@ func (p *kubernetesProvisioner) UpdateNode(opts provision.UpdateNodeOptions) err
 		node.Spec.Unschedulable = false
 	}
 	setNodeMetadata(node, opts.Metadata)
-	_, err = cluster.Core().Nodes().Update(node)
+	_, err = client.Core().Nodes().Update(node)
+	if err == nil {
+		go refreshNodeTaints(client, opts.Address)
+	}
 	return err
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -485,4 +486,53 @@ func runPod(args runSinglePodArgs) error {
 		return multiErr
 	}
 	return multiErr.ToError()
+}
+
+func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*v1.Node, error) {
+	var node *v1.Node
+	waitErr := waitFor(timeout, func() (bool, error) {
+		var err error
+		node, err = client.Core().Nodes().Get(addr, metav1.GetOptions{})
+		if err != nil {
+			return true, errors.WithStack(err)
+		}
+		for _, cond := range node.Status.Conditions {
+			if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	return node, waitErr
+}
+
+// Hack until Kubernetes 1.7 is released to ensure daemonsets are scheduled.
+// See https://github.com/kubernetes/kubernetes/pull/45649
+func refreshNodeTaints(client *clusterClient, addr string) {
+	node, err := waitNodeReady(client, addr, 30*time.Minute)
+	if err != nil {
+		log.Errorf("error waiting for node ready: %v", err)
+	}
+	tsuruTaintKey := "tsuru-refresh-node-container"
+	tsuruTempTaint := v1.Taint{
+		Key:    tsuruTaintKey,
+		Value:  "true",
+		Effect: v1.TaintEffectNoSchedule,
+	}
+	node.Spec.Taints = append(node.Spec.Taints, tsuruTempTaint)
+	node, err = client.Core().Nodes().Update(node)
+	if err != nil {
+		log.Errorf("unable to add node taint %q: %v", tsuruTaintKey, err)
+	}
+	for i := 0; i < len(node.Spec.Taints); i++ {
+		if node.Spec.Taints[i].Key == tsuruTaintKey {
+			node.Spec.Taints[i] = node.Spec.Taints[len(node.Spec.Taints)-1]
+			node.Spec.Taints = node.Spec.Taints[:len(node.Spec.Taints)-1]
+			i--
+		}
+	}
+	_, err = client.Core().Nodes().Update(node)
+	if err != nil {
+		log.Errorf("unable to remove node taint %q: %v", tsuruTaintKey, err)
+	}
 }
