@@ -15,6 +15,8 @@ import (
 
 	"strconv"
 
+	"strings"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -136,12 +138,15 @@ func (r *apiRouter) AddBackendOpts(name string, opts map[string]string) error {
 
 func (r *apiRouter) RemoveBackend(name string) (err error) {
 	path := fmt.Sprintf("backend/%s", name)
-	_, statusCode, err := r.do(http.MethodDelete, path, nil)
+	data, statusCode, err := r.do(http.MethodDelete, path, nil)
 	switch statusCode {
 	case http.StatusNotFound:
 		return router.ErrBackendNotFound
-	case http.StatusForbidden:
-		return router.ErrBackendSwapped
+	case http.StatusBadRequest:
+		if strings.Contains(string(data), router.ErrBackendSwapped.Error()) {
+			return router.ErrBackendSwapped
+		}
+		fallthrough
 	default:
 		return err
 	}
@@ -315,13 +320,54 @@ func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code i
 }
 
 func (r *apiRouterWithCnameSupport) SetCName(cname, name string) error {
-	return nil
+	_, code, err := r.do(http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", name, cname), nil)
+	switch code {
+	case http.StatusNotFound:
+		return router.ErrBackendNotFound
+	case http.StatusConflict:
+		return router.ErrCNameExists
+	default:
+		return err
+	}
 }
+
 func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
-	return nil
+	data, code, err := r.do(http.MethodDelete, fmt.Sprintf("backend/%s/cname/%s", name, cname), nil)
+	switch code {
+	case http.StatusNotFound:
+		return router.ErrBackendNotFound
+	case http.StatusBadRequest:
+		if strings.Contains(string(data), router.ErrCNameNotFound.Error()) {
+			return router.ErrCNameNotFound
+		}
+		fallthrough
+	default:
+		return err
+	}
 }
+
 func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
-	return nil, nil
+	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/cname", name), nil)
+	if code == http.StatusNotFound {
+		return nil, router.ErrBackendNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	var resp cnamesResp
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		return nil, err
+	}
+	var urls []*url.URL
+	for _, addr := range resp.Cnames {
+		parsed, err := url.Parse(addr)
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, parsed)
+	}
+	return urls, nil
 }
 
 func (r *apiRouterWithTLSSupport) AddCertificate(cname, certificate, key string) error {

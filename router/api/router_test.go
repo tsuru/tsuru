@@ -155,6 +155,7 @@ func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
 		}
 		if hasCname {
 			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(router.ErrCNameExists.Error()))
 			return
 		}
 		backend.cnames = append(backend.cnames, cname)
@@ -404,6 +405,59 @@ func (s *S) TestSwap(c *check.C) {
 func (s *S) TestSwapNotFound(c *check.C) {
 	err := s.testRouter.Swap("invalid", "backend2", false)
 	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
+}
+
+func (s *S) TestSetCName(c *check.C) {
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	err := cnameRouter.SetCName("cname.com", "mybackend")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestSetCNameBackendNotFound(c *check.C) {
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	err := cnameRouter.SetCName("cname.com", "invalid")
+	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
+}
+
+func (s *S) TestSetCNameCNameAlreadyExists(c *check.C) {
+	s.apiRouter.backends["mybackend"].cnames = []string{"cname.com"}
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	err := cnameRouter.SetCName("cname.com", "mybackend")
+	c.Assert(err, check.DeepEquals, router.ErrCNameExists)
+}
+
+func (s *S) TestUnsetCName(c *check.C) {
+	s.apiRouter.backends["mybackend"].cnames = []string{"cname.com"}
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	err := cnameRouter.UnsetCName("cname.com", "mybackend")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestUnsetCNameBackendNotFound(c *check.C) {
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	err := cnameRouter.UnsetCName("cname.com", "invalid")
+	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
+}
+
+func (s *S) TestUnsetCNameCNameNotFound(c *check.C) {
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	err := cnameRouter.UnsetCName("cname.com", "mybackend")
+	c.Assert(err, check.DeepEquals, router.ErrCNameNotFound)
+}
+
+func (s *S) TestCNames(c *check.C) {
+	s.apiRouter.backends["mybackend"].cnames = []string{"cname.com", "cname2.com"}
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	cnames, err := cnameRouter.CNames("mybackend")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(cnames), check.Equals, 2)
+}
+
+func (s *S) TestCNamesBackendNotFound(c *check.C) {
+	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
+	cnames, err := cnameRouter.CNames("invalid")
+	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
+	c.Assert(len(cnames), check.Equals, 0)
 }
 
 func (s *S) TestCreateRouterSupport(c *check.C) {
