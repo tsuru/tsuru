@@ -221,6 +221,9 @@ func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
 	if statusCode == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
 	}
+	if err != nil {
+		return nil, err
+	}
 	req := &routesReq{}
 	err = json.Unmarshal(data, req)
 	if err != nil {
