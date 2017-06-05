@@ -405,5 +405,13 @@ func (r *apiRouterWithTLSSupport) GetCertificate(cname string) (string, error) {
 }
 
 func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(name string, data router.HealthcheckData) error {
-	return nil
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(http.MethodPut, fmt.Sprintf("backend/%s/healthcheck", name), bytes.NewReader(b))
+	if code == http.StatusNotFound {
+		return router.ErrBackendNotFound
+	}
+	return err
 }

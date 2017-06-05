@@ -25,11 +25,12 @@ import (
 )
 
 type backend struct {
-	addr      string
-	addresses []string
-	cnames    []string
-	swapWith  string
-	cnameOnly bool
+	addr        string
+	addresses   []string
+	cnames      []string
+	swapWith    string
+	cnameOnly   bool
+	healthcheck router.HealthcheckData
 }
 
 type fakeRouterAPI struct {
@@ -52,6 +53,7 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}/cname", api.getCnames).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.unsetCname).Methods(http.MethodDelete)
+	r.HandleFunc("/backend/{name}/healthcheck", api.setHealthcheck).Methods(http.MethodPut)
 	r.HandleFunc("/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
 	r.HandleFunc("/certificate/{cname}", api.addCertificate).Methods(http.MethodPut)
 	r.HandleFunc("/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
@@ -231,6 +233,18 @@ func (f *fakeRouterAPI) removeCertificate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	delete(f.certificates, cname)
+}
+
+func (f *fakeRouterAPI) setHealthcheck(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	if b, ok := f.backends[name]; ok {
+		hc := router.HealthcheckData{}
+		json.NewDecoder(r.Body).Decode(&hc)
+		b.healthcheck = hc
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
 }
 
 func (f *fakeRouterAPI) stop() {
@@ -481,6 +495,21 @@ func (s *S) TestGetCertificateNotFound(c *check.C) {
 	cert, err := tlsRouter.GetCertificate("cname.com")
 	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
 	c.Assert(cert, check.DeepEquals, "")
+}
+
+func (s *S) TestSetHealthcheck(c *check.C) {
+	hcRouter := &apiRouterWithHealthcheckSupport{s.testRouter}
+	hc := router.HealthcheckData{Path: "/", Status: 200}
+	err := hcRouter.SetHealthcheck("mybackend", hc)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["mybackend"].healthcheck, check.DeepEquals, hc)
+}
+
+func (s *S) TestHealcheckBackendNotFound(c *check.C) {
+	hcRouter := &apiRouterWithHealthcheckSupport{s.testRouter}
+	hc := router.HealthcheckData{Path: "/", Status: 200}
+	err := hcRouter.SetHealthcheck("invalid", hc)
+	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestCreateRouterSupport(c *check.C) {
