@@ -17,6 +17,7 @@ import (
 
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
@@ -39,6 +40,7 @@ type apiRouter struct {
 	routerName string
 	endpoint   string
 	client     *http.Client
+	debug      bool
 }
 
 type apiRouterWithCnameSupport struct{ *apiRouter }
@@ -73,10 +75,12 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		return nil, err
 	}
+	debug, _ := config.GetBool(configPrefix + ":debug")
 	baseRouter := &apiRouter{
 		routerName: routerName,
 		endpoint:   endpoint,
 		client:     net.Dial5Full60ClientNoKeepAlive,
+		debug:      debug,
 	}
 	cnameAPI := &apiRouterWithCnameSupport{baseRouter}
 	tlsAPI := &apiRouterWithTLSSupport{baseRouter}
@@ -216,7 +220,7 @@ func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
 	for _, addr := range req.Addresses {
 		u, err := url.Parse(addr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse url %s: %s", addr, err)
+			return nil, errors.Errorf("failed to parse url %s: %s", addr, err)
 		}
 		result = append(result, u)
 	}
@@ -256,7 +260,7 @@ func (r *apiRouter) HealthCheck() error {
 		return err
 	}
 	if code != http.StatusOK {
-		return fmt.Errorf("invalid status code %d from healthcheck %q: %s", code, r.endpoint+"/healthcheck", data)
+		return errors.Errorf("invalid status code %d from healthcheck %q: %s", code, r.endpoint+"/healthcheck", data)
 	}
 	return nil
 }
@@ -290,7 +294,7 @@ func (r *apiRouter) checkSupports(feature string) (bool, error) {
 	case http.StatusOK:
 		return true, nil
 	}
-	return false, fmt.Errorf("failed to check support for %s: %s - %s - %d", feature, err, data, statusCode)
+	return false, errors.Errorf("failed to check support for %s: %s - %s - %d", feature, err, data, statusCode)
 }
 
 func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code int, err error) {
@@ -298,12 +302,20 @@ func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code i
 	defer func() {
 		done(err)
 	}()
-	url := fmt.Sprintf("%s/%s", r.endpoint, path)
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(r.endpoint, "/"), strings.TrimLeft(path, "/"))
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, 0, err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := r.client.Do(req)
+	if r.debug {
+		bodyData, _ := ioutil.ReadAll(body)
+		if err == nil {
+			code = resp.StatusCode
+		}
+		log.Debugf("%s %s %s %s: %d", r.routerName, method, url, string(bodyData), code)
+	}
 	if err != nil {
 		return nil, 0, err
 	}
@@ -311,10 +323,10 @@ func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code i
 	code = resp.StatusCode
 	data, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return data, code, fmt.Errorf("failed to read response body for %s: %s", url, err)
+		return data, code, errors.Errorf("failed to read response body for %s: %s", url, err)
 	}
-	if resp.StatusCode >= 400 {
-		return data, code, fmt.Errorf("failed to request %s - %d - %s", url, code, data)
+	if resp.StatusCode >= 300 {
+		return data, code, errors.Errorf("failed to request %s - %d - %s", url, code, data)
 	}
 	return data, code, nil
 }
