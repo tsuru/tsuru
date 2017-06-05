@@ -161,10 +161,8 @@ func (r *apiRouter) RemoveBackend(name string) (err error) {
 		if strings.Contains(string(data), router.ErrBackendSwapped.Error()) {
 			return router.ErrBackendSwapped
 		}
-		fallthrough
-	default:
-		return err
 	}
+	return err
 }
 
 func (r *apiRouter) AddRoute(name string, address *url.URL) error {
@@ -288,12 +286,10 @@ func (r *apiRouter) setRoutes(name string, addresses []*url.URL) (err error) {
 	}
 	body := bytes.NewReader(data)
 	_, statusCode, err := r.do(http.MethodPut, path, body)
-	switch statusCode {
-	case http.StatusNotFound:
+	if statusCode == http.StatusNotFound {
 		return router.ErrBackendNotFound
-	default:
-		return err
 	}
+	return err
 }
 
 func (r *apiRouter) checkSupports(feature string) (bool, error) {
@@ -352,9 +348,8 @@ func (r *apiRouterWithCnameSupport) SetCName(cname, name string) error {
 		return router.ErrBackendNotFound
 	case http.StatusConflict:
 		return router.ErrCNameExists
-	default:
-		return err
 	}
+	return err
 }
 
 func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
@@ -366,10 +361,8 @@ func (r *apiRouterWithCnameSupport) UnsetCName(cname, name string) error {
 		if strings.Contains(string(data), router.ErrCNameNotFound.Error()) {
 			return router.ErrCNameNotFound
 		}
-		fallthrough
-	default:
-		return err
 	}
+	return err
 }
 
 func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
