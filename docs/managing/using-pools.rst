@@ -65,16 +65,16 @@ You can overwrite default pool by setting the flag `-f`:
 Adding teams to a pool
 ----------------------
 
-Then you can use `tsuru pool-teams-add` to add teams to the pool that
+Then you can use `tsuru pool-constraint-set` to add teams to the pool that
 you've just created:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-teams-add pool1 team1 team2
+    $ tsuru pool-constraint-set pool1 team team1 team2 --append
 
-    $ tsuru pool-teams-add pool2 team3
+    $ tsuru pool-constraint-set pool2 team team3 --append
 
 Listing pools
 -------------
@@ -108,12 +108,31 @@ If you want to remove a pool, use `tsuru pool-remove`:
 Removing teams from a pool
 --------------------------
 
-You can remove one or more teams from a pool using the command `tsuru pool-teams-remove`:
+You can remove one or more teams from a pool using the command `tsuru pool-constraint-set`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-teams-remove pool1 team1
+    $ tsuru pool-constraint-set pool1 team team1 --blacklist
 
-    $ tsuru pool-teams-remove pool1 team1 team2 team3
+    $ tsuru pool-constraint-set pool1 team team1 team2 team3 --blacklist
+
+Moving apps between pools and teams
+-----------------------------------
+
+You can move apps from poolA to poolB and from teamA to teamB even when they dont have permission to see each other's pools, this is made by using `tsuru app-update`:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru app-update -a <app> -t <teamB> -o <poolB>
+
+By default the app will be set to both teams, so teamA can still see the app just in case that the user may have made some mistake. If you wish to remove the old teamA from the app, It's possible using `tsuru app-revoke`:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru app-revoke teamA -a <app>
