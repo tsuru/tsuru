@@ -39,6 +39,7 @@ var (
 type apiRouter struct {
 	routerName string
 	endpoint   string
+	headers    map[string]string
 	client     *http.Client
 	debug      bool
 }
@@ -71,16 +72,26 @@ func init() {
 }
 
 func createRouter(routerName, configPrefix string) (router.Router, error) {
-	endpoint, err := config.GetString(configPrefix + ":endpoint")
+	endpoint, err := config.GetString(configPrefix + ":api-url")
 	if err != nil {
 		return nil, err
 	}
 	debug, _ := config.GetBool(configPrefix + ":debug")
+	headers, _ := config.Get(configPrefix + ":headers")
+	var headerMap map[string]string
+	if headers != nil {
+		h, ok := headers.(map[string]string)
+		if !ok {
+			return nil, errors.Errorf("invalid header configuration: %v", headers)
+		}
+		headerMap = h
+	}
 	baseRouter := &apiRouter{
 		routerName: routerName,
 		endpoint:   endpoint,
 		client:     net.Dial5Full60ClientNoKeepAlive,
 		debug:      debug,
+		headers:    headerMap,
 	}
 	cnameAPI := &apiRouterWithCnameSupport{baseRouter}
 	tlsAPI := &apiRouterWithTLSSupport{baseRouter}
@@ -308,6 +319,9 @@ func (r *apiRouter) do(method, path string, body io.Reader) (data []byte, code i
 		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	for k, v := range r.headers {
+		req.Header.Set(k, v)
+	}
 	resp, err := r.client.Do(req)
 	if r.debug {
 		bodyData, _ := ioutil.ReadAll(body)

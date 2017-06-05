@@ -270,7 +270,7 @@ func (s *S) SetUpTest(c *check.C) {
 		client:     tsuruNet.Dial5Full60ClientNoKeepAlive,
 		routerName: "apirouter",
 	}
-	config.Set("routers:apirouter:endpoint", s.apiRouter.endpoint)
+	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
 	s.apiRouter.backends = map[string]*backend{
 		"mybackend": &backend{addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
@@ -553,4 +553,20 @@ func (s *S) TestCreateRouterSupport(c *check.C) {
 		_, ok = r.(router.CustomHealthcheckRouter)
 		c.Assert(ok, check.Equals, tt[i].expectHC, comment)
 	}
+}
+
+func (s *S) TestCreateCustomHeaders(c *check.C) {
+	s.apiRouter.router.HandleFunc("/custom", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-CUSTOM") == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	})
+	config.Set("routers:apirouter:headers", map[string]string{"X-CUSTOM": "HI"})
+	defer config.Unset("router:apirouter:headers")
+	r, err := createRouter("apirouter", "routers:apirouter")
+	c.Assert(err, check.IsNil)
+	_, code, err := r.(*apiRouter).do(http.MethodGet, "/custom", nil)
+	c.Assert(code, check.DeepEquals, http.StatusOK)
+	c.Assert(err, check.IsNil)
 }
