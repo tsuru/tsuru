@@ -40,7 +40,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	config.Set("routers:apirouter:api-url", s.apiRouter.endpoint)
 	s.apiRouter.backends = map[string]*backend{
-		"mybackend": &backend{addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
+		"mybackend": {addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
 }
 
