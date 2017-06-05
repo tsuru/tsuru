@@ -553,13 +553,13 @@ Routers
 As of 0.10.0, all your router configuration should live under entries with the
 format ``routers:<router name>``.
 
-routers:<router name>:type (type: hipache, galeb, vulcand)
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+routers:<router name>:type (type: hipache, galeb, vulcand, api)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Indicates the type of this router configuration. The standard router supported
 by tsuru is `hipache <https://github.com/hipache/hipache>`_. There is also
-experimental support for `galeb <http://galeb.io/>`_ and `vulcand
-<https://docs.vulcand.io/>`_).
+experimental support for `galeb <http://galeb.io/>`_, `vulcand
+<https://docs.vulcand.io/>`_) and a generic api router.
 
 routers:<router name>:default
 +++++++++++++++++++++++++++++
@@ -583,10 +583,15 @@ must be configured in your hipache.conf file. For details on all available
 options for connecting to redis check :ref:`common redis configuration
 <config_common_redis>`
 
-routers:<router name>:api-url (type: galeb, vulcand)
-++++++++++++++++++++++++++++++++++++++++++++++++++++
+routers:<router name>:api-url (type: galeb, vulcand, api)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-The URL for the Galeb or vulcand manager API.
+The URL for the router manager API.
+
+routers:<router name>:debug (type galeb, api)
++++++++++++++++++++++++++++++++++++++++++++++
+
+Enables debug mode, logging additional information.
 
 routers:<router name>:username (type: galeb)
 ++++++++++++++++++++++++++++++++++++++++++++
@@ -633,6 +638,18 @@ routers:<router name>:use-token (type: galeb)
 
 If true, tsuru will get an authentication token by calling the /token route and
 reuse it until it expires. (Defaults to false)
+
+routers:<router name>:headers (type: api)
++++++++++++++++++++++++++++++++++++++++++
+
+Headers to be added to the request to the api responsible for mananing the router. Example:
+
+.. highlight: yaml
+
+::
+
+      headers:
+        - X-CUSTOM-HEADER: my-value
 
 Hipache
 -------
