@@ -2,7 +2,7 @@
 # Build customization
 build:
   main: ./cmd/tsurud
-  binary_name: tsurud
+  binary: tsurud
   ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}}
   goos:
     - linux
