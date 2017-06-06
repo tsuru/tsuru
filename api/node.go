@@ -113,13 +113,6 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !permission.Check(t, permission.PermNodeCreate, permission.Context(permission.CtxPool, poolName)) {
 		return permission.ErrUnauthorized
 	}
-	if !params.Register {
-		canCreateMachine := permission.Check(t, permission.PermMachineCreate,
-			permission.Context(permission.CtxIaaS, params.Metadata["iaas"]))
-		if !canCreateMachine {
-			return permission.ErrUnauthorized
-		}
-	}
 	evt, err := event.New(&event.Opts{
 		Target:      event.Target{Type: event.TargetTypeNode},
 		Kind:        permission.PermNodeCreate,
@@ -191,14 +184,6 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return permission.ErrUnauthorized
 	}
 	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
-	if removeIaaS {
-		allowedIaasRemove := permission.Check(t, permission.PermMachineDelete,
-			permission.Context(permission.CtxIaaS, node.Metadata()["iaas"]),
-		)
-		if !allowedIaasRemove {
-			return permission.ErrUnauthorized
-		}
-	}
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeNode, Value: node.Address()},
 		Kind:       permission.PermNodeDelete,
