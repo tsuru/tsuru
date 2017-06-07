@@ -90,8 +90,11 @@ func LogConn() (*LogStorage, error) {
 
 // Apps returns the apps collection from MongoDB.
 func (s *Storage) Apps() *storage.Collection {
+	fmt.Printf("db/storage.go: Apps(): s = %v\n", s)
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
+	fmt.Printf("db/storage.go: Apps(): nameIndex = %v\n", nameIndex)
 	c := s.Collection("apps")
+	fmt.Printf("db/storage.go: Apps(): c = %v\n", c)
 	c.EnsureIndex(nameIndex)
 	return c
 }
