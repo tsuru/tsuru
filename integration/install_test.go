@@ -38,7 +38,7 @@ var (
 		"swarm",
 	}
 	clusterProvisioners = []clusterManager{
-		&kubernetesClusterManager{},
+		&minikubeClusterManager{},
 	}
 	flows = []ExecFlow{
 		platformsToInstall(),
@@ -266,7 +266,7 @@ func poolAdd() ExecFlow {
 			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
 		}
 		for _, cluster := range clusterProvisioners {
-			poolName := "ipool-" + cluster.Provisioner()
+			poolName := "ipool-" + cluster.Name()
 			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolName", poolName)
@@ -274,7 +274,7 @@ func poolAdd() ExecFlow {
 			c.Assert(res, ResultOk)
 			res = cluster.Start(env)
 			c.Assert(res, ResultOk)
-			clusterName := "icluster-" + cluster.Provisioner()
+			clusterName := "icluster-" + cluster.Name()
 			certFiles := cluster.CertificateFiles()
 			res = T("cluster-update", clusterName, cluster.Provisioner(), "--addr", cluster.Address(env), "--cacert", certFiles["cacert"], "--clientcert", certFiles["clientcert"], "--clientkey", certFiles["clientkey"], "--pool", poolName).Run(env)
 			c.Assert(res, ResultOk)
@@ -303,9 +303,12 @@ func poolAdd() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		for _, cluster := range clusterProvisioners {
-			res := T("cluster-remove", "icluster-"+cluster.Provisioner()).Run(env)
+			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
 			res = cluster.Delete(env)
+			c.Check(res, ResultOk)
+			poolName := "ipool-" + cluster.Name()
+			res = T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
 		for _, node := range env.All("nodeaddrs") {
