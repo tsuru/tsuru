@@ -372,13 +372,18 @@ func exampleApps() ExecFlow {
 		lang := strings.Replace(parts[1], "iplat-", "", -1)
 		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang+"/").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-info", "-a", appName).Run(env)
-		c.Assert(res, ResultOk)
+		regex := regexp.MustCompile("started")
+		ok := retry(time.Minute, func() bool {
+			res = T("app-info", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			return regex.MatchString(res.Stdout.String())
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 1 minute: %v", res))
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 		parts = addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
-		ok := retry(15*time.Minute, func() bool {
+		ok = retry(15*time.Minute, func() bool {
 			res = cmd.Run(env)
 			return res.ExitCode == 0
 		})
