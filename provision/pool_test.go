@@ -575,6 +575,35 @@ func (s *S) TestGetDefaultFallbackFromConfig(c *check.C) {
 	c.Assert(r, check.Equals, "router2")
 }
 
+func (s *S) TestGetDefaultAllowAllSingleAllowedValue(c *check.C) {
+	config.Set("routers:router2:type", "hipache")
+	defer config.Unset("routers")
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: "router", Values: []string{"router*"}, Blacklist: false})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	r, err := pool.GetDefaultRouter()
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, "router2")
+}
+
+func (s *S) TestGetDefaultBlacklistSingleAllowedValue(c *check.C) {
+	config.Set("routers:router1:type", "hipache")
+	config.Set("routers:router2:type", "hipache")
+	defer config.Unset("routers")
+	err := AddPool(AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: "router", Values: []string{"router2"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName("pool1")
+	c.Assert(err, check.IsNil)
+	r, err := pool.GetDefaultRouter()
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, "router1")
+}
+
 func (s *S) TestPoolAllowedValues(c *check.C) {
 	config.Set("routers:router:type", "hipache")
 	config.Set("routers:router1:type", "hipache")

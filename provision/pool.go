@@ -87,8 +87,18 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 		return "", err
 	}
 	constraint := constraints["router"]
-	if constraint == nil || constraint.Blacklist ||
-		len(constraint.Values) == 0 || strings.Contains(constraint.Values[0], "*") {
+	if constraint == nil || len(constraint.Values) == 0 {
+		return router.Default()
+	}
+	if constraint.Blacklist || strings.Contains(constraint.Values[0], "*") {
+		var allowed map[string][]string
+		allowed, err = p.allowedValues()
+		if err != nil {
+			return "", err
+		}
+		if len(allowed["router"]) == 1 {
+			return allowed["router"][0], nil
+		}
 		return router.Default()
 	}
 	routers, err := routersNames()
