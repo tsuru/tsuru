@@ -274,7 +274,7 @@ func (s *S) TestDeployApp(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Image deploy called")
+	c.Assert(logs, check.Equals, "Builder deploy called")
 }
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
@@ -305,7 +305,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	logs := writer.String()
-	c.Assert(logs, check.Equals, "Image deploy called")
+	c.Assert(logs, check.Equals, "Builder deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "some-app"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, false)
@@ -473,7 +473,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
-	s.provisioner.PrepareFailure("ImageDeploy", errors.New("deploy error"))
+	s.provisioner.PrepareFailure("Deploy", errors.New("deploy error"))
 	a := App{
 		Name:      "testerrorapp",
 		Platform:  "zend",
@@ -581,7 +581,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Image deploy called")
+	c.Assert(evt.Log, check.Equals, "Builder deploy called")
 }
 
 func (s *S) TestDeployToProvisionerArchive(c *check.C) {
@@ -654,7 +654,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.Log, check.Equals, "Image deploy called")
+	c.Assert(evt.Log, check.Equals, "Builder deploy called")
 }
 
 func (s *S) TestRollbackWithNameImage(c *check.C) {

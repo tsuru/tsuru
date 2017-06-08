@@ -259,6 +259,9 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 			return deployer.Rollback(opts.App, opts.Image, evt)
 		}
 	case DeployImage:
+		if deployer, ok := prov.(provision.BuilderDeploy); ok {
+			return builderDeploy(deployer, opts, evt, false)
+		}
 		if deployer, ok := prov.(provision.ImageDeployer); ok {
 			return deployer.ImageDeploy(opts.App, opts.Image, evt)
 		}
@@ -294,6 +297,7 @@ func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event
 		ArchiveFile:   opts.File,
 		ArchiveSize:   opts.FileSize,
 		Rebuild:       isRebuild,
+		ImageID:       opts.Image,
 	}
 	build, err := opts.App.getBuilder()
 	if err != nil {

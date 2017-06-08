@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -54,6 +55,8 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		if err != nil {
 			return "", err
 		}
+	} else if opts.ImageID != "" {
+		return imageBuild(client, app, opts.ImageID, evt)
 	} else {
 		return "", errors.New("no valid files found")
 	}
@@ -105,6 +108,89 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 		return "", err
 	}
 	return imageID, nil
+}
+
+func imageBuild(client *docker.Client, app provision.App, imageID string, evt *event.Event) (string, error) {
+	if !strings.Contains(imageID, ":") {
+		imageID = fmt.Sprintf("%s:latest", imageID)
+	}
+	w := evt
+	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
+	pullOpts := docker.PullImageOptions{
+		Repository:        imageID,
+		OutputStream:      w,
+		InactivityTimeout: net.StreamInactivityTimeout,
+	}
+	err := client.PullImage(pullOpts, docker.AuthConfiguration{})
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintln(w, "---- Getting process from image ----")
+	cmd := "(cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile || true) 2>/dev/null"
+	var buf bytes.Buffer
+	err = runCommandInContainer(client, imageID, cmd, app, &buf, nil)
+	if err != nil {
+		return "", err
+	}
+	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
+		Client:      client,
+		App:         app,
+		ProcfileRaw: buf.String(),
+		ImageID:     imageID,
+		AuthConfig:  RegistryAuthConfig(),
+		Out:         w,
+	})
+	if err != nil {
+		return "", err
+	}
+	app.SetUpdatePlatform(true)
+	return newImage, nil
+}
+
+func runCommandInContainer(client *docker.Client, image string, command string, app provision.App, stdout, stderr io.Writer) error {
+	createOptions := docker.CreateContainerOptions{
+		Config: &docker.Config{
+			AttachStdout: true,
+			AttachStderr: true,
+			Image:        image,
+			Entrypoint:   []string{"/bin/sh", "-c"},
+			Cmd:          []string{command},
+		},
+	}
+	cont, err := client.CreateContainer(createOptions)
+	if err != nil {
+		return err
+	}
+	attachOptions := docker.AttachToContainerOptions{
+		Container:    cont.ID,
+		OutputStream: stdout,
+		ErrorStream:  stderr,
+		Stream:       true,
+		Stdout:       true,
+		Stderr:       true,
+		Success:      make(chan struct{}),
+	}
+	waiter, err := client.AttachToContainerNonBlocking(attachOptions)
+	if err != nil {
+		return err
+	}
+	<-attachOptions.Success
+	close(attachOptions.Success)
+	err = client.StartContainer(cont.ID, nil)
+	if err != nil {
+		return err
+	}
+	waiter.Wait()
+	return nil
+}
+
+func RegistryAuthConfig() docker.AuthConfiguration {
+	var authConfig docker.AuthConfiguration
+	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
+	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
+	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
+	authConfig.ServerAddress, _ = config.GetString("docker:registry")
+	return authConfig
 }
 
 func downloadFromContainer(client *docker.Client, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {

@@ -88,7 +88,6 @@ type dockerProvisioner struct {
 
 var (
 	_ provision.Provisioner              = &dockerProvisioner{}
-	_ provision.ImageDeployer            = &dockerProvisioner{}
 	_ provision.RollbackableDeployer     = &dockerProvisioner{}
 	_ provision.ShellProvisioner         = &dockerProvisioner{}
 	_ provision.ExecutableProvisioner    = &dockerProvisioner{}
@@ -390,6 +389,13 @@ func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event
 }
 
 func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
+	if !strings.HasSuffix(buildImageID, "-builder") {
+		err := p.deploy(app, buildImageID, evt)
+		if err != nil {
+			return "", err
+		}
+		return buildImageID, nil
+	}
 	imageID, err := p.deployPipeline(app, buildImageID, nil, evt)
 	if err != nil {
 		return "", err
@@ -399,52 +405,6 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 		return "", err
 	}
 	return imageID, nil
-}
-
-func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, evt *event.Event) (string, error) {
-	cluster := p.Cluster()
-	if !strings.Contains(imageId, ":") {
-		imageId = fmt.Sprintf("%s:latest", imageId)
-	}
-	w := evt
-	fmt.Fprintln(w, "---- Pulling image to tsuru ----")
-	pullOpts := docker.PullImageOptions{
-		Repository:        imageId,
-		OutputStream:      w,
-		InactivityTimeout: net.StreamInactivityTimeout,
-	}
-	nodes, err := p.Nodes(app)
-	if err != nil {
-		return "", err
-	}
-	node, _, err := p.scheduler.minMaxNodes(nodes, app.GetName(), "")
-	if err != nil {
-		return "", err
-	}
-	err = cluster.PullImage(pullOpts, docker.AuthConfiguration{}, node)
-	if err != nil {
-		return "", err
-	}
-	fmt.Fprintln(w, "---- Getting process from image ----")
-	cmd := "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"
-	var outBuf bytes.Buffer
-	err = p.runCommandInContainer(imageId, cmd, app, &outBuf, nil)
-	if err != nil {
-		return "", err
-	}
-	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
-		Client:      cluster,
-		App:         app,
-		ProcfileRaw: outBuf.String(),
-		ImageId:     imageId,
-		AuthConfig:  p.RegistryAuthConfig(),
-		Out:         w,
-	})
-	if err != nil {
-		return "", err
-	}
-	app.SetUpdatePlatform(true)
-	return newImage, p.deploy(app, newImage, evt)
 }
 
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, evt *event.Event) error {
