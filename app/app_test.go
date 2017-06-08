@@ -3692,7 +3692,7 @@ func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: s.team.Name, Router: "fake-tls"}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{
-		Message: "router \"fake-tls\" is not available for pool \"pool1\"",
+		Message: "router \"fake-tls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc\"",
 	})
 }
 
@@ -4370,6 +4370,6 @@ func (s *S) TestAppUpdateRouterNotAvailableForPool(c *check.C) {
 	updateData := App{Name: "test", Router: "fake-tls"}
 	err = a.Update(updateData, new(bytes.Buffer))
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{
-		Message: "router \"fake-tls\" is not available for pool \"pool1\"",
+		Message: "router \"fake-tls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc\"",
 	})
 }
