@@ -2200,7 +2200,7 @@ func (s *S) TestIsValid(c *check.C) {
 		{"b", s.team.Name, "pool1", "fake", ""},
 		{InternalAppName, s.team.Name, "pool1", "fake", errMsg},
 		{"myapp", "invalidteam", "pool1", "fake", "team not found"},
-		{"myapp", s.team.Name, "pool1", "faketls", "router \"faketls\" is not available for pool \"pool1\""},
+		{"myapp", s.team.Name, "pool1", "faketls", "router \"faketls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-tls\""},
 		{"myapp", "noaccessteam", "pool1", "fake", "App team owner \"noaccessteam\" has no access to pool \"pool1\""},
 	}
 	for _, d := range data {

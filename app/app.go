@@ -964,7 +964,7 @@ func (app *App) validateRouter(pool *provision.Pool) error {
 			return nil
 		}
 	}
-	msg := fmt.Sprintf("router %q is not available for pool %q", app.Router, app.Pool)
+	msg := fmt.Sprintf("router %q is not available for pool %q. Available routers are: %q", app.Router, app.Pool, strings.Join(routers, ", "))
 	return &tsuruErrors.ValidationError{Message: msg}
 }
 
