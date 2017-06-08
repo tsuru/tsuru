@@ -387,13 +387,18 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	cleanDeploy, err := strconv.ParseBool(r.FormValue("cleanDeploy"))
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	updateData := app.App{
-		TeamOwner:   r.FormValue("teamOwner"),
-		Plan:        app.Plan{Name: r.FormValue("plan")},
-		Pool:        r.FormValue("pool"),
-		Description: r.FormValue("description"),
-		Router:      r.FormValue("router"),
-		Tags:        r.Form["tag"],
+		TeamOwner:      r.FormValue("teamOwner"),
+		Plan:           app.Plan{Name: r.FormValue("plan")},
+		Pool:           r.FormValue("pool"),
+		Description:    r.FormValue("description"),
+		Router:         r.FormValue("router"),
+		Tags:           r.Form["tag"],
+		UpdatePlatform: cleanDeploy,
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
@@ -418,6 +423,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if updateData.Router != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouter)
+	}
+	if updateData.UpdatePlatform {
+		wantedPerms = append(wantedPerms, permission.PermPlatformUpdate)
 	}
 	if len(wantedPerms) == 0 {
 		msg := "Neither the description, plan, pool, router or team owner were set. You must define at least one."
