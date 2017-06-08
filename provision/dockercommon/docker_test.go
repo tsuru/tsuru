@@ -34,7 +34,7 @@ func (s *S) TestPrepareImageForDeploy(c *check.C) {
 		Client:      cli,
 		App:         a,
 		ProcfileRaw: "web: myapp run",
-		ImageId:     baseImgName,
+		ImageID:     baseImgName,
 		Out:         &buf,
 	}
 	newImg, err := PrepareImageForDeploy(args)
@@ -82,7 +82,7 @@ func (s *S) TestPrepareImageForDeployNoProcfile(c *check.C) {
 		Client:      cli,
 		App:         a,
 		ProcfileRaw: "",
-		ImageId:     baseImgName,
+		ImageID:     baseImgName,
 		Out:         &buf,
 	}
 	newImg, err := PrepareImageForDeploy(args)

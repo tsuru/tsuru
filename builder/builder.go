@@ -24,6 +24,7 @@ type BuildOpts struct {
 	ArchiveFile    io.Reader
 	ArchiveTarFile io.ReadCloser
 	ArchiveSize    int64
+	ImageID        string
 }
 
 // Builder is the basic interface of this package.

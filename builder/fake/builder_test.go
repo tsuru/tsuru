@@ -129,6 +129,29 @@ func (s *S) TestBuildArchiveUpload(c *check.C) {
 	c.Assert(s.b.IsArchiveFileDeploy, check.Equals, true)
 }
 
+func (s *S) TestBuildImageID(c *check.C) {
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.GetName()},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	opts := builder.BuildOpts{
+		ImageID: "myimg",
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1")
+	c.Assert(s.b.IsImageDeploy, check.Equals, true)
+	updatedApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
+}
+
 func (s *S) TestBuilderRebuild(c *check.C) {
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)

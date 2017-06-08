@@ -71,15 +71,15 @@ type PrepareImageArgs struct {
 	Client      Client
 	App         provision.App
 	ProcfileRaw string
-	ImageId     string
+	ImageID     string
 	AuthConfig  docker.AuthConfiguration
 	Out         io.Writer
 }
 
 func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
-	fmt.Fprintf(args.Out, "---- Inspecting image %q ----\n", args.ImageId)
+	fmt.Fprintf(args.Out, "---- Inspecting image %q ----\n", args.ImageID)
 	procfile := image.GetProcessesFromProcfile(args.ProcfileRaw)
-	imageInspect, err := args.Client.InspectImage(args.ImageId)
+	imageInspect, err := args.Client.InspectImage(args.ImageID)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +96,7 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 	}
 	imageInfo := strings.Split(newImage, ":")
 	repo, tag := strings.Join(imageInfo[:len(imageInfo)-1], ":"), imageInfo[len(imageInfo)-1]
-	err = args.Client.TagImage(args.ImageId, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
+	err = args.Client.TagImage(args.ImageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
 		return "", err
 	}

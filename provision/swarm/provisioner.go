@@ -5,7 +5,6 @@
 package swarm
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -37,7 +36,6 @@ type swarmProvisioner struct{}
 
 var (
 	_ provision.Provisioner              = &swarmProvisioner{}
-	_ provision.ImageDeployer            = &swarmProvisioner{}
 	_ provision.ShellProvisioner         = &swarmProvisioner{}
 	_ provision.ExecutableProvisioner    = &swarmProvisioner{}
 	_ provision.MessageProvisioner       = &swarmProvisioner{}
@@ -613,6 +611,13 @@ func (p *swarmProvisioner) CleanImage(appName, imgName string) {
 }
 
 func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
+	if !strings.HasSuffix(buildImageID, "-builder") {
+		err := deployProcesses(app, buildImageID, nil)
+		if err != nil {
+			return "", err
+		}
+		return buildImageID, nil
+	}
 	client, err := chooseDBSwarmNode()
 	if err != nil {
 		return "", err
@@ -626,12 +631,9 @@ func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *e
 		defer removeServiceAndLog(client, srvID)
 	}
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	_, err = commitPushBuildImage(client, deployImage, task.Status.ContainerStatus.ContainerID, app)
-	if err != nil {
-		return "", err
-	}
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -640,46 +642,6 @@ func (p *swarmProvisioner) Deploy(app provision.App, buildImageID string, evt *e
 		return "", errors.WithStack(err)
 	}
 	return deployImage, nil
-}
-
-func (p *swarmProvisioner) ImageDeploy(a provision.App, imgID string, evt *event.Event) (string, error) {
-	client, err := chooseDBSwarmNode()
-	if err != nil {
-		return "", err
-	}
-	if !strings.Contains(imgID, ":") {
-		imgID = fmt.Sprintf("%s:latest", imgID)
-	}
-	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
-	var buf bytes.Buffer
-	cmds := []string{"/bin/bash", "-c", "cat /home/application/current/Procfile || cat /app/user/Procfile || cat /Procfile"}
-	srvID, task, err := runOnceBuildCmds(client, a, cmds, imgID, "", &buf)
-	if srvID != "" {
-		defer removeServiceAndLog(client, srvID)
-	}
-	if err != nil {
-		return "", err
-	}
-	client, err = clientForNode(client, task.NodeID)
-	if err != nil {
-		return "", err
-	}
-	newImage, err := dockercommon.PrepareImageForDeploy(dockercommon.PrepareImageArgs{
-		Client:      client,
-		App:         a,
-		ProcfileRaw: buf.String(),
-		ImageId:     imgID,
-		Out:         evt,
-	})
-	if err != nil {
-		return "", err
-	}
-	a.SetUpdatePlatform(true)
-	err = deployProcesses(a, newImage, nil)
-	if err != nil {
-		return "", err
-	}
-	return newImage, nil
 }
 
 func (p *swarmProvisioner) Shell(opts provision.ShellOptions) error {

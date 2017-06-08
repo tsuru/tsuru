@@ -5,12 +5,16 @@
 package docker
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sort"
 	"strings"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -97,6 +101,277 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(imgID, check.Equals, "tsuru/app-myapp:v1-builder")
+}
+
+func (s *S) TestBuilderImageID(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
+	s.server.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{"/bin/sh", "-c", "python test.py"},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	imd, err := image.GetImageCustomData(imgID)
+	c.Assert(err, check.IsNil)
+	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
+	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+	updatedApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
+}
+
+func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
+	s.server.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint:   []string{"/bin/sh", "-c", "python test.py"},
+				ExposedPorts: map[docker.Port]struct{}{"80/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	imd, err := image.GetImageCustomData(imgID)
+	c.Assert(err, check.IsNil)
+	c.Assert(imd.ExposedPort, check.DeepEquals, "80/tcp")
+}
+
+func (s *S) TestBuilderImageIDMoreThanOnePortFromImage(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
+	s.server.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint:   []string{"/bin/sh", "-c", "python test.py"},
+				ExposedPorts: map[docker.Port]struct{}{"3000/tcp": {}, "80/tcp": {}},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	_, err = s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestBuilderImageIDMWithProcfile(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "web: test.sh\n")
+		conn.Close()
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: "app", Value: a.Name},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	imd, err := image.GetImageCustomData(imgID)
+	c.Assert(err, check.IsNil)
+	expectedProcesses := map[string][]string{"web": {"test.sh"}}
+	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
+}
+
+func (s *S) TestBuilderImageIDMWithEntrypointAndCmd(c *check.C) {
+	opts := provision.AddNodeOptions{Address: s.server.URL()}
+	err := s.provisioner.AddNode(opts)
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	u, _ := url.Parse(s.server.URL())
+	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	s.server.CustomHandler("/containers/.*/attach", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "cannot hijack connection", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.raw-stream")
+		w.WriteHeader(http.StatusOK)
+		conn, _, cErr := hijacker.Hijack()
+		if cErr != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		outStream := stdcopy.NewStdWriter(conn, stdcopy.Stdout)
+		fmt.Fprintf(outStream, "")
+		conn.Close()
+	}))
+	s.server.CustomHandler("/images/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := docker.Image{
+			Config: &docker.Config{
+				Entrypoint: []string{"/bin/sh", "-c"},
+				Cmd:        []string{"python test.py"},
+			},
+		}
+		j, _ := json.Marshal(response)
+		w.Write(j)
+	}))
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	bopts := builder.BuildOpts{
+		ImageID: imageName,
+	}
+	imgID, err := s.b.Build(s.provisioner, a, evt, bopts)
+	c.Assert(err, check.IsNil)
+	c.Assert(imgID, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	imd, err := image.GetImageCustomData(imgID)
+	c.Assert(err, check.IsNil)
+	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
+	c.Assert(imd.Processes, check.DeepEquals, expectedProcesses)
 }
 
 func (s *S) TestBuilderRebuild(c *check.C) {

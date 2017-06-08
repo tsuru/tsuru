@@ -6,7 +6,6 @@ package swarm
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -1371,27 +1370,11 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
 }
 
-func (s *S) TestImageDeploy(c *check.C) {
+func (s *S) TestDeployImageID(c *check.C) {
 	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer srv.Stop()
-	imageName := "myimg:v1"
-	srv.CustomHandler(fmt.Sprintf("/images/%s/json", imageName), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := docker.Image{
-			Config: &docker.Config{
-				Entrypoint:   []string{"/bin/sh", "-c", "python test.py"},
-				ExposedPorts: map[docker.Port]struct{}{"80/tcp": {}},
-			},
-		}
-		j, _ := json.Marshal(response)
-		w.Write(j)
-	}))
 	cli, err := docker.NewClient(srv.URL())
-	c.Assert(err, check.IsNil)
-	err = cli.PullImage(docker.PullImageOptions{
-		Repository: "myimg",
-		Tag:        "v1",
-	}, docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	opts := provision.AddNodeOptions{Address: srv.URL()}
 	err = s.p.AddNode(opts)
@@ -1399,7 +1382,13 @@ func (s *S) TestImageDeploy(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	attached := s.attachRegister(c, srv, false, a)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": []string{"/bin/sh", "-c", "python test.py"},
+		},
+	}
+	err = image.SaveImageCustomData("registry.tsuru.io/tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -1407,9 +1396,20 @@ func (s *S) TestImageDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	deployedImg, err := s.p.ImageDeploy(a, imageName, evt)
+	buildOpts := builder.BuildOpts{
+		ImageID: "myimg:v1",
+	}
+	builderImgID, err := s.b.Build(s.p, a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
-	c.Assert(<-attached, check.Equals, true)
+	c.Assert(builderImgID, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
+	pullOpts := docker.PullImageOptions{
+		Repository: "tsuru/app-myapp",
+		Tag:        "v1",
+	}
+	err = cli.PullImage(pullOpts, docker.AuthConfiguration{})
+	c.Assert(err, check.IsNil)
+	deployedImg, err := s.p.Deploy(a, builderImgID, evt)
+	c.Assert(err, check.IsNil)
 	c.Assert(deployedImg, check.Equals, "registry.tsuru.io/tsuru/app-myapp:v1")
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
@@ -1433,6 +1433,9 @@ func (s *S) TestImageDeploy(c *check.C) {
 		),
 		"/bin/sh", "-c", "python test.py",
 	})
+	updatedApp, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedApp.GetUpdatePlatform(), check.Equals, true)
 }
 
 func (s *S) TestDestroy(c *check.C) {

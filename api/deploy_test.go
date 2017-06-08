@@ -222,7 +222,7 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Image deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -240,9 +240,9 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "127.0.0.1:5000/tsuru/otherapp",
+			"image": "app-image",
 		},
-		LogMatches: `Image deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
@@ -485,7 +485,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 	user, _ := s.token.User()
-	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	a := app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
@@ -497,7 +497,7 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Image deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -515,9 +515,9 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": "127.0.0.1:5000/tsuru/otherapp",
+			"image": "app-image",
 		},
-		LogMatches: `Image deploy called`,
+		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
 }
 
