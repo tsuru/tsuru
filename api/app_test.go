@@ -1454,7 +1454,7 @@ func (s *S) TestUpdateAppPlatformUpdate(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	body := strings.NewReader("cleanDeploy=true")
+	body := strings.NewReader("imageReset=true")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

@@ -387,7 +387,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	cleanDeploy, err := strconv.ParseBool(r.FormValue("cleanDeploy"))
+	imageReset, err := strconv.ParseBool(r.FormValue("imageReset"))
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -398,7 +398,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description:    r.FormValue("description"),
 		Router:         r.FormValue("router"),
 		Tags:           r.Form["tag"],
-		UpdatePlatform: cleanDeploy,
+		UpdatePlatform: imageReset,
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
