@@ -4290,6 +4290,18 @@ func (s *S) TestUpdateIgnoresEmptyAndDuplicatedTags(c *check.C) {
 	c.Assert(dbApp.Tags, check.DeepEquals, []string{"tag2", "tag3"})
 }
 
+func (s *S) TestUpdatePlatform(c *check.C) {
+	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{UpdatePlatform: true}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
+}
+
 func (s *S) TestUpdateWithEmptyTagsRemovesAllTags(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla", Tags: []string{"tag1"}}
 	err := CreateApp(&app, s.user)
