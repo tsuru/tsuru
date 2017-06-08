@@ -41,7 +41,7 @@ func retry(timeout time.Duration, fn func() bool) bool {
 			return true
 		}
 		select {
-		case <-time.After(time.Second):
+		case <-time.After(5 * time.Second):
 		case <-timeoutTimer:
 			return false
 		}

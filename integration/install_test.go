@@ -334,7 +334,7 @@ func exampleApps() ExecFlow {
 		parts = addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
-		ok := retry(5*time.Minute, func() bool {
+		ok := retry(15*time.Minute, func() bool {
 			res = cmd.Run(env)
 			return res.ExitCode == 0
 		})
