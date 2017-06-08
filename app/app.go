@@ -348,7 +348,11 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
 	routerName := updateData.Router
+	platformUpdate := updateData.UpdatePlatform
 	tags := processTags(updateData.Tags)
+	if platformUpdate {
+		app.UpdatePlatform = platformUpdate
+	}
 	if description != "" {
 		app.Description = description
 	}
