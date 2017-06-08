@@ -183,7 +183,6 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if !allowedNodeRemove {
 		return permission.ErrUnauthorized
 	}
-	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeNode, Value: node.Address()},
 		Kind:       permission.PermNodeDelete,
@@ -204,6 +203,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
+	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
 	if removeIaaS {
 		var m iaas.Machine
 		m, err = iaas.FindMachineByIdOrAddress(node.Metadata()["iaas-id"], net.URLToHost(address))
