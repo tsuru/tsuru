@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -34,7 +35,6 @@ type FakeDockerProvisioner struct {
 	queries         []bson.M
 	storage         *cluster.MapStorage
 	cluster         *cluster.Cluster
-	authConfig      docker.AuthConfiguration
 	pushes          []Push
 	servers         []*testing.DockerServer
 	pushErrors      chan error
@@ -87,10 +87,6 @@ func StartMultipleServersCluster() (*FakeDockerProvisioner, error) {
 
 func (p *FakeDockerProvisioner) ActionLimiter() provision.ActionLimiter {
 	return p.actionLimiter
-}
-
-func (p *FakeDockerProvisioner) SetAuthConfig(config docker.AuthConfiguration) {
-	p.authConfig = config
 }
 
 func (p *FakeDockerProvisioner) Destroy() {
@@ -156,10 +152,6 @@ type Push struct {
 
 func (p *FakeDockerProvisioner) Pushes() []Push {
 	return p.pushes
-}
-
-func (p *FakeDockerProvisioner) RegistryAuthConfig() docker.AuthConfiguration {
-	return p.authConfig
 }
 
 func (p *FakeDockerProvisioner) SetContainers(host string, containers []container.Container) {
@@ -355,7 +347,7 @@ type StartContainersArgs struct {
 // will be both returned and stored internally.
 func (p *FakeDockerProvisioner) StartContainers(args StartContainersArgs) ([]container.Container, error) {
 	if args.PullImage {
-		err := p.Cluster().PullImage(docker.PullImageOptions{Repository: args.Image}, p.RegistryAuthConfig(), args.Endpoint)
+		err := p.Cluster().PullImage(docker.PullImageOptions{Repository: args.Image}, dockercommon.RegistryAuthConfig(), args.Endpoint)
 		if err != nil {
 			return nil, err
 		}

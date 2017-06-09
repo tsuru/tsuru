@@ -85,7 +85,7 @@ func (b *dockerBuilder) Build(p provision.BuilderDeploy, app provision.App, evt 
 			OutputStream:      w,
 			InactivityTimeout: net.StreamInactivityTimeout,
 		}
-		err = client.PullImage(pullOpts, docker.AuthConfiguration{})
+		err = client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
 		if err != nil {
 			return "", err
 		}
@@ -121,7 +121,7 @@ func imageBuild(client *docker.Client, app provision.App, imageID string, evt *e
 		OutputStream:      w,
 		InactivityTimeout: net.StreamInactivityTimeout,
 	}
-	err := client.PullImage(pullOpts, docker.AuthConfiguration{})
+	err := client.PullImage(pullOpts, dockercommon.RegistryAuthConfig())
 	if err != nil {
 		return "", err
 	}
@@ -137,7 +137,6 @@ func imageBuild(client *docker.Client, app provision.App, imageID string, evt *e
 		App:         app,
 		ProcfileRaw: buf.String(),
 		ImageID:     imageID,
-		AuthConfig:  RegistryAuthConfig(),
 		Out:         w,
 	})
 	if err != nil {
@@ -182,15 +181,6 @@ func runCommandInContainer(client *docker.Client, image string, command string, 
 	}
 	waiter.Wait()
 	return nil
-}
-
-func RegistryAuthConfig() docker.AuthConfiguration {
-	var authConfig docker.AuthConfiguration
-	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
-	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
-	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
-	authConfig.ServerAddress, _ = config.GetString("docker:registry")
-	return authConfig
 }
 
 func downloadFromContainer(client *docker.Client, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {

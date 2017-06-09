@@ -217,7 +217,7 @@ func (c *Container) Commit(client *docker.Client, writer io.Writer) (string, err
 		maxTry = 3
 	}
 	for i := 0; i < maxTry; i++ {
-		err = dockercommon.PushImage(client, repository, tag, registryAuthConfig())
+		err = dockercommon.PushImage(client, repository, tag, dockercommon.RegistryAuthConfig())
 		if err != nil {
 			fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
 			log.Errorf("error in push image %s: %s", c.BuildingImage, err)
@@ -230,15 +230,6 @@ func (c *Container) Commit(client *docker.Client, writer io.Writer) (string, err
 		return "", log.WrapError(errors.Wrapf(err, "error in push image %s", c.BuildingImage))
 	}
 	return c.BuildingImage, nil
-}
-
-func registryAuthConfig() docker.AuthConfiguration {
-	var authConfig docker.AuthConfiguration
-	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
-	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
-	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
-	authConfig.ServerAddress, _ = config.GetString("docker:registry")
-	return authConfig
 }
 
 func (c *Container) Stop(client *docker.Client) error {

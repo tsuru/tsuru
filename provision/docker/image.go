@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -51,7 +52,7 @@ func MigrateImages() error {
 		}
 		if registry != "" {
 			pushOpts := docker.PushImageOptions{Name: newImage, InactivityTimeout: net.StreamInactivityTimeout, RawJSONStream: true}
-			err = dcluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
+			err = dcluster.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
 			if err != nil {
 				return err
 			}

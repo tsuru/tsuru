@@ -259,21 +259,12 @@ func pushImage(client *docker.Client, repo, tag string) error {
 			InactivityTimeout: tsuruNet.StreamInactivityTimeout,
 			RawJSONStream:     true,
 		}
-		err = client.PushImage(pushOpts, registryAuthConfig())
+		err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig())
 		if err != nil {
 			return errors.WithStack(err)
 		}
 	}
 	return nil
-}
-
-func registryAuthConfig() docker.AuthConfiguration {
-	var authConfig docker.AuthConfiguration
-	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
-	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
-	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
-	authConfig.ServerAddress, _ = config.GetString("docker:registry")
-	return authConfig
 }
 
 func serviceNameForApp(a provision.App, process string) string {
