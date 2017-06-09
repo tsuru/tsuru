@@ -72,7 +72,6 @@ type PrepareImageArgs struct {
 	App         provision.App
 	ProcfileRaw string
 	ImageID     string
-	AuthConfig  docker.AuthConfiguration
 	Out         io.Writer
 }
 
@@ -113,7 +112,7 @@ func PrepareImageForDeploy(args PrepareImageArgs) (string, error) {
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
-	err = args.Client.PushImage(pushOpts, args.AuthConfig)
+	err = args.Client.PushImage(pushOpts, RegistryAuthConfig())
 	if err != nil {
 		return "", err
 	}
@@ -188,4 +187,13 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 		}
 	}
 	return nil
+}
+
+func RegistryAuthConfig() docker.AuthConfiguration {
+	var authConfig docker.AuthConfiguration
+	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
+	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
+	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
+	authConfig.ServerAddress, _ = config.GetString("docker:registry")
+	return authConfig
 }

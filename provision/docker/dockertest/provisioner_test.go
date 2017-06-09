@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/types"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -61,7 +62,7 @@ func (s *S) TestNewFakeDockerProvisioner(c *check.C) {
 	_, err = p.storage.RetrieveNode(server.URL())
 	c.Assert(err, check.IsNil)
 	opts := docker.PullImageOptions{Repository: "tsuru/bs"}
-	err = p.Cluster().PullImage(opts, p.RegistryAuthConfig())
+	err = p.Cluster().PullImage(opts, dockercommon.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -72,7 +73,7 @@ func (s *S) TestNewFakeDockerProvisioner(c *check.C) {
 func (s *S) TestStartMultipleServersCluster(c *check.C) {
 	p, err := StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = p.Cluster().PullImage(docker.PullImageOptions{Repository: "tsuru/bs"}, p.RegistryAuthConfig())
+	err = p.Cluster().PullImage(docker.PullImageOptions{Repository: "tsuru/bs"}, dockercommon.RegistryAuthConfig())
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -84,7 +85,7 @@ func (s *S) TestDestroy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.Destroy()
 	c.Assert(p.servers, check.IsNil)
-	err = p.Cluster().PullImage(docker.PullImageOptions{Repository: "tsuru/bs"}, p.RegistryAuthConfig())
+	err = p.Cluster().PullImage(docker.PullImageOptions{Repository: "tsuru/bs"}, dockercommon.RegistryAuthConfig())
 	c.Assert(err, check.NotNil)
 	e, ok := err.(cluster.DockerNodeError)
 	c.Assert(ok, check.Equals, true)
@@ -131,12 +132,6 @@ func (s *S) TestPushImageFailure(c *check.C) {
 	c.Assert(err, check.Equals, prepErr)
 	expected := []Push{{Name: "tsuru/bs", Tag: "v1"}}
 	c.Assert(p.Pushes(), check.DeepEquals, expected)
-}
-
-func (s *S) TestRegistryAuthConfig(c *check.C) {
-	var p FakeDockerProvisioner
-	config := p.RegistryAuthConfig()
-	c.Assert(config, check.Equals, p.authConfig)
 }
 
 func (s *S) TestAllContainers(c *check.C) {

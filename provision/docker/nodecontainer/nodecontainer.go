@@ -21,13 +21,13 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/fix"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 )
 
 type DockerProvisioner interface {
 	GetName() string
 	Cluster() *cluster.Cluster
-	RegistryAuthConfig() docker.AuthConfiguration
 }
 
 // recreateContainers relaunch all node containers in the cluster for the given
@@ -202,7 +202,7 @@ func pullWithRetry(client *docker.Client, p DockerProvisioner, image string, max
 	var buf bytes.Buffer
 	var err error
 	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf, InactivityTimeout: net.StreamInactivityTimeout}
-	registryAuth := p.RegistryAuthConfig()
+	registryAuth := dockercommon.RegistryAuthConfig()
 	for ; maxTries > 0; maxTries-- {
 		err = client.PullImage(pullOpts, registryAuth)
 		if err == nil {

@@ -157,22 +157,13 @@ func (p *dockerProvisioner) PushImage(name, tag string) error {
 			InactivityTimeout: net.StreamInactivityTimeout,
 			RawJSONStream:     true,
 		}
-		err = p.Cluster().PushImage(pushOpts, p.RegistryAuthConfig())
+		err = p.Cluster().PushImage(pushOpts, dockercommon.RegistryAuthConfig())
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 			return err
 		}
 	}
 	return nil
-}
-
-func (p *dockerProvisioner) RegistryAuthConfig() docker.AuthConfiguration {
-	var authConfig docker.AuthConfiguration
-	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
-	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
-	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
-	authConfig.ServerAddress, _ = config.GetString("docker:registry")
-	return authConfig
 }
 
 func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
