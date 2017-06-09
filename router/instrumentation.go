@@ -12,8 +12,9 @@ import (
 
 var (
 	requestLatencies = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "tsuru_router_request_duration_seconds",
-		Help: "The router requests latency distributions.",
+		Name:    "tsuru_router_request_duration_seconds",
+		Help:    "The router requests latency distributions.",
+		Buckets: append(prometheus.DefBuckets, []float64{15, 30, 45, 60, 90, 120}...),
 	}, []string{"router"})
 
 	requestErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
