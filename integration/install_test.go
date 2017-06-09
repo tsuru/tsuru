@@ -68,7 +68,7 @@ hosts:
     size: %d
 components:
   install-dashboard: false
-`, len(allProvisioners)+len(clusterProvisioners))
+`, len(allProvisioners))
 
 func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
@@ -275,8 +275,9 @@ func poolAdd() ExecFlow {
 			res = cluster.Start(env)
 			c.Assert(res, ResultOk)
 			clusterName := "icluster-" + cluster.Name()
-			certFiles := cluster.CertificateFiles()
-			res = T("cluster-update", clusterName, cluster.Provisioner(), "--addr", cluster.Address(env), "--cacert", certFiles["cacert"], "--clientcert", certFiles["clientcert"], "--clientkey", certFiles["clientkey"], "--pool", poolName).Run(env)
+			params := []string{"cluster-update", clusterName, cluster.Provisioner(), "--pool", poolName}
+			params = append(params, cluster.UpdateParams(env)...)
+			res = T(params...).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
 			regex := regexp.MustCompile(cluster.IP(env) + `.*?Ready`)

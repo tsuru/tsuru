@@ -8,8 +8,7 @@ type clusterManager interface {
 	Name() string
 	Provisioner() string
 	IP(env *Environment) string
-	Address(env *Environment) string
 	Start(env *Environment) *Result
 	Delete(env *Environment) *Result
-	CertificateFiles() map[string]string
+	UpdateParams(env *Environment) []string
 }
