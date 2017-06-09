@@ -281,25 +281,45 @@ func poolAdd() ExecFlow {
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
 			regex := regexp.MustCompile(cluster.IP(env) + `.*?Ready`)
+			nodeIPs := make([]string, 0)
 			ok := retry(time.Minute, func() bool {
 				res = T("node-list").Run(env)
-				return regex.MatchString(res.Stdout.String())
+				if regex.MatchString(res.Stdout.String()) {
+					regex := regexp.MustCompile(`(?m)^ ?| *(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) *|`)
+					parts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
+					for _, part := range parts {
+						if len(part) == 2 {
+							nodeIPs = append(nodeIPs, part[1])
+						}
+					}
+					return true
+				}
+				return false
 			})
-			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
-			res = T("node-update", cluster.IP(env), "pool="+poolName).Run(env)
-			c.Assert(res, ResultOk)
+			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 1 minute: %v", res))
+			for _, ip := range nodeIPs {
+				res = T("node-update", ip, "pool="+poolName).Run(env)
+				c.Assert(res, ResultOk)
+			}
 			res = T("event-list").Run(env)
 			c.Assert(res, ResultOk)
 			nodeopts := env.All("nodeopts")
 			env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
-			regex = regexp.MustCompile(`node.update.*?node:\s+` + cluster.IP(env))
-			c.Assert(regex.MatchString(res.Stdout.String()), check.Equals, true)
-			regex = regexp.MustCompile(cluster.IP(env) + `.*?Ready`)
+			for _, ip := range nodeIPs {
+				regex = regexp.MustCompile(`node.update.*?node:\s+` + ip)
+				c.Assert(regex.MatchString(res.Stdout.String()), check.Equals, true)
+			}
 			ok = retry(time.Minute, func() bool {
 				res = T("node-list").Run(env)
-				return regex.MatchString(res.Stdout.String())
+				for _, ip := range nodeIPs {
+					regex = regexp.MustCompile(ip + `.*?Ready`)
+					if !regex.MatchString(res.Stdout.String()) {
+						return false
+					}
+				}
+				return true
 			})
-			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
+			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 1 minute: %v", res))
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
