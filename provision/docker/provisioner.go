@@ -595,10 +595,6 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 			log.Errorf("Failed to remove image %s from registry: %s", imageId, err)
 		}
 	}
-	err = image.DeleteAllAppImageNames(app.GetName())
-	if err != nil {
-		log.Errorf("Failed to remove image names from storage for app %s: %s", app.GetName(), err)
-	}
 	return nil
 }
 

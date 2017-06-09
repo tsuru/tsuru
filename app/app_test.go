@@ -21,6 +21,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -73,6 +74,8 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Log("msg", "src", "unit")
 	c.Assert(err, check.IsNil)
+	err = image.AppendAppImageName(app.Name, "testimage")
+	c.Assert(err, check.IsNil)
 	err = Delete(app, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
@@ -89,6 +92,9 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "repository not found")
 	_, err = router.Retrieve(a.Name)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+	imgs, err := image.ListAppImages(a.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(imgs, check.HasLen, 0)
 }
 
 func (s *S) TestDeleteWithEvents(c *check.C) {

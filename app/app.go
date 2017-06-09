@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -492,6 +493,10 @@ func Delete(app *App, w io.Writer) error {
 	err = prov.Destroy(app)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
+	}
+	err = image.DeleteAllAppImageNames(appName)
+	if err != nil {
+		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
 	r, err := app.GetRouter()
 	if err == nil {
