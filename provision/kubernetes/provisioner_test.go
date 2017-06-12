@@ -146,6 +146,41 @@ func (s *S) TestAddNodeExisting(c *check.C) {
 	})
 }
 
+func (s *S) TestUpdateNode(c *check.C) {
+	err := s.p.AddNode(provision.AddNodeOptions{
+		Address: "my-node-addr",
+		Metadata: map[string]string{
+			"pool": "p1",
+			"m1":   "v1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		Address: "my-node-addr",
+		Metadata: map[string]string{
+			"pool": "p2",
+			"m1":   "",
+			"m2":   "v2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
+	c.Assert(nodes[0].Pool(), check.Equals, "p2")
+	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
+		"pool": "p2",
+		"m2":   "v2",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
+		"pool": "p2",
+	})
+	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
+		"m2": "v2",
+	})
+}
+
 func (s *S) TestUnits(c *check.C) {
 	a, wait, rollback := s.defaultReactions(c)
 	defer rollback()
