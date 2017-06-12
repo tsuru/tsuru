@@ -56,6 +56,7 @@ func runRoutesRebuildOnce(appName string, lock bool) bool {
 		return false
 	}
 	if a == nil {
+		log.Errorf("[routes-rebuild-task] app %q not found, aborting", appName)
 		return true
 	}
 	if lock {
@@ -65,10 +66,6 @@ func runRoutesRebuildOnce(appName string, lock bool) bool {
 			return false
 		}
 		defer a.Unlock()
-	}
-	if err != nil {
-		log.Errorf("[routes-rebuild-task] error getting app %q: %s", appName, err)
-		return false
 	}
 	_, err = RebuildRoutes(a)
 	if err != nil {
