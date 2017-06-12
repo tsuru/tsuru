@@ -387,10 +387,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	imageReset, err := strconv.ParseBool(r.FormValue("imageReset"))
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
+	imageReset, _ := strconv.ParseBool(r.FormValue("imageReset"))
 	updateData := app.App{
 		TeamOwner:      r.FormValue("teamOwner"),
 		Plan:           app.Plan{Name: r.FormValue("plan")},
