@@ -34,6 +34,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.plan",
 	"app.update.router",
 	"app.update.bind",
+	"app.update.image-reset",
 	"app.update.events",
 	"app.update.unbind",
 	"app.update.certificate.set",

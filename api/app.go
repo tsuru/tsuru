@@ -422,7 +422,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouter)
 	}
 	if updateData.UpdatePlatform {
-		wantedPerms = append(wantedPerms, permission.PermPlatformUpdate)
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
 	}
 	if len(wantedPerms) == 0 {
 		msg := "Neither the description, plan, pool, router or team owner were set. You must define at least one."

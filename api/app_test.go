@@ -1455,7 +1455,7 @@ func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
 	c.Assert(gotApp.Router, check.DeepEquals, "fake-tls")
 }
 
-func (s *S) TestUpdateAppPlatformUpdate(c *check.C) {
+func (s *S) TestUpdateAppImageReset(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)

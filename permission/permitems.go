@@ -46,6 +46,7 @@ var (
 	PermAppUpdateEnvUnset                = PermissionRegistry.get("app.update.env.unset")                // [global app team pool]
 	PermAppUpdateEvents                  = PermissionRegistry.get("app.update.events")                   // [global app team pool]
 	PermAppUpdateGrant                   = PermissionRegistry.get("app.update.grant")                    // [global app team pool]
+	PermAppUpdateImageReset              = PermissionRegistry.get("app.update.image-reset")              // [global app team pool]
 	PermAppUpdateLog                     = PermissionRegistry.get("app.update.log")                      // [global app team pool]
 	PermAppUpdatePlan                    = PermissionRegistry.get("app.update.plan")                     // [global app team pool]
 	PermAppUpdatePool                    = PermissionRegistry.get("app.update.pool")                     // [global app team pool]
