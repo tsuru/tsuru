@@ -103,7 +103,19 @@ func (c *GalebClient) regenerateToken() (err error) {
 	header := c.getTokenHeader()
 	c.token = rsp.Header.Get(header)
 	if c.token == "" {
-		return errors.Errorf("invalid empty token from header %q in request to /token", header)
+		data, err := ioutil.ReadAll(rsp.Body)
+		if err != nil {
+			return err
+		}
+		tokenStruct := struct{ Token string }{}
+		err = json.Unmarshal(data, &tokenStruct)
+		if err != nil {
+			return err
+		}
+		c.token = tokenStruct.Token
+		if c.token == "" {
+			return errors.Errorf("invalid empty token in request to %q: %q", url, string(data))
+		}
 	}
 	return nil
 }

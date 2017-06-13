@@ -95,6 +95,19 @@ func (s *S) TestGalebAuthToken(c *check.C) {
 	c.Assert(s.handler.Header[0].Get("x-auth-token"), check.Equals, "xyz")
 }
 
+func (s *S) TestGalebAuthTokenFromBody(c *check.C) {
+	s.handler.Content = `{"token":"aqwsed"}`
+	s.client.UseToken = true
+	rsp, err := s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/token", "/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 2)
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[1].Get("x-auth-token"), check.Equals, "aqwsed")
+}
+
 func (s *S) TestGalebAuthTokenAlternativeHeader(c *check.C) {
 	s.handler.RspHeader = http.Header{
 		"x-other-header": []string{"xyz"},
