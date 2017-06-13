@@ -135,6 +135,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.createUserAndTeam(c)
 	platform := Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
+	s.conn.Platforms().Insert(Platform{Name: "heimerdinger"})
 	s.defaultPlan = Plan{
 		Name:     "default-plan",
 		Memory:   1024,

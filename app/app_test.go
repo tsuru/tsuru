@@ -4065,6 +4065,18 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
 
+func (s *S) TestUpdatePlatform(c *check.C) {
+	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "example", Platform: "heimerdinger"}
+	err = app.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	dbApp, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Platform, check.Equals, updateData.Platform)
+}
+
 func (s *S) TestUpdateTeamOwner(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
 	err := CreateApp(&app, s.user)

@@ -430,7 +430,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
 	}
 	if len(wantedPerms) == 0 {
-		msg := "Neither the description, plan, pool, router or team owner were set. You must define at least one."
+		msg := "Neither the description, plan, pool, router, team owner or platform were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	for _, perm := range wantedPerms {
