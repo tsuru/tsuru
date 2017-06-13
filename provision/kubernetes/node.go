@@ -11,6 +11,8 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+const clusterMetadataName = "tsuru.io/cluster"
+
 type kubernetesNodeWrapper struct {
 	node    *v1.Node
 	prov    *kubernetesProvisioner
@@ -64,7 +66,11 @@ func (n *kubernetesNodeWrapper) Metadata() map[string]string {
 }
 
 func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
-	return filterMap(n.allMetadata(), true)
+	filteredMap := filterMap(n.allMetadata(), true)
+	if n.cluster != nil {
+		filteredMap[clusterMetadataName] = n.cluster.Name
+	}
+	return filteredMap
 }
 
 func (n *kubernetesNodeWrapper) allMetadata() map[string]string {

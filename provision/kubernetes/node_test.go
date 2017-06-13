@@ -116,6 +116,13 @@ func (s *S) TestNodeMetadata(c *check.C) {
 		"m2.m3": "v2",
 		"a2.a3": "v4",
 	})
+	node.cluster = s.client.clusterClient
+	node.cluster.Name = "fakecluster"
+	c.Assert(node.ExtraData(), check.DeepEquals, map[string]string{
+		"m2.m3":            "v2",
+		"a2.a3":            "v4",
+		"tsuru.io/cluster": "fakecluster",
+	})
 }
 
 func (s *S) TestNodeProvisioner(c *check.C) {
