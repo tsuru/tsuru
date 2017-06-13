@@ -55,6 +55,7 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 		"rule":        server.rules,
 	}
 	r := mux.NewRouter()
+	r.HandleFunc("/api/token", server.getToken).Methods("GET")
 	r.HandleFunc("/api/target", server.createTarget).Methods("POST")
 	r.HandleFunc("/api/pool", server.createPool).Methods("POST")
 	r.HandleFunc("/api/pool/{id}", server.updatePool).Methods("PATCH")
@@ -75,6 +76,11 @@ func (s *fakeGalebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.Lock()
 	defer s.Unlock()
 	s.router.ServeHTTP(w, r)
+}
+
+func (s *fakeGalebServer) getToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("x-auth-token", "abc")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *fakeGalebServer) findItem(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +291,7 @@ func init() {
 			config.Set("routers:galeb:username", "myusername")
 			config.Set("routers:galeb:password", "mypassword")
 			config.Set("routers:galeb:domain", "galeb.com")
+			config.Set("routers:galeb:use-token", true)
 			config.Set("routers:galeb:type", "galeb")
 			config.Set("database:url", "127.0.0.1:27017")
 			config.Set("database:name", "router_galeb_tests")
@@ -293,6 +300,7 @@ func init() {
 	var server *httptest.Server
 	var fakeServer *fakeGalebServer
 	suite.SetUpTestFunc = func(c *check.C) {
+		clientCache.cache = nil
 		var err error
 		fakeServer, err = NewFakeGalebServer()
 		c.Assert(err, check.IsNil)
@@ -315,4 +323,45 @@ func init() {
 		c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
 	}
 	check.Suite(suite)
+}
+
+type S struct{}
+
+var _ = check.Suite(&S{})
+
+func (s *S) TestCreateRouterConcurrent(c *check.C) {
+	config.Set("routers:r1:domain", "galeb1.com")
+	config.Set("routers:r2:domain", "galeb2.com")
+	config.Set("routers:r1:api-url", "galeb1.com")
+	config.Set("routers:r2:api-url", "galeb2.com")
+	defer config.Unset("routers:r1:domain")
+	defer config.Unset("routers:r2:domain")
+	defer config.Unset("routers:r1:api-url")
+	defer config.Unset("routers:r2:api-url")
+	nConcurrent := 50
+	prefixes := []string{"routers:r1", "routers:r2"}
+	var routers []*galebRouter
+	var mu sync.Mutex
+	wg := sync.WaitGroup{}
+	for i := 0; i < nConcurrent; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			r, err := createRouter("rx", prefixes[i%len(prefixes)])
+			c.Assert(err, check.IsNil)
+			mu.Lock()
+			routers = append(routers, r.(*galebRouter))
+			mu.Unlock()
+		}(i)
+	}
+	wg.Wait()
+	c.Assert(routers, check.HasLen, nConcurrent)
+	clients := map[string]int{}
+	for _, r := range routers {
+		clients[fmt.Sprintf("%p", r.client)]++
+	}
+	c.Assert(clients, check.HasLen, 2)
+	for _, v := range clients {
+		c.Assert(v, check.Equals, nConcurrent/2)
+	}
 }

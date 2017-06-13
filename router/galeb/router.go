@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,6 +19,54 @@ import (
 )
 
 const routerType = "galeb"
+
+var clientCache struct {
+	sync.Mutex
+	cache map[string]*galebClient.GalebClient
+}
+
+func getClient(configPrefix string) (*galebClient.GalebClient, error) {
+	clientCache.Lock()
+	defer clientCache.Unlock()
+	if clientCache.cache == nil {
+		clientCache.cache = map[string]*galebClient.GalebClient{}
+	}
+	if clientCache.cache[configPrefix] != nil {
+		return clientCache.cache[configPrefix], nil
+	}
+	apiUrl, err := config.GetString(configPrefix + ":api-url")
+	if err != nil {
+		return nil, err
+	}
+	username, _ := config.GetString(configPrefix + ":username")
+	password, _ := config.GetString(configPrefix + ":password")
+	tokenHeader, _ := config.GetString(configPrefix + ":token-header")
+	useToken, _ := config.GetBool(configPrefix + ":use-token")
+	environment, _ := config.GetString(configPrefix + ":environment")
+	project, _ := config.GetString(configPrefix + ":project")
+	balancePolicy, _ := config.GetString(configPrefix + ":balance-policy")
+	ruleType, _ := config.GetString(configPrefix + ":rule-type")
+	debug, _ := config.GetBool(configPrefix + ":debug")
+	waitTimeoutSec, err := config.GetInt(configPrefix + ":wait-timeout")
+	if err != nil {
+		waitTimeoutSec = 10 * 60
+	}
+	client := &galebClient.GalebClient{
+		ApiUrl:        apiUrl,
+		Username:      username,
+		Password:      password,
+		UseToken:      useToken,
+		TokenHeader:   tokenHeader,
+		Environment:   environment,
+		Project:       project,
+		BalancePolicy: balancePolicy,
+		RuleType:      ruleType,
+		WaitTimeout:   time.Duration(waitTimeoutSec) * time.Second,
+		Debug:         debug,
+	}
+	clientCache.cache[configPrefix] = client
+	return client, nil
+}
 
 type galebRouter struct {
 	client     *galebClient.GalebClient
@@ -32,42 +81,16 @@ func init() {
 }
 
 func createRouter(routerName, configPrefix string) (router.Router, error) {
-	apiUrl, err := config.GetString(configPrefix + ":api-url")
-	if err != nil {
-		return nil, err
-	}
-	username, _ := config.GetString(configPrefix + ":username")
-	password, _ := config.GetString(configPrefix + ":password")
-	tokenHeader, _ := config.GetString(configPrefix + ":token-header")
-	useToken, _ := config.GetBool(configPrefix + ":use-token")
 	domain, err := config.GetString(configPrefix + ":domain")
 	if err != nil {
 		return nil, err
 	}
-	environment, _ := config.GetString(configPrefix + ":environment")
-	project, _ := config.GetString(configPrefix + ":project")
-	balancePolicy, _ := config.GetString(configPrefix + ":balance-policy")
-	ruleType, _ := config.GetString(configPrefix + ":rule-type")
-	debug, _ := config.GetBool(configPrefix + ":debug")
-	waitTimeoutSec, err := config.GetInt(configPrefix + ":wait-timeout")
+	client, err := getClient(configPrefix)
 	if err != nil {
-		waitTimeoutSec = 10 * 60
-	}
-	client := galebClient.GalebClient{
-		ApiUrl:        apiUrl,
-		Username:      username,
-		Password:      password,
-		UseToken:      useToken,
-		TokenHeader:   tokenHeader,
-		Environment:   environment,
-		Project:       project,
-		BalancePolicy: balancePolicy,
-		RuleType:      ruleType,
-		WaitTimeout:   time.Duration(waitTimeoutSec) * time.Second,
-		Debug:         debug,
+		return nil, err
 	}
 	r := galebRouter{
-		client:     &client,
+		client:     client,
 		domain:     domain,
 		prefix:     configPrefix,
 		routerName: routerName,
