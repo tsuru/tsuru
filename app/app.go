@@ -378,11 +378,8 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	poolName := updateData.Pool
 	teamOwner := updateData.TeamOwner
 	routerName := updateData.Router
-	platformUpdate := updateData.UpdatePlatform
+	platform := updateData.Platform
 	tags := processTags(updateData.Tags)
-	if platformUpdate {
-		app.UpdatePlatform = platformUpdate
-	}
 	if description != "" {
 		app.Description = description
 	}
@@ -427,6 +424,19 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	}
 	if tags != nil {
 		app.Tags = tags
+	}
+	if platform != "" {
+		p, errPlat := GetPlatform(platform)
+		if errPlat != nil {
+			return errPlat
+		}
+		if app.Platform != p.Name {
+			app.UpdatePlatform = true
+		}
+		app.Platform = p.Name
+	}
+	if updateData.UpdatePlatform {
+		app.UpdatePlatform = true
 	}
 	err = app.validate()
 	if err != nil {
