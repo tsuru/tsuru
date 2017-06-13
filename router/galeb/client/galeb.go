@@ -49,19 +49,19 @@ func (e ErrAmbiguousSearch) Error() string {
 }
 
 type GalebClient struct {
+	token         string
+	tokenMu       sync.RWMutex
 	ApiUrl        string
 	Username      string
 	Password      string
 	TokenHeader   string
-	UseToken      bool
 	Environment   string
 	Project       string
 	BalancePolicy string
 	RuleType      string
 	WaitTimeout   time.Duration
+	UseToken      bool
 	Debug         bool
-	token         string
-	tokenMu       sync.RWMutex
 }
 
 func (c *GalebClient) getTokenHeader() string {
@@ -246,7 +246,12 @@ func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return resource, c.waitStatusOK(resource)
+	err = c.waitStatusOK(resource)
+	if err != nil {
+		c.removeResource(resource)
+		return "", err
+	}
+	return resource, nil
 }
 
 func (c *GalebClient) AddBackendPool(name string) (string, error) {
@@ -257,7 +262,12 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return resource, c.waitStatusOK(resource)
+	err = c.waitStatusOK(resource)
+	if err != nil {
+		c.removeResource(resource)
+		return "", err
+	}
+	return resource, nil
 }
 
 func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolProperties) error {
@@ -295,7 +305,12 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	if err != nil {
 		return "", err
 	}
-	return resource, c.waitStatusOK(resource)
+	err = c.waitStatusOK(resource)
+	if err != nil {
+		c.removeResource(resource)
+		return "", err
+	}
+	return resource, nil
 }
 
 func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
@@ -322,6 +337,7 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string) error {
 			}
 			cerr = c.waitStatusOK(resource)
 			if cerr != nil {
+				c.removeResource(resource)
 				errCh <- cerr
 			}
 		}(i)
@@ -358,7 +374,12 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 		rsp.Body.Close()
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return c.waitStatusOK(ruleID)
+	err = c.waitStatusOK(ruleID)
+	if err != nil {
+		c.RemoveRuleVirtualHostByID(ruleID, virtualHostID)
+		return err
+	}
+	return nil
 }
 
 func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
