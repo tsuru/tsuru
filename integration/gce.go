@@ -45,7 +45,7 @@ func (g *gceClusterManager) Start(env *Environment) *Result {
 
 func (g *gceClusterManager) Delete(env *Environment) *Result {
 	gcloud := NewCommand("gcloud").WithArgs
-	return gcloud("container", "clusters", "delete", clusterName, "--project", projectID, "--async").Run(env)
+	return gcloud("container", "clusters", "delete", clusterName, "--project", projectID, "--async").WithInput("y").Run(env)
 }
 
 func (g *gceClusterManager) credentials(env *Environment) (map[string]string, error) {
