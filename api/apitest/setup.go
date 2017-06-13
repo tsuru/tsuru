@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 type TestHandler struct {
@@ -37,14 +38,21 @@ type MultiTestHandler struct {
 	Header             []http.Header
 	RspCode            int
 	RspHeader          http.Header
+	Hook               func(w http.ResponseWriter, r *http.Request) bool
+	mu                 sync.Mutex
 }
 
 func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Method = append(h.Method, r.Method)
 	h.Url = append(h.Url, r.URL.String())
 	b, _ := ioutil.ReadAll(r.Body)
 	h.Body = append(h.Body, b)
 	h.Header = append(h.Header, r.Header)
+	if h.Hook != nil && h.Hook(w, r) {
+		return
+	}
 	if h.RspCode == 0 {
 		h.RspCode = http.StatusOK
 	}
