@@ -49,6 +49,7 @@ var (
 	PermAppUpdateImageReset              = PermissionRegistry.get("app.update.image-reset")              // [global app team pool]
 	PermAppUpdateLog                     = PermissionRegistry.get("app.update.log")                      // [global app team pool]
 	PermAppUpdatePlan                    = PermissionRegistry.get("app.update.plan")                     // [global app team pool]
+	PermAppUpdatePlatform                = PermissionRegistry.get("app.update.platform")                 // [global app team pool]
 	PermAppUpdatePool                    = PermissionRegistry.get("app.update.pool")                     // [global app team pool]
 	PermAppUpdateRestart                 = PermissionRegistry.get("app.update.restart")                  // [global app team pool]
 	PermAppUpdateRevoke                  = PermissionRegistry.get("app.update.revoke")                   // [global app team pool]
