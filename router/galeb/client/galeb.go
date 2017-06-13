@@ -20,6 +20,8 @@ import (
 	"github.com/tsuru/tsuru/net"
 )
 
+const maxAuthRetries = 3
+
 type ErrItemNotFound struct {
 	path string
 }
@@ -50,17 +52,67 @@ type GalebClient struct {
 	ApiUrl        string
 	Username      string
 	Password      string
-	Token         string
 	TokenHeader   string
+	UseToken      bool
 	Environment   string
 	Project       string
 	BalancePolicy string
 	RuleType      string
 	WaitTimeout   time.Duration
 	Debug         bool
+	token         string
+	tokenMu       sync.RWMutex
+}
+
+func (c *GalebClient) getTokenHeader() string {
+	if c.TokenHeader == "" {
+		return "x-auth-token"
+	}
+	return c.TokenHeader
+}
+
+func (c *GalebClient) getToken() (string, error) {
+	c.tokenMu.RLock()
+	defer c.tokenMu.RUnlock()
+	if c.token == "" {
+		c.tokenMu.RUnlock()
+		err := c.regenerateToken()
+		c.tokenMu.RLock()
+		return c.token, err
+	}
+	return c.token, nil
+}
+
+func (c *GalebClient) regenerateToken() (err error) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiUrl, "/"), "token")
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(c.Username, c.Password)
+	rsp, err := net.Dial5Full60ClientNoKeepAlive.Do(req)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return errors.Errorf("invalid status code in request to /token: %d", rsp.StatusCode)
+	}
+	header := c.getTokenHeader()
+	c.token = rsp.Header.Get(header)
+	if c.token == "" {
+		return errors.Errorf("invalid empty token from header %q in request to /token", header)
+	}
+	return nil
 }
 
 func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.Response, error) {
+	return c.doRequestRetry(method, path, params, 0)
+}
+
+func (c *GalebClient) doRequestRetry(method, path string, params interface{}, retryCount int) (*http.Response, error) {
 	buf := bytes.Buffer{}
 	contentType := "application/json"
 	if params != nil {
@@ -84,12 +136,14 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 	if err != nil {
 		return nil, err
 	}
-	if c.Token != "" {
-		header := c.TokenHeader
-		if header == "" {
-			header = "x-auth-token"
+	if c.UseToken {
+		var token string
+		token, err = c.getToken()
+		if err != nil {
+			return nil, err
 		}
-		req.Header.Set(header, c.Token)
+		header := c.getTokenHeader()
+		req.Header.Set(header, token)
 	} else {
 		req.SetBasicAuth(c.Username, c.Password)
 	}
@@ -101,6 +155,13 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 			code = rsp.StatusCode
 		}
 		log.Debugf("galeb %s %s %s: %d", method, url, bodyData, code)
+	}
+	if err == nil && rsp.StatusCode == http.StatusUnauthorized && retryCount < maxAuthRetries {
+		err = c.regenerateToken()
+		if err != nil {
+			return nil, err
+		}
+		return c.doRequestRetry(method, path, params, retryCount+1)
 	}
 	return rsp, err
 }

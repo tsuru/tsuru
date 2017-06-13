@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -30,10 +32,7 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
-	s.handler = apitest.MultiTestHandler{
-		ConditionalContent: make(map[string]interface{}),
-		RspHeader:          make(http.Header),
-	}
+	s.resetHandler()
 	s.server = httptest.NewServer(&s.handler)
 	s.client = &GalebClient{
 		ApiUrl:        s.server.URL + "/api",
@@ -47,6 +46,13 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 }
 
+func (s *S) resetHandler() {
+	s.handler = apitest.MultiTestHandler{
+		ConditionalContent: make(map[string]interface{}),
+		RspHeader:          make(http.Header),
+	}
+}
+
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Close()
 }
@@ -57,25 +63,152 @@ func (s *S) TestNewGalebClient(c *check.C) {
 	c.Assert(s.client.Password, check.Equals, "mypassword")
 }
 
-func (s *S) TestGalebAuth(c *check.C) {
-	_, err := s.client.doRequest("GET", "/", nil)
+func (s *S) TestGalebAuthBasic(c *check.C) {
+	rsp, err := s.client.doRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/"})
 	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
-	s.client.Token = "xxx"
-	_, err = s.client.doRequest("GET", "/", nil)
+}
+
+func (s *S) TestGalebAuthToken(c *check.C) {
+	s.handler.RspHeader = http.Header{
+		"x-auth-token": []string{"xyz"},
+	}
+	s.client.UseToken = true
+	rsp, err := s.client.doRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/token", "/api/"})
 	c.Assert(s.handler.Header, check.HasLen, 2)
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
 	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "")
-	c.Assert(s.handler.Header[1].Get("x-auth-token"), check.Equals, "xxx")
-	s.client.TokenHeader = "x-app-token"
-	_, err = s.client.doRequest("GET", "/", nil)
+	c.Assert(s.handler.Header[1].Get("x-auth-token"), check.Equals, "xyz")
+	s.resetHandler()
+	rsp, err = s.client.doRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Header, check.HasLen, 3)
-	c.Assert(s.handler.Header[2].Get("Authorization"), check.Equals, "")
-	c.Assert(s.handler.Header[2].Get("x-auth-token"), check.Equals, "")
-	c.Assert(s.handler.Header[2].Get("x-app-token"), check.Equals, "xxx")
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 1)
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[0].Get("x-auth-token"), check.Equals, "xyz")
+}
+
+func (s *S) TestGalebAuthTokenAlternativeHeader(c *check.C) {
+	s.handler.RspHeader = http.Header{
+		"x-other-header": []string{"xyz"},
+	}
+	s.client.TokenHeader = "x-other-header"
+	s.client.UseToken = true
+	rsp, err := s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/token", "/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 2)
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[1].Get("x-other-header"), check.Equals, "xyz")
+	s.resetHandler()
+	rsp, err = s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 1)
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[0].Get("x-other-header"), check.Equals, "xyz")
+}
+
+func (s *S) TestGalebAuthTokenExpired(c *check.C) {
+	s.handler.RspHeader = http.Header{
+		"x-auth-token": []string{"xyz"},
+	}
+	s.client.UseToken = true
+	rsp, err := s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/token", "/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 2)
+	c.Assert(s.handler.Header[0].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "")
+	c.Assert(s.handler.Header[1].Get("x-auth-token"), check.Equals, "xyz")
+	s.resetHandler()
+	s.handler.RspHeader = http.Header{
+		"x-auth-token": []string{"abc"},
+	}
+	unauthorizedCount := 0
+	s.handler.Hook = func(w http.ResponseWriter, r *http.Request) bool {
+		if strings.HasSuffix(r.URL.Path, "/api/") && unauthorizedCount < 2 {
+			unauthorizedCount++
+			w.WriteHeader(http.StatusUnauthorized)
+			return true
+		}
+		return false
+	}
+	rsp, err = s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
+	c.Assert(unauthorizedCount, check.Equals, 2)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/", "/api/token", "/api/", "/api/token", "/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 5)
+	c.Assert(s.handler.Header[0].Get("x-auth-token"), check.Equals, "xyz")
+	c.Assert(s.handler.Header[1].Get("x-auth-token"), check.Equals, "")
+	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[2].Get("x-auth-token"), check.Equals, "abc")
+	c.Assert(s.handler.Header[3].Get("x-auth-token"), check.Equals, "")
+	c.Assert(s.handler.Header[3].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[4].Get("x-auth-token"), check.Equals, "abc")
+}
+
+func (s *S) TestGalebAuthTokenExpiredMaxRetries(c *check.C) {
+	s.handler.RspHeader = http.Header{
+		"x-auth-token": []string{"abc"},
+	}
+	s.client.UseToken = true
+	s.client.token = "xyz"
+	s.handler.Hook = func(w http.ResponseWriter, r *http.Request) bool {
+		if strings.HasSuffix(r.URL.Path, "/api/") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return true
+		}
+		return false
+	}
+	rsp, err := s.client.doRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(rsp.StatusCode, check.Equals, http.StatusUnauthorized)
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/", "/api/token", "/api/", "/api/token", "/api/", "/api/token", "/api/"})
+	c.Assert(s.handler.Header, check.HasLen, 7)
+	c.Assert(s.handler.Header[0].Get("x-auth-token"), check.Equals, "xyz")
+	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[2].Get("x-auth-token"), check.Equals, "abc")
+	c.Assert(s.handler.Header[3].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[4].Get("x-auth-token"), check.Equals, "abc")
+	c.Assert(s.handler.Header[5].Get("Authorization"), check.Equals, "Basic bXl1c2VybmFtZTpteXBhc3N3b3Jk")
+	c.Assert(s.handler.Header[6].Get("x-auth-token"), check.Equals, "abc")
+}
+
+func (s *S) TestGalebAuthTokenConcurrentRequests(c *check.C) {
+	s.handler.RspHeader = http.Header{
+		"x-auth-token": []string{"xyz"},
+	}
+	s.client.UseToken = true
+	nConcurrent := 50
+	wg := sync.WaitGroup{}
+	for i := 0; i < nConcurrent; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := s.client.doRequest("GET", "/", nil)
+			c.Assert(err, check.IsNil)
+		}()
+	}
+	wg.Wait()
+	c.Assert(len(s.handler.Url) >= nConcurrent+1, check.Equals, true, check.Commentf("%d: %#v", len(s.handler.Url), s.handler.Url))
+	for i, url := range s.handler.Url {
+		if url == "/api/" {
+			c.Assert(s.handler.Header[i].Get("x-auth-token"), check.Equals, "xyz")
+		}
+	}
 }
 
 func (s *S) TestGalebAddBackendPool(c *check.C) {
