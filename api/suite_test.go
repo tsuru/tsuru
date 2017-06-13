@@ -107,6 +107,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
+	s.conn.Platforms().Insert(app.Platform{Name: "heimerdinger"})
 	s.Pool = "test1"
 	opts := provision.AddPoolOptions{Name: "test1", Default: true}
 	err = provision.AddPool(opts)

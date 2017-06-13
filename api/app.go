@@ -395,6 +395,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description:    r.FormValue("description"),
 		Router:         r.FormValue("router"),
 		Tags:           r.Form["tag"],
+		Platform:       r.FormValue("platform"),
 		UpdatePlatform: imageReset,
 	}
 	appName := r.URL.Query().Get(":appname")
@@ -420,6 +421,10 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if updateData.Router != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouter)
+	}
+	if updateData.Platform != "" {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlatform)
+		updateData.UpdatePlatform = true
 	}
 	if updateData.UpdatePlatform {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
