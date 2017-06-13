@@ -66,9 +66,9 @@ type GalebClient struct {
 
 func (c *GalebClient) getTokenHeader() string {
 	if c.TokenHeader == "" {
-		return "x-auth-token"
+		return "X-Auth-Token"
 	}
-	return c.TokenHeader
+	return http.CanonicalHeaderKey(c.TokenHeader)
 }
 
 func (c *GalebClient) getToken() (string, error) {
