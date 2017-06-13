@@ -13,7 +13,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/hc"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
 	galebClient "github.com/tsuru/tsuru/router/galeb/client"
 )
@@ -124,17 +126,37 @@ func (r *galebRouter) AddBackend(name string) (err error) {
 	}
 	virtualHostId, err := r.client.AddVirtualHost(r.virtualHostName(name))
 	if err != nil {
+		cleanupErr := r.forceCleanupBackend(name)
+		if cleanupErr != nil {
+			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
+		}
 		return err
 	}
 	ruleId, err := r.client.AddRuleToID(r.ruleName(name), backendPoolId)
 	if err != nil {
+		cleanupErr := r.forceCleanupBackend(name)
+		if cleanupErr != nil {
+			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
+		}
 		return err
 	}
 	err = r.client.SetRuleVirtualHostIDs(ruleId, virtualHostId)
 	if err != nil {
+		cleanupErr := r.forceCleanupBackend(name)
+		if cleanupErr != nil {
+			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
+		}
 		return err
 	}
-	return router.Store(name, name, routerType)
+	err = router.Store(name, name, routerType)
+	if err != nil {
+		cleanupErr := r.forceCleanupBackend(name)
+		if cleanupErr != nil {
+			log.Errorf("unable to cleanup router after failure %+v", cleanupErr)
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *galebRouter) AddRoute(name string, address *url.URL) (err error) {
@@ -392,6 +414,51 @@ func (r *galebRouter) RemoveBackend(name string) (err error) {
 		r.client.RemoveBackendByID(target.FullId())
 	}
 	return r.client.RemoveBackendPool(r.poolName(backendName))
+}
+
+func (r *galebRouter) forceCleanupBackend(backendName string) error {
+	rule := r.ruleName(backendName)
+	multiErr := tsuruErrors.NewMultiError()
+	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
+	if err == nil {
+		for _, virtualhost := range virtualhosts {
+			err = r.client.RemoveRuleVirtualHost(rule, virtualhost.Name)
+			if err != nil {
+				multiErr.Add(err)
+			}
+			err = r.client.RemoveVirtualHostByID(virtualhost.FullId())
+			if err != nil {
+				multiErr.Add(err)
+			}
+		}
+	} else {
+		multiErr.Add(err)
+	}
+	err = r.client.RemoveVirtualHost(r.virtualHostName(backendName))
+	if err != nil {
+		multiErr.Add(err)
+	}
+	err = r.client.RemoveRule(rule)
+	if err != nil {
+		multiErr.Add(err)
+	}
+	pool := r.poolName(backendName)
+	targets, err := r.client.FindTargetsByParent(pool)
+	if err == nil {
+		for _, target := range targets {
+			err := r.client.RemoveBackendByID(target.FullId())
+			if err != nil {
+				multiErr.Add(err)
+			}
+		}
+	} else {
+		multiErr.Add(err)
+	}
+	err = r.client.RemoveBackendPool(pool)
+	if err != nil {
+		multiErr.Add(err)
+	}
+	return multiErr.ToError()
 }
 
 func (r *galebRouter) SetHealthcheck(name string, data router.HealthcheckData) (err error) {

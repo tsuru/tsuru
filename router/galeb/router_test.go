@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -38,6 +39,7 @@ type fakeGalebServer struct {
 	ruleVh       map[string][]string
 	idCounter    int
 	router       *mux.Router
+	errors       map[string]error
 }
 
 func NewFakeGalebServer() (*fakeGalebServer, error) {
@@ -70,6 +72,20 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/target/search/findByParentName", server.findTargetsByParent).Methods("GET")
 	server.router = r
 	return server, nil
+}
+
+func (s *fakeGalebServer) prepareError(method, path, msg string) {
+	if s.errors == nil {
+		s.errors = map[string]error{}
+	}
+	s.errors[method+"_"+path] = errors.New(msg)
+}
+
+func (s *fakeGalebServer) checkError(method, path string) error {
+	if s.errors == nil {
+		return nil
+	}
+	return s.errors[method+"_"+path]
 }
 
 func (s *fakeGalebServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -217,6 +233,11 @@ func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
+	err := s.checkError(r.Method, r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	id := mux.Vars(r)["id"]
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -329,6 +350,20 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
+func (s *S) SetUpTest(c *check.C) {
+	config.Set("routers:galeb:username", "myusername")
+	config.Set("routers:galeb:password", "mypassword")
+	config.Set("routers:galeb:domain", "galeb.com")
+	config.Set("routers:galeb:use-token", true)
+	config.Set("routers:galeb:type", "galeb")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "router_galeb_tests")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Collection("router_galeb_tests").Database)
+}
+
 func (s *S) TestCreateRouterConcurrent(c *check.C) {
 	config.Set("routers:r1:domain", "galeb1.com")
 	config.Set("routers:r2:domain", "galeb2.com")
@@ -364,4 +399,22 @@ func (s *S) TestCreateRouterConcurrent(c *check.C) {
 	for _, v := range clients {
 		c.Assert(v, check.Equals, nConcurrent/2)
 	}
+}
+
+func (s *S) TestAddBackendPartialFailure(c *check.C) {
+	fakeServer, err := NewFakeGalebServer()
+	c.Assert(err, check.IsNil)
+	server := httptest.NewServer(fakeServer)
+	defer server.Close()
+	config.Set("routers:galeb:api-url", server.URL+"/api")
+	gRouter, err := createRouter("galeb", "routers:galeb")
+	c.Assert(err, check.IsNil)
+	fakeServer.prepareError("PATCH", "/api/rule/3/parents", "error on SetRuleVirtualHostIDs")
+	err = gRouter.AddBackend("backend1")
+	c.Assert(err, check.ErrorMatches, "PATCH /rule/3/parents: invalid response code: 500: error on SetRuleVirtualHostIDs\n")
+	c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
+	c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})
 }
