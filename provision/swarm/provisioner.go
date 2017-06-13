@@ -369,11 +369,16 @@ func (p *swarmProvisioner) RegisterUnit(a provision.App, unitId string, customDa
 	if err != nil {
 		return err
 	}
-	units, err := tasksToUnits(client, []swarm.Task{*task})
+	service, err := client.InspectService(task.ServiceID)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	err = bindUnit(a, &units[0])
+	node, err := client.InspectNode(task.NodeID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	unit := taskToUnit(task, service, node, a)
+	err = bindUnit(a, &unit)
 	if err != nil {
 		return err
 	}
