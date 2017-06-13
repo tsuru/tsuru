@@ -1382,6 +1382,40 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permission.CtxApp, a.Name),
+	})
+	b := strings.NewReader("platform=heimerdinger")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Platform, check.Equals, "heimerdinger")
+	c.Assert(gotApp.UpdatePlatform, check.Equals, true)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+			{"name": "platform", "value": "heimerdinger"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
