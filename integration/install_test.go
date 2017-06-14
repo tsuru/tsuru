@@ -269,7 +269,7 @@ func poolAdd() ExecFlow {
 			poolName := "ipool-" + cluster.Name()
 			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
 			c.Assert(res, ResultOk)
-			env.Add("poolName", poolName)
+			env.Add("poolnames", poolName)
 			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 			res = cluster.Start(env)
@@ -280,15 +280,15 @@ func poolAdd() ExecFlow {
 			res = T(params...).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
-			regex := regexp.MustCompile(cluster.IP(env) + `.*?Ready`)
+			regex := regexp.MustCompile("Ready")
 			nodeIPs := make([]string, 0)
 			ok := retry(time.Minute, func() bool {
-				res = T("node-list").Run(env)
+				res = T("node-list", "-f", "tsuru.io/cluster="+clusterName).Run(env)
 				if regex.MatchString(res.Stdout.String()) {
-					regex := regexp.MustCompile(`(?m)^ ?| *(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) *|`)
+					regex := regexp.MustCompile(`(?m)^ *\| *((?:https?:\/\/)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?) *\|`)
 					parts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
 					for _, part := range parts {
-						if len(part) == 2 {
+						if len(part) == 2 && len(part[1]) > 0 {
 							nodeIPs = append(nodeIPs, part[1])
 						}
 					}
