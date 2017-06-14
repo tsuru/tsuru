@@ -446,7 +446,7 @@ func (r *galebRouter) forceCleanupBackend(backendName string) error {
 	targets, err := r.client.FindTargetsByParent(pool)
 	if err == nil {
 		for _, target := range targets {
-			err := r.client.RemoveBackendByID(target.FullId())
+			err = r.client.RemoveBackendByID(target.FullId())
 			if err != nil {
 				multiErr.Add(err)
 			}
