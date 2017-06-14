@@ -8,16 +8,31 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
-	"regexp"
 	"time"
+
+	"google.golang.org/api/container/v1"
+	"google.golang.org/api/option"
+
+	"golang.org/x/net/context"
 )
 
-var clusterName = "integration-test"
+const gceClusterStatusRunning = "RUNNING"
+
+var clusterName = fmt.Sprintf("integration-test-%d", randInt())
+var zone = os.Getenv("GCE_ZONE")
 var projectID = os.Getenv("GCE_PROJECT_ID")
+var serviceAccountFile = os.Getenv("GCE_SERVICE_ACCOUNT_FILE")
 
 type gceClusterManager struct {
-	ipAddress string
+	client  *gceClient
+	cluster *container.Cluster
+}
+
+func randInt() int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Int()
 }
 
 func (g *gceClusterManager) Name() string {
@@ -29,58 +44,66 @@ func (g *gceClusterManager) Provisioner() string {
 }
 
 func (g *gceClusterManager) IP(env *Environment) string {
-	return g.ipAddress
+	g.fetchClusterData()
+	if g.cluster != nil {
+		return g.cluster.Endpoint
+	}
+	return ""
 }
 
 func (g *gceClusterManager) Start(env *Environment) *Result {
-	gcloud := NewCommand("gcloud").WithArgs
-	res := gcloud("container", "clusters", "create", clusterName, "--project", projectID, "--num-nodes", "1").WithTimeout(15 * time.Minute).Run(env)
-	regex := regexp.MustCompile(`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
-	parts := regex.FindStringSubmatch(res.Stdout.String())
-	if len(parts) == 1 {
-		g.ipAddress = parts[0]
+	ctx := context.Background()
+	client, err := newClient(ctx, projectID, option.WithServiceAccountFile(serviceAccountFile))
+	if err != nil {
+		return nil
 	}
-	return res
+	g.client = client
+	g.client.createCluster(clusterName, zone, 1)
+	return nil
 }
 
 func (g *gceClusterManager) Delete(env *Environment) *Result {
-	gcloud := NewCommand("gcloud").WithArgs
-	return gcloud("container", "clusters", "delete", clusterName, "--project", projectID, "--async").WithInput("y").Run(env)
+	g.client.deleteCluster(g.cluster.Name, zone)
+	return nil
+}
+
+func (g *gceClusterManager) fetchClusterData() {
+	if g.cluster != nil && g.cluster.Status == gceClusterStatusRunning {
+		return
+	}
+	for i := 0; i < 10; i++ {
+		cluster, err := g.client.describeCluster(clusterName, zone)
+		if err == nil && cluster.Status == gceClusterStatusRunning {
+			g.cluster = cluster
+			return
+		}
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func (g *gceClusterManager) credentials(env *Environment) (map[string]string, error) {
+	g.fetchClusterData()
+	if g.cluster == nil {
+		return nil, fmt.Errorf("cluster unavailable")
+	}
 	credentials := make(map[string]string)
-	gcloud := NewCommand("gcloud").WithArgs
-	res := gcloud("container", "clusters", "describe", clusterName, "--project", projectID).Run(env)
-	regex := regexp.MustCompile(`username: (.*)`)
-	parts := regex.FindStringSubmatch(res.Stdout.String())
-	if len(parts) == 1 {
-		credentials["username"] = parts[0]
+	credentials["username"] = g.cluster.MasterAuth.Username
+	credentials["password"] = g.cluster.MasterAuth.Password
+	contents, err := base64.StdEncoding.DecodeString(g.cluster.MasterAuth.ClusterCaCertificate)
+	if err != nil {
+		return credentials, err
 	}
-	regex = regexp.MustCompile(`password: (.*)`)
-	parts = regex.FindStringSubmatch(res.Stdout.String())
-	if len(parts) == 1 {
-		credentials["password"] = parts[0]
+	tmpfile, err := ioutil.TempFile("", "gce-ca")
+	if err != nil {
+		return credentials, err
 	}
-	regex = regexp.MustCompile(`clusterCaCertificate`)
-	parts = regex.FindStringSubmatch(res.Stdout.String())
-	if len(parts) == 1 {
-		contents, err := base64.StdEncoding.DecodeString(parts[0])
-		if err != nil {
-			return credentials, err
-		}
-		tmpfile, err := ioutil.TempFile("", "gce-ca")
-		if err != nil {
-			return credentials, err
-		}
-		if _, err := tmpfile.Write(contents); err != nil {
-			return credentials, err
-		}
-		if err := tmpfile.Close(); err != nil {
-			return credentials, err
-		}
-		credentials["certificateFilename"] = tmpfile.Name()
+	if _, err := tmpfile.Write(contents); err != nil {
+		return credentials, err
 	}
+	if err := tmpfile.Close(); err != nil {
+		return credentials, err
+	}
+	credentials["certificateFilename"] = tmpfile.Name()
 	return credentials, nil
 }
 
@@ -90,5 +113,10 @@ func (g *gceClusterManager) UpdateParams(env *Environment) []string {
 	if err != nil {
 		return []string{}
 	}
-	return []string{"--addr", address, "--custom", "username=" + credentials["username"], "--custom", "password=" + credentials["password"], "--cacert", credentials["certificateFilename"]}
+	return []string{
+		"--addr", address,
+		"--custom", "username=" + credentials["username"],
+		"--custom", "password=" + credentials["password"],
+		"--cacert", credentials["certificateFilename"],
+	}
 }
