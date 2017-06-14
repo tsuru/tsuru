@@ -166,7 +166,8 @@ func createBuildPod(params buildPodParams) error {
 							while id=$(docker ps -aq -f "label=io.kubernetes.container.name=%s" -f "label=io.kubernetes.pod.name=$(hostname)") && [ -z "${id}" ]; do
 								sleep 1;
 							done;
-							docker wait "${id}" >/dev/null
+							exit_code=$(docker wait "${id}")
+							[ "${exit_code}" != "0" ] && exit "${exit_code}"
 							echo
 							echo '---- Building application image ----'
 							docker commit "${id}" "${img}" >/dev/null
