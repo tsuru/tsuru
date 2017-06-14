@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -301,6 +302,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("[swarm-routable-addresses] service for app %q: %#+v", a.GetName(), srv)
 	var pubPort uint32
 	if len(srv.Endpoint.Ports) > 0 {
 		pubPort = srv.Endpoint.Ports[0].PublishedPort
@@ -312,6 +314,7 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("[swarm-routable-addresses] valid nodes for app %q: %#+v", a.GetName(), nodes)
 	for i := len(nodes) - 1; i >= 0; i-- {
 		l := provision.LabelSet{Labels: nodes[i].Spec.Annotations.Labels, Prefix: tsuruLabelPrefix}
 		if l.NodePool() != a.GetPool() {
