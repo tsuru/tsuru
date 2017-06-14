@@ -92,11 +92,11 @@ func (s *S) TestFindNodeIgnoreErrorIfFound(c *check.C) {
 		Address: "http://addr2",
 	})
 	c.Assert(err, check.IsNil)
-	p2.PrepareFailure("GetNode", errors.New("get node error"))
 	prov, n, err := provision.FindNode("http://addr1")
 	c.Assert(err, check.IsNil)
 	c.Assert(n.Address(), check.Equals, "http://addr1")
 	c.Assert(prov, check.Equals, p1)
+	p2.PrepareFailure("GetNode", errors.New("get node error"))
 	_, _, err = provision.FindNode("http://addr2")
 	c.Assert(err, check.ErrorMatches, `(?s)get node error.*`)
 }
