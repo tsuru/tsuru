@@ -6,7 +6,9 @@ package rebuild
 
 import (
 	"net/url"
+	"strings"
 
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -27,6 +29,7 @@ type RebuildApp interface {
 }
 
 func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
+	log.Debugf("[rebuild-routes] rebuilding routes for app %q", app.GetName())
 	r, err := app.GetRouter()
 	if err != nil {
 		return nil, err
@@ -55,11 +58,13 @@ func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("[rebuild-routes] old routes for app %q: %s", app.GetName(), oldRoutes)
 	expectedMap := make(map[string]*url.URL)
 	addresses, err := app.RoutableAddresses()
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("[rebuild-routes] addresses for app %q: %s", app.GetName(), addresses)
 	for i, addr := range addresses {
 		expectedMap[addr.Host] = &addresses[i]
 	}
@@ -86,5 +91,7 @@ func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
 		}
 		result.Removed = append(result.Removed, toRemoveUrl.String())
 	}
+	log.Debugf("[rebuild-routes] routes added for app %q: %s", app.GetName(), strings.Join(result.Added, ", "))
+	log.Debugf("[rebuild-routes] routes removed for app %q: %s", app.GetName(), strings.Join(result.Removed, ", "))
 	return &result, nil
 }
