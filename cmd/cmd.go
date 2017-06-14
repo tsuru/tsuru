@@ -388,24 +388,20 @@ func (m *Manager) normalizeCommandArgs(args []string) []string {
 	if len(args) == 0 {
 		return args
 	}
-	name := args[0]
-	if _, ok := m.Commands[name]; ok {
-		return args
-	}
-	newArgs := []string{name}
+	newArgs := []string{args[0]}
 	var i int
 	for i = 1; i < len(args); i++ {
-		part := args[i]
-		newArgs[0] += "-" + part
-		if _, ok := m.Commands[newArgs[0]]; ok {
+		next := newArgs[0] + "-" + args[i]
+		if _, ok := m.Commands[next]; !ok {
+			i--
 			break
 		}
+		newArgs[0] = next
 	}
 	if i < len(args) {
 		newArgs = append(newArgs, args[i+1:]...)
-		return newArgs
 	}
-	return args
+	return newArgs
 }
 
 func (m *Manager) discoverTopics() []string {

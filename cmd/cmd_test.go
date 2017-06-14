@@ -102,7 +102,9 @@ func (s *S) TestRegisterTopicMultiple(c *check.C) {
 }
 
 type TopicCommand struct {
-	name string
+	name     string
+	executed bool
+	args     []string
 }
 
 func (c *TopicCommand) Info() *Info {
@@ -114,6 +116,8 @@ func (c *TopicCommand) Info() *Info {
 }
 
 func (c *TopicCommand) Run(context *Context, client *Client) error {
+	c.executed = true
+	c.args = context.Args
 	return nil
 }
 
@@ -134,6 +138,44 @@ The following commands are available in the "foo" topic:
 Use glb help <commandname> to get more information about a command.
 `
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
+func (s *S) TestNormalizedCommandsExec(c *check.C) {
+	cmds := map[string]*TopicCommand{
+		"foo":         {name: "foo"},
+		"foo-bar":     {name: "foo-bar"},
+		"foo-bar-zzz": {name: "foo-bar-zzz"},
+	}
+	for _, v := range cmds {
+		globalManager.Register(v)
+	}
+	tests := []struct {
+		args         []string
+		expected     string
+		expectedArgs []string
+	}{
+		{args: []string{"foo"}, expected: "foo"},
+		{args: []string{"foo", "ba"}, expected: "foo", expectedArgs: []string{"ba"}},
+		{args: []string{"foo-bar"}, expected: "foo-bar"},
+		{args: []string{"foo-bar", "zz"}, expected: "foo-bar", expectedArgs: []string{"zz"}},
+		{args: []string{"foo", "bar"}, expected: "foo-bar"},
+		{args: []string{"foo", "bar", "zz"}, expected: "foo-bar", expectedArgs: []string{"zz"}},
+		{args: []string{"foo-bar-zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"foo-bar-zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+		{args: []string{"foo-bar", "zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"foo", "bar-zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"foo", "bar", "zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"foo", "bar", "zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+	}
+	for i, tt := range tests {
+		globalManager.Run(tt.args)
+		c.Assert(cmds[tt.expected].executed, check.Equals, true, check.Commentf("test %d, expected %s", i, tt.expected))
+		c.Assert(cmds[tt.expected].args, check.DeepEquals, tt.expectedArgs, check.Commentf("test %d", i))
+		for _, v := range cmds {
+			v.executed = false
+			v.args = nil
+		}
+	}
 }
 
 func (s *S) TestCustomLookup(c *check.C) {
