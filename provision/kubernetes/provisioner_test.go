@@ -199,10 +199,16 @@ func (s *S) TestUnits(c *check.C) {
 	wait()
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 2)
+	webNum, workerNum := "1", "2"
+	if units[0].ProcessName == "worker" {
+		webNum, workerNum = workerNum, webNum
+		units[0], units[1] = units[1], units[0]
+	}
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
-			ID:          "myapp-web-pod-1-1",
-			Name:        "myapp-web-pod-1-1",
+			ID:          "myapp-web-pod-" + webNum + "-1",
+			Name:        "myapp-web-pod-" + webNum + "-1",
 			AppName:     "myapp",
 			ProcessName: "web",
 			Type:        "python",
@@ -211,8 +217,8 @@ func (s *S) TestUnits(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30000"},
 		},
 		{
-			ID:          "myapp-worker-pod-2-1",
-			Name:        "myapp-worker-pod-2-1",
+			ID:          "myapp-worker-pod-" + workerNum + "-1",
+			Name:        "myapp-worker-pod-" + workerNum + "-1",
 			AppName:     "myapp",
 			ProcessName: "worker",
 			Type:        "python",
