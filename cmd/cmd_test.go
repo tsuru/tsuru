@@ -142,9 +142,10 @@ Use glb help <commandname> to get more information about a command.
 
 func (s *S) TestNormalizedCommandsExec(c *check.C) {
 	cmds := map[string]*TopicCommand{
-		"foo":         {name: "foo"},
-		"foo-bar":     {name: "foo-bar"},
-		"foo-bar-zzz": {name: "foo-bar-zzz"},
+		"foo":             {name: "foo"},
+		"foo-bar":         {name: "foo-bar"},
+		"foo-bar-zzz":     {name: "foo-bar-zzz"},
+		"foo-bar-zzz-a-b": {name: "foo-bar-zzz-a-b"},
 	}
 	for _, v := range cmds {
 		globalManager.Register(v)
@@ -154,6 +155,7 @@ func (s *S) TestNormalizedCommandsExec(c *check.C) {
 		expected     string
 		expectedArgs []string
 	}{
+		{args: []string{"fo"}, expected: ""},
 		{args: []string{"foo"}, expected: "foo"},
 		{args: []string{"foo", "ba"}, expected: "foo", expectedArgs: []string{"ba"}},
 		{args: []string{"foo-bar"}, expected: "foo-bar"},
@@ -166,12 +168,18 @@ func (s *S) TestNormalizedCommandsExec(c *check.C) {
 		{args: []string{"foo", "bar-zzz"}, expected: "foo-bar-zzz"},
 		{args: []string{"foo", "bar", "zzz"}, expected: "foo-bar-zzz"},
 		{args: []string{"foo", "bar", "zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+		{args: []string{"foo-bar-zzz-a-b"}, expected: "foo-bar-zzz-a-b"},
+		{args: []string{"foo-bar-zzz-a-b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
+		{args: []string{"foo", "bar", "zzz", "a", "b"}, expected: "foo-bar-zzz-a-b"},
+		{args: []string{"foo", "bar", "zzz", "a", "b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
 	}
 	for i, tt := range tests {
 		globalManager.Run(tt.args)
-		c.Assert(cmds[tt.expected].executed, check.Equals, true, check.Commentf("test %d, expected %s", i, tt.expected))
-		c.Assert(cmds[tt.expected].args, check.DeepEquals, tt.expectedArgs, check.Commentf("test %d", i))
-		for _, v := range cmds {
+		for k, v := range cmds {
+			c.Assert(v.executed, check.Equals, k == tt.expected, check.Commentf("test %d, expected %s executed, got %s", i, tt.expected, k))
+			if k == tt.expected {
+				c.Assert(v.args, check.DeepEquals, tt.expectedArgs, check.Commentf("test %d", i))
+			}
 			v.executed = false
 			v.args = nil
 		}

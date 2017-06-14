@@ -388,19 +388,19 @@ func (m *Manager) normalizeCommandArgs(args []string) []string {
 	if len(args) == 0 {
 		return args
 	}
-	newArgs := []string{args[0]}
-	var i int
-	for i = 1; i < len(args); i++ {
-		next := newArgs[0] + "-" + args[i]
-		if _, ok := m.Commands[next]; !ok {
-			i--
+	newArgs := append([]string{}, args...)
+	for len(newArgs) > 0 {
+		tryCmd := strings.Join(newArgs, "-")
+		if _, ok := m.Commands[tryCmd]; ok {
 			break
 		}
-		newArgs[0] = next
+		newArgs = newArgs[:len(newArgs)-1]
 	}
-	if i < len(args) {
-		newArgs = append(newArgs, args[i+1:]...)
+	remainder := len(newArgs)
+	if remainder > 0 {
+		newArgs = []string{strings.Join(newArgs, "-")}
 	}
+	newArgs = append(newArgs, args[remainder:]...)
 	return newArgs
 }
 
