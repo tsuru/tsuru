@@ -307,9 +307,9 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 			log.Debugf("[swarm-routable-addresses] sleeping for 3 seconds")
 			time.Sleep(time.Second * 3)
 		}
-		srv, err := client.InspectService(srvName)
-		if err != nil {
-			return nil, err
+		srv, errInspect := client.InspectService(srvName)
+		if errInspect != nil {
+			return nil, errInspect
 		}
 		log.Debugf("[swarm-routable-addresses] service for app %q: %#+v", a.GetName(), srv)
 		if len(srv.Endpoint.Ports) > 0 {
