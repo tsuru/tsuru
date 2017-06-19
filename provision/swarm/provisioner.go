@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 
+	"time"
+
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -298,16 +300,25 @@ func (p *swarmProvisioner) RoutableAddresses(a provision.App) ([]url.URL, error)
 		return nil, nil
 	}
 	srvName := serviceNameForApp(a, webProcessName)
-	srv, err := client.InspectService(srvName)
-	if err != nil {
-		return nil, err
-	}
-	log.Debugf("[swarm-routable-addresses] service for app %q: %#+v", a.GetName(), srv)
+	var retries int
 	var pubPort uint32
-	if len(srv.Endpoint.Ports) > 0 {
-		pubPort = srv.Endpoint.Ports[0].PublishedPort
+	for retries < 5 && pubPort == 0 {
+		if retries > 0 {
+			log.Debugf("[swarm-routable-addresses] sleeping for 3 seconds")
+			time.Sleep(time.Second * 3)
+		}
+		srv, err := client.InspectService(srvName)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("[swarm-routable-addresses] service for app %q: %#+v", a.GetName(), srv)
+		if len(srv.Endpoint.Ports) > 0 {
+			pubPort = srv.Endpoint.Ports[0].PublishedPort
+		}
+		retries++
 	}
 	if pubPort == 0 {
+		log.Debugf("[swarm-routable-addresses] no exposed ports for app %q", a.GetName())
 		return nil, nil
 	}
 	nodes, err := listValidNodes(client)
