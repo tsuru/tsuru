@@ -86,9 +86,6 @@ configuration is described below, please note that you should replace the values
         run-cmd:
             bin: /var/lib/tsuru/start
             port: "8888"
-        ssh:
-            add-key-cmd: /var/lib/tsuru/add-key
-            user: ubuntu
     routers:
         hipache:
             type: hipache

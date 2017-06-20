@@ -45,8 +45,6 @@ docker:
   cluster:
     mongo-url: mongodb://localhost:27017
     mongo-database: docker-cluster
-  ssh:
-    user: ubuntu
 `
 
 func (s *CheckerSuite) SetUpTest(c *check.C) {
