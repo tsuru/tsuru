@@ -304,15 +304,17 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	platform, err := app.GetPlatform(a.Platform)
-	if err != nil {
-		return err
-	}
-	if platform.Disabled {
-		canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-			permission.Check(t, permission.PermPlatformCreate)
-		if !canUsePlat {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
+	if a.Platform != "" {
+		platform, errPlat := app.GetPlatform(a.Platform)
+		if errPlat != nil {
+			return errPlat
+		}
+		if platform.Disabled {
+			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
+				permission.Check(t, permission.PermPlatformCreate)
+			if !canUsePlat {
+				return &errors.HTTP{Code: http.StatusBadRequest, Message: app.InvalidPlatformError.Error()}
+			}
 		}
 	}
 	evt, err := event.New(&event.Opts{
