@@ -338,9 +338,7 @@ func poolAdd() ExecFlow {
 		}
 		for _, prov := range allProvisioners {
 			poolName := "ipool-" + prov
-			res := T("pool-constraint-set", poolName, "team", "{{.team}} --blacklist").Run(env)
-			c.Check(res, ResultOk)
-			res = T("pool-remove", "-y", poolName).Run(env)
+			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
 	}
