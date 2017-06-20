@@ -7,6 +7,8 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,19 +31,27 @@ const (
 	tsuruLabelPrefix = "tsuru.io/"
 )
 
+var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
+
 func deploymentNameForApp(a provision.App, process string) string {
-	return fmt.Sprintf("%s-%s", a.GetName(), process)
+	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	process = strings.ToLower(kubeNameRegex.ReplaceAllString(process, "-"))
+	return fmt.Sprintf("%s-%s", name, process)
 }
 
 func deployPodNameForApp(a provision.App) string {
-	return fmt.Sprintf("%s-deploy", a.GetName())
+	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	return fmt.Sprintf("%s-deploy", name)
 }
 
 func execCommandPodNameForApp(a provision.App) string {
-	return fmt.Sprintf("%s-isolated-run", a.GetName())
+	name := strings.ToLower(kubeNameRegex.ReplaceAllString(a.GetName(), "-"))
+	return fmt.Sprintf("%s-isolated-run", name)
 }
 
 func daemonSetName(name, pool string) string {
+	name = strings.ToLower(kubeNameRegex.ReplaceAllString(name, "-"))
+	pool = strings.ToLower(kubeNameRegex.ReplaceAllString(pool, "-"))
 	if pool == "" {
 		return fmt.Sprintf("node-container-%s-all", name)
 	}

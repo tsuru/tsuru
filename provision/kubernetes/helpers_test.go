@@ -20,26 +20,62 @@ import (
 )
 
 func (s *S) TestDeploymentNameForApp(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	name := deploymentNameForApp(a, "p1")
-	c.Assert(name, check.Equals, "myapp-p1")
+	var tests = []struct {
+		name, process, expected string
+	}{
+		{"myapp", "p1", "myapp-p1"},
+		{"MYAPP", "p-1", "myapp-p-1"},
+		{"my-app_app", "P_1-1", "my-app-app-p-1-1"},
+	}
+	for i, tt := range tests {
+		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		c.Assert(deploymentNameForApp(a, tt.process), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
 }
 
 func (s *S) TestDeployPodNameForApp(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	name := deployPodNameForApp(a)
-	c.Assert(name, check.Equals, "myapp-deploy")
+	var tests = []struct {
+		name, expected string
+	}{
+		{"myapp", "myapp-deploy"},
+		{"MYAPP", "myapp-deploy"},
+		{"my-app_app", "my-app-app-deploy"},
+	}
+	for i, tt := range tests {
+		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		c.Assert(deployPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
 }
 
 func (s *S) TestExecCommandPodNameForApp(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	name := execCommandPodNameForApp(a)
-	c.Assert(name, check.Equals, "myapp-isolated-run")
+	var tests = []struct {
+		name, expected string
+	}{
+		{"myapp", "myapp-isolated-run"},
+		{"MYAPP", "myapp-isolated-run"},
+		{"my-app_app", "my-app-app-isolated-run"},
+	}
+	for i, tt := range tests {
+		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
+		c.Assert(execCommandPodNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
 }
 
 func (s *S) TestDaemonSetName(c *check.C) {
-	c.Assert(daemonSetName("d1", ""), check.Equals, "node-container-d1-all")
-	c.Assert(daemonSetName("d1", "p1"), check.Equals, "node-container-d1-pool-p1")
+	var tests = []struct {
+		name, pool, expected string
+	}{
+		{"d1", "", "node-container-d1-all"},
+		{"D1", "", "node-container-d1-all"},
+		{"d1_x", "", "node-container-d1-x-all"},
+		{"d1", "p1", "node-container-d1-pool-p1"},
+		{"d1", "P1", "node-container-d1-pool-p1"},
+		{"d1", "P_1", "node-container-d1-pool-p-1"},
+		{"d1", "P-x_1", "node-container-d1-pool-p-x-1"},
+	}
+	for i, tt := range tests {
+		c.Assert(daemonSetName(tt.name, tt.pool), check.Equals, tt.expected, check.Commentf("test %d", i))
+	}
 }
 
 func (s *S) TestWaitFor(c *check.C) {
