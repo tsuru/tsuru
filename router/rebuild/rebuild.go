@@ -58,13 +58,13 @@ func RebuildRoutes(app RebuildApp) (*RebuildRoutesResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("[rebuild-routes] old routes for app %q: %s", app.GetName(), oldRoutes)
+	log.Debugf("[rebuild-routes] old routes for app %q: %v", app.GetName(), oldRoutes)
 	expectedMap := make(map[string]*url.URL)
 	addresses, err := app.RoutableAddresses()
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("[rebuild-routes] addresses for app %q: %s", app.GetName(), addresses)
+	log.Debugf("[rebuild-routes] addresses for app %q: %v", app.GetName(), addresses)
 	for i, addr := range addresses {
 		expectedMap[addr.Host] = &addresses[i]
 	}
