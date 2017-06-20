@@ -883,8 +883,17 @@ default value expected by platforms defined in tsuru's basebuilder repository is
 docker:user
 +++++++++++
 
-The user tsuru will use to start the container. The value expected for
-basebuilder platforms is ``ubuntu``.
+The user tsuru will use to start the container. The default value is
+``ubuntu``, which is the expected value for default tsuru platforms. An empty
+for this will make tsuru use the platform image user.
+
+docker:uid
++++++++++++
+
+The user ID tsuru will use to start the container in provisioners that do not
+support ``docker:user``. The default value is ``1000``, which is the expected
+value for default tsuru platforms. The value ``-1`` can be used to make tsuru
+use the platform image user.
 
 .. _config_healing:
 

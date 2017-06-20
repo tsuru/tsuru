@@ -12,6 +12,11 @@ import (
 	"github.com/tsuru/config"
 )
 
+const (
+	defaultUsername = "ubuntu"
+	defaultUserID   = 1000
+)
+
 func writeTarball(tarball *tar.Writer, archive io.Reader, fileSize int64, name string) error {
 	header := tar.Header{
 		Name: name,
@@ -47,12 +52,20 @@ func AddDeployTarFile(archive io.Reader, fileSize int64, name string) io.ReadClo
 func UserForContainer() (username string, uid *int64) {
 	userid, err := config.GetInt("docker:uid")
 	if err == nil {
-		userid64 := int64(userid)
-		uid = &userid64
+		if userid >= 0 {
+			userid64 := int64(userid)
+			uid = &userid64
+		}
+	} else {
+		defUID := int64(defaultUserID)
+		uid = &defUID
 	}
 	username, err = config.GetString("docker:user")
 	if err != nil {
-		username, _ = config.GetString("docker:ssh:user")
+		username, err = config.GetString("docker:ssh:user")
+		if err != nil {
+			username = defaultUsername
+		}
 	}
 	return username, uid
 }
