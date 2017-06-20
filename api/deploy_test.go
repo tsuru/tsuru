@@ -455,7 +455,6 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Builder deploy called\nOK\n")
@@ -481,6 +480,29 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 		},
 		LogMatches: `Builder deploy called`,
 	}, eventtest.HasEvent)
+}
+
+func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	user, _ := s.token.User()
+	a := app.App{
+		Name:      "otherapp",
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+	}
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Body.String(), check.Equals, "can't deploy app without platform, if It's not a docker image\n")
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
