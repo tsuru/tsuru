@@ -5,8 +5,11 @@
 package errors
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
+	pkgErrors "github.com/pkg/errors"
 	"gopkg.in/check.v1"
 )
 
@@ -24,4 +27,10 @@ func (s *S) TestHTTPError(c *check.C) {
 func (s *S) TestValidationError(c *check.C) {
 	e := ValidationError{Message: "something"}
 	c.Assert(e.Error(), check.Equals, "something")
+}
+
+func (s *S) TestMultiErrorFormat(c *check.C) {
+	cause := errors.New("root error")
+	e := NewMultiError(errors.New("error 1"), pkgErrors.WithStack(cause))
+	c.Assert(fmt.Sprintf("%s", e), check.Equals, "error 1 root error")
 }

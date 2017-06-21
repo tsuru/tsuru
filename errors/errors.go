@@ -5,7 +5,10 @@
 // Package errors provides facilities with error handling.
 package errors
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // HTTP represents an HTTP error. It implements the error interface.
 //
@@ -68,10 +71,10 @@ func (m *MultiError) ToError() error {
 }
 
 func (m *MultiError) Error() string {
-	if len(m.errors) == 0 {
+	if m.Len() == 0 {
 		return "multi error created but no errors added"
 	}
-	if len(m.errors) == 1 {
+	if m.Len() == 1 {
 		return fmt.Sprintf("%+v", m.errors[0])
 	}
 	msg := fmt.Sprintf("multiple errors reported (%d):\n", len(m.errors))
@@ -79,6 +82,25 @@ func (m *MultiError) Error() string {
 		msg += fmt.Sprintf("error #%d: %+v\n", i, err)
 	}
 	return msg
+}
+
+func (m *MultiError) Format(s fmt.State, verb rune) {
+	if m.Len() == 0 {
+		return
+	}
+	fmtString := "%"
+	if s.Flag('+') {
+		fmtString += "+"
+	}
+	if s.Flag('#') {
+		fmtString += "#"
+	}
+	fmtString += string(verb)
+	errors := make([]string, len(m.errors))
+	for i, err := range m.errors {
+		errors[i] = fmt.Sprintf(fmtString, err)
+	}
+	fmt.Fprintf(s, "%s", strings.Join(errors, " "))
 }
 
 type CompositeError struct {
