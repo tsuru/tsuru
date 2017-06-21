@@ -628,6 +628,12 @@ routers:<router name>:rule-type (type: galeb)
 
 Galeb manager rule type used to create rules.
 
+routers:<router name>:use-token (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++++
+
+If true, tsuru will get an authentication token by calling the /token route and
+reuse it until it expires. (Defaults to false)
+
 Hipache
 -------
 

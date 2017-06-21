@@ -69,6 +69,11 @@ Other improvements
   `#1539 <https://github.com/tsuru/tsuru/issues/1539>`_
 * Redis is no longer required for log streaming (``tsuru app-log -f``), tail
   cursors directly on MongoDB will now be used.
+* The Galeb router client is now able to reuse authentication tokens using the
+  ``:use-token`` config flag in the router. See :ref:`routers <config_routers>`
+  configuration reference. The client implementation will now also try to
+  remove previously created resources after some failure communicating with
+  the router.
 
 .. _migrations-1.3.0:
 
