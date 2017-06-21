@@ -208,7 +208,7 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 	} else {
 		httpErr := &tsuruErrors.HTTP{Code: http.StatusConflict}
 		if a.Lock.Locked {
-			httpErr.Message = fmt.Sprintf("%s", &a.Lock)
+			httpErr.Message = a.Lock.String()
 		} else {
 			httpErr.Message = "Not locked anymore, please try again."
 		}

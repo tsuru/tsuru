@@ -25,11 +25,12 @@ func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
 	var teams []string
 	var global bool
+contexts:
 	for _, c := range contexts {
 		switch c.CtxType {
 		case permission.CtxGlobal:
 			global = true
-			break
+			break contexts
 		case permission.CtxTeam:
 			teams = append(teams, c.Value)
 		}

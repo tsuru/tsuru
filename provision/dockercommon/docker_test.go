@@ -142,7 +142,6 @@ func (s *S) TestWaitDocker(c *check.C) {
 	c.Assert(err, check.IsNil)
 	server.CustomHandler("/_ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}))
 	err = WaitDocker(client)
 	c.Assert(err, check.NotNil)

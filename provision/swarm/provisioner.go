@@ -837,11 +837,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 		return err
 	}
 	_, err = upsertService(serviceSpec, m.client, placementOnly)
-	if err != nil {
-		return err
-
-	}
-	return nil
+	return err
 }
 
 func (p *swarmProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {

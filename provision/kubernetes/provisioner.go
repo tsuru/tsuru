@@ -769,7 +769,7 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 		}
 		out += fmt.Sprintf("Kubernetes provisioner on cluster %q - %s:\n", c.Name, c.restConfig.Host)
 		if len(nodeList) == 0 {
-			out += fmt.Sprint("    No Kubernetes nodes available\n")
+			out += "    No Kubernetes nodes available\n"
 		}
 		for _, node := range nodeList {
 			out += fmt.Sprintf("    Kubernetes node: %s\n", node.Address())

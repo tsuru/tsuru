@@ -194,7 +194,6 @@ func (l *LogListener) Close() {
 		close(l.quit)
 		l.quit = nil
 	}
-	return
 }
 
 type LogDispatcher struct {

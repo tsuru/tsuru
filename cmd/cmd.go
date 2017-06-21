@@ -495,7 +495,7 @@ func (c *help) Run(context *Context, client *Client) error {
 	const deprecatedMsg = "WARNING: %q is deprecated. Showing help for %q instead.\n\n"
 	output := fmt.Sprintf("%s\n", versionString(c.manager))
 	if c.manager.wrong {
-		output += fmt.Sprint("ERROR: wrong number of arguments.\n\n")
+		output += "ERROR: wrong number of arguments.\n\n"
 	}
 	if len(context.Args) > 0 {
 		if cmd, ok := c.manager.Commands[context.Args[0]]; ok {
@@ -515,7 +515,7 @@ func (c *help) Run(context *Context, client *Client) error {
 			if info.MaxArgs > 0 {
 				output += fmt.Sprintf("\nMaximum # of arguments: %d", info.MaxArgs)
 			}
-			output += fmt.Sprint("\n")
+			output += "\n"
 		} else if msg, ok := c.manager.tryImplicitTopic(context.Args[0]); ok {
 			output += msg
 		} else {

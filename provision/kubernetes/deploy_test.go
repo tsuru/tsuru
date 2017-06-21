@@ -447,38 +447,6 @@ func (s *S) TestServiceManagerDeployServiceWithLimits(c *check.C) {
 	})
 }
 
-func (s *S) prepareRollbackTest(c *check.C) (*serviceManager, **extensions.DeploymentRollback, func()) {
-	config.Set("docker:healthcheck:max-time", 1)
-	waitDep := s.deploymentReactions(c)
-	buf := bytes.Buffer{}
-	m := serviceManager{client: s.client.clusterClient, writer: &buf}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
-	c.Assert(err, check.IsNil)
-	err = image.SaveImageCustomData("myimg", map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	var rollbackObj *extensions.DeploymentRollback
-	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
-		obj := action.(ktesting.CreateAction).GetObject()
-		if action.GetSubresource() == "rollback" {
-			rollbackObj = obj.(*extensions.DeploymentRollback)
-			return true, rollbackObj, nil
-		}
-		dep := obj.(*extensions.Deployment)
-		dep.Status.UnavailableReplicas = 2
-		return false, nil, nil
-	})
-	return &m, &rollbackObj, func() {
-		waitDep()
-		config.Unset("docker:healthcheck:max-time")
-	}
-}
-
 func (s *S) TestServiceManagerDeployServiceRollback(c *check.C) {
 	config.Set("docker:healthcheck:max-time", 1)
 	defer config.Unset("docker:healthcheck:max-time")
