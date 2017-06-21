@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 )
 
@@ -25,6 +26,9 @@ func (f *MapFlag) Set(val string) error {
 	if *f == nil {
 		*f = map[string]string{}
 	}
+	if len(parts) < 2 {
+		return errors.New("must be on the form \"key=value\"")
+	}
 	(*f)[parts[0]] = parts[1]
 	return nil
 }
@@ -42,6 +46,9 @@ func (f MapFlagWrapper) Set(val string) error {
 	parts := strings.SplitN(val, "=", 2)
 	if *f.Dst == nil {
 		*f.Dst = map[string]string{}
+	}
+	if len(parts) < 2 {
+		return errors.New("must be on the form \"key=value\"")
 	}
 	(*f.Dst)[parts[0]] = parts[1]
 	return nil

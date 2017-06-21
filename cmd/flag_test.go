@@ -20,6 +20,19 @@ func (s *S) TestMapFlag(c *check.C) {
 	})
 }
 
+func (s *S) TestMapFlagInvalid(c *check.C) {
+	var f MapFlag
+	err := f.Set("a")
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestMapFlagWrapperInvalid(c *check.C) {
+	m := make(map[string]string)
+	f := MapFlagWrapper{Dst: &m}
+	err := f.Set("a")
+	c.Assert(err, check.NotNil)
+}
+
 func (s *S) TestStringSliceFlag(c *check.C) {
 	var f StringSliceFlag
 	f.Set("a")
