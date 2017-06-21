@@ -71,13 +71,15 @@ func (g *gceClusterManager) fetchClusterData() {
 	if g.cluster != nil && g.cluster.Status == gceClusterStatusRunning {
 		return
 	}
-	for i := 0; i < 10; i++ {
+	retries := 20
+	sleepTime := 20 * time.Second
+	for i := 0; i < retries; i++ {
 		cluster, err := g.client.describeCluster(clusterName, zone)
 		if err == nil && cluster.Status == gceClusterStatusRunning {
 			g.cluster = cluster
 			return
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(sleepTime)
 	}
 }
 
