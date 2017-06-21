@@ -501,6 +501,22 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	units, err := instance.Units()
+	if err != nil {
+		return err
+	}
+	for _, u := range units {
+		if u.Status != "started" {
+			return &errors.HTTP{
+				Code:    http.StatusUnauthorized,
+				Message: "Cannot add units to an app that has stopped or sleeping units",
+			}
+		}
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAdd,
