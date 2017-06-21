@@ -253,6 +253,9 @@ func (m *Manager) Run(args []string) {
 	}
 	if err != nil {
 		errorMsg := err.Error()
+		if verbosity > 0 {
+			errorMsg = fmt.Sprintf("%+v", err)
+		}
 		httpErr, ok := err.(*tsuruErrors.HTTP)
 		if ok && httpErr.Code == http.StatusUnauthorized && name != loginCmdName {
 			errorMsg = fmt.Sprintf(`You're not authenticated or your session has expired. Please use %q command for authentication.`, loginCmdName)
