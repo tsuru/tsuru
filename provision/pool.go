@@ -24,6 +24,7 @@ var (
 	ErrDefaultPoolAlreadyExists       = errors.New("Default pool already exists.")
 	ErrPoolNameIsRequired             = errors.New("Pool name is required.")
 	ErrPoolNotFound                   = errors.New("Pool does not exist.")
+	ErrPoolAlreadyExists              = errors.New("Pool already exists.")
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
 
@@ -210,6 +211,9 @@ func AddPool(opts AddPoolOptions) error {
 	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner}
 	err = conn.Pools().Insert(pool)
 	if err != nil {
+		if mgo.IsDup(err) {
+			return ErrPoolAlreadyExists
+		}
 		return err
 	}
 	if opts.Public || opts.Default {

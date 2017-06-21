@@ -57,6 +57,32 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestAddPoolAlreadyExists(c *check.C) {
+	b := bytes.NewBufferString("name=pool1")
+	req, err := http.NewRequest("POST", "/pools", b)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusCreated)
+	rec = httptest.NewRecorder()
+	m = RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, check.Equals, http.StatusConflict)
+	c.Assert(rec.Body.String(), check.Equals, provision.ErrPoolAlreadyExists.Error()+"\n")
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "pool.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "pool1"},
+		},
+		ErrorMatches: `Pool already exists\.`,
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestAddPool(c *check.C) {
 	b := bytes.NewBufferString("name=pool1")
 	req, err := http.NewRequest("POST", "/pools", b)

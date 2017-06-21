@@ -127,7 +127,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	defer func() { evt.Done(err) }()
 	err = provision.AddPool(addOpts)
-	if err == provision.ErrDefaultPoolAlreadyExists {
+	if err == provision.ErrDefaultPoolAlreadyExists || err == provision.ErrPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
 			Message: err.Error(),

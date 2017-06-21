@@ -133,6 +133,13 @@ func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *S) TestAddPoolNameShouldBeUnique(c *check.C) {
+	err := AddPool(AddPoolOptions{Name: "mypool"})
+	c.Assert(err, check.IsNil)
+	err = AddPool(AddPoolOptions{Name: "mypool"})
+	c.Assert(err, check.DeepEquals, ErrPoolAlreadyExists)
+}
+
 func (s *S) TestForceAddDefaultPool(c *check.C) {
 	coll := s.storage.Pools()
 	opts := AddPoolOptions{
