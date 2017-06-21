@@ -89,7 +89,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if (instance.GetPlatform() == "") && (origin != "image") {
-		return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "can't deploy app without platform, if It's not a docker image"}
+		return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "can't deploy app without platform, if it's not an image"}
 	}
 	var build bool
 	buildString := r.FormValue("build")
