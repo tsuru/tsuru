@@ -499,7 +499,7 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), check.Equals, "can't deploy app without platform, if It's not a docker image\n")
+	c.Assert(recorder.Body.String(), check.Equals, "can't deploy app without platform, if it's not an image\n")
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
