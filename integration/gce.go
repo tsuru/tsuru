@@ -59,12 +59,12 @@ func (g *gceClusterManager) Start(env *Environment) *Result {
 	}
 	g.client = client
 	g.client.createCluster(clusterName, zone, 1)
-	return nil
+	return &Result{ExitCode: 0}
 }
 
 func (g *gceClusterManager) Delete(env *Environment) *Result {
 	g.client.deleteCluster(g.cluster.Name, zone)
-	return nil
+	return &Result{ExitCode: 0}
 }
 
 func (g *gceClusterManager) fetchClusterData() {
