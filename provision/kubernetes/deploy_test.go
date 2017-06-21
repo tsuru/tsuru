@@ -49,6 +49,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	ten := int32(10)
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
+	expectedUID := int64(1000)
 	c.Assert(dep, check.DeepEquals, &extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
@@ -96,7 +97,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					},
 				},
 				Spec: v1.PodSpec{
-					SecurityContext: &v1.PodSecurityContext{},
+					SecurityContext: &v1.PodSecurityContext{
+						RunAsUser: &expectedUID,
+					},
 					NodeSelector: map[string]string{
 						"pool": "bonehunters",
 					},
@@ -390,7 +393,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 }
 
 func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
-	config.Set("docker:uid", 1000)
+	config.Set("docker:uid", 1001)
 	defer config.Unset("docker:uid")
 	waitDep := s.deploymentReactions(c)
 	defer waitDep()
@@ -410,7 +413,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	expectedUID := int64(1000)
+	expectedUID := int64(1001)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &v1.PodSecurityContext{
 		RunAsUser: &expectedUID,
 	})
