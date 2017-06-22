@@ -37,10 +37,8 @@ var (
 		"docker",
 		"swarm",
 	}
-	clusterProvisioners = []clusterManager{
-		&minikubeClusterManager{},
-	}
-	flows = []ExecFlow{
+	clusterProvisioners = getClusterManagers()
+	flows               = []ExecFlow{
 		platformsToInstall(),
 		installerConfigTest(),
 		installerComposeTest(),
