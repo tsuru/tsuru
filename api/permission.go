@@ -639,7 +639,7 @@ func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	return json.NewEncoder(w).Encode(roles)
 }
 
-// title: list default roles
+// title: updates a role
 // path: /roles
 // method: PUT
 // responses:

@@ -277,13 +277,10 @@ func (u *User) AddRole(roleName string, contextValue string) error {
 	return u.Reload()
 }
 
-func UpdateRoleFromAllUsers(name, newName, ctx, desc string) error {
-	role, err := permission.FindRole(name)
+func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
+	role, err := permission.FindRole(roleName)
 	if err != nil {
 		return permission.ErrRoleNotFound
-	}
-	if (newName != "") && (newName != name) {
-		role.Name = newName
 	}
 	if ctx != "" {
 		role.ContextType, err = permission.ParseContext(ctx)
@@ -294,27 +291,39 @@ func UpdateRoleFromAllUsers(name, newName, ctx, desc string) error {
 	if desc != "" {
 		role.Description = desc
 	}
-	if newName == "" {
+	if (newRoleName == "") || (role.Name == newRoleName) {
 		return role.Update()
 	}
-	usersWithRole, err := ListUsersWithRole(name)
-	if err != nil {
-		return err
-	}
-	err = permission.DestroyRole(name)
-	if err != nil {
-		return err
-	}
-	err = RemoveRoleFromAllUsers(name)
-	if err != nil {
-		return err
-	}
+	role.Name = newRoleName
 	err = role.Add()
 	if err != nil {
 		return err
 	}
+	usersWithRole, err := ListUsersWithRole(roleName)
+	if err != nil {
+		return err
+	}
 	for _, user := range usersWithRole {
-		user.AddRole(role.Name, string(role.ContextType))
+		errAddRole := user.AddRole(role.Name, string(role.ContextType))
+		if errAddRole != nil {
+			errDtr := permission.DestroyRole(role.Name)
+			if errDtr != nil {
+				return errDtr
+			}
+			errRmv := RemoveRoleFromAllUsers(roleName)
+			if errRmv != nil {
+				return errRmv
+			}
+			return errAddRole
+		}
+	}
+	err = permission.DestroyRole(roleName)
+	if err != nil {
+		return err
+	}
+	err = RemoveRoleFromAllUsers(roleName)
+	if err != nil {
+		return err
 	}
 	return nil
 }
