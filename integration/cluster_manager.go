@@ -18,12 +18,11 @@ type clusterManager interface {
 	UpdateParams(env *Environment) []string
 }
 
-var availableClusterManagers = map[string]clusterManager{
-	"gce":      &gceClusterManager{},
-	"minikube": &minikubeClusterManager{},
-}
-
 func getClusterManagers() []clusterManager {
+	availableClusterManagers := map[string]clusterManager{
+		"gce":      &gceClusterManager{},
+		"minikube": &minikubeClusterManager{},
+	}
 	managers := make([]clusterManager, 0, len(availableClusterManagers))
 	env := os.Getenv("TSURU_INTEGRATION_CLUSTERS")
 	clusters := strings.Split(env, ",")
