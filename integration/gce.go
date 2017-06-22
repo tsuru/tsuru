@@ -58,7 +58,7 @@ func (g *gceClusterManager) Provisioner() string {
 }
 
 func (g *gceClusterManager) IP(env *Environment) string {
-	g.fetchClusterData()
+	g.fetchClusterData(env)
 	if g.cluster != nil {
 		return g.cluster.Endpoint
 	}
@@ -76,16 +76,22 @@ func (g *gceClusterManager) Start(env *Environment) *Result {
 		return nil
 	}
 	g.client = client
+	if env.VerboseLevel() > 0 {
+		fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", clusterName, zone)
+	}
 	g.client.createCluster(clusterName, zone, 1)
 	return &Result{ExitCode: 0}
 }
 
 func (g *gceClusterManager) Delete(env *Environment) *Result {
+	if env.VerboseLevel() > 0 {
+		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", clusterName, zone)
+	}
 	g.client.deleteCluster(g.cluster.Name, zone)
 	return &Result{ExitCode: 0}
 }
 
-func (g *gceClusterManager) fetchClusterData() {
+func (g *gceClusterManager) fetchClusterData(env *Environment) {
 	if g.cluster != nil && g.cluster.Status == gceClusterStatusRunning {
 		return
 	}
@@ -95,14 +101,24 @@ func (g *gceClusterManager) fetchClusterData() {
 		cluster, err := g.client.describeCluster(clusterName, zone)
 		if err == nil && cluster.Status == gceClusterStatusRunning {
 			g.cluster = cluster
+			if env.VerboseLevel() > 0 {
+				fmt.Fprintf(safeStdout, "[gce] cluster %s is running. Endpoint: %s\n", clusterName, cluster.Endpoint)
+			}
 			return
+		}
+		if env.VerboseLevel() > 0 {
+			if err == nil {
+				fmt.Fprintf(safeStdout, "[gce] cluster %s status: %s\n", clusterName, cluster.Status)
+			} else {
+				fmt.Fprintf(safeStdout, "[gce] error fetching cluster %s: %s\n", clusterName, err)
+			}
 		}
 		time.Sleep(sleepTime)
 	}
 }
 
 func (g *gceClusterManager) credentials(env *Environment) (map[string]string, error) {
-	g.fetchClusterData()
+	g.fetchClusterData(env)
 	if g.cluster == nil {
 		return nil, fmt.Errorf("cluster unavailable")
 	}
