@@ -544,6 +544,46 @@ func (s *S) TestAddUnits(c *check.C) {
 	}
 }
 
+func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
+	a := App{
+		Name: "sejuani", Platform: "python",
+		TeamOwner: s.team.Name,
+		Quota:     quota.Unlimited,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = a.Stop(nil, "web")
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
+	a := App{
+		Name: "sejuani", Platform: "python",
+		TeamOwner: s.team.Name,
+		Quota:     quota.Unlimited,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = a.Sleep(nil, "web", &url.URL{Scheme: "http", Host: "proxy:1234"})
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+}
+
 func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	app := App{
 		Name: "warpaint", Platform: "python",
