@@ -37,8 +37,7 @@ var (
 		"docker",
 		"swarm",
 	}
-	clusterProvisioners = getClusterManagers()
-	flows               = []ExecFlow{
+	flows = []ExecFlow{
 		platformsToInstall(),
 		installerConfigTest(),
 		installerComposeTest(),
@@ -263,7 +262,7 @@ func poolAdd() ExecFlow {
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
 		}
-		for _, cluster := range clusterProvisioners {
+		for _, cluster := range getClusterManagers(env) {
 			poolName := "ipool-" + cluster.Name()
 			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
 			c.Assert(res, ResultOk)
@@ -321,7 +320,7 @@ func poolAdd() ExecFlow {
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		for _, cluster := range clusterProvisioners {
+		for _, cluster := range getClusterManagers(env) {
 			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
 			res = cluster.Delete(env)

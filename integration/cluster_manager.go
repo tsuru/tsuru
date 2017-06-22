@@ -4,10 +4,7 @@
 
 package integration
 
-import (
-	"os"
-	"strings"
-)
+import "strings"
 
 type clusterManager interface {
 	Name() string
@@ -18,14 +15,13 @@ type clusterManager interface {
 	UpdateParams(env *Environment) []string
 }
 
-func getClusterManagers() []clusterManager {
+func getClusterManagers(env *Environment) []clusterManager {
 	availableClusterManagers := map[string]clusterManager{
 		"gce":      &gceClusterManager{},
 		"minikube": &minikubeClusterManager{},
 	}
 	managers := make([]clusterManager, 0, len(availableClusterManagers))
-	env := os.Getenv("TSURU_INTEGRATION_CLUSTERS")
-	clusters := strings.Split(env, ",")
+	clusters := strings.Split(env.Get("clusters"), ",")
 	selectedClusters := make([]string, 0, len(availableClusterManagers))
 	for _, cluster := range clusters {
 		cluster = strings.Trim(cluster, " ")
