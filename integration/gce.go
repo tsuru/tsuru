@@ -23,7 +23,7 @@ const gceClusterStatusRunning = "RUNNING"
 var clusterName = fmt.Sprintf("integration-test-%d", randInt())
 var zone = os.Getenv("GCE_ZONE")
 var projectID = os.Getenv("GCE_PROJECT_ID")
-var serviceAccountFile = os.Getenv("GCE_SERVICE_ACCOUNT_FILE")
+var serviceAccount = os.Getenv("GCE_SERVICE_ACCOUNT")
 
 type gceClusterManager struct {
 	client  *gceClient
@@ -33,6 +33,20 @@ type gceClusterManager struct {
 func randInt() int {
 	rand.Seed(time.Now().UnixNano())
 	return rand.Int()
+}
+
+func createTempFile(data []byte, prefix string) (string, error) {
+	tmpfile, err := ioutil.TempFile("", prefix)
+	if err != nil {
+		return "", err
+	}
+	if _, err := tmpfile.Write(data); err != nil {
+		return "", err
+	}
+	if err := tmpfile.Close(); err != nil {
+		return "", err
+	}
+	return tmpfile.Name(), nil
 }
 
 func (g *gceClusterManager) Name() string {
@@ -53,6 +67,10 @@ func (g *gceClusterManager) IP(env *Environment) string {
 
 func (g *gceClusterManager) Start(env *Environment) *Result {
 	ctx := context.Background()
+	serviceAccountFile, err := createTempFile([]byte(serviceAccount), "gce-sa-")
+	if err != nil {
+		return nil
+	}
 	client, err := newClient(ctx, projectID, option.WithServiceAccountFile(serviceAccountFile))
 	if err != nil {
 		return nil
@@ -95,17 +113,11 @@ func (g *gceClusterManager) credentials(env *Environment) (map[string]string, er
 	if err != nil {
 		return credentials, err
 	}
-	tmpfile, err := ioutil.TempFile("", "gce-ca")
+	filename, err := createTempFile(contents, "gce-ca-")
 	if err != nil {
 		return credentials, err
 	}
-	if _, err := tmpfile.Write(contents); err != nil {
-		return credentials, err
-	}
-	if err := tmpfile.Close(); err != nil {
-		return credentials, err
-	}
-	credentials["certificateFilename"] = tmpfile.Name()
+	credentials["certificateFilename"] = filename
 	return credentials, nil
 }
 
