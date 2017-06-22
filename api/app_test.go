@@ -510,11 +510,16 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var apps []app.App
+	var apps []struct {
+		Name  string
+		Units []provision.Unit
+		Error string
+	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Units, check.DeepEquals, []provision.Unit{})
 	c.Assert(apps[0].Error, check.Equals, "unable to list app units: some units error")
 }
 

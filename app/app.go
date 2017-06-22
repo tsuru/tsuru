@@ -161,9 +161,16 @@ func (app *App) getProvisioner() (provision.Provisioner, error) {
 func (app *App) Units() ([]provision.Unit, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
-		return nil, err
+		return []provision.Unit{}, err
 	}
-	return prov.Units(app)
+	units, err := prov.Units(app)
+	if units == nil {
+		// This is unusual but was done because previously this method didn't
+		// return an error. This ensures we always return an empty list instead
+		// of nil to preserve compatibility with old clients.
+		units = []provision.Unit{}
+	}
+	return units, err
 }
 
 func (app *App) GetRouterOpts() map[string]string {
@@ -178,9 +185,8 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["platform"] = app.Platform
 	result["teams"] = app.Teams
 	units, err := app.Units()
-	if err == nil {
-		result["units"] = units
-	} else {
+	result["units"] = units
+	if err != nil {
 		result["error"] = fmt.Sprintf("unable to list app units: %+v", err)
 	}
 	result["repository"] = repo.ReadWriteURL
