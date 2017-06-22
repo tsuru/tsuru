@@ -27,11 +27,22 @@ func getClusterManagers() []clusterManager {
 	managers := make([]clusterManager, 0, len(availableClusterManagers))
 	env := os.Getenv("TSURU_INTEGRATION_CLUSTERS")
 	clusters := strings.Split(env, ",")
+	selectedClusters := make([]string, 0, len(availableClusterManagers))
 	for _, cluster := range clusters {
 		cluster = strings.Trim(cluster, " ")
 		manager := availableClusterManagers[cluster]
 		if manager != nil {
-			managers = append(managers, manager)
+			available := true
+			for _, selected := range selectedClusters {
+				if cluster == selected {
+					available = false
+					break
+				}
+			}
+			if available {
+				managers = append(managers, manager)
+				selectedClusters = append(selectedClusters, cluster)
+			}
 		}
 	}
 	return managers
