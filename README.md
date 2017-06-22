@@ -44,7 +44,7 @@ $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-
 #### Call tsuru installer
 
 ```
-$ tsuru install
+$ tsuru install create
 ```
 
 ### From Source
@@ -61,18 +61,22 @@ $ make install
 
 #### Create an installer config
 
-Create a file called local.yml with this content:
+Create the tsuru installer config files with:
 
 ```
-components:
-    tsuru:
-        version: latest
+$ tsuru install config init
+```
+
+Replace tsuru api image tag with the latest tag on the install-compose.yml:
+
+```
+$ sed -i'' -e 's/api:v1/api:latest/g' install-compose.yml
 ```
 
 #### Call tsuru installer
 
 ```
-$ $GOPATH/bin/tsuru install -c local.yml
+$ $GOPATH/bin/tsuru install -c install-config.yml -e install-compose.yml
 ```
 
 ### Testing
