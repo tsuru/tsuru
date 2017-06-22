@@ -301,6 +301,10 @@ func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
 	}
 	usersWithRole, err := ListUsersWithRole(roleName)
 	if err != nil {
+		errDtr := permission.DestroyRole(role.Name)
+		if errDtr != nil {
+			return tsuruErrors.NewMultiError(err, errDtr)
+		}
 		return err
 	}
 	for _, user := range usersWithRole {
@@ -308,11 +312,11 @@ func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
 		if errAddRole != nil {
 			errDtr := permission.DestroyRole(role.Name)
 			if errDtr != nil {
-				return errDtr
+				return tsuruErrors.NewMultiError(errAddRole, errDtr)
 			}
 			errRmv := RemoveRoleFromAllUsers(roleName)
 			if errRmv != nil {
-				return errRmv
+				return tsuruErrors.NewMultiError(errAddRole, errRmv)
 			}
 			return errAddRole
 		}
