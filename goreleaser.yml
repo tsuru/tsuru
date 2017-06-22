@@ -8,8 +8,6 @@ build:
     - linux
   goarch:
     - amd64
-  env:
-    - CGO_ENABLED=0
 
 # Archive customization
 archive:
