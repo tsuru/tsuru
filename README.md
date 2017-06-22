@@ -76,7 +76,7 @@ $ sed -i'' -e 's/api:v1/api:latest/g' install-compose.yml
 #### Call tsuru installer
 
 ```
-$ $GOPATH/bin/tsuru install -c install-config.yml -e install-compose.yml
+$ $GOPATH/bin/tsuru install create -c install-config.yml -e install-compose.yml
 ```
 
 ### Testing
