@@ -1711,31 +1711,6 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"added 3 units"}`+"\n")
 }
 
-func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
-	a := app.App{Name: "sejuani", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Unlimited}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	err = a.AddUnits(1, "web", nil)
-	c.Assert(err, check.IsNil)
-	err = a.Stop(nil, "web")
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("units=1&process=web")
-	request, err := http.NewRequest("PUT", "/apps/sejuani/units", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), check.Equals, "Cannot add units to an app that has stopped or sleeping units\n")
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-}
-
 func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *check.C) {
 	body := strings.NewReader("units=1&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)

@@ -613,8 +613,17 @@ func (app *App) AddUnits(n uint, process string, w io.Writer) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
+	for _, u := range units {
+		if (u.Status == provision.StatusAsleep) || (u.Status == provision.StatusStopped) {
+			return errors.New("Cannot add units to an app that has stopped or sleeping units")
+		}
+	}
 	w = app.withLogWriter(w)
-	err := action.NewPipeline(
+	err = action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
 	).Execute(app, n, w, process)
