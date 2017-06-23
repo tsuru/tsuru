@@ -98,6 +98,9 @@ func (g *GceClusterManager) Start(env *Environment) *Result {
 }
 
 func (g *GceClusterManager) Delete(env *Environment) *Result {
+	if g.clusterName == "" {
+		return nil
+	}
 	if env.VerboseLevel() > 0 {
 		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, zone)
 	}
@@ -113,7 +116,13 @@ func (g *GceClusterManager) fetchClusterData(env *Environment) {
 	sleepTime := 20 * time.Second
 	for i := 0; i < retries; i++ {
 		cluster, err := g.client.describeCluster(g.clusterName, zone)
-		if err == nil && cluster.Status == gceClusterStatusRunning {
+		if err != nil {
+			if env.VerboseLevel() > 0 {
+				fmt.Fprintf(safeStdout, "[gce] error fetching cluster %s: %s\n", g.clusterName, err)
+			}
+			return
+		}
+		if cluster.Status == gceClusterStatusRunning {
 			g.cluster = cluster
 			if env.VerboseLevel() > 0 {
 				fmt.Fprintf(safeStdout, "[gce] cluster %s is running. Endpoint: %s\n", g.clusterName, cluster.Endpoint)
@@ -121,11 +130,7 @@ func (g *GceClusterManager) fetchClusterData(env *Environment) {
 			return
 		}
 		if env.VerboseLevel() > 0 {
-			if err == nil {
-				fmt.Fprintf(safeStdout, "[gce] cluster %s status: %s\n", g.clusterName, cluster.Status)
-			} else {
-				fmt.Fprintf(safeStdout, "[gce] error fetching cluster %s: %s\n", g.clusterName, err)
-			}
+			fmt.Fprintf(safeStdout, "[gce] cluster %s status: %s\n", g.clusterName, cluster.Status)
 		}
 		time.Sleep(sleepTime)
 	}
