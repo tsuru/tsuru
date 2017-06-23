@@ -428,10 +428,14 @@ type runSinglePodArgs struct {
 	envs       []v1.EnvVar
 	name       string
 	image      string
+	pool       string
 	dockerSock bool
 }
 
 func runPod(args runSinglePodArgs) error {
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool: args.pool,
+	}).ToNodeByPoolSelector()
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
@@ -439,6 +443,7 @@ func runPod(args runSinglePodArgs) error {
 			Labels:    args.labels.ToLabels(),
 		},
 		Spec: v1.PodSpec{
+			NodeSelector:  nodeSelector,
 			RestartPolicy: v1.RestartPolicyNever,
 			Containers: []v1.Container{
 				{

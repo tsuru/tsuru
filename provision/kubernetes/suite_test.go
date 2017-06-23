@@ -142,7 +142,7 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
 	err = provision.AddPool(provision.AddPoolOptions{
-		Name:        "bonehunters",
+		Name:        "test-default",
 		Default:     true,
 		Provisioner: "kubernetes",
 	})
@@ -366,6 +366,17 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+			provision.PoolMetadataName: a.GetPool(),
+		})
+		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, "true")
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-name"], check.Equals, a.GetName())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-platform"], check.Equals, a.GetPlatform())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/router-type"], check.Equals, "fake")
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/router-name"], check.Equals, "fake")
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
 		if !strings.HasSuffix(pod.Name, "-deploy") {
 			return false, nil, nil
 		}

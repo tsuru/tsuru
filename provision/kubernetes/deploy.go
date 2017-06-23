@@ -120,6 +120,9 @@ func createBuildPod(params buildPodParams) error {
 	for _, envData := range appEnvs {
 		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
+	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool: params.app.GetPool(),
+	}).ToNodeByPoolSelector()
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
 	pod := &v1.Pod{
@@ -130,6 +133,7 @@ func createBuildPod(params buildPodParams) error {
 			Annotations: buildImageLabel.ToLabels(),
 		},
 		Spec: v1.PodSpec{
+			NodeSelector: nodeSelector,
 			Volumes: []v1.Volume{
 				{
 					Name: "dockersock",
@@ -536,6 +540,7 @@ func procfileInspectPod(client *clusterClient, a provision.App, image string) (s
 		cmds:   cmds,
 		name:   deployPodName,
 		image:  image,
+		pool:   a.GetPool(),
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to inspect Procfile: %q", buf.String())
@@ -578,6 +583,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 		name:       deployPodName,
 		image:      getImageDeployInspectImage(),
 		dockerSock: true,
+		pool:       a.GetPool(),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to pull and tag image: %q", buf.String())
