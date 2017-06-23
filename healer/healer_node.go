@@ -165,6 +165,12 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	if err != nil {
 		return &nodeSpec, errors.Wrapf(err, "Unable to destroy machine %s from IaaS", failingHost)
 	}
+	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
+		Address: failingAddr,
+	})
+	if err != nil && err != provision.ErrNodeNotFound {
+		return &nodeSpec, errors.Wrapf(err, "Unable to remove node %s from provisioner", failingHost)
+	}
 	log.Debugf("Done auto-healing node %q, node %q created in its place.", failingHost, machine.Address)
 	return &nodeSpec, nil
 }

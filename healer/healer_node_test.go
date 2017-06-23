@@ -24,7 +24,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (s *S) TestHealerHealNode(c *check.C) {
+func (s *S) createBasicTestHealer(c *check.C) (*NodeHealer, []provision.Node, *provisiontest.FakeProvisioner) {
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
@@ -32,8 +32,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 2)
-	defer config.Unset("iaas:node-protocol")
-	defer config.Unset("iaas:node-port")
+
 	p := provisiontest.ProvisionerInstance
 	err = p.AddNode(provision.AddNodeOptions{
 		Address:  "http://addr1:1",
@@ -63,6 +62,39 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "addr1")
+	return healer, nodes, p
+}
+
+func (s *S) TestHealerHealNode(c *check.C) {
+	healer, nodes, p := s.createBasicTestHealer(c)
+	var err error
+
+	created, err := healer.healNode(nodes[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(created.Address, check.Equals, "http://addr2:2")
+
+	nodes, err = p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address(), check.Equals, "http://addr2:2")
+
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "addr2")
+
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	n, err := coll.FindId("http://addr1:1").Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
+}
+
+func (s *S) TestHealerHealNodeRebalanceError(c *check.C) {
+	healer, nodes, p := s.createBasicTestHealer(c)
+	var err error
+	p.PrepareFailure("RemoveNode", fmt.Errorf("remove-rebalance node error"))
 
 	created, err := healer.healNode(nodes[0])
 	c.Assert(err, check.IsNil)
@@ -72,7 +104,33 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://addr2:2")
 
-	machines, err = iaas.ListMachines()
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "addr2")
+
+	coll, err := nodeDataCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	n, err := coll.FindId("http://addr1:1").Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
+}
+
+func (s *S) TestHealerHealNodeRemoveError(c *check.C) {
+	healer, nodes, p := s.createBasicTestHealer(c)
+	var err error
+	p.PrepareFailure("RemoveNode", fmt.Errorf("remove node error 1"))
+	p.PrepareFailure("RemoveNode", fmt.Errorf("remove node error 2"))
+
+	created, err := healer.healNode(nodes[0])
+	c.Assert(err, check.ErrorMatches, `Unable to remove node addr1 from provisioner: remove node error.*`)
+	c.Assert(created.Address, check.Equals, "http://addr2:2")
+	nodes, err = p.ListNodes(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+
+	machines, err := iaas.ListMachines()
 	c.Assert(err, check.IsNil)
 	c.Assert(machines, check.HasLen, 1)
 	c.Assert(machines[0].Address, check.Equals, "addr2")

@@ -31,6 +31,8 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Unset("iaas:node-protocol")
+	config.Unset("iaas:node-port")
 	HealerInstance = nil
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
