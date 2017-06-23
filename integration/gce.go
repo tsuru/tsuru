@@ -20,15 +20,19 @@ import (
 
 const gceClusterStatusRunning = "RUNNING"
 
-var clusterName = fmt.Sprintf("integration-test-%d", randInt())
 var zone = os.Getenv("GCE_ZONE")
 var projectID = os.Getenv("GCE_PROJECT_ID")
 var serviceAccount = os.Getenv("GCE_SERVICE_ACCOUNT")
 
 // GceClusterManager represents a Google Compute Engine cluster (Container Engine)
 type GceClusterManager struct {
-	client  *gceClient
-	cluster *container.Cluster
+	client      *gceClient
+	clusterName string
+	cluster     *container.Cluster
+}
+
+func newClusterName() string {
+	return fmt.Sprintf("integration-test-%d", randInt())
 }
 
 func randInt() int {
@@ -77,16 +81,25 @@ func (g *GceClusterManager) Start(env *Environment) *Result {
 		return nil
 	}
 	g.client = client
-	if env.VerboseLevel() > 0 {
-		fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", clusterName, zone)
+	g.clusterName = env.Get("clustername")
+	if g.clusterName == "" {
+		g.clusterName = newClusterName()
+		if env.VerboseLevel() > 0 {
+			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, zone)
+		}
+		g.client.createCluster(g.clusterName, zone, 1)
+	} else {
+		g.fetchClusterData(env)
+		if g.cluster == nil || g.cluster.Status != gceClusterStatusRunning {
+			return &Result{ExitCode: 1, Error: fmt.Errorf("[gce] cluster %s is not running", g.clusterName)}
+		}
 	}
-	g.client.createCluster(clusterName, zone, 1)
 	return &Result{ExitCode: 0}
 }
 
 func (g *GceClusterManager) Delete(env *Environment) *Result {
 	if env.VerboseLevel() > 0 {
-		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", clusterName, zone)
+		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, zone)
 	}
 	g.client.deleteCluster(g.cluster.Name, zone)
 	return &Result{ExitCode: 0}
@@ -99,19 +112,19 @@ func (g *GceClusterManager) fetchClusterData(env *Environment) {
 	retries := 20
 	sleepTime := 20 * time.Second
 	for i := 0; i < retries; i++ {
-		cluster, err := g.client.describeCluster(clusterName, zone)
+		cluster, err := g.client.describeCluster(g.clusterName, zone)
 		if err == nil && cluster.Status == gceClusterStatusRunning {
 			g.cluster = cluster
 			if env.VerboseLevel() > 0 {
-				fmt.Fprintf(safeStdout, "[gce] cluster %s is running. Endpoint: %s\n", clusterName, cluster.Endpoint)
+				fmt.Fprintf(safeStdout, "[gce] cluster %s is running. Endpoint: %s\n", g.clusterName, cluster.Endpoint)
 			}
 			return
 		}
 		if env.VerboseLevel() > 0 {
 			if err == nil {
-				fmt.Fprintf(safeStdout, "[gce] cluster %s status: %s\n", clusterName, cluster.Status)
+				fmt.Fprintf(safeStdout, "[gce] cluster %s status: %s\n", g.clusterName, cluster.Status)
 			} else {
-				fmt.Fprintf(safeStdout, "[gce] error fetching cluster %s: %s\n", clusterName, err)
+				fmt.Fprintf(safeStdout, "[gce] error fetching cluster %s: %s\n", g.clusterName, err)
 			}
 		}
 		time.Sleep(sleepTime)
