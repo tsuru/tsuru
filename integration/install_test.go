@@ -69,8 +69,8 @@ components:
 
 func getClusterManagers(env *Environment) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
-		"gce":      &GceClusterManager{},
-		"minikube": &MinikubeClusterManager{},
+		"gce":      &GceClusterManager{env: env},
+		"minikube": &MinikubeClusterManager{env: env},
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
 	clusters := strings.Split(env.Get("clusters"), ",")
@@ -297,11 +297,11 @@ func poolAdd() ExecFlow {
 			env.Add("poolnames", poolName)
 			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
-			res = cluster.Start(env)
+			res = cluster.Start()
 			c.Assert(res, ResultOk)
 			clusterName := "icluster-" + cluster.Name()
 			params := []string{"cluster-update", clusterName, cluster.Provisioner(), "--pool", poolName}
-			params = append(params, cluster.UpdateParams(env)...)
+			params = append(params, cluster.UpdateParams()...)
 			res = T(params...).Run(env)
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
@@ -351,7 +351,7 @@ func poolAdd() ExecFlow {
 		for _, cluster := range getClusterManagers(env) {
 			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
-			res = cluster.Delete(env)
+			res = cluster.Delete()
 			c.Check(res, ResultOk)
 			poolName := "ipool-" + cluster.Name()
 			res = T("pool-remove", "-y", poolName).Run(env)

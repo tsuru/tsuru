@@ -8,8 +8,8 @@ package integration
 type ClusterManager interface {
 	Name() string
 	Provisioner() string
-	IP(env *Environment) string
-	Start(env *Environment) *Result
-	Delete(env *Environment) *Result
-	UpdateParams(env *Environment) []string
+	IP() string
+	Start() *Result
+	Delete() *Result
+	UpdateParams() []string
 }
