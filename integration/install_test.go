@@ -67,6 +67,34 @@ components:
   install-dashboard: false
 `, len(allProvisioners))
 
+func getClusterManagers(env *Environment) []clusterManager {
+	availableClusterManagers := map[string]clusterManager{
+		"gce":      &gceClusterManager{},
+		"minikube": &minikubeClusterManager{},
+	}
+	managers := make([]clusterManager, 0, len(availableClusterManagers))
+	clusters := strings.Split(env.Get("clusters"), ",")
+	selectedClusters := make([]string, 0, len(availableClusterManagers))
+	for _, cluster := range clusters {
+		cluster = strings.Trim(cluster, " ")
+		manager := availableClusterManagers[cluster]
+		if manager != nil {
+			available := true
+			for _, selected := range selectedClusters {
+				if cluster == selected {
+					available = false
+					break
+				}
+			}
+			if available {
+				managers = append(managers, manager)
+				selectedClusters = append(selectedClusters, cluster)
+			}
+		}
+	}
+	return managers
+}
+
 func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"platformimages"},
