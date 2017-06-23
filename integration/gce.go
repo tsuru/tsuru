@@ -25,7 +25,8 @@ var zone = os.Getenv("GCE_ZONE")
 var projectID = os.Getenv("GCE_PROJECT_ID")
 var serviceAccount = os.Getenv("GCE_SERVICE_ACCOUNT")
 
-type gceClusterManager struct {
+// GceClusterManager represents a Google Compute Engine cluster (Container Engine)
+type GceClusterManager struct {
 	client  *gceClient
 	cluster *container.Cluster
 }
@@ -49,15 +50,15 @@ func createTempFile(data []byte, prefix string) (string, error) {
 	return tmpfile.Name(), nil
 }
 
-func (g *gceClusterManager) Name() string {
+func (g *GceClusterManager) Name() string {
 	return "gce"
 }
 
-func (g *gceClusterManager) Provisioner() string {
+func (g *GceClusterManager) Provisioner() string {
 	return "kubernetes"
 }
 
-func (g *gceClusterManager) IP(env *Environment) string {
+func (g *GceClusterManager) IP(env *Environment) string {
 	g.fetchClusterData(env)
 	if g.cluster != nil {
 		return g.cluster.Endpoint
@@ -65,7 +66,7 @@ func (g *gceClusterManager) IP(env *Environment) string {
 	return ""
 }
 
-func (g *gceClusterManager) Start(env *Environment) *Result {
+func (g *GceClusterManager) Start(env *Environment) *Result {
 	ctx := context.Background()
 	serviceAccountFile, err := createTempFile([]byte(serviceAccount), "gce-sa-")
 	if err != nil {
@@ -83,7 +84,7 @@ func (g *gceClusterManager) Start(env *Environment) *Result {
 	return &Result{ExitCode: 0}
 }
 
-func (g *gceClusterManager) Delete(env *Environment) *Result {
+func (g *GceClusterManager) Delete(env *Environment) *Result {
 	if env.VerboseLevel() > 0 {
 		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", clusterName, zone)
 	}
@@ -91,7 +92,7 @@ func (g *gceClusterManager) Delete(env *Environment) *Result {
 	return &Result{ExitCode: 0}
 }
 
-func (g *gceClusterManager) fetchClusterData(env *Environment) {
+func (g *GceClusterManager) fetchClusterData(env *Environment) {
 	if g.cluster != nil && g.cluster.Status == gceClusterStatusRunning {
 		return
 	}
@@ -117,7 +118,7 @@ func (g *gceClusterManager) fetchClusterData(env *Environment) {
 	}
 }
 
-func (g *gceClusterManager) credentials(env *Environment) (map[string]string, error) {
+func (g *GceClusterManager) credentials(env *Environment) (map[string]string, error) {
 	g.fetchClusterData(env)
 	if g.cluster == nil {
 		return nil, fmt.Errorf("cluster unavailable")
@@ -137,7 +138,7 @@ func (g *gceClusterManager) credentials(env *Environment) (map[string]string, er
 	return credentials, nil
 }
 
-func (g *gceClusterManager) UpdateParams(env *Environment) []string {
+func (g *GceClusterManager) UpdateParams(env *Environment) []string {
 	address := fmt.Sprintf("https://%s", g.IP(env))
 	credentials, err := g.credentials(env)
 	if err != nil {

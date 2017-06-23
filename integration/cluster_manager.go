@@ -4,7 +4,8 @@
 
 package integration
 
-type clusterManager interface {
+// ClusterManager is an abstraction to a Tsuru cluster
+type ClusterManager interface {
 	Name() string
 	Provisioner() string
 	IP(env *Environment) string

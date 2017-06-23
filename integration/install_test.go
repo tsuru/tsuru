@@ -67,12 +67,12 @@ components:
   install-dashboard: false
 `, len(allProvisioners))
 
-func getClusterManagers(env *Environment) []clusterManager {
-	availableClusterManagers := map[string]clusterManager{
-		"gce":      &gceClusterManager{},
-		"minikube": &minikubeClusterManager{},
+func getClusterManagers(env *Environment) []ClusterManager {
+	availableClusterManagers := map[string]ClusterManager{
+		"gce":      &GceClusterManager{},
+		"minikube": &MinikubeClusterManager{},
 	}
-	managers := make([]clusterManager, 0, len(availableClusterManagers))
+	managers := make([]ClusterManager, 0, len(availableClusterManagers))
 	clusters := strings.Split(env.Get("clusters"), ",")
 	selectedClusters := make([]string, 0, len(availableClusterManagers))
 	for _, cluster := range clusters {
