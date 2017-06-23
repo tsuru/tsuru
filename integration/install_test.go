@@ -67,6 +67,34 @@ components:
   install-dashboard: false
 `, len(allProvisioners))
 
+func getClusterManagers(env *Environment) []ClusterManager {
+	availableClusterManagers := map[string]ClusterManager{
+		"gce":      &GceClusterManager{},
+		"minikube": &MinikubeClusterManager{},
+	}
+	managers := make([]ClusterManager, 0, len(availableClusterManagers))
+	clusters := strings.Split(env.Get("clusters"), ",")
+	selectedClusters := make([]string, 0, len(availableClusterManagers))
+	for _, cluster := range clusters {
+		cluster = strings.Trim(cluster, " ")
+		manager := availableClusterManagers[cluster]
+		if manager != nil {
+			available := true
+			for _, selected := range selectedClusters {
+				if cluster == selected {
+					available = false
+					break
+				}
+			}
+			if available {
+				managers = append(managers, manager)
+				selectedClusters = append(selectedClusters, cluster)
+			}
+		}
+	}
+	return managers
+}
+
 func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"platformimages"},
@@ -262,17 +290,80 @@ func poolAdd() ExecFlow {
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
 		}
+		for _, cluster := range getClusterManagers(env) {
+			poolName := "ipool-" + cluster.Name()
+			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
+			c.Assert(res, ResultOk)
+			env.Add("poolnames", poolName)
+			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
+			c.Assert(res, ResultOk)
+			res = cluster.Start(env)
+			c.Assert(res, ResultOk)
+			clusterName := "icluster-" + cluster.Name()
+			params := []string{"cluster-update", clusterName, cluster.Provisioner(), "--pool", poolName}
+			params = append(params, cluster.UpdateParams(env)...)
+			res = T(params...).Run(env)
+			c.Assert(res, ResultOk)
+			T("cluster-list").Run(env)
+			regex := regexp.MustCompile("Ready")
+			addressRegex := regexp.MustCompile(`(?m)^ *\| *((?:https?:\/\/)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?) *\|`)
+			nodeIPs := make([]string, 0)
+			ok := retry(time.Minute, func() bool {
+				res = T("node-list", "-f", "tsuru.io/cluster="+clusterName).Run(env)
+				if regex.MatchString(res.Stdout.String()) {
+					parts := addressRegex.FindAllStringSubmatch(res.Stdout.String(), -1)
+					for _, part := range parts {
+						if len(part) == 2 && len(part[1]) > 0 {
+							nodeIPs = append(nodeIPs, part[1])
+						}
+					}
+					return true
+				}
+				return false
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 1 minute: %v", res))
+			for _, ip := range nodeIPs {
+				res = T("node-update", ip, "pool="+poolName).Run(env)
+				c.Assert(res, ResultOk)
+			}
+			res = T("event-list").Run(env)
+			c.Assert(res, ResultOk)
+			nodeopts := env.All("nodeopts")
+			env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
+			for _, ip := range nodeIPs {
+				regex = regexp.MustCompile(`node.update.*?node:\s+` + ip)
+				c.Assert(regex.MatchString(res.Stdout.String()), check.Equals, true)
+			}
+			ok = retry(time.Minute, func() bool {
+				res = T("node-list").Run(env)
+				for _, ip := range nodeIPs {
+					regex = regexp.MustCompile(ip + `.*?Ready`)
+					if !regex.MatchString(res.Stdout.String()) {
+						return false
+					}
+				}
+				return true
+			})
+			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 1 minute: %v", res))
+		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
+		for _, cluster := range getClusterManagers(env) {
+			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
+			c.Check(res, ResultOk)
+			res = cluster.Delete(env)
+			c.Check(res, ResultOk)
+			poolName := "ipool-" + cluster.Name()
+			res = T("pool-remove", "-y", poolName).Run(env)
+			c.Check(res, ResultOk)
+		}
 		for _, node := range env.All("nodeaddrs") {
 			res := T("node-remove", "-y", "--no-rebalance", node).Run(env)
 			c.Check(res, ResultOk)
 		}
 		for _, prov := range allProvisioners {
 			poolName := "ipool-" + prov
-			res := T("pool-constraint-set", poolName, "team", "{{.team}} --blacklist").Run(env)
-			c.Check(res, ResultOk)
-			res = T("pool-remove", "-y", poolName).Run(env)
+			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
 	}
@@ -328,13 +419,18 @@ func exampleApps() ExecFlow {
 		lang := strings.Replace(parts[1], "iplat-", "", -1)
 		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang+"/").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-info", "-a", appName).Run(env)
-		c.Assert(res, ResultOk)
+		regex := regexp.MustCompile("started")
+		ok := retry(time.Minute, func() bool {
+			res = T("app-info", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			return regex.MatchString(res.Stdout.String())
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 1 minute: %v", res))
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 		parts = addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
-		ok := retry(15*time.Minute, func() bool {
+		ok = retry(15*time.Minute, func() bool {
 			res = cmd.Run(env)
 			return res.ExitCode == 0
 		})
