@@ -90,7 +90,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						"tsuru.io/app-process":          "p1",
 						"tsuru.io/app-process-replicas": "1",
 						"tsuru.io/app-platform":         "",
-						"tsuru.io/app-pool":             "bonehunters",
+						"tsuru.io/app-pool":             "test-default",
 						"tsuru.io/router-type":          "fake",
 						"tsuru.io/router-name":          "fake",
 						"tsuru.io/provisioner":          "kubernetes",
@@ -102,7 +102,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 						RunAsUser: &expectedUID,
 					},
 					NodeSelector: map[string]string{
-						"pool": "bonehunters",
+						"pool": "test-default",
 					},
 					RestartPolicy: "Always",
 					Containers: []v1.Container{
@@ -146,7 +146,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/app-process":          "p1",
 				"tsuru.io/app-process-replicas": "1",
 				"tsuru.io/app-platform":         "",
-				"tsuru.io/app-pool":             "bonehunters",
+				"tsuru.io/app-pool":             "test-default",
 				"tsuru.io/router-type":          "fake",
 				"tsuru.io/router-name":          "fake",
 				"tsuru.io/provisioner":          "kubernetes",
@@ -603,3 +603,5 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
 }
+
+// func (s *S) Test

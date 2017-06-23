@@ -741,6 +741,7 @@ func runIsolatedCmdPod(client *clusterClient, a provision.App, out io.Writer, cm
 		envs:   envs,
 		name:   baseName,
 		image:  imgName,
+		pool:   a.GetPool(),
 	})
 }
 
