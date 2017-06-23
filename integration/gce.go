@@ -84,6 +84,7 @@ func (g *GceClusterManager) Start(env *Environment) *Result {
 	g.clusterName = env.Get("clustername")
 	if g.clusterName == "" {
 		g.clusterName = newClusterName()
+		env.Set("clustername", g.clusterName)
 		if env.VerboseLevel() > 0 {
 			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, zone)
 		}
