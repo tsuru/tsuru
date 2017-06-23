@@ -278,12 +278,12 @@ func poolAdd() ExecFlow {
 			c.Assert(res, ResultOk)
 			T("cluster-list").Run(env)
 			regex := regexp.MustCompile("Ready")
+			addressRegex := regexp.MustCompile(`(?m)^ *\| *((?:https?:\/\/)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?) *\|`)
 			nodeIPs := make([]string, 0)
 			ok := retry(time.Minute, func() bool {
 				res = T("node-list", "-f", "tsuru.io/cluster="+clusterName).Run(env)
 				if regex.MatchString(res.Stdout.String()) {
-					regex := regexp.MustCompile(`(?m)^ *\| *((?:https?:\/\/)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?) *\|`)
-					parts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
+					parts := addressRegex.FindAllStringSubmatch(res.Stdout.String(), -1)
 					for _, part := range parts {
 						if len(part) == 2 && len(part[1]) > 0 {
 							nodeIPs = append(nodeIPs, part[1])
