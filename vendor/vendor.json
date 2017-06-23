@@ -1992,10 +1992,10 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
-			"checksumSHA1": "pMUSLKpy/5j2Rng9GXzZGTKySLs=",
+			"checksumSHA1": "OL1a45TdWBqDK1BO167p5Tlkgkc=",
 			"path": "google.golang.org/api/compute/v1",
-			"revision": "adba394bac5800ff2e620d040e9401528f5b7615",
-			"revisionTime": "2016-09-27T13:03:17+10:00"
+			"revision": "1ba364a3bb616587dfd46d5009edefdfd7896ed9",
+			"revisionTime": "2017-06-22T19:11:51Z"
 		},
 		{
 			"checksumSHA1": "lLp5G6mwcMsh1q/QZVuoQgHwNis=",
