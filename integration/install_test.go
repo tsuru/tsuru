@@ -67,6 +67,8 @@ components:
   install-dashboard: false
 `, len(allProvisioners))
 
+var clusterManagers = []ClusterManager{}
+
 func getClusterManagers(env *Environment) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
 		"gce":      &GceClusterManager{env: env},
@@ -290,7 +292,7 @@ func poolAdd() ExecFlow {
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 1 minute: %v", res))
 		}
-		for _, cluster := range getClusterManagers(env) {
+		for _, cluster := range clusterManagers {
 			poolName := "ipool-" + cluster.Name()
 			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
 			c.Assert(res, ResultOk)
@@ -348,7 +350,7 @@ func poolAdd() ExecFlow {
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		for _, cluster := range getClusterManagers(env) {
+		for _, cluster := range clusterManagers {
 			res := T("cluster-remove", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
 			res = cluster.Delete()
@@ -448,6 +450,7 @@ func (s *S) TestBase(c *check.C) {
 	if !env.Has("enabled") {
 		return
 	}
+	clusterManagers = getClusterManagers(env)
 	var executedFlows []*ExecFlow
 	defer func() {
 		for i := len(executedFlows) - 1; i >= 0; i-- {
