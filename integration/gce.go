@@ -85,7 +85,6 @@ func (g *GceClusterManager) Start() *Result {
 	g.clusterName = g.env.Get("clustername")
 	if g.clusterName == "" {
 		g.clusterName = newClusterName()
-		g.env.Set("clustername", g.clusterName)
 		if g.env.VerboseLevel() > 0 {
 			fmt.Fprintf(safeStdout, "[gce] starting cluster %s in zone %s\n", g.clusterName, zone)
 		}
@@ -100,8 +99,8 @@ func (g *GceClusterManager) Start() *Result {
 }
 
 func (g *GceClusterManager) Delete() *Result {
-	if g.clusterName == "" {
-		return &Result{ExitCode: 1, Error: fmt.Errorf("[gce] cluster name undefined")}
+	if g.env.Get("clustername") == "" {
+		return &Result{ExitCode: 0}
 	}
 	if g.env.VerboseLevel() > 0 {
 		fmt.Fprintf(safeStdout, "[gce] deleting cluster %s in zone %s\n", g.clusterName, zone)
