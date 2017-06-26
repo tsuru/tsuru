@@ -166,45 +166,30 @@ func (r *apiRouter) RemoveBackend(name string) (err error) {
 }
 
 func (r *apiRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
-	currRoutes, err := r.Routes(name)
-	if err != nil {
-		return err
-	}
-	routesMap := make(map[*url.URL]struct{})
-	for i := range currRoutes {
-		routesMap[currRoutes[i]] = struct{}{}
-	}
-	for i := range addresses {
-		routesMap[addresses[i]] = struct{}{}
-	}
-	newAddresses := make([]*url.URL, len(routesMap))
-	idx := 0
-	for v := range routesMap {
-		newAddresses[idx] = v
-		idx++
-	}
-	return r.setRoutes(name, newAddresses)
+	return r.doRoutes(name, http.MethodPost, addresses)
 }
 
 func (r *apiRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
-	currRoutes, err := r.Routes(name)
+	return r.doRoutes(name, http.MethodDelete, addresses)
+}
+
+func (r *apiRouter) doRoutes(name, method string, addresses []*url.URL) error {
+	req := &routesReq{}
+	req.Addresses = make([]string, len(addresses))
+	for i := range addresses {
+		req.Addresses[i] = addresses[i].String()
+	}
+	data, err := json.Marshal(req)
 	if err != nil {
 		return err
 	}
-	routesMap := make(map[url.URL]struct{})
-	for i := range currRoutes {
-		routesMap[*currRoutes[i]] = struct{}{}
+	body := bytes.NewReader(data)
+	path := fmt.Sprintf("backend/%s/routes", name)
+	_, statusCode, err := r.do(method, path, body)
+	if statusCode == http.StatusNotFound {
+		return router.ErrBackendNotFound
 	}
-	for i := range addresses {
-		delete(routesMap, *addresses[i])
-	}
-	newAddresses := make([]*url.URL, len(routesMap))
-	idx := 0
-	for v := range routesMap {
-		newAddresses[idx] = &v
-		idx++
-	}
-	return r.setRoutes(name, newAddresses)
+	return err
 }
 
 func (r *apiRouter) Routes(name string) (result []*url.URL, err error) {
@@ -267,24 +252,6 @@ func (r *apiRouter) HealthCheck() error {
 		return errors.Errorf("invalid status code %d from healthcheck %q: %s", code, r.endpoint+"/healthcheck", data)
 	}
 	return nil
-}
-
-func (r *apiRouter) setRoutes(name string, addresses []*url.URL) (err error) {
-	path := fmt.Sprintf("backend/%s/routes", name)
-	req := &routesReq{}
-	for _, addr := range addresses {
-		req.Addresses = append(req.Addresses, addr.String())
-	}
-	data, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-	body := bytes.NewReader(data)
-	_, statusCode, err := r.do(http.MethodPut, path, body)
-	if statusCode == http.StatusNotFound {
-		return router.ErrBackendNotFound
-	}
-	return err
 }
 
 func (r *apiRouter) checkSupports(feature string) (bool, error) {
