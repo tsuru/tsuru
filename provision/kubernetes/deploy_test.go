@@ -315,8 +315,8 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
+			"web": "cm1",
+			"p2":  "cmd2",
 		},
 		"healthcheck": provision.TsuruYamlHealthcheck{
 			Path: "/hc",
@@ -324,10 +324,11 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, a, "myimg", servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
+		"web": servicecommon.ProcessState{Start: true},
+		"p2":  servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, &v1.Probe{
 		Handler: v1.Handler{
@@ -337,6 +338,9 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			},
 		},
 	})
+	dep, err = s.client.Extensions().Deployments(s.client.Namespace()).Get("myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
@@ -379,8 +383,8 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = image.SaveImageCustomData("myimg", map[string]interface{}{
 		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
+			"web": "cm1",
+			"p2":  "cmd2",
 		},
 		"healthcheck": provision.TsuruYamlHealthcheck{
 			Path:   "/hc",

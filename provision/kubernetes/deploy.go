@@ -259,15 +259,22 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 	}
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
-	yamlData, err := image.GetImageTsuruYamlData(imageName)
+	webProcessName, err := image.GetImageWebProcessName(imageName)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
-	probe, err := probeFromHC(yamlData.Healthcheck, portInt)
-	if err != nil {
-		return nil, nil, err
+	var probe *v1.Probe
+	if process == webProcessName {
+		yamlData, err := image.GetImageTsuruYamlData(imageName)
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
+		probe, err = probeFromHC(yamlData.Healthcheck, portInt)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
