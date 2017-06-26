@@ -229,57 +229,6 @@ func (r *fakeRouter) RemoveRoutes(name string, addresses []*url.URL) error {
 	return nil
 }
 
-func (r *fakeRouter) AddRoute(name string, address *url.URL) error {
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	if !r.HasBackend(backendName) {
-		return router.ErrBackendNotFound
-	}
-	if r.HasRoute(backendName, address.Host) {
-		return router.ErrRouteExists
-	}
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	if r.failuresByIp[address.Host] {
-		return ErrForcedFailure
-	}
-	routes := r.backends[backendName]
-	routes = append(routes, address.Host)
-	r.backends[backendName] = routes
-	return nil
-}
-
-func (r *fakeRouter) RemoveRoute(name string, address *url.URL) error {
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	if !r.HasBackend(backendName) {
-		return router.ErrBackendNotFound
-	}
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	if r.failuresByIp[address.Host] {
-		return ErrForcedFailure
-	}
-	index := -1
-	routes := r.backends[backendName]
-	for i := range routes {
-		if routes[i] == address.Host {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return router.ErrRouteNotFound
-	}
-	routes[index] = routes[len(routes)-1]
-	r.backends[backendName] = routes[:len(routes)-1]
-	return nil
-}
-
 func (r *fakeRouter) SetCName(cname, name string) error {
 	if r.failuresByIp[cname] {
 		return ErrForcedFailure

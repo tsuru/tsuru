@@ -995,6 +995,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 	name := app.GetName()
 	platform := app.GetPlatform()
 	length := uint(len(pApp.units))
+	var addresses []*url.URL
 	for i := uint(0); i < n; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		var hostAddr string
@@ -1020,12 +1021,13 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 				Host:   fmt.Sprintf("%s:%d", hostAddr, val),
 			},
 		}
-		err := routertest.FakeRouter.AddRoute(name, unit.Address)
-		if err != nil {
-			return nil, err
-		}
+		addresses = append(addresses, unit.Address)
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
+	}
+	err := routertest.FakeRouter.AddRoutes(name, addresses)
+	if err != nil {
+		return nil, err
 	}
 	result := make([]provision.Unit, int(n))
 	copy(result, pApp.units[length:])
@@ -1051,16 +1053,18 @@ func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string,
 	}
 	var newUnits []provision.Unit
 	removedCount := n
+	var addresses []*url.URL
 	for _, u := range pApp.units {
 		if removedCount > 0 && u.ProcessName == process {
 			removedCount--
-			err := routertest.FakeRouter.RemoveRoute(app.GetName(), u.Address)
-			if err != nil {
-				return err
-			}
+			addresses = append(addresses, u.Address)
 			continue
 		}
 		newUnits = append(newUnits, u)
+	}
+	err := routertest.FakeRouter.RemoveRoutes(app.GetName(), addresses)
+	if err != nil {
+		return err
 	}
 	if removedCount > 0 {
 		return errors.New("too many units to remove")

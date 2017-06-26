@@ -21,17 +21,17 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	url, err := url.Parse("http://10.10.10.10:8080")
+	u, err := url.Parse("http://10.10.10.10:8080")
 	if err != nil {
 		panic(err)
 	}
-	err = router.AddRoute("myapp", url)
+	err = router.AddRoutes("myapp", []*url.URL{u})
 	if err != nil {
 		panic(err)
 	}
 	addr, _ := router.Addr("myapp")
 	fmt.Println("Please access:", addr)
-	err = router.RemoveRoute("myapp", url)
+	err = router.RemoveRoutes("myapp", []*url.URL{u})
 	if err != nil {
 		panic(err)
 	}

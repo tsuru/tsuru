@@ -165,10 +165,6 @@ func (r *apiRouter) RemoveBackend(name string) (err error) {
 	return err
 }
 
-func (r *apiRouter) AddRoute(name string, address *url.URL) error {
-	return r.AddRoutes(name, []*url.URL{address})
-}
-
 func (r *apiRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
 	currRoutes, err := r.Routes(name)
 	if err != nil {
@@ -188,10 +184,6 @@ func (r *apiRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
 		idx++
 	}
 	return r.setRoutes(name, newAddresses)
-}
-
-func (r *apiRouter) RemoveRoute(name string, address *url.URL) (err error) {
-	return r.RemoveRoutes(name, []*url.URL{address})
 }
 
 func (r *apiRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {

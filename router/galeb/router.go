@@ -7,7 +7,6 @@ package galeb
 import (
 	"fmt"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -159,23 +158,6 @@ func (r *galebRouter) AddBackend(name string) (err error) {
 	return nil
 }
 
-func (r *galebRouter) AddRoute(name string, address *url.URL) (err error) {
-	done := router.InstrumentRequest(r.routerName)
-	defer func() {
-		done(err)
-	}()
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	address.Scheme = router.HttpScheme
-	_, err = r.client.AddBackend(address, r.poolName(backendName))
-	if _, ok := errors.Cause(err).(galebClient.ErrItemAlreadyExists); ok {
-		return router.ErrRouteExists
-	}
-	return err
-}
-
 func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
@@ -189,31 +171,6 @@ func (r *galebRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
 		a.Scheme = router.HttpScheme
 	}
 	return r.client.AddBackends(addresses, r.poolName(backendName))
-}
-
-func (r *galebRouter) RemoveRoute(name string, address *url.URL) (err error) {
-	done := router.InstrumentRequest(r.routerName)
-	defer func() {
-		done(err)
-	}()
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	targets, err := r.client.FindTargetsByParent(r.poolName(backendName))
-	if err != nil {
-		return err
-	}
-	var id string
-	for _, target := range targets {
-		if strings.HasSuffix(target.Name, address.Host) {
-			id = target.FullId()
-		}
-	}
-	if id == "" {
-		return router.ErrRouteNotFound
-	}
-	return r.client.RemoveBackendByID(id)
 }
 
 func (r *galebRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {

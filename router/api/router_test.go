@@ -94,16 +94,6 @@ func (s *S) TestRemoveBackendSwapped(c *check.C) {
 	c.Assert(err, check.DeepEquals, router.ErrBackendSwapped)
 }
 
-func (s *S) TestAddRoute(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:1234")
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.AddRoute("mybackend", addr)
-	c.Assert(err, check.IsNil)
-	sort.Strings(s.apiRouter.backends["mybackend"].addresses)
-	c.Assert(s.apiRouter.backends["mybackend"].addresses, check.DeepEquals,
-		[]string{"http://127.0.0.1:1234", "http://127.0.0.1:32678", "http://127.0.0.1:32876"})
-}
-
 func (s *S) TestAddRoutes(c *check.C) {
 	addr, err := url.Parse("http://127.0.0.1:1234")
 	c.Assert(err, check.IsNil)

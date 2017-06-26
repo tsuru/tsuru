@@ -28,7 +28,7 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 			wg.Done()
 		}()
 		go func() {
-			fake.AddRoute(name, addr)
+			fake.AddRoutes(name, []*url.URL{addr})
 			wg.Done()
 		}()
 		go func() {

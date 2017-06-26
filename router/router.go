@@ -27,7 +27,6 @@ var (
 	ErrBackendExists         = errors.New("Backend already exists")
 	ErrBackendNotFound       = errors.New("Backend not found")
 	ErrBackendSwapped        = errors.New("Backend is swapped cannot remove")
-	ErrRouteExists           = errors.New("Route already exists")
 	ErrRouteNotFound         = errors.New("Route not found")
 	ErrCNameExists           = errors.New("CName already exists")
 	ErrCNameNotFound         = errors.New("CName not found")
@@ -109,9 +108,7 @@ func Default() (string, error) {
 type Router interface {
 	AddBackend(name string) error
 	RemoveBackend(name string) error
-	AddRoute(name string, address *url.URL) error
 	AddRoutes(name string, address []*url.URL) error
-	RemoveRoute(name string, address *url.URL) error
 	RemoveRoutes(name string, addresses []*url.URL) error
 	Addr(name string) (string, error)
 
