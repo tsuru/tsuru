@@ -168,52 +168,6 @@ func (r *hipacheRouter) RemoveBackend(name string) (err error) {
 	return nil
 }
 
-func (r *hipacheRouter) AddRoute(name string, address *url.URL) (err error) {
-	done := router.InstrumentRequest(r.routerName)
-	defer func() {
-		done(err)
-	}()
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	address.Scheme = "http"
-	domain, err := config.GetString(r.prefix + ":domain")
-	if err != nil {
-		log.Errorf("error on getting hipache domain in add route for %s - %s", backendName, address)
-		return &router.RouterError{Op: "add", Err: err}
-	}
-	routes, err := r.Routes(name)
-	if err != nil {
-		return err
-	}
-	for _, r := range routes {
-		if r.String() == address.String() {
-			return router.ErrRouteExists
-		}
-	}
-	frontend := "frontend:" + backendName + "." + domain
-	if err = r.addRoute(frontend, address.String()); err != nil {
-		log.Errorf("error on add route for %s - %s", backendName, address)
-		return &router.RouterError{Op: "add", Err: err}
-	}
-	cnames, err := r.getCNames(backendName)
-	if err != nil {
-		log.Errorf("error on get cname in add route for %s - %s", backendName, address)
-		return err
-	}
-	if cnames == nil {
-		return nil
-	}
-	for _, cname := range cnames {
-		err = r.addRoute("frontend:"+cname, address.String())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (r *hipacheRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
@@ -286,44 +240,6 @@ func (r *hipacheRouter) addRoutes(name string, addresses []string) error {
 	if err != nil {
 		log.Errorf("error on store in redis in add route for %s - %v", name, addresses)
 		return &router.RouterError{Op: "add", Err: err}
-	}
-	return nil
-}
-
-func (r *hipacheRouter) RemoveRoute(name string, address *url.URL) (err error) {
-	done := router.InstrumentRequest(r.routerName)
-	defer func() {
-		done(err)
-	}()
-	backendName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	domain, err := config.GetString(r.prefix + ":domain")
-	if err != nil {
-		return &router.RouterError{Op: "remove", Err: err}
-	}
-	frontend := "frontend:" + backendName + "." + domain
-	address.Scheme = router.HttpScheme
-	count, err := r.removeElement(frontend, address.String())
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return router.ErrRouteNotFound
-	}
-	cnames, err := r.getCNames(backendName)
-	if err != nil {
-		return &router.RouterError{Op: "remove", Err: err}
-	}
-	if cnames == nil {
-		return nil
-	}
-	for _, cname := range cnames {
-		_, err = r.removeElement("frontend:"+cname, address.String())
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

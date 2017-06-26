@@ -150,11 +150,9 @@ func (r *vulcandRouter) RemoveBackend(name string) (err error) {
 	if err != nil {
 		return err
 	}
-	for _, route := range routes {
-		err = r.RemoveRoute(name, route)
-		if err != nil {
-			return err
-		}
+	err = r.RemoveRoutes(name, routes)
+	if err != nil {
+		return err
 	}
 	err = r.client.DeleteBackend(backendKey)
 	if err != nil {
@@ -162,33 +160,6 @@ func (r *vulcandRouter) RemoveBackend(name string) (err error) {
 			return router.ErrBackendNotFound
 		}
 		return &router.RouterError{Err: err, Op: "remove-backend"}
-	}
-	return nil
-}
-
-func (r *vulcandRouter) AddRoute(name string, address *url.URL) (err error) {
-	done := router.InstrumentRequest(r.routerName)
-	defer func() {
-		done(err)
-	}()
-	usedName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	serverKey := engine.ServerKey{
-		Id:         r.serverName(address.Host),
-		BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
-	}
-	if found, _ := r.client.GetServer(serverKey); found != nil {
-		return router.ErrRouteExists
-	}
-	server, err := engine.NewServer(serverKey.Id, address.String())
-	if err != nil {
-		return &router.RouterError{Err: err, Op: "add-route"}
-	}
-	err = r.client.UpsertServer(serverKey.BackendKey, *server, engine.NoTTL)
-	if err != nil {
-		return &router.RouterError{Err: err, Op: "add-route"}
 	}
 	return nil
 }
@@ -215,29 +186,6 @@ func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) (err error)
 		if err != nil {
 			return &router.RouterError{Err: err, Op: "add-route"}
 		}
-	}
-	return nil
-}
-
-func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) (err error) {
-	done := router.InstrumentRequest(r.routerName)
-	defer func() {
-		done(err)
-	}()
-	usedName, err := router.Retrieve(name)
-	if err != nil {
-		return err
-	}
-	serverKey := engine.ServerKey{
-		Id:         r.serverName(address.Host),
-		BackendKey: engine.BackendKey{Id: r.backendName(usedName)},
-	}
-	err = r.client.DeleteServer(serverKey)
-	if err != nil {
-		if _, ok := err.(*engine.NotFoundError); ok {
-			return router.ErrRouteNotFound
-		}
-		return &router.RouterError{Err: err, Op: "remove-route"}
 	}
 	return nil
 }

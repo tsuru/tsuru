@@ -1200,7 +1200,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	conts := []container.Container{cont1, cont2, cont3}
 	units := []provision.Unit{cont1.AsUnit(papp), cont2.AsUnit(papp), cont3.AsUnit(papp)}
 	for i := range conts {
-		err = routertest.FakeRouter.AddRoute(a1.Name, conts[i].Address())
+		err = routertest.FakeRouter.AddRoutes(a1.Name, []*url.URL{conts[i].Address()})
 		c.Assert(err, check.IsNil)
 		err = papp.BindUnit(&units[i])
 		c.Assert(err, check.IsNil)
@@ -1269,7 +1269,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	conts := []container.Container{cont1, cont2, cont3}
 	units := []provision.Unit{cont1.AsUnit(papp), cont2.AsUnit(papp), cont3.AsUnit(papp)}
 	for i := range conts {
-		err = routertest.FakeRouter.AddRoute(a1.Name, conts[i].Address())
+		err = routertest.FakeRouter.AddRoutes(a1.Name, []*url.URL{conts[i].Address()})
 		c.Assert(err, check.IsNil)
 		err = papp.BindUnit(&units[i])
 		c.Assert(err, check.IsNil)

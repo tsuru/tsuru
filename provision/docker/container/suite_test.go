@@ -5,6 +5,7 @@
 package container
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/fsouza/go-dockerclient"
@@ -102,7 +103,7 @@ func (s *S) newContainer(opts newContainerOpts, p *fakeDockerProvisioner) (*Cont
 		container.Image = "tsuru/python:latest"
 	}
 	routertest.FakeRouter.AddBackend(container.AppName)
-	routertest.FakeRouter.AddRoute(container.AppName, container.Address())
+	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(provision.WebProcessDefaultPort() + "/tcp"): {},
 	}

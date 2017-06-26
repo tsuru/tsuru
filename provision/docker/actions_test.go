@@ -434,9 +434,7 @@ func (s *S) TestAddNewRouteBackward(c *check.C) {
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	defer cont3.Remove(s.p)
-	err := routertest.FakeRouter.AddRoute(app.GetName(), cont1.Address())
-	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddRoute(app.GetName(), cont2.Address())
+	err := routertest.FakeRouter.AddRoutes(app.GetName(), []*url.URL{cont1.Address(), cont2.Address()})
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -574,9 +572,7 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 	defer cont1.Remove(s.p)
 	defer cont2.Remove(s.p)
 	defer cont3.Remove(s.p)
-	err = routertest.FakeRouter.AddRoute(app.GetName(), cont1.Address())
-	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddRoute(app.GetName(), cont2.Address())
+	err = routertest.FakeRouter.AddRoutes(app.GetName(), []*url.URL{cont1.Address(), cont2.Address()})
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -638,9 +634,7 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2", HostPort: "1234"}}
 	defer cont.Remove(s.p)
 	defer cont2.Remove(s.p)
-	err = routertest.FakeRouter.AddRoute(app.GetName(), cont.Address())
-	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddRoute(app.GetName(), cont2.Address())
+	err = routertest.FakeRouter.AddRoutes(app.GetName(), []*url.URL{cont.Address(), cont2.Address()})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.FailForIp(cont2.Address().String())
 	args := changeUnitsPipelineArgs{

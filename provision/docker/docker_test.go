@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 
 	"github.com/fsouza/go-dockerclient"
@@ -76,7 +77,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		container.AppName = "container"
 	}
 	routertest.FakeRouter.AddBackend(container.AppName)
-	routertest.FakeRouter.AddRoute(container.AppName, container.Address())
+	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
 	}

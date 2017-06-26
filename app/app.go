@@ -1129,10 +1129,8 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		return err
 	}
-	for _, route := range oldRoutes {
-		r.RemoveRoute(app.GetName(), route)
-	}
-	err = r.AddRoute(app.GetName(), proxyURL)
+	r.RemoveRoutes(app.GetName(), oldRoutes)
+	err = r.AddRoutes(app.GetName(), []*url.URL{proxyURL})
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		return err
@@ -1140,10 +1138,8 @@ func (app *App) Sleep(w io.Writer, process string, proxyURL *url.URL) error {
 	err = sleepProv.Sleep(app, process)
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		for _, route := range oldRoutes {
-			r.AddRoute(app.GetName(), route)
-		}
-		r.RemoveRoute(app.GetName(), proxyURL)
+		r.AddRoutes(app.GetName(), oldRoutes)
+		r.RemoveRoutes(app.GetName(), []*url.URL{proxyURL})
 		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
 		return err
 	}

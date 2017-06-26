@@ -99,52 +99,43 @@ func (s *S) TestRemoveUnknownBackend(c *check.C) {
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
-func (s *S) TestAddRoute(c *check.C) {
+func (s *S) TestAddRoutes(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasRoute("name", s.localhost.String()), check.Equals, true)
 }
 
 func (s *S) TestAddRouteBackendNotFound(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddRoute("name", s.localhost)
+	err := r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
-func (s *S) TestRemoveRoute(c *check.C) {
+func (s *S) TestRemoveRoutes(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	err = r.RemoveRoute("name", s.localhost)
+	err = r.RemoveRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasRoute("name", s.localhost.String()), check.Equals, false)
 }
 
 func (s *S) TestRemoveRouteBackendNotFound(c *check.C) {
 	r := newFakeRouter()
-	err := r.RemoveRoute("name", s.localhost)
+	err := r.RemoveRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestRemoveUnknownRoute(c *check.C) {
-	r := newFakeRouter()
-	err := r.AddBackend("name")
-	c.Assert(err, check.IsNil)
-	err = r.RemoveRoute("name", s.localhost)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Route not found")
 }
 
 func (s *S) TestSetCName(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	err = r.SetCName("myapp.com", "name")
 	c.Assert(err, check.IsNil)
@@ -156,7 +147,7 @@ func (s *S) TestUnsetCName(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	err = r.SetCName("myapp.com", "name")
 	c.Assert(err, check.IsNil)
@@ -169,7 +160,7 @@ func (s *S) TestAddr(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	addr, err := r.Addr("name")
 	c.Assert(err, check.IsNil)
@@ -184,7 +175,7 @@ func (s *S) TestAddrHCRouter(c *check.C) {
 	hcr := hcRouter{fakeRouter: r}
 	err := hcr.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = hcr.AddRoute("name", s.localhost)
+	err = hcr.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	addr, err := hcr.Addr("name")
 	c.Assert(err, check.IsNil)
@@ -198,7 +189,7 @@ func (s *S) TestReset(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	r.Reset()
 	c.Assert(r.HasBackend("name"), check.Equals, false)
@@ -208,7 +199,7 @@ func (s *S) TestRoutes(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute("name", s.localhost)
+	err = r.AddRoutes("name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	routes, err := r.Routes("name")
 	c.Assert(err, check.IsNil)
@@ -223,11 +214,11 @@ func (s *S) TestSwap(c *check.C) {
 	r := newFakeRouter()
 	err := r.AddBackend(backend1)
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute(backend1, instance1)
+	err = r.AddRoutes(backend1, []*url.URL{instance1})
 	c.Assert(err, check.IsNil)
 	err = r.AddBackend(backend2)
 	c.Assert(err, check.IsNil)
-	err = r.AddRoute(backend2, instance2)
+	err = r.AddRoutes(backend2, []*url.URL{instance2})
 	c.Assert(err, check.IsNil)
 	retrieved1, err := router.Retrieve(backend1)
 	c.Assert(err, check.IsNil)
