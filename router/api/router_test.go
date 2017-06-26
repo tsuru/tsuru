@@ -340,7 +340,8 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/backend/{name}", api.addBackend).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}", api.removeBackend).Methods(http.MethodDelete)
 	r.HandleFunc("/backend/{name}/routes", api.getRoutes).Methods(http.MethodGet)
-	r.HandleFunc("/backend/{name}/routes", api.setRoutes).Methods(http.MethodPut)
+	r.HandleFunc("/backend/{name}/routes", api.addRoutes).Methods(http.MethodPost)
+	r.HandleFunc("/backend/{name}/routes", api.removeRoutes).Methods(http.MethodDelete)
 	r.HandleFunc("/backend/{name}/swap", api.swap).Methods(http.MethodPost)
 	r.HandleFunc("/backend/{name}/cname", api.getCnames).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/cname/{cname}", api.setCname).Methods(http.MethodPost)
@@ -423,7 +424,7 @@ func (f *fakeRouterAPI) getRoutes(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func (f *fakeRouterAPI) setRoutes(w http.ResponseWriter, r *http.Request) {
+func (f *fakeRouterAPI) addRoutes(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
 	if backend, ok := f.backends[name]; ok {
@@ -433,7 +434,33 @@ func (f *fakeRouterAPI) setRoutes(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		backend.addresses = req.Addresses
+		backend.addresses = append(backend.addresses, req.Addresses...)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	if backend, ok := f.backends[name]; ok {
+		req := &routesReq{}
+		err := json.NewDecoder(r.Body).Decode(req)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		addrMap := make(map[string]struct{})
+		for _, b := range backend.addresses {
+			addrMap[b] = struct{}{}
+		}
+		for _, b := range req.Addresses {
+			delete(addrMap, b)
+		}
+		backend.addresses = nil
+		for b := range addrMap {
+			backend.addresses = append(backend.addresses, b)
+		}
 		return
 	}
 	w.WriteHeader(http.StatusNotFound)
