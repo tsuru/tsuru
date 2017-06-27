@@ -267,7 +267,8 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 	portInt, _ := strconv.Atoi(port)
 	var probe *v1.Probe
 	if process == webProcessName {
-		yamlData, err := image.GetImageTsuruYamlData(imageName)
+		var yamlData provision.TsuruYamlData
+		yamlData, err = image.GetImageTsuruYamlData(imageName)
 		if err != nil {
 			return nil, nil, errors.WithStack(err)
 		}
