@@ -312,7 +312,7 @@ func (s *S) TestCreateRouterSupport(c *check.C) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		if b := f.features[v["name"]]; b == true {
+		if b := f.features[v["name"]]; b {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
