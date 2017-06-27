@@ -61,7 +61,11 @@ func (i *EC2IaaS) createEC2Handler(regionOrEndpoint string) (*ec2.EC2, error) {
 		Endpoint:    aws.String(endpoint),
 		HTTPClient:  tsuruNet.Dial5Full300ClientNoKeepAlive,
 	}
-	return ec2.New(session.New(&config)), nil
+	newSession, err := session.NewSession(&config)
+	if err != nil {
+		return nil, err
+	}
+	return ec2.New(newSession), nil
 }
 
 func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instanceID string, createParams map[string]string) (string, error) {
