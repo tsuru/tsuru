@@ -36,7 +36,7 @@ func getClient(configPrefix string) (*galebClient.GalebClient, error) {
 	if clientCache.cache[configPrefix] != nil {
 		return clientCache.cache[configPrefix], nil
 	}
-	apiUrl, err := config.GetString(configPrefix + ":api-url")
+	apiURL, err := config.GetString(configPrefix + ":api-url")
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func getClient(configPrefix string) (*galebClient.GalebClient, error) {
 		waitTimeoutSec = 10 * 60
 	}
 	client := &galebClient.GalebClient{
-		ApiUrl:        apiUrl,
+		ApiURL:        apiURL,
 		Username:      username,
 		Password:      password,
 		UseToken:      useToken,
@@ -361,7 +361,7 @@ func (r *galebRouter) Routes(name string) (urls []*url.URL, err error) {
 }
 
 func (r *galebRouter) StartupMessage() (string, error) {
-	return fmt.Sprintf("galeb router %q with API URL %q.", r.domain, r.client.ApiUrl), nil
+	return fmt.Sprintf("galeb router %q with API URL %q.", r.domain, r.client.ApiURL), nil
 }
 
 func (r *galebRouter) HealthCheck() (err error) {

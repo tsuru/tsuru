@@ -76,7 +76,7 @@ func newClusterClient(c *cluster.Cluster) (*clusterClient, error) {
 			return nil, err
 		}
 	}
-	baseUrl := urls[rand.Intn(len(urls))]
+	baseURL := urls[rand.Intn(len(urls))]
 	config.HTTPClient = tsuruNet.Dial5Full300ClientNoKeepAlive
 	mesosHttpCli := *config.HTTPClient
 	if c.CustomData != nil {
@@ -85,7 +85,7 @@ func newClusterClient(c *cluster.Cluster) (*clusterClient, error) {
 		config.DCOSToken = c.CustomData[tokenClusterKey]
 	}
 	if config.DCOSToken != "" {
-		config.URL = fmt.Sprintf("%s/marathon", strings.TrimSuffix(baseUrl.String(), "/"))
+		config.URL = fmt.Sprintf("%s/marathon", strings.TrimSuffix(baseURL.String(), "/"))
 		for _, u := range urls {
 			u.Path = "/mesos"
 		}
@@ -105,7 +105,7 @@ func newClusterClient(c *cluster.Cluster) (*clusterClient, error) {
 		if marathonPort == "" {
 			marathonPort = marathonDefaultPort
 		}
-		config.URL = fmt.Sprintf("%s://%s:%s", baseUrl.Scheme, tsuruNet.URLToHost(baseUrl.String()), marathonPort)
+		config.URL = fmt.Sprintf("%s://%s:%s", baseURL.Scheme, tsuruNet.URLToHost(baseURL.String()), marathonPort)
 		for _, u := range urls {
 			host, _, _ := net.SplitHostPort(u.Host)
 			if host == "" {

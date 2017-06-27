@@ -625,8 +625,8 @@ func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	c.Assert(proxiedRequest.Header.Get("Content-Type"), check.Equals, "text/new-crobuzon")
 	c.Assert(proxiedRequest.Method, check.Equals, "POST")
 	c.Assert(proxiedRequest.URL.String(), check.Equals, "/backup")
-	tsUrl, err := url.Parse(ts.URL)
+	tsURL, err := url.Parse(ts.URL)
 	c.Assert(err, check.IsNil)
-	c.Assert(proxiedRequest.Host, check.Equals, tsUrl.Host)
+	c.Assert(proxiedRequest.Host, check.Equals, tsURL.Host)
 	c.Assert(string(readBodyStr), check.Equals, `{"bla": "bla"}`)
 }

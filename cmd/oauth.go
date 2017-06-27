@@ -61,11 +61,11 @@ func port(schemeData map[string]string) string {
 	return ":0"
 }
 
-func convertToken(code, redirectUrl string) (string, error) {
+func convertToken(code, redirectURL string) (string, error) {
 	var token string
 	v := url.Values{}
 	v.Set("code", code)
-	v.Set("redirectUrl", redirectUrl)
+	v.Set("redirectUrl", redirectURL)
 	u, err := GetURL("/auth/login")
 	if err != nil {
 		return token, errors.Wrap(err, "Error in GetURL")
@@ -87,13 +87,13 @@ func convertToken(code, redirectUrl string) (string, error) {
 	return data["token"].(string), nil
 }
 
-func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
+func callback(redirectURL string, finish chan bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			finish <- true
 		}()
 		var page string
-		token, err := convertToken(r.URL.Query().Get("code"), redirectUrl)
+		token, err := convertToken(r.URL.Query().Get("code"), redirectURL)
 		if err == nil {
 			writeToken(token)
 			page = fmt.Sprintf(callbackPage, successMarkup)
@@ -117,15 +117,15 @@ func (c *login) oauthLogin(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	redirectUrl := fmt.Sprintf("http://localhost:%s", port)
-	authUrl := strings.Replace(schemeData["authorizeUrl"], "__redirect_url__", redirectUrl, 1)
-	http.HandleFunc("/", callback(redirectUrl, finish))
+	redirectURL := fmt.Sprintf("http://localhost:%s", port)
+	authURL := strings.Replace(schemeData["authorizeUrl"], "__redirect_url__", redirectURL, 1)
+	http.HandleFunc("/", callback(redirectURL, finish))
 	server := &http.Server{}
 	go server.Serve(l)
-	err = open(authUrl)
+	err = open(authURL)
 	if err != nil {
 		fmt.Fprintln(context.Stdout, "Failed to start your browser.")
-		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", authUrl)
+		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", authURL)
 	}
 	<-finish
 	fmt.Fprintln(context.Stdout, "Successfully logged in!")

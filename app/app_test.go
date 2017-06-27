@@ -3203,8 +3203,8 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 	var buf bytes.Buffer
 	err := apps[1].Stop(&buf, "")
 	c.Assert(err, check.IsNil)
-	proxyUrl, _ := url.Parse("http://somewhere.com")
-	err = apps[2].Sleep(&buf, "", proxyUrl)
+	proxyURL, _ := url.Parse("http://somewhere.com")
+	err = apps[2].Sleep(&buf, "", proxyURL)
 	c.Assert(err, check.IsNil)
 	resultApps, err := List(&Filter{Statuses: []string{"stopped", "asleep"}})
 	c.Assert(err, check.IsNil)

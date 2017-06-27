@@ -24,7 +24,7 @@ var slugReplace = regexp.MustCompile(`[^\w\d]+`)
 
 type fusisRouter struct {
 	routerName string
-	apiUrl     string
+	apiURL     string
 	proto      string
 	port       uint16
 	scheduler  string
@@ -37,7 +37,7 @@ func init() {
 }
 
 func createRouter(routerName, configPrefix string) (router.Router, error) {
-	apiUrl, err := config.GetString(configPrefix + ":api-url")
+	apiURL, err := config.GetString(configPrefix + ":api-url")
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +49,11 @@ func createRouter(routerName, configPrefix string) (router.Router, error) {
 	if err != nil {
 		mode = "nat"
 	}
-	client := fusisApi.NewClient(apiUrl)
+	client := fusisApi.NewClient(apiURL)
 	client.HttpClient = tsuruNet.Dial5Full60ClientNoKeepAlive
 	r := &fusisRouter{
 		routerName: routerName,
-		apiUrl:     apiUrl,
+		apiURL:     apiURL,
 		client:     client,
 		proto:      "tcp",
 		port:       80,

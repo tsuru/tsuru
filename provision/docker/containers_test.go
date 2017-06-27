@@ -315,7 +315,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer otherServer.Stop()
-	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	otherURL := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	p := &dockerProvisioner{}
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
@@ -323,7 +323,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	p.scheduler = &segregatedScheduler{provisioner: p}
 	p.cluster, err = cluster.New(p.scheduler, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool1"}},
+		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "pool1"}},
 	)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -369,7 +369,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer otherServer.Stop()
-	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	otherURL := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	p := &dockerProvisioner{}
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
@@ -377,7 +377,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	p.scheduler = &segregatedScheduler{provisioner: p}
 	p.cluster, err = cluster.New(p.scheduler, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool1"}},
+		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "pool1"}},
 	)
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
@@ -411,10 +411,10 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	c2, err := p.listContainersByHost("127.0.0.1")
 	c.Assert(err, check.IsNil)
 	c.Assert(c2, check.HasLen, 0)
-	err = p.Cluster().Unregister(otherUrl)
+	err = p.Cluster().Unregister(otherURL)
 	c.Assert(err, check.IsNil)
 	buf := safe.NewBuffer(nil)
-	err = p.rebalanceContainersByHost(net.URLToHost(otherUrl), buf)
+	err = p.rebalanceContainersByHost(net.URLToHost(otherURL), buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.scheduler.ignoredContainers, check.IsNil)
 	c2, err = p.listContainersByHost("127.0.0.1")

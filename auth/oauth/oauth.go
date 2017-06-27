@@ -24,7 +24,7 @@ import (
 
 var (
 	ErrMissingCodeError       = &tsuruErrors.ValidationError{Message: "You must provide code to login"}
-	ErrMissingCodeRedirectUrl = &tsuruErrors.ValidationError{Message: "You must provide the used redirect url to login"}
+	ErrMissingCodeRedirectURL = &tsuruErrors.ValidationError{Message: "You must provide the used redirect url to login"}
 	ErrEmptyAccessToken       = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
 	ErrEmptyUserEmail         = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
 
@@ -44,7 +44,7 @@ type OAuthParser interface {
 
 type OAuthScheme struct {
 	BaseConfig   oauth2.Config
-	InfoUrl      string
+	InfoURL      string
 	CallbackPort int
 	Parser       OAuthParser
 }
@@ -93,7 +93,7 @@ func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
 	if err != nil {
 		log.Debugf("auth:oauth:callback-port not found using random port: %s", err)
 	}
-	s.InfoUrl = infoURL
+	s.InfoURL = infoURL
 	s.CallbackPort = callbackPort
 	s.BaseConfig = oauth2.Config{
 		ClientID:     clientId,
@@ -116,11 +116,11 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if !ok {
 		return nil, ErrMissingCodeError
 	}
-	redirectUrl, ok := params["redirectUrl"]
+	redirectURL, ok := params["redirectUrl"]
 	if !ok {
-		return nil, ErrMissingCodeRedirectUrl
+		return nil, ErrMissingCodeRedirectURL
 	}
-	conf.RedirectURL = redirectUrl
+	conf.RedirectURL = redirectURL
 	oauthToken, err := conf.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	}
 	client := conf.Client(context.Background(), t)
 	t0 := time.Now()
-	response, err := client.Get(s.InfoUrl)
+	response, err := client.Get(s.InfoURL)
 	requestLatencies.Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.Inc()
@@ -205,7 +205,7 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	}
 	client := config.Client(context.Background(), &token.Token)
 	t0 := time.Now()
-	rsp, err := client.Get(s.InfoUrl)
+	rsp, err := client.Get(s.InfoURL)
 	requestLatencies.Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.Inc()

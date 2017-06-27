@@ -65,8 +65,8 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
-	s.clusterSess, err = mgo.Dial(clusterDbUrl)
+	clusterDbURL, _ := config.GetString("docker:cluster:mongo-url")
+	s.clusterSess, err = mgo.Dial(clusterDbURL)
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 	s.team = &auth.Team{Name: "admin"}

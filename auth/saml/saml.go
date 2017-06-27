@@ -42,7 +42,7 @@ type BaseConfig struct {
 	Description           string
 	PublicCert            string
 	PrivateKey            string
-	IdpUrl                string
+	IdpURL                string
 	IdpPublicCert         string
 	SignRequest           bool
 	SignedResponse        bool
@@ -75,7 +75,7 @@ func (s *SAMLAuthScheme) loadConfig() (BaseConfig, error) {
 	if err != nil {
 		return emptyConfig, err
 	}
-	idpUrl, err := config.GetString("auth:saml:idp-ssourl")
+	idpURL, err := config.GetString("auth:saml:idp-ssourl")
 	if err != nil {
 		return emptyConfig, err
 	}
@@ -116,7 +116,7 @@ func (s *SAMLAuthScheme) loadConfig() (BaseConfig, error) {
 		Description:           description,
 		PublicCert:            publicCert,
 		PrivateKey:            privateKey,
-		IdpUrl:                idpUrl,
+		IdpURL:                idpURL,
 		IdpPublicCert:         idpPublicCert,
 		SignRequest:           signRequest,
 		SignedResponse:        signedResponse,
@@ -182,7 +182,7 @@ func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
 }
 
 func (s *SAMLAuthScheme) idpHost() string {
-	url, err := url.Parse(s.BaseConfig.IdpUrl)
+	url, err := url.Parse(s.BaseConfig.IdpURL)
 	if err != nil {
 		return ""
 	}
@@ -293,18 +293,18 @@ func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error) {
 	if err != nil {
 		return nil, err
 	}
-	authCallbackUrl, _ := config.GetString("host")
+	authCallbackURL, _ := config.GetString("host")
 	sp := saml.ServiceProviderSettings{
 		PublicCertPath:              conf.PublicCert,
 		PrivateKeyPath:              conf.PrivateKey,
-		IDPSSOURL:                   conf.IdpUrl,
+		IDPSSOURL:                   conf.IdpURL,
 		DisplayName:                 conf.DisplayName,
 		Description:                 conf.Description,
 		IDPPublicCertPath:           conf.IdpPublicCert,
 		Id:                          conf.EntityID,
 		SPSignRequest:               conf.SignRequest,
 		IDPSignResponse:             conf.SignedResponse,
-		AssertionConsumerServiceURL: authCallbackUrl + "/auth/saml",
+		AssertionConsumerServiceURL: authCallbackURL + "/auth/saml",
 	}
 	sp.Init()
 	return &sp, nil

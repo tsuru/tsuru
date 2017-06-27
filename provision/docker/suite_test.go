@@ -96,8 +96,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
-	s.clusterSess, err = mgo.Dial(clusterDbUrl)
+	clusterDbURL, _ := config.GetString("docker:cluster:mongo-url")
+	s.clusterSess, err = mgo.Dial(clusterDbURL)
 	c.Assert(err, check.IsNil)
 	err = dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
@@ -180,7 +180,7 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	if err != nil {
 		return nil, err
 	}
-	otherUrl := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
+	otherURL := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
 	err = p.Initialize()
 	if err != nil {
@@ -189,7 +189,7 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	p.storage = &cluster.MapStorage{}
 	p.cluster, err = cluster.New(nil, p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "test-default"}},
+		cluster.Node{Address: otherURL, Metadata: map[string]string{"pool": "test-default"}},
 	)
 	if err != nil {
 		return nil, err

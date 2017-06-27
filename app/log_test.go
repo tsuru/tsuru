@@ -330,7 +330,7 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 	logMsg := Applog{
 		Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1",
 	}
-	oldDbUrl, err := config.Get("database:url")
+	oldDbURL, err := config.Get("database:url")
 	c.Assert(err, check.IsNil)
 	var count int32
 	dbOk := make(chan bool)
@@ -340,9 +340,9 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 			close(dbOk)
 			return "localhost:44556"
 		}
-		return oldDbUrl
+		return oldDbURL
 	})
-	defer config.Set("database:url", oldDbUrl)
+	defer config.Set("database:url", oldDbURL)
 	for i := 0; i < 10; i++ {
 		dispatcher.Send(&logMsg)
 	}

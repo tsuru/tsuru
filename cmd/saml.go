@@ -133,13 +133,13 @@ func (c *login) samlLogin(context *Context, client *Client) error {
 		return err
 	}
 	finish := make(chan bool)
-	preLoginUrl := fmt.Sprintf("http://localhost:%s/", port)
+	preLoginURL := fmt.Sprintf("http://localhost:%s/", port)
 	http.HandleFunc("/", samlPreLogin(schemeData, finish))
 	server := &http.Server{}
 	go server.Serve(l)
-	if err = open(preLoginUrl); err != nil {
+	if err = open(preLoginURL); err != nil {
 		fmt.Fprintln(context.Stdout, "Failed to start your browser.")
-		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", preLoginUrl)
+		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", preLoginURL)
 	}
 	<-finish
 	token, err := requestToken(schemeData)

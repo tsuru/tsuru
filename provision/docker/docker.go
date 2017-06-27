@@ -29,15 +29,15 @@ import (
 )
 
 func buildClusterStorage() (cluster.Storage, error) {
-	mongoUrl, _ := config.GetString("docker:cluster:mongo-url")
+	mongoURL, _ := config.GetString("docker:cluster:mongo-url")
 	mongoDatabase, _ := config.GetString("docker:cluster:mongo-database")
-	if mongoUrl == "" || mongoDatabase == "" {
+	if mongoURL == "" || mongoDatabase == "" {
 		return nil, errors.Errorf("Cluster Storage: docker:cluster:{mongo-url,mongo-database} must be set.")
 	}
-	storage, err := mongodb.Mongodb(mongoUrl, mongoDatabase)
+	storage, err := mongodb.Mongodb(mongoURL, mongoDatabase)
 	if err != nil {
 		return nil, errors.Errorf("Cluster Storage: Unable to connect to mongodb: %s (docker:cluster:mongo-url = %q; docker:cluster:mongo-database = %q)",
-			err.Error(), mongoUrl, mongoDatabase)
+			err.Error(), mongoURL, mongoDatabase)
 	}
 	return storage, nil
 }

@@ -15,14 +15,14 @@ import (
 type TestHandler struct {
 	Body    []byte
 	Method  string
-	Url     string
+	URL     string
 	Content string
 	Header  http.Header
 }
 
 func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Method = r.Method
-	h.Url = r.URL.String()
+	h.URL = r.URL.String()
 	b, _ := ioutil.ReadAll(r.Body)
 	h.Body = b
 	h.Header = r.Header
@@ -32,7 +32,7 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type MultiTestHandler struct {
 	Body               [][]byte
 	Method             []string
-	Url                []string
+	URL                []string
 	Content            string
 	ConditionalContent map[string]interface{}
 	Header             []http.Header
@@ -46,7 +46,7 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.Method = append(h.Method, r.Method)
-	h.Url = append(h.Url, r.URL.String())
+	h.URL = append(h.URL, r.URL.String())
 	b, _ := ioutil.ReadAll(r.Body)
 	h.Body = append(h.Body, b)
 	h.Header = append(h.Header, r.Header)

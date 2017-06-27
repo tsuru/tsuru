@@ -51,7 +51,7 @@ func (e ErrAmbiguousSearch) Error() string {
 type GalebClient struct {
 	token         string
 	tokenMu       sync.RWMutex
-	ApiUrl        string
+	ApiURL        string
 	Username      string
 	Password      string
 	TokenHeader   string
@@ -86,7 +86,7 @@ func (c *GalebClient) getToken() (string, error) {
 func (c *GalebClient) regenerateToken() (err error) {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiUrl, "/"), "token")
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiURL, "/"), "token")
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 			}
 		}
 	}
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiUrl, "/"), strings.TrimLeft(path, "/"))
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiURL, "/"), strings.TrimLeft(path, "/"))
 	var bodyData string
 	if c.Debug {
 		bodyData = buf.String()
@@ -275,7 +275,7 @@ func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPo
 	if err != nil {
 		return err
 	}
-	path := strings.TrimPrefix(poolID, c.ApiUrl)
+	path := strings.TrimPrefix(poolID, c.ApiURL)
 	var poolParam Pool
 	c.fillDefaultPoolValues(&poolParam)
 	poolParam.Name = poolName
@@ -364,7 +364,7 @@ func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 }
 
 func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error {
-	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiUrl))
+	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiURL))
 	rsp, err := c.doRequest("PATCH", path, virtualHostID)
 	if err != nil {
 		return err
@@ -498,7 +498,7 @@ func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, er
 	if err != nil {
 		return nil, err
 	}
-	path := fmt.Sprintf("%s/parents?size=999999", strings.TrimPrefix(ruleID, c.ApiUrl))
+	path := fmt.Sprintf("%s/parents?size=999999", strings.TrimPrefix(ruleID, c.ApiURL))
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
@@ -538,7 +538,7 @@ func (c *GalebClient) Healthcheck() error {
 }
 
 func (c *GalebClient) removeResource(resourceURI string) error {
-	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
+	path := strings.TrimPrefix(resourceURI, c.ApiURL)
 	rsp, err := c.doRequest("DELETE", path, nil)
 	if err != nil {
 		return err
@@ -602,7 +602,7 @@ func (c *GalebClient) fetchPathStatus(path string) (string, error) {
 }
 
 func (c *GalebClient) waitStatusOK(resourceURI string) error {
-	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
+	path := strings.TrimPrefix(resourceURI, c.ApiURL)
 	var timeout <-chan time.Time
 	if c.WaitTimeout != 0 {
 		timeout = time.After(c.WaitTimeout)

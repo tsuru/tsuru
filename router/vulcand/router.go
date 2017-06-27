@@ -383,8 +383,8 @@ func (r *vulcandRouter) Routes(name string) (routes []*url.URL, err error) {
 	}
 	routes = make([]*url.URL, len(servers))
 	for i, server := range servers {
-		parsedUrl, _ := url.Parse(server.URL)
-		routes[i] = parsedUrl
+		parsedURL, _ := url.Parse(server.URL)
+		routes[i] = parsedURL
 	}
 	return routes, nil
 }

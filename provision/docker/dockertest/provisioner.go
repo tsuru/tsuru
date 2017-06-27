@@ -76,8 +76,8 @@ func StartMultipleServersCluster() (*FakeDockerProvisioner, error) {
 	if err != nil {
 		return nil, err
 	}
-	otherUrl := strings.Replace(server2.URL(), "127.0.0.1", "localhost", 1)
-	p, err := NewFakeDockerProvisioner(server1.URL(), otherUrl)
+	otherURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", 1)
+	p, err := NewFakeDockerProvisioner(server1.URL(), otherURL)
 	if err != nil {
 		return nil, err
 	}

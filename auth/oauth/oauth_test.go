@@ -31,7 +31,7 @@ func (s *S) TestOAuthLoginWithoutRedirectUrl(c *check.C) {
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	_, err := scheme.Login(params)
-	c.Assert(err, check.Equals, ErrMissingCodeRedirectUrl)
+	c.Assert(err, check.Equals, ErrMissingCodeRedirectURL)
 }
 
 func (s *S) TestOAuthLogin(c *check.C) {

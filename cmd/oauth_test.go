@@ -50,9 +50,9 @@ func (s *S) TestCallbackHandler(c *check.C) {
 		fsystem = nil
 	}()
 	os.Setenv("TSURU_TARGET", ts.URL)
-	redirectUrl := "someurl"
+	redirectURL := "someurl"
 	finish := make(chan bool, 1)
-	handler := callback(redirectUrl, finish)
+	handler := callback(redirectURL, finish)
 	body := `{"code":"xpto"}`
 	request, err := http.NewRequest("GET", "/", strings.NewReader(body))
 	c.Assert(err, check.IsNil)
