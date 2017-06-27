@@ -138,15 +138,26 @@ func (r *apiRouter) AddBackend(name string) (err error) {
 }
 
 func (r *apiRouter) AddBackendOpts(name string, opts map[string]string) error {
+	return r.doBackendOpts(name, http.MethodPost, opts)
+}
+
+func (r *apiRouter) UpdateBackendOpts(name string, opts map[string]string) error {
+	return r.doBackendOpts(name, http.MethodPut, opts)
+}
+
+func (r *apiRouter) doBackendOpts(name, method string, opts map[string]string) error {
 	path := fmt.Sprintf("backend/%s", name)
 	b, err := json.Marshal(opts)
 	if err != nil {
 		return err
 	}
 	data := bytes.NewReader(b)
-	_, statusCode, err := r.do(http.MethodPost, path, data)
+	_, statusCode, err := r.do(method, path, data)
 	if statusCode == http.StatusConflict {
 		return router.ErrBackendExists
+	}
+	if statusCode == http.StatusNotFound {
+		return router.ErrBackendNotFound
 	}
 	return err
 }

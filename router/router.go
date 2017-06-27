@@ -140,6 +140,7 @@ type HealthChecker interface {
 
 type OptsRouter interface {
 	AddBackendOpts(name string, opts map[string]string) error
+	UpdateBackendOpts(name string, opts map[string]string) error
 }
 
 // TLSRouter is a router that supports adding and removing

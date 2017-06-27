@@ -71,6 +71,20 @@ func (s *S) TestAddBackend(c *check.C) {
 	c.Assert(s.apiRouter.backends["new-backend"], check.NotNil)
 }
 
+func (s *S) TestAddBackendOpts(c *check.C) {
+	err := s.testRouter.AddBackendOpts("new-backend", map[string]string{"opt1": "val1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]string{"opt1": "val1"})
+}
+
+func (s *S) TestUpdateBackendOpts(c *check.C) {
+	err := s.testRouter.AddBackendOpts("new-backend", map[string]string{"opt1": "val1"})
+	c.Assert(err, check.IsNil)
+	err = s.testRouter.UpdateBackendOpts("new-backend", map[string]string{"opt1": "val2"})
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]string{"opt1": "val2"})
+}
+
 func (s *S) TestAddBackendExists(c *check.C) {
 	err := s.testRouter.AddBackend("mybackend")
 	c.Assert(err, check.DeepEquals, router.ErrBackendExists)
@@ -338,6 +352,7 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r := mux.NewRouter()
 	r.HandleFunc("/backend/{name}", api.getBackend).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}", api.addBackend).Methods(http.MethodPost)
+	r.HandleFunc("/backend/{name}", api.updateBackend).Methods(http.MethodPut)
 	r.HandleFunc("/backend/{name}", api.removeBackend).Methods(http.MethodDelete)
 	r.HandleFunc("/backend/{name}/routes", api.getRoutes).Methods(http.MethodGet)
 	r.HandleFunc("/backend/{name}/routes", api.addRoutes).Methods(http.MethodPost)
@@ -366,6 +381,7 @@ type backend struct {
 	swapWith    string
 	cnameOnly   bool
 	healthcheck router.HealthcheckData
+	opts        map[string]string
 }
 
 type fakeRouterAPI struct {
@@ -396,7 +412,22 @@ func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	f.backends[name] = &backend{}
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	f.backends[name] = &backend{opts: req}
+}
+
+func (f *fakeRouterAPI) updateBackend(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var req map[string]string
+	json.NewDecoder(r.Body).Decode(&req)
+	backend.opts = req
 }
 
 func (f *fakeRouterAPI) removeBackend(w http.ResponseWriter, r *http.Request) {
