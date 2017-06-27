@@ -4404,6 +4404,34 @@ func (s *S) TestUpdateRouter(c *check.C) {
 	c.Assert(routesStr, check.DeepEquals, expected)
 }
 
+func (s *S) TestUpdateRouterOpts(c *check.C) {
+	config.Set("routers:fake-opts:type", "fake-opts")
+	a := App{Name: "my-test-app",
+		Router:     "fake-opts",
+		TeamOwner:  s.team.Name,
+		RouterOpts: map[string]string{"opt1": "val1"},
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.OptsRouter.Opts["my-test-app"], check.DeepEquals, map[string]string{"opt1": "val1"})
+	updateData := App{Name: "my-test-app", RouterOpts: map[string]string{"opt1": "val2"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.OptsRouter.Opts["my-test-app"], check.DeepEquals, map[string]string{"opt1": "val2"})
+}
+
+func (s *S) TestUpdateRouterOptsNotSupported(c *check.C) {
+	a := App{Name: "my-test-app",
+		Router:    "fake",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "my-test-app", RouterOpts: map[string]string{"opt1": "val2"}}
+	err = a.Update(updateData, new(bytes.Buffer))
+	c.Assert(err, check.ErrorMatches, "router \"fake\" does not support opts")
+}
+
 func (s *S) TestUpdateRouterNotFound(c *check.C) {
 	a := App{Name: "my-test-app", Router: "fake", TeamOwner: s.team.Name}
 	err := CreateApp(&a, s.user)
