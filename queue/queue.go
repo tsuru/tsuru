@@ -89,9 +89,9 @@ func Queue() (monsterqueue.Queue, error) {
 	if queueData.instance != nil {
 		return queueData.instance, nil
 	}
-	queueMongoUrl, _ := config.GetString("queue:mongo-url")
-	if queueMongoUrl == "" {
-		queueMongoUrl = "localhost:27017"
+	queueMongoURL, _ := config.GetString("queue:mongo-url")
+	if queueMongoURL == "" {
+		queueMongoURL = "localhost:27017"
 	}
 	queueMongoDB, _ := config.GetString("queue:mongo-database")
 	pollingInterval, _ := config.GetFloat("queue:mongo-polling-interval")
@@ -100,7 +100,7 @@ func Queue() (monsterqueue.Queue, error) {
 	}
 	conf := mongodb.QueueConfig{
 		CollectionPrefix: "tsuru",
-		Url:              queueMongoUrl,
+		Url:              queueMongoURL,
 		Database:         queueMongoDB,
 		PollingInterval:  time.Duration(pollingInterval * float64(time.Second)),
 	}
