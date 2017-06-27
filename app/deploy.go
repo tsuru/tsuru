@@ -230,7 +230,7 @@ func Deploy(opts DeployOptions) (string, error) {
 	logWriter.Async()
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
-	imageId, err := deployToProvisioner(&opts, opts.Event)
+	imageID, err := deployToProvisioner(&opts, opts.Event)
 	rebuild.RoutesRebuildOrEnqueue(opts.App.Name)
 	if err != nil {
 		return "", err
@@ -242,7 +242,7 @@ func Deploy(opts DeployOptions) (string, error) {
 	if opts.App.UpdatePlatform {
 		opts.App.SetUpdatePlatform(false)
 	}
-	return imageId, nil
+	return imageID, nil
 }
 
 func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {

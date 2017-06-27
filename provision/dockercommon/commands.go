@@ -47,8 +47,8 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }
 
-func ProcessCmdForImage(processName, imageId string) ([]string, string, error) {
-	data, err := image.GetImageCustomData(imageId)
+func ProcessCmdForImage(processName, imageID string) ([]string, string, error) {
+	data, err := image.GetImageCustomData(imageID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -70,12 +70,12 @@ func ProcessCmdForImage(processName, imageId string) ([]string, string, error) {
 	return processCmd, processName, nil
 }
 
-func LeanContainerCmds(processName, imageId string, app provision.App) ([]string, string, error) {
-	return LeanContainerCmdsWithExtra(processName, imageId, app, nil)
+func LeanContainerCmds(processName, imageID string, app provision.App) ([]string, string, error) {
+	return LeanContainerCmdsWithExtra(processName, imageID, app, nil)
 }
 
-func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, extraCmds []string) ([]string, string, error) {
-	processCmd, processName, err := ProcessCmdForImage(processName, imageId)
+func LeanContainerCmdsWithExtra(processName, imageID string, app provision.App, extraCmds []string) ([]string, string, error) {
+	processCmd, processName, err := ProcessCmdForImage(processName, imageID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -86,7 +86,7 @@ func LeanContainerCmdsWithExtra(processName, imageId string, app provision.App, 
 		cmds, err = runWithAgentCmds(app)
 		return cmds, "", err
 	}
-	yamlData, err := image.GetImageTsuruYamlData(imageId)
+	yamlData, err := image.GetImageTsuruYamlData(imageID)
 	if err != nil {
 		return nil, "", err
 	}

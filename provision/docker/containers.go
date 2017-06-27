@@ -76,7 +76,7 @@ func (p *dockerProvisioner) HandleMoveErrors(moveErrors chan error, writer io.Wr
 	return nil
 }
 
-func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageId string, toHosts ...string) ([]container.Container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageID string, toHosts ...string) ([]container.Container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -84,7 +84,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageData, err := image.GetImageCustomData(imageId)
+	imageData, err := image.GetImageCustomData(imageID)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		toRemove:    toRemoveContainers,
 		toHost:      toHost,
 		writer:      w,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 		event:       evt,
 		exposedPort: imageData.ExposedPort,
@@ -125,7 +125,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId, exposedPort string) ([]container.Container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageID, exposedPort string) ([]container.Container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -134,7 +134,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		app:         a,
 		toAdd:       toAdd,
 		writer:      w,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 		exposedPort: exposedPort,
 		event:       evt,
@@ -171,7 +171,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		}
 		return container.Container{}
 	}
-	imageId, err := image.AppCurrentImageName(a.GetName())
+	imageID, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
@@ -189,7 +189,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: c.ExpectedStatus()}}
-	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageId, destHosts...)
+	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageID, destHosts...)
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,

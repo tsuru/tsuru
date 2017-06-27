@@ -771,11 +771,11 @@ func (s *S) TestContainerCommit(c *check.C) {
 	defer s.removeTestContainer(cont)
 	cont.BuildingImage = "tsuru/app-myapp:v1"
 	var buf bytes.Buffer
-	imageId, err := cont.Commit(s.p, &buf)
+	imageID, err := cont.Commit(s.p, &buf)
 	c.Assert(err, check.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	repository := repoNamespace + "/app-" + cont.AppName + ":v1"
-	c.Assert(imageId, check.Equals, repository)
+	c.Assert(imageID, check.Equals, repository)
 }
 
 func (s *S) TestContainerCommitWithRegistry(c *check.C) {
@@ -787,11 +787,11 @@ func (s *S) TestContainerCommitWithRegistry(c *check.C) {
 	defer s.removeTestContainer(cont)
 	cont.BuildingImage = "localhost:3030/tsuru/app-myapp:v1"
 	var buf bytes.Buffer
-	imageId, err := cont.Commit(s.p, &buf)
+	imageID, err := cont.Commit(s.p, &buf)
 	c.Assert(err, check.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1"
-	c.Assert(imageId, check.Equals, repository)
+	c.Assert(imageID, check.Equals, repository)
 	expectedPush := push{
 		name: "localhost:3030/" + repoNamespace + "/app-" + cont.AppName,
 		tag:  "v1",

@@ -103,11 +103,11 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if err != nil {
 		return nil, err
 	}
-	imageId, err := image.AppCurrentImageName(container.AppName)
+	imageID, err := image.AppCurrentImageName(container.AppName)
 	if err != nil {
 		return nil, err
 	}
-	err = s.newFakeImage(p, imageId, nil)
+	err = s.newFakeImage(p, imageID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,17 +221,17 @@ func (s *S) TestStart(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageId := image.GetBuildImage(app)
+	imageID := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, imageId, &buf, "")
+	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, imageID, &buf, "")
 	c.Assert(err, check.IsNil)
 	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont2.Image, check.Equals, imageId)
+	c.Assert(cont2.Image, check.Equals, imageID)
 	c.Assert(cont2.Status, check.Equals, provision.StatusStarting.String())
 }
 
@@ -243,17 +243,17 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageId := image.GetBuildImage(app)
+	imageID := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err = s.p.start(cont, app, imageId, &buf, "")
+	cont, err = s.p.start(cont, app, imageID, &buf, "")
 	c.Assert(err, check.IsNil)
 	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont2.Image, check.Equals, imageId)
+	c.Assert(cont2.Image, check.Equals, imageID)
 	c.Assert(cont2.Status, check.Equals, provision.StatusStopped.String())
 }
 

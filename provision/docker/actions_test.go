@@ -296,7 +296,7 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
-		imageId:     imageName,
+		imageID:     imageName,
 	}
 	context := action.FWContext{Previous: []container.Container{cont1, cont2, cont3}, Params: []interface{}{args}}
 	r, err := addNewRoutes.Forward(context)
@@ -336,7 +336,7 @@ func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
-		imageId:     imageName,
+		imageID:     imageName,
 	}
 	context := action.FWContext{Previous: []container.Container{cont1, cont2}, Params: []interface{}{args}}
 	r, err := addNewRoutes.Forward(context)
@@ -472,7 +472,7 @@ func (s *S) TestSetRouterHealthcheckForward(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
-		imageId:     imageName,
+		imageID:     imageName,
 	}
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
@@ -504,7 +504,7 @@ func (s *S) TestSetRouterHealthcheckForwardNoUseInRouter(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
-		imageId:     imageName,
+		imageID:     imageName,
 	}
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
@@ -534,7 +534,7 @@ func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
-		imageId:     imageName,
+		imageID:     imageName,
 	}
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	context := action.FWContext{Previous: []container.Container{cont1}, Params: []interface{}{args}}
@@ -767,15 +767,15 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container.Container{Container: types.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}})
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
-	imageId, err := image.AppNewImageName(app.GetName())
+	imageID, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, imageId, nil)
+	err = s.newFakeImage(p, imageID, nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	}
 	context := action.FWContext{Params: []interface{}{args}}
@@ -798,14 +798,14 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	p.Provision(app)
 	coll := p.Collection()
 	defer coll.Close()
-	imageId, err := image.AppNewImageName(app.GetName())
+	imageID, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, imageId, nil)
+	err = s.newFakeImage(p, imageID, nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	}
 	context := action.FWContext{Params: []interface{}{args}}
@@ -927,9 +927,9 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
-	imageId, err := followLogsAndCommit.Forward(context)
+	imageID, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.IsNil)
-	c.Assert(imageId, check.Equals, "tsuru/app-mightyapp:v1")
+	c.Assert(imageID, check.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
 	var dbCont container.Container
 	coll := s.p.Collection()
@@ -961,10 +961,10 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
-	imageId, err := followLogsAndCommit.Forward(context)
+	imageID, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Exit status 1")
-	c.Assert(imageId, check.IsNil)
+	c.Assert(imageID, check.IsNil)
 }
 
 func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
@@ -991,9 +991,9 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
-	imageId, err := followLogsAndCommit.Forward(context)
+	imageID, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.ErrorMatches, `.*failed to wait for the container\n$`)
-	c.Assert(imageId, check.IsNil)
+	c.Assert(imageID, check.IsNil)
 }
 
 func (s *S) TestBindAndHealthcheckName(c *check.C) {
@@ -1029,7 +1029,7 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}, "worker": {Quantity: 1}},
-		imageId:     "tsuru/app-" + appName,
+		imageID:     "tsuru/app-" + appName,
 	}
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)
@@ -1087,7 +1087,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageId:     "tsuru/app-" + dbApp.Name,
+		imageID:     "tsuru/app-" + dbApp.Name,
 		toRemove:    []container.Container{*oldContainer},
 	}
 	containers, err := addContainersWithHost(&args)
@@ -1144,7 +1144,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageId:     "tsuru/app-" + dbApp.Name,
+		imageID:     "tsuru/app-" + dbApp.Name,
 		toRemove:    []container.Container{*oldContainer},
 	}
 	containers, err := addContainersWithHost(&args)
@@ -1196,7 +1196,7 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageId:     "tsuru/app-" + dbApp.Name,
+		imageID:     "tsuru/app-" + dbApp.Name,
 	}
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)
@@ -1246,7 +1246,7 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageId:     "tsuru/app-" + dbApp.Name,
+		imageID:     "tsuru/app-" + dbApp.Name,
 	}
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)
@@ -1273,7 +1273,7 @@ func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
-		imageId:     "tsuru/app-" + appName,
+		imageID:     "tsuru/app-" + appName,
 	}
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)

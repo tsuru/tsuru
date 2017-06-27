@@ -226,17 +226,17 @@ func AppCurrentImageName(appName string) (string, error) {
 	return imgs.Images[len(imgs.Images)-1], nil
 }
 
-func AppendAppImageName(appName, imageId string) error {
+func AppendAppImageName(appName, imageID string) error {
 	coll, err := appImagesColl()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.UpsertId(appName, bson.M{"$pull": bson.M{"images": imageId}})
+	_, err = coll.UpsertId(appName, bson.M{"$pull": bson.M{"images": imageID}})
 	if err != nil {
 		return err
 	}
-	_, err = coll.UpsertId(appName, bson.M{"$push": bson.M{"images": imageId}})
+	_, err = coll.UpsertId(appName, bson.M{"$push": bson.M{"images": imageID}})
 	return err
 }
 
@@ -365,17 +365,17 @@ func ListAppBuilderImages(appName string) ([]string, error) {
 	return imgs.Images, nil
 }
 
-func AppendAppBuilderImageName(appName, imageId string) error {
+func AppendAppBuilderImageName(appName, imageID string) error {
 	coll, err := appBuilderImagesColl()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.UpsertId(appName, bson.M{"$pull": bson.M{"images": imageId}})
+	_, err = coll.UpsertId(appName, bson.M{"$pull": bson.M{"images": imageID}})
 	if err != nil {
 		return err
 	}
-	_, err = coll.UpsertId(appName, bson.M{"$push": bson.M{"images": imageId}})
+	_, err = coll.UpsertId(appName, bson.M{"$push": bson.M{"images": imageID}})
 	return err
 }
 

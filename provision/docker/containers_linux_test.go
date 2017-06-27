@@ -52,7 +52,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		appInstance := provisiontest.NewFakeApp(appName, "python", 0)
 		defer p.Destroy(appInstance)
 		p.Provision(appInstance)
-		imageId, aErr := image.AppCurrentImageName(appInstance.GetName())
+		imageID, aErr := image.AppCurrentImageName(appInstance.GetName())
 		c.Assert(aErr, check.IsNil)
 		var chosenNode string
 		for j := range variation {
@@ -64,7 +64,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		args := changeUnitsPipelineArgs{
 			app:         appInstance,
 			toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},
-			imageId:     imageId,
+			imageID:     imageID,
 			provisioner: p,
 			toHost:      chosenNode,
 		}

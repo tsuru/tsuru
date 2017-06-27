@@ -299,7 +299,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 	if err != nil {
 		return err
 	}
-	imageId, err := image.AppCurrentImageName(a.GetName())
+	imageID, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		toAdd[c.ProcessName].Quantity++
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
-	_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
+	_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageID)
 	return err
 }
 
@@ -370,22 +370,22 @@ func (p *dockerProvisioner) Sleep(app provision.App, process string) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Rollback(a provision.App, imageId string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) Rollback(a provision.App, imageID string, evt *event.Event) (string, error) {
 	validImgs, err := image.ListValidAppImages(a.GetName())
 	if err != nil {
 		return "", err
 	}
 	valid := false
 	for _, img := range validImgs {
-		if img == imageId {
+		if img == imageID {
 			valid = true
 			break
 		}
 	}
 	if !valid {
-		return "", errors.Errorf("Image %q not found in app", imageId)
+		return "", errors.Errorf("Image %q not found in app", imageID)
 	}
-	return imageId, p.deploy(a, imageId, evt)
+	return imageID, p.deploy(a, imageID, evt)
 }
 
 func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *event.Event) (string, error) {
@@ -407,15 +407,15 @@ func (p *dockerProvisioner) Deploy(app provision.App, buildImageID string, evt *
 	return imageID, nil
 }
 
-func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, evt *event.Event) error {
-	err := p.deploy(a, imageId, evt)
+func (p *dockerProvisioner) deployAndClean(a provision.App, imageID string, evt *event.Event) error {
+	err := p.deploy(a, imageID, evt)
 	if err != nil {
-		p.CleanImage(a.GetName(), imageId)
+		p.CleanImage(a.GetName(), imageID)
 	}
 	return err
 }
 
-func (p *dockerProvisioner) deploy(a provision.App, imageId string, evt *event.Event) error {
+func (p *dockerProvisioner) deploy(a provision.App, imageID string, evt *event.Event) error {
 	if err := checkCanceled(evt); err != nil {
 		return err
 	}
@@ -423,7 +423,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, evt *event.E
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageCustomData(imageId)
+	imageData, err := image.GetImageCustomData(imageID)
 	if err != nil {
 		return err
 	}
@@ -440,13 +440,13 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, evt *event.E
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, imageId, imageData.ExposedPort)
+		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, imageID, imageData.ExposedPort)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
 		if err = setQuota(a, toAdd); err != nil {
 			return err
 		}
-		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, imageId)
+		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, imageID)
 	}
 	return err
 }
@@ -518,14 +518,14 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err)
 	}
 	cluster := p.Cluster()
-	for _, imageId := range images {
-		err = cluster.RemoveImage(imageId)
+	for _, imageID := range images {
+		err = cluster.RemoveImage(imageID)
 		if err != nil {
-			log.Errorf("Failed to remove image %s: %s", imageId, err)
+			log.Errorf("Failed to remove image %s: %s", imageID, err)
 		}
-		err = cluster.RemoveFromRegistry(imageId)
+		err = cluster.RemoveFromRegistry(imageID)
 		if err != nil {
-			log.Errorf("Failed to remove image %s from registry: %s", imageId, err)
+			log.Errorf("Failed to remove image %s from registry: %s", imageID, err)
 		}
 	}
 	return nil
@@ -551,11 +551,11 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 	w := args.writer
 	var units int
 	processMsg := make([]string, 0, len(args.toAdd))
-	imageId := args.imageId
+	imageID := args.imageID
 	for processName, v := range args.toAdd {
 		units += v.Quantity
 		if processName == "" {
-			_, processName, _ = dockercommon.ProcessCmdForImage(processName, imageId)
+			_, processName, _ = dockercommon.ProcessCmdForImage(processName, imageID)
 		}
 		processMsg = append(processMsg, fmt.Sprintf("[%s: %d]", processName, v.Quantity))
 	}
@@ -590,7 +590,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 		m                 sync.Mutex
 	)
 	err := runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
-		c, startErr := args.provisioner.start(c, a, imageId, w, args.exposedPort, destinationHost...)
+		c, startErr := args.provisioner.start(c, a, imageID, w, args.exposedPort, destinationHost...)
 		if startErr != nil {
 			return startErr
 		}
@@ -623,15 +623,15 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageId, err := image.AppCurrentImageName(a.GetName())
+	imageID, err := image.AppCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
-	imageData, err := image.GetImageCustomData(imageId)
+	imageData, err := image.GetImageCustomData(imageID)
 	if err != nil {
 		return err
 	}
-	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId, imageData.ExposedPort)
+	_, err = p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageID, imageData.ExposedPort)
 	return err
 }
 
@@ -881,11 +881,11 @@ func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 }
 
 func (p *dockerProvisioner) RoutableAddresses(app provision.App) ([]url.URL, error) {
-	imageId, err := image.AppCurrentImageName(app.GetName())
+	imageID, err := image.AppCurrentImageName(app.GetName())
 	if err != nil && err != image.ErrNoImagesAvailable {
 		return nil, err
 	}
-	webProcessName, err := image.GetImageWebProcessName(imageId)
+	webProcessName, err := image.GetImageWebProcessName(imageID)
 	if err != nil {
 		return nil, err
 	}

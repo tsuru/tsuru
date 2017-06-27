@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.Client, app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
+func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.Client, app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&commitContainer,
@@ -38,7 +38,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeploy, client *docker.
 	}
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       imageId,
+		imageID:       imageID,
 		commands:      commands,
 		writer:        writer,
 		buildingImage: buildingImage,

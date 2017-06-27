@@ -51,7 +51,7 @@ type changeUnitsPipelineArgs struct {
 	toAdd       map[string]*containersToAdd
 	toRemove    []container.Container
 	toHost      string
-	imageId     string
+	imageID     string
 	provisioner *dockerProvisioner
 	appDestroy  bool
 	exposedPort string
@@ -367,7 +367,7 @@ var bindAndHealthcheck = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		webProcessName, err := image.GetImageWebProcessName(args.imageId)
+		webProcessName, err := image.GetImageWebProcessName(args.imageID)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
 		}
@@ -441,7 +441,7 @@ var addNewRoutes = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		webProcessName, err := image.GetImageWebProcessName(args.imageId)
+		webProcessName, err := image.GetImageWebProcessName(args.imageID)
 		if err != nil {
 			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
 		}
@@ -534,7 +534,7 @@ var setRouterHealthcheck = action.Action{
 		if !ok {
 			return newContainers, nil
 		}
-		yamlData, err := image.GetImageTsuruYamlData(args.imageId)
+		yamlData, err := image.GetImageTsuruYamlData(args.imageID)
 		if err != nil {
 			return nil, err
 		}
@@ -783,14 +783,14 @@ var followLogsAndCommit = action.Action{
 			}
 		}
 		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
-		imageId, err := c.Commit(args.provisioner, args.writer)
+		imageID, err := c.Commit(args.provisioner, args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err
 		}
 		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
 		c.Remove(args.provisioner)
-		return imageId, nil
+		return imageID, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},
@@ -805,8 +805,8 @@ var updateAppImage = action.Action{
 			return nil, err
 		}
 		currentImageName, _ := image.AppCurrentImageName(args.app.GetName())
-		if currentImageName != args.imageId {
-			err := image.AppendAppImageName(args.app.GetName(), args.imageId)
+		if currentImageName != args.imageID {
+			err := image.AppendAppImageName(args.app.GetName(), args.imageID)
 			if err != nil {
 				return nil, errors.Wrap(err, "unable to save image name")
 			}

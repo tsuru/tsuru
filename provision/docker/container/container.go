@@ -229,8 +229,8 @@ func (c *Container) SetStatus(p DockerProvisioner, status provision.Status, upda
 	return coll.Update(bson.M{"id": c.ID, "status": bson.M{"$ne": provision.StatusBuilding.String()}}, bson.M{"$set": updateData})
 }
 
-func (c *Container) SetImage(p DockerProvisioner, imageId string) error {
-	c.Image = imageId
+func (c *Container) SetImage(p DockerProvisioner, imageID string) error {
+	c.Image = imageID
 	coll := p.Collection()
 	defer coll.Close()
 	return coll.Update(bson.M{"id": c.ID}, c)

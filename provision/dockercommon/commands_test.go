@@ -79,15 +79,15 @@ func (s *S) TestRunWithAgentCmds(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmd(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python web.py",
 		},
 	}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("web", imageId, nil)
+	cmds, process, err := LeanContainerCmds("web", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
@@ -95,7 +95,7 @@ func (s *S) TestRunLeanContainersCmd(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{
 		"hooks": map[string]interface{}{
 			"restart": map[string]interface{}{
@@ -106,9 +106,9 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 			"web": "python web.py",
 		},
 	}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("web", imageId, nil)
+	cmds, process, err := LeanContainerCmds("web", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; cmd1 && cmd2 && exec python web.py"}
@@ -116,9 +116,9 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
@@ -129,7 +129,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 		Public: true,
 	}
 	app.SetEnv(tokenEnv)
-	cmds, process, err := LeanContainerCmds("", imageId, app)
+	cmds, process, err := LeanContainerCmds("", imageID, app)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "")
 	expected := []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", "/var/lib/tsuru/start"}
@@ -137,15 +137,15 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python web.py",
 		},
 	}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("", imageId, nil)
+	cmds, process, err := LeanContainerCmds("", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec python web.py"}
@@ -153,16 +153,16 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web":    "python web.py",
 			"worker": "python worker.py",
 		},
 	}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("", imageId, nil)
+	cmds, process, err := LeanContainerCmds("", imageID, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(provision.InvalidProcessError)
 	c.Assert(ok, check.Equals, true)
@@ -172,15 +172,15 @@ func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 }
 
 func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "python web.py",
 		},
 	}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("worker", imageId, nil)
+	cmds, process, err := LeanContainerCmds("worker", imageID, nil)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(provision.InvalidProcessError)
 	c.Assert(ok, check.Equals, true)
@@ -198,15 +198,15 @@ func (s *S) TestRunLeanContainersCmdNoImageMetadata(c *check.C) {
 }
 
 func (s *S) TestLeanContainerCmdsManyCmds(c *check.C) {
-	imageId := "tsuru/app-sample"
+	imageID := "tsuru/app-sample"
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": []string{"python", "web.py"},
 		},
 	}
-	err := image.SaveImageCustomData(imageId, customData)
+	err := image.SaveImageCustomData(imageID, customData)
 	c.Assert(err, check.IsNil)
-	cmds, process, err := LeanContainerCmds("", imageId, nil)
+	cmds, process, err := LeanContainerCmds("", imageID, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec $0 \"$@\"", "python", "web.py"}

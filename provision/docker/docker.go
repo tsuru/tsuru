@@ -62,7 +62,7 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, commands []string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, imageID string, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -82,7 +82,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	}
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       imageId,
+		imageID:       imageID,
 		commands:      commands,
 		writer:        writer,
 		isDeploy:      true,
@@ -98,8 +98,8 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	return deployImage, nil
 }
 
-func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageId string, w io.Writer, exposedPort string, destinationHosts ...string) (*container.Container, error) {
-	commands, processName, err := dockercommon.LeanContainerCmds(oldContainer.ProcessName, imageId, app)
+func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageID string, w io.Writer, exposedPort string, destinationHosts ...string) (*container.Container, error) {
+	commands, processName, err := dockercommon.LeanContainerCmds(oldContainer.ProcessName, imageID, app)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 	args := runContainerActionsArgs{
 		app:              app,
 		processName:      processName,
-		imageID:          imageId,
+		imageID:          imageID,
 		commands:         commands,
 		destinationHosts: destinationHosts,
 		provisioner:      p,
@@ -138,7 +138,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		return nil, err
 	}
 	c := pipeline.Result().(container.Container)
-	err = c.SetImage(p, imageId)
+	err = c.SetImage(p, imageID)
 	if err != nil {
 		return nil, err
 	}

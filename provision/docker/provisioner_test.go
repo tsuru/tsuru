@@ -1110,7 +1110,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         a,
-		imageId:     imageID,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -1128,7 +1128,7 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(a)
 	defer s.p.Destroy(a)
-	imageId, err := image.AppCurrentImageName(a.GetName())
+	imageID, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)
 	var callCount int32
 	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1141,7 +1141,7 @@ func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         a,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: s.p,
 	})
 	c.Assert(err, check.ErrorMatches, "error in docker node.*")
@@ -2663,13 +2663,13 @@ func (s *S) TestDryMode(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer s.p.Destroy(appInstance)
 	s.p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
@@ -2698,7 +2698,7 @@ func (s *S) TestAddContainerDefaultProcess(c *check.C) {
 		provisioner: s.p,
 		writer:      buf,
 		toAdd:       map[string]*containersToAdd{"": {Quantity: 2}},
-		imageId:     "tsuru/app-" + appName,
+		imageID:     "tsuru/app-" + appName,
 	}
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)
@@ -2812,7 +2812,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         fakeApp,
-		imageId:     "myimg",
+		imageID:     "myimg",
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
@@ -2834,7 +2834,7 @@ func (s *S) TestProvisionerRoutableAddressesInvalidContainers(c *check.C) {
 	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
 		app:         fakeApp,
-		imageId:     "myimg",
+		imageID:     "myimg",
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3012,13 +3012,13 @@ func (s *S) TestRemoveNodeRebalanceWithUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3074,7 +3074,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	err = s.p.Provision(appInstance)
 	c.Assert(err, check.IsNil)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	err = s.storage.Apps().Insert(appStruct)
@@ -3082,7 +3082,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 	containers, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3223,13 +3223,13 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3237,7 +3237,7 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3274,12 +3274,12 @@ func (s *S) TestNodeForNodeData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	conts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3316,13 +3316,13 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3354,13 +3354,13 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	c1, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3368,7 +3368,7 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3397,13 +3397,13 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	c1, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3411,7 +3411,7 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
@@ -3441,13 +3441,13 @@ func (s *S) TestRebalanceNodesDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
-	imageId, err := image.AppCurrentImageName(appInstance.GetName())
+	imageID, err := image.AppCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
 		app:         appInstance,
-		imageId:     imageId,
+		imageID:     imageID,
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
