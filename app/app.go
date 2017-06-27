@@ -116,7 +116,7 @@ type App struct {
 	Env            map[string]bind.EnvVar
 	Platform       string `bson:"framework"`
 	Name           string
-	Ip             string
+	IP             string
 	CName          []string
 	Teams          []string
 	TeamOwner      string
@@ -212,7 +212,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		result["error"] = fmt.Sprintf("unable to list app units: %+v", err)
 	}
 	result["repository"] = repo.ReadWriteURL
-	result["ip"] = app.Ip
+	result["ip"] = app.IP
 	result["cname"] = app.CName
 	result["owner"] = app.Owner
 	result["pool"] = app.Pool
@@ -1200,7 +1200,7 @@ func (app *App) GetCpuShare() int {
 
 // GetIp returns the ip of the app.
 func (app *App) GetIp() string {
-	return app.Ip
+	return app.IP
 }
 
 func (app *App) GetQuota() quota.Quota {
@@ -1746,13 +1746,13 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 	defer conn.Close()
 	app1.CName, app2.CName = app2.CName, app1.CName
 	updateCName := func(app *App, r router.Router) error {
-		app.Ip, err = r.Addr(app.Name)
+		app.IP, err = r.Addr(app.Name)
 		if err != nil {
 			return err
 		}
 		return conn.Apps().Update(
 			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"cname": app.CName, "ip": app.Ip}},
+			bson.M{"$set": bson.M{"cname": app.CName, "ip": app.IP}},
 		)
 	}
 	err = updateCName(app1, r1)
@@ -1850,7 +1850,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 			hasCname = true
 		}
 	}
-	if !hasCname && name != app.Ip {
+	if !hasCname && name != app.IP {
 		return errors.New("invalid name")
 	}
 	r, err := app.GetRouter()
@@ -1883,7 +1883,7 @@ func (app *App) RemoveCertificate(name string) error {
 			hasCname = true
 		}
 	}
-	if !hasCname && name != app.Ip {
+	if !hasCname && name != app.IP {
 		return errors.New("invalid name")
 	}
 	r, err := app.GetRouter()
@@ -1906,7 +1906,7 @@ func (app *App) GetCertificates() (map[string]string, error) {
 	if !ok {
 		return nil, errors.New("router does not support tls")
 	}
-	names := append(app.CName, app.Ip)
+	names := append(app.CName, app.IP)
 	certificates := make(map[string]string)
 	for _, n := range names {
 		cert, err := tlsRouter.GetCertificate(n)
@@ -1935,7 +1935,7 @@ func (app *App) UpdateAddr() error {
 	if err != nil {
 		return err
 	}
-	if newAddr == app.Ip {
+	if newAddr == app.IP {
 		return nil
 	}
 	conn, err := db.Conn()
@@ -1947,7 +1947,7 @@ func (app *App) UpdateAddr() error {
 	if err != nil {
 		return err
 	}
-	app.Ip = newAddr
+	app.IP = newAddr
 	return nil
 }
 

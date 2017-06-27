@@ -401,8 +401,8 @@ func (s *S) TestGetCmds(c *check.C) {
 
 func (s *S) TestGetUnits(c *check.C) {
 	list := []provision.Unit{
-		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.10", Status: provision.StatusStarted},
-		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.15", Status: provision.StatusStarted},
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
+		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.15", Status: provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -1194,12 +1194,12 @@ func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
 	p.AddUnit(app, unit)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
-	ip := units[0].Ip
+	ip := units[0].IP
 	err = p.RegisterUnit(app, unit.ID, nil)
 	c.Assert(err, check.IsNil)
 	units, err = p.Units(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, ip+"-updated")
+	c.Assert(units[0].IP, check.Equals, ip+"-updated")
 }
 
 func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
@@ -1221,13 +1221,13 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	p.AddUnit(app, unit)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
-	ip := units[0].Ip
+	ip := units[0].IP
 	data := map[string]interface{}{"my": "data"}
 	err = p.RegisterUnit(app, unit.ID, data)
 	c.Assert(err, check.IsNil)
 	units, err = p.Units(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, ip+"-updated")
+	c.Assert(units[0].IP, check.Equals, ip+"-updated")
 	c.Assert(p.CustomData(app), check.DeepEquals, data)
 }
 
@@ -1357,7 +1357,7 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var addrs []string
 	for _, u := range units {
-		addrs = append(addrs, u.Ip)
+		addrs = append(addrs, u.IP)
 	}
 	sort.Strings(addrs)
 	c.Assert(addrs, check.DeepEquals, []string{"mynode1", "mynode1", "mynode2", "mynode2"})
@@ -1443,7 +1443,7 @@ func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 
 func (s *S) TestGetAppFromUnitID(c *check.C) {
 	list := []provision.Unit{
-		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.10", Status: provision.StatusStarted},
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()

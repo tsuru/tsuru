@@ -225,7 +225,7 @@ func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []v1.Pod
 			AppName:     l.AppName(),
 			ProcessName: appProcess,
 			Type:        l.AppPlatform(),
-			Ip:          tsuruNet.URLToHost(wrapper.Address()),
+			IP:          tsuruNet.URLToHost(wrapper.Address()),
 			Status:      stateMap[pod.Status.Phase],
 			Address:     url,
 		}

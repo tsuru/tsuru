@@ -294,11 +294,11 @@ var setAppIp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		app.Ip, err = r.Addr(app.Name)
+		app.IP, err = r.Addr(app.Name)
 		if err != nil {
 			return nil, err
 		}
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.IP}})
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +306,7 @@ var setAppIp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		app.Ip = ""
+		app.IP = ""
 		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("Error trying to get connection to rollback setAppIp action: %s", err)
@@ -415,7 +415,7 @@ var moveRouterUnits = action.Action{
 			return nil, errors.New("third parameter must be a string")
 		}
 		newRouter := app.Router
-		result := updateAppPipelineResult{oldPlan: oldPlan, oldRouter: oldRouter, app: app, oldIp: app.Ip}
+		result := updateAppPipelineResult{oldPlan: oldPlan, oldRouter: oldRouter, app: app, oldIp: app.IP}
 		if newRouter != oldRouter {
 			_, err := rebuild.RebuildRoutes(app)
 			if err != nil {
@@ -433,14 +433,14 @@ var moveRouterUnits = action.Action{
 		}()
 		if result.changedRouter {
 			app := result.app
-			app.Ip = result.oldIp
+			app.IP = result.oldIp
 			conn, err := db.Conn()
 			if err != nil {
 				log.Errorf("BACKWARD move router units - failed to connect to the database: %s", err)
 				return
 			}
 			defer conn.Close()
-			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
+			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.IP}})
 			r, err := result.app.GetRouter()
 			if err != nil {
 				log.Errorf("BACKWARD move router units - failed to retrieve router: %s", err)

@@ -494,7 +494,7 @@ func (s *S) TestUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	expected := []provision.Unit{
-		{ID: units[0].ID, Name: "", AppName: "myapp", ProcessName: "web", Type: "", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
+		{ID: units[0].ID, Name: "", AppName: "myapp", ProcessName: "web", Type: "", IP: "127.0.0.1", Status: "starting", Address: &url.URL{}},
 	}
 	c.Assert(units, check.DeepEquals, expected)
 }
@@ -1288,7 +1288,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
+		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", IP: "127.0.0.1", Status: "starting", Address: &url.URL{}},
 	})
 	task, err := cli.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
@@ -1354,7 +1354,7 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
+		{ID: units[0].ID, AppName: a.Name, Type: "whitespace", ProcessName: "web", IP: "127.0.0.1", Status: "starting", Address: &url.URL{}},
 	})
 	task, err := cli.InspectTask(units[0].ID)
 	c.Assert(err, check.IsNil)
@@ -1367,7 +1367,7 @@ func (s *S) TestDeployServiceBind(c *check.C) {
 		),
 	})
 	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
 }
 
 func (s *S) TestDeployImageID(c *check.C) {
@@ -1415,7 +1415,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
-		{ID: units[0].ID, AppName: a.Name, ProcessName: "web", Ip: "127.0.0.1", Status: "starting", Address: &url.URL{}},
+		{ID: units[0].ID, AppName: a.Name, ProcessName: "web", IP: "127.0.0.1", Status: "starting", Address: &url.URL{}},
 	})
 	dbImg, err := image.AppCurrentImageName(a.GetName())
 	c.Assert(err, check.IsNil)

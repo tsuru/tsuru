@@ -955,7 +955,7 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 		Name:        "c-name",
 		AppName:     "myapp",
 		Type:        "python",
-		Ip:          "192.168.50.4",
+		IP:          "192.168.50.4",
 		Status:      provision.StatusBuilding,
 		ProcessName: "web",
 		Address:     &url.URL{Scheme: "http", Host: "192.168.50.4:8080"},

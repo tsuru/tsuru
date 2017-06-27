@@ -54,7 +54,7 @@ func init() {
 type FakeApp struct {
 	name           string
 	cname          []string
-	Ip             string
+	IP             string
 	platform       string
 	units          []provision.Unit
 	logs           []string
@@ -93,7 +93,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		app.units[i] = provision.Unit{
 			ID:     fmt.Sprintf(namefmt, name, i),
 			Status: provision.StatusStarted,
-			Ip:     fmt.Sprintf("10.10.10.%d", val),
+			IP:     fmt.Sprintf("10.10.10.%d", val),
 			Address: &url.URL{
 				Scheme: "http",
 				Host:   fmt.Sprintf("10.10.10.%d:%d", val, val),
@@ -296,7 +296,7 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
 }
 
 func (a *FakeApp) GetIp() string {
-	return a.Ip
+	return a.IP
 }
 
 func (a *FakeApp) GetLock() provision.AppLock {
@@ -636,7 +636,7 @@ func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (
 					return true, errors.Errorf("unable to find node for pool %s", a.app.GetPool())
 				}
 			}
-			u.Ip = hostAddr
+			u.IP = hostAddr
 			u.Address = &url.URL{
 				Scheme: "http",
 				Host:   fmt.Sprintf("%s:%d", hostAddr, gi),
@@ -1013,7 +1013,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 			AppName:     name,
 			Type:        platform,
 			Status:      provision.StatusStarted,
-			Ip:          hostAddr,
+			IP:          hostAddr,
 			ProcessName: process,
 			Address: &url.URL{
 				Scheme: "http",
@@ -1350,7 +1350,7 @@ func (p *FakeProvisioner) RegisterUnit(a provision.App, unitId string, customDat
 	pa.lastData = customData
 	for i, u := range pa.units {
 		if u.ID == unitId {
-			u.Ip = u.Ip + "-updated"
+			u.IP = u.IP + "-updated"
 			pa.units[i] = u
 			p.apps[a.GetName()] = pa
 			return nil

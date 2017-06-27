@@ -141,7 +141,7 @@ type Unit struct {
 	AppName     string
 	ProcessName string
 	Type        string
-	Ip          string
+	IP          string
 	Status      Status
 	Address     *url.URL
 }
@@ -153,7 +153,7 @@ func (u *Unit) GetID() string {
 
 // GetIp returns the Unit.IP.
 func (u *Unit) GetIp() string {
-	return u.Ip
+	return u.IP
 }
 
 func (u *Unit) MarshalJSON() ([]byte, error) {
@@ -169,7 +169,7 @@ func (u *Unit) MarshalJSON() ([]byte, error) {
 		UnitForMarshal: (*UnitForMarshal)(u),
 		HostAddr:       host,
 		HostPort:       port,
-		IP:             u.Ip,
+		IP:             u.IP,
 	})
 }
 

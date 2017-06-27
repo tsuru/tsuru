@@ -39,7 +39,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addr, err := routertest.FakeRouter.Addr(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, addr)
+	c.Assert(app.IP, check.Equals, addr)
 }
 
 func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
@@ -68,7 +68,7 @@ func (s *S) TestRebuildRoutesTCPRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addr, err := routertest.FakeRouter.Addr(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, addr)
+	c.Assert(app.IP, check.Equals, addr)
 }
 
 type URLList []*url.URL
@@ -157,14 +157,14 @@ func (s *S) TestRebuildRoutesBetweenRouters(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = provisiontest.ProvisionerInstance.AddUnits(&a, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	oldIp := a.Ip
+	oldIp := a.IP
 	a.Router = "fake-hc"
 	_, err = rebuild.RebuildRoutes(&a)
 	c.Assert(err, check.IsNil)
-	c.Assert(a.Ip, check.Not(check.Equals), oldIp)
+	c.Assert(a.IP, check.Not(check.Equals), oldIp)
 	na, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(na.Ip, check.Equals, a.Ip)
+	c.Assert(na.IP, check.Equals, a.IP)
 }
 
 func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {

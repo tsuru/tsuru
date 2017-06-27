@@ -106,7 +106,7 @@ type miniApp struct {
 	Plan      app.Plan          `json:"plan"`
 	Units     []provision.Unit  `json:"units"`
 	CName     []string          `json:"cname"`
-	Ip        string            `json:"ip"`
+	IP        string            `json:"ip"`
 	Lock      provision.AppLock `json:"lock"`
 	Tags      []string          `json:"tags"`
 	Error     string            `json:"error,omitempty"`
@@ -125,7 +125,7 @@ func minifyApp(app app.App) (miniApp, error) {
 		TeamOwner: app.TeamOwner,
 		Units:     units,
 		CName:     app.CName,
-		Ip:        app.Ip,
+		IP:        app.IP,
 		Lock:      &app.Lock,
 		Tags:      app.Tags,
 		Error:     unitsError,
@@ -361,7 +361,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	msg := map[string]string{
 		"status":         "success",
 		"repository_url": repo.ReadWriteURL,
-		"ip":             a.Ip,
+		"ip":             a.IP,
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {

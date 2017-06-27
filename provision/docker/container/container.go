@@ -520,7 +520,7 @@ func (c *Container) AsUnit(a provision.App) provision.Unit {
 		Name:        c.Name,
 		AppName:     a.GetName(),
 		Type:        cType,
-		Ip:          c.HostAddr,
+		IP:          c.HostAddr,
 		Status:      status,
 		ProcessName: c.ProcessName,
 		Address:     c.Address(),

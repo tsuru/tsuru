@@ -970,7 +970,7 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var nodes []string
 	for _, u := range units {
-		nodes = append(nodes, u.Ip)
+		nodes = append(nodes, u.IP)
 	}
 	sort.Strings(nodes)
 	c.Assert(nodes, check.DeepEquals, []string{"n1", "n1", "n2", "n2"})

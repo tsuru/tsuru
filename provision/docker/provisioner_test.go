@@ -297,7 +297,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
-	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
@@ -2292,7 +2292,7 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 			AppName: "myapplication",
 			Type:    "python",
 			Status:  provision.StatusBuilding,
-			Ip:      "192.168.123.9",
+			IP:      "192.168.123.9",
 			Address: &url.URL{
 				Scheme: "http",
 				Host:   "192.168.123.9:9025",
@@ -2403,7 +2403,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 			AppName: "myapplication",
 			Type:    "python",
 			Status:  provision.StatusBuilding,
-			Ip:      "10.0.0.7",
+			IP:      "10.0.0.7",
 			Address: &url.URL{
 				Scheme: "http",
 				Host:   "10.0.0.7:9025",
@@ -2414,7 +2414,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 			AppName: "myapplication",
 			Type:    "python",
 			Status:  provision.StatusError,
-			Ip:      "10.0.0.7",
+			IP:      "10.0.0.7",
 			Address: &url.URL{
 				Scheme: "http",
 				Host:   "10.0.0.7:9025",
@@ -2450,7 +2450,7 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 			ID:      "9930c24f1c4f",
 			AppName: "myapplication",
 			Type:    "python",
-			Ip:      "127.0.0.1",
+			IP:      "127.0.0.1",
 			Status:  provision.StatusBuilding,
 			Address: &url.URL{
 				Scheme: "http",

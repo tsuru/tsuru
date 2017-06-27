@@ -612,17 +612,17 @@ func (s *S) TestSetAppIpForward(c *check.C) {
 	}
 	r, err := setAppIp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, "conviction.fakerouter.com")
+	c.Assert(app.IP, check.Equals, "conviction.fakerouter.com")
 	a, ok := r.(*App)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(a.Ip, check.Equals, "conviction.fakerouter.com")
+	c.Assert(a.IP, check.Equals, "conviction.fakerouter.com")
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Ip, check.Equals, "conviction.fakerouter.com")
+	c.Assert(gotApp.IP, check.Equals, "conviction.fakerouter.com")
 }
 
 func (s *S) TestSetAppIpBackward(c *check.C) {
-	app := &App{Name: "conviction", Platform: "evergrey", Ip: "some-value", TeamOwner: s.team.Name}
+	app := &App{Name: "conviction", Platform: "evergrey", IP: "some-value", TeamOwner: s.team.Name}
 	err := CreateApp(app, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -632,10 +632,10 @@ func (s *S) TestSetAppIpBackward(c *check.C) {
 	}
 	setAppIp.Backward(ctx)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, "")
+	c.Assert(app.IP, check.Equals, "")
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Ip, check.Equals, "")
+	c.Assert(gotApp.IP, check.Equals, "")
 }
 
 func (s *S) TestAddRouterBackendForward(c *check.C) {

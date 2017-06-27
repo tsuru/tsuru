@@ -446,7 +446,7 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
-	unit := provision.Unit{ID: "some-unit", Ip: "127.0.2.1"}
+	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
 	err = app.BindUnit(&unit)
 	c.Assert(err, check.IsNil)
 	err = app.UnbindUnit(&unit)
@@ -504,7 +504,7 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
-	unit := provision.Unit{ID: "some-unit", Ip: "127.0.2.1"}
+	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
 	err = app.BindUnit(&unit)
 	c.Assert(err, check.ErrorMatches, "Failed to bind the instance \"mysql/yourdb\" to the unit \"127.0.2.1\": invalid response: myerr")
 	c.Assert(requests, check.HasLen, 3)
@@ -2528,8 +2528,8 @@ func (s *S) TestGetUnits(c *check.C) {
 	c.Assert(bindUnits, check.HasLen, 2)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, bindUnits[0].GetIp())
-	c.Assert(units[1].Ip, check.Equals, bindUnits[1].GetIp())
+	c.Assert(units[0].IP, check.Equals, bindUnits[0].GetIp())
+	c.Assert(units[1].IP, check.Equals, bindUnits[1].GetIp())
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
@@ -2541,7 +2541,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Name:        "name",
 		Platform:    "Framework",
 		Teams:       []string{"team1"},
-		Ip:          "10.10.10.1",
+		IP:          "10.10.10.1",
 		CName:       []string{"name.mycompany.com"},
 		Owner:       "appOwner",
 		Deploys:     7,
@@ -2589,7 +2589,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		Name:        "name",
 		Platform:    "Framework",
 		Teams:       []string{"team1"},
-		Ip:          "10.10.10.1",
+		IP:          "10.10.10.1",
 		CName:       []string{"name.mycompany.com"},
 		Owner:       "appOwner",
 		Deploys:     7,
@@ -3306,8 +3306,8 @@ func (s *S) TestGetName(c *check.C) {
 }
 
 func (s *S) TestGetIP(c *check.C) {
-	a := App{Ip: "10.10.10.10"}
-	c.Assert(a.GetIp(), check.Equals, a.Ip)
+	a := App{IP: "10.10.10.10"}
+	c.Assert(a.GetIp(), check.Equals, a.IP)
 }
 
 func (s *S) TestGetQuota(c *check.C) {
@@ -3424,42 +3424,42 @@ func (s *S) TestSwap(c *check.C) {
 	app1 := &App{Name: "app1", CName: []string{"cname"}, TeamOwner: s.team.Name}
 	err := CreateApp(app1, s.user)
 	c.Assert(err, check.IsNil)
-	app1.Ip, err = s.provisioner.Addr(app1)
+	app1.IP, err = s.provisioner.Addr(app1)
 	c.Assert(err, check.IsNil)
-	oldIp1 := app1.Ip
+	oldIp1 := app1.IP
 	app2 := &App{Name: "app2", TeamOwner: s.team.Name}
 	err = CreateApp(app2, s.user)
 	c.Assert(err, check.IsNil)
-	app2.Ip, err = s.provisioner.Addr(app2)
+	app2.IP, err = s.provisioner.Addr(app2)
 	c.Assert(err, check.IsNil)
-	oldIp2 := app2.Ip
+	oldIp2 := app2.IP
 	err = Swap(app1, app2, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(app1.CName, check.IsNil)
 	c.Assert(app2.CName, check.DeepEquals, []string{"cname"})
-	c.Assert(app1.Ip, check.Equals, oldIp2)
-	c.Assert(app2.Ip, check.Equals, oldIp1)
+	c.Assert(app1.IP, check.Equals, oldIp2)
+	c.Assert(app2.IP, check.Equals, oldIp1)
 }
 
 func (s *S) TestSwapCnameOnly(c *check.C) {
 	app1 := &App{Name: "app1", CName: []string{"app1.cname", "app1.cname2"}, TeamOwner: s.team.Name}
 	err := CreateApp(app1, s.user)
 	c.Assert(err, check.IsNil)
-	app1.Ip, err = s.provisioner.Addr(app1)
+	app1.IP, err = s.provisioner.Addr(app1)
 	c.Assert(err, check.IsNil)
-	oldIp1 := app1.Ip
+	oldIp1 := app1.IP
 	app2 := &App{Name: "app2", CName: []string{"app2.cname"}, TeamOwner: s.team.Name}
 	err = CreateApp(app2, s.user)
 	c.Assert(err, check.IsNil)
-	app2.Ip, err = s.provisioner.Addr(app2)
+	app2.IP, err = s.provisioner.Addr(app2)
 	c.Assert(err, check.IsNil)
-	oldIp2 := app2.Ip
+	oldIp2 := app2.IP
 	err = Swap(app1, app2, true)
 	c.Assert(err, check.IsNil)
 	c.Assert(app1.CName, check.DeepEquals, []string{"app2.cname"})
 	c.Assert(app2.CName, check.DeepEquals, []string{"app1.cname", "app1.cname2"})
-	c.Assert(app1.Ip, check.Equals, oldIp1)
-	c.Assert(app2.Ip, check.Equals, oldIp2)
+	c.Assert(app1.IP, check.Equals, oldIp1)
+	c.Assert(app2.IP, check.Equals, oldIp2)
 }
 
 func (s *S) TestStart(c *check.C) {
@@ -3689,16 +3689,16 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var ips []string
 	for _, u := range units {
-		ips = append(ips, u.Ip)
+		ips = append(ips, u.IP)
 	}
 	customData := map[string]interface{}{"x": "y"}
 	err = a.RegisterUnit(units[0].ID, customData)
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, ips[0]+"-updated")
-	c.Assert(units[1].Ip, check.Equals, ips[1])
-	c.Assert(units[2].Ip, check.Equals, ips[2])
+	c.Assert(units[0].IP, check.Equals, ips[0]+"-updated")
+	c.Assert(units[1].IP, check.Equals, ips[1])
+	c.Assert(units[2].IP, check.Equals, ips[2])
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, customData)
 }
 
@@ -3907,8 +3907,8 @@ func (s *S) TestSetCertificateForApp(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "fake-tls"}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	a.Ip = "app.io"
-	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.Ip}})
+	a.IP = "app.io"
+	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.IP}})
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
@@ -3973,8 +3973,8 @@ func (s *S) TestRemoveCertificate(c *check.C) {
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Router: "fake-tls"}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	a.Ip = "app.io"
-	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.Ip}})
+	a.IP = "app.io"
+	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.IP}})
 	c.Assert(err, check.IsNil)
 	err = a.SetCertificate(cname, string(cert), string(key))
 	c.Assert(err, check.IsNil)
@@ -4247,8 +4247,8 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
-	a.Ip = "old-address"
-	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.Ip}})
+	a.IP = "old-address"
+	err = s.conn.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"ip": a.IP}})
 	c.Assert(err, check.IsNil)
 	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
 	updateData := App{Name: "my-test-app", Router: "fake-hc", Plan: Plan{Name: "something"}}
@@ -4257,7 +4257,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	dbApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan.Name, check.Equals, "old")
-	c.Assert(dbApp.Ip, check.Equals, "old-address")
+	c.Assert(dbApp.IP, check.Equals, "old-address")
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, false)

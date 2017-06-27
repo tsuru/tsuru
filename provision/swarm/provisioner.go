@@ -204,7 +204,7 @@ func taskToUnit(task *swarm.Task, service *swarm.Service, node *swarm.Node, a pr
 		AppName:     a.GetName(),
 		ProcessName: labels.AppProcess(),
 		Type:        a.GetPlatform(),
-		Ip:          host,
+		IP:          host,
 		Status:      stateMap[task.Status.State],
 		Address:     &url.URL{},
 	}

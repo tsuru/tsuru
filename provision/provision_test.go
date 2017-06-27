@@ -120,8 +120,8 @@ func (ProvisionSuite) TestUnitAvailable(c *check.C) {
 }
 
 func (ProvisionSuite) TestUnitGetIp(c *check.C) {
-	u := Unit{Ip: "10.3.3.1"}
-	c.Assert(u.Ip, check.Equals, u.GetIp())
+	u := Unit{IP: "10.3.3.1"}
+	c.Assert(u.IP, check.Equals, u.GetIp())
 }
 
 func (ProvisionSuite) TestUnitNotFoundError(c *check.C) {

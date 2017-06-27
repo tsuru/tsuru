@@ -483,12 +483,12 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 	c.Assert(apps[0].CName, check.DeepEquals, app1.CName)
-	c.Assert(apps[0].Ip, check.Equals, app1.Ip)
+	c.Assert(apps[0].IP, check.Equals, app1.IP)
 	c.Assert(apps[0].Pool, check.Equals, app1.Pool)
 	c.Assert(apps[0].Tags, check.DeepEquals, app1.Tags)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(apps[1].CName, check.DeepEquals, app2.CName)
-	c.Assert(apps[1].Ip, check.Equals, app2.Ip)
+	c.Assert(apps[1].IP, check.Equals, app2.IP)
 	c.Assert(apps[1].Pool, check.Equals, app2.Pool)
 	c.Assert(apps[1].Tags, check.DeepEquals, app2.Tags)
 }
@@ -5295,7 +5295,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	oldIP := units[0].Ip
+	oldIP := units[0].IP
 	body := strings.NewReader("hostname=" + units[0].ID)
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
@@ -5315,7 +5315,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(envMap["MY_VAR_1"], check.Equals, "value1")
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, oldIP+"-updated")
+	c.Assert(units[0].IP, check.Equals, oldIP+"-updated")
 }
 
 func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
@@ -5357,7 +5357,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	oldIP := units[0].Ip
+	oldIP := units[0].IP
 	v := url.Values{}
 	v.Set("hostname", units[0].ID)
 	v.Set("customdata", `{"mydata": "something"}`)
@@ -5380,7 +5380,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(envMap["MY_VAR_1"], check.Equals, "value1")
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Ip, check.Equals, oldIP+"-updated")
+	c.Assert(units[0].IP, check.Equals, oldIP+"-updated")
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
 		"mydata": "something",
 	})
