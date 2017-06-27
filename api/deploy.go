@@ -88,9 +88,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	if (instance.GetPlatform() == "") && (origin != "image") {
-		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "can't deploy app without platform, if it's not an image"}
-	}
 	var build bool
 	buildString := r.FormValue("build")
 	if buildString != "" {

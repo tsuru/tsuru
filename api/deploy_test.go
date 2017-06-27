@@ -498,7 +498,7 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), check.Equals, "can't deploy app without platform, if it's not an image\n")
 }
 
