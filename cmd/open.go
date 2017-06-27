@@ -9,8 +9,7 @@ package cmd
 import "github.com/tsuru/tsuru/exec"
 
 func open(url string) error {
-	var opts exec.ExecuteOptions
-	opts = exec.ExecuteOptions{
+	opts := exec.ExecuteOptions{
 		Cmd:  "xdg-open",
 		Args: []string{url},
 	}
