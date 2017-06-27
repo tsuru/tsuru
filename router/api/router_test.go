@@ -379,91 +379,97 @@ type fakeRouterAPI struct {
 func (f *fakeRouterAPI) getBackend(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if backend, ok := f.backends[name]; ok {
-		resp := &backendResp{Address: backend.addr}
-		json.NewEncoder(w).Encode(resp)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	resp := &backendResp{Address: backend.addr}
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if _, ok := f.backends[name]; !ok {
-		f.backends[name] = &backend{}
+	_, ok := f.backends[name]
+	if ok {
+		w.WriteHeader(http.StatusConflict)
 		return
 	}
-	w.WriteHeader(http.StatusConflict)
+	f.backends[name] = &backend{}
 }
 
 func (f *fakeRouterAPI) removeBackend(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if backend, ok := f.backends[name]; ok {
-		if backend.swapWith != "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(router.ErrBackendSwapped.Error()))
-			return
-		}
-		delete(f.backends, name)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	if backend.swapWith != "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(router.ErrBackendSwapped.Error()))
+		return
+	}
+	delete(f.backends, name)
 }
 
 func (f *fakeRouterAPI) getRoutes(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if backend, ok := f.backends[name]; ok {
-		resp := &routesReq{}
-		resp.Addresses = backend.addresses
-		json.NewEncoder(w).Encode(resp)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	resp := &routesReq{}
+	resp.Addresses = backend.addresses
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (f *fakeRouterAPI) addRoutes(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if backend, ok := f.backends[name]; ok {
-		req := &routesReq{}
-		err := json.NewDecoder(r.Body).Decode(req)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		backend.addresses = append(backend.addresses, req.Addresses...)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	req := &routesReq{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	backend.addresses = append(backend.addresses, req.Addresses...)
 }
 
 func (f *fakeRouterAPI) removeRoutes(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if backend, ok := f.backends[name]; ok {
-		req := &routesReq{}
-		err := json.NewDecoder(r.Body).Decode(req)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		addrMap := make(map[string]struct{})
-		for _, b := range backend.addresses {
-			addrMap[b] = struct{}{}
-		}
-		for _, b := range req.Addresses {
-			delete(addrMap, b)
-		}
-		backend.addresses = nil
-		for b := range addrMap {
-			backend.addresses = append(backend.addresses, b)
-		}
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	req := &routesReq{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	addrMap := make(map[string]struct{})
+	for _, b := range backend.addresses {
+		addrMap[b] = struct{}{}
+	}
+	for _, b := range req.Addresses {
+		delete(addrMap, b)
+	}
+	backend.addresses = nil
+	for b := range addrMap {
+		backend.addresses = append(backend.addresses, b)
+	}
 }
 
 func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
@@ -471,84 +477,87 @@ func (f *fakeRouterAPI) swap(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 	target := r.FormValue("target")
 	cnameOnly := r.FormValue("cnameOnly")
-	if backend, ok := f.backends[name]; ok {
-		backend.swapWith = target
-		backend.cnameOnly, _ = strconv.ParseBool(cnameOnly)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	backend.swapWith = target
+	backend.cnameOnly, _ = strconv.ParseBool(cnameOnly)
 }
 
 func (f *fakeRouterAPI) setCname(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
 	cname := vars["cname"]
-	if backend, ok := f.backends[name]; ok {
-		var hasCname bool
-		for _, c := range backend.cnames {
-			if c == cname {
-				hasCname = true
-				break
-			}
-		}
-		if hasCname {
-			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(router.ErrCNameExists.Error()))
-			return
-		}
-		backend.cnames = append(backend.cnames, cname)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	var hasCname bool
+	for _, c := range backend.cnames {
+		if c == cname {
+			hasCname = true
+			break
+		}
+	}
+	if hasCname {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(router.ErrCNameExists.Error()))
+		return
+	}
+	backend.cnames = append(backend.cnames, cname)
 }
 
 func (f *fakeRouterAPI) unsetCname(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
 	cname := vars["cname"]
-	if backend, ok := f.backends[name]; ok {
-		var newCnames []string
-		var found bool
-		for _, c := range backend.cnames {
-			if c == cname {
-				found = true
-				continue
-			}
-			newCnames = append(newCnames, c)
-		}
-		if !found {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(router.ErrCNameNotFound.Error()))
-			return
-		}
-		backend.cnames = newCnames
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	var newCnames []string
+	var found bool
+	for _, c := range backend.cnames {
+		if c == cname {
+			found = true
+			continue
+		}
+		newCnames = append(newCnames, c)
+	}
+	if !found {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(router.ErrCNameNotFound.Error()))
+		return
+	}
+	backend.cnames = newCnames
 }
 
 func (f *fakeRouterAPI) getCnames(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if backend, ok := f.backends[name]; ok {
-		resp := cnamesResp{Cnames: backend.cnames}
-		json.NewEncoder(w).Encode(&resp)
+	backend, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	resp := cnamesResp{Cnames: backend.cnames}
+	json.NewEncoder(w).Encode(&resp)
 }
 
 func (f *fakeRouterAPI) getCertificate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cname := vars["cname"]
-	if cert, ok := f.certificates[cname]; ok {
-		json.NewEncoder(w).Encode(&cert.Certificate)
+	cert, ok := f.certificates[cname]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(router.ErrCertificateNotFound.Error()))
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte(router.ErrCertificateNotFound.Error()))
-	return
-
+	json.NewEncoder(w).Encode(&cert.Certificate)
 }
 
 func (f *fakeRouterAPI) addCertificate(w http.ResponseWriter, r *http.Request) {
@@ -574,13 +583,14 @@ func (f *fakeRouterAPI) removeCertificate(w http.ResponseWriter, r *http.Request
 func (f *fakeRouterAPI) setHealthcheck(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	if b, ok := f.backends[name]; ok {
-		hc := router.HealthcheckData{}
-		json.NewDecoder(r.Body).Decode(&hc)
-		b.healthcheck = hc
+	b, ok := f.backends[name]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+	hc := router.HealthcheckData{}
+	json.NewDecoder(r.Body).Decode(&hc)
+	b.healthcheck = hc
 }
 
 func (f *fakeRouterAPI) stop() {
