@@ -1455,6 +1455,32 @@ func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
 	c.Assert(gotApp.Router, check.DeepEquals, "fake-tls")
 }
 
+func (s *S) TestUpdateAppRouterOpts(c *check.C) {
+	config.Set("routers:fake-opts:type", "fake-opts")
+	a := app.App{
+		Name:       "myappx",
+		Platform:   "zend",
+		TeamOwner:  s.team.Name,
+		Router:     "fake-opts",
+		RouterOpts: map[string]string{"opt1": "val1"},
+	}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader("routeropts.opt1=val2")
+	request, err := http.NewRequest("PUT", "/apps/myappx", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.RouterOpts, check.DeepEquals, map[string]string{"opt1": "val2"})
+}
+
 func (s *S) TestUpdateAppImageReset(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)

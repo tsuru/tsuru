@@ -7,6 +7,7 @@ package app
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"regexp"
 
 	"github.com/pkg/errors"
@@ -393,9 +394,11 @@ var provisionAddUnits = action.Action{
 
 type updateAppPipelineResult struct {
 	changedRouter bool
+	changedOpts   bool
 	oldPlan       *Plan
 	oldIp         string
 	oldRouter     string
+	oldRouterOpts map[string]string
 	app           *App
 }
 
@@ -415,7 +418,12 @@ var moveRouterUnits = action.Action{
 			return nil, errors.New("third parameter must be a string")
 		}
 		newRouter := app.Router
-		result := updateAppPipelineResult{oldPlan: oldPlan, oldRouter: oldRouter, app: app, oldIp: app.IP}
+		result := updateAppPipelineResult{
+			oldPlan:   oldPlan,
+			oldRouter: oldRouter,
+			app:       app,
+			oldIp:     app.IP,
+		}
 		if newRouter != oldRouter {
 			_, err := rebuild.RebuildRoutes(app)
 			if err != nil {
@@ -454,6 +462,65 @@ var moveRouterUnits = action.Action{
 	},
 }
 
+var updateRouterOpts = action.Action{
+	Name: "update-app-update-router-opts",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		result, ok := ctx.Previous.(*updateAppPipelineResult)
+		if !ok {
+			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+		}
+		oldRouterOpts, ok := ctx.Params[3].(map[string]string)
+		if !ok {
+			return nil, errors.New("forth parameter must be a map[string]string")
+		}
+		if result.changedRouter {
+			return result, nil
+		}
+		app := result.app
+		if !reflect.DeepEqual(app.RouterOpts, oldRouterOpts) {
+			r, err := app.GetRouter()
+			if err != nil {
+				return nil, err
+			}
+			if optsRouter, ok := r.(router.OptsRouter); ok {
+				err := optsRouter.UpdateBackendOpts(app.Name, app.RouterOpts)
+				if err != nil {
+					return nil, err
+				}
+				result.changedOpts = true
+			} else {
+				log.Errorf("FORWARD move router units - router %q does not support opts", app.Router)
+				return nil, errors.Errorf("router %q does not support opts", app.Router)
+			}
+		}
+		return result, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		result := ctx.FWResult.(*updateAppPipelineResult)
+		defer func() {
+			result.app.RouterOpts = result.oldRouterOpts
+		}()
+		if result.changedRouter {
+			return
+		}
+		app := result.app
+		if result.changedOpts {
+			r, err := app.GetRouter()
+			if err != nil {
+				log.Errorf("BACKWARD move router units - failed to retrieve router: %s", err)
+				return
+			}
+			if optsRouter, ok := r.(router.OptsRouter); ok {
+				err := optsRouter.UpdateBackendOpts(app.Name, result.oldRouterOpts)
+				if err != nil {
+					log.Errorf("BACKWARD move router units - update backend opts: %s", err)
+					return
+				}
+			}
+		}
+	},
+}
+
 var saveApp = action.Action{
 	Name: "update-app-save-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -466,7 +533,7 @@ var saveApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		update := bson.M{"$set": bson.M{"plan": result.app.Plan, "routername": result.app.Router}}
+		update := bson.M{"$set": bson.M{"plan": result.app.Plan, "routername": result.app.Router, "routeropts": result.app.RouterOpts}}
 		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
 		if err != nil {
 			return nil, err
@@ -481,7 +548,7 @@ var saveApp = action.Action{
 			return
 		}
 		defer conn.Close()
-		update := bson.M{"$set": bson.M{"plan": *result.oldPlan, "routername": result.oldRouter}}
+		update := bson.M{"$set": bson.M{"plan": *result.oldPlan, "routername": result.oldRouter, "routeropts": result.oldRouterOpts}}
 		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
 		if err != nil {
 			log.Errorf("BACKWARD save app - failed to update app: %s", err)
@@ -492,7 +559,7 @@ var saveApp = action.Action{
 var restartApp = action.Action{
 	Name: "update-app-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		w, ok := ctx.Params[3].(io.Writer)
+		w, ok := ctx.Params[4].(io.Writer)
 		if !ok {
 			return nil, errors.New("forth parameter must be an io.Writer")
 		}

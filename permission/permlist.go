@@ -33,6 +33,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.cname.remove",
 	"app.update.plan",
 	"app.update.router",
+	"app.update.router-opts",
 	"app.update.bind",
 	"app.update.image-reset",
 	"app.update.events",

@@ -401,6 +401,10 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 		}
 		app.Router = routerName
 	}
+	oldRouterOpts := app.RouterOpts
+	if len(updateData.RouterOpts) > 0 {
+		app.RouterOpts = updateData.RouterOpts
+	}
 	if planName != "" {
 		plan, errFind := findPlanByName(planName)
 		if errFind != nil {
@@ -427,14 +431,15 @@ func (app *App) Update(updateData App, w io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	if app.Router != oldRouter || app.Plan != oldPlan {
+	if app.Router != oldRouter || app.Plan != oldPlan || len(updateData.RouterOpts) > 0 {
 		actions := []*action.Action{
 			&moveRouterUnits,
+			&updateRouterOpts,
 			&saveApp,
 			&restartApp,
 			&removeOldBackend,
 		}
-		err = action.NewPipeline(actions...).Execute(app, &oldPlan, oldRouter, w)
+		err = action.NewPipeline(actions...).Execute(app, &oldPlan, oldRouter, oldRouterOpts, w)
 		if err != nil {
 			return err
 		}

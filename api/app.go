@@ -401,6 +401,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Router:         ia.Router,
 		Tags:           r.Form["tag"],
 		UpdatePlatform: imageReset,
+		RouterOpts:     ia.RouterOpts,
 	}
 	appName := r.URL.Query().Get(":appname")
 	a, err := getAppFromContext(appName, r)
@@ -428,6 +429,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if updateData.UpdatePlatform {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
+	}
+	if len(updateData.RouterOpts) > 0 {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateRouterOpts)
 	}
 	if len(wantedPerms) == 0 {
 		msg := "Neither the description, plan, pool, router or team owner were set. You must define at least one."
