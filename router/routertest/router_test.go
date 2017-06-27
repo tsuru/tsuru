@@ -301,12 +301,12 @@ func (s *S) TestAddBackendOpts(c *check.C) {
 	r := OptsRouter
 	err := r.AddBackendOpts("myapp", map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
-	c.Assert(r.Opts, check.DeepEquals, map[string]string{"opt1": "val1"})
+	c.Assert(r.Opts["myapp"], check.DeepEquals, map[string]string{"opt1": "val1"})
 }
 
 func (s *S) TestUpdateBackendOpts(c *check.C) {
 	r := OptsRouter
 	err := r.UpdateBackendOpts("myapp", map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
-	c.Assert(r.Opts, check.DeepEquals, map[string]string{"opt1": "val1"})
+	c.Assert(r.Opts["myapp"], check.DeepEquals, map[string]string{"opt1": "val1"})
 }
