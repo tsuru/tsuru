@@ -334,7 +334,7 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 		Event:  evt,
 	})
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "can't deploy app without platform, if it's not an image")
+	c.Assert(err.Error(), check.Equals, "can't deploy app without platform, if it's not an image or rollback")
 }
 
 func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {

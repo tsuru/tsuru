@@ -208,9 +208,6 @@ func (o *DeployOptions) GetKind() (kind DeployKind) {
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
 func Deploy(opts DeployOptions) (string, error) {
-	if (opts.App.GetPlatform() == "") && (opts.Kind != DeployImage) {
-		return "", errors.Errorf("can't deploy app without platform, if it's not an image")
-	}
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in deploy opts")
 	}
@@ -255,6 +252,9 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 	}
 	if opts.Kind == "" {
 		opts.GetKind()
+	}
+	if ((opts.App.GetPlatform() == "") && (opts.Kind != DeployImage)) || ((opts.App.GetPlatform() == "") && (opts.Kind != DeployRollback)) {
+		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
 	}
 	switch opts.Kind {
 	case DeployRollback:
