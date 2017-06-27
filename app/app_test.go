@@ -4070,7 +4070,7 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
 
-func (s *S) TestUpdatePlatform(c *check.C) {
+func (s *S) TestUpdatePlatformLanguage(c *check.C) {
 	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
@@ -4080,6 +4080,7 @@ func (s *S) TestUpdatePlatform(c *check.C) {
 	dbApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Platform, check.Equals, updateData.Platform)
+	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
 }
 
 func (s *S) TestUpdateTeamOwner(c *check.C) {
