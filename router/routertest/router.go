@@ -18,6 +18,11 @@ var FakeRouter = newFakeRouter()
 
 var HCRouter = hcRouter{fakeRouter: newFakeRouter()}
 
+var OptsRouter = optsRouter{
+	fakeRouter: newFakeRouter(),
+	Opts:       make(map[string]map[string]string),
+}
+
 var TLSRouter = tlsRouter{
 	fakeRouter: newFakeRouter(),
 	Certs:      make(map[string]string),
@@ -30,6 +35,7 @@ func init() {
 	router.Register("fake", createRouter)
 	router.Register("fake-hc", createHCRouter)
 	router.Register("fake-tls", createTLSRouter)
+	router.Register("fake-opts", createOptsRouter)
 }
 
 func createRouter(name, prefix string) (router.Router, error) {
@@ -42,6 +48,10 @@ func createHCRouter(name, prefix string) (router.Router, error) {
 
 func createTLSRouter(name, prefix string) (router.Router, error) {
 	return &TLSRouter, nil
+}
+
+func createOptsRouter(name, prefix string) (router.Router, error) {
+	return &OptsRouter, nil
 }
 
 func newFakeRouter() fakeRouter {
@@ -369,4 +379,19 @@ func (r *tlsRouter) GetCertificate(cname string) (string, error) {
 		return "", router.ErrCertificateNotFound
 	}
 	return data, nil
+}
+
+type optsRouter struct {
+	fakeRouter
+	Opts map[string]map[string]string
+}
+
+func (r *optsRouter) AddBackendOpts(name string, opts map[string]string) error {
+	r.Opts[name] = opts
+	return r.fakeRouter.AddBackend(name)
+}
+
+func (r *optsRouter) UpdateBackendOpts(name string, opts map[string]string) error {
+	r.Opts[name] = opts
+	return nil
 }
