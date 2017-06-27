@@ -177,7 +177,7 @@ func installerTest() ExecFlow {
 		env.Set("targetaddr", fmt.Sprintf("http://%s:%s", targetHost, targetPort))
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
-		certsDir := fmt.Sprintf("%s/.tsuru/installs/tsuru/certs", os.Getenv("HOME"))
+		certsDir := fmt.Sprintf("%s/.tsuru/installs/%s/certs", os.Getenv("HOME"), installerName(env))
 		for _, parts = range allParts {
 			c.Assert(parts, check.HasLen, 2)
 			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
@@ -443,6 +443,14 @@ func exampleApps() ExecFlow {
 		c.Check(res, ResultOk)
 	}
 	return flow
+}
+
+func installerName(env *Environment) string {
+	name := env.Get("installername")
+	if name == "" {
+		name = "tsuru"
+	}
+	return name
 }
 
 func (s *S) TestBase(c *check.C) {
