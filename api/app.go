@@ -387,13 +387,18 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	var ia inputApp
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	dec.DecodeValues(&ia, r.Form)
 	imageReset, _ := strconv.ParseBool(r.FormValue("imageReset"))
 	updateData := app.App{
-		TeamOwner:      r.FormValue("teamOwner"),
-		Plan:           app.Plan{Name: r.FormValue("plan")},
-		Pool:           r.FormValue("pool"),
-		Description:    r.FormValue("description"),
-		Router:         r.FormValue("router"),
+		TeamOwner:      ia.TeamOwner,
+		Plan:           app.Plan{Name: ia.Plan},
+		Pool:           ia.Pool,
+		Description:    ia.Description,
+		Router:         ia.Router,
 		Tags:           r.Form["tag"],
 		UpdatePlatform: imageReset,
 	}
