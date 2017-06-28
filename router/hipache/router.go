@@ -197,6 +197,10 @@ addresses:
 		}
 		toAdd = append(toAdd, addr.String())
 	}
+	if len(toAdd) == 0 {
+		log.Debugf("[add-routes] no new routes to add for %q", name)
+		return nil
+	}
 	frontend := "frontend:" + backendName + "." + domain
 	if err = r.addRoutes(frontend, toAdd); err != nil {
 		return err
@@ -214,19 +218,6 @@ addresses:
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (r *hipacheRouter) addRoute(name, address string) error {
-	conn, err := r.connect()
-	if err != nil {
-		return &router.RouterError{Op: "add", Err: err}
-	}
-	err = conn.RPush(name, address).Err()
-	if err != nil {
-		log.Errorf("error on store in redis in add route for %s - %s", name, address)
-		return &router.RouterError{Op: "add", Err: err}
 	}
 	return nil
 }

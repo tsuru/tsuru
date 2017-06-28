@@ -245,17 +245,6 @@ func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *c
 	c.Assert(int64(0), check.Equals, cnames)
 }
 
-func (s *S) TestAddRouteWithoutAssemblingFrontend(c *check.C) {
-	router := hipacheRouter{prefix: "hipache"}
-	err := router.addRoute("test.com", "10.10.10.10")
-	c.Assert(err, check.IsNil)
-	conn, err := router.connect()
-	c.Assert(err, check.IsNil)
-	routes, err := conn.LRange("test.com", 0, -1).Result()
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []string{"10.10.10.10"})
-}
-
 func (s *S) TestAddRoutes(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("tip")
@@ -268,6 +257,27 @@ func (s *S) TestAddRoutes(c *check.C) {
 	conn, err := router.connect()
 	c.Assert(err, check.IsNil)
 	routes, err := conn.LRange("frontend:tip.golang.org", 0, -1).Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []string{"tip", "http://10.10.10.10:8080"})
+}
+
+func (s *S) TestAddRoutesNoNewRoute(c *check.C) {
+	router := hipacheRouter{prefix: "hipache"}
+	err := router.AddBackend("tip")
+	c.Assert(err, check.IsNil)
+	defer router.RemoveBackend("tip")
+	addr, _ := url.Parse("http://10.10.10.10:8080")
+	err = router.AddRoutes("tip", []*url.URL{addr})
+	c.Assert(err, check.IsNil)
+	defer router.RemoveRoutes("tip", []*url.URL{addr})
+	conn, err := router.connect()
+	c.Assert(err, check.IsNil)
+	routes, err := conn.LRange("frontend:tip.golang.org", 0, -1).Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []string{"tip", "http://10.10.10.10:8080"})
+	err = router.AddRoutes("tip", []*url.URL{addr})
+	c.Assert(err, check.IsNil)
+	routes, err = conn.LRange("frontend:tip.golang.org", 0, -1).Result()
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []string{"tip", "http://10.10.10.10:8080"})
 }
