@@ -475,12 +475,13 @@ func runPod(args runSinglePodArgs) error {
 		return errors.WithStack(err)
 	}
 	defer cleanupPod(args.client, pod.Name)
+	kubeConf := getKubeConfig()
 	multiErr := tsuruErrors.NewMultiError()
-	err = waitForPod(args.client, pod.Name, true, defaultPullRunPodReadyTimeout)
+	err = waitForPod(args.client, pod.Name, true, kubeConf.PodRunningTimeout)
 	if err != nil {
 		multiErr.Add(err)
 	}
-	err = args.client.SetTimeout(defaultPullRunPodReadyTimeout)
+	err = args.client.SetTimeout(kubeConf.PodRunningTimeout)
 	if err != nil {
 		multiErr.Add(errors.WithStack(err))
 		return multiErr

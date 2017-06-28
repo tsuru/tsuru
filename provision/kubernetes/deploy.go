@@ -35,25 +35,7 @@ import (
 
 const (
 	dockerSockPath = "/var/run/docker.sock"
-
-	defaultDockerImageName = "docker:1.11.2"
 )
-
-func getDeploySidecarImage() string {
-	img, _ := config.GetString("kubernetes:deploy-sidecar-image")
-	if img != "" {
-		return img
-	}
-	return defaultDockerImageName
-}
-
-func getImageDeployInspectImage() string {
-	img, _ := config.GetString("kubernetes:deploy-inspect-image")
-	if img != "" {
-		return img
-	}
-	return defaultDockerImageName
-}
 
 func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName, container string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
@@ -125,6 +107,7 @@ func createBuildPod(params buildPodParams) error {
 	}).ToNodeByPoolSelector()
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
+	kubeConf := getKubeConfig()
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
@@ -159,7 +142,7 @@ func createBuildPod(params buildPodParams) error {
 				},
 				{
 					Name:  commitContainer,
-					Image: getDeploySidecarImage(),
+					Image: kubeConf.DeploySidecarImage,
 					VolumeMounts: []v1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
 					},
@@ -188,7 +171,7 @@ func createBuildPod(params buildPodParams) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = waitForPodContainersRunning(params.client, pod.Name, defaultPullRunPodReadyTimeout)
+	err = waitForPodContainersRunning(params.client, pod.Name, kubeConf.PodRunningTimeout)
 	if err != nil {
 		return err
 	}
@@ -208,7 +191,7 @@ func createBuildPod(params buildPodParams) error {
 		}
 		fmt.Fprintln(params.attachOutput, " ---> Cleaning up")
 	}
-	return waitForPod(params.client, pod.Name, false, defaultRunPodReadyTimeout)
+	return waitForPod(params.client, pod.Name, false, kubeConf.PodReadyTimeout)
 }
 
 func extraRegisterCmds(a provision.App) string {
@@ -397,7 +380,8 @@ func createDeployTimeoutError(client *clusterClient, a provision.App, processNam
 
 func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
-	timeout := time.After(defaultDeploymentProgressTimeout)
+	kubeConf := getKubeConfig()
+	timeout := time.After(kubeConf.DeploymentProgressTimeout)
 	var err error
 	for dep.Status.ObservedGeneration < dep.Generation {
 		dep, err = client.Extensions().Deployments(client.Namespace()).Get(dep.Name, metav1.GetOptions{})
@@ -577,6 +561,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 	if err != nil {
 		return nil, err
 	}
+	kubeConf := getKubeConfig()
 	buf := &bytes.Buffer{}
 	err = runPod(runSinglePodArgs{
 		client: client,
@@ -589,7 +574,7 @@ func imageTagAndPush(client *clusterClient, a provision.App, oldImage, newImage 
 			docker push %[2]s
 `, oldImage, newImage)},
 		name:       deployPodName,
-		image:      getImageDeployInspectImage(),
+		image:      kubeConf.DeployInspectImage,
 		dockerSock: true,
 		pool:       a.GetPool(),
 	})

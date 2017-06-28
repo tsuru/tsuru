@@ -104,7 +104,7 @@ func (s *S) TestClusterInitClient(c *check.C) {
 			CertData: testCert,
 			KeyData:  testKey,
 		},
-		Timeout: defaultTimeout,
+		Timeout: time.Minute,
 	}
 	expected.ContentConfig = cli.restConfig.ContentConfig
 	c.Assert(cli.restConfig, check.DeepEquals, expected)

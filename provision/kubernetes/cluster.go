@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	defaultTimeout      = time.Minute
 	namespaceClusterKey = "namespace"
 	tokenClusterKey     = "token"
 	userClusterKey      = "username"
@@ -29,6 +28,8 @@ const (
 var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
 }
+
+var defaultClientForConfig = clientForConfig
 
 type clusterClient struct {
 	kubernetes.Interface `json:"-" bson:"-"`
@@ -51,6 +52,7 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 		user = c.CustomData[userClusterKey]
 		password = c.CustomData[passwordClusterKey]
 	}
+	kubeConf := getKubeConfig()
 	return &rest.Config{
 		APIPath: "/api",
 		ContentConfig: rest.ContentConfig{
@@ -63,7 +65,7 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 			CertData: c.ClientCert,
 			KeyData:  c.ClientKey,
 		},
-		Timeout:     defaultTimeout,
+		Timeout:     kubeConf.APITimeout,
 		BearerToken: token,
 		Username:    user,
 		Password:    password,
