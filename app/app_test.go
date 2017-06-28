@@ -2550,6 +2550,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Plan:        Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner:   "myteam",
 		Router:      "fake",
+		RouterOpts:  map[string]string{"opt1": "val1"},
 		Tags:        []string{"tag a", "tag b"},
 	}
 	expected := map[string]interface{}{
@@ -2573,8 +2574,9 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"cpushare": float64(100),
 			"router":   "fake",
 		},
-		"router": "fake",
-		"tags":   []interface{}{"tag a", "tag b"},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{"opt1": "val1"},
+		"tags":       []interface{}{"tag a", "tag b"},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2598,6 +2600,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		Plan:        Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner:   "myteam",
 		Router:      "fake",
+		RouterOpts:  map[string]string{},
 		Tags:        []string{},
 	}
 	expected := map[string]interface{}{
@@ -2621,8 +2624,9 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 			"cpushare": float64(100),
 			"router":   "fake",
 		},
-		"router": "fake",
-		"tags":   []interface{}{},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{},
+		"tags":       []interface{}{},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2659,8 +2663,9 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"cpushare": float64(0),
 			"router":   "",
 		},
-		"router": "",
-		"tags":   nil,
+		"router":     "",
+		"routeropts": nil,
+		"tags":       nil,
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
