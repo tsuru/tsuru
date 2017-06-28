@@ -9,10 +9,13 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"sort"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
@@ -51,6 +54,26 @@ func (s *S) TestListNodesFilteringByAddress(c *check.C) {
 	nodes, err := s.p.ListNodes([]string{"192.168.99.1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
+}
+
+func (s *S) TestListNodesTimeoutShort(c *check.C) {
+	wantedTimeout := 0.1
+	config.Set("kubernetes:api-short-timeout", wantedTimeout)
+	defer config.Unset("kubernetes")
+	block := make(chan bool)
+	blackhole := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-block
+	}))
+	defer func() { close(block); blackhole.Close() }()
+	clientForConfig = defaultClientForConfig
+	s.mockfakeNodes(c, blackhole.URL)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	t0 := time.Now()
+	_, err = s.p.ListNodes([]string{})
+	c.Assert(err, check.ErrorMatches, `(?i).*timeout.*`)
+	c.Assert(time.Since(t0) < time.Duration(wantedTimeout*float64(3*time.Second)), check.Equals, true)
 }
 
 func (s *S) TestRemoveNode(c *check.C) {
@@ -237,6 +260,26 @@ func (s *S) TestUnitsEmpty(c *check.C) {
 	units, err := s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
+}
+
+func (s *S) TestUnitsTimeoutShort(c *check.C) {
+	wantedTimeout := 0.1
+	config.Set("kubernetes:api-short-timeout", wantedTimeout)
+	defer config.Unset("kubernetes")
+	block := make(chan bool)
+	blackhole := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-block
+	}))
+	defer func() { close(block); blackhole.Close() }()
+	clientForConfig = defaultClientForConfig
+	s.mockfakeNodes(c, blackhole.URL)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	t0 := time.Now()
+	_, err = s.p.Units(a)
+	c.Assert(err, check.ErrorMatches, `(?i).*timeout.*`)
+	c.Assert(time.Since(t0) < time.Duration(wantedTimeout*float64(3*time.Second)), check.Equals, true)
 }
 
 func (s *S) TestGetNode(c *check.C) {
@@ -895,4 +938,39 @@ func (s *S) TestSleepStart(c *check.C) {
 	units, err = s.p.Units(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestGetKubeConfig(c *check.C) {
+	config.Set("kubernetes:deploy-sidecar-image", "img1")
+	config.Set("kubernetes:deploy-inspect-image", "img2")
+	config.Set("kubernetes:api-timeout", 10)
+	config.Set("kubernetes:api-short-timeout", 0.5)
+	config.Set("kubernetes:pod-ready-timeout", 6)
+	config.Set("kubernetes:pod-running-timeout", 2*60)
+	config.Set("kubernetes:deployment-progress-timeout", 3*60)
+	defer config.Unset("kubernetes")
+	kubeConf := getKubeConfig()
+	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
+		DeploySidecarImage:        "img1",
+		DeployInspectImage:        "img2",
+		APITimeout:                10 * time.Second,
+		APIShortTimeout:           500 * time.Millisecond,
+		PodReadyTimeout:           6 * time.Second,
+		PodRunningTimeout:         2 * time.Minute,
+		DeploymentProgressTimeout: 3 * time.Minute,
+	})
+}
+
+func (s *S) TestGetKubeConfigDefaults(c *check.C) {
+	config.Unset("kubernetes")
+	kubeConf := getKubeConfig()
+	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
+		DeploySidecarImage:        "docker:1.11.2",
+		DeployInspectImage:        "docker:1.11.2",
+		APITimeout:                60 * time.Second,
+		APIShortTimeout:           5 * time.Second,
+		PodReadyTimeout:           time.Minute,
+		PodRunningTimeout:         10 * time.Minute,
+		DeploymentProgressTimeout: 10 * time.Minute,
+	})
 }

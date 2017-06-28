@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -33,9 +33,12 @@ import (
 
 const (
 	provisionerName                  = "kubernetes"
-	defaultRunPodReadyTimeout        = time.Minute
-	defaultPullRunPodReadyTimeout    = 10 * time.Minute
+	defaultKubeAPITimeout            = time.Minute
+	defaultShortKubeAPITimeout       = 5 * time.Second
+	defaultPodReadyTimeout           = time.Minute
+	defaultPodRunningTimeout         = 10 * time.Minute
 	defaultDeploymentProgressTimeout = 10 * time.Minute
+	defaultDockerImageName           = "docker:1.11.2"
 )
 
 type kubernetesProvisioner struct{}
@@ -65,6 +68,65 @@ func init() {
 	provision.Register(provisionerName, func() (provision.Provisioner, error) {
 		return &kubernetesProvisioner{}, nil
 	})
+}
+
+type kubernetesConfig struct {
+	DeploySidecarImage string
+	DeployInspectImage string
+	APITimeout         time.Duration
+	APIShortTimeout    time.Duration
+	// PodReadyTimeout is the timeout for a pod to become ready after already
+	// running.
+	PodReadyTimeout time.Duration
+	// PodRunningTimeout is the timeout for a pod to become running, should
+	// include time necessary to pull remote image.
+	PodRunningTimeout time.Duration
+	// DeploymentProgressTimeout is the timeout for a deployment to
+	// successfully complete.
+	DeploymentProgressTimeout time.Duration
+}
+
+func getKubeConfig() kubernetesConfig {
+	conf := kubernetesConfig{}
+	conf.DeploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
+	if conf.DeploySidecarImage == "" {
+		conf.DeploySidecarImage = defaultDockerImageName
+	}
+	conf.DeployInspectImage, _ = config.GetString("kubernetes:deploy-inspect-image")
+	if conf.DeployInspectImage == "" {
+		conf.DeployInspectImage = defaultDockerImageName
+	}
+	apiTimeout, _ := config.GetFloat("kubernetes:api-timeout")
+	if apiTimeout != 0 {
+		conf.APITimeout = time.Duration(apiTimeout * float64(time.Second))
+	} else {
+		conf.APITimeout = defaultKubeAPITimeout
+	}
+	apiShortTimeout, _ := config.GetFloat("kubernetes:api-short-timeout")
+	if apiShortTimeout != 0 {
+		conf.APIShortTimeout = time.Duration(apiShortTimeout * float64(time.Second))
+	} else {
+		conf.APIShortTimeout = defaultShortKubeAPITimeout
+	}
+	podReadyTimeout, _ := config.GetFloat("kubernetes:pod-ready-timeout")
+	if podReadyTimeout != 0 {
+		conf.PodReadyTimeout = time.Duration(podReadyTimeout * float64(time.Second))
+	} else {
+		conf.PodReadyTimeout = defaultPodReadyTimeout
+	}
+	podRunningTimeout, _ := config.GetFloat("kubernetes:pod-running-timeout")
+	if podRunningTimeout != 0 {
+		conf.PodRunningTimeout = time.Duration(podRunningTimeout * float64(time.Second))
+	} else {
+		conf.PodRunningTimeout = defaultPodRunningTimeout
+	}
+	deploymentTimeout, _ := config.GetFloat("kubernetes:deployment-progress-timeout")
+	if deploymentTimeout != 0 {
+		conf.DeploymentProgressTimeout = time.Duration(deploymentTimeout * float64(time.Second))
+	} else {
+		conf.DeploymentProgressTimeout = defaultDeploymentProgressTimeout
+	}
+	return conf
 }
 
 func (p *kubernetesProvisioner) GetName() string {
@@ -238,6 +300,11 @@ func (p *kubernetesProvisioner) Units(a provision.App) ([]provision.Unit, error)
 	if err != nil {
 		return nil, err
 	}
+	kubeConf := getKubeConfig()
+	err = client.SetTimeout(kubeConf.APIShortTimeout)
+	if err != nil {
+		return nil, err
+	}
 	l, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -331,7 +398,12 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 
 func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
 	var nodes []provision.Node
+	kubeConf := getKubeConfig()
 	err := forEachCluster(func(c *clusterClient) error {
+		err := c.SetTimeout(kubeConf.APIShortTimeout)
+		if err != nil {
+			return err
+		}
 		clusterNodes, err := p.listNodesForCluster(c, addressFilter)
 		if err != nil {
 			return err
@@ -343,10 +415,6 @@ func (p *kubernetesProvisioner) ListNodes(addressFilter []string) ([]provision.N
 		return nil, nil
 	}
 	if err != nil {
-		// TODO(cezarsa): It would be better to return an error to be handled
-		// by the api. Failing to list nodes from one provisioner should not
-		// prevent other nodes from showing up.
-		log.Errorf("unable to list all node from kubernetes cluster: %v", err)
 		return nil, err
 	}
 	return nodes, nil
