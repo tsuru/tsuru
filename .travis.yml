@@ -35,7 +35,7 @@ before_install:
 script:
   - make test
   - while true; do echo .; sleep 30; done &
-  - if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
+  # - if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
   - ./misc/check-handlers.sh
   - ./misc/check-events.sh
   - make check-api-doc
