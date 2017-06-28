@@ -29,8 +29,6 @@ var clientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(conf)
 }
 
-var defaultClientForConfig = clientForConfig
-
 type clusterClient struct {
 	kubernetes.Interface `json:"-" bson:"-"`
 	*cluster.Cluster

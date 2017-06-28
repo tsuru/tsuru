@@ -67,6 +67,7 @@ type streamResult struct {
 
 var suiteInstance = &S{}
 var _ = check.Suite(suiteInstance)
+var defaultClientForConfig = clientForConfig
 
 func Test(t *testing.T) {
 	suiteInstance.t = t
