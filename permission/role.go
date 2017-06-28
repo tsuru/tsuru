@@ -346,10 +346,7 @@ func (r *Role) Update() error {
 	}
 	defer coll.Close()
 	err = coll.Update(bson.M{"_id": r.Name}, bson.M{"$set": bson.M{"contexttype": r.ContextType, "description": r.Description}})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (r *Role) Add() error {

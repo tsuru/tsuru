@@ -325,11 +325,7 @@ func UpdateRoleFromAllUsers(roleName, newRoleName, ctx, desc string) error {
 	if err != nil {
 		return err
 	}
-	err = RemoveRoleFromAllUsers(roleName)
-	if err != nil {
-		return err
-	}
-	return nil
+	return RemoveRoleFromAllUsers(roleName)
 }
 
 func RemoveRoleFromAllUsers(roleName string) error {
