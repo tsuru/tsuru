@@ -17,27 +17,11 @@ import (
 )
 
 var (
-	T            = NewCommand("tsuru").WithArgs
-	allPlatforms = []string{
-		"tsuru/python",
-		"tsuru/go",
-		"tsuru/buildpack",
-		"tsuru/cordova",
-		"tsuru/elixir",
-		"tsuru/java",
-		"tsuru/nodejs",
-		"tsuru/php",
-		"tsuru/play",
-		"tsuru/pypy",
-		"tsuru/python3",
-		"tsuru/ruby",
-		"tsuru/static",
-	}
-	allProvisioners = []string{
-		"docker",
-		"swarm",
-	}
-	flows = []ExecFlow{
+	T               = NewCommand("tsuru").WithArgs
+	allPlatforms    = []string{}
+	allProvisioners = []string{}
+	clusterManagers = []ClusterManager{}
+	flows           = []ExecFlow{
 		platformsToInstall(),
 		installerConfigTest(),
 		installerComposeTest(),
@@ -67,7 +51,59 @@ components:
   install-dashboard: false
 `, len(allProvisioners))
 
-var clusterManagers = []ClusterManager{}
+func (s *S) getPlatforms() []string {
+	availablePlatforms := []string{
+		"python",
+		"go",
+		"buildpack",
+		"cordova",
+		"elixir",
+		"java",
+		"nodejs",
+		"php",
+		"play",
+		"pypy",
+		"python3",
+		"ruby",
+		"static",
+	}
+	platforms := s.env.All("platforms")
+	selectedPlatforms := make([]string, 0, len(availablePlatforms))
+	for _, platform := range platforms {
+		platform = strings.Trim(platform, " ")
+		for i, item := range availablePlatforms {
+			if item == platform {
+				selectedPlatforms = append(selectedPlatforms, "tsuru/"+platform)
+				availablePlatforms = append(availablePlatforms[:i], availablePlatforms[i+1:]...)
+				break
+			}
+		}
+	}
+	if len(selectedPlatforms) == 0 {
+		return availablePlatforms
+	}
+	return selectedPlatforms
+}
+
+func (s *S) getProvisioners() []string {
+	availableProvisioners := []string{"docker", "swarm"}
+	provisioners := s.env.All("provisioners")
+	selectedProvisioners := make([]string, 0, len(availableProvisioners))
+	for _, provisioner := range provisioners {
+		provisioner = strings.Trim(provisioner, " ")
+		for i, item := range availableProvisioners {
+			if item == provisioner {
+				selectedProvisioners = append(selectedProvisioners, provisioner)
+				availableProvisioners = append(availableProvisioners[:i], availableProvisioners[i+1:]...)
+				break
+			}
+		}
+	}
+	if len(selectedProvisioners) == 0 {
+		return availableProvisioners
+	}
+	return selectedProvisioners
+}
 
 func (s *S) getClusterManagers() []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
@@ -75,7 +111,7 @@ func (s *S) getClusterManagers() []ClusterManager {
 		"minikube": &MinikubeClusterManager{env: s.env},
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
-	clusters := strings.Split(s.env.Get("clusters"), ",")
+	clusters := s.env.All("clusters")
 	selectedClusters := make([]string, 0, len(availableClusterManagers))
 	for _, cluster := range clusters {
 		cluster = strings.Trim(cluster, " ")
@@ -459,6 +495,8 @@ func (s *S) config() {
 		return
 	}
 	s.env = env
+	allPlatforms = s.getPlatforms()
+	allProvisioners = s.getProvisioners()
 	clusterManagers = s.getClusterManagers()
 }
 
