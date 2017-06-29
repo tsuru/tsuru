@@ -69,13 +69,13 @@ components:
 
 var clusterManagers = []ClusterManager{}
 
-func getClusterManagers(env *Environment) []ClusterManager {
+func (s *S) getClusterManagers() []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
-		"gce":      &GceClusterManager{env: env},
-		"minikube": &MinikubeClusterManager{env: env},
+		"gce":      &GceClusterManager{env: s.env},
+		"minikube": &MinikubeClusterManager{env: s.env},
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
-	clusters := strings.Split(env.Get("clusters"), ",")
+	clusters := strings.Split(s.env.Get("clusters"), ",")
 	selectedClusters := make([]string, 0, len(availableClusterManagers))
 	for _, cluster := range clusters {
 		cluster = strings.Trim(cluster, " ")
@@ -453,16 +453,24 @@ func installerName(env *Environment) string {
 	return name
 }
 
-func (s *S) TestBase(c *check.C) {
+func (s *S) config() {
 	env := NewEnvironment()
 	if !env.Has("enabled") {
 		return
 	}
-	clusterManagers = getClusterManagers(env)
+	s.env = env
+	clusterManagers = s.getClusterManagers()
+}
+
+func (s *S) TestBase(c *check.C) {
+	s.config()
+	if s.env == nil {
+		return
+	}
 	var executedFlows []*ExecFlow
 	defer func() {
 		for i := len(executedFlows) - 1; i >= 0; i-- {
-			executedFlows[i].Rollback(c, env)
+			executedFlows[i].Rollback(c, s.env)
 		}
 	}()
 	for i := range flows {
@@ -470,7 +478,7 @@ func (s *S) TestBase(c *check.C) {
 		if len(f.provides) > 0 {
 			providesAll := true
 			for _, envVar := range f.provides {
-				if env.Get(envVar) == "" {
+				if s.env.Get(envVar) == "" {
 					providesAll = false
 					break
 				}
@@ -480,6 +488,6 @@ func (s *S) TestBase(c *check.C) {
 			}
 		}
 		executedFlows = append(executedFlows, f)
-		f.Run(c, env)
+		f.Run(c, s.env)
 	}
 }
