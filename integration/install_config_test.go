@@ -12,8 +12,8 @@ import (
 
 func (s *S) getInstallerConfig() string {
 	// if Docker provisioner is not set, add an extra host, so Tsuru can build platforms
-	hosts := len(allProvisioners) + 1
-	for _, provisioner := range allProvisioners {
+	hosts := len(provisioners) + 1
+	for _, provisioner := range provisioners {
 		if provisioner == "docker" {
 			hosts--
 			break
@@ -130,8 +130,8 @@ func (s *S) config() {
 		return
 	}
 	s.env = env
-	allPlatforms = s.getPlatforms()
-	allProvisioners = s.getProvisioners()
+	platforms = s.getPlatforms()
+	provisioners = s.getProvisioners()
 	clusterManagers = s.getClusterManagers()
 	installerConfig = s.getInstallerConfig()
 }

@@ -18,8 +18,8 @@ import (
 
 var (
 	T               = NewCommand("tsuru").WithArgs
-	allPlatforms    = []string{}
-	allProvisioners = []string{}
+	platforms       = []string{}
+	provisioners    = []string{}
 	clusterManagers = []ClusterManager{}
 	flows           = []ExecFlow{
 		platformsToInstall(),
@@ -43,7 +43,7 @@ func platformsToInstall() ExecFlow {
 		provides: []string{"platformimages"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		for _, platImg := range allPlatforms {
+		for _, platImg := range platforms {
 			env.Add("platformimages", platImg)
 		}
 	}
@@ -119,6 +119,9 @@ func installerTest() ExecFlow {
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
 		certsDir := fmt.Sprintf("%s/.tsuru/installs/%s/certs", os.Getenv("HOME"), installerName(env))
+		if len(allParts) > len(provisioners) {
+			allParts = allParts[1:]
+		}
 		for _, parts = range allParts {
 			c.Assert(parts, check.HasLen, 2)
 			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
@@ -209,7 +212,7 @@ func poolAdd() ExecFlow {
 		provides: []string{"poolnames"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		for _, prov := range allProvisioners {
+		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
 			res := T("pool-add", "--provisioner", prov, poolName).Run(env)
 			c.Assert(res, ResultOk)
@@ -304,7 +307,7 @@ func poolAdd() ExecFlow {
 			res := T("node-remove", "-y", "--no-rebalance", node).Run(env)
 			c.Check(res, ResultOk)
 		}
-		for _, prov := range allProvisioners {
+		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
 			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
