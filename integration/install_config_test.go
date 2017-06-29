@@ -6,6 +6,7 @@ package integration
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -35,40 +36,43 @@ components:
 
 func (s *S) getPlatforms() []string {
 	availablePlatforms := []string{
-		"python",
-		"go",
-		"buildpack",
-		"cordova",
-		"elixir",
-		"java",
-		"nodejs",
-		"php",
-		"play",
-		"pypy",
-		"python3",
-		"ruby",
-		"static",
+		"tsuru/python",
+		"tsuru/go",
+		"tsuru/buildpack",
+		"tsuru/cordova",
+		"tsuru/elixir",
+		"tsuru/java",
+		"tsuru/nodejs",
+		"tsuru/php",
+		"tsuru/play",
+		"tsuru/pypy",
+		"tsuru/python3",
+		"tsuru/ruby",
+		"tsuru/static",
+	}
+	if _, ok := os.LookupEnv(integrationEnvID + "platforms"); !ok {
+		return availablePlatforms
 	}
 	platforms := s.env.All("platforms")
 	selectedPlatforms := make([]string, 0, len(availablePlatforms))
-	for _, platform := range platforms {
-		platform = strings.Trim(platform, " ")
-		for i, item := range availablePlatforms {
-			if item == platform {
-				selectedPlatforms = append(selectedPlatforms, "tsuru/"+platform)
+	for _, name := range platforms {
+		name = strings.Trim(name, " ")
+		for i, platform := range availablePlatforms {
+			if name == platform || "tsuru/"+name == platform {
+				selectedPlatforms = append(selectedPlatforms, platform)
 				availablePlatforms = append(availablePlatforms[:i], availablePlatforms[i+1:]...)
 				break
 			}
 		}
-	}
-	if len(selectedPlatforms) == 0 {
-		return availablePlatforms
 	}
 	return selectedPlatforms
 }
 
 func (s *S) getProvisioners() []string {
 	availableProvisioners := []string{"docker", "swarm"}
+	if _, ok := os.LookupEnv(integrationEnvID + "provisioners"); !ok {
+		return availableProvisioners
+	}
 	provisioners := s.env.All("provisioners")
 	selectedProvisioners := make([]string, 0, len(availableProvisioners))
 	for _, provisioner := range provisioners {
@@ -80,9 +84,6 @@ func (s *S) getProvisioners() []string {
 				break
 			}
 		}
-	}
-	if len(selectedProvisioners) == 0 {
-		return availableProvisioners
 	}
 	return selectedProvisioners
 }
