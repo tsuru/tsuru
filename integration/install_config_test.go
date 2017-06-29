@@ -4,7 +4,34 @@
 
 package integration
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
+
+func (s *S) getInstallerConfig() string {
+	// if Docker provisioner is not set, add an extra host, so Tsuru can build platforms
+	hosts := len(allProvisioners) + 1
+	for _, provisioner := range allProvisioners {
+		if provisioner == "docker" {
+			hosts--
+			break
+		}
+	}
+	return fmt.Sprintf(`driver:
+  name: virtualbox
+  options:
+    virtualbox-cpu-count: 2
+    virtualbox-memory: 2048
+docker-flags:
+  - experimental
+hosts:
+  apps:
+    size: %d
+components:
+  install-dashboard: false
+`, hosts)
+}
 
 func (s *S) getPlatforms() []string {
 	availablePlatforms := []string{
@@ -105,4 +132,5 @@ func (s *S) config() {
 	allPlatforms = s.getPlatforms()
 	allProvisioners = s.getProvisioners()
 	clusterManagers = s.getClusterManagers()
+	installerConfig = s.getInstallerConfig()
 }
