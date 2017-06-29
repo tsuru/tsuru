@@ -315,7 +315,7 @@ func poolAdd() ExecFlow {
 
 func platformAdd() ExecFlow {
 	flow := ExecFlow{
-		provides: []string{"platforms"},
+		provides: []string{"installedplatforms"},
 		matrix: map[string]string{
 			"platimg": "platformimages",
 		},
@@ -327,7 +327,7 @@ func platformAdd() ExecFlow {
 		platName := "iplat-" + suffix
 		res := T("platform-add", platName, "-i", img).WithTimeout(15 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
-		env.Add("platforms", platName)
+		env.Add("installedplatforms", platName)
 		res = T("platform-list").Run(env)
 		c.Assert(res, ResultOk)
 		c.Assert(res, ResultMatches, Expected{Stdout: "(?s).*- " + platName + ".*"})
@@ -346,7 +346,7 @@ func exampleApps() ExecFlow {
 	flow := ExecFlow{
 		matrix: map[string]string{
 			"pool": "poolnames",
-			"plat": "platforms",
+			"plat": "installedplatforms",
 		},
 		parallel: true,
 	}
