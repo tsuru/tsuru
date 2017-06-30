@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -13,8 +12,9 @@ import (
 
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/plugin"
+	"github.com/vulcand/vulcand/utils/json"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
+	log "github.com/Sirupsen/logrus"
 )
 
 const CurrentVersion = "v2"
@@ -41,20 +41,24 @@ func (c *Client) GetHosts() ([]engine.Host, error) {
 	return engine.HostsFromJSON(data)
 }
 
-func (c *Client) UpdateLogSeverity(s log.Severity) error {
+func (c *Client) UpdateLogSeverity(s log.Level) error {
 	return c.PutForm(c.endpoint("log", "severity"), url.Values{"severity": {s.String()}})
 }
 
-func (c *Client) GetLogSeverity() (log.Severity, error) {
+func (c *Client) GetLogSeverity() (log.Level, error) {
 	data, err := c.Get(c.endpoint("log", "severity"), url.Values{})
 	if err != nil {
-		return -1, err
+		return 255, err
 	}
 	var sev *SeverityResponse
 	if err := json.Unmarshal(data, &sev); err != nil {
-		return -1, err
+		return 255, err
 	}
-	return log.SeverityFromString(sev.Severity)
+	lvl, err := log.ParseLevel(strings.ToLower(sev.Severity))
+	if err != nil {
+		return 255, err
+	}
+	return lvl, nil
 }
 
 func (c *Client) GetHost(hk engine.HostKey) (*engine.Host, error) {

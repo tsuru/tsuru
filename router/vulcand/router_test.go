@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -21,12 +22,10 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/tsurutest"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
 	"github.com/vulcand/vulcand/api"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/engine/memng"
 	"github.com/vulcand/vulcand/plugin/registry"
-	"github.com/vulcand/vulcand/supervisor"
 	"gopkg.in/check.v1"
 )
 
@@ -72,9 +71,9 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Collection("router_vulcand_tests").Database)
 	s.engine = memng.New(registry.GetRegistry())
-	scrollApp := scroll.NewApp()
-	api.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
-	s.vulcandServer = httptest.NewServer(scrollApp.GetHandler())
+	router := mux.NewRouter()
+	api.InitProxyController(s.engine, nil, router)
+	s.vulcandServer = httptest.NewServer(router)
 	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
 }
 
@@ -158,7 +157,7 @@ func (s *S) TestAddBackendDuplicate(c *check.C) {
 
 func (s *S) TestAddBackendRollbackOnError(c *check.C) {
 	s.vulcandServer.Close()
-	scrollApp := scroll.NewApp()
+	muxRouter := mux.NewRouter()
 	var postRequestCount int
 	conditionalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
@@ -168,9 +167,9 @@ func (s *S) TestAddBackendRollbackOnError(c *check.C) {
 				return
 			}
 		}
-		scrollApp.GetHandler().ServeHTTP(w, r)
+		muxRouter.ServeHTTP(w, r)
 	})
-	api.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
+	api.InitProxyController(s.engine, nil, muxRouter)
 	s.vulcandServer = httptest.NewServer(conditionalHandler)
 	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
 	vRouter, err := router.Get("vulcand")

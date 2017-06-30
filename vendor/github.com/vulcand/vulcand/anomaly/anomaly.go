@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/memmetrics"
+	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/vulcand/engine"
 )
 

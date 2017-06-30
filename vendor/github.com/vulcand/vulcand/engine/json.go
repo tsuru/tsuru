@@ -117,7 +117,7 @@ func ListenerFromJSON(in []byte, id ...string) (*Listener, error) {
 			return nil, err
 		}
 	}
-	return NewListener(rl.Id, rl.Protocol, rl.Address.Network, rl.Address.Address, rl.Scope, rl.Settings)
+	return NewListener(rl.Id, rl.Protocol, rl.Address.Network, rl.Address.Address, rl.Scope, rl.ProxyProtocol, rl.Settings)
 }
 
 func ListenersFromJSON(in []byte) ([]Listener, error) {

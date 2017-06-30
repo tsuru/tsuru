@@ -168,13 +168,6 @@
 			"revisionTime": "2016-10-03T11:03:52Z"
 		},
 		{
-			"checksumSHA1": "8wY0Od/oZMtYxA/sUC2J/OTw2j8=",
-			"origin": "github.com/luizbafilho/fusis/vendor/github.com/asaskevich/govalidator",
-			"path": "github.com/asaskevich/govalidator",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
 			"checksumSHA1": "f7zg170Rm9Jh1QKLCpOD2dGvPTo=",
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "f061f6ee7aac174ea84341ce50dc023e910aa392",
@@ -352,6 +345,20 @@
 			"path": "github.com/cenkalti/backoff",
 			"revision": "8edc80b07f38c27352fb186d971c628a6c32552b",
 			"revisionTime": "2016-09-04T17:09:58+03:00"
+		},
+		{
+			"checksumSHA1": "7gK+lSShSu1NRw83/A95BcgMqsI=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/codahale/hdrhistogram",
+			"path": "github.com/codahale/hdrhistogram",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "DIhhLfId4jP1kWUBkcuSM3NMmZc=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/codegangsta/cli",
+			"path": "github.com/codegangsta/cli",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
 			"path": "github.com/codegangsta/negroni",
@@ -900,27 +907,6 @@
 			"revisionTime": "2016-10-05T22:38:25Z"
 		},
 		{
-			"checksumSHA1": "6tnH76EgqJ23VLqf9QREtnyvPZ8=",
-			"origin": "github.com/luizbafilho/fusis/vendor/github.com/gin-gonic/gin",
-			"path": "github.com/gin-gonic/gin",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
-			"checksumSHA1": "K1Mer2VJBxUkYdE896+WZLOz6A8=",
-			"origin": "github.com/luizbafilho/fusis/vendor/github.com/gin-gonic/gin/binding",
-			"path": "github.com/gin-gonic/gin/binding",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
-			"checksumSHA1": "Aymn5jKrmjk/CYi6EqPEFK4st6Y=",
-			"origin": "github.com/luizbafilho/fusis/vendor/github.com/gin-gonic/gin/render",
-			"path": "github.com/gin-gonic/gin/render",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
-		},
-		{
 			"origin": "github.com/aws/aws-sdk-go/vendor/github.com/go-ini/ini",
 			"path": "github.com/go-ini/ini",
 			"revision": "999b1591218c36d5050d1ba7266eba956e65965f",
@@ -1068,6 +1054,34 @@
 			"revisionTime": "2015-11-24T09:03:42-08:00"
 		},
 		{
+			"checksumSHA1": "So3Zh+/VArgLhtP/By9OeQyELDM=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/mailgun/minheap",
+			"path": "github.com/mailgun/minheap",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "3YyGyWFaO2B+uaFE57ghJZtYowA=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/mailgun/multibuf",
+			"path": "github.com/mailgun/multibuf",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "5i96y94WlWuDTIjO+oHX4QXFrJE=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/mailgun/timetools",
+			"path": "github.com/mailgun/timetools",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "/rSp8w2z1YISh1jnLu76goBs1K0=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/mailgun/ttlmap",
+			"path": "github.com/mailgun/ttlmap",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
 			"checksumSHA1": "urY45++NYCue4nh4k8OjUFnIGfU=",
 			"origin": "k8s.io/kubernetes/vendor/github.com/mailru/easyjson/buffer",
 			"path": "github.com/mailru/easyjson/buffer",
@@ -1087,13 +1101,6 @@
 			"path": "github.com/mailru/easyjson/jwriter",
 			"revision": "9aac6cfdb610772db601eb191c7473641b9b405e",
 			"revisionTime": "2016-10-05T22:38:25Z"
-		},
-		{
-			"checksumSHA1": "b0T0Hzd+zYk+OCDTFMps+jwa/nY=",
-			"origin": "github.com/luizbafilho/fusis/vendor/github.com/manucorporat/sse",
-			"path": "github.com/manucorporat/sse",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
 		},
 		{
 			"checksumSHA1": "COqeZiiECcnjWBik95gPTsJf0fg=",
@@ -1550,6 +1557,69 @@
 			"revisionTime": "2016-09-23T12:08:00-07:00"
 		},
 		{
+			"checksumSHA1": "m/e99yq5v3IEGkjlub+kp2wrmUY=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/buffer",
+			"path": "github.com/vulcand/oxy/buffer",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "U1vueXdiG2Z9z9c58um9eMR1vrg=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/cbreaker",
+			"path": "github.com/vulcand/oxy/cbreaker",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "EyQs+TkrRWygu4oFFWJiN2f4uPc=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/connlimit",
+			"path": "github.com/vulcand/oxy/connlimit",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "BTqM/4G6YVRakaCTTdzWRk35UmE=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/forward",
+			"path": "github.com/vulcand/oxy/forward",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "ZciUfQ/vdh19UZTiaG6/NNkVMv8=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/memmetrics",
+			"path": "github.com/vulcand/oxy/memmetrics",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "sSUOlVC90LFoqRTC2m5ez3LIOZQ=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/ratelimit",
+			"path": "github.com/vulcand/oxy/ratelimit",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "4HgjVEg5A+mWkZPmH4GYr67nPf4=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/roundrobin",
+			"path": "github.com/vulcand/oxy/roundrobin",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "wJrnoScf6G4bKgCxAy5THZC13zU=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/trace",
+			"path": "github.com/vulcand/oxy/trace",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "pMXB3Du/8o6KPF3vPw8Cg6ZzcD8=",
+			"origin": "github.com/vulcand/vulcand/vendor/github.com/vulcand/oxy/utils",
+			"path": "github.com/vulcand/oxy/utils",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
 			"path": "github.com/vulcand/predicate",
 			"revision": "cb0bff91a7ab7cf7571e661ff883fc997bc554a3",
 			"revisionTime": "2014-10-20T16:56:56-07:00"
@@ -1560,229 +1630,88 @@
 			"revisionTime": "2015-10-31T09:04:33-07:00"
 		},
 		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/codahale/hdrhistogram",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/codegangsta/cli",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/gorilla/context",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/gorilla/mux",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/iptools",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/manners",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/metrics",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/minheap",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/multibuf",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll/registry",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll/vulcan",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll/vulcan/middleware",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/timetools",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/ttlmap",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/ugorji/go/codec",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/cbreaker",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/connlimit",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/forward",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/memmetrics",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/ratelimit",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/roundrobin",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/stream",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/trace",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/utils",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/predicate",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/route",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/Godeps/_workspace/src/golang.org/x/crypto/ocsp",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
+			"checksumSHA1": "DCcpAMqeO8ux0O1FEtWTuu+/peo=",
 			"path": "github.com/vulcand/vulcand/anomaly",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "OSTqszyAh2Uu0X9m9BERuSmiR2Q=",
 			"path": "github.com/vulcand/vulcand/api",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "fGTi3bz6/2/Q+2ghjRbuSM/mQT4=",
+			"path": "github.com/vulcand/vulcand/conntracker",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
+		},
+		{
+			"checksumSHA1": "6ZBHBX5J2LnrsssMnMQtg9QpcX0=",
 			"path": "github.com/vulcand/vulcand/engine",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "BNbHSJnRsTPKYVa6oB8uGtIOjZ0=",
 			"path": "github.com/vulcand/vulcand/engine/memng",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "CwR9RQb8q2IEMdWlux4u/DZmhyk=",
 			"path": "github.com/vulcand/vulcand/plugin",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "YDIpP02GEmR0exXrqaxn12wdB48=",
 			"path": "github.com/vulcand/vulcand/plugin/cbreaker",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "LAfUtpYcJbI5A/UhUxN56brBftE=",
 			"path": "github.com/vulcand/vulcand/plugin/connlimit",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "K1ialKgoaUhQV4xGMMYEM+gpvUE=",
 			"path": "github.com/vulcand/vulcand/plugin/ratelimit",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "3JxQDK4Z3vPm4X588YRhnbXsLb0=",
 			"path": "github.com/vulcand/vulcand/plugin/registry",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "50zRIHPGJ3m+w2Dkuv0mjP/FrvA=",
 			"path": "github.com/vulcand/vulcand/plugin/rewrite",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
+			"checksumSHA1": "vtPKxJojqDxldUiEs70kt3LkxFo=",
 			"path": "github.com/vulcand/vulcand/plugin/trace",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
-			"path": "github.com/vulcand/vulcand/proxy",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
+			"checksumSHA1": "wqfz1a9XpOB7/4Ksx1kjjvhetQU=",
 			"path": "github.com/vulcand/vulcand/router",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
-			"path": "github.com/vulcand/vulcand/stapler",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
-		},
-		{
-			"path": "github.com/vulcand/vulcand/supervisor",
-			"revision": "85c983be26ebd707fe3938f2c9d87f565f792440",
-			"revisionTime": "2015-12-17T12:44:27-08:00"
+			"checksumSHA1": "4EgXjjdsZrPtCYjEwleyp2VM7O4=",
+			"path": "github.com/vulcand/vulcand/utils/json",
+			"revision": "ae1193ce520e408342779b3a2b8cbc5153b0b0fd",
+			"revisionTime": "2017-06-21T01:51:46Z"
 		},
 		{
 			"checksumSHA1": "0Vk+goBsAM1B/Yoam1HAl9bt4rs=",
@@ -2243,13 +2172,6 @@
 			"path": "gopkg.in/check.v1",
 			"revision": "64131543e7896d5bcc6bd5a76287eb75ea96c673",
 			"revisionTime": "2014-10-24T11:38:53-02:00"
-		},
-		{
-			"checksumSHA1": "M6YXIII+gGY/qUSzJB7AXyHkboM=",
-			"origin": "github.com/luizbafilho/fusis/vendor/gopkg.in/go-playground/validator.v8",
-			"path": "gopkg.in/go-playground/validator.v8",
-			"revision": "5c52a151c45f1c63e74338291448ee8531809d90",
-			"revisionTime": "2016-07-12T00:16:01Z"
 		},
 		{
 			"checksumSHA1": "pfQwQtWlFezJq0Viroa/L+v+yDM=",
