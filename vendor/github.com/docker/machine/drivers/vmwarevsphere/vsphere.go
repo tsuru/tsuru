@@ -183,9 +183,6 @@ func (d *Driver) DriverName() string {
 }
 
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
-	if drivers.EngineInstallURLFlagSet(flags) {
-		return errors.New("--engine-install-url cannot be used with the vmwarevsphere driver, use --vmwarevsphere-boot2docker-url instead")
-	}
 	d.SSHUser = "docker"
 	d.SSHPort = 22
 	d.CPU = flags.Int("vmwarevsphere-cpu-count")
@@ -554,10 +551,25 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	// first, untar - only boot2docker has /var/lib/boot2docker
+	// TODO: don't hard-code to docker & staff - they are also just b2d
 	var env []string
 	guestspec := types.GuestProgramSpec{
 		ProgramPath:      "/usr/bin/sudo",
-		Arguments:        "/bin/mv /home/docker/userdata.tar /var/lib/boot2docker/userdata.tar && /usr/bin/sudo tar xf /var/lib/boot2docker/userdata.tar -C /home/docker/ > /var/log/userdata.log 2>&1 && /usr/bin/sudo chown -R docker:staff /home/docker",
+		Arguments:        "/usr/bin/sudo /bin/sh -c \"tar xvf userdata.tar -C /home/docker > /var/log/userdata.log 2>&1 && chown -R docker:staff /home/docker\"",
+		WorkingDirectory: "",
+		EnvVariables:     env,
+	}
+
+	_, err = procman.StartProgram(ctx, auth.Auth(), &guestspec)
+	if err != nil {
+		return err
+	}
+
+	// now move to /var/lib/boot2docker if its there
+	guestspec = types.GuestProgramSpec{
+		ProgramPath:      "/usr/bin/sudo",
+		Arguments:        "/bin/mv /home/docker/userdata.tar /var/lib/boot2docker/userdata.tar",
 		WorkingDirectory: "",
 		EnvVariables:     env,
 	}
