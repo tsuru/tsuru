@@ -17,16 +17,17 @@ limitations under the License.
 package object
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+	"path"
 
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -35,32 +36,12 @@ const (
 
 type VirtualMachine struct {
 	Common
-
-	InventoryPath string
-}
-
-func (v VirtualMachine) String() string {
-	if v.InventoryPath == "" {
-		return v.Common.String()
-	}
-	return fmt.Sprintf("%v @ %v", v.Common, v.InventoryPath)
 }
 
 func NewVirtualMachine(c *vim25.Client, ref types.ManagedObjectReference) *VirtualMachine {
 	return &VirtualMachine{
 		Common: NewCommon(c, ref),
 	}
-}
-
-func (v VirtualMachine) Name(ctx context.Context) (string, error) {
-	var o mo.VirtualMachine
-
-	err := v.Properties(ctx, v.Reference(), []string{"name"}, &o)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Name, nil
 }
 
 func (v VirtualMachine) PowerState(ctx context.Context) (types.VirtualMachinePowerState, error) {
@@ -491,24 +472,102 @@ func (v VirtualMachine) RemoveAllSnapshot(ctx context.Context, consolidate *bool
 	return NewTask(v.c, res.Returnval), nil
 }
 
-// RevertToSnapshot reverts to a named snapshot
-func (v VirtualMachine) RevertToSnapshot(ctx context.Context, name string, suppressPowerOn bool) (*Task, error) {
+type snapshotMap map[string][]Reference
+
+func (m snapshotMap) add(parent string, tree []types.VirtualMachineSnapshotTree) {
+	for i, st := range tree {
+		sname := st.Name
+		names := []string{sname, st.Snapshot.Value}
+
+		if parent != "" {
+			sname = path.Join(parent, sname)
+			// Add full path as an option to resolve duplicate names
+			names = append(names, sname)
+		}
+
+		for _, name := range names {
+			m[name] = append(m[name], &tree[i].Snapshot)
+		}
+
+		m.add(sname, st.ChildSnapshotList)
+	}
+}
+
+// findSnapshot supports snapshot lookup by name, where name can be:
+// 1) snapshot ManagedObjectReference.Value (unique)
+// 2) snapshot name (may not be unique)
+// 3) snapshot tree path (may not be unique)
+func (v VirtualMachine) findSnapshot(ctx context.Context, name string) (Reference, error) {
 	var o mo.VirtualMachine
 
 	err := v.Properties(ctx, v.Reference(), []string{"snapshot"}, &o)
+	if err != nil {
+		return nil, err
+	}
 
-	snapshotTree := o.Snapshot.RootSnapshotList
-	if len(snapshotTree) < 1 {
+	if o.Snapshot == nil || len(o.Snapshot.RootSnapshotList) == 0 {
 		return nil, errors.New("No snapshots for this VM")
 	}
 
-	snapshot, err := traverseSnapshotInTree(snapshotTree, name)
+	m := make(snapshotMap)
+	m.add("", o.Snapshot.RootSnapshotList)
+
+	s := m[name]
+	switch len(s) {
+	case 0:
+		return nil, fmt.Errorf("snapshot %q not found", name)
+	case 1:
+		return s[0], nil
+	default:
+		return nil, fmt.Errorf("%q resolves to %d snapshots", name, len(s))
+	}
+}
+
+// RemoveSnapshot removes a named snapshot
+func (v VirtualMachine) RemoveSnapshot(ctx context.Context, name string, removeChildren bool, consolidate *bool) (*Task, error) {
+	snapshot, err := v.findSnapshot(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	req := types.RemoveSnapshot_Task{
+		This:           snapshot.Reference(),
+		RemoveChildren: removeChildren,
+		Consolidate:    consolidate,
+	}
+
+	res, err := methods.RemoveSnapshot_Task(ctx, v.c, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTask(v.c, res.Returnval), nil
+}
+
+// RevertToCurrentSnapshot reverts to the current snapshot
+func (v VirtualMachine) RevertToCurrentSnapshot(ctx context.Context, suppressPowerOn bool) (*Task, error) {
+	req := types.RevertToCurrentSnapshot_Task{
+		This:            v.Reference(),
+		SuppressPowerOn: types.NewBool(suppressPowerOn),
+	}
+
+	res, err := methods.RevertToCurrentSnapshot_Task(ctx, v.c, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTask(v.c, res.Returnval), nil
+}
+
+// RevertToSnapshot reverts to a named snapshot
+func (v VirtualMachine) RevertToSnapshot(ctx context.Context, name string, suppressPowerOn bool) (*Task, error) {
+	snapshot, err := v.findSnapshot(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
 	req := types.RevertToSnapshot_Task{
-		This:            snapshot,
+		This:            snapshot.Reference(),
 		SuppressPowerOn: types.NewBool(suppressPowerOn),
 	}
 
@@ -518,32 +577,6 @@ func (v VirtualMachine) RevertToSnapshot(ctx context.Context, name string, suppr
 	}
 
 	return NewTask(v.c, res.Returnval), nil
-}
-
-// traverseSnapshotInTree is a recursive function that will traverse a snapshot tree to find a given snapshot
-func traverseSnapshotInTree(tree []types.VirtualMachineSnapshotTree, name string) (types.ManagedObjectReference, error) {
-	var o types.ManagedObjectReference
-	if tree == nil {
-		return o, errors.New("Snapshot tree is empty")
-	}
-	for _, s := range tree {
-		if s.Name == name {
-			o = s.Snapshot
-			break
-		} else {
-			childTree := s.ChildSnapshotList
-			var err error
-			o, err = traverseSnapshotInTree(childTree, name)
-			if err != nil {
-				return o, err
-			}
-		}
-	}
-	if o.Value == "" {
-		return o, errors.New("Snapshot not found")
-	}
-
-	return o, nil
 }
 
 // IsToolsRunning returns true if VMware Tools is currently running in the guest OS, and false otherwise.
@@ -611,4 +644,38 @@ func (v VirtualMachine) MarkAsVirtualMachine(ctx context.Context, pool ResourceP
 	}
 
 	return nil
+}
+
+func (v VirtualMachine) Migrate(ctx context.Context, pool *ResourcePool, host *HostSystem, priority types.VirtualMachineMovePriority, state types.VirtualMachinePowerState) (*Task, error) {
+	req := types.MigrateVM_Task{
+		This:     v.Reference(),
+		Priority: priority,
+		State:    state,
+	}
+
+	if pool != nil {
+		ref := pool.Reference()
+		req.Pool = &ref
+	}
+
+	if host != nil {
+		ref := host.Reference()
+		req.Host = &ref
+	}
+
+	res, err := methods.MigrateVM_Task(ctx, v.c, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTask(v.c, res.Returnval), nil
+}
+
+func (v VirtualMachine) Unregister(ctx context.Context) error {
+	req := types.UnregisterVM{
+		This: v.Reference(),
+	}
+
+	_, err := methods.UnregisterVM(ctx, v.Client(), &req)
+	return err
 }

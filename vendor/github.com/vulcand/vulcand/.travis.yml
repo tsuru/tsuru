@@ -1,0 +1,5 @@
+language: go
+go:
+  - 1.7
+script:
+  - go test -v -p 1 --race $(go list ./... | grep -v '/vendor/')

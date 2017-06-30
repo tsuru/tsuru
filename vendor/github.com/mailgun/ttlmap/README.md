@@ -1,3 +1,5 @@
+**This repo is deprecated, Renamed to TTLMap and moved to http://github.com/mailgun/holster**
+
 [![Build Status](https://travis-ci.org/mailgun/ttlmap.png)](https://travis-ci.org/mailgun/ttlmap)
 
 TtlMap

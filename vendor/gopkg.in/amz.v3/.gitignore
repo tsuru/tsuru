@@ -1,0 +1,10 @@
+tags
+!tags/
+TAGS
+!TAGS/
+.emacs.desktop
+.emacs.desktop.lock
+*.test
+*.sw[nop]
+cover
+.#*

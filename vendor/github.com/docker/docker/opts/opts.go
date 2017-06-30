@@ -2,6 +2,7 @@ package opts
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 	"regexp"
 	"strings"
@@ -318,4 +319,42 @@ func (o *FilterOpt) Type() string {
 // Value returns the value of this option
 func (o *FilterOpt) Value() filters.Args {
 	return o.filter
+}
+
+// NanoCPUs is a type for fixed point fractional number.
+type NanoCPUs int64
+
+// String returns the string format of the number
+func (c *NanoCPUs) String() string {
+	return big.NewRat(c.Value(), 1e9).FloatString(3)
+}
+
+// Set sets the value of the NanoCPU by passing a string
+func (c *NanoCPUs) Set(value string) error {
+	cpus, err := ParseCPUs(value)
+	*c = NanoCPUs(cpus)
+	return err
+}
+
+// Type returns the type
+func (c *NanoCPUs) Type() string {
+	return "decimal"
+}
+
+// Value returns the value in int64
+func (c *NanoCPUs) Value() int64 {
+	return int64(*c)
+}
+
+// ParseCPUs takes a string ratio and returns an integer value of nano cpus
+func ParseCPUs(value string) (int64, error) {
+	cpu, ok := new(big.Rat).SetString(value)
+	if !ok {
+		return 0, fmt.Errorf("failed to parse %v as a rational number", value)
+	}
+	nano := cpu.Mul(cpu, big.NewRat(1e9, 1))
+	if !nano.IsInt() {
+		return 0, fmt.Errorf("value is too precise")
+	}
+	return nano.Num().Int64(), nil
 }

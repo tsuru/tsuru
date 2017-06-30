@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
 	"path"
 	"strings"
 
+	"context"
 	"net/http"
 	"net/url"
 
@@ -32,7 +34,6 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 // DatastoreNoSuchDirectoryError is returned when a directory could not be found.
@@ -57,18 +58,12 @@ func (e DatastoreNoSuchFileError) Error() string {
 
 type Datastore struct {
 	Common
-
-	InventoryPath string
 }
 
 func NewDatastore(c *vim25.Client, ref types.ManagedObjectReference) *Datastore {
 	return &Datastore{
 		Common: NewCommon(c, ref),
 	}
-}
-
-func (d Datastore) Name() string {
-	return path.Base(d.InventoryPath)
 }
 
 func (d Datastore) Path(path string) string {
@@ -116,6 +111,62 @@ func (d Datastore) Browser(ctx context.Context) (*HostDatastoreBrowser, error) {
 	return NewHostDatastoreBrowser(d.c, do.Browser), nil
 }
 
+func (d Datastore) useServiceTicket() bool {
+	// If connected to workstation, service ticketing not supported
+	if d.c.ServiceContent.About.ProductLineId == "ws" {
+		return false
+	}
+
+	key := "GOVMOMI_USE_SERVICE_TICKET"
+
+	val := d.c.URL().Query().Get(key)
+	if val == "" {
+		val = os.Getenv(key)
+	}
+
+	if val == "0" || val == "false" {
+		return false
+	}
+
+	return true
+}
+
+func (d Datastore) useServiceTicketHostName(name string) bool {
+	// No need if talking directly to ESX.
+	if !d.c.IsVC() {
+		return false
+	}
+
+	// If version happens to be < 5.1
+	if name == "" {
+		return false
+	}
+
+	// If the HostSystem is using DHCP on a network without dynamic DNS,
+	// HostSystem.Config.Network.DnsConfig.HostName is set to "localhost" by default.
+	// This resolves to "localhost.localdomain" by default via /etc/hosts on ESX.
+	// In that case, we will stick with the HostSystem.Name which is the IP address that
+	// was used to connect the host to VC.
+	if name == "localhost.localdomain" {
+		return false
+	}
+
+	// Still possible to have HostName that don't resolve via DNS,
+	// so we default to false.
+	key := "GOVMOMI_USE_SERVICE_TICKET_HOSTNAME"
+
+	val := d.c.URL().Query().Get(key)
+	if val == "" {
+		val = os.Getenv(key)
+	}
+
+	if val == "1" || val == "true" {
+		return true
+	}
+
+	return false
+}
+
 // ServiceTicket obtains a ticket via AcquireGenericServiceTicket and returns it an http.Cookie with the url.URL
 // that can be used along with the ticket cookie to access the given path.
 func (d Datastore) ServiceTicket(ctx context.Context, path string, method string) (*url.URL, *http.Cookie, error) {
@@ -127,6 +178,10 @@ func (d Datastore) ServiceTicket(ctx context.Context, path string, method string
 		RawQuery: url.Values{
 			"dsName": []string{d.Name()},
 		}.Encode(),
+	}
+
+	if !d.useServiceTicket() {
+		return u, nil, nil
 	}
 
 	// If connected to VC, the ticket request must be for an ESX host.
@@ -142,7 +197,7 @@ func (d Datastore) ServiceTicket(ctx context.Context, path string, method string
 
 		// Pick a random attached host
 		host := hosts[rand.Intn(len(hosts))]
-		name, err := host.Name(ctx)
+		name, err := host.ObjectName(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -165,6 +220,10 @@ func (d Datastore) ServiceTicket(ctx context.Context, path string, method string
 	cookie := &http.Cookie{
 		Name:  "vmware_cgi_ticket",
 		Value: ticket.Id,
+	}
+
+	if d.useServiceTicketHostName(ticket.HostName) {
+		u.Host = ticket.HostName
 	}
 
 	return u, cookie, nil
@@ -278,7 +337,7 @@ func (d Datastore) AttachedHosts(ctx context.Context) ([]*HostSystem, error) {
 	return hosts, nil
 }
 
-// AttachedHosts returns hosts that have this Datastore attached, accessible and writable and are members of the given cluster.
+// AttachedClusterHosts returns hosts that have this Datastore attached, accessible and writable and are members of the given cluster.
 func (d Datastore) AttachedClusterHosts(ctx context.Context, cluster *ComputeResource) ([]*HostSystem, error) {
 	var hosts []*HostSystem
 
@@ -323,12 +382,12 @@ func (d Datastore) Stat(ctx context.Context, file string) (types.BaseFileInfo, e
 	}
 
 	dsPath := d.Path(path.Dir(file))
-	task, err := b.SearchDatastore(context.TODO(), dsPath, &spec)
+	task, err := b.SearchDatastore(ctx, dsPath, &spec)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := task.WaitForResult(context.TODO(), nil)
+	info, err := task.WaitForResult(ctx, nil)
 	if err != nil {
 		if info == nil || info.Error != nil {
 			_, ok := info.Error.Fault.(*types.FileNotFound)

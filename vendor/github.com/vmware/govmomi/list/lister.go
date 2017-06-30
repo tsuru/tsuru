@@ -17,6 +17,7 @@ limitations under the License.
 package list
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"reflect"
@@ -25,7 +26,6 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 type Element struct {

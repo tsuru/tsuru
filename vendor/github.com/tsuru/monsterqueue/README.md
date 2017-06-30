@@ -1,5 +1,7 @@
 # monsterqueue
 
+[![Build Status](https://travis-ci.org/tsuru/monsterqueue.svg)](https://travis-ci.org/tsuru/monsterqueue)
+
 monsterqueue is a task queue implementation in Go with multiple backends.
 
 ## Documentation

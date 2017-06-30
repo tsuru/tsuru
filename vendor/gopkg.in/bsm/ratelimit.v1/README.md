@@ -9,7 +9,7 @@ Inspired by Antti Huima's algorithm on http://stackoverflow.com/a/668327
 package main
 
 import (
-  "github.com/bsm/redeo"
+  "github.com/bsm/ratelimit"
   "log"
 )
 

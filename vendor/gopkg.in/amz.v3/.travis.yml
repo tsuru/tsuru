@@ -1,0 +1,20 @@
+sudo: false
+language: go
+
+go:
+  - 1.2
+  - 1.4
+
+install:
+ - go get gopkg.in/check.v1
+
+before_script:
+  - export DEFAULT_TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR
+  - export TRAVIS_BUILD_DIR=$HOME/gopath/src/gopkg.in/amz.v3
+  - mkdir -p $TRAVIS_BUILD_DIR
+  - mv -vfT $DEFAULT_TRAVIS_BUILD_DIR $TRAVIS_BUILD_DIR
+
+script:
+  - go build ./...
+  - go test -v ./...
+  - FIXED=$(go fmt ./... | wc -l); if [ $FIXED -gt 0 ]; then echo "gofmt - $FIXED file(s) not formatted correctly, please run gofmt to fix this." && exit 1; fi

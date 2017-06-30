@@ -17,11 +17,11 @@ limitations under the License.
 package methods
 
 import (
+	"context"
 	"time"
 
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 var serviceInstance = types.ManagedObjectReference{

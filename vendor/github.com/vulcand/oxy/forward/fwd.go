@@ -327,8 +327,10 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	}
 	go replicate(targetConn, underlyingConn, "backend", "client")
 	go replicate(underlyingConn, targetConn, "client", "backend")
-	err = <-errc
-	log.Infof("vulcand/oxy/forward/websocket: websocket proxying complete: %v", err)
+	err = <-errc // One goroutine complete
+	log.Infof("vulcand/oxy/forward/websocket: first proxying connection closed: %v", err)
+	err = <-errc // Both goroutines complete
+	log.Infof("vulcand/oxy/forward/websocket: second proxying connection closed: %v", err)
 }
 
 // copyRequest makes a copy of the specified request.
@@ -349,12 +351,18 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 	}
 
 	outReq.URL.Host = req.URL.Host
-	outReq.URL.Path = req.RequestURI
+	outReq.URL.Opaque = req.RequestURI
 
 	// Do not pass client Host header unless optsetter PassHostHeader is set.
 	if !f.passHost {
 		outReq.Host = req.Host
 	}
+
+	// Overwrite close flag so we can keep persistent connection for the backend servers
+	outReq.Close = false
+
+	outReq.Header = make(http.Header)
+	utils.CopyHeaders(outReq.Header, req.Header)
 
 	if f.rewriter != nil {
 		f.rewriter.Rewrite(outReq)

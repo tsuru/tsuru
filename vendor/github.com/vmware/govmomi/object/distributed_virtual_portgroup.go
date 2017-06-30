@@ -17,27 +17,21 @@ limitations under the License.
 package object
 
 import (
-	"path"
+	"context"
 
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 type DistributedVirtualPortgroup struct {
 	Common
-
-	InventoryPath string
 }
 
 func NewDistributedVirtualPortgroup(c *vim25.Client, ref types.ManagedObjectReference) *DistributedVirtualPortgroup {
 	return &DistributedVirtualPortgroup{
 		Common: NewCommon(c, ref),
 	}
-}
-func (p DistributedVirtualPortgroup) Name() string {
-	return path.Base(p.InventoryPath)
 }
 
 // EthernetCardBackingInfo returns the VirtualDeviceBackingInfo for this DistributedVirtualPortgroup

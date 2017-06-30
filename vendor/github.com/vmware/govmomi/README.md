@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/vmware/govmomi.png?branch=master)](https://travis-ci.org/vmware/govmomi)
 [![Build Status](https://ci.vmware.run/api/badges/vmware/govmomi/status.svg)](https://ci.vmware.run/vmware/govmomi)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vmware/govmomi)](https://goreportcard.com/report/github.com/vmware/govmomi)
 
 # govmomi
 
@@ -47,7 +48,11 @@ Refer to the [CHANGELOG](CHANGELOG.md) for version to version changes.
 
 * [Docker Machine](https://github.com/docker/machine/tree/master/drivers/vmwarevsphere)
 
+* [Kubernetes](https://github.com/kubernetes/kubernetes/tree/master/pkg/cloudprovider/providers/vsphere)
+
 * [Terraform](https://github.com/hashicorp/terraform/tree/master/builtin/providers/vsphere)
+
+* [VMware VIC Engine](https://github.com/vmware/vic)
 
 ## License
 

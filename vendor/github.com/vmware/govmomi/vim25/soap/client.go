@@ -18,6 +18,7 @@ package soap
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -35,7 +36,6 @@ import (
 	"github.com/vmware/govmomi/vim25/progress"
 	"github.com/vmware/govmomi/vim25/types"
 	"github.com/vmware/govmomi/vim25/xml"
-	"golang.org/x/net/context"
 )
 
 type HasFault interface {
@@ -212,7 +212,7 @@ func (c *Client) UnmarshalJSON(b []byte) error {
 }
 
 func (c *Client) do(ctx context.Context, req *http.Request) (*http.Response, error) {
-	if nil == ctx || nil == ctx.Done() { // ctx.Done() is for context.TODO()
+	if nil == ctx || nil == ctx.Done() { // ctx.Done() is for ctx
 		return c.Client.Do(req)
 	}
 
@@ -420,6 +420,7 @@ func (c *Client) UploadFile(file string, u *url.URL, param *Upload) error {
 
 type Download struct {
 	Method   string
+	Headers  map[string]string
 	Ticket   *http.Cookie
 	Progress progress.Sinker
 }
@@ -428,19 +429,27 @@ var DefaultDownload = Download{
 	Method: "GET",
 }
 
-// Download GETs the remote file from the given URL
-func (c *Client) Download(u *url.URL, param *Download) (io.ReadCloser, int64, error) {
-
+// DownloadRequest wraps http.Client.Do, returning the http.Response without checking its StatusCode
+func (c *Client) DownloadRequest(u *url.URL, param *Download) (*http.Response, error) {
 	req, err := http.NewRequest(param.Method, u.String(), nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
+	}
+
+	for k, v := range param.Headers {
+		req.Header.Add(k, v)
 	}
 
 	if param.Ticket != nil {
 		req.AddCookie(param.Ticket)
 	}
 
-	res, err := c.Client.Do(req)
+	return c.Client.Do(req)
+}
+
+// Download GETs the remote file from the given URL
+func (c *Client) Download(u *url.URL, param *Download) (io.ReadCloser, int64, error) {
+	res, err := c.DownloadRequest(u, param)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -455,9 +464,7 @@ func (c *Client) Download(u *url.URL, param *Download) (io.ReadCloser, int64, er
 		return nil, 0, err
 	}
 
-	var r io.ReadCloser = res.Body
-
-	return r, res.ContentLength, nil
+	return res.Body, res.ContentLength, nil
 }
 
 // DownloadFile GETs the given URL to a local file

@@ -11,14 +11,15 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/queue"
-	ec2amz "gopkg.in/amz.v2/ec2"
-	"gopkg.in/amz.v2/ec2/ec2test"
+	ec2amz "gopkg.in/amz.v3/ec2"
+	"gopkg.in/amz.v3/ec2/ec2test"
 	"gopkg.in/check.v1"
 )
 
@@ -31,6 +32,7 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
+	time.Local = time.UTC
 	var err error
 	s.srv, err = ec2test.NewServer()
 	c.Assert(err, check.IsNil)
@@ -42,7 +44,15 @@ func (s *S) SetUpTest(c *check.C) {
 			},
 		},
 	})
-	s.srv.SetInitialAttributes(map[string][]string{"default-vpc": {"vpc-123"}})
+	vpc := s.srv.AddVPC(ec2amz.VPC{})
+	s.srv.SetInitialAttributes(map[string][]string{"default-vpc": {vpc.Id}})
+	_, err = s.srv.AddSubnet(ec2amz.Subnet{
+		Id:        "subnet-0",
+		VPCId:     vpc.Id,
+		AvailZone: "us-east-1b",
+		CIDRBlock: "10.0.0.0/8",
+	})
+	c.Assert(err, check.IsNil)
 	config.Set("iaas:ec2:key-id", "mykey")
 	config.Set("iaas:ec2:secret-key", "mysecret")
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
@@ -181,7 +191,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.Matches, `i-\d`)
 	c.Assert(m.Address, check.Matches, `i-\d.testing.invalid`)
-	c.Assert(m.Status, check.Equals, "pending")
+	c.Assert(m.Status, check.Equals, "")
 }
 
 func (s *S) TestCreateMachineTimeoutError(c *check.C) {
@@ -286,7 +296,7 @@ func (s *S) TestWaitForDnsNamePrivateDNSName(c *check.C) {
 	}
 	dnsName, err := ec2iaas.waitForDnsName(handler, aws.StringValue(instance.InstanceId), params)
 	c.Assert(err, check.IsNil)
-	c.Assert(dnsName, check.Matches, `i-\d.internal.invalid`)
+	c.Assert(dnsName, check.Matches, `ip-.*?\.ec2\.internal`)
 }
 
 func (s *S) TestCreateMachineValidations(c *check.C) {

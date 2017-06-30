@@ -959,8 +959,16 @@ func (c *commandable) SMove(source, destination string, member interface{}) *Boo
 	return cmd
 }
 
+// Redis `SPOP key` command.
 func (c *commandable) SPop(key string) *StringCmd {
 	cmd := NewStringCmd("SPOP", key)
+	c.Process(cmd)
+	return cmd
+}
+
+// Redis `SPOP key count` command.
+func (c *commandable) SPopN(key string, count int64) *StringSliceCmd {
+	cmd := NewStringSliceCmd("SPOP", key, count)
 	c.Process(cmd)
 	return cmd
 }
@@ -1642,12 +1650,6 @@ func (c *commandable) DebugObject(key string) *StringCmd {
 }
 
 //------------------------------------------------------------------------------
-
-func (c *commandable) Publish(channel, message string) *IntCmd {
-	cmd := NewIntCmd("PUBLISH", channel, message)
-	c.Process(cmd)
-	return cmd
-}
 
 func (c *commandable) PubSubChannels(pattern string) *StringSliceCmd {
 	args := []interface{}{"PUBSUB", "CHANNELS"}
