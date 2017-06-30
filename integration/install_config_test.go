@@ -73,9 +73,8 @@ func (s *S) getProvisioners() []string {
 	if _, ok := os.LookupEnv(integrationEnvID + "provisioners"); !ok {
 		return availableProvisioners
 	}
-	provisioners := s.env.All("provisioners")
 	selectedProvisioners := make([]string, 0, len(availableProvisioners))
-	for _, provisioner := range provisioners {
+	for _, provisioner := range s.env.All("provisioners") {
 		provisioner = strings.Trim(provisioner, " ")
 		for i, item := range availableProvisioners {
 			if item == provisioner {
