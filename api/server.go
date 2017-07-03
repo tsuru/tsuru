@@ -156,7 +156,7 @@ func RunServer(dry bool) http.Handler {
 	logPostHandler := AuthorizationRequiredHandler(addLog)
 	m.Add("1.0", "Post", "/apps/{app}/log", logPostHandler)
 	m.Add("1.0", "Post", "/apps/{appname}/deploy/rollback", AuthorizationRequiredHandler(deployRollback))
-	m.Add("1.3", "Put", "/apps/{appname}/deploy/rollback/update", AuthorizationRequiredHandler(deployRollbackUpdate))
+	m.Add("1.4", "Put", "/apps/{appname}/deploy/rollback/update", AuthorizationRequiredHandler(deployRollbackUpdate))
 	m.Add("1.3", "Post", "/apps/{appname}/deploy/rebuild", AuthorizationRequiredHandler(deployRebuild))
 	m.Add("1.0", "Get", "/apps/{app}/metric/envs", AuthorizationRequiredHandler(appMetricEnvs))
 	m.Add("1.0", "Post", "/apps/{app}/routes", AuthorizationRequiredHandler(appRebuildRoutes))
