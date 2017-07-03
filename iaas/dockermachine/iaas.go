@@ -212,9 +212,11 @@ func (i *dockerMachineIaaS) Describe() string {
   driver=<driver>                         Driver to be used by docker machine. Can be set on the IaaS configuration.
 
 Optional params:
-  name=<name>                             Hostname for the created machine
-  docker-install-url=<docker-install-url> Remote script to be used for docker installation. Defaults to: http://get.docker.com. Can be set on the IaaS configuration.
-  insecure-registry=<insecure-registry>   Registry to be added as insecure-registry to the docker engine. Can be set on the IaaS configuration.
-  docker-flags=<flag1,flag2>              Arbitrary docker engine flags. Can be set on the IaaS configuration.
+  name=<name>                                  Hostname for the created machine.
+  docker-install-url=<docker-install-url>      Remote script to be used for docker installation. Defaults to: http://get.docker.com. Can be set on the IaaS configuration.
+  insecure-registry=<insecure-registry>        Registry to be added as insecure-registry to the docker engine. Can be set on the IaaS configuration.
+  docker-flags=<flag1,flag2>                   Arbitrary docker engine flags. Can be set on the IaaS configuration.
+  docker-storage-driver<=docker-storage-driver Docker engine storage driver.
+  user-data-file-param                         Name of the userdata driver parameter.
 `
 }
