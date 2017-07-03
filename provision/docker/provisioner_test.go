@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
@@ -592,9 +591,6 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	a.Quota = quota.Unlimited
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	w := safe.NewBuffer(make([]byte, 2048))
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: "app", Value: a.Name},
