@@ -429,7 +429,7 @@ func (s *S) TestGetDockerClientNoSuchNode(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "No such node in storage")
 }
 
-func (s *S) TestGetDockerClient(c *check.C) {
+func (s *S) TestGetDockerClientWithApp(c *check.C) {
 	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
@@ -458,4 +458,37 @@ func (s *S) TestGetDockerClient(c *check.C) {
 	client, err := p.GetDockerClient(&a)
 	c.Assert(err, check.IsNil)
 	c.Assert(client.Endpoint(), check.Equals, nodes[0].Address)
+}
+
+func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
+	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	nodes := []cluster.Node{
+		{Address: "http://h1:80"},
+		{Address: "http://h2:80"},
+		{Address: "http://h3:80"},
+	}
+	p.cluster, err = cluster.New(nil, p.storage, "", nodes...)
+	c.Assert(err, check.IsNil)
+	opts := provision.AddPoolOptions{Name: "test-docker-client"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	client, err := p.GetDockerClient(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Endpoint(), check.Matches, "^http://h[1-3]:80$")
+}
+
+func (s *S) TestGetDockerClientWithoutAppOrNode(c *check.C) {
+	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, err = cluster.New(nil, p.storage, "")
+	c.Assert(err, check.IsNil)
+	opts := provision.AddPoolOptions{Name: "test-docker-client"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	client, err := p.GetDockerClient(nil)
+	c.Assert(client, check.IsNil)
+	c.Assert(err, check.ErrorMatches, "There is no Docker node. Please list one in tsuru.conf or add one with `tsuru node-add`")
 }

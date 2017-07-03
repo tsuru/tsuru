@@ -5,8 +5,6 @@
 package docker
 
 import (
-	"archive/tar"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -101,7 +98,6 @@ var (
 	_ provision.NodeContainerProvisioner = &dockerProvisioner{}
 	_ provision.UnitFinderProvisioner    = &dockerProvisioner{}
 	_ provision.AppFilterProvisioner     = &dockerProvisioner{}
-	_ provision.ExtensibleProvisioner    = &dockerProvisioner{}
 	_ provision.BuilderDeploy            = &dockerProvisioner{}
 )
 
@@ -776,83 +772,6 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}
 	return conn.Collection(p.collectionName)
-}
-
-// PlatformAdd build and push a new docker platform to register
-func (p *dockerProvisioner) PlatformAdd(opts provision.PlatformOptions) error {
-	return p.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
-}
-
-func (p *dockerProvisioner) PlatformUpdate(opts provision.PlatformOptions) error {
-	return p.buildPlatform(opts.Name, opts.Args, opts.Output, opts.Input)
-}
-
-func (p *dockerProvisioner) buildPlatform(name string, args map[string]string, w io.Writer, r io.Reader) error {
-	var inputStream io.Reader
-	var dockerfileURL string
-	if r != nil {
-		data, err := ioutil.ReadAll(r)
-		if err != nil {
-			return err
-		}
-		var buf bytes.Buffer
-		writer := tar.NewWriter(&buf)
-		writer.WriteHeader(&tar.Header{
-			Name: "Dockerfile",
-			Mode: 0644,
-			Size: int64(len(data)),
-		})
-		writer.Write(data)
-		writer.Close()
-		inputStream = &buf
-	} else {
-		dockerfileURL = args["dockerfile"]
-		if dockerfileURL == "" {
-			return errors.New("Dockerfile is required")
-		}
-		if _, err := url.ParseRequestURI(dockerfileURL); err != nil {
-			return errors.New("dockerfile parameter must be a URL")
-		}
-	}
-	imageName := image.PlatformImageName(name)
-	cluster := p.Cluster()
-	buildOptions := docker.BuildImageOptions{
-		Name:              imageName,
-		Pull:              true,
-		NoCache:           true,
-		RmTmpContainer:    true,
-		Remote:            dockerfileURL,
-		InputStream:       inputStream,
-		OutputStream:      w,
-		InactivityTimeout: net.StreamInactivityTimeout,
-		RawJSONStream:     true,
-	}
-	err := cluster.BuildImage(buildOptions)
-	if err != nil {
-		return err
-	}
-	parts := strings.Split(imageName, ":")
-	var tag string
-	if len(parts) > 2 {
-		imageName = strings.Join(parts[:len(parts)-1], ":")
-		tag = parts[len(parts)-1]
-	} else if len(parts) > 1 {
-		imageName = parts[0]
-		tag = parts[1]
-	} else {
-		imageName = parts[0]
-		tag = "latest"
-	}
-	return p.PushImage(imageName, tag)
-}
-
-func (p *dockerProvisioner) PlatformRemove(name string) error {
-	err := p.Cluster().RemoveImage(image.PlatformImageName(name))
-	if err != nil && err == docker.ErrNoSuchImage {
-		log.Errorf("error on remove image %s from docker.", name)
-		return nil
-	}
-	return err
 }
 
 // GetAppFromUnitID returns app from unit id

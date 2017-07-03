@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	mathRand "math/rand"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -168,13 +169,26 @@ func (p *dockerProvisioner) PushImage(name, tag string) error {
 
 func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, error) {
 	cluster := p.Cluster()
-	nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
-	if err != nil {
-		return nil, err
-	}
-	nodeAddr, _, err := p.scheduler.minMaxNodes(nodes, app.GetName(), "")
-	if err != nil {
-		return nil, err
+	nodeAddr := ""
+	var err error
+	if app == nil {
+		nodes, err := cluster.Nodes()
+		if err != nil {
+			return nil, err
+		}
+		if len(nodes) < 1 {
+			return nil, errors.New("There is no Docker node. Please list one in tsuru.conf or add one with `tsuru node-add`")
+		}
+		nodeAddr = nodes[mathRand.Intn(len(nodes))].Address
+	} else {
+		nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
+		if err != nil {
+			return nil, err
+		}
+		nodeAddr, _, err = p.scheduler.minMaxNodes(nodes, app.GetName(), "")
+		if err != nil {
+			return nil, err
+		}
 	}
 	node, err := cluster.GetNode(nodeAddr)
 	if err != nil {

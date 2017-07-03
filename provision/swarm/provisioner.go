@@ -54,6 +54,7 @@ var (
 	// _ provision.NodeRebalanceProvisioner = &swarmProvisioner{}
 	// _ provision.AppFilterProvisioner     = &swarmProvisioner{}
 	// _ provision.ExtensibleProvisioner    = &swarmProvisioner{}
+	// _ builder.PlatformBuilder            = &swarmProvisioner{}
 )
 
 type swarmProvisionerConfig struct {

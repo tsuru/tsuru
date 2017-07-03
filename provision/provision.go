@@ -531,23 +531,6 @@ type NodeCheckResult struct {
 	Successful bool
 }
 
-// PlatformOptions is the set of options provided to PlatformAdd and
-// PlatformUpdate, in the ExtensibleProvisioner.
-type PlatformOptions struct {
-	Name   string
-	Args   map[string]string
-	Input  io.Reader
-	Output io.Writer
-}
-
-// ExtensibleProvisioner is a provisioner where administrators can manage
-// platforms (automatically adding, removing and updating platforms).
-type ExtensibleProvisioner interface {
-	PlatformAdd(PlatformOptions) error
-	PlatformUpdate(PlatformOptions) error
-	PlatformRemove(name string) error
-}
-
 type provisionerFactory func() (Provisioner, error)
 
 var provisioners = make(map[string]provisionerFactory)

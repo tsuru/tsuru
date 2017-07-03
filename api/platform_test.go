@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -105,7 +106,7 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
-	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
+	err := app.PlatformAdd(builder.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	dockerfileURL := "http://localhost/Dockerfile"
@@ -135,7 +136,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
-	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
+	err := app.PlatformAdd(builder.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
@@ -167,7 +168,7 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
-	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
+	err := app.PlatformAdd(builder.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := "http://localhost/Dockerfile"
 	var buf bytes.Buffer
@@ -197,7 +198,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
-	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
+	err := app.PlatformAdd(builder.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := ""
 	var buf bytes.Buffer
@@ -217,7 +218,7 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
-	err := app.PlatformAdd(provision.PlatformOptions{Name: "wat", Args: nil, Output: nil})
+	err := app.PlatformAdd(builder.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	dockerfileURL := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
@@ -260,7 +261,7 @@ func (*PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
 }
 
 func (*PlatformSuite) TestPlatformRemove(c *check.C) {
-	err := app.PlatformAdd(provision.PlatformOptions{Name: "test", Args: nil, Output: nil})
+	err := app.PlatformAdd(builder.PlatformOptions{Name: "test", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("DELETE", "/platforms/test?:name=test", nil)
 	recorder := httptest.NewRecorder()
