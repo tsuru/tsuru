@@ -180,7 +180,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user", "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Failed to create the instance "+instance.Name+": invalid response: Server failed to do its job.$")
+	c.Assert(err, check.ErrorMatches, `^Failed to create the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
 func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
@@ -205,7 +205,7 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Destroy(&instance, "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": invalid response: Server failed to do its job.$")
+	c.Assert(err, check.ErrorMatches, `Failed to destroy the instance `+instance.Name+`: invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
 func (s *S) TestDestroyNotFound(c *check.C) {
@@ -298,7 +298,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/her-redis" to the app "her-app": invalid response: Server failed to do its job.$`)
+	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/her-redis" to the app "her-app": invalid response: Server failed to do its job. \(code: 500\)$`)
 }
 
 func (s *S) TestBindAppInstanceNotReady(c *check.C) {
@@ -361,7 +361,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
-	expectedMsg := `^Failed to bind the instance "redis/her-redis" to the unit "10.10.10.\d+": invalid response: Server failed to do its job.$`
+	expectedMsg := `^Failed to bind the instance "redis/her-redis" to the unit "10.10.10.\d+": invalid response: Server failed to do its job. \(code: 500\)$`
 	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 
@@ -423,7 +423,7 @@ func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindApp(&instance, a)
 	c.Assert(err, check.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): invalid response: Server failed to do its job.`
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): invalid response: Server failed to do its job. (code: 500)`
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
@@ -473,7 +473,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = client.UnbindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): invalid response: Server failed to do its job.`
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): invalid response: Server failed to do its job. (code: 500)`
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
@@ -506,7 +506,7 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
 	cli := Client{}
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
-	c.Assert(cli.buildErrorMessage(nil, resp), check.ErrorMatches, "invalid response: something went wrong")
+	c.Assert(cli.buildErrorMessage(nil, resp), check.ErrorMatches, `invalid response: something went wrong \(code: 0\)`)
 }
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
