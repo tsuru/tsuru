@@ -58,6 +58,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		params["driver"] = driverName
 	}
 	dockerEngineInstallURL, _ := i.getParamOrConfigString("docker-install-url", params)
+	dockerEngineStorageDriver, _ := i.getParamOrConfigString("docker-storage-driver", params)
 	insecureRegistry, _ := i.getParamOrConfigString("insecure-registry", params)
 	var engineFlags []string
 	if f, err := i.getParamOrConfigString("docker-flags", params); err == nil {
@@ -120,12 +121,13 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		log.Debug(buf.String())
 	}()
 	m, err := dockerMachine.CreateMachine(CreateMachineOpts{
-		Name:                   machineName,
-		DriverName:             driverName,
-		Params:                 driverOpts,
-		InsecureRegistry:       insecureRegistry,
-		DockerEngineInstallURL: dockerEngineInstallURL,
-		ArbitraryFlags:         engineFlags,
+		Name:                      machineName,
+		DriverName:                driverName,
+		Params:                    driverOpts,
+		InsecureRegistry:          insecureRegistry,
+		DockerEngineInstallURL:    dockerEngineInstallURL,
+		DockerEngineStorageDriver: dockerEngineStorageDriver,
+		ArbitraryFlags:            engineFlags,
 	})
 	if err != nil {
 		if m != nil {
