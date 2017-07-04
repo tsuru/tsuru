@@ -506,7 +506,7 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
 	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
 	err = app.BindUnit(&unit)
-	c.Assert(err, check.ErrorMatches, "Failed to bind the instance \"mysql/yourdb\" to the unit \"127.0.2.1\": invalid response: myerr")
+	c.Assert(err, check.ErrorMatches, `Failed to bind the instance "mysql/yourdb" to the unit "127.0.2.1": invalid response: myerr \(code: 500\)`)
 	c.Assert(requests, check.HasLen, 3)
 	c.Assert(requests[0].Method, check.Equals, "POST")
 	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
