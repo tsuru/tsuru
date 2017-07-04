@@ -32,18 +32,26 @@ before_install:
   - sudo service mongod start || true
   - service mongod status
   - go env && pwd
-script:
-  - make test
-  - while true; do echo .; sleep 30; done &
-  - if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
-  - ./misc/check-handlers.sh
-  - ./misc/check-events.sh
-  - make check-api-doc
-  - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
-after_success:
-  - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
-  - git clean -dfx
-  - test -n "$TRAVIS_TAG" && curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash
+jobs:
+  include:
+    - stage: test
+      script: make test
+    - stage: lint
+      script: if [ "${TRAVIS_EVENT_TYPE}" = "push" ] && [ "${TRAVIS_BRANCH}" = "master" ]; then make lint; else make metalint; fi
+    - stage: lint-handlers
+      script: ./misc/check-handlers.sh
+    - stage: lint-events
+      script: ./misc/check-events.sh
+    - stage: lint-check-docs
+      script: make check-api-doc
+    - stage: build
+      script: CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
+    - stage: deploy-docker-image
+      script: curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
+    - stage: deploy-packages
+      script:
+        - git clean -dfx
+        - test -n "$TRAVIS_TAG" && curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash
 notifications:
   email:
     on_success: change
