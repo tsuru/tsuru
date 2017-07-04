@@ -200,3 +200,6 @@
 [[override]]
   name = "github.com/hashicorp/go-version"
   revision = "0181db47023708a38c2d20d2fe25a5fa034d5743"
+[[override]]
+  name = "golang.org/x/crypto"
+  revision = "1fbbd62cfec66bd39d91e97749579579d4d3037e"
