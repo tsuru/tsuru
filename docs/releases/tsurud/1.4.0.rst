@@ -1,0 +1,47 @@
+.. Copyright 2017 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+==========================
+tsurud 1.4.0 release notes
+==========================
+
+Welcome to tsurud 1.4.0!
+
+These release notes cover the :ref:`new features <new-1.4.0>`, :ref:`bug fixes
+<bug-1.4.0>`.
+
+.. _new-1.4.0:
+
+New features
+============
+
+Generic API based Router (`#1572 <https://github.com/tsuru/tsuru/issues/1572>`_)
+--------------------------------------------------------------------------------
+
+The support for a new router type, named `api`, was introduced in this release.
+This type of router resembles the service concept, in which it is an agnostic
+API that must follow a specific contract. This API will be called on every router
+operation, e.g, adding and removing new routes.
+
+
+Other improvements
+------------------
+
+* Enable updating an app's platform on app update
+  `#1591 <https://github.com/tsuru/tsuru/issues/1591>`_
+
+* Enable creating apps without platform
+  `#1491 <https://github.com/tsuru/tsuru/issues/1491>`_
+
+* Enable forcing a fresh deploy for an app
+  `#813 <https://github.com/tsuru/tsuru/issues/813>`_
+
+
+.. _bug-1.4.0:
+
+Bug fixes
+=========
+
+* Adding units on an app with stopped units should fail
+  `#1347 <https://github.com/tsuru/tsuru/issues/1347>`_
