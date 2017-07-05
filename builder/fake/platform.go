@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/tsuru/builder"
 )
 
-var _ builder.PlatformBuilder = &FakePlatformBuilder{}
+var _ builder.PlatformBuilder = &FakeBuilder{}
 
 type provisionedPlatform struct {
 	Name    string
@@ -18,11 +18,7 @@ type provisionedPlatform struct {
 	Version int
 }
 
-type FakePlatformBuilder struct {
-	platforms []provisionedPlatform
-}
-
-func (p *FakePlatformBuilder) PlatformAdd(opts builder.PlatformOptions) error {
+func (p *FakeBuilder) PlatformAdd(opts builder.PlatformOptions) error {
 	if p.GetPlatform(opts.Name) != nil {
 		return errors.New("duplicate platform")
 	}
@@ -30,7 +26,7 @@ func (p *FakePlatformBuilder) PlatformAdd(opts builder.PlatformOptions) error {
 	return nil
 }
 
-func (p *FakePlatformBuilder) PlatformUpdate(opts builder.PlatformOptions) error {
+func (p *FakeBuilder) PlatformUpdate(opts builder.PlatformOptions) error {
 	index, platform := p.getPlatform(opts.Name)
 	if platform == nil {
 		return errors.New("platform not found")
@@ -41,7 +37,7 @@ func (p *FakePlatformBuilder) PlatformUpdate(opts builder.PlatformOptions) error
 	return nil
 }
 
-func (p *FakePlatformBuilder) PlatformRemove(name string) error {
+func (p *FakeBuilder) PlatformRemove(name string) error {
 	index, _ := p.getPlatform(name)
 	if index < 0 {
 		return errors.New("platform not found")
@@ -51,12 +47,12 @@ func (p *FakePlatformBuilder) PlatformRemove(name string) error {
 	return nil
 }
 
-func (p *FakePlatformBuilder) GetPlatform(name string) *provisionedPlatform {
+func (p *FakeBuilder) GetPlatform(name string) *provisionedPlatform {
 	_, platform := p.getPlatform(name)
 	return platform
 }
 
-func (p *FakePlatformBuilder) getPlatform(name string) (int, *provisionedPlatform) {
+func (p *FakeBuilder) getPlatform(name string) (int, *provisionedPlatform) {
 	for i, platform := range p.platforms {
 		if platform.Name == name {
 			return i, &platform

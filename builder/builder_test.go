@@ -16,36 +16,36 @@ import (
 
 type S struct{}
 
-type CustomPlatformBuilder struct {
-	CustomBehavior func(PlatformOptions, string) error
+type customPlatformBuilder struct {
+	customBehavior func(PlatformOptions, string) error
 }
 
 var _ = check.Suite(S{})
-var _ PlatformBuilder = &CustomPlatformBuilder{}
-var _ Builder = &CustomPlatformBuilder{}
+var _ PlatformBuilder = &customPlatformBuilder{}
+var _ Builder = &customPlatformBuilder{}
 
-func (b *CustomPlatformBuilder) PlatformAdd(opts PlatformOptions) error {
-	if b.CustomBehavior == nil {
+func (b *customPlatformBuilder) PlatformAdd(opts PlatformOptions) error {
+	if b.customBehavior == nil {
 		return nil
 	}
-	return b.CustomBehavior(opts, "")
+	return b.customBehavior(opts, "")
 }
 
-func (b *CustomPlatformBuilder) PlatformUpdate(opts PlatformOptions) error {
-	if b.CustomBehavior == nil {
+func (b *customPlatformBuilder) PlatformUpdate(opts PlatformOptions) error {
+	if b.customBehavior == nil {
 		return nil
 	}
-	return b.CustomBehavior(opts, "")
+	return b.customBehavior(opts, "")
 }
 
-func (b *CustomPlatformBuilder) PlatformRemove(name string) error {
-	if b.CustomBehavior == nil {
+func (b *customPlatformBuilder) PlatformRemove(name string) error {
+	if b.customBehavior == nil {
 		return nil
 	}
-	return b.CustomBehavior(PlatformOptions{}, name)
+	return b.customBehavior(PlatformOptions{}, name)
 }
 
-func (b *CustomPlatformBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts BuildOpts) (string, error) {
+func (b *customPlatformBuilder) Build(provision.BuilderDeploy, provision.App, *event.Event, BuildOpts) (string, error) {
 	return "", nil
 }
 
@@ -90,18 +90,32 @@ func (s S) TestRegistry(c *check.C) {
 }
 
 func (s S) TestPlatformAdd(c *check.C) {
-	var b1, b2, b3 CustomPlatformBuilder
+	platformAddCalls := 0
+	callCounter := func(PlatformOptions, string) error {
+		platformAddCalls++
+		return nil
+	}
+	b1 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
+	b2 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
+	b3 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
 	Register("my-builder", &b1)
 	Register("your-builder", &b2)
 	Register("default-builder", &b3)
 	err := PlatformAdd(PlatformOptions{})
 	c.Assert(err, check.IsNil)
+	c.Assert(platformAddCalls, check.Equals, 3)
 }
 
 func (s S) TestPlatformAddError(c *check.C) {
 	errMsg := "error adding platform"
-	var b1 = CustomPlatformBuilder{
-		CustomBehavior: func(PlatformOptions, string) error {
+	var b1 = customPlatformBuilder{
+		customBehavior: func(PlatformOptions, string) error {
 			return fmt.Errorf(errMsg)
 		},
 	}
@@ -111,18 +125,32 @@ func (s S) TestPlatformAddError(c *check.C) {
 }
 
 func (s S) TestPlatformUpdate(c *check.C) {
-	var b1, b2, b3 CustomPlatformBuilder
+	platformUpdateCalls := 0
+	callCounter := func(PlatformOptions, string) error {
+		platformUpdateCalls++
+		return nil
+	}
+	b1 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
+	b2 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
+	b3 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
 	Register("my-builder", &b1)
 	Register("your-builder", &b2)
 	Register("default-builder", &b3)
 	err := PlatformUpdate(PlatformOptions{})
 	c.Assert(err, check.IsNil)
+	c.Assert(platformUpdateCalls, check.Equals, 3)
 }
 
 func (s S) TestPlatformUpdateError(c *check.C) {
 	errMsg := "error updating platform"
-	var b1 = CustomPlatformBuilder{
-		CustomBehavior: func(PlatformOptions, string) error {
+	var b1 = customPlatformBuilder{
+		customBehavior: func(PlatformOptions, string) error {
 			return fmt.Errorf(errMsg)
 		},
 	}
@@ -132,18 +160,32 @@ func (s S) TestPlatformUpdateError(c *check.C) {
 }
 
 func (s S) TestPlatformRemove(c *check.C) {
-	var b1, b2, b3 CustomPlatformBuilder
+	platformRemoveCalls := 0
+	callCounter := func(PlatformOptions, string) error {
+		platformRemoveCalls++
+		return nil
+	}
+	b1 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
+	b2 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
+	b3 := customPlatformBuilder{
+		customBehavior: callCounter,
+	}
 	Register("my-builder", &b1)
 	Register("your-builder", &b2)
 	Register("default-builder", &b3)
 	err := PlatformRemove("platform-name")
 	c.Assert(err, check.IsNil)
+	c.Assert(platformRemoveCalls, check.Equals, 3)
 }
 
 func (s S) TestPlatformRemoveError(c *check.C) {
 	errMsg := "error removing platform"
-	var b1 = CustomPlatformBuilder{
-		CustomBehavior: func(PlatformOptions, string) error {
+	var b1 = customPlatformBuilder{
+		customBehavior: func(PlatformOptions, string) error {
 			return fmt.Errorf(errMsg)
 		},
 	}

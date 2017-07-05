@@ -22,6 +22,7 @@ type FakeBuilder struct {
 	IsArchiveFileDeploy bool
 	IsRebuildDeploy     bool
 	IsImageDeploy       bool
+	platforms           []provisionedPlatform
 }
 
 func init() {

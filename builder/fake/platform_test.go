@@ -10,7 +10,7 @@ import (
 )
 
 func (s *S) TestPlatformAdd(c *check.C) {
-	p := FakePlatformBuilder{}
+	p := FakeBuilder{}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
 	err := p.PlatformAdd(builder.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
@@ -21,7 +21,7 @@ func (s *S) TestPlatformAdd(c *check.C) {
 }
 
 func (s *S) TestPlatformAddTwice(c *check.C) {
-	p := FakePlatformBuilder{}
+	p := FakeBuilder{}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
 	err := p.PlatformAdd(builder.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
@@ -31,7 +31,7 @@ func (s *S) TestPlatformAddTwice(c *check.C) {
 }
 
 func (s *S) TestPlatformUpdate(c *check.C) {
-	p := FakePlatformBuilder{}
+	p := FakeBuilder{}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
 	err := p.PlatformAdd(builder.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
@@ -45,14 +45,14 @@ func (s *S) TestPlatformUpdate(c *check.C) {
 }
 
 func (s *S) TestPlatformUpdateNotFound(c *check.C) {
-	p := FakePlatformBuilder{}
+	p := FakeBuilder{}
 	err := p.PlatformUpdate(builder.PlatformOptions{Name: "python", Args: nil})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "platform not found")
 }
 
 func (s *S) TestPlatformRemove(c *check.C) {
-	p := FakePlatformBuilder{}
+	p := FakeBuilder{}
 	args := map[string]string{"dockerfile": "mydockerfile.txt"}
 	err := p.PlatformAdd(builder.PlatformOptions{Name: "python", Args: args})
 	c.Assert(err, check.IsNil)
@@ -63,7 +63,7 @@ func (s *S) TestPlatformRemove(c *check.C) {
 }
 
 func (s *S) TestPlatformRemoveNotFound(c *check.C) {
-	p := FakePlatformBuilder{}
+	p := FakeBuilder{}
 	err := p.PlatformRemove("python")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "platform not found")
