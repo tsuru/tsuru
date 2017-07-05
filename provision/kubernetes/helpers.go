@@ -15,16 +15,15 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
+	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
-	"k8s.io/kubernetes/pkg/util/term"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
@@ -98,7 +97,7 @@ func notReadyPodEvents(client *clusterClient, a provision.App, process string) (
 podsLoop:
 	for _, pod := range pods.Items {
 		for _, cond := range pod.Status.Conditions {
-			if cond.Type == v1.PodReady && cond.Status != v1.ConditionTrue {
+			if cond.Type == apiv1.PodReady && cond.Status != apiv1.ConditionTrue {
 				podsForEvts = append(podsForEvts, pod.Name)
 				continue podsLoop
 			}
@@ -110,7 +109,7 @@ podsLoop:
 		ns := client.Namespace()
 		selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
 		options := metav1.ListOptions{FieldSelector: selector.String()}
-		var events *v1.EventList
+		var events *apiv1.EventList
 		events, err = eventsInterface.List(options)
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -157,17 +156,17 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 		if err != nil {
 			return true, errors.WithStack(err)
 		}
-		if pod.Status.Phase == v1.PodPending {
+		if pod.Status.Phase == apiv1.PodPending {
 			return false, nil
 		}
 		switch pod.Status.Phase {
-		case v1.PodRunning:
+		case apiv1.PodRunning:
 			if !returnOnRunning {
 				return false, nil
 			}
-		case v1.PodUnknown:
+		case apiv1.PodUnknown:
 			fallthrough
-		case v1.PodFailed:
+		case apiv1.PodFailed:
 			phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
 			if pod.Status.Message != "" {
 				phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
@@ -176,7 +175,7 @@ func waitForPod(client *clusterClient, podName string, returnOnRunning bool, tim
 			ns := client.Namespace()
 			selector := eventsInterface.GetFieldSelector(&podName, &ns, nil, nil)
 			options := metav1.ListOptions{FieldSelector: selector.String()}
-			var events *v1.EventList
+			var events *apiv1.EventList
 			events, err = eventsInterface.List(options)
 			if err != nil {
 				return true, errors.Wrapf(err, "error listing pod %q events invalid phase %s", podName, phaseWithMsg)
@@ -279,7 +278,7 @@ func cleanupPod(client *clusterClient, podName string) error {
 	return nil
 }
 
-func podsFromNode(client *clusterClient, nodeName string) ([]v1.Pod, error) {
+func podsFromNode(client *clusterClient, nodeName string) ([]apiv1.Pod, error) {
 	podList, err := client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 		FieldSelector: fields.SelectorFromSet(fields.Set{
 			"spec.nodeName": nodeName,
@@ -314,15 +313,15 @@ func labelSetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
 }
 
 type fixedSizeQueue struct {
-	sz *term.Size
+	sz *remotecommand.TerminalSize
 }
 
-func (q *fixedSizeQueue) Next() *term.Size {
+func (q *fixedSizeQueue) Next() *remotecommand.TerminalSize {
 	defer func() { q.sz = nil }()
 	return q.sz
 }
 
-var _ term.TerminalSizeQueue = &fixedSizeQueue{}
+var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
 
 type execOpts struct {
 	app      provision.App
@@ -331,7 +330,7 @@ type execOpts struct {
 	stdout   io.Writer
 	stderr   io.Writer
 	stdin    io.Reader
-	termSize *term.Size
+	termSize *remotecommand.TerminalSize
 	tty      bool
 }
 
@@ -340,7 +339,7 @@ func execCommand(opts execOpts) error {
 	if err != nil {
 		return err
 	}
-	var chosenPod *v1.Pod
+	var chosenPod *apiv1.Pod
 	if opts.unit != "" {
 		chosenPod, err = client.Core().Pods(client.Namespace()).Get(opts.unit, metav1.GetOptions{})
 		if err != nil {
@@ -361,7 +360,7 @@ func execCommand(opts execOpts) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		var pods *v1.PodList
+		var pods *apiv1.PodList
 		pods, err = client.Core().Pods(client.Namespace()).List(metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set(l.ToAppSelector())).String(),
 		})
@@ -388,14 +387,14 @@ func execCommand(opts execOpts) error {
 		Namespace(client.Namespace()).
 		SubResource("exec").
 		Param("container", containerName)
-	req.VersionedParams(&api.PodExecOptions{
+	req.VersionedParams(&apiv1.PodExecOptions{
 		Container: containerName,
 		Command:   opts.cmds,
 		Stdin:     opts.stdin != nil,
 		Stdout:    true,
 		Stderr:    true,
 		TTY:       opts.tty,
-	}, api.ParameterCodec)
+	}, scheme.ParameterCodec)
 	exec, err := remotecommand.NewExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
@@ -407,7 +406,7 @@ func execCommand(opts execOpts) error {
 		}
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
-		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
+		SupportedProtocols: remotecommandutil.SupportedStreamingProtocols,
 		Stdin:              opts.stdin,
 		Stdout:             opts.stdout,
 		Stderr:             opts.stderr,
@@ -425,7 +424,7 @@ type runSinglePodArgs struct {
 	stdout     io.Writer
 	labels     *provision.LabelSet
 	cmds       []string
-	envs       []v1.EnvVar
+	envs       []apiv1.EnvVar
 	name       string
 	image      string
 	pool       string
@@ -436,16 +435,16 @@ func runPod(args runSinglePodArgs) error {
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool: args.pool,
 	}).ToNodeByPoolSelector()
-	pod := &v1.Pod{
+	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
 			Namespace: args.client.Namespace(),
 			Labels:    args.labels.ToLabels(),
 		},
-		Spec: v1.PodSpec{
+		Spec: apiv1.PodSpec{
 			NodeSelector:  nodeSelector,
-			RestartPolicy: v1.RestartPolicyNever,
-			Containers: []v1.Container{
+			RestartPolicy: apiv1.RestartPolicyNever,
+			Containers: []apiv1.Container{
 				{
 					Name:    args.name,
 					Image:   args.image,
@@ -456,17 +455,17 @@ func runPod(args runSinglePodArgs) error {
 		},
 	}
 	if args.dockerSock {
-		pod.Spec.Volumes = []v1.Volume{
+		pod.Spec.Volumes = []apiv1.Volume{
 			{
 				Name: "dockersock",
-				VolumeSource: v1.VolumeSource{
-					HostPath: &v1.HostPathVolumeSource{
+				VolumeSource: apiv1.VolumeSource{
+					HostPath: &apiv1.HostPathVolumeSource{
 						Path: dockerSockPath,
 					},
 				},
 			},
 		}
-		pod.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
+		pod.Spec.Containers[0].VolumeMounts = []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 		}
 	}
@@ -486,7 +485,7 @@ func runPod(args runSinglePodArgs) error {
 		multiErr.Add(errors.WithStack(err))
 		return multiErr
 	}
-	req := args.client.Core().Pods(args.client.Namespace()).GetLogs(pod.Name, &v1.PodLogOptions{
+	req := args.client.Core().Pods(args.client.Namespace()).GetLogs(pod.Name, &apiv1.PodLogOptions{
 		Follow:    true,
 		Container: args.name,
 	})
@@ -504,8 +503,8 @@ func runPod(args runSinglePodArgs) error {
 	return multiErr.ToError()
 }
 
-func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*v1.Node, error) {
-	var node *v1.Node
+func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*apiv1.Node, error) {
+	var node *apiv1.Node
 	waitErr := waitFor(timeout, func() (bool, error) {
 		var err error
 		node, err = client.Core().Nodes().Get(addr, metav1.GetOptions{})
@@ -513,7 +512,7 @@ func waitNodeReady(client *clusterClient, addr string, timeout time.Duration) (*
 			return true, errors.WithStack(err)
 		}
 		for _, cond := range node.Status.Conditions {
-			if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
+			if cond.Type == apiv1.NodeReady && cond.Status == apiv1.ConditionTrue {
 				return true, nil
 			}
 		}
@@ -530,10 +529,10 @@ func refreshNodeTaints(client *clusterClient, addr string) {
 		log.Errorf("error waiting for node ready: %v", err)
 	}
 	tsuruTaintKey := "tsuru-refresh-node-container"
-	tsuruTempTaint := v1.Taint{
+	tsuruTempTaint := apiv1.Taint{
 		Key:    tsuruTaintKey,
 		Value:  "true",
-		Effect: v1.TaintEffectNoSchedule,
+		Effect: apiv1.TaintEffectNoSchedule,
 	}
 	node.Spec.Taints = append(node.Spec.Taints, tsuruTempTaint)
 	node, err = client.Core().Nodes().Update(node)

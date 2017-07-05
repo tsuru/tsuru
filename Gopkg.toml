@@ -1,14 +1,15 @@
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "v3.0.0-beta.0"
+  revision = "59eef07b24b219d287624b7f52ea339ac3e145fc"
+  # TODO(cezarsa): use version 4.0.0 once it's out
 
-[[constraint]]
-  name = "k8s.io/kubernetes"
-  version = "v1.6.6"
-
-[[constraint]]
+[[override]]
   name = "k8s.io/apimachinery"
-  revision = "75b8dd260ef0469d96d578705a87cffd0e09dab8"
+  revision = "4d3c9f54ada2537bd5041d08f886f18419c39fee"
+
+[[override]]
+  name = "k8s.io/api"
+  revision = "4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57"
 
 [[constraint]]
   name = "github.com/docker/docker"
@@ -56,7 +57,7 @@
 
 [[constraint]]
   name = "golang.org/x/oauth2"
-  revision = "442624c9ec9243441e83b374a9e22ac549b5c51d"
+  revision = "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"
 
 # [[constraint]]
 #   name = "gopkg.in/amz.v3"
@@ -94,7 +95,16 @@
   revision = "ab4b0d7ff424c462da486aef27f354cdeb29a319"
 [[override]]
   name = "github.com/dgrijalva/jwt-go"
-  revision = "9ed569b5d1ac936e6494082958d63a6aa4fff99a"
+  revision = "01aeca54ebda6e0fbfafd0a524d234159c05ec20"
+[[override]]
+  name = "github.com/docker/spdystream"
+  revision = "449fdfce4d962303d702fec724ef0ad181c92528"
+[[override]]
+  name = "github.com/emicklei/go-restful"
+  revision = "ff4f55a206334ef123e4f79bbf348980da81ca46"
+[[override]]
+  name = "github.com/gogo/protobuf"
+  revision = "c0656edd0d9eab7c66d1eb0c568f9039345796f7"
 [[override]]
   name = "github.com/RobotsAndPencils/go-saml"
   revision = "aa127de49a0111329d9dbd2e19ddf21da90eb931"
@@ -130,7 +140,7 @@
   revision = "fa152c58bc15761d0200cb75fe958b89a9d4888e"
 [[override]]
   name = "github.com/Azure/go-autorest"
-  version = "v7.2.1"
+  version = "v7.2.3"
 [[override]]
   name = "github.com/gorilla/context"
   revision = "708054d61e5a2918b9f4e9700000ee611dcf03f5"
@@ -160,7 +170,19 @@
   revision = "8edc80b07f38c27352fb186d971c628a6c32552b"
 [[override]]
   name = "github.com/golang/protobuf"
-  revision = "1fb8fd32a09087bcd727225167edd31e1b9ceb24"
+  revision = "4bd1920723d7b7c925de087aa32e2187708897f7"
+[[override]]
+  name = "github.com/googleapis/gnostic"
+  revision = "68f4ded48ba9414dab2ae69b3f0d69971da73aa5"
+[[override]]
+  name = "github.com/hashicorp/golang-lru"
+  revision = "a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4"
+[[override]]
+  name = "github.com/howeyc/gopass"
+  revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
+[[override]]
+  name = "github.com/juju/ratelimit"
+  revision = "5b9ff866471762aa2ab2dced63c9fb6f53921342"
 [[override]]
   name = "github.com/samalba/dockerclient"
   revision = "a3036261847103270e9f732509f43b5f98710ace"
@@ -203,3 +225,9 @@
 [[override]]
   name = "golang.org/x/crypto"
   revision = "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+[[override]]
+  name = "gopkg.in/inf.v0"
+  version = "v0.9.0"
+[[override]]
+  name = "gopkg.in/yaml.v2"
+  revision = "53feefa2559fb8dfa8d81baad31be332c97d6c77"

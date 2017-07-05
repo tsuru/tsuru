@@ -17,11 +17,11 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 const alphaAffinityAnnotation = "scheduler.alpha.kubernetes.io/affinity"
@@ -47,24 +47,24 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		}
 		oldDs = nil
 	}
-	nodeReq := v1.NodeSelectorRequirement{
+	nodeReq := apiv1.NodeSelectorRequirement{
 		Key: provision.LabelNodePool,
 	}
 	if len(filter.Exclude) > 0 {
-		nodeReq.Operator = v1.NodeSelectorOpNotIn
+		nodeReq.Operator = apiv1.NodeSelectorOpNotIn
 		nodeReq.Values = filter.Exclude
 	} else {
-		nodeReq.Operator = v1.NodeSelectorOpIn
+		nodeReq.Operator = apiv1.NodeSelectorOpIn
 		nodeReq.Values = filter.Include
 	}
 	affinityAnnotation := map[string]string{}
-	var affinity *v1.Affinity
+	var affinity *apiv1.Affinity
 	if len(nodeReq.Values) != 0 {
-		affinity = &v1.Affinity{
-			NodeAffinity: &v1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-					NodeSelectorTerms: []v1.NodeSelectorTerm{{
-						MatchExpressions: []v1.NodeSelectorRequirement{nodeReq},
+		affinity = &apiv1.Affinity{
+			NodeAffinity: &apiv1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+					NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+						MatchExpressions: []apiv1.NodeSelectorRequirement{nodeReq},
 					}},
 				},
 			},
@@ -93,7 +93,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		Provisioner:  provisionerName,
 		Prefix:       tsuruLabelPrefix,
 	})
-	envVars := make([]v1.EnvVar, len(config.Config.Env))
+	envVars := make([]apiv1.EnvVar, len(config.Config.Env))
 	for i, v := range config.Config.Env {
 		parts := strings.SplitN(v, "=", 2)
 		envVars[i].Name = parts[0]
@@ -101,8 +101,8 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 			envVars[i].Value = parts[1]
 		}
 	}
-	var volumes []v1.Volume
-	var volumeMounts []v1.VolumeMount
+	var volumes []apiv1.Volume
+	var volumeMounts []apiv1.VolumeMount
 	if config.Name == nodecontainer.BsDefaultName {
 		config.HostConfig.Binds = append(config.HostConfig.Binds,
 			"/var/log:/var/log:rw",
@@ -112,15 +112,15 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 	}
 	for i, b := range config.HostConfig.Binds {
 		parts := strings.SplitN(b, ":", 3)
-		vol := v1.Volume{
+		vol := apiv1.Volume{
 			Name: fmt.Sprintf("volume-%d", i),
-			VolumeSource: v1.VolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
 					Path: parts[0],
 				},
 			},
 		}
-		mount := v1.VolumeMount{
+		mount := apiv1.VolumeMount{
 			Name: vol.Name,
 		}
 		if len(parts) > 1 {
@@ -132,47 +132,47 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *clusterClie
 		volumes = append(volumes, vol)
 		volumeMounts = append(volumeMounts, mount)
 	}
-	var secCtx *v1.SecurityContext
+	var secCtx *apiv1.SecurityContext
 	if config.HostConfig.Privileged {
 		trueVar := true
-		secCtx = &v1.SecurityContext{
+		secCtx = &apiv1.SecurityContext{
 			Privileged: &trueVar,
 		}
 	}
-	restartPolicy := v1.RestartPolicyAlways
+	restartPolicy := apiv1.RestartPolicyAlways
 	switch config.HostConfig.RestartPolicy.Name {
 	case docker.RestartOnFailure(0).Name:
-		restartPolicy = v1.RestartPolicyOnFailure
+		restartPolicy = apiv1.RestartPolicyOnFailure
 	case docker.NeverRestart().Name:
-		restartPolicy = v1.RestartPolicyNever
+		restartPolicy = apiv1.RestartPolicyNever
 	}
 	maxUnavailable := intstr.FromString("20%")
-	ds := &extensions.DaemonSet{
+	ds := &v1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
 			Namespace: client.Namespace(),
 		},
-		Spec: extensions.DaemonSetSpec{
+		Spec: v1beta1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: ls.ToNodeContainerSelector(),
 			},
-			UpdateStrategy: extensions.DaemonSetUpdateStrategy{
-				Type: extensions.RollingUpdateDaemonSetStrategyType,
-				RollingUpdate: &extensions.RollingUpdateDaemonSet{
+			UpdateStrategy: v1beta1.DaemonSetUpdateStrategy{
+				Type: v1beta1.RollingUpdateDaemonSetStrategyType,
+				RollingUpdate: &v1beta1.RollingUpdateDaemonSet{
 					MaxUnavailable: &maxUnavailable,
 				},
 			},
-			Template: v1.PodTemplateSpec{
+			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      ls.ToLabels(),
 					Annotations: affinityAnnotation,
 				},
-				Spec: v1.PodSpec{
+				Spec: apiv1.PodSpec{
 					Affinity:      affinity,
 					Volumes:       volumes,
 					RestartPolicy: restartPolicy,
 					HostNetwork:   config.HostConfig.NetworkMode == "host",
-					Containers: []v1.Container{
+					Containers: []apiv1.Container{
 						{
 							Name:            config.Name,
 							Image:           config.Image(),

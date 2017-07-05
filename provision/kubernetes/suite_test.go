@@ -31,6 +31,8 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,10 +40,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -114,9 +114,9 @@ type clientPodsWrapper struct {
 	cluster *clusterClient
 }
 
-func (c *clientPodsWrapper) GetLogs(name string, opts *v1.PodLogOptions) *rest.Request {
+func (c *clientPodsWrapper) GetLogs(name string, opts *apiv1.PodLogOptions) *rest.Request {
 	cli, _ := rest.RESTClientFor(c.cluster.restConfig)
-	return cli.Get().Namespace(c.cluster.Namespace()).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, api.ParameterCodec)
+	return cli.Get().Namespace(c.cluster.Namespace()).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, scheme.ParameterCodec)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -177,21 +177,21 @@ func (s *S) mockfakeNodes(c *check.C, urls ...string) {
 		c.Assert(err, check.IsNil)
 	}
 	for i := 1; i <= 2; i++ {
-		_, err := s.client.Core().Nodes().Create(&v1.Node{
+		_, err := s.client.Core().Nodes().Create(&apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("n%d", i),
 				Labels: map[string]string{
 					"pool": "test-default",
 				},
 			},
-			Status: v1.NodeStatus{
-				Addresses: []v1.NodeAddress{
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
 					{
-						Type:    v1.NodeInternalIP,
+						Type:    apiv1.NodeInternalIP,
 						Address: fmt.Sprintf("192.168.99.%d", i),
 					},
 					{
-						Type:    v1.NodeExternalIP,
+						Type:    apiv1.NodeExternalIP,
 						Address: fmt.Sprintf("200.0.0.%d", i),
 					},
 				},
@@ -249,7 +249,7 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 		for {
 			select {
 			case stream := <-streams:
-				streamType := stream.s.Headers().Get(api.StreamType)
+				streamType := stream.s.Headers().Get(apiv1.StreamType)
 				streamMap[streamType] = stream.s
 				go waitStreamReply(stream.r, replyChan)
 			case <-replyChan:
@@ -262,7 +262,7 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 				return
 			}
 		}
-		if resize := streamMap[api.StreamTypeResize]; resize != nil {
+		if resize := streamMap[apiv1.StreamTypeResize]; resize != nil {
 			scanner := bufio.NewScanner(resize)
 			if scanner.Scan() {
 				mu.Lock()
@@ -272,7 +272,7 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 				mu.Unlock()
 			}
 		}
-		if stdin := streamMap[api.StreamTypeStdin]; stdin != nil {
+		if stdin := streamMap[apiv1.StreamTypeStdin]; stdin != nil {
 			data, _ := ioutil.ReadAll(stdin)
 			mu.Lock()
 			res := s.stream[cont]
@@ -280,10 +280,10 @@ func (s *S) createDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGro
 			s.stream[cont] = res
 			mu.Unlock()
 		}
-		if stderr := streamMap[api.StreamTypeStderr]; stderr != nil {
+		if stderr := streamMap[apiv1.StreamTypeStderr]; stderr != nil {
 			stderr.Write([]byte("stderr data"))
 		}
-		if stdout := streamMap[api.StreamTypeStdout]; stdout != nil {
+		if stdout := streamMap[apiv1.StreamTypeStdout]; stdout != nil {
 			stdout.Write([]byte("stdout data"))
 		}
 	}
@@ -319,7 +319,7 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 			return false, nil, nil
 		}
 		wg.Add(1)
-		dep := action.(ktesting.CreateAction).GetObject().(*extensions.Deployment)
+		dep := action.(ktesting.CreateAction).GetObject().(*v1beta1.Deployment)
 		var specReplicas int32
 		if dep.Spec.Replicas != nil {
 			specReplicas = *dep.Spec.Replicas
@@ -328,11 +328,11 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 		dep.Status.Replicas = specReplicas
 		go func() {
 			defer wg.Done()
-			pod := &v1.Pod{
+			pod := &apiv1.Pod{
 				ObjectMeta: dep.Spec.Template.ObjectMeta,
 				Spec:       dep.Spec.Template.Spec,
 			}
-			pod.Status.Phase = v1.PodRunning
+			pod.Status.Phase = apiv1.PodRunning
 			pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
 			pod.Spec.NodeName = "n1"
@@ -353,8 +353,8 @@ func (s *S) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.
 
 func (s *S) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		srv := action.(ktesting.CreateAction).GetObject().(*v1.Service)
-		srv.Spec.Ports = []v1.ServicePort{
+		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		srv.Spec.Ports = []apiv1.ServicePort{
 			{
 				NodePort: int32(30000),
 			},
@@ -366,7 +366,7 @@ func (s *S) serviceWithPortReaction(c *check.C) ktesting.ReactionFunc {
 func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
 			provision.PoolMetadataName: a.GetPool(),
 		})
@@ -382,7 +382,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 			return false, nil, nil
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
-		pod.Status.Phase = v1.PodSucceeded
+		pod.Status.Phase = apiv1.PodSucceeded
 		pod.Spec.NodeName = "n1"
 		toRegister := false
 		for _, cont := range pod.Spec.Containers {
@@ -391,7 +391,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 			}
 		}
 		if toRegister {
-			pod.Status.Phase = v1.PodRunning
+			pod.Status.Phase = apiv1.PodRunning
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -402,7 +402,7 @@ func (s *S) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFun
 					},
 				})
 				c.Assert(err, check.IsNil)
-				pod.Status.Phase = v1.PodSucceeded
+				pod.Status.Phase = apiv1.PodSucceeded
 				_, err = s.client.Core().Pods(s.client.Namespace()).Update(pod)
 				c.Assert(err, check.IsNil)
 			}()

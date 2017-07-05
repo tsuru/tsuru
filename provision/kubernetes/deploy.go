@@ -21,16 +21,16 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	remotecommandutil "k8s.io/apimachinery/pkg/util/remotecommand"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
@@ -47,19 +47,19 @@ func doAttach(client *clusterClient, stdin io.Reader, stdout io.Writer, podName,
 		Name(podName).
 		Namespace(client.Namespace()).
 		SubResource("attach")
-	req.VersionedParams(&api.PodAttachOptions{
+	req.VersionedParams(&apiv1.PodAttachOptions{
 		Container: container,
 		Stdin:     stdin != nil,
 		Stdout:    true,
 		Stderr:    true,
 		TTY:       false,
-	}, api.ParameterCodec)
+	}, scheme.ParameterCodec)
 	exec, err := remotecommand.NewExecutor(client.restConfig, "POST", req.URL())
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
-		SupportedProtocols: remotecommandserver.SupportedStreamingProtocols,
+		SupportedProtocols: remotecommandutil.SupportedStreamingProtocols,
 		Stdin:              stdin,
 		Stdout:             stdout,
 		Stderr:             stdout,
@@ -98,9 +98,9 @@ func createBuildPod(params buildPodParams) error {
 	buildImageLabel := &provision.LabelSet{}
 	buildImageLabel.SetBuildImage(params.destinationImage)
 	appEnvs := provision.EnvsForApp(params.app, "", true)
-	var envs []v1.EnvVar
+	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
-		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
+		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool: params.app.GetPool(),
@@ -108,27 +108,27 @@ func createBuildPod(params buildPodParams) error {
 	commitContainer := "committer-cont"
 	_, uid := dockercommon.UserForContainer()
 	kubeConf := getKubeConfig()
-	pod := &v1.Pod{
+	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        baseName,
 			Namespace:   params.client.Namespace(),
 			Labels:      labels.ToLabels(),
 			Annotations: buildImageLabel.ToLabels(),
 		},
-		Spec: v1.PodSpec{
+		Spec: apiv1.PodSpec{
 			NodeSelector: nodeSelector,
-			Volumes: []v1.Volume{
+			Volumes: []apiv1.Volume{
 				{
 					Name: "dockersock",
-					VolumeSource: v1.VolumeSource{
-						HostPath: &v1.HostPathVolumeSource{
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
 							Path: dockerSockPath,
 						},
 					},
 				},
 			},
-			RestartPolicy: v1.RestartPolicyNever,
-			Containers: []v1.Container{
+			RestartPolicy: apiv1.RestartPolicyNever,
+			Containers: []apiv1.Container{
 				{
 					Name:      baseName,
 					Image:     params.sourceImage,
@@ -136,14 +136,14 @@ func createBuildPod(params buildPodParams) error {
 					Stdin:     true,
 					StdinOnce: true,
 					Env:       envs,
-					SecurityContext: &v1.SecurityContext{
+					SecurityContext: &apiv1.SecurityContext{
 						RunAsUser: uid,
 					},
 				},
 				{
 					Name:  commitContainer,
 					Image: kubeConf.DeploySidecarImage,
-					VolumeMounts: []v1.VolumeMount{
+					VolumeMounts: []apiv1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
 					},
 					Command: []string{
@@ -206,7 +206,7 @@ func extraRegisterCmds(a provision.App) string {
 	return fmt.Sprintf(`curl -fsSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register`, token, host, a.GetName())
 }
 
-func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error) {
+func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*apiv1.Probe, error) {
 	if hc.Path == "" {
 		return nil, nil
 	}
@@ -214,9 +214,9 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	if method != "" && method != "GET" {
 		return nil, errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
 	}
-	return &v1.Probe{
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
+	return &apiv1.Probe{
+		Handler: apiv1.Handler{
+			HTTPGet: &apiv1.HTTPGetAction{
 				Path: hc.Path,
 				Port: intstr.FromInt(port),
 			},
@@ -224,7 +224,7 @@ func probeFromHC(hc provision.TsuruYamlHealthcheck, port int) (*v1.Probe, error)
 	}, nil
 }
 
-func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*extensions.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deployment, a provision.App, process, imageName string, replicas int, labels *provision.LabelSet) (*v1beta1.Deployment, *provision.LabelSet, error) {
 	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
@@ -236,9 +236,9 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 		return nil, nil, errors.WithStack(err)
 	}
 	appEnvs := provision.EnvsForApp(a, process, false)
-	var envs []v1.EnvVar
+	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
-		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
+		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	depName := deploymentNameForApp(a, process)
 	tenRevs := int32(10)
@@ -248,7 +248,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 	}
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
-	var probe *v1.Probe
+	var probe *apiv1.Probe
 	if process == webProcessName {
 		yamlData, errImg := image.GetImageTsuruYamlData(imageName)
 		if errImg != nil {
@@ -265,20 +265,20 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 		Pool: a.GetPool(),
 	}).ToNodeByPoolSelector()
 	_, uid := dockercommon.UserForContainer()
-	resourceLimits := v1.ResourceList{}
+	resourceLimits := apiv1.ResourceList{}
 	memory := a.GetMemory()
 	if memory != 0 {
-		resourceLimits[v1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
+		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
 	}
-	deployment := extensions.Deployment{
+	deployment := v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
 			Namespace: client.Namespace(),
 		},
-		Spec: extensions.DeploymentSpec{
-			Strategy: extensions.DeploymentStrategy{
-				Type: extensions.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &extensions.RollingUpdateDeployment{
+		Spec: v1beta1.DeploymentSpec{
+			Strategy: v1beta1.DeploymentStrategy{
+				Type: v1beta1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &v1beta1.RollingUpdateDeployment{
 					MaxSurge:       &maxSurge,
 					MaxUnavailable: &maxUnavailable,
 				},
@@ -288,24 +288,24 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels.ToSelector(),
 			},
-			Template: v1.PodTemplateSpec{
+			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels.ToLabels(),
 				},
-				Spec: v1.PodSpec{
-					SecurityContext: &v1.PodSecurityContext{
+				Spec: apiv1.PodSpec{
+					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
-					RestartPolicy: v1.RestartPolicyAlways,
+					RestartPolicy: apiv1.RestartPolicyAlways,
 					NodeSelector:  nodeSelector,
-					Containers: []v1.Container{
+					Containers: []apiv1.Container{
 						{
 							Name:           depName,
 							Image:          imageName,
 							Command:        cmds,
 							Env:            envs,
 							ReadinessProbe: probe,
-							Resources: v1.ResourceRequirements{
+							Resources: apiv1.ResourceRequirements{
 								Limits: resourceLimits,
 							},
 						},
@@ -314,7 +314,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *extensions.Deploy
 			},
 		},
 	}
-	var newDep *extensions.Deployment
+	var newDep *v1beta1.Deployment
 	if oldDeployment == nil {
 		newDep, err = client.Extensions().Deployments(client.Namespace()).Create(&deployment)
 	} else {
@@ -377,7 +377,7 @@ func createDeployTimeoutError(client *clusterClient, a provision.App, processNam
 	return errors.Errorf("timeout after %v waiting for units%s", timeout, msgErrorPart)
 }
 
-func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a provision.App, processName string, w io.Writer) error {
+func monitorDeployment(client *clusterClient, dep *v1beta1.Deployment, a provision.App, processName string, w io.Writer) error {
 	fmt.Fprintf(w, "\n---- Updating units [%s] ----\n", processName)
 	kubeConf := getKubeConfig()
 	timeout := time.After(kubeConf.DeploymentProgressTimeout)
@@ -410,7 +410,7 @@ func monitorDeployment(client *clusterClient, dep *extensions.Deployment, a prov
 	for {
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
-			if c.Type == extensions.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
+			if c.Type == v1beta1.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {
 				return errors.Errorf("deployment %q exceeded its progress deadline", dep.Name)
 			}
 		}
@@ -475,7 +475,7 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	err = monitorDeployment(m.client, dep, a, process, m.writer)
 	if err != nil {
 		fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
-		rollbackErr := m.client.Extensions().Deployments(m.client.Namespace()).Rollback(&extensions.DeploymentRollback{
+		rollbackErr := m.client.Extensions().Deployments(m.client.Namespace()).Rollback(&v1beta1.DeploymentRollback{
 			Name: depName,
 		})
 		if rollbackErr != nil {
@@ -485,22 +485,22 @@ func (m *serviceManager) DeployService(a provision.App, process string, labels *
 	}
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
-	_, err = m.client.Core().Services(m.client.Namespace()).Create(&v1.Service{
+	_, err = m.client.Core().Services(m.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
 			Namespace: m.client.Namespace(),
 			Labels:    labels.ToLabels(),
 		},
-		Spec: v1.ServiceSpec{
+		Spec: apiv1.ServiceSpec{
 			Selector: labels.ToSelector(),
-			Ports: []v1.ServicePort{
+			Ports: []apiv1.ServicePort{
 				{
 					Protocol:   "TCP",
 					Port:       int32(portInt),
 					TargetPort: intstr.FromInt(portInt),
 				},
 			},
-			Type: v1.ServiceTypeNodePort,
+			Type: apiv1.ServiceTypeNodePort,
 		},
 	})
 	if k8sErrors.IsAlreadyExists(err) {

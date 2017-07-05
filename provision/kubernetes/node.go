@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/provision"
-	"k8s.io/client-go/pkg/api/v1"
+	apiv1 "k8s.io/api/core/v1"
 )
 
 const clusterMetadataName = "tsuru.io/cluster"
 
 type kubernetesNodeWrapper struct {
-	node    *v1.Node
+	node    *apiv1.Node
 	prov    *kubernetesProvisioner
 	cluster *clusterClient
 }
@@ -33,7 +33,7 @@ func (n *kubernetesNodeWrapper) Pool() string {
 
 func (n *kubernetesNodeWrapper) Address() string {
 	for _, addr := range n.node.Status.Addresses {
-		if addr.Type == v1.NodeInternalIP {
+		if addr.Type == apiv1.NodeInternalIP {
 			return addr.Address
 		}
 	}
@@ -42,8 +42,8 @@ func (n *kubernetesNodeWrapper) Address() string {
 
 func (n *kubernetesNodeWrapper) Status() string {
 	for _, cond := range n.node.Status.Conditions {
-		if cond.Type == v1.NodeReady {
-			if cond.Status == v1.ConditionTrue {
+		if cond.Type == apiv1.NodeReady {
+			if cond.Status == apiv1.ConditionTrue {
 				return "Ready"
 			}
 			return cond.Message

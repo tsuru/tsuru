@@ -12,11 +12,11 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -48,25 +48,25 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	trueVar := true
 	maxUnavailable := intstr.FromString("20%")
-	c.Assert(daemon, check.DeepEquals, &extensions.DaemonSet{
+	c.Assert(daemon, check.DeepEquals, &v1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-all",
 			Namespace: s.client.Namespace(),
 		},
-		Spec: extensions.DaemonSetSpec{
+		Spec: v1beta1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/node-container-name": "bs",
 					"tsuru.io/node-container-pool": "",
 				},
 			},
-			UpdateStrategy: extensions.DaemonSetUpdateStrategy{
-				Type: extensions.RollingUpdateDaemonSetStrategyType,
-				RollingUpdate: &extensions.RollingUpdateDaemonSet{
+			UpdateStrategy: v1beta1.DaemonSetUpdateStrategy{
+				Type: v1beta1.RollingUpdateDaemonSetStrategyType,
+				RollingUpdate: &v1beta1.RollingUpdateDaemonSet{
 					MaxUnavailable: &maxUnavailable,
 				},
 			},
-			Template: v1.PodTemplateSpec{
+			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"tsuru.io/is-tsuru":            "true",
@@ -77,31 +77,31 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 					},
 					Annotations: map[string]string{},
 				},
-				Spec: v1.PodSpec{
-					Volumes: []v1.Volume{
+				Spec: apiv1.PodSpec{
+					Volumes: []apiv1.Volume{
 						{
 							Name: "volume-0",
-							VolumeSource: v1.VolumeSource{
-								HostPath: &v1.HostPathVolumeSource{
+							VolumeSource: apiv1.VolumeSource{
+								HostPath: &apiv1.HostPathVolumeSource{
 									Path: "/xyz",
 								},
 							},
 						},
 					},
-					RestartPolicy: v1.RestartPolicyAlways,
-					Containers: []v1.Container{
+					RestartPolicy: apiv1.RestartPolicyAlways,
+					Containers: []apiv1.Container{
 						{
 							Name:    "bs",
 							Image:   "bsimg",
 							Command: []string{"cmd0"},
 							Args:    []string{"cmd1"},
-							Env: []v1.EnvVar{
+							Env: []apiv1.EnvVar{
 								{Name: "a", Value: "b"},
 							},
-							VolumeMounts: []v1.VolumeMount{
+							VolumeMounts: []apiv1.VolumeMount{
 								{Name: "volume-0", MountPath: "/abc", ReadOnly: true},
 							},
-							SecurityContext: &v1.SecurityContext{
+							SecurityContext: &apiv1.SecurityContext{
 								Privileged: &trueVar,
 							},
 						},
@@ -135,14 +135,14 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	expectedAffinity := &v1.Affinity{
-		NodeAffinity: &v1.NodeAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-				NodeSelectorTerms: []v1.NodeSelectorTerm{{
-					MatchExpressions: []v1.NodeSelectorRequirement{
+	expectedAffinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
 							Key:      "pool",
-							Operator: v1.NodeSelectorOpNotIn,
+							Operator: apiv1.NodeSelectorOpNotIn,
 							Values:   []string{"p1", "p2"},
 						},
 					},
@@ -160,14 +160,14 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	expectedAffinity = &v1.Affinity{
-		NodeAffinity: &v1.NodeAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-				NodeSelectorTerms: []v1.NodeSelectorTerm{{
-					MatchExpressions: []v1.NodeSelectorRequirement{
+	expectedAffinity = &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
 							Key:      "pool",
-							Operator: v1.NodeSelectorOpIn,
+							Operator: apiv1.NodeSelectorOpIn,
 							Values:   []string{"p1"},
 						},
 					},
@@ -202,33 +202,33 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 	c.Assert(daemons.Items, check.HasLen, 1)
 	daemon, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-big-sibling-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, []v1.Volume{
+	c.Assert(daemon.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
 			Name: "volume-0",
-			VolumeSource: v1.VolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
 					Path: "/var/log",
 				},
 			},
 		},
 		{
 			Name: "volume-1",
-			VolumeSource: v1.VolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
 					Path: "/var/lib/docker/containers",
 				},
 			},
 		},
 		{
 			Name: "volume-2",
-			VolumeSource: v1.VolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
 					Path: "/mnt/sda1/var/lib/docker/containers",
 				},
 			},
 		},
 	})
-	c.Assert(daemon.Spec.Template.Spec.Containers[0].VolumeMounts, check.DeepEquals, []v1.VolumeMount{
+	c.Assert(daemon.Spec.Template.Spec.Containers[0].VolumeMounts, check.DeepEquals, []apiv1.VolumeMount{
 		{Name: "volume-0", MountPath: "/var/log", ReadOnly: false},
 		{Name: "volume-1", MountPath: "/var/lib/docker/containers", ReadOnly: true},
 		{Name: "volume-2", MountPath: "/mnt/sda1/var/lib/docker/containers", ReadOnly: true},
@@ -237,7 +237,7 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 
 func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
-		ds := action.(ktesting.CreateAction).GetObject().(*extensions.DaemonSet)
+		ds := action.(ktesting.CreateAction).GetObject().(*v1beta1.DaemonSet)
 		ds.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
 		return false, nil, nil
 	}
@@ -271,14 +271,14 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	daemon, err = s.client.Extensions().DaemonSets(s.client.Namespace()).Get("node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	expectedAffinity := &v1.Affinity{
-		NodeAffinity: &v1.NodeAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-				NodeSelectorTerms: []v1.NodeSelectorTerm{{
-					MatchExpressions: []v1.NodeSelectorRequirement{
+	expectedAffinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: []apiv1.NodeSelectorRequirement{
 						{
 							Key:      "pool",
-							Operator: v1.NodeSelectorOpNotIn,
+							Operator: apiv1.NodeSelectorOpNotIn,
 							Values:   []string{"p1"},
 						},
 					},
