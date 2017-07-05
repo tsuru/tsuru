@@ -77,3 +77,51 @@ func Registry() ([]Builder, error) {
 	}
 	return registry, nil
 }
+
+func PlatformAdd(opts PlatformOptions) error {
+	builders, err := Registry()
+	if err != nil {
+		return err
+	}
+	for _, b := range builders {
+		if platformBuilder, ok := b.(PlatformBuilder); ok {
+			err = platformBuilder.PlatformAdd(opts)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func PlatformUpdate(opts PlatformOptions) error {
+	builders, err := Registry()
+	if err != nil {
+		return err
+	}
+	for _, b := range builders {
+		if platformBuilder, ok := b.(PlatformBuilder); ok {
+			err = platformBuilder.PlatformUpdate(opts)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func PlatformRemove(name string) error {
+	builders, err := Registry()
+	if err != nil {
+		return err
+	}
+	for _, b := range builders {
+		if platformBuilder, ok := b.(PlatformBuilder); ok {
+			err = platformBuilder.PlatformRemove(name)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
