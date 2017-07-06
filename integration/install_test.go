@@ -32,6 +32,7 @@ var (
 		"tsuru/python3",
 		"tsuru/ruby",
 		"tsuru/static",
+		"tsuru/perl",
 	}
 	allProvisioners = []string{
 		"docker",
