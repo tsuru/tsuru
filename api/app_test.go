@@ -3459,8 +3459,8 @@ func (s *S) TestUnsetHandlerRemovePrivateVariables(c *check.C) {
 	app, err := app.GetByName("letitbe")
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true},
 	}
 	c.Assert(app.Env, check.DeepEquals, expected)
 }
