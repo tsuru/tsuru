@@ -983,7 +983,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	return a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: variables,
-			PublicOnly:    true,
+			PublicOnly:    false,
 			ShouldRestart: !noRestart,
 		}, writer,
 	)
