@@ -1233,19 +1233,19 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
-func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *check.C) {
+func (s *S) TestUnsetEnvRemovesPublicVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
 		Env: map[string]bind.EnvVar{
 			"DATABASE_HOST": {
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
-				Public: false,
+				Public: true,
 			},
 			"DATABASE_PASSWORD": {
 				Name:   "DATABASE_PASSWORD",
 				Value:  "123",
-				Public: true,
+				Public: false,
 			},
 		},
 		Quota: quota.Quota{
@@ -1260,8 +1260,51 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	c.Assert(err, check.IsNil)
 	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
-			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    true,
+			VariableNames: []string{"DATABASE_HOST"},
+			ShouldRestart: true,
+		}, nil)
+	c.Assert(err, check.IsNil)
+	newApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_PASSWORD": {
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: false,
+		},
+	}
+	c.Assert(newApp.Env, check.DeepEquals, expected)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
+}
+
+func (s *S) TestUnsetEnvRemovesPrivateVariables(c *check.C) {
+	a := App{
+		Name: "myapp",
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: true,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: false,
+			},
+		},
+		Quota: quota.Quota{
+			Limit: 10,
+		},
+		TeamOwner: s.team.Name,
+	}
+	s.provisioner.PrepareOutput([]byte("exported"))
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = a.AddUnits(1, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = a.UnsetEnvs(
+		bind.UnsetEnvApp{
+			VariableNames: []string{"DATABASE_PASSWORD"},
 			ShouldRestart: true,
 		}, nil)
 	c.Assert(err, check.IsNil)
@@ -1271,26 +1314,26 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
-			Public: false,
+			Public: true,
 		},
 	}
 	c.Assert(newApp.Env, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
-func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *check.C) {
+func (s *S) TestUnsetEnvRemovesAllGivenVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
 		Env: map[string]bind.EnvVar{
 			"DATABASE_HOST": {
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
-				Public: false,
+				Public: true,
 			},
 			"DATABASE_PASSWORD": {
 				Name:   "DATABASE_PASSWORD",
 				Value:  "123",
-				Public: true,
+				Public: false,
 			},
 		},
 		Quota: quota.Quota{
@@ -1306,7 +1349,6 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    false,
 			ShouldRestart: true,
 		}, nil)
 	c.Assert(err, check.IsNil)
@@ -1344,7 +1386,6 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    false,
 			ShouldRestart: false,
 		}, nil)
 	c.Assert(err, check.IsNil)
@@ -1376,7 +1417,6 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	err = a.UnsetEnvs(
 		bind.UnsetEnvApp{
 			VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
-			PublicOnly:    false,
 			ShouldRestart: true,
 		}, nil)
 	c.Assert(err, check.IsNil)

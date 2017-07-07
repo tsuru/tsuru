@@ -61,7 +61,6 @@ type SetEnvApp struct {
 
 type UnsetEnvApp struct {
 	VariableNames []string
-	PublicOnly    bool
 	ShouldRestart bool
 }
 

@@ -153,7 +153,6 @@ var exportEnvironmentsAction = action.Action{
 			app.UnsetEnvs(
 				bind.UnsetEnvApp{
 					VariableNames: vars,
-					PublicOnly:    false,
 					ShouldRestart: true,
 				}, nil)
 		}
