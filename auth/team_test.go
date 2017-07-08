@@ -75,14 +75,17 @@ func (s *S) TestCreateTeamValidation(c *check.C) {
 		{"", ErrInvalidTeamName},
 		{"    ", ErrInvalidTeamName},
 		{"1abc", ErrInvalidTeamName},
-		{"a", ErrInvalidTeamName},
 		{"@abc", ErrInvalidTeamName},
 		{"my team", ErrInvalidTeamName},
+		{"Abacaxi", ErrInvalidTeamName},
+		{"TEAM", ErrInvalidTeamName},
+		{"TeaM", ErrInvalidTeamName},
+		{"team_1", ErrInvalidTeamName},
+		{"tsuru@corp.globo.com", ErrInvalidTeamName},
 		{"team-1", nil},
-		{"team_1", nil},
+		{"a", nil},
 		{"ab", nil},
-		{"Abacaxi", nil},
-		{"tsuru@corp.globo.com", nil},
+		{"team1", nil},
 	}
 	for _, t := range tests {
 		err := CreateTeam(t.input, &u)
