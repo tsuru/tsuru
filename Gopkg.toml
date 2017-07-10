@@ -41,7 +41,7 @@
 
 [[constraint]]
   name = "github.com/docker/machine"
-  revision = "d8dd3880ecfef8988aa64f2b0313062019dea043"
+  revision = "e65117bf969f9b5fd0c9cc380d0c75e9f925a297"
 
 [[constraint]]
   name = "github.com/digitalocean/godo"
