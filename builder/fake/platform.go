@@ -18,42 +18,49 @@ type provisionedPlatform struct {
 	Version int
 }
 
-func (p *FakeBuilder) PlatformAdd(opts builder.PlatformOptions) error {
-	if p.GetPlatform(opts.Name) != nil {
+func (b *FakeBuilder) PlatformAdd(opts builder.PlatformOptions) error {
+	if err := b.getError("PlatformAdd"); err != nil {
+		return err
+	}
+	if b.GetPlatform(opts.Name) != nil {
 		return errors.New("duplicate platform")
 	}
-	p.platforms = append(p.platforms, provisionedPlatform{Name: opts.Name, Args: opts.Args, Version: 1})
+	b.platforms = append(b.platforms, provisionedPlatform{Name: opts.Name, Args: opts.Args, Version: 1})
 	return nil
 }
 
-func (p *FakeBuilder) PlatformUpdate(opts builder.PlatformOptions) error {
-	index, platform := p.getPlatform(opts.Name)
+func (b *FakeBuilder) PlatformUpdate(opts builder.PlatformOptions) error {
+	index, platform := b.getPlatform(opts.Name)
 	if platform == nil {
 		return errors.New("platform not found")
 	}
 	platform.Version += 1
 	platform.Args = opts.Args
-	p.platforms[index] = *platform
+	b.platforms[index] = *platform
 	return nil
 }
 
-func (p *FakeBuilder) PlatformRemove(name string) error {
-	index, _ := p.getPlatform(name)
+func (b *FakeBuilder) PlatformRemove(name string) error {
+	index, _ := b.getPlatform(name)
 	if index < 0 {
 		return errors.New("platform not found")
 	}
-	p.platforms[index] = p.platforms[len(p.platforms)-1]
-	p.platforms = p.platforms[:len(p.platforms)-1]
+	b.platforms[index] = b.platforms[len(b.platforms)-1]
+	b.platforms = b.platforms[:len(b.platforms)-1]
 	return nil
 }
 
-func (p *FakeBuilder) GetPlatform(name string) *provisionedPlatform {
-	_, platform := p.getPlatform(name)
+func (b *FakeBuilder) GetPlatform(name string) *provisionedPlatform {
+	_, platform := b.getPlatform(name)
 	return platform
 }
 
-func (p *FakeBuilder) getPlatform(name string) (int, *provisionedPlatform) {
-	for i, platform := range p.platforms {
+func (b *FakeBuilder) Reset() {
+	b.platforms = nil
+}
+
+func (b *FakeBuilder) getPlatform(name string) (int, *provisionedPlatform) {
+	for i, platform := range b.platforms {
 		if platform.Name == name {
 			return i, &platform
 		}

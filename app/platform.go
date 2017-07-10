@@ -8,10 +8,10 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -46,13 +46,9 @@ func Platforms(enabledOnly bool) ([]Platform, error) {
 }
 
 // PlatformAdd add a new platform to tsuru
-func PlatformAdd(opts provision.PlatformOptions) error {
+func PlatformAdd(opts builder.PlatformOptions) error {
 	if opts.Name == "" {
 		return ErrPlatformNameMissing
-	}
-	provisioners, err := provision.Registry()
-	if err != nil {
-		return err
 	}
 	p := Platform{Name: opts.Name}
 	conn, err := db.Conn()
@@ -67,14 +63,7 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 		}
 		return err
 	}
-	for _, p := range provisioners {
-		if extensibleProv, ok := p.(provision.ExtensibleProvisioner); ok {
-			err = extensibleProv.PlatformAdd(opts)
-			if err != nil {
-				break
-			}
-		}
-	}
+	err = builder.PlatformAdd(opts)
 	if err != nil {
 		dbErr := conn.Platforms().RemoveId(p.Name)
 		if dbErr != nil {
@@ -88,11 +77,7 @@ func PlatformAdd(opts provision.PlatformOptions) error {
 	return nil
 }
 
-func PlatformUpdate(opts provision.PlatformOptions) error {
-	provisioners, err := provision.Registry()
-	if err != nil {
-		return err
-	}
+func PlatformUpdate(opts builder.PlatformOptions) error {
 	var platform Platform
 	if opts.Name == "" {
 		return ErrPlatformNameMissing
@@ -110,13 +95,9 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 		return err
 	}
 	if opts.Args["dockerfile"] != "" || opts.Input != nil {
-		for _, p := range provisioners {
-			if extensibleProv, ok := p.(provision.ExtensibleProvisioner); ok {
-				err = extensibleProv.PlatformUpdate(opts)
-				if err != nil {
-					return err
-				}
-			}
+		err = builder.PlatformUpdate(opts)
+		if err != nil {
+			return err
 		}
 		var apps []App
 		err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
@@ -141,10 +122,6 @@ func PlatformUpdate(opts provision.PlatformOptions) error {
 }
 
 func PlatformRemove(name string) error {
-	provisioners, err := provision.Registry()
-	if err != nil {
-		return err
-	}
 	if name == "" {
 		return ErrPlatformNameMissing
 	}
@@ -157,13 +134,9 @@ func PlatformRemove(name string) error {
 	if apps > 0 {
 		return ErrDeletePlatformWithApps
 	}
-	for _, p := range provisioners {
-		if extensibleProv, ok := p.(provision.ExtensibleProvisioner); ok {
-			err = extensibleProv.PlatformRemove(name)
-			if err != nil {
-				log.Errorf("Failed to remove platform from provisioner %q: %s", p.GetName(), err)
-			}
-		}
+	err = builder.PlatformRemove(name)
+	if err != nil {
+		log.Errorf("Failed to remove platform: %s", err)
 	}
 	err = conn.Platforms().Remove(bson.M{"_id": name})
 	if err == mgo.ErrNotFound {

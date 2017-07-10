@@ -28,7 +28,6 @@ import (
 
 var (
 	ProvisionerInstance *FakeProvisioner
-	ExtensibleInstance  *ExtensibleFakeProvisioner
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
@@ -39,14 +38,8 @@ const fakeAppImage = "app-image"
 
 func init() {
 	ProvisionerInstance = NewFakeProvisioner()
-	ExtensibleInstance = &ExtensibleFakeProvisioner{
-		FakeProvisioner: ProvisionerInstance,
-	}
 	provision.Register("fake", func() (provision.Provisioner, error) {
 		return ProvisionerInstance, nil
-	})
-	provision.Register("fake-extensible", func() (provision.Provisioner, error) {
-		return ExtensibleInstance, nil
 	})
 }
 
@@ -1471,14 +1464,6 @@ func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
 	actions := []*action.Action{&act}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline
-}
-
-type ExtensibleFakeProvisioner struct {
-	*FakeProvisioner
-}
-
-func (p *ExtensibleFakeProvisioner) Reset() {
-	p.FakeProvisioner.Reset()
 }
 
 type provisionedApp struct {
