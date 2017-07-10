@@ -17,6 +17,7 @@ limitations under the License.
 package session
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/vmware/govmomi/property"
@@ -24,7 +25,6 @@ import (
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 type Manager struct {
@@ -155,6 +155,20 @@ func (sm *Manager) AcquireGenericServiceTicket(ctx context.Context, spec types.B
 	}
 
 	res, err := methods.AcquireGenericServiceTicket(ctx, sm.client, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res.Returnval, nil
+}
+
+func (sm *Manager) AcquireLocalTicket(ctx context.Context, userName string) (*types.SessionManagerLocalTicket, error) {
+	req := types.AcquireLocalTicket{
+		This:     sm.Reference(),
+		UserName: userName,
+	}
+
+	res, err := methods.AcquireLocalTicket(ctx, sm.client, &req)
 	if err != nil {
 		return nil, err
 	}

@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/stream"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/route"
+	"github.com/pkg/errors"
+	"github.com/vulcand/oxy/buffer"
+	"github.com/vulcand/oxy/memmetrics"
+	"github.com/vulcand/route"
 	"github.com/vulcand/vulcand/plugin"
 	"github.com/vulcand/vulcand/router"
 )
@@ -78,6 +79,12 @@ type Listener struct {
 	Scope string
 	// Settings provides listener-type specific settings, e.g. TLS settings for HTTPS listener
 	Settings *HTTPSListenerSettings `json:",omitempty"`
+	// Expect a ProxyProtocol Header on this listener: http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+	ProxyProtocol string
+}
+
+func (l *Listener) Key() ListenerKey {
+	return ListenerKey{l.Id}
 }
 
 func (l *Listener) TLSConfig() (*tls.Config, error) {
@@ -99,6 +106,9 @@ func (a *Address) Equals(o Address) bool {
 }
 
 func (l *Listener) SettingsEquals(o *Listener) bool {
+	if o.ProxyProtocol != l.ProxyProtocol {
+		return false
+	}
 	if l.Settings == nil && o.Settings == nil {
 		return true
 	}
@@ -198,6 +208,10 @@ func (h *Host) GetId() string {
 	return h.Name
 }
 
+func (h *Host) Key() HostKey {
+	return HostKey{Name: h.Name}
+}
+
 // Frontend is connected to a backend and vulcand will use the servers from this backend.
 type Frontend struct {
 	Id        string
@@ -227,6 +241,10 @@ type HTTPFrontendSettings struct {
 	TrustForwardHeader bool
 	// Should host header be forwarded as-is?
 	PassHostHeader bool
+	// Should Stream?
+	Stream bool
+	// How frequently should we flush the stream?
+	StreamFlushIntervalNanoSecs int64
 }
 
 func NewAddress(network, address string) (*Address, error) {
@@ -242,7 +260,7 @@ func NewAddress(network, address string) (*Address, error) {
 	return &Address{Network: network, Address: address}, nil
 }
 
-func NewListener(id, protocol, network, address, scope string, settings *HTTPSListenerSettings) (*Listener, error) {
+func NewListener(id, protocol, network, address, scope, proxyHeader string, settings *HTTPSListenerSettings) (*Listener, error) {
 	protocol = strings.ToLower(protocol)
 	if protocol != HTTP && protocol != HTTPS {
 		return nil, fmt.Errorf("unsupported protocol '%s', supported protocols are http and https", protocol)
@@ -259,12 +277,27 @@ func NewListener(id, protocol, network, address, scope string, settings *HTTPSLi
 		return nil, err
 	}
 
+	proxyHeader = strings.ToUpper(proxyHeader)
+	switch proxyHeader {
+	case "PROXY_V1":
+		break
+	case "":
+		break
+	case "NONE":
+		proxyHeader = ""
+		break
+	default:
+		return nil, fmt.Errorf("Unsupported Proxy Header '%s', must be `PROXY_V1` or `NONE`", proxyHeader)
+
+	}
+
 	return &Listener{
-		Scope:    scope,
-		Id:       id,
-		Address:  *a,
-		Protocol: protocol,
-		Settings: settings,
+		Scope:         scope,
+		Id:            id,
+		Address:       *a,
+		Protocol:      protocol,
+		Settings:      settings,
+		ProxyProtocol: proxyHeader,
 	}, nil
 }
 
@@ -278,7 +311,7 @@ func NewHTTPFrontend(router router.Router, id, backendId string, routeExpr strin
 		return nil, fmt.Errorf("route should be a valid route expression: %s", routeExpr)
 	}
 
-	if settings.FailoverPredicate != "" && !stream.IsValidExpression(settings.FailoverPredicate) {
+	if !settings.Stream && settings.FailoverPredicate != "" && !buffer.IsValidExpression(settings.FailoverPredicate) {
 		return nil, fmt.Errorf("invalid failover predicate: %s", settings.FailoverPredicate)
 	}
 
@@ -307,12 +340,16 @@ func (f *Frontend) String() string {
 	return fmt.Sprintf("Frontend(%v, %v, %v)", f.Type, f.Id, f.BackendId)
 }
 
-func (l *Frontend) GetId() string {
-	return l.Id
+func (f *Frontend) GetId() string {
+	return f.Id
 }
 
-func (l *Frontend) GetKey() FrontendKey {
-	return FrontendKey{Id: l.Id}
+func (f *Frontend) Key() FrontendKey {
+	return FrontendKey{Id: f.Id}
+}
+
+func (f *Frontend) BackendKey() BackendKey {
+	return BackendKey{Id: f.BackendId}
 }
 
 type HTTPBackendTimeouts struct {
@@ -341,13 +378,51 @@ type HTTPBackendSettings struct {
 }
 
 func (s *HTTPBackendSettings) Equals(o HTTPBackendSettings) bool {
-	return (s.Timeouts.Read == o.Timeouts.Read &&
+	return s.Timeouts.Read == o.Timeouts.Read &&
 		s.Timeouts.Dial == o.Timeouts.Dial &&
 		s.Timeouts.TLSHandshake == o.Timeouts.TLSHandshake &&
 		s.KeepAlive.Period == o.KeepAlive.Period &&
 		s.KeepAlive.MaxIdleConnsPerHost == o.KeepAlive.MaxIdleConnsPerHost &&
 		((s.TLS == nil && o.TLS == nil) ||
-			((s.TLS != nil && o.TLS != nil) && s.TLS.Equals(o.TLS))))
+			((s.TLS != nil && o.TLS != nil) && s.TLS.Equals(o.TLS)))
+}
+
+func (s *HTTPBackendSettings) TransportSettings() (TransportSettings, error) {
+	var t TransportSettings
+	var err error
+	// Connection timeouts
+	if len(s.Timeouts.Read) != 0 {
+		if t.Timeouts.Read, err = time.ParseDuration(s.Timeouts.Read); err != nil {
+			return TransportSettings{}, errors.Wrap(err, "invalid read timeout")
+		}
+	}
+	if len(s.Timeouts.Dial) != 0 {
+		if t.Timeouts.Dial, err = time.ParseDuration(s.Timeouts.Dial); err != nil {
+			return TransportSettings{}, errors.Wrap(err, "invalid dial timeout")
+		}
+	}
+	if len(s.Timeouts.TLSHandshake) != 0 {
+		if t.Timeouts.TLSHandshake, err = time.ParseDuration(s.Timeouts.TLSHandshake); err != nil {
+			return TransportSettings{}, errors.Wrap(err, "invalid tls handshake timeout")
+		}
+	}
+
+	// Keep Alive parameters
+	if len(s.KeepAlive.Period) != 0 {
+		if t.KeepAlive.Period, err = time.ParseDuration(s.KeepAlive.Period); err != nil {
+			return TransportSettings{}, errors.Wrap(err, "invalid keepalive period")
+		}
+	}
+	t.KeepAlive.MaxIdleConnsPerHost = s.KeepAlive.MaxIdleConnsPerHost
+
+	if s.TLS != nil {
+		config, err := NewTLSConfig(s.TLS)
+		if err != nil {
+			return TransportSettings{}, errors.Wrap(err, "invalid TLS config")
+		}
+		t.TLS = config
+	}
+	return t, nil
 }
 
 type MiddlewareKey struct {
@@ -378,7 +453,7 @@ type Backend struct {
 
 // NewBackend creates a new instance of the backend object
 func NewHTTPBackend(id string, s HTTPBackendSettings) (*Backend, error) {
-	if _, err := transportSettings(s); err != nil {
+	if _, err := s.TransportSettings(); err != nil {
 		return nil, err
 	}
 	return &Backend{
@@ -400,50 +475,13 @@ func (b *Backend) GetId() string {
 	return b.Id
 }
 
-func (b *Backend) GetUniqueId() BackendKey {
+func (b *Backend) Key() BackendKey {
 	return BackendKey{Id: b.Id}
 }
 
-func (b *Backend) TransportSettings() (*TransportSettings, error) {
-	return transportSettings(b.Settings.(HTTPBackendSettings))
-}
-
-func transportSettings(s HTTPBackendSettings) (*TransportSettings, error) {
-	t := &TransportSettings{}
-	var err error
-	// Connection timeouts
-	if len(s.Timeouts.Read) != 0 {
-		if t.Timeouts.Read, err = time.ParseDuration(s.Timeouts.Read); err != nil {
-			return nil, fmt.Errorf("invalid read timeout: %s", err)
-		}
-	}
-	if len(s.Timeouts.Dial) != 0 {
-		if t.Timeouts.Dial, err = time.ParseDuration(s.Timeouts.Dial); err != nil {
-			return nil, fmt.Errorf("invalid dial timeout: %s", err)
-		}
-	}
-	if len(s.Timeouts.TLSHandshake) != 0 {
-		if t.Timeouts.TLSHandshake, err = time.ParseDuration(s.Timeouts.TLSHandshake); err != nil {
-			return nil, fmt.Errorf("invalid tls handshake timeout: %s", err)
-		}
-	}
-
-	// Keep Alive parameters
-	if len(s.KeepAlive.Period) != 0 {
-		if t.KeepAlive.Period, err = time.ParseDuration(s.KeepAlive.Period); err != nil {
-			return nil, fmt.Errorf("invalid tls handshake timeout: %s", err)
-		}
-	}
-	t.KeepAlive.MaxIdleConnsPerHost = s.KeepAlive.MaxIdleConnsPerHost
-
-	if s.TLS != nil {
-		config, err := NewTLSConfig(s.TLS)
-		if err != nil {
-			return nil, err
-		}
-		t.TLS = config
-	}
-	return t, nil
+func (b *Backend) TransportSettings() (TransportSettings, error) {
+	httpCfg := b.Settings.(HTTPBackendSettings)
+	return httpCfg.TransportSettings()
 }
 
 // Server is a final destination of the request
@@ -589,7 +627,7 @@ func (n *NotFoundError) Error() string {
 	if n.Message != "" {
 		return n.Message
 	} else {
-		return "Object not found"
+		return "object not found"
 	}
 }
 
@@ -601,7 +639,7 @@ func (n *InvalidFormatError) Error() string {
 	if n.Message != "" {
 		return n.Message
 	} else {
-		return "Invalid format"
+		return "invalid format"
 	}
 }
 
@@ -685,11 +723,12 @@ func (u BackendKey) String() string {
 }
 
 const (
-	HTTP  = "http"
-	HTTPS = "https"
-	TCP   = "tcp"
-	UNIX  = "unix"
-	NoTTL = 0
+	HTTP           = "http"
+	HTTPS          = "https"
+	TCP            = "tcp"
+	UNIX           = "unix"
+	PROXY_PROTO_V1 = "PROXY_V1"
+	NoTTL          = 0
 )
 
 type TransportTimeouts struct {
@@ -712,4 +751,25 @@ type TransportSettings struct {
 	Timeouts  TransportTimeouts
 	KeepAlive TransportKeepAlive
 	TLS       *tls.Config
+}
+
+// FrontendSpec fully specifies a particular frontend.
+type FrontendSpec struct {
+	Frontend    Frontend
+	Middlewares []Middleware
+}
+
+// BackendSpec fully specifies a particular backend.
+type BackendSpec struct {
+	Backend Backend
+	Servers []Server
+}
+
+// Snapshot represents system config at a given time.
+type Snapshot struct {
+	Index         uint64
+	FrontendSpecs []FrontendSpec
+	BackendSpecs  []BackendSpec
+	Hosts         []Host
+	Listeners     []Listener
 }

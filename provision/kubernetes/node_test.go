@@ -12,21 +12,21 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 func (s *S) TestNodeAddress(c *check.C) {
 	node := kubernetesNodeWrapper{
-		node: &v1.Node{
-			Status: v1.NodeStatus{
-				Addresses: []v1.NodeAddress{
+		node: &apiv1.Node{
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
 					{
-						Type:    v1.NodeInternalIP,
+						Type:    apiv1.NodeInternalIP,
 						Address: "192.168.99.100",
 					},
 					{
-						Type:    v1.NodeExternalIP,
+						Type:    apiv1.NodeExternalIP,
 						Address: "200.0.0.1",
 					},
 				},
@@ -38,16 +38,16 @@ func (s *S) TestNodeAddress(c *check.C) {
 
 func (s *S) TestNodePool(c *check.C) {
 	node := kubernetesNodeWrapper{
-		node: &v1.Node{
+		node: &apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"pool": "p1",
 				},
 			},
-			Status: v1.NodeStatus{
-				Addresses: []v1.NodeAddress{
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
 					{
-						Type:    v1.NodeInternalIP,
+						Type:    apiv1.NodeInternalIP,
 						Address: "192.168.99.100",
 					},
 				},
@@ -59,12 +59,12 @@ func (s *S) TestNodePool(c *check.C) {
 
 func (s *S) TestNodeStatus(c *check.C) {
 	node := kubernetesNodeWrapper{
-		node: &v1.Node{
-			Status: v1.NodeStatus{
-				Conditions: []v1.NodeCondition{
+		node: &apiv1.Node{
+			Status: apiv1.NodeStatus{
+				Conditions: []apiv1.NodeCondition{
 					{
-						Type:   v1.NodeReady,
-						Status: v1.ConditionTrue,
+						Type:   apiv1.NodeReady,
+						Status: apiv1.ConditionTrue,
 					},
 				},
 			},
@@ -72,12 +72,12 @@ func (s *S) TestNodeStatus(c *check.C) {
 	}
 	c.Assert(node.Status(), check.Equals, "Ready")
 	node = kubernetesNodeWrapper{
-		node: &v1.Node{
-			Status: v1.NodeStatus{
-				Conditions: []v1.NodeCondition{
+		node: &apiv1.Node{
+			Status: apiv1.NodeStatus{
+				Conditions: []apiv1.NodeCondition{
 					{
-						Type:    v1.NodeReady,
-						Status:  v1.ConditionFalse,
+						Type:    apiv1.NodeReady,
+						Status:  apiv1.ConditionFalse,
 						Message: "node pending",
 					},
 				},
@@ -86,14 +86,14 @@ func (s *S) TestNodeStatus(c *check.C) {
 	}
 	c.Assert(node.Status(), check.Equals, "node pending")
 	node = kubernetesNodeWrapper{
-		node: &v1.Node{},
+		node: &apiv1.Node{},
 	}
 	c.Assert(node.Status(), check.Equals, "Invalid")
 }
 
 func (s *S) TestNodeMetadata(c *check.C) {
 	node := kubernetesNodeWrapper{
-		node: &v1.Node{
+		node: &apiv1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"pool":  "p1",

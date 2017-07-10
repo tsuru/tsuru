@@ -26,12 +26,12 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/util/term"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 func (s *S) TestListNodes(c *check.C) {
@@ -99,7 +99,7 @@ func (s *S) TestRemoveNodeNotFound(c *check.C) {
 
 func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 	s.mockfakeNodes(c)
-	_, err := s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+	_, err := s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: s.client.Namespace()},
 	})
 	c.Assert(err, check.IsNil)
@@ -652,14 +652,14 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 
 func (s *S) TestRemoveNodeContainer(c *check.C) {
 	s.mockfakeNodes(c)
-	_, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Create(&extensions.DaemonSet{
+	_, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Create(&v1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: s.client.Namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
 			Namespace: s.client.Namespace(),
@@ -710,10 +710,10 @@ func (s *S) TestShell(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(s.stream["myapp-web"].stdin, check.Equals, "echo test")
-	var sz term.Size
+	var sz remotecommand.TerminalSize
 	err = json.Unmarshal([]byte(s.stream["myapp-web"].resize), &sz)
 	c.Assert(err, check.IsNil)
-	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
+	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
 	c.Assert(s.stream["myapp-web"].urls, check.HasLen, 1)
 	c.Assert(s.stream["myapp-web"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-1-1/exec")
 	c.Assert(s.stream["myapp-web"].urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
@@ -746,10 +746,10 @@ func (s *S) TestShellSpecificUnit(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	rollback()
 	c.Assert(s.stream["myapp-web"].stdin, check.Equals, "echo test")
-	var sz term.Size
+	var sz remotecommand.TerminalSize
 	err = json.Unmarshal([]byte(s.stream["myapp-web"].resize), &sz)
 	c.Assert(err, check.IsNil)
-	c.Assert(sz, check.DeepEquals, term.Size{Width: 99, Height: 42})
+	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
 	c.Assert(s.stream["myapp-web"].urls, check.HasLen, 1)
 	c.Assert(s.stream["myapp-web"].urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-web-pod-2-2/exec")
 }
@@ -877,9 +877,9 @@ func (s *S) TestExecuteCommandIsolatedPodFailed(c *check.C) {
 	a, _, rollback := s.defaultReactions(c)
 	defer rollback()
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
-		pod.Status.Phase = v1.PodFailed
+		pod.Status.Phase = apiv1.PodFailed
 		return false, nil, nil
 	})
 	imgName := "myapp:v1"

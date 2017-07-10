@@ -1,0 +1,12 @@
+language: go
+sudo: false
+go:
+  - 1.6.3
+  - 1.7.1
+  - tip
+install:
+  - go get -d -t ./...
+script:
+  - go test ./...
+services:
+  - mongodb

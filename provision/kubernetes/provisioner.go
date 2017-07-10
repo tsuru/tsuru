@@ -23,12 +23,12 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/set"
+	apiv1 "k8s.io/api/core/v1"
+	policy "k8s.io/api/policy/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/pkg/api/v1"
-	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
-	"k8s.io/kubernetes/pkg/util/term"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
@@ -208,20 +208,20 @@ func (p *kubernetesProvisioner) Stop(a provision.App, process string) error {
 	return changeState(a, process, servicecommon.ProcessState{Stop: true}, nil)
 }
 
-var stateMap = map[v1.PodPhase]provision.Status{
-	v1.PodPending:   provision.StatusCreated,
-	v1.PodRunning:   provision.StatusStarted,
-	v1.PodSucceeded: provision.StatusStopped,
-	v1.PodFailed:    provision.StatusError,
-	v1.PodUnknown:   provision.StatusError,
+var stateMap = map[apiv1.PodPhase]provision.Status{
+	apiv1.PodPending:   provision.StatusCreated,
+	apiv1.PodRunning:   provision.StatusStarted,
+	apiv1.PodSucceeded: provision.StatusStopped,
+	apiv1.PodFailed:    provision.StatusError,
+	apiv1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []v1.Pod, baseApp provision.App, baseNode *v1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnits(client *clusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
 	var err error
 	if len(pods) == 0 {
 		return nil, nil
 	}
-	nodeMap := map[string]*v1.Node{}
+	nodeMap := map[string]*apiv1.Node{}
 	appMap := map[string]provision.App{}
 	webProcMap := map[string]string{}
 	portMap := map[string]int32{}
@@ -374,7 +374,7 @@ func (p *kubernetesProvisioner) RegisterUnit(a provision.App, unitID string, cus
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	units, err := p.podsToUnits(client, []v1.Pod{*pod}, a, nil)
+	units, err := p.podsToUnits(client, []apiv1.Pod{*pod}, a, nil)
 	if err != nil {
 		return err
 	}
@@ -451,7 +451,7 @@ func (p *kubernetesProvisioner) GetNode(address string) (provision.Node, error) 
 	return node, nil
 }
 
-func setNodeMetadata(node *v1.Node, meta map[string]string) {
+func setNodeMetadata(node *apiv1.Node, meta map[string]string) {
 	asLabelSet := map[string]struct{}{provision.PoolMetadataName: {}}
 	if node.Labels == nil {
 		node.Labels = map[string]string{}
@@ -478,7 +478,7 @@ func (p *kubernetesProvisioner) AddNode(opts provision.AddNodeOptions) error {
 		return err
 	}
 	hostAddr := tsuruNet.URLToHost(opts.Address)
-	node := &v1.Node{
+	node := &apiv1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: hostAddr,
 		},
@@ -509,7 +509,7 @@ func (p *kubernetesProvisioner) RemoveNode(opts provision.RemoveNodeOptions) err
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		var pods []v1.Pod
+		var pods []apiv1.Pod
 		pods, err = podsFromNode(client, node.Name)
 		if err != nil {
 			return err
@@ -723,7 +723,7 @@ func (p *kubernetesProvisioner) Shell(opts provision.ShellOptions) error {
 		stdout: opts.Conn,
 		stderr: opts.Conn,
 		stdin:  opts.Conn,
-		termSize: &term.Size{
+		termSize: &remotecommand.TerminalSize{
 			Width:  uint16(opts.Width),
 			Height: uint16(opts.Height),
 		},
@@ -797,9 +797,9 @@ func runIsolatedCmdPod(client *clusterClient, a provision.App, out io.Writer, cm
 		return err
 	}
 	appEnvs := provision.EnvsForApp(a, "", false)
-	var envs []v1.EnvVar
+	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
-		envs = append(envs, v1.EnvVar{Name: envData.Name, Value: envData.Value})
+		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 	return runPod(runSinglePodArgs{
 		client: client,

@@ -12,10 +12,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -95,40 +95,40 @@ func (s *S) TestWaitFor(c *check.C) {
 
 func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 	err := waitForPodContainersRunning(s.client.clusterClient, "pod1", 100*time.Millisecond)
-	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
-	var wantedPhase v1.PodPhase
-	var wantedStates []v1.ContainerState
+	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
+	var wantedPhase apiv1.PodPhase
+	var wantedStates []apiv1.ContainerState
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = wantedPhase
-		statuses := make([]v1.ContainerStatus, len(wantedStates))
+		statuses := make([]apiv1.ContainerStatus, len(wantedStates))
 		for i, s := range wantedStates {
-			statuses[i] = v1.ContainerStatus{Name: fmt.Sprintf("c-%d", i), State: s}
+			statuses[i] = apiv1.ContainerStatus{Name: fmt.Sprintf("c-%d", i), State: s}
 		}
 		pod.Status.ContainerStatuses = statuses
 		return false, nil, nil
 	})
 	tests := []struct {
-		states []v1.ContainerState
-		phase  v1.PodPhase
+		states []apiv1.ContainerState
+		phase  apiv1.PodPhase
 		err    string
 	}{
-		{phase: v1.PodSucceeded},
-		{phase: v1.PodPending, err: `timeout after .*`},
-		{phase: v1.PodFailed, err: `invalid pod phase "Failed"`},
-		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
-		{phase: v1.PodRunning, states: []v1.ContainerState{
+		{phase: apiv1.PodSucceeded},
+		{phase: apiv1.PodPending, err: `timeout after .*`},
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
+		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
+		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
 			{},
 		}, err: `timeout after .*`},
-		{phase: v1.PodRunning, states: []v1.ContainerState{
-			{Running: &v1.ContainerStateRunning{}}, {},
+		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
+			{Running: &apiv1.ContainerStateRunning{}}, {},
 		}, err: `timeout after .*`},
-		{phase: v1.PodRunning, states: []v1.ContainerState{
-			{Running: &v1.ContainerStateRunning{}}, {Running: &v1.ContainerStateRunning{}},
+		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
+			{Running: &apiv1.ContainerStateRunning{}}, {Running: &apiv1.ContainerStateRunning{}},
 		}},
-		{phase: v1.PodRunning, states: []v1.ContainerState{
-			{Running: &v1.ContainerStateRunning{}}, {Terminated: &v1.ContainerStateTerminated{
+		{phase: apiv1.PodRunning, states: []apiv1.ContainerState{
+			{Running: &apiv1.ContainerStateRunning{}}, {Terminated: &apiv1.ContainerStateTerminated{
 				ExitCode: 9, Reason: "x", Message: "y",
 			}},
 		}, err: `unexpected container "c-1" termination: Exit 9 - Reason: "x" - Message: "y"`},
@@ -136,7 +136,7 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 	for _, tt := range tests {
 		wantedPhase = tt.phase
 		wantedStates = tt.states
-		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
 				Namespace: s.client.Namespace(),
@@ -156,36 +156,36 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 
 func (s *S) TestWaitForPod(c *check.C) {
 	err := waitForPod(s.client.clusterClient, "pod1", false, 100*time.Millisecond)
-	c.Assert(err, check.ErrorMatches, `Pod "pod1" not found`)
-	var wantedPhase v1.PodPhase
+	c.Assert(err, check.ErrorMatches, `.*"pod1" not found`)
+	var wantedPhase apiv1.PodPhase
 	var wantedMessage string
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod, ok := action.(ktesting.CreateAction).GetObject().(*v1.Pod)
+		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = wantedPhase
 		pod.Status.Message = wantedMessage
 		return false, nil, nil
 	})
 	tests := []struct {
-		phase   v1.PodPhase
+		phase   apiv1.PodPhase
 		msg     string
 		err     string
-		evt     *v1.Event
+		evt     *apiv1.Event
 		running bool
 	}{
-		{phase: v1.PodSucceeded},
-		{phase: v1.PodRunning, err: `timeout after .*`},
-		{phase: v1.PodRunning, running: true},
-		{phase: v1.PodPending, err: `timeout after .*`},
-		{phase: v1.PodFailed, err: `invalid pod phase "Failed"`},
-		{phase: v1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
-		{phase: v1.PodUnknown, err: `invalid pod phase "Unknown"`},
-		{phase: v1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &v1.Event{
+		{phase: apiv1.PodSucceeded},
+		{phase: apiv1.PodRunning, err: `timeout after .*`},
+		{phase: apiv1.PodRunning, running: true},
+		{phase: apiv1.PodPending, err: `timeout after .*`},
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed"`},
+		{phase: apiv1.PodFailed, msg: "my error msg", err: `invalid pod phase "Failed"\("my error msg"\)`},
+		{phase: apiv1.PodUnknown, err: `invalid pod phase "Unknown"`},
+		{phase: apiv1.PodFailed, err: `invalid pod phase "Failed": my evt message`, evt: &apiv1.Event{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1.evt1",
 				Namespace: s.client.Namespace(),
 			},
-			InvolvedObject: v1.ObjectReference{
+			InvolvedObject: apiv1.ObjectReference{
 				Kind:      "Pod",
 				Name:      "pod1",
 				Namespace: s.client.Namespace(),
@@ -196,7 +196,7 @@ func (s *S) TestWaitForPod(c *check.C) {
 	for _, tt := range tests {
 		wantedPhase = tt.phase
 		wantedMessage = tt.msg
-		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+		_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
 				Namespace: s.client.Namespace(),
@@ -224,7 +224,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 		if i == 2 {
 			labels["a"] = "y"
 		}
-		_, err := s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+		_, err := s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("pod-%d", i),
 				Namespace: s.client.Namespace(),
@@ -239,7 +239,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.Core().Pods(s.client.Namespace()).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.DeepEquals, []v1.Pod{{
+	c.Assert(pods.Items, check.DeepEquals, []apiv1.Pod{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod-2",
 			Namespace: s.client.Namespace(),
@@ -267,14 +267,14 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/router-name":          "fake",
 		"tsuru.io/provisioner":          "kubernetes",
 	}
-	_, err := s.client.Extensions().Deployments(s.client.Namespace()).Create(&extensions.Deployment{
+	_, err := s.client.Extensions().Deployments(s.client.Namespace()).Create(&v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: s.client.Namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&extensions.ReplicaSet{
+	_, err = s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&v1beta1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: s.client.Namespace(),
@@ -282,7 +282,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: s.client.Namespace(),
@@ -304,7 +304,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 }
 
 func (s *S) TestCleanupReplicas(c *check.C) {
-	_, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&extensions.ReplicaSet{
+	_, err := s.client.Extensions().ReplicaSets(s.client.Namespace()).Create(&v1beta1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: s.client.Namespace(),
@@ -314,7 +314,7 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: s.client.Namespace(),
@@ -340,14 +340,14 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
-	_, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Create(&extensions.DaemonSet{
+	_, err := s.client.Extensions().DaemonSets(s.client.Namespace()).Create(&v1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: s.client.Namespace(),
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&v1.Pod{
+	_, err = s.client.Core().Pods(s.client.Namespace()).Create(&apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
 			Namespace: s.client.Namespace(),
@@ -398,7 +398,7 @@ func (s *S) TestGetServicePort(c *check.C) {
 	port, err := getServicePort(s.client.clusterClient, "notfound")
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
-	_, err = s.client.Core().Services(s.client.Namespace()).Create(&v1.Service{
+	_, err = s.client.Core().Services(s.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv1",
 			Namespace: s.client.Namespace(),
@@ -408,13 +408,13 @@ func (s *S) TestGetServicePort(c *check.C) {
 	port, err = getServicePort(s.client.clusterClient, "srv1")
 	c.Assert(err, check.IsNil)
 	c.Assert(port, check.Equals, int32(0))
-	_, err = s.client.Core().Services(s.client.Namespace()).Create(&v1.Service{
+	_, err = s.client.Core().Services(s.client.Namespace()).Create(&apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "srv2",
 			Namespace: s.client.Namespace(),
 		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{{NodePort: 123}},
+		Spec: apiv1.ServiceSpec{
+			Ports: []apiv1.ServicePort{{NodePort: 123}},
 		},
 	})
 	c.Assert(err, check.IsNil)

@@ -51,7 +51,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(u.Email, check.Equals, "rand@althor.com")
 	c.Assert(s.reqs, check.HasLen, 2)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
-	c.Assert(s.bodies[0], check.Equals, "client_id=clientid&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=myscope")
+	c.Assert(s.bodies[0], check.Equals, "code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost")
 	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
 	c.Assert(s.reqs[1].Header.Get("Authorization"), check.Equals, "Bearer my_token")
 	dbToken, err := getToken("my_token")

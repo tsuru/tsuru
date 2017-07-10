@@ -93,6 +93,8 @@ func (provisioner *RancherProvisioner) Package(name string, action pkgaction.Pac
 }
 
 func (provisioner *RancherProvisioner) Provision(swarmOptions swarm.Options, authOptions auth.Options, engineOptions engine.Options) error {
+	log.Debugf("Running RancherOS provisioner on %s", provisioner.Driver.GetMachineName())
+
 	provisioner.SwarmOptions = swarmOptions
 	provisioner.AuthOptions = authOptions
 	provisioner.EngineOptions = engineOptions
@@ -112,6 +114,15 @@ func (provisioner *RancherProvisioner) Provision(swarmOptions swarm.Options, aut
 	for _, pkg := range provisioner.Packages {
 		log.Debugf("Installing package %s", pkg)
 		if err := provisioner.Package(pkg, pkgaction.Install); err != nil {
+			return err
+		}
+	}
+
+	if engineOptions.InstallURL == drivers.DefaultEngineInstallURL {
+		log.Debugf("Skipping docker engine default: %s", engineOptions.InstallURL)
+	} else {
+		log.Debugf("Selecting docker engine: %s", engineOptions.InstallURL)
+		if err := selectDocker(provisioner, engineOptions.InstallURL); err != nil {
 			return err
 		}
 	}
@@ -230,4 +241,13 @@ func (provisioner *RancherProvisioner) getLatestISOURL() (string, error) {
 	}
 
 	return "", fmt.Errorf("Failed to find current version")
+}
+
+func selectDocker(p Provisioner, baseURL string) error {
+	// TODO: detect if its a cloud-init, or a ros setting - and use that..
+	if output, err := p.SSHCommand(fmt.Sprintf("wget -O- %s | sh -", baseURL)); err != nil {
+		return fmt.Errorf("error selecting docker: (%s) %s", err, output)
+	}
+
+	return nil
 }

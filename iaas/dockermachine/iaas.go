@@ -58,6 +58,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		params["driver"] = driverName
 	}
 	dockerEngineInstallURL, _ := i.getParamOrConfigString("docker-install-url", params)
+	dockerEngineStorageDriver, _ := i.getParamOrConfigString("docker-storage-driver", params)
 	insecureRegistry, _ := i.getParamOrConfigString("insecure-registry", params)
 	var engineFlags []string
 	if f, err := i.getParamOrConfigString("docker-flags", params); err == nil {
@@ -120,12 +121,13 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		log.Debug(buf.String())
 	}()
 	m, err := dockerMachine.CreateMachine(CreateMachineOpts{
-		Name:                   machineName,
-		DriverName:             driverName,
-		Params:                 driverOpts,
-		InsecureRegistry:       insecureRegistry,
-		DockerEngineInstallURL: dockerEngineInstallURL,
-		ArbitraryFlags:         engineFlags,
+		Name:                      machineName,
+		DriverName:                driverName,
+		Params:                    driverOpts,
+		InsecureRegistry:          insecureRegistry,
+		DockerEngineInstallURL:    dockerEngineInstallURL,
+		DockerEngineStorageDriver: dockerEngineStorageDriver,
+		ArbitraryFlags:            engineFlags,
 	})
 	if err != nil {
 		if m != nil {
@@ -210,9 +212,11 @@ func (i *dockerMachineIaaS) Describe() string {
   driver=<driver>                         Driver to be used by docker machine. Can be set on the IaaS configuration.
 
 Optional params:
-  name=<name>                             Hostname for the created machine
-  docker-install-url=<docker-install-url> Remote script to be used for docker installation. Defaults to: http://get.docker.com. Can be set on the IaaS configuration.
-  insecure-registry=<insecure-registry>   Registry to be added as insecure-registry to the docker engine. Can be set on the IaaS configuration.
-  docker-flags=<flag1,flag2>              Arbitrary docker engine flags. Can be set on the IaaS configuration.
+  name=<name>                                  Hostname for the created machine.
+  docker-install-url=<docker-install-url>      Remote script to be used for docker installation. Defaults to: http://get.docker.com. Can be set on the IaaS configuration.
+  insecure-registry=<insecure-registry>        Registry to be added as insecure-registry to the docker engine. Can be set on the IaaS configuration.
+  docker-flags=<flag1,flag2>                   Arbitrary docker engine flags. Can be set on the IaaS configuration.
+  docker-storage-driver<=docker-storage-driver Docker engine storage driver.
+  user-data-file-param                         Name of the userdata driver parameter.
 `
 }

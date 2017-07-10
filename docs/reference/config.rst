@@ -1235,6 +1235,11 @@ iaas:dockermachine:docker-install-url
 
 Remote script to be used for docker installation. Defaults to: http://get.docker.com.
 
+iaas:dockermachine:docker-storage-driver
+++++++++++++++++++++++++++++++++++++++++
+
+Docker engine storage driver
+
 iaas:dockermachine:insecure-registry
 ++++++++++++++++++++++++++++++++++++
 

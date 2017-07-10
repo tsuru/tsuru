@@ -8,9 +8,9 @@ TSR_SRC = ./cmd/tsurud
 TSR_PKGS = $$(go list ./... | grep -v /vendor/)
 
 LINTER_ARGS_SLOW = \
-	-j 4 --enable-gc -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
+	-j 4 --enable-gc -s vendor -e '.*/vendor/.*' --vendor --enable=misspell --enable=gofmt --enable=goimports --enable=unused \
 	--disable=dupl --disable=gocyclo --disable=errcheck --disable=golint --disable=interfacer --disable=gas \
-	--disable=structcheck --deadline=60m --tests
+	--disable=structcheck --disable=megacheck --deadline=60m --tests
 
 LINTER_ARGS = \
 	$(LINTER_ARGS_SLOW) --disable=staticcheck --disable=unused --disable=gosimple
@@ -54,7 +54,8 @@ metalint:
 	@if [ -z $$(go version | grep -o 'go1.5') ]; then \
 		go get -u github.com/alecthomas/gometalinter; \
 		gometalinter --install; \
-		go install ./...; \
+		go install $(TSR_PKGS); \
+		go test -i $(TSR_PKGS); \
 		gometalinter $(LINTER_ARGS) ./...; \
 	fi
 

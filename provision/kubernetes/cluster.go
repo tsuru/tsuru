@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 )
 
@@ -55,7 +55,7 @@ func getRestConfig(c *cluster.Cluster) (*rest.Config, error) {
 		APIPath: "/api",
 		ContentConfig: rest.ContentConfig{
 			GroupVersion:         &gv,
-			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: api.Codecs},
+			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: scheme.Codecs},
 		},
 		Host: addr,
 		TLSClientConfig: rest.TLSClientConfig{

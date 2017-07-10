@@ -1,0 +1,25 @@
+language: go
+sudo: required
+go:
+  - 1.5.4
+  - 1.6.2
+  - 1.7rc1
+  - tip
+env:
+  global:
+    - GOARCH=amd64
+    - GO15VENDOREXPERIMENT=1
+addons:
+  apt:
+    packages:
+      - rsyslog
+before_script:
+  - rsyslogd &
+script:
+  - make test
+  - ./check-fmt.sh
+  - go build -ldflags "-linkmode external -extldflags -static" webserver/main.go
+services: mongodb
+matrix:
+  allow_failures:
+    - go: tip

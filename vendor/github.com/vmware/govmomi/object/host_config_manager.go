@@ -17,10 +17,11 @@ limitations under the License.
 package object
 
 import (
+	"context"
+
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 type HostConfigManager struct {
@@ -119,4 +120,15 @@ func (m HostConfigManager) OptionManager(ctx context.Context) (*OptionManager, e
 	}
 
 	return NewOptionManager(m.c, *h.ConfigManager.AdvancedOption), nil
+}
+
+func (m HostConfigManager) ServiceSystem(ctx context.Context) (*HostServiceSystem, error) {
+	var h mo.HostSystem
+
+	err := m.Properties(ctx, m.Reference(), []string{"configManager.serviceSystem"}, &h)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewHostServiceSystem(m.c, *h.ConfigManager.ServiceSystem), nil
 }

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/cbreaker"
+	"github.com/vulcand/oxy/cbreaker"
 )
 
 type rawAction struct {

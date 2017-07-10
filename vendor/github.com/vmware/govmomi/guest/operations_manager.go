@@ -17,11 +17,12 @@ limitations under the License.
 package guest
 
 import (
+	"context"
+
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
 type OperationsManager struct {

@@ -51,13 +51,14 @@ type DockerMachineAPI interface {
 }
 
 type CreateMachineOpts struct {
-	Name                   string
-	DriverName             string
-	Params                 map[string]interface{}
-	InsecureRegistry       string
-	DockerEngineInstallURL string
-	RegistryMirror         string
-	ArbitraryFlags         []string
+	Name                      string
+	DriverName                string
+	Params                    map[string]interface{}
+	InsecureRegistry          string
+	DockerEngineInstallURL    string
+	RegistryMirror            string
+	DockerEngineStorageDriver string
+	ArbitraryFlags            []string
 }
 
 type RegisterMachineOpts struct {
@@ -158,6 +159,9 @@ func (d *DockerMachine) CreateMachine(opts CreateMachineOpts) (*Machine, error) 
 	}
 	if opts.RegistryMirror != "" {
 		engineOpts.RegistryMirror = []string{opts.RegistryMirror}
+	}
+	if opts.DockerEngineStorageDriver != "" {
+		engineOpts.StorageDriver = opts.DockerEngineStorageDriver
 	}
 	engineOpts.ArbitraryFlags = opts.ArbitraryFlags
 	if h.AuthOptions() != nil {

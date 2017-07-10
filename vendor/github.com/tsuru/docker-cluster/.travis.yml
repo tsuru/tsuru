@@ -1,0 +1,22 @@
+language: go
+sudo: false
+go:
+  - 1.7.1
+  - 1.8
+  - master
+install:
+  - go get -d -t ./...
+script:
+  - ./go.test.bash
+  - go vet ./...
+services:
+  - redis-server
+  - mongodb
+matrix:
+  allow_failures:
+    - go: master
+notifications:
+  slack:
+    secure: Hew26a31mf/61YFogDUIOub/W5NkUof2INPu4DzOyBLNTSN7kn1Hl3g7rV4QxJ5uRbpNBxn13EW75A/KK1Vdja3DguWKeQXgi/0/hnQK9R6fZkECbdcZONZ4dOD0GsaAq9p09MroY8pOAEgtjwcVd2E18W4WqnNH4EpwfXiF5Sc=
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

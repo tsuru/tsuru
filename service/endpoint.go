@@ -56,7 +56,7 @@ func (c *Client) buildErrorMessage(err error, resp *http.Response) error {
 	if resp != nil {
 		defer resp.Body.Close()
 		b, _ := ioutil.ReadAll(resp.Body)
-		return errors.Errorf("invalid response: %s", string(b))
+		return errors.Errorf("invalid response: %s (code: %d)", string(b), resp.StatusCode)
 	}
 	return nil
 }

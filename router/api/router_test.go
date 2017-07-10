@@ -365,7 +365,7 @@ func newFakeRouter(c *check.C) *fakeRouterAPI {
 	r.HandleFunc("/certificate/{cname}", api.getCertificate).Methods(http.MethodGet)
 	r.HandleFunc("/certificate/{cname}", api.addCertificate).Methods(http.MethodPut)
 	r.HandleFunc("/certificate/{cname}", api.removeCertificate).Methods(http.MethodDelete)
-	listener, err := net.Listen("tcp", "")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, check.IsNil)
 	api.listener = listener
 	api.endpoint = fmt.Sprintf("http://%s", listener.Addr().String())

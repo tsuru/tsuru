@@ -9,6 +9,13 @@ import (
 	"gopkg.in/redis.v3/internal/pool"
 )
 
+// Posts a message to the given channel.
+func (c *Client) Publish(channel, message string) *IntCmd {
+	req := NewIntCmd("PUBLISH", channel, message)
+	c.Process(req)
+	return req
+}
+
 // PubSub implements Pub/Sub commands as described in
 // http://redis.io/topics/pubsub. It's NOT safe for concurrent use by
 // multiple goroutines.

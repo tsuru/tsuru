@@ -49,6 +49,7 @@ func (s *S) getPlatforms() []string {
 		"tsuru/python3",
 		"tsuru/ruby",
 		"tsuru/static",
+		"tsuru/perl",
 	}
 	if _, ok := os.LookupEnv(integrationEnvID + "platforms"); !ok {
 		return availablePlatforms
