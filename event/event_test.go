@@ -659,6 +659,15 @@ func (s *S) TestNewThrottledOneKind(c *check.C) {
 	})
 	c.Assert(err, check.FitsTypeOf, ErrThrottled{})
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on app \"myapp\" is 2 every 1h0m0s")
+	// A different target value is not throttled
+	_, err = New(&Opts{
+		Target:  Target{Type: "app", Value: "myapp2"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	// A different kind is not throttled
 	evt, err = New(&Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvUnset,
@@ -667,6 +676,125 @@ func (s *S) TestNewThrottledOneKind(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestNewThrottledAllTargets(c *check.C) {
+	SetThrottling(ThrottlingSpec{
+		TargetType: TargetTypeApp,
+		KindName:   permission.PermAppUpdateEnvSet.FullName(),
+		Time:       time.Hour,
+		Max:        1,
+		AllTargets: true,
+	})
+	baseOpts := &Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	}
+	evt, err := New(baseOpts)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	evt, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 1h0m0s")
+	baseOpts.Target.Value = "myapp2"
+	evt, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 1h0m0s")
+}
+
+func (s *S) TestNewThrottledAllTargetsTwoRules(c *check.C) {
+	SetThrottling(ThrottlingSpec{
+		TargetType: TargetTypeApp,
+		KindName:   permission.PermAppUpdateEnvSet.FullName(),
+		Time:       time.Hour,
+		Max:        2,
+		AllTargets: true,
+	})
+	SetThrottling(ThrottlingSpec{
+		TargetType: TargetTypeApp,
+		KindName:   permission.PermAppUpdateEnvSet.FullName(),
+		Time:       time.Hour,
+		Max:        1,
+	})
+	baseOpts := &Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	}
+	evt, err := New(baseOpts)
+	c.Assert(err, check.IsNil)
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	evt, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on app \"myapp\" is 1 every 1h0m0s")
+	baseOpts.Target.Value = "myapp2"
+	evt, err = New(baseOpts)
+	c.Assert(err, check.IsNil)
+	baseOpts.Target.Value = "myapp3"
+	evt, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 2 every 1h0m0s")
+}
+
+func (s *S) TestNewThrottledExpiration(c *check.C) {
+	SetThrottling(ThrottlingSpec{
+		TargetType: TargetTypeApp,
+		KindName:   permission.PermAppUpdateEnvSet.FullName(),
+		Time:       300 * time.Millisecond,
+		Max:        1,
+		AllTargets: true,
+	})
+	baseOpts := &Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	}
+	_, err := New(baseOpts)
+	c.Assert(err, check.IsNil)
+	baseOpts.Target.Value = "myapp2"
+	_, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 300ms")
+	time.Sleep(400 * time.Millisecond)
+	_, err = New(baseOpts)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestNewThrottledExpirationWaitFinish(c *check.C) {
+	SetThrottling(ThrottlingSpec{
+		TargetType: TargetTypeApp,
+		KindName:   permission.PermAppUpdateEnvSet.FullName(),
+		Time:       300 * time.Millisecond,
+		Max:        1,
+		AllTargets: true,
+		WaitFinish: true,
+	})
+	baseOpts := &Opts{
+		Target:  Target{Type: "app", Value: "myapp"},
+		Kind:    permission.PermAppUpdateEnvSet,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermAppReadEvents),
+	}
+	evt, err := New(baseOpts)
+	c.Assert(err, check.IsNil)
+	baseOpts.Target.Value = "myapp2"
+	_, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 300ms")
+	time.Sleep(400 * time.Millisecond)
+	_, err = New(baseOpts)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 300ms")
+	err = evt.Done(nil)
+	c.Assert(err, check.IsNil)
+	_, err = New(baseOpts)
 	c.Assert(err, check.IsNil)
 }
 
