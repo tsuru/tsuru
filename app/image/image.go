@@ -341,7 +341,7 @@ func DeleteAllAppImageNames(appName string) error {
 	return coll.RemoveId(appName)
 }
 
-func UpdateAppImageRollback(appName, img, reason string, rollback bool) error {
+func UpdateAppImageRollback(img, reason string, rollback bool) error {
 	dataColl, err := imageCustomDataColl()
 	if err != nil {
 		return err
