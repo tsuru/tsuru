@@ -17,28 +17,11 @@ import (
 )
 
 var (
-	T            = NewCommand("tsuru").WithArgs
-	allPlatforms = []string{
-		"tsuru/python",
-		"tsuru/go",
-		"tsuru/buildpack",
-		"tsuru/cordova",
-		"tsuru/elixir",
-		"tsuru/java",
-		"tsuru/nodejs",
-		"tsuru/php",
-		"tsuru/play",
-		"tsuru/pypy",
-		"tsuru/python3",
-		"tsuru/ruby",
-		"tsuru/static",
-		"tsuru/perl",
-	}
-	allProvisioners = []string{
-		"docker",
-		"swarm",
-	}
-	flows = []ExecFlow{
+	T               = NewCommand("tsuru").WithArgs
+	platforms       = []string{}
+	provisioners    = []string{}
+	clusterManagers = []ClusterManager{}
+	flows           = []ExecFlow{
 		platformsToInstall(),
 		installerConfigTest(),
 		installerComposeTest(),
@@ -52,58 +35,15 @@ var (
 		platformAdd(),
 		exampleApps(),
 	}
+	installerConfig = ""
 )
-
-var installerConfig = fmt.Sprintf(`driver:
-  name: virtualbox
-  options:
-    virtualbox-cpu-count: 2
-    virtualbox-memory: 2048
-docker-flags:
-  - experimental
-hosts:
-  apps:
-    size: %d
-components:
-  install-dashboard: false
-`, len(allProvisioners))
-
-var clusterManagers = []ClusterManager{}
-
-func getClusterManagers(env *Environment) []ClusterManager {
-	availableClusterManagers := map[string]ClusterManager{
-		"gce":      &GceClusterManager{env: env},
-		"minikube": &MinikubeClusterManager{env: env},
-	}
-	managers := make([]ClusterManager, 0, len(availableClusterManagers))
-	clusters := strings.Split(env.Get("clusters"), ",")
-	selectedClusters := make([]string, 0, len(availableClusterManagers))
-	for _, cluster := range clusters {
-		cluster = strings.Trim(cluster, " ")
-		manager := availableClusterManagers[cluster]
-		if manager != nil {
-			available := true
-			for _, selected := range selectedClusters {
-				if cluster == selected {
-					available = false
-					break
-				}
-			}
-			if available {
-				managers = append(managers, manager)
-				selectedClusters = append(selectedClusters, cluster)
-			}
-		}
-	}
-	return managers
-}
 
 func platformsToInstall() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"platformimages"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		for _, platImg := range allPlatforms {
+		for _, platImg := range platforms {
 			env.Add("platformimages", platImg)
 		}
 	}
@@ -179,6 +119,9 @@ func installerTest() ExecFlow {
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
 		certsDir := fmt.Sprintf("%s/.tsuru/installs/%s/certs", os.Getenv("HOME"), installerName(env))
+		if len(allParts) > len(provisioners) {
+			allParts = allParts[1:]
+		}
 		for _, parts = range allParts {
 			c.Assert(parts, check.HasLen, 2)
 			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
@@ -269,7 +212,7 @@ func poolAdd() ExecFlow {
 		provides: []string{"poolnames"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		for _, prov := range allProvisioners {
+		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
 			res := T("pool-add", "--provisioner", prov, poolName).Run(env)
 			c.Assert(res, ResultOk)
@@ -364,7 +307,7 @@ func poolAdd() ExecFlow {
 			res := T("node-remove", "-y", "--no-rebalance", node).Run(env)
 			c.Check(res, ResultOk)
 		}
-		for _, prov := range allProvisioners {
+		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
 			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
@@ -375,7 +318,7 @@ func poolAdd() ExecFlow {
 
 func platformAdd() ExecFlow {
 	flow := ExecFlow{
-		provides: []string{"platforms"},
+		provides: []string{"installedplatforms"},
 		matrix: map[string]string{
 			"platimg": "platformimages",
 		},
@@ -387,7 +330,7 @@ func platformAdd() ExecFlow {
 		platName := "iplat-" + suffix
 		res := T("platform-add", platName, "-i", img).WithTimeout(15 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
-		env.Add("platforms", platName)
+		env.Add("installedplatforms", platName)
 		res = T("platform-list").Run(env)
 		c.Assert(res, ResultOk)
 		c.Assert(res, ResultMatches, Expected{Stdout: "(?s).*- " + platName + ".*"})
@@ -406,7 +349,7 @@ func exampleApps() ExecFlow {
 	flow := ExecFlow{
 		matrix: map[string]string{
 			"pool": "poolnames",
-			"plat": "platforms",
+			"plat": "installedplatforms",
 		},
 		parallel: true,
 	}
@@ -446,24 +389,15 @@ func exampleApps() ExecFlow {
 	return flow
 }
 
-func installerName(env *Environment) string {
-	name := env.Get("installername")
-	if name == "" {
-		name = "tsuru"
-	}
-	return name
-}
-
 func (s *S) TestBase(c *check.C) {
-	env := NewEnvironment()
-	if !env.Has("enabled") {
+	s.config()
+	if s.env == nil {
 		return
 	}
-	clusterManagers = getClusterManagers(env)
 	var executedFlows []*ExecFlow
 	defer func() {
 		for i := len(executedFlows) - 1; i >= 0; i-- {
-			executedFlows[i].Rollback(c, env)
+			executedFlows[i].Rollback(c, s.env)
 		}
 	}()
 	for i := range flows {
@@ -471,7 +405,7 @@ func (s *S) TestBase(c *check.C) {
 		if len(f.provides) > 0 {
 			providesAll := true
 			for _, envVar := range f.provides {
-				if env.Get(envVar) == "" {
+				if s.env.Get(envVar) == "" {
 					providesAll = false
 					break
 				}
@@ -481,6 +415,6 @@ func (s *S) TestBase(c *check.C) {
 			}
 		}
 		executedFlows = append(executedFlows, f)
-		f.Run(c, env)
+		f.Run(c, s.env)
 	}
 }

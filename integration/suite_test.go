@@ -17,6 +17,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	tmpDir string
+	env    *Environment
 }
 
 var _ = check.Suite(&S{})
