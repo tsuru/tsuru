@@ -78,8 +78,9 @@ const (
 )
 
 type ErrThrottled struct {
-	Spec   *ThrottlingSpec
-	Target Target
+	Spec       *ThrottlingSpec
+	Target     Target
+	AllTargets bool
 }
 
 func (err ErrThrottled) Error() string {
@@ -87,7 +88,13 @@ func (err ErrThrottled) Error() string {
 	if err.Spec.KindName != "" {
 		extra = fmt.Sprintf(" %s on", err.Spec.KindName)
 	}
-	return fmt.Sprintf("event throttled, limit for%s %s %q is %d every %v", extra, err.Target.Type, err.Target.Value, err.Spec.Max, err.Spec.Time)
+	var extraTarget string
+	if err.AllTargets {
+		extraTarget = fmt.Sprintf("any %s", err.Target.Type)
+	} else {
+		extraTarget = fmt.Sprintf("%s %q", err.Target.Type, err.Target.Value)
+	}
+	return fmt.Sprintf("event throttled, limit for%s %s is %d every %v", extra, extraTarget, err.Spec.Max, err.Spec.Time)
 }
 
 type ErrValidation string
@@ -224,23 +231,35 @@ type ThrottlingSpec struct {
 	KindName   string
 	Max        int
 	Time       time.Duration
+	AllTargets bool
+	WaitFinish bool
+}
+
+func throttlingKey(targetType TargetType, kindName string, allTargets bool) string {
+	key := string(targetType)
+	if kindName != "" {
+		key = fmt.Sprintf("%s_%s", key, kindName)
+	}
+	if allTargets {
+		key = fmt.Sprintf("%s_%s", key, "global")
+	}
+	return key
 }
 
 func SetThrottling(spec ThrottlingSpec) {
-	key := string(spec.TargetType)
-	if spec.KindName != "" {
-		key = fmt.Sprintf("%s_%s", spec.TargetType, spec.KindName)
-	}
+	key := throttlingKey(spec.TargetType, spec.KindName, spec.AllTargets)
 	throttlingInfo[key] = spec
 }
 
-func getThrottling(t *Target, k *Kind) *ThrottlingSpec {
-	key := fmt.Sprintf("%s_%s", t.Type, k.Name)
-	if s, ok := throttlingInfo[key]; ok {
-		return &s
+func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {
+	keys := []string{
+		throttlingKey(t.Type, k.Name, allTargets),
+		throttlingKey(t.Type, "", allTargets),
 	}
-	if s, ok := throttlingInfo[string(t.Type)]; ok {
-		return &s
+	for _, key := range keys {
+		if s, ok := throttlingInfo[key]; ok {
+			return &s
+		}
 	}
 	return nil
 }
@@ -611,6 +630,39 @@ func makeBSONRaw(in interface{}) (bson.Raw, error) {
 	}, nil
 }
 
+func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTargets bool) error {
+	tSpec := getThrottling(target, kind, allTargets)
+	if tSpec == nil || tSpec.Max <= 0 || tSpec.Time <= 0 {
+		return nil
+	}
+	query := bson.M{
+		"target.type": target.Type,
+	}
+	startTimeQuery := bson.M{"$gt": time.Now().UTC().Add(-tSpec.Time)}
+	if tSpec.WaitFinish {
+		query["$or"] = []bson.M{
+			{"starttime": startTimeQuery},
+			{"running": true},
+		}
+	} else {
+		query["starttime"] = startTimeQuery
+	}
+	if !allTargets {
+		query["target.value"] = target.Value
+	}
+	if tSpec.KindName != "" {
+		query["kind.name"] = tSpec.KindName
+	}
+	c, err := coll.Find(query).Count()
+	if err != nil {
+		return err
+	}
+	if c >= tSpec.Max {
+		return ErrThrottled{Spec: tSpec, Target: *target, AllTargets: allTargets}
+	}
+	return nil
+}
+
 func newEvt(opts *Opts) (*Event, error) {
 	updater.start()
 	if opts == nil {
@@ -656,24 +708,13 @@ func newEvt(opts *Opts) (*Event, error) {
 	}
 	defer conn.Close()
 	coll := conn.Events()
-	tSpec := getThrottling(&opts.Target, &k)
-	if tSpec != nil && tSpec.Max > 0 && tSpec.Time > 0 {
-		query := bson.M{
-			"target.type":  opts.Target.Type,
-			"target.value": opts.Target.Value,
-			"starttime":    bson.M{"$gt": time.Now().UTC().Add(-tSpec.Time)},
-		}
-		if tSpec.KindName != "" {
-			query["kind.name"] = tSpec.KindName
-		}
-		var c int
-		c, err = coll.Find(query).Count()
-		if err != nil {
-			return nil, err
-		}
-		if c >= tSpec.Max {
-			return nil, ErrThrottled{Spec: tSpec, Target: opts.Target}
-		}
+	err = checkThrottling(coll, &opts.Target, &k, false)
+	if err != nil {
+		return nil, err
+	}
+	err = checkThrottling(coll, &opts.Target, &k, true)
+	if err != nil {
+		return nil, err
 	}
 	now := time.Now().UTC()
 	raw, err := makeBSONRaw(opts.CustomData)
