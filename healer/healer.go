@@ -26,6 +26,8 @@ func init() {
 		KindName:   "healer",
 		Time:       consecutiveHealingsTimeframe,
 		Max:        consecutiveHealingsLimitInTimeframe,
+		AllTargets: true,
+		WaitFinish: true,
 	})
 }
 

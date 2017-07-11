@@ -668,7 +668,7 @@ func (s *S) TestRunContainerHealerThrottled(c *check.C) {
 	}
 	healer := NewContainerHealer(ContainerHealerArgs{Provisioner: p, Locker: dockertest.NewFakeLocker()})
 	err = healer.healContainerIfNeeded(toMoveCont)
-	c.Assert(err, check.ErrorMatches, "Error trying to insert container healing event, healing aborted: event throttled, limit for healer on container \".*?\" is 3 every 5m0s")
+	c.Assert(err, check.ErrorMatches, "Error trying to insert container healing event, healing aborted: event throttled, limit for healer on any container is 3 every 5m0s")
 }
 
 func (s *S) TestListUnresponsiveContainers(c *check.C) {
