@@ -408,8 +408,6 @@ func (s *S) TestListNodeHandler(c *check.C) {
 	})
 	c.Assert(result.Nodes, check.DeepEquals, []provision.NodeSpec{
 		{Address: "host1.com:2375", Pool: "pool1", Status: "enabled", Metadata: map[string]string{"pool": "pool1"}},
-		{Address: "host1.com:2375", Pool: "pool1", Status: "enabled", Metadata: map[string]string{"pool": "pool1"}},
-		{Address: "host2.com:2375", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"pool": "pool2", "foo": "bar"}},
 		{Address: "host2.com:2375", Pool: "pool2", Status: "enabled", Metadata: map[string]string{"pool": "pool2", "foo": "bar"}},
 	})
 }
