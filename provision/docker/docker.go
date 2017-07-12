@@ -177,7 +177,7 @@ func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, 
 			return nil, err
 		}
 		if len(nodes) < 1 {
-			return nil, errors.New("There is no Docker node. Please list one in tsuru.conf or add one with `tsuru node-add`")
+			return nil, errors.New("There is no Docker node. Add one with `tsuru node-add`")
 		}
 		nodeAddr = nodes[mathRand.Intn(len(nodes))].Address
 	} else {

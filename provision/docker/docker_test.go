@@ -490,5 +490,5 @@ func (s *S) TestGetDockerClientWithoutAppOrNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	client, err := p.GetDockerClient(nil)
 	c.Assert(client, check.IsNil)
-	c.Assert(err, check.ErrorMatches, "There is no Docker node. Please list one in tsuru.conf or add one with `tsuru node-add`")
+	c.Assert(err, check.ErrorMatches, "There is no Docker node. Add one with `tsuru node-add`")
 }
