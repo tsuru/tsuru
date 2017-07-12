@@ -470,9 +470,12 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 }
 
 func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
+	healer, err := Initialize()
+	c.Assert(err, check.IsNil)
+	healer.Shutdown()
 	factory, iaasInst := iaasTesting.NewHealerIaaSConstructorWithInst("addr1")
 	iaas.RegisterIaasProvider("my-healer-iaas", factory)
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
+	_, err = iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	iaasInst.Addr = "addr2"
 	config.Set("iaas:node-protocol", "http")
@@ -487,7 +490,7 @@ func (s *S) TestHealerHandleErrorThrottled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	node, err := p.GetNode("http://addr1:1")
 	c.Assert(err, check.IsNil)
-	healer := newNodeHealer(nodeHealerArgs{
+	healer = newNodeHealer(nodeHealerArgs{
 		FailuresBeforeHealing: 1,
 		WaitTimeNewMachine:    time.Minute,
 	})
