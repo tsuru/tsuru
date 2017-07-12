@@ -432,19 +432,19 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: "you must specify an image",
 		}
 	}
-	rb := r.FormValue("enabled")
-	rollback, err := strconv.ParseBool(rb)
+	disable := r.FormValue("disable")
+	rollback, err := strconv.ParseBool(disable)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("Status `enabled` set to: %s instead of `true` or `false`", rb),
+			Message: fmt.Sprintf("Cannot set 'disable' status to: '%s', instead of 'true' or 'false'", disable),
 		}
 	}
 	reason := r.FormValue("reason")
 	if (reason == "") && (rollback == false) {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "Reason cannot be empty while disabling a rollback",
+			Message: "Reason cannot be empty while disabling a image rollback",
 		}
 	}
 	evt, err := event.New(&event.Opts{
@@ -460,7 +460,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.RollbackUpdate(instance, img, reason, rollback)
+	err = app.RollbackUpdate(instance.Name, img, reason, rollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
