@@ -422,8 +422,13 @@ func (s *S) TestBuilderErasesOldImages(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "fake image")
+	})
+	fakeServer := httptest.NewServer(fakeHandler)
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "http://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	_, err = s.b.Build(s.provisioner, a, evt, buildOpts)
 	c.Assert(err, check.IsNil)

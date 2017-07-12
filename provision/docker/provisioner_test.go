@@ -47,6 +47,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func newFakeServer() *httptest.Server {
+	fakeHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "fake image")
+	})
+	return httptest.NewServer(fakeHandler)
+}
+
 func (s *S) TestShouldBeRegistered(c *check.C) {
 	p, err := provision.Get("docker")
 	c.Assert(err, check.IsNil)
@@ -343,8 +350,10 @@ func (s *S) TestDeployWithLimiterActive(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
@@ -402,8 +411,10 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
@@ -458,8 +469,10 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
@@ -495,8 +508,10 @@ func (s *S) TestDeployCanceledEvent(c *check.C) {
 		AllowedCancel: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, app, evt, buildOpts)
 	c.Assert(err, check.IsNil)
@@ -627,8 +642,10 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
@@ -737,8 +754,10 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
@@ -966,8 +985,10 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	fakeServer := newFakeServer()
+	defer fakeServer.Close()
 	buildOpts := builder.BuildOpts{
-		ArchiveURL: "https://mystorage.com/archive.tar.gz",
+		ArchiveURL: fakeServer.URL,
 	}
 	builderImgID, err := s.b.Build(s.p, &a, evt, buildOpts)
 	c.Assert(err, check.IsNil)
