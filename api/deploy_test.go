@@ -1325,12 +1325,15 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	}
 	err = data.Save()
 	c.Assert(err, check.IsNil)
+	d, err := image.GetImageMetaData(data.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(d.DisableRollback, check.Equals, false)
 	v := url.Values{}
-	v.Set("enabled", "true")
+	v.Set("disable", "true")
 	v.Set("reason", "")
 	v.Set("image", "v1")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
-	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
@@ -1342,6 +1345,9 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	d, err = image.GetImageMetaData(data.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(d.DisableRollback, check.Equals, true)
 }
 
 func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
@@ -1357,11 +1363,11 @@ func (s *DeploySuite) TestRollbackUpdateInvalidImage(c *check.C) {
 	err = data.Save()
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("enabled", "true")
+	v.Set("disable", "true")
 	v.Set("reason", "")
 	v.Set("image", "v10")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
-	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
@@ -1382,11 +1388,11 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	err := app.CreateApp(&fakeApp, user)
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
-	v.Set("enabled", "true")
+	v.Set("disable", "true")
 	v.Set("reason", "")
 	v.Set("image", "v1")
 	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
-	request, err := http.NewRequest("PUT", url, strings.NewReader(v.Encode()))
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
 		Scheme:  permission.PermAppUpdateDeployRollback,
@@ -1399,4 +1405,76 @@ func (s *DeploySuite) TestRollbackUpdateImageNotFound(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "Image v1 not found in app \"otherapp\"\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateEmptyImage(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "rimworld", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "you must specify an image\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateErrEmptyReason(c *check.C) {
+	user, _ := s.token.User()
+	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
+	err := app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	v.Set("reason", "")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin", permission.Permission{
+		Scheme:  permission.PermAppUpdateDeployRollback,
+		Context: permission.Context(permission.CtxGlobal, ""),
+	})
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "Reason cannot be empty while disabling a image rollback\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *DeploySuite) TestRollbackUpdateErrNoPerms(c *check.C) {
+	user := &auth.User{Email: "janna@zaun.com", Password: "jannazaun123"}
+	err := user.Create()
+	c.Assert(err, check.IsNil)
+	fakeApp := app.App{Name: "xayah", TeamOwner: s.team.Name}
+	err = app.CreateApp(&fakeApp, user)
+	c.Assert(err, check.IsNil)
+	v := url.Values{}
+	v.Set("disable", "false")
+	v.Set("reason", "Zaun is under attack!")
+	v.Set("image", "v1")
+	url := fmt.Sprintf("/apps/%s/deploy/rollback/update", fakeApp.Name)
+	request, err := http.NewRequest(http.MethodPut, url, strings.NewReader(v.Encode()))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myadmin")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this app\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
