@@ -251,3 +251,8 @@ func (s *Storage) ProvisionerClusters() *storage.Collection {
 	c := s.Collection("provisioner_clusters")
 	return c
 }
+
+func (s *Storage) Volumes() *storage.Collection {
+	c := s.Collection("volumes")
+	return c
+}
