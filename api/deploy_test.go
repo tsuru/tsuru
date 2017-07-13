@@ -21,7 +21,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
-	_ "github.com/tsuru/tsuru/builder/fake"
+	"github.com/tsuru/tsuru/builder/fake"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -43,6 +43,7 @@ type DeploySuite struct {
 	token       auth.Token
 	team        *auth.Team
 	provisioner *provisiontest.FakeProvisioner
+	builder     *fake.FakeBuilder
 }
 
 var _ = check.Suite(&DeploySuite{})
@@ -75,6 +76,8 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
+	s.builder = fake.NewFakeBuilder()
+	builder.Register("fake", s.builder)
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
@@ -91,6 +94,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	provision.DefaultProvisioner = "fake"
 	builder.DefaultBuilder = "fake"
 	s.provisioner.Reset()
+	s.builder.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)

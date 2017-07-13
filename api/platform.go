@@ -11,11 +11,11 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 )
 
 // title: add platform
@@ -56,7 +56,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.PlatformAdd(provision.PlatformOptions{
+	err = app.PlatformAdd(builder.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
@@ -107,7 +107,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.PlatformUpdate(provision.PlatformOptions{
+	err = app.PlatformUpdate(builder.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,

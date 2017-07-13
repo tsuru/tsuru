@@ -61,7 +61,7 @@ var (
 	// _ provision.UnitStatusProvisioner    = &kubernetesProvisioner{}
 	// _ provision.NodeRebalanceProvisioner = &kubernetesProvisioner{}
 	// _ provision.AppFilterProvisioner     = &kubernetesProvisioner{}
-	// _ provision.ExtensibleProvisioner    = &kubernetesProvisioner{}
+	// _ builder.PlatformBuilder            = &kubernetesProvisioner{}
 )
 
 func init() {

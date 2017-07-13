@@ -34,6 +34,23 @@ type Builder interface {
 
 var builders = make(map[string]Builder)
 
+// PlatformBuilder is a builder where administrators can manage
+// platforms (automatically adding, removing and updating platforms).
+type PlatformBuilder interface {
+	PlatformAdd(PlatformOptions) error
+	PlatformUpdate(PlatformOptions) error
+	PlatformRemove(name string) error
+}
+
+// PlatformOptions is the set of options provided to PlatformAdd and
+// PlatformUpdate, in PlatformBuilder.
+type PlatformOptions struct {
+	Name   string
+	Args   map[string]string
+	Input  io.Reader
+	Output io.Writer
+}
+
 // Register registers a new builder in the Builder registry.
 func Register(name string, builder Builder) {
 	builders[name] = builder
@@ -59,4 +76,52 @@ func Registry() ([]Builder, error) {
 		registry = append(registry, b)
 	}
 	return registry, nil
+}
+
+func PlatformAdd(opts PlatformOptions) error {
+	builders, err := Registry()
+	if err != nil {
+		return err
+	}
+	for _, b := range builders {
+		if platformBuilder, ok := b.(PlatformBuilder); ok {
+			err = platformBuilder.PlatformAdd(opts)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func PlatformUpdate(opts PlatformOptions) error {
+	builders, err := Registry()
+	if err != nil {
+		return err
+	}
+	for _, b := range builders {
+		if platformBuilder, ok := b.(PlatformBuilder); ok {
+			err = platformBuilder.PlatformUpdate(opts)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func PlatformRemove(name string) error {
+	builders, err := Registry()
+	if err != nil {
+		return err
+	}
+	for _, b := range builders {
+		if platformBuilder, ok := b.(PlatformBuilder); ok {
+			err = platformBuilder.PlatformRemove(name)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

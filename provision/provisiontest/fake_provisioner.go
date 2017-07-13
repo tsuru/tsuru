@@ -28,7 +28,6 @@ import (
 
 var (
 	ProvisionerInstance *FakeProvisioner
-	ExtensibleInstance  *ExtensibleFakeProvisioner
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
@@ -39,14 +38,8 @@ const fakeAppImage = "app-image"
 
 func init() {
 	ProvisionerInstance = NewFakeProvisioner()
-	ExtensibleInstance = &ExtensibleFakeProvisioner{
-		FakeProvisioner: ProvisionerInstance,
-	}
 	provision.Register("fake", func() (provision.Provisioner, error) {
 		return ProvisionerInstance, nil
-	})
-	provision.Register("fake-extensible", func() (provision.Provisioner, error) {
-		return ExtensibleInstance, nil
 	})
 }
 
@@ -1473,62 +1466,6 @@ func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
 	return pipeline
 }
 
-type ExtensibleFakeProvisioner struct {
-	*FakeProvisioner
-	platforms []provisionedPlatform
-}
-
-func (p *ExtensibleFakeProvisioner) GetPlatform(name string) *provisionedPlatform {
-	_, platform := p.getPlatform(name)
-	return platform
-}
-
-func (p *ExtensibleFakeProvisioner) getPlatform(name string) (int, *provisionedPlatform) {
-	for i, platform := range p.platforms {
-		if platform.Name == name {
-			return i, &platform
-		}
-	}
-	return -1, nil
-}
-
-func (p *ExtensibleFakeProvisioner) PlatformAdd(opts provision.PlatformOptions) error {
-	if err := p.getError("PlatformAdd"); err != nil {
-		return err
-	}
-	if p.GetPlatform(opts.Name) != nil {
-		return errors.New("duplicate platform")
-	}
-	p.platforms = append(p.platforms, provisionedPlatform{Name: opts.Name, Args: opts.Args, Version: 1})
-	return nil
-}
-
-func (p *ExtensibleFakeProvisioner) PlatformUpdate(opts provision.PlatformOptions) error {
-	index, platform := p.getPlatform(opts.Name)
-	if platform == nil {
-		return errors.New("platform not found")
-	}
-	platform.Version += 1
-	platform.Args = opts.Args
-	p.platforms[index] = *platform
-	return nil
-}
-
-func (p *ExtensibleFakeProvisioner) Reset() {
-	p.FakeProvisioner.Reset()
-	p.platforms = nil
-}
-
-func (p *ExtensibleFakeProvisioner) PlatformRemove(name string) error {
-	index, _ := p.getPlatform(name)
-	if index < 0 {
-		return errors.New("platform not found")
-	}
-	p.platforms[index] = p.platforms[len(p.platforms)-1]
-	p.platforms = p.platforms[:len(p.platforms)-1]
-	return nil
-}
-
 type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App
@@ -1542,10 +1479,4 @@ type provisionedApp struct {
 	unitLen     int
 	lastData    map[string]interface{}
 	image       string
-}
-
-type provisionedPlatform struct {
-	Name    string
-	Args    map[string]string
-	Version int
 }

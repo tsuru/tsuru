@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
 
@@ -78,10 +77,6 @@ func (s *S) TestAutoScaleHistoryHandler(c *check.C) {
 }
 
 func (s *S) TestAutoScaleRunHandler(c *check.C) {
-	provision.Unregister("fake-extensible")
-	defer provision.Register("fake-extensible", func() (provision.Provisioner, error) {
-		return provisiontest.ExtensibleInstance, nil
-	})
 	s.provisioner.AddNode(provision.AddNodeOptions{
 		Address:  "localhost:1999",
 		Metadata: map[string]string{"pool": "pool1"},

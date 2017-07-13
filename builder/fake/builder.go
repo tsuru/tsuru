@@ -22,10 +22,19 @@ type FakeBuilder struct {
 	IsArchiveFileDeploy bool
 	IsRebuildDeploy     bool
 	IsImageDeploy       bool
+	platforms           []provisionedPlatform
+	failures            chan failure
 }
 
-func init() {
-	builder.Register("fake", &FakeBuilder{})
+type failure struct {
+	method string
+	err    error
+}
+
+func NewFakeBuilder() *FakeBuilder {
+	b := FakeBuilder{}
+	b.failures = make(chan failure, 8)
+	return &b
 }
 
 func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts builder.BuildOpts) (string, error) {
@@ -66,4 +75,20 @@ func (b *FakeBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *e
 		}
 	}
 	return buildingImage, nil
+}
+
+func (b *FakeBuilder) getError(method string) error {
+	select {
+	case fail := <-b.failures:
+		if fail.method == method {
+			return fail.err
+		}
+		b.failures <- fail
+	default:
+	}
+	return nil
+}
+
+func (b *FakeBuilder) PrepareFailure(method string, err error) {
+	b.failures <- failure{method, err}
 }
