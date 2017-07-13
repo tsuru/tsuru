@@ -171,7 +171,10 @@ func (s *segregatedScheduler) aggregateContainersByHostAppProcess(hosts []string
 }
 
 func (s *segregatedScheduler) GetRemovableContainer(appName string, process string) (string, error) {
-	a, _ := app.GetByName(appName)
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return "", err
+	}
 	nodes, err := s.provisioner.Nodes(a)
 	if err != nil {
 		return "", err

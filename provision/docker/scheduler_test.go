@@ -810,6 +810,16 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *S) TestGetRemovableContainerWithoutAppOrProcess(c *check.C) {
+	scheduler := segregatedScheduler{provisioner: s.p}
+	cont, err := scheduler.GetRemovableContainer("", "web")
+	c.Assert(cont, check.Equals, "")
+	c.Assert(err, check.NotNil)
+	cont, err = scheduler.GetRemovableContainer("appname", "")
+	c.Assert(cont, check.Equals, "")
+	c.Assert(err, check.NotNil)
+}
+
 func (s *S) TestNodesToHosts(c *check.C) {
 	nodes := []cluster.Node{
 		{Address: "http://server1:1234"},
