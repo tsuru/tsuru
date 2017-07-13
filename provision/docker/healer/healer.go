@@ -7,7 +7,6 @@ package healer
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -22,22 +21,6 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-var (
-	consecutiveHealingsTimeframe        = 5 * time.Minute
-	consecutiveHealingsLimitInTimeframe = 3
-)
-
-func init() {
-	event.SetThrottling(event.ThrottlingSpec{
-		TargetType: event.TargetTypeContainer,
-		KindName:   "healer",
-		Time:       consecutiveHealingsTimeframe,
-		Max:        consecutiveHealingsLimitInTimeframe,
-		AllTargets: true,
-		WaitFinish: true,
-	})
-}
 
 func toHealingEvt(evt *event.Event) (types.HealingEvent, error) {
 	healingEvt := types.HealingEvent{

@@ -43,28 +43,14 @@ func Initialize() (*NodeHealer, error) {
 	if waitSecondsNewMachine <= 0 {
 		waitSecondsNewMachine = 5 * 60
 	}
-	rateLimit, err := config.GetInt("docker:healing:rate-limit")
-	if err != nil {
-		rateLimit = consecutiveHealingsLimitInTimeframe
-	}
-	rateLimitWindow, err := config.GetInt("docker:healing:rate-limit-window")
-	if err != nil {
-		rateLimitWindow = consecutiveHealingsTimeframe
-	}
-	rateLimitWait, err := config.GetBool("docker:healing:rate-limit-wait-finish")
-	if err != nil {
-		rateLimitWait = true
-	}
-	if rateLimit > 0 {
-		event.SetThrottling(event.ThrottlingSpec{
-			TargetType: event.TargetTypeNode,
-			KindName:   "healer",
-			Time:       time.Duration(rateLimitWindow) * time.Second,
-			Max:        rateLimit,
-			AllTargets: true,
-			WaitFinish: rateLimitWait,
-		})
-	}
+	event.SetThrottlingFromConfig(event.ThrottlingSpec{
+		TargetType: event.TargetTypeNode,
+		KindName:   "healer",
+		Time:       time.Duration(consecutiveHealingsTimeframe) * time.Second,
+		Max:        consecutiveHealingsLimitInTimeframe,
+		AllTargets: false,
+		WaitFinish: false,
+	}, "docker:healing:node-rate-limit")
 	HealerInstance = newNodeHealer(nodeHealerArgs{
 		DisabledTime:          time.Duration(disabledSeconds) * time.Second,
 		WaitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
