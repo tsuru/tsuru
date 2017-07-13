@@ -34,7 +34,6 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
 	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
@@ -44,14 +43,12 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 		"nodockerforme",
 	})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
 	c.Assert(err, check.IsNil)
-	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	s.p.cluster = clusterInstance
@@ -92,7 +89,6 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	cont3 := container.Container{Container: types.Container{ID: "3", Name: "dedication1", AppName: a3.Name}}
 	err := s.storage.Apps().Insert(a1, a2, a3)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
 	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
@@ -102,14 +98,12 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 		"nodockerforme",
 	})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
 	c.Assert(err, check.IsNil)
-	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	s.p.cluster = clusterInstance
@@ -144,7 +138,6 @@ func (s *S) TestSchedulerNoNodes(c *check.C) {
 	app := app.App{Name: "bill", Pool: "mypool"}
 	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app.Name})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
@@ -169,11 +162,9 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
 	err := s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app1.Name})
 	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
 		TotalMemoryMetadata: "totalMemory",
@@ -182,7 +173,6 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	o := provision.AddPoolOptions{Name: "mypool"}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("mypool")
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer server1.Stop()
@@ -205,8 +195,6 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
-	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
@@ -258,11 +246,9 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
 	err := s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app1.Name})
 	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
 		TotalMemoryMetadata: "totalMemory",
@@ -271,7 +257,6 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	o := provision.AddPoolOptions{Name: "mypool"}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("mypool")
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer server1.Stop()
@@ -294,8 +279,6 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
-	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
@@ -352,11 +335,9 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app1.Name})
 	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}, Pool: "mypool"}
 	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
 		TotalMemoryMetadata: "totalMemory",
@@ -365,7 +346,6 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	o := provision.AddPoolOptions{Name: "mypool"}
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool("mypool")
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer server1.Stop()
@@ -388,8 +368,6 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
-	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
@@ -436,7 +414,6 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "coolapp9", HostAddr: "server1"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
@@ -481,8 +458,6 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
-	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
@@ -529,7 +504,6 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 	}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	cont1 := container.Container{Container: types.Container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
@@ -622,7 +596,6 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 	}
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container.Container{
 		Container: types.Container{
 			ID:          "pre1",
@@ -718,7 +691,6 @@ func (s *S) TestChooseContainerToBeRemovedMultipleProcesses(c *check.C) {
 func (s *S) TestGetContainerPreferablyFromHost(c *check.C) {
 	contColl := s.p.Collection()
 	defer contColl.Close()
-	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container.Container{
 		Container: types.Container{
 			ID:          "pre1",
@@ -781,8 +753,6 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.storage.Apps().Insert(a2)
 	c.Assert(err, check.IsNil)
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	defer s.storage.Apps().RemoveAll(bson.M{"name": a2.Name})
 	p := provision.Pool{Name: "pool1"}
 	o := provision.AddPoolOptions{Name: p.Name}
 	err = provision.AddPool(o)
@@ -792,14 +762,12 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 		"nodockerforme",
 	})
 	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
 	contColl := s.p.Collection()
 	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3, cont4,
 	)
 	c.Assert(err, check.IsNil)
-	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name, cont4.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	s.p.cluster = clusterInstance
