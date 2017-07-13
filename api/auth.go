@@ -750,9 +750,9 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	if len(apiUsers) == 0 {
-	  if contextValue != "" {
-      return &errors.HTTP{Code: http.StatusNotFound, Message: "Wrong context being passed."}
-	  }
+		if contextValue != "" {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: "Wrong context being passed."}
+		}
 		user, err := t.User()
 		if err != nil {
 			return err
