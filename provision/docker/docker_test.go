@@ -29,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type newContainerOpts struct {
@@ -145,7 +144,6 @@ func (s *S) TestGetContainer(c *check.C) {
 		container.Container{Container: types.Container{ID: "fedajs", Type: "ruby"}},
 		container.Container{Container: types.Container{ID: "wat", Type: "java"}},
 	)
-	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	container, err := s.p.GetContainer("abcdef")
 	c.Assert(err, check.IsNil)
 	c.Assert(container.ID, check.Equals, "abcdef")
@@ -166,7 +164,6 @@ func (s *S) TestGetContainers(c *check.C) {
 		container.Container{Container: types.Container{ID: "fedajs", Type: "python", AppName: "something"}},
 		container.Container{Container: types.Container{ID: "wat", Type: "java", AppName: "otherthing"}},
 	)
-	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	containers, err := s.p.listContainersByApp("something")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
@@ -197,11 +194,10 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}}
 	coll := s.p.Collection()
+	defer coll.Close()
 	err = coll.Insert(cont)
 	c.Assert(err, check.IsNil)
-	defer coll.Close()
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"id": cont.ID})
 	img := image.GetBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
@@ -224,11 +220,9 @@ func (s *S) TestStart(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, imageID, &buf, "")
 	c.Assert(err, check.IsNil)
-	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
@@ -239,18 +233,15 @@ func (s *S) TestStart(c *check.C) {
 func (s *S) TestStartStoppedContainer(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
 	cont.Status = provision.StatusStopped.String()
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID := image.GetBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	cont, err = s.p.start(cont, app, imageID, &buf, "")
 	c.Assert(err, check.IsNil)
-	defer cont.Remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
