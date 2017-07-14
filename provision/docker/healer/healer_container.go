@@ -18,11 +18,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	consecutiveHealingsTimeframe        = 300
-	consecutiveHealingsLimitInTimeframe = 3
-)
-
 type ContainerHealer struct {
 	provisioner         DockerProvisioner
 	maxUnresponsiveTime time.Duration
@@ -38,14 +33,6 @@ type ContainerHealerArgs struct {
 }
 
 func NewContainerHealer(args ContainerHealerArgs) *ContainerHealer {
-	event.SetThrottlingFromConfig(event.ThrottlingSpec{
-		TargetType: event.TargetTypeContainer,
-		KindName:   "healer",
-		Time:       time.Duration(consecutiveHealingsTimeframe) * time.Second,
-		Max:        consecutiveHealingsLimitInTimeframe,
-		AllTargets: false,
-		WaitFinish: false,
-	}, "docker:healing:container-rate-limit")
 	return &ContainerHealer{
 		provisioner:         args.Provisioner,
 		maxUnresponsiveTime: args.MaxUnresponsiveTime,

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -250,29 +249,6 @@ func throttlingKey(targetType TargetType, kindName string, allTargets bool) stri
 func SetThrottling(spec ThrottlingSpec) {
 	key := throttlingKey(spec.TargetType, spec.KindName, spec.AllTargets)
 	throttlingInfo[key] = spec
-}
-
-func SetThrottlingFromConfig(spec ThrottlingSpec, prefix string) {
-	limit, err := config.GetInt(prefix + ":limit")
-	if err == nil {
-		spec.Max = limit
-	}
-	if spec.Max == 0 {
-		return
-	}
-	window, err := config.GetInt(prefix + ":window")
-	if err == nil {
-		spec.Time = time.Duration(window) * time.Second
-	}
-	wait, err := config.GetBool(prefix + ":wait-finish")
-	if err == nil {
-		spec.WaitFinish = wait
-	}
-	global, err := config.GetBool(prefix + ":global")
-	if err == nil {
-		spec.AllTargets = global
-	}
-	SetThrottling(spec)
 }
 
 func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {

@@ -798,52 +798,6 @@ func (s *S) TestNewThrottledExpirationWaitFinish(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestSetThrottlingFromConfig(c *check.C) {
-	baseSpec := ThrottlingSpec{
-		TargetType: TargetTypeApp,
-		KindName:   permission.PermAppUpdateEnvSet.FullName(),
-		Time:       300 * time.Second,
-		Max:        1,
-		AllTargets: true,
-		WaitFinish: true,
-	}
-	SetThrottlingFromConfig(baseSpec, "my:config")
-	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{
-		"app_app.update.env.set_global": baseSpec,
-	})
-	throttlingInfo = map[string]ThrottlingSpec{}
-	config.Set("my:config:limit", 10)
-	config.Set("my:config:window", 60)
-	config.Set("my:config:wait-finish", false)
-	config.Set("my:config:global", false)
-	defer config.Unset("my:config")
-	SetThrottlingFromConfig(baseSpec, "my:config")
-	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{
-		"app_app.update.env.set": {
-			TargetType: TargetTypeApp,
-			KindName:   permission.PermAppUpdateEnvSet.FullName(),
-			Time:       60 * time.Second,
-			Max:        10,
-			AllTargets: false,
-			WaitFinish: false,
-		}})
-}
-
-func (s *S) TestSetThrottlingFromConfigDisable(c *check.C) {
-	config.Set("my:config:limit", 0)
-	defer config.Unset("my:config")
-	baseSpec := ThrottlingSpec{
-		TargetType: TargetTypeApp,
-		KindName:   permission.PermAppUpdateEnvSet.FullName(),
-		Time:       300 * time.Second,
-		Max:        1,
-		AllTargets: true,
-		WaitFinish: true,
-	}
-	SetThrottlingFromConfig(baseSpec, "my:config")
-	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
-}
-
 func (s *S) TestListFilterEmpty(c *check.C) {
 	evts, err := List(nil)
 	c.Assert(err, check.IsNil)
