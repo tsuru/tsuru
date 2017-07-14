@@ -5,6 +5,7 @@
 package event
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -227,12 +229,24 @@ func (k Kind) String() string {
 }
 
 type ThrottlingSpec struct {
-	TargetType TargetType
-	KindName   string
-	Max        int
-	Time       time.Duration
-	AllTargets bool
-	WaitFinish bool
+	TargetType TargetType    `json:"target-type"`
+	KindName   string        `json:"kind-name"`
+	Max        int           `json:"limit"`
+	Time       time.Duration `json:"window"`
+	AllTargets bool          `json:"all-targets"`
+	WaitFinish bool          `json:"wait-finish"`
+}
+
+func (d *ThrottlingSpec) UnmarshalJSON(data []byte) error {
+	type throttlingSpecAlias ThrottlingSpec
+	var v throttlingSpecAlias
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+	*d = ThrottlingSpec(v)
+	d.Time = d.Time * time.Second
+	return nil
 }
 
 func throttlingKey(targetType TargetType, kindName string, allTargets bool) string {
@@ -244,6 +258,45 @@ func throttlingKey(targetType TargetType, kindName string, allTargets bool) stri
 		key = fmt.Sprintf("%s_%s", key, "global")
 	}
 	return key
+}
+
+func convertConfigEntries(initial interface{}) interface{} {
+	switch initialType := initial.(type) {
+	case []interface{}:
+		for i := range initialType {
+			initialType[i] = convertConfigEntries(initialType[i])
+		}
+		return initialType
+	case map[interface{}]interface{}:
+		output := make(map[string]interface{}, len(initialType))
+		for k, v := range initialType {
+			output[fmt.Sprintf("%v", k)] = convertConfigEntries(v)
+		}
+		return output
+	default:
+		return initialType
+	}
+}
+
+func LoadThrottling() error {
+	entries, err := config.Get("event:throttling")
+	if err != nil {
+		return nil
+	}
+	entries = convertConfigEntries(entries)
+	data, err := json.Marshal(entries)
+	if err != nil {
+		return err
+	}
+	var specs []ThrottlingSpec
+	err = json.Unmarshal(data, &specs)
+	if err != nil {
+		return err
+	}
+	for _, spec := range specs {
+		SetThrottling(spec)
+	}
+	return nil
 }
 
 func SetThrottling(spec ThrottlingSpec) {
