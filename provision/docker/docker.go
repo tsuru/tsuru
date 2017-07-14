@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	mathRand "math/rand"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -178,7 +177,10 @@ func (p *dockerProvisioner) GetDockerClient(app provision.App) (*docker.Client, 
 		if len(nodes) < 1 {
 			return nil, errors.New("There is no Docker node. Add one with `tsuru node-add`")
 		}
-		nodeAddr = nodes[mathRand.Intn(len(nodes))].Address
+		nodeAddr, _, err = p.scheduler.minMaxNodes(nodes, "", "")
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		nodes, err := cluster.NodesForMetadata(map[string]string{"pool": app.GetPool()})
 		if err != nil {

@@ -158,9 +158,11 @@ func (s *segregatedScheduler) aggregateContainersByHost(hosts []string) (map[str
 
 func (s *segregatedScheduler) aggregateContainersByHostAppProcess(hosts []string, appName, process string) (map[string]int, error) {
 	matcher := bson.M{
-		"appname":  appName,
 		"hostaddr": bson.M{"$in": hosts},
 		"id":       bson.M{"$nin": s.ignoredContainers},
+	}
+	if appName != "" {
+		matcher["appname"] = appName
 	}
 	if process == "" {
 		matcher["$or"] = []bson.M{{"processname": bson.M{"$exists": false}}, {"processname": ""}}

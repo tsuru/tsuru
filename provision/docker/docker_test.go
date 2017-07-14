@@ -461,22 +461,55 @@ func (s *S) TestGetDockerClientWithApp(c *check.C) {
 }
 
 func (s *S) TestGetDockerClientWithoutApp(c *check.C) {
-	p := &dockerProvisioner{storage: &cluster.MapStorage{}}
-	err := p.Initialize()
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
+	err := s.storage.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	cont1 := container.Container{Container: types.Container{ID: "1", Name: "cont1", AppName: a1.Name, ProcessName: "web"}}
+	cont2 := container.Container{Container: types.Container{ID: "2", Name: "cont2", AppName: a1.Name, ProcessName: "web"}}
+	coll := s.p.Collection()
+	defer coll.Close()
+	err = coll.Insert(cont1, cont2)
+	c.Assert(err, check.IsNil)
+	pool := provision.Pool{Name: "pool1"}
+	err = provision.AddPool(provision.AddPoolOptions{Name: pool.Name})
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, []string{
+		"tsuruteam",
+		"nodockerforme",
+	})
 	c.Assert(err, check.IsNil)
 	nodes := []cluster.Node{
 		{Address: "http://h1:80"},
 		{Address: "http://h2:80"},
 		{Address: "http://h3:80"},
 	}
-	p.cluster, err = cluster.New(nil, p.storage, "", nodes...)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	s.p.cluster, err = cluster.New(&scheduler, s.p.storage, "")
 	c.Assert(err, check.IsNil)
-	opts := provision.AddPoolOptions{Name: "test-docker-client"}
-	err = provision.AddPool(opts)
+	n, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	client, err := p.GetDockerClient(nil)
+	c.Assert(n, check.HasLen, 1)
+	err = s.p.cluster.Unregister(n[0].Address)
 	c.Assert(err, check.IsNil)
-	c.Assert(client.Endpoint(), check.Matches, "^http://h[1-3]:80$")
+	for _, node := range nodes {
+		err = s.p.cluster.Register(cluster.Node{
+			Address:  node.Address,
+			Metadata: map[string]string{"pool": pool.Name},
+		})
+		c.Assert(err, check.IsNil)
+	}
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	_, err = scheduler.Schedule(s.p.cluster, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont1.ProcessName})
+	c.Assert(err, check.IsNil)
+	client, err := s.p.GetDockerClient(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Endpoint(), check.Equals, nodes[1].Address)
+	opts = docker.CreateContainerOptions{Name: cont2.Name}
+	_, err = scheduler.Schedule(s.p.cluster, opts, &container.SchedulerOpts{AppName: a1.Name, ProcessName: cont2.ProcessName})
+	c.Assert(err, check.IsNil)
+	client, err = s.p.GetDockerClient(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(client.Endpoint(), check.Equals, nodes[2].Address)
 }
 
 func (s *S) TestGetDockerClientWithoutAppOrNode(c *check.C) {
