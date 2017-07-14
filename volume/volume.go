@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
@@ -62,7 +63,7 @@ func (v *Volume) Validate() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	planOpts, ok := convertConfigEntries(data).(map[string]interface{})
+	planOpts, ok := internalConfig.ConvertEntries(data).(map[string]interface{})
 	if !ok {
 		return errors.Errorf("invalid type for plan opts %T", planOpts)
 	}
@@ -104,34 +105,3 @@ func Load(name string) (*Volume, error) {
 func volumePlanKey(planName, provisioner string) string {
 	return fmt.Sprintf("volume-plans:%s:%s", planName, provisioner)
 }
-
-func convertConfigEntries(initial interface{}) interface{} {
-	switch initialType := initial.(type) {
-	case []interface{}:
-		for i := range initialType {
-			initialType[i] = convertConfigEntries(initialType[i])
-		}
-		return initialType
-	case map[interface{}]interface{}:
-		output := make(map[string]interface{}, len(initialType))
-		for k, v := range initialType {
-			output[fmt.Sprintf("%v", k)] = convertConfigEntries(v)
-		}
-		return output
-	default:
-		return initialType
-	}
-}
-
-// func UnmarshalVolumePlan(planName, provisioner string, result interface{}) error {
-// 	data, err := config.Get(volumePlanKey(planName, provisioner))
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-// 	data = convertConfigEntries(data)
-// 	jsonData, err := json.Marshal(data)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-// 	return errors.WithStack(json.Unmarshal(jsonData, result))
-// }

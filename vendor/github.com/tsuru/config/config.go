@@ -28,6 +28,14 @@ import (
 
 var ErrMismatchConf = errors.New("Your conf is wrong:")
 
+type ErrKeyNotFound struct {
+	Key string
+}
+
+func (e ErrKeyNotFound) Error() string {
+	return fmt.Sprintf("key %q not found", e.Key)
+}
+
 type configuration struct {
 	data map[interface{}]interface{}
 	sync.RWMutex
@@ -169,13 +177,13 @@ func Get(key string) (interface{}, error) {
 	defer configs.RUnlock()
 	conf, ok := configs.data[keys[0]]
 	if !ok {
-		return nil, fmt.Errorf("key %q not found", key)
+		return nil, ErrKeyNotFound{Key: key}
 	}
 	for _, k := range keys[1:] {
 		switch c := conf.(type) {
 		case map[interface{}]interface{}:
 			if conf, ok = c[k]; !ok {
-				return nil, fmt.Errorf("key %q not found", key)
+				return nil, ErrKeyNotFound{Key: key}
 			}
 		case string:
 			value, err := expandEnv(c)
@@ -183,7 +191,7 @@ func Get(key string) (interface{}, error) {
 				return nil, ErrMismatchConf
 			}
 			if conf, ok = value.(map[interface{}]interface{})[k]; !ok {
-				return nil, fmt.Errorf("key %q not found", key)
+				return nil, ErrKeyNotFound{Key: key}
 			}
 		default:
 			return nil, ErrMismatchConf
@@ -474,7 +482,7 @@ func Unset(key string) error {
 				break
 			}
 		} else {
-			return fmt.Errorf("key %q not found", key)
+			return ErrKeyNotFound{Key: key}
 		}
 	}
 	delete(m, part)

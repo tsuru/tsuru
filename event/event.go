@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
@@ -260,37 +261,13 @@ func throttlingKey(targetType TargetType, kindName string, allTargets bool) stri
 	return key
 }
 
-func convertConfigEntries(initial interface{}) interface{} {
-	switch initialType := initial.(type) {
-	case []interface{}:
-		for i := range initialType {
-			initialType[i] = convertConfigEntries(initialType[i])
-		}
-		return initialType
-	case map[interface{}]interface{}:
-		output := make(map[string]interface{}, len(initialType))
-		for k, v := range initialType {
-			output[fmt.Sprintf("%v", k)] = convertConfigEntries(v)
-		}
-		return output
-	default:
-		return initialType
-	}
-}
-
 func LoadThrottling() error {
-	entries, err := config.Get("event:throttling")
-	if err != nil {
-		return nil
-	}
-	entries = convertConfigEntries(entries)
-	data, err := json.Marshal(entries)
-	if err != nil {
-		return err
-	}
 	var specs []ThrottlingSpec
-	err = json.Unmarshal(data, &specs)
+	err := internalConfig.UnmarshalConfig("event:throttling", &specs)
 	if err != nil {
+		if _, isNotFound := errors.Cause(err).(config.ErrKeyNotFound); isNotFound {
+			return nil
+		}
 		return err
 	}
 	for _, spec := range specs {

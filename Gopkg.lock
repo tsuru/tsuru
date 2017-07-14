@@ -417,7 +417,7 @@
   branch = "master"
   name = "github.com/tsuru/config"
   packages = ["."]
-  revision = "0eee1ec3c7a2917396b20453f32ecb41919a2a22"
+  revision = "1d2644c598466bc4c36c2c878abf3f99ba5bb3ed"
 
 [[projects]]
   branch = "master"
