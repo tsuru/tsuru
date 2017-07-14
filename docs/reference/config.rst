@@ -1262,6 +1262,56 @@ IaaS. As an example, having the configuration below would allow you to call
             api-key: myapikey
 
 
+.. _config_throttling:
+
+Event throttling configuration
+------------------------------
+
+event:throttling
+++++++++++++++++
+
+Event throttling is a list of throttling settings that will match events based
+on their target and kind. Each list entry has the config options described
+below.
+
+event:throttling:[]:target-type
++++++++++++++++++++++++++++++++
+
+The target type this throttling config will match. This option is mandatory for
+every throttling entry.
+
+event:throttling:[]:kind-name
++++++++++++++++++++++++++++++
+
+The event kind name this throttling config will match. If not set this
+throttling config will match all events based on ther target-type regardless of
+the kind name.
+
+event:throttling:[]:limit
++++++++++++++++++++++++++
+
+Positive integer representing maximum number of events in ``event:throttling:[]:window``
+time. Use 0 to disable throttling.
+
+event:throttling:[]:window
+++++++++++++++++++++++++++
+
+Number of seconds for the rolling window for events in which ``event:throttling:[]:limit``
+will be considered.
+
+event:throttling:[]:wait-finish
++++++++++++++++++++++++++++++++
+
+Boolean value describing whether tsuru will only execute a new event after
+previous ones were completed or not, even if the time window already allows the
+execution of a new event.
+
+event:throttling:[]:all-targets
++++++++++++++++++++++++++++++++
+
+Boolean value describing whether the throttling will apply to all events target
+values or to individual values.
+
 .. _config_common_redis:
 
 Common redis configuration options
