@@ -35,10 +35,14 @@ type S struct {
 
 var _ = check.Suite(&S{})
 
-func (s *S) SetUpTest(c *check.C) {
+func setBaseConfig() {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_events_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	setBaseConfig()
 	throttlingInfo = map[string]ThrottlingSpec{}
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -1037,4 +1041,90 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 		Allowed:         Allowed(permission.PermAppReadEvents),
 	}}
 	c.Assert(evt, check.DeepEquals, expected)
+}
+
+func (s *S) TestLoadThrottling(c *check.C) {
+	defer config.Unset("event:throttling")
+	err := LoadThrottling()
+	c.Assert(err, check.IsNil)
+	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
+	err = config.ReadConfigBytes([]byte(`
+event:
+  throttling:
+`))
+	c.Assert(err, check.IsNil)
+	setBaseConfig()
+	err = LoadThrottling()
+	c.Assert(err, check.IsNil)
+	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
+	err = config.ReadConfigBytes([]byte(`
+event:
+  throttling:
+  - target-type: app
+    kind-name: app.update.env.set
+    limit: 1
+    window: 300
+    all-targets: true
+    wait-finish: true
+  - target-type: container
+    kind-name: healer
+    limit: 5
+    window: 60
+    all-targets: false
+    wait-finish: false
+`))
+	c.Assert(err, check.IsNil)
+	setBaseConfig()
+	err = LoadThrottling()
+	c.Assert(err, check.IsNil)
+	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{
+		"app_app.update.env.set_global": {
+			TargetType: TargetTypeApp,
+			KindName:   permission.PermAppUpdateEnvSet.FullName(),
+			Time:       300 * time.Second,
+			Max:        1,
+			AllTargets: true,
+			WaitFinish: true,
+		},
+		"container_healer": {
+			TargetType: TargetTypeContainer,
+			KindName:   "healer",
+			Time:       time.Minute,
+			Max:        5,
+			AllTargets: false,
+			WaitFinish: false,
+		},
+	})
+}
+
+func (s *S) TestLoadThrottlingInvalid(c *check.C) {
+	defer config.Unset("event:throttling")
+	err := LoadThrottling()
+	c.Assert(err, check.IsNil)
+	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
+	err = config.ReadConfigBytes([]byte(`
+event:
+  throttling:
+    a: 
+`))
+	c.Assert(err, check.IsNil)
+	setBaseConfig()
+	err = LoadThrottling()
+	c.Assert(err, check.ErrorMatches, `json: cannot unmarshal object into Go value of type \[\]event.ThrottlingSpec`)
+	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
+	err = config.ReadConfigBytes([]byte(`
+event:
+  throttling:
+  - target-type: app
+    kind-name: app.update.env.set
+    limit: xxx
+    window: 300
+    all-targets: true
+    wait-finish: true
+`))
+	c.Assert(err, check.IsNil)
+	setBaseConfig()
+	err = LoadThrottling()
+	c.Assert(err, check.ErrorMatches, `json: cannot unmarshal string into Go struct field throttlingSpecAlias.limit of type int`)
+	c.Assert(throttlingInfo, check.DeepEquals, map[string]ThrottlingSpec{})
 }

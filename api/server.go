@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tsuru/config"
 	apiRouter "github.com/tsuru/tsuru/api/router"
@@ -26,6 +27,7 @@ import (
 	_ "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
@@ -492,6 +494,10 @@ func startServer(handler http.Handler) {
 	err = autoscale.Initialize()
 	if err != nil {
 		fatal(err)
+	}
+	err = event.LoadThrottling()
+	if err != nil {
+		fatal(errors.Wrap(err, "unable to load events throttling config"))
 	}
 	fmt.Println("Checking components status:")
 	results := hc.Check()
