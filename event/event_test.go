@@ -701,11 +701,11 @@ func (s *S) TestNewThrottledAllTargets(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evt, err = New(baseOpts)
+	_, err = New(baseOpts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 1h0m0s")
 	baseOpts.Target.Value = "myapp2"
-	evt, err = New(baseOpts)
+	_, err = New(baseOpts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 1h0m0s")
 }
@@ -734,14 +734,14 @@ func (s *S) TestNewThrottledAllTargetsTwoRules(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt.Done(nil)
 	c.Assert(err, check.IsNil)
-	evt, err = New(baseOpts)
+	_, err = New(baseOpts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on app \"myapp\" is 1 every 1h0m0s")
 	baseOpts.Target.Value = "myapp2"
-	evt, err = New(baseOpts)
+	_, err = New(baseOpts)
 	c.Assert(err, check.IsNil)
 	baseOpts.Target.Value = "myapp3"
-	evt, err = New(baseOpts)
+	_, err = New(baseOpts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 2 every 1h0m0s")
 }
