@@ -57,6 +57,14 @@ func daemonSetName(name, pool string) string {
 	return fmt.Sprintf("node-container-%s-pool-%s", name, pool)
 }
 
+func volumeName(name string) string {
+	return fmt.Sprintf("%s-tsuru", name)
+}
+
+func volumeClaimName(name string) string {
+	return fmt.Sprintf("%s-tsuru-claim", name)
+}
+
 func waitFor(timeout time.Duration, fn func() (bool, error)) error {
 	timeoutCh := time.After(timeout)
 	for {

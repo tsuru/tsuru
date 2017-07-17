@@ -95,6 +95,10 @@ func createBuildPod(params buildPodParams) error {
 	if err != nil {
 		return err
 	}
+	err = createVolumesForApp(params.client, params.app)
+	if err != nil {
+		return err
+	}
 	buildImageLabel := &provision.LabelSet{}
 	buildImageLabel.SetBuildImage(params.destinationImage)
 	appEnvs := provision.EnvsForApp(params.app, "", true)

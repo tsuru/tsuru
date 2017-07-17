@@ -36,6 +36,10 @@ var (
 	labelNodeAddr           = labelNodeInternalPrefix + "node-addr"
 	LabelNodePool           = "pool"
 
+	labelVolumeName = "volume-name"
+	labelVolumePool = "volume-pool"
+	labelVolumePlan = "volume-plan"
+
 	labelRouterName = "router-name"
 	labelRouterType = "router-type"
 
@@ -78,6 +82,10 @@ func (s *LabelSet) ToNodeByPoolSelector() map[string]string {
 
 func (s *LabelSet) ToIsServiceSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, labelIsService), s.Prefix)
+}
+
+func (s *LabelSet) ToVolumeSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelVolumeName), s.Prefix)
 }
 
 func (s *LabelSet) AppName() string {
@@ -301,6 +309,25 @@ func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 		labels[k] = v
 	}
 	return &LabelSet{Labels: labels}
+}
+
+type VolumeLabelsOpts struct {
+	Name        string
+	Provisioner string
+	Pool        string
+	Plan        string
+	Prefix      string
+}
+
+func VolumeLabels(opts VolumeLabelsOpts) *LabelSet {
+	labels := map[string]string{
+		labelIsTsuru:     strconv.FormatBool(true),
+		labelProvisioner: opts.Provisioner,
+		labelVolumeName:  opts.Name,
+		labelVolumePool:  opts.Pool,
+		labelVolumePlan:  opts.Plan,
+	}
+	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
 
 func withPrefix(m map[string]string, prefix string) map[string]string {
