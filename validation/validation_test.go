@@ -55,3 +55,26 @@ func (s *S) TestValidateLength(c *check.C) {
 		c.Assert(ValidateLength(d.input, d.min, d.max), check.Equals, d.expected)
 	}
 }
+
+func (s *S) TestValidateName(c *check.C) {
+	var data = []struct {
+		input    string
+		expected bool
+	}{
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", false},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", false},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", true},
+		{"myApp", false},
+		{"my app", false},
+		{"123myapp", false},
+		{"myapp", true},
+		{"_theirapp", false},
+		{"my-app", true},
+		{"-myapp", false},
+		{"my_app", false},
+		{"b", true},
+	}
+	for _, d := range data {
+		c.Assert(ValidateName(d.input), check.Equals, d.expected)
+	}
+}
