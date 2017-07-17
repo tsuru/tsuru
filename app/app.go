@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -43,8 +42,6 @@ import (
 var AuthScheme auth.Scheme
 
 var (
-	nameRegexp = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-
 	ErrAlreadyHaveAccess = errors.New("team already have access to this app")
 	ErrNoAccess          = errors.New("team does not have access to this app")
 	ErrCannotOrphanApp   = errors.New("cannot revoke access from this team, as it's the unique team with access to the app")
