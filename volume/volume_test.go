@@ -5,6 +5,7 @@
 package volume
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -229,4 +230,70 @@ func (s *S) TestVolumeSaveLoad(c *check.C) {
 			Opt:    struct{ Type string }{Type: "nfs"},
 		})
 	}
+}
+
+func (s *S) TestVolumeBindApp(c *check.C) {
+	v := Volume{
+		Name:      "v1",
+		Plan:      VolumePlan{Name: "p1"},
+		Pool:      "mypool",
+		TeamOwner: "myteam",
+	}
+	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(v.Apps, check.DeepEquals, []string{"myapp"})
+	dbV, err := Load(v.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbV.Apps, check.DeepEquals, []string{"myapp"})
+}
+
+func (s *S) TestListByApp(c *check.C) {
+	volumes := []Volume{
+		{
+			Name:      "v1",
+			Plan:      VolumePlan{Name: "p1"},
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+			Apps:      []string{"app1"},
+		},
+		{
+			Name:      "v2",
+			Plan:      VolumePlan{Name: "p1"},
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+			Apps:      []string{"app2"},
+		},
+		{
+			Name:      "v3",
+			Plan:      VolumePlan{Name: "p1"},
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+			Apps:      []string{"app1", "app3"},
+		},
+	}
+	for i, v := range volumes {
+		err := v.Save()
+		c.Assert(err, check.IsNil)
+		volumes[i].Plan.Opts = map[string]interface{}{
+			"driver": "local",
+			"opt": map[string]interface{}{
+				"type": "nfs",
+			},
+		}
+	}
+	appVolumes, err := ListByApp("app1")
+	c.Assert(err, check.IsNil)
+	sort.Slice(appVolumes, func(i, j int) bool { return appVolumes[i].Name < appVolumes[j].Name })
+	c.Assert(appVolumes, check.DeepEquals, []Volume{volumes[0], volumes[2]})
+	appVolumes, err = ListByApp("app2")
+	c.Assert(err, check.IsNil)
+	c.Assert(appVolumes, check.DeepEquals, []Volume{volumes[1]})
+	appVolumes, err = ListByApp("app3")
+	c.Assert(err, check.IsNil)
+	c.Assert(appVolumes, check.DeepEquals, []Volume{volumes[2]})
+	appVolumes, err = ListByApp("app4")
+	c.Assert(err, check.IsNil)
+	c.Assert(appVolumes, check.IsNil)
 }

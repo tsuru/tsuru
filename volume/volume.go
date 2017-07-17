@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -33,6 +34,7 @@ type Volume struct {
 	TeamOwner string
 	Status    string
 	Opts      map[string]string `bson:",omitempty"`
+	Apps      []string          `bson:",omitempty"`
 }
 
 func (v *Volume) UnmarshalPlan(result interface{}) error {
@@ -83,6 +85,34 @@ func (v *Volume) Save() error {
 	defer conn.Close()
 	_, err = conn.Volumes().UpsertId(v.Name, v)
 	return errors.WithStack(err)
+}
+
+func (v *Volume) BindApp(appName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer conn.Close()
+	err = conn.Volumes().UpdateId(v.Name, bson.M{"$addToSet": bson.M{"apps": appName}})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	v.Apps = append(v.Apps, appName)
+	return nil
+}
+
+func ListByApp(appName string) ([]Volume, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer conn.Close()
+	var volumes []Volume
+	err = conn.Volumes().Find(bson.M{"apps": appName}).All(&volumes)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return volumes, nil
 }
 
 func Load(name string) (*Volume, error) {
