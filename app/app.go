@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -971,7 +972,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 
 // validate checks app name format
 func (app *App) validate() error {
-	if app.Name == InternalAppName || !nameRegexp.MatchString(app.Name) {
+	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
