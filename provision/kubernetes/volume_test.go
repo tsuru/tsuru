@@ -29,9 +29,10 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 		Plan:      volume.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
-		Apps:      []string{a.GetName()},
 	}
 	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", volume.BindModeReadWrite)
 	c.Assert(err, check.IsNil)
 	err = createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -101,9 +102,10 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 		Plan:      volume.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
-		Apps:      []string{a.GetName()},
 	}
 	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", volume.BindModeReadWrite)
 	c.Assert(err, check.IsNil)
 	err = createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)

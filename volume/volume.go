@@ -19,12 +19,32 @@ import (
 )
 
 var (
-	ErrVolumeNotFound = errors.New("volume not found")
+	ErrVolumeNotFound     = errors.New("volume not found")
+	ErrVolumeAlreadyBound = errors.New("volume already bound in mountpoint")
+	ErrVolumeBindNotFound = errors.New("volume bind not found")
+)
+
+type BindMode string
+
+const (
+	BindModeReadOnly  = BindMode("ro")
+	BindModeReadWrite = BindMode("rw")
 )
 
 type VolumePlan struct {
 	Name string
 	Opts map[string]interface{}
+}
+
+type VolumeBindID struct {
+	App        string
+	MountPoint string
+	Volume     string
+}
+
+type VolumeBind struct {
+	ID   VolumeBindID `bson:"_id"`
+	Mode BindMode
 }
 
 type Volume struct {
@@ -34,7 +54,6 @@ type Volume struct {
 	TeamOwner string
 	Status    string
 	Opts      map[string]string `bson:",omitempty"`
-	Apps      []string          `bson:",omitempty"`
 }
 
 func (v *Volume) UnmarshalPlan(result interface{}) error {
@@ -87,18 +106,62 @@ func (v *Volume) Save() error {
 	return errors.WithStack(err)
 }
 
-func (v *Volume) BindApp(appName string) error {
+func (v *Volume) BindApp(appName, mountPoint string, mode BindMode) error {
+	if mode == "" {
+		mode = BindModeReadWrite
+	}
+	if mode != BindModeReadOnly && mode != BindModeReadWrite {
+		return errors.Errorf("invalid bind mode, expected %q or %q, got %q", BindModeReadOnly, BindModeReadWrite, mode)
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer conn.Close()
-	err = conn.Volumes().UpdateId(v.Name, bson.M{"$addToSet": bson.M{"apps": appName}})
+	bind := VolumeBind{
+		ID: VolumeBindID{
+			App:        appName,
+			MountPoint: mountPoint,
+			Volume:     v.Name,
+		},
+		Mode: mode,
+	}
+	err = conn.VolumeBinds().Insert(bind)
+	if err != nil && mgo.IsDup(err) {
+		return ErrVolumeAlreadyBound
+	}
+	return errors.WithStack(err)
+}
+
+func (v *Volume) UnbindApp(appName, mountPoint string) error {
+	conn, err := db.Conn()
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	v.Apps = append(v.Apps, appName)
-	return nil
+	defer conn.Close()
+	err = conn.VolumeBinds().RemoveId(VolumeBindID{
+		App:        appName,
+		Volume:     v.Name,
+		MountPoint: mountPoint,
+	})
+	if err == mgo.ErrNotFound {
+		return ErrVolumeBindNotFound
+	}
+	return errors.WithStack(err)
+}
+
+func (v *Volume) Binds() ([]VolumeBind, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer conn.Close()
+	var binds []VolumeBind
+	err = conn.VolumeBinds().Find(bson.M{"_id.volume": v.Name}).All(&binds)
+	if err != nil {
+		return nil, err
+	}
+	return binds, nil
 }
 
 func ListByApp(appName string) ([]Volume, error) {
@@ -107,8 +170,13 @@ func ListByApp(appName string) ([]Volume, error) {
 		return nil, errors.WithStack(err)
 	}
 	defer conn.Close()
+	var volumeNames []string
+	err = conn.VolumeBinds().Find(bson.M{"_id.app": appName}).Distinct("_id.volume", &volumeNames)
+	if err != nil {
+		return nil, err
+	}
 	var volumes []Volume
-	err = conn.Volumes().Find(bson.M{"apps": appName}).All(&volumes)
+	err = conn.Volumes().Find(bson.M{"_id": bson.M{"$in": volumeNames}}).All(&volumes)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

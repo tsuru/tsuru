@@ -256,3 +256,8 @@ func (s *Storage) Volumes() *storage.Collection {
 	c := s.Collection("volumes")
 	return c
 }
+
+func (s *Storage) VolumeBinds() *storage.Collection {
+	c := s.Collection("volume_binds")
+	return c
+}
