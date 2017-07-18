@@ -241,11 +241,11 @@ func (s *S) TestVolumeBindApp(c *check.C) {
 	}
 	err := v.Save()
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", BindModeReadOnly)
+	err = v.BindApp("myapp", "/mnt1", true)
 	c.Assert(err, check.IsNil)
 	binds, err := v.Binds()
 	c.Assert(err, check.IsNil)
-	expected := []VolumeBind{{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, Mode: BindModeReadOnly}}
+	expected := []VolumeBind{{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: true}}
 	c.Assert(binds, check.DeepEquals, expected)
 	dbV, err := Load(v.Name)
 	c.Assert(err, check.IsNil)
@@ -263,15 +263,15 @@ func (s *S) TestVolumeBindAppMultipleMounts(c *check.C) {
 	}
 	err := v.Save()
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", BindModeReadWrite)
+	err = v.BindApp("myapp", "/mnt1", false)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", BindModeReadOnly)
+	err = v.BindApp("myapp", "/mnt2", true)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", BindModeReadOnly)
+	err = v.BindApp("myapp", "/mnt2", false)
 	c.Assert(err, check.Equals, ErrVolumeAlreadyBound)
 	expected := []VolumeBind{
-		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, Mode: BindModeReadWrite},
-		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, Mode: BindModeReadOnly},
+		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
 	}
 	binds, err := v.Binds()
 	c.Assert(err, check.IsNil)
@@ -287,15 +287,15 @@ func (s *S) TestVolumeUnbindApp(c *check.C) {
 	}
 	err := v.Save()
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", BindModeReadOnly)
+	err = v.BindApp("myapp", "/mnt1", true)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", BindModeReadOnly)
+	err = v.BindApp("myapp", "/mnt2", true)
 	c.Assert(err, check.IsNil)
 	err = v.UnbindApp("myapp", "/mnt1")
 	c.Assert(err, check.IsNil)
 	binds, err := v.Binds()
 	c.Assert(err, check.IsNil)
-	expected := []VolumeBind{{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, Mode: BindModeReadOnly}}
+	expected := []VolumeBind{{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true}}
 	c.Assert(binds, check.DeepEquals, expected)
 	err = v.UnbindApp("myapp", "/mnt999")
 	c.Assert(err, check.Equals, ErrVolumeBindNotFound)
@@ -323,11 +323,11 @@ func (s *S) TestListByApp(c *check.C) {
 		},
 	}
 	binds := []VolumeBind{
-		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v1"}, Mode: BindModeReadWrite},
-		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt2", Volume: "v1"}, Mode: BindModeReadWrite},
-		{ID: VolumeBindID{App: "app2", MountPoint: "/mnt1", Volume: "v2"}, Mode: BindModeReadWrite},
-		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v3"}, Mode: BindModeReadWrite},
-		{ID: VolumeBindID{App: "app3", MountPoint: "/mnt1", Volume: "v3"}, Mode: BindModeReadWrite},
+		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "app2", MountPoint: "/mnt1", Volume: "v2"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
+		{ID: VolumeBindID{App: "app3", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
 	}
 	for i, v := range volumes {
 		err := v.Save()
@@ -340,7 +340,7 @@ func (s *S) TestListByApp(c *check.C) {
 		}
 		for _, b := range binds {
 			if b.ID.Volume == v.Name {
-				err := v.BindApp(b.ID.App, b.ID.MountPoint, b.Mode)
+				err := v.BindApp(b.ID.App, b.ID.MountPoint, b.ReadOnly)
 				c.Assert(err, check.IsNil)
 			}
 		}

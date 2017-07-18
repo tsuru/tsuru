@@ -24,13 +24,6 @@ var (
 	ErrVolumeBindNotFound = errors.New("volume bind not found")
 )
 
-type BindMode string
-
-const (
-	BindModeReadOnly  = BindMode("ro")
-	BindModeReadWrite = BindMode("rw")
-)
-
 type VolumePlan struct {
 	Name string
 	Opts map[string]interface{}
@@ -43,8 +36,8 @@ type VolumeBindID struct {
 }
 
 type VolumeBind struct {
-	ID   VolumeBindID `bson:"_id"`
-	Mode BindMode
+	ID       VolumeBindID `bson:"_id"`
+	ReadOnly bool
 }
 
 type Volume struct {
@@ -106,13 +99,7 @@ func (v *Volume) Save() error {
 	return errors.WithStack(err)
 }
 
-func (v *Volume) BindApp(appName, mountPoint string, mode BindMode) error {
-	if mode == "" {
-		mode = BindModeReadWrite
-	}
-	if mode != BindModeReadOnly && mode != BindModeReadWrite {
-		return errors.Errorf("invalid bind mode, expected %q or %q, got %q", BindModeReadOnly, BindModeReadWrite, mode)
-	}
+func (v *Volume) BindApp(appName, mountPoint string, readOnly bool) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return errors.WithStack(err)
@@ -124,7 +111,7 @@ func (v *Volume) BindApp(appName, mountPoint string, mode BindMode) error {
 			MountPoint: mountPoint,
 			Volume:     v.Name,
 		},
-		Mode: mode,
+		ReadOnly: readOnly,
 	}
 	err = conn.VolumeBinds().Insert(bind)
 	if err != nil && mgo.IsDup(err) {
