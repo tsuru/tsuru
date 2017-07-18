@@ -286,7 +286,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 }
 
 func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
-	appPools := [][]string{{"app1", "pool1"}, {"app2", "pool2"}, {"app3", "pool3"}}
+	appPools := [][]string{{"app1", "pool1"}, {"app2", "pool2"}, {"app3", "pool2"}}
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
 		err := provision.AddPool(opts)
