@@ -5,12 +5,15 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -40,6 +43,9 @@ func (s *Service) Get() error {
 }
 
 func (s *Service) Create() error {
+	if err := s.validate(false); err != nil {
+		return err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -56,6 +62,9 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Update() error {
+	if err := s.validate(true); err != nil {
+		return err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -121,6 +130,29 @@ func (s *Service) RevokeAccess(team *auth.Team) error {
 	}
 	copy(s.Teams[index:], s.Teams[index+1:])
 	s.Teams = s.Teams[:len(s.Teams)-1]
+	return nil
+}
+
+func (s *Service) validate(skipName bool) (err error) {
+	defer func() {
+		if err != nil {
+			err = &tsuruErrors.ValidationError{Message: err.Error()}
+		}
+	}()
+	if s.Name == "" {
+		return fmt.Errorf("Service id is required")
+	}
+	if !skipName && !validation.ValidateName(s.Name) {
+		return fmt.Errorf("Invalid service id, should have at most 63 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter.")
+	}
+	if s.Password == "" {
+		return fmt.Errorf("Service password is required")
+	}
+	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
+		return fmt.Errorf("Service production endpoint is required")
+	}
 	return nil
 }
 

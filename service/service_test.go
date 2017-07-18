@@ -37,10 +37,11 @@ func (s *S) TestCreateService(c *check.C) {
 		"production": "somehost.com",
 	}
 	service := &Service{
-		Name:       "my_service",
+		Name:       "my-service",
 		Username:   "test",
 		Endpoint:   endpt,
 		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
 	}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
@@ -109,7 +110,7 @@ func (s *S) TestGetClientWithHTTPS(c *check.C) {
 	endpoints := map[string]string{
 		"production": "https://mysql.api.com",
 	}
-	service := Service{Name: "redis", Endpoint: endpoints}
+	service := Service{Name: "redis", Endpoint: endpoints, Password: "abcde"}
 	cli, err := service.getClient("production")
 	c.Assert(err, check.IsNil)
 	c.Assert(cli.endpoint, check.Equals, "https://mysql.api.com")
@@ -119,7 +120,7 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *check.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",
 	}
-	service := Service{Name: "redis", Endpoint: endpoints}
+	service := Service{Name: "redis", Endpoint: endpoints, Password: "abcde"}
 	cli, err := service.getClient("staging")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^Unknown endpoint: staging$")
@@ -174,7 +175,11 @@ func (s *S) TestGetServicesNames(c *check.C) {
 }
 
 func (s *S) TestUpdateService(c *check.C) {
-	service := Service{Name: "something"}
+	service := Service{
+		Name:     "something",
+		Password: "abcde",
+		Endpoint: map[string]string{"production": "url"},
+	}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	service.Doc = "doc"
@@ -186,16 +191,27 @@ func (s *S) TestUpdateService(c *check.C) {
 }
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
-	service := Service{Name: "something"}
+	service := Service{Name: "something", Password: "abcde", Endpoint: map[string]string{"production": "url"}}
 	err := service.Update()
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
-	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	srvc := Service{
+		Name:       "mongodb",
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "url"},
+		Teams:      []string{},
+		Password:   "abcde",
+	}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	srvc2 := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	srvc2 := Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": "url"},
+		Teams:    []string{s.team.Name},
+		Password: "abcde",
+	}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, nil)
@@ -205,10 +221,21 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 }
 
 func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
-	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	srvc := Service{
+		Name:       "mongodb",
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "url"},
+		Teams:      []string{},
+		Password:   "abcde",
+	}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	srvc2 := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	srvc2 := Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Password: "abcde",
+		Endpoint: map[string]string{"production": "url"},
+	}
 	err = srvc2.Create()
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices([]string{s.team.Name}, []string{srvc2.Name})
@@ -223,10 +250,21 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 }
 
 func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedServices(c *check.C) {
-	service := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	service := Service{
+		Name:       "mysql",
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "url"},
+		Teams:      []string{},
+		Password:   "abcde",
+	}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
-	deletedService := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	deletedService := Service{
+		Name:       "mongodb",
+		OwnerTeams: []string{s.team.Name},
+		Password:   "abcde",
+		Endpoint:   map[string]string{"production": "url"},
+	}
 	err = deletedService.Create()
 	c.Assert(err, check.IsNil)
 	err = deletedService.Delete()
@@ -274,6 +312,7 @@ func (s *S) TestProxy(c *check.C) {
 	service := Service{
 		Name:     "mongodb",
 		Endpoint: map[string]string{"production": ts.URL},
+		Password: "abcde",
 	}
 	err := s.conn.Services().Insert(service)
 	c.Assert(err, check.IsNil)

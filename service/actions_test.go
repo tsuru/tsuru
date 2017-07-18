@@ -34,7 +34,7 @@ func (s *S) TestCreateServiceInstanceForward(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
@@ -57,7 +57,7 @@ func (s *S) TestCreateServiceInstanceForwardInvalidParams(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
@@ -83,7 +83,7 @@ func (s *S) TestCreateServiceInstanceBackward(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
@@ -100,7 +100,7 @@ func (s *S) TestCreateServiceInstanceBackwardParams(c *check.C) {
 		atomic.AddInt32(&requests, 1)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
@@ -232,7 +232,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(service.Name)
@@ -263,7 +263,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := service.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().RemoveId(service.Name)
@@ -345,7 +345,7 @@ func (s *S) TestUnbindUnitsForward(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -395,7 +395,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -454,7 +454,7 @@ func (s *S) TestUnbindUnitsBackward(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -535,7 +535,7 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 	}))
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
-	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -563,7 +563,7 @@ func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
 	}))
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
-	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
@@ -591,7 +591,7 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 	}))
 	defer ts.Close()
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
-	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}

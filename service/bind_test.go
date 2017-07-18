@@ -63,7 +63,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 		called = true
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -79,7 +79,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 }
 
 func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": "wrong"}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -97,7 +97,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -118,7 +118,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 		atomic.AddInt32(&calls, 1)
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -140,7 +140,10 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 }
 
 func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
-	srvc := Service{Name: "mysql"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	srvc := Service{Name: "mysql", Password: "s3cr3t", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -163,7 +166,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -193,7 +196,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -226,7 +229,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -262,7 +265,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -295,7 +298,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
@@ -331,7 +334,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
-	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
