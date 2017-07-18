@@ -286,11 +286,12 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 }
 
 func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
-	appPools := [][]string{{"app1", "POOL1"}, {"app2", "POOL2"}, {"app3", "POOL2"}}
+	appPools := [][]string{{"app1", "pool1"}, {"app2", "pool2"}, {"app3", "pool3"}}
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
-		provision.AddPool(opts)
-		err := s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
+		err := provision.AddPool(opts)
+		c.Assert(err, check.IsNil)
+		err = s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
 		appStruct := &app.App{
@@ -304,7 +305,7 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	values := url.Values{
-		"pool":                   []string{"POOL2"},
+		"pool":                   []string{"pool2"},
 		"restart":                []string{"true"},
 		"Driver":                 []string{"awslogs"},
 		"LogOpts.awslogs-region": []string{"sa-east1"},
@@ -326,7 +327,7 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.DeepEquals, map[string]container.DockerLogConfig{
 		"":      {},
-		"POOL2": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
+		"pool2": {DockerLogConfig: types.DockerLogConfig{Driver: "awslogs", LogOpts: map[string]string{"awslogs-region": "sa-east1"}}},
 	})
 }
 
