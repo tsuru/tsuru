@@ -298,6 +298,7 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 			Name:     appInstance.GetName(),
 			Platform: appInstance.GetPlatform(),
 			Pool:     opts.Name,
+			Router:   "fake",
 		}
 		err = s.storage.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
