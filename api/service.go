@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
@@ -18,19 +19,6 @@ import (
 
 func serviceTarget(name string) event.Target {
 	return event.Target{Type: event.TargetTypeService, Value: name}
-}
-
-func serviceValidate(s service.Service) error {
-	if s.Name == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service id is required"}
-	}
-	if s.Password == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service password is required"}
-	}
-	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Service production endpoint is required"}
-	}
-	return nil
 }
 
 func provisionReadableServices(t auth.Token, contexts []permission.PermissionContext) ([]service.Service, error) {
@@ -105,10 +93,6 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 	}
 	s.OwnerTeams = []string{team}
-	err = serviceValidate(s)
-	if err != nil {
-		return err
-	}
 	allowed := permission.Check(t, permission.PermServiceCreate,
 		permission.Context(permission.CtxTeam, s.OwnerTeams[0]),
 	)
@@ -129,6 +113,9 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	defer func() { evt.Done(err) }()
 	err = s.Create()
 	if err != nil {
+		if vErr, ok := err.(*tsuruErrors.ValidationError); ok {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: vErr.Message}
+		}
 		httpError := http.StatusInternalServerError
 		if err == service.ErrServiceAlreadyExists {
 			httpError = http.StatusConflict
@@ -157,10 +144,6 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Password: r.FormValue("password"),
 		Name:     r.URL.Query().Get(":name"),
 	}
-	err = serviceValidate(d)
-	if err != nil {
-		return err
-	}
 	s, err := getService(d.Name)
 	if err != nil {
 		return err
@@ -186,7 +169,13 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
-	return s.Update()
+	if err := s.Update(); err != nil {
+		if vErr, ok := err.(*tsuruErrors.ValidationError); ok {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: vErr.Message}
+		}
+		return err
+	}
+	return nil
 }
 
 // title: service delete
