@@ -289,9 +289,8 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 	appPools := [][]string{{"app1", "pool1"}, {"app2", "pool2"}, {"app3", "pool2"}}
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
-		err := provision.AddPool(opts)
-		c.Assert(err, check.IsNil)
-		err = s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
+		provision.AddPool(opts)
+		err := s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
 		appStruct := &app.App{
