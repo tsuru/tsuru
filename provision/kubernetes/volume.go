@@ -25,25 +25,65 @@ type volumeOptions struct {
 	AccessModes  string `json:"access-modes"`
 }
 
-func createVolumesForApp(client *clusterClient, app provision.App) error {
+func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
 	volumes, err := volume.ListByApp(app.GetName())
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
+	var kubeVolumes []apiv1.Volume
+	var kubeMounts []apiv1.VolumeMount
 	for i := range volumes {
 		err = createVolumeForApp(client, app, &volumes[i])
 		if err != nil {
-			return err
+			return nil, nil, err
+		}
+		volumes, mounts, err := bindsForVolume(&volumes[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		kubeMounts = append(kubeMounts, mounts...)
+		kubeVolumes = append(kubeVolumes, volumes...)
+	}
+	return kubeVolumes, kubeMounts, nil
+}
+
+func bindsForVolume(v *volume.Volume) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
+	var kubeVolumes []apiv1.Volume
+	var kubeMounts []apiv1.VolumeMount
+	binds, err := v.Binds()
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+	allReadOnly := true
+	for _, b := range binds {
+		kubeMounts = append(kubeMounts, apiv1.VolumeMount{
+			Name:      volumeName(v.Name),
+			MountPath: b.ID.MountPoint,
+			ReadOnly:  b.ReadOnly,
+		})
+		if !b.ReadOnly {
+			allReadOnly = false
+			break
 		}
 	}
-	return nil
+	kubeVol := apiv1.Volume{
+		Name: volumeName(v.Name),
+		VolumeSource: apiv1.VolumeSource{
+			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volumeClaimName(v.Name),
+				ReadOnly:  allReadOnly,
+			},
+		},
+	}
+	kubeVolumes = append(kubeVolumes, kubeVol)
+	return kubeVolumes, kubeMounts, nil
 }
 
 func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 	var opts volumeOptions
 	err := v.UnmarshalPlan(&opts)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if opts.Plugin != "" && opts.StorageClass != "" {
 		return nil, errors.New("both volume plan plugin and storage-class cannot be set")

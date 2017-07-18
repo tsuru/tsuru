@@ -32,10 +32,26 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	}
 	err := v.Save()
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", volume.BindModeReadWrite)
+	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = createVolumesForApp(s.client.clusterClient, a)
+	volumes, mounts, err := createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)
+	expectedVolume := []apiv1.Volume{{
+		Name: volumeName(v.Name),
+		VolumeSource: apiv1.VolumeSource{
+			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volumeClaimName(v.Name),
+				ReadOnly:  false,
+			},
+		},
+	}}
+	expectedMount := []apiv1.VolumeMount{{
+		Name:      volumeName(v.Name),
+		MountPath: "/mnt",
+		ReadOnly:  false,
+	}}
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
 	pv, err := s.client.Core().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedCap, err := resource.ParseQuantity("20Gi")
@@ -87,8 +103,10 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			StorageClassName: nil,
 		},
 	})
-	err = createVolumesForApp(s.client.clusterClient, a)
+	volumes, mounts, err = createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
 }
 
 func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
@@ -105,10 +123,26 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	}
 	err := v.Save()
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", volume.BindModeReadWrite)
+	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = createVolumesForApp(s.client.clusterClient, a)
+	volumes, mounts, err := createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)
+	expectedVolume := []apiv1.Volume{{
+		Name: volumeName(v.Name),
+		VolumeSource: apiv1.VolumeSource{
+			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volumeClaimName(v.Name),
+				ReadOnly:  false,
+			},
+		},
+	}}
+	expectedMount := []apiv1.VolumeMount{{
+		Name:      volumeName(v.Name),
+		MountPath: "/mnt",
+		ReadOnly:  false,
+	}}
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
 	_, err = s.client.Core().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.ErrorMatches, "persistentvolumes \"v1-tsuru\" not found")
 	expectedClass := "my-class"
@@ -131,6 +165,8 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 			StorageClassName: &expectedClass,
 		},
 	})
-	err = createVolumesForApp(s.client.clusterClient, a)
+	volumes, mounts, err = createVolumesForApp(s.client.clusterClient, a)
 	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
 }

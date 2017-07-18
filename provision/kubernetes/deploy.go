@@ -95,7 +95,7 @@ func createBuildPod(params buildPodParams) error {
 	if err != nil {
 		return err
 	}
-	err = createVolumesForApp(params.client, params.app)
+	volumes, mounts, err := createVolumesForApp(params.client, params.app)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func createBuildPod(params buildPodParams) error {
 		},
 		Spec: apiv1.PodSpec{
 			NodeSelector: nodeSelector,
-			Volumes: []apiv1.Volume{
+			Volumes: append([]apiv1.Volume{
 				{
 					Name: "dockersock",
 					VolumeSource: apiv1.VolumeSource{
@@ -130,7 +130,7 @@ func createBuildPod(params buildPodParams) error {
 						},
 					},
 				},
-			},
+			}, volumes...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
@@ -147,9 +147,9 @@ func createBuildPod(params buildPodParams) error {
 				{
 					Name:  commitContainer,
 					Image: kubeConf.DeploySidecarImage,
-					VolumeMounts: []apiv1.VolumeMount{
+					VolumeMounts: append([]apiv1.VolumeMount{
 						{Name: "dockersock", MountPath: dockerSockPath},
-					},
+					}, mounts...),
 					Command: []string{
 						"sh", "-ec",
 						fmt.Sprintf(`
@@ -274,6 +274,10 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 	if memory != 0 {
 		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
 	}
+	volumes, mounts, err := createVolumesForApp(client, a)
+	if err != nil {
+		return nil, nil, err
+	}
 	deployment := v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      depName,
@@ -302,6 +306,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 					},
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					NodeSelector:  nodeSelector,
+					Volumes:       volumes,
 					Containers: []apiv1.Container{
 						{
 							Name:           depName,
@@ -312,6 +317,7 @@ func createAppDeployment(client *clusterClient, oldDeployment *v1beta1.Deploymen
 							Resources: apiv1.ResourceRequirements{
 								Limits: resourceLimits,
 							},
+							VolumeMounts: mounts,
 						},
 					},
 				},
