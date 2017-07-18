@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -47,15 +48,30 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TestAddPool(c *check.C) {
-	opts := AddPoolOptions{
-		Name:    "pool1",
-		Default: false,
+	msg := "Invalid pool name, pool name should have at most 63 " +
+		"characters, containing only lower case letters, numbers or dashes, " +
+		"starting with a letter."
+	vErr := &tsuruErrors.ValidationError{Message: msg}
+	tt := []struct {
+		name        string
+		expectedErr error
+	}{
+		{"pool1", nil},
+		{"myPool", vErr},
+		{"my pool", vErr},
+		{"123mypool", vErr},
+		{"", ErrPoolNameIsRequired},
+		{"p", nil},
 	}
-	err := AddPool(opts)
-	c.Assert(err, check.IsNil)
-	pool, err := GetPoolByName("pool1")
-	c.Assert(err, check.IsNil)
-	c.Assert(pool, check.DeepEquals, &Pool{Name: "pool1"})
+	for _, t := range tt {
+		err := AddPool(AddPoolOptions{Name: t.name})
+		c.Assert(err, check.DeepEquals, t.expectedErr, check.Commentf("%s", t.name))
+		if t.expectedErr == nil {
+			pool, err := GetPoolByName(t.name)
+			c.Assert(err, check.IsNil, check.Commentf("%s", t.name))
+			c.Assert(pool, check.DeepEquals, &Pool{Name: t.name}, check.Commentf("%s", t.name))
+		}
+	}
 }
 
 func (s *S) TestAddNonPublicPool(c *check.C) {

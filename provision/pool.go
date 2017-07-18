@@ -14,7 +14,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -196,9 +198,23 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&result)
 }
 
-func AddPool(opts AddPoolOptions) error {
-	if opts.Name == "" {
+func (p *Pool) validate() error {
+	if p.Name == "" {
 		return ErrPoolNameIsRequired
+	}
+	if !validation.ValidateName(p.Name) {
+		msg := "Invalid pool name, pool name should have at most 63 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter."
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
+	return nil
+}
+
+func AddPool(opts AddPoolOptions) error {
+	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner}
+	if err := pool.validate(); err != nil {
+		return err
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -211,7 +227,6 @@ func AddPool(opts AddPoolOptions) error {
 			return err
 		}
 	}
-	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner}
 	err = conn.Pools().Insert(pool)
 	if err != nil {
 		if mgo.IsDup(err) {
