@@ -12,14 +12,10 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-type Platform struct {
-	Name     string `bson:"_id"`
-	Disabled bool   `bson:",omitempty"`
-}
 
 var (
 	ErrPlatformNameMissing    = errors.New("Platform name is required.")
@@ -27,7 +23,27 @@ var (
 	DuplicatePlatformError    = errors.New("Duplicate platform")
 	InvalidPlatformError      = errors.New("Invalid platform")
 	ErrDeletePlatformWithApps = errors.New("Platform has apps. You should remove them before remove the platform.")
+	ErrInvalidPlatformName    = &tsuruErrors.ValidationError{
+		Message: "Invalid platform name, should have at most 63 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter.",
+	}
 )
+
+type Platform struct {
+	Name     string `bson:"_id"`
+	Disabled bool   `bson:",omitempty"`
+}
+
+func (p *Platform) validate() error {
+	if p.Name == "" {
+		return ErrPlatformNameMissing
+	}
+	if !validation.ValidateName(p.Name) {
+		return ErrInvalidPlatformName
+	}
+	return nil
+}
 
 // Platforms returns the list of available platforms.
 func Platforms(enabledOnly bool) ([]Platform, error) {
@@ -47,10 +63,10 @@ func Platforms(enabledOnly bool) ([]Platform, error) {
 
 // PlatformAdd add a new platform to tsuru
 func PlatformAdd(opts builder.PlatformOptions) error {
-	if opts.Name == "" {
-		return ErrPlatformNameMissing
-	}
 	p := Platform{Name: opts.Name}
+	if err := p.validate(); err != nil {
+		return err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err

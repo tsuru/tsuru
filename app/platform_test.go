@@ -107,7 +107,7 @@ func (s *PlatformSuite) TestGetPlatform(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
-	name := "test_platform_add"
+	name := "test-platform-add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err := PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
@@ -117,8 +117,29 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	c.Assert(platform.Name, check.Equals, name)
 }
 
+func (s *PlatformSuite) TestPlatformAddValidatesPlatformName(c *check.C) {
+	tt := []struct {
+		name        string
+		expectedErr error
+	}{
+		{"platform", nil},
+		{"Platform", ErrInvalidPlatformName},
+		{"", ErrPlatformNameMissing},
+		{"plat_form", ErrInvalidPlatformName},
+		{"123platform", ErrInvalidPlatformName},
+		{"plat-form", nil},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", ErrInvalidPlatformName},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", ErrInvalidPlatformName},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", nil},
+	}
+	for _, t := range tt {
+		err := PlatformAdd(builder.PlatformOptions{Name: t.name})
+		c.Assert(err, check.DeepEquals, t.expectedErr)
+	}
+}
+
 func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
-	name := "test_platform_add"
+	name := "test-platform-add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err := PlatformAdd(builder.PlatformOptions{Name: name, Args: args})
@@ -128,7 +149,7 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *check.C) {
-	name := "test_platform_add"
+	name := "test-platform-add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	opts := builder.PlatformOptions{Name: name, Args: args}
@@ -146,7 +167,7 @@ func (s *PlatformSuite) TestPlatformAddWithoutName(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = ""
@@ -159,13 +180,13 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "true"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_app_1"
+	appName := "test-app-1"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -183,12 +204,12 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["disabled"] = "true"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_app_2"
+	appName := "test-app-2"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -206,13 +227,13 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = ""
 	args["disabled"] = "true"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_app_2"
+	appName := "test-app-2"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -230,13 +251,13 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	args["disabled"] = "false"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_app_3"
+	appName := "test-app-3"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -254,13 +275,13 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = ""
 	args["disabled"] = "false"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_app_4"
+	appName := "test-app-4"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -280,12 +301,12 @@ func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_app"
+	appName := "test-app"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -300,10 +321,10 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 }
 
 func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
-	err := PlatformRemove("platform_dont_exists")
+	err := PlatformRemove("platform-dont-exists")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrPlatformNotFound)
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = PlatformAdd(builder.PlatformOptions{Name: name})
@@ -318,12 +339,12 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err := PlatformAdd(builder.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
-	appName := "test_another_app"
+	appName := "test-another-app"
 	app := App{
 		Name:     appName,
 		Platform: name,
@@ -335,9 +356,9 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *check.C) {
-	err := PlatformRemove("platform_dont_exists")
+	err := PlatformRemove("platform-dont-exists")
 	c.Assert(err, check.NotNil)
-	name := "test_platform_update"
+	name := "test-platform-update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = PlatformAdd(builder.PlatformOptions{Name: name})
