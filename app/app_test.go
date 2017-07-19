@@ -426,6 +426,7 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	srvc := service.Service{
 		Name:     "mysql",
 		Endpoint: map[string]string{"production": server.URL},
+		Password: "abcde",
 	}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -484,6 +485,7 @@ func (s *S) TestBindUnitWithError(c *check.C) {
 	srvc := service.Service{
 		Name:     "mysql",
 		Endpoint: map[string]string{"production": server.URL},
+		Password: "abcde",
 	}
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
@@ -720,7 +722,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		atomic.AddInt32(&calls, 1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})

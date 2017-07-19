@@ -4112,7 +4112,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 }
 
 func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -4163,7 +4163,7 @@ func (s *S) TestBindHandler(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -4232,7 +4232,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 		w.Write([]byte(`{}`))
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
@@ -4379,8 +4379,8 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	}))
 	defer ts.Close()
 	srvc := []service.Service{
-		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}},
-		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
 	}
 	for _, service := range srvc {
 		err := service.Create()
@@ -4467,7 +4467,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -4562,7 +4562,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 		}
 	}))
 	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -4657,8 +4657,8 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := []service.Service{
-		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}},
-		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}},
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"},
 	}
 	for _, service := range srvc {
 		err := service.Create()
