@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -45,6 +46,12 @@ func (c *Cluster) validate() error {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "cluster name is mandatory"})
+	}
+	if !validation.ValidateName(c.Name) {
+		msg := "Invalid cluster name, cluster name should have at most 63 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter."
+		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
 	}
 	if c.Provisioner == "" {
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: "provisioner name is mandatory"})

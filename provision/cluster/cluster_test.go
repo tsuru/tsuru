@@ -206,6 +206,50 @@ func (s *S) TestClusterSaveValidation(c *check.C) {
 		},
 		{
 			c: Cluster{
+				Name:        "1c",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: Cluster{
+				Name:        "c_1",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: Cluster{
+				Name:        "C1",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: Cluster{
+				Name:        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				Addresses:   []string{"addr1", "addr2"},
+				Default:     true,
+				Provisioner: "fake",
+			},
+			err: "Invalid cluster name, cluster name should have at most 63 " +
+				"characters, containing only lower case letters, numbers or dashes, " +
+				"starting with a letter.",
+		},
+		{
+			c: Cluster{
 				Name:        "c1",
 				Addresses:   []string{},
 				Default:     true,
