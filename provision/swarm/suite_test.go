@@ -97,7 +97,7 @@ func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn ht
 		s.conn.Services().Remove(bson.M{"_id": "mysql"})
 		s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	}
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde"}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Units: units, Apps: []string{appName}}
