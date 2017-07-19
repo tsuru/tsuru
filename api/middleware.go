@@ -104,7 +104,7 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	err := context.GetRequestError(r)
 	if err != nil {
 		code := http.StatusInternalServerError
-		switch t := err.(type) {
+		switch t := errors.Cause(err).(type) {
 		case *tsuruErrors.ValidationError:
 			code = http.StatusBadRequest
 		case *tsuruErrors.HTTP:

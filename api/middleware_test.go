@@ -14,11 +14,12 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -147,7 +148,7 @@ func (s *S) TestErrorHandlingMiddlewareWithHTTPError(c *check.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	h, log := doHandler()
-	context.AddRequestError(request, &errors.HTTP{Code: 403, Message: "other msg"})
+	context.AddRequestError(request, &tsuruErrors.HTTP{Code: 403, Message: "other msg"})
 	errorHandlingMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	c.Assert(recorder.Code, check.Equals, 403)
@@ -158,7 +159,19 @@ func (s *S) TestErrorHandlingMiddlewareWithValidationError(c *check.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	h, log := doHandler()
-	context.AddRequestError(request, &errors.ValidationError{Message: "invalid request"})
+	context.AddRequestError(request, &tsuruErrors.ValidationError{Message: "invalid request"})
+	errorHandlingMiddleware(recorder, request, h)
+	c.Assert(log.called, check.Equals, true)
+	c.Assert(recorder.Code, check.Equals, 400)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid request\n")
+}
+
+func (s *S) TestErrorHandlingMiddlewareWithCauseValidationError(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	h, log := doHandler()
+	context.AddRequestError(request, errors.WithStack(&tsuruErrors.ValidationError{Message: "invalid request"}))
 	errorHandlingMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	c.Assert(recorder.Code, check.Equals, 400)
@@ -237,7 +250,7 @@ func (s *S) TestAuthTokenMiddlewareWithIncorrectAppToken(c *check.C) {
 	c.Assert(log.called, check.Equals, false)
 	err = context.GetRequestError(request)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
+	e, ok := err.(*tsuruErrors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
@@ -298,7 +311,7 @@ func (s *S) TestAuthTokenMiddlewareUserTokenAppNotFound(c *check.C) {
 	c.Assert(log.called, check.Equals, false)
 	err = context.GetRequestError(request)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
+	e, ok := err.(*tsuruErrors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 }
@@ -348,14 +361,14 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *check.C) {
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, check.Equals, false)
-	httpErr := context.GetRequestError(request).(*errors.HTTP)
+	httpErr := context.GetRequestError(request).(*tsuruErrors.HTTP)
 	c.Assert(httpErr.Code, check.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, check.Equals, "App not found.")
 	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
 	c.Assert(err, check.IsNil)
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, check.Equals, false)
-	httpErr = context.GetRequestError(request).(*errors.HTTP)
+	httpErr = context.GetRequestError(request).(*tsuruErrors.HTTP)
 	c.Assert(httpErr.Code, check.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, check.Equals, "App not found.")
 }
@@ -383,7 +396,7 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *check.C) {
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, check.Equals, false)
-	httpErr := context.GetRequestError(request).(*errors.HTTP)
+	httpErr := context.GetRequestError(request).(*tsuruErrors.HTTP)
 	c.Assert(httpErr.Code, check.Equals, http.StatusConflict)
 	c.Assert(httpErr.Message, check.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10.*")
 }
