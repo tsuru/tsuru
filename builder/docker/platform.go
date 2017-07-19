@@ -63,27 +63,9 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		}
 	}
 	imageName := image.PlatformImageName(name)
-	provisioners, err := provision.Registry()
+	client, err := getDockerClient()
 	if err != nil {
 		return err
-	}
-	var client *docker.Client
-	multiErr := tsuruErrors.NewMultiError()
-	for _, p := range provisioners {
-		if provisioner, ok := p.(provision.BuilderDeploy); ok {
-			client, err = provisioner.GetDockerClient(nil)
-			if err != nil {
-				multiErr.Add(err)
-			} else if client != nil {
-				break
-			}
-		}
-	}
-	if client == nil {
-		if multiErr.Len() > 0 {
-			return fmt.Errorf("%s", multiErr)
-		}
-		return errors.New("No Docker nodes available")
 	}
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
@@ -126,6 +108,29 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		return err
 	}
 	return nil
+}
+
+func getDockerClient() (*docker.Client, error) {
+	provisioners, err := provision.Registry()
+	if err != nil {
+		return nil, err
+	}
+	var client *docker.Client
+	multiErr := tsuruErrors.NewMultiError()
+	for _, p := range provisioners {
+		if provisioner, ok := p.(provision.BuilderDeploy); ok {
+			client, err = provisioner.GetDockerClient(nil)
+			if err != nil {
+				multiErr.Add(err)
+			} else if client != nil {
+				return client, nil
+			}
+		}
+	}
+	if multiErr.Len() > 0 {
+		return nil, fmt.Errorf("%s", multiErr)
+	}
+	return nil, errors.New("No Docker nodes available")
 }
 
 func (b *dockerBuilder) PlatformRemove(name string) error {
