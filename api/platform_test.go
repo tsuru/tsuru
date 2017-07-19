@@ -112,6 +112,24 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *PlatformSuite) TestPlatformAddInvalidName(c *check.C) {
+	var buf bytes.Buffer
+	dockerfileURL := "http://localhost/Dockerfile"
+	writer := multipart.NewWriter(&buf)
+	writer.WriteField("name", "Invalid_Name")
+	writer.WriteField("dockerfile", dockerfileURL)
+	fileWriter, err := writer.CreateFormFile("dockerfile_content", "Dockerfile")
+	c.Assert(err, check.IsNil)
+	fileWriter.Write([]byte("FROM tsuru/java"))
+	writer.Close()
+	request, _ := http.NewRequest("POST", "/platforms/add", &buf)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	recorder := httptest.NewRecorder()
+	token := createToken(c)
+	result := platformAdd(recorder, request, token)
+	c.Assert(result, check.DeepEquals, app.ErrInvalidPlatformName)
+}
+
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	err := app.PlatformAdd(builder.PlatformOptions{Name: "wat", Args: nil, Output: nil})
 	c.Assert(err, check.IsNil)
