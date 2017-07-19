@@ -6,7 +6,6 @@ package builder
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/tsuru/tsuru/event"
@@ -24,6 +23,17 @@ type customPlatformBuilder struct {
 var _ = check.Suite(S{})
 var _ PlatformBuilder = &customPlatformBuilder{}
 var _ Builder = &customPlatformBuilder{}
+
+var platformOpCalls = 0
+
+func callCounter(PlatformOptions, string) error {
+	platformOpCalls++
+	return nil
+}
+func callCounterWithError(PlatformOptions, string) error {
+	platformOpCalls++
+	return errors.New("something is wrong")
+}
 
 func (b *customPlatformBuilder) PlatformAdd(opts PlatformOptions) error {
 	if b.customBehavior == nil {
@@ -91,47 +101,33 @@ func (s S) TestRegistry(c *check.C) {
 }
 
 func (s S) TestPlatformAdd(c *check.C) {
-	platformAddCalls := 0
-	callCounter := func(PlatformOptions, string) error {
-		platformAddCalls++
-		return nil
-	}
-	callCounterWithError := func(PlatformOptions, string) error {
-		platformAddCalls++
-		return errors.New("something is wrong")
-	}
 	b1 := customPlatformBuilder{
 		customBehavior: callCounter,
 	}
 	b2 := customPlatformBuilder{
 		customBehavior: callCounterWithError,
 	}
-	b3 := customPlatformBuilder{
+	Register("builder1", &b1)
+	Register("builder2", &b2)
+	platformOpCalls = 0
+	err := PlatformAdd(PlatformOptions{})
+	c.Assert(platformOpCalls, check.Equals, 1)
+	c.Assert(err, check.IsNil)
+}
+
+func (s S) TestPlatformAddError(c *check.C) {
+	b1 := customPlatformBuilder{
+		customBehavior: callCounterWithError,
+	}
+	b2 := customPlatformBuilder{
 		customBehavior: callCounterWithError,
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	Register("builder3", &b3)
+	platformOpCalls = 0
 	err := PlatformAdd(PlatformOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(platformAddCalls, check.Equals, 1)
-	platformAddCalls = 0
-	delete(builders, "builder1")
-	err = PlatformAdd(PlatformOptions{})
+	c.Assert(platformOpCalls, check.Equals, 2)
 	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
-	c.Assert(platformAddCalls, check.Equals, 2)
-}
-
-func (s S) TestPlatformAddError(c *check.C) {
-	errMsg := "error adding platform"
-	var b1 = customPlatformBuilder{
-		customBehavior: func(PlatformOptions, string) error {
-			return fmt.Errorf(errMsg)
-		},
-	}
-	Register("builder", &b1)
-	err := PlatformAdd(PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, errMsg)
 }
 
 func (s S) TestPlatformAddNoBuilder(c *check.C) {
@@ -140,20 +136,26 @@ func (s S) TestPlatformAddNoBuilder(c *check.C) {
 }
 
 func (s S) TestPlatformUpdate(c *check.C) {
-	platformUpdateCalls := 0
-	callCounter := func(PlatformOptions, string) error {
-		platformUpdateCalls++
-		return nil
-	}
-	callCounterWithError := func(PlatformOptions, string) error {
-		platformUpdateCalls++
-		return errors.New("something is wrong")
-	}
 	b1 := customPlatformBuilder{
 		customBehavior: callCounterWithError,
 	}
 	b2 := customPlatformBuilder{
 		customBehavior: callCounter,
+	}
+	Register("builder1", &b1)
+	Register("builder2", &b2)
+	platformOpCalls = 0
+	err := PlatformUpdate(PlatformOptions{})
+	c.Assert(platformOpCalls, check.Equals, 2)
+	c.Assert(err, check.IsNil)
+}
+
+func (s S) TestPlatformUpdateError(c *check.C) {
+	b1 := customPlatformBuilder{
+		customBehavior: callCounterWithError,
+	}
+	b2 := customPlatformBuilder{
+		customBehavior: callCounterWithError,
 	}
 	b3 := customPlatformBuilder{
 		customBehavior: callCounterWithError,
@@ -161,26 +163,10 @@ func (s S) TestPlatformUpdate(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
+	platformOpCalls = 0
 	err := PlatformUpdate(PlatformOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(platformUpdateCalls, check.Equals, 2)
-	platformUpdateCalls = 0
-	delete(builders, "builder2")
-	err = PlatformUpdate(PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
-	c.Assert(platformUpdateCalls, check.Equals, 2)
-}
-
-func (s S) TestPlatformUpdateError(c *check.C) {
-	errMsg := "error updating platform"
-	var b1 = customPlatformBuilder{
-		customBehavior: func(PlatformOptions, string) error {
-			return fmt.Errorf(errMsg)
-		},
-	}
-	Register("builder", &b1)
-	err := PlatformUpdate(PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, errMsg)
+	c.Assert(platformOpCalls, check.Equals, 3)
+	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong something is wrong")
 }
 
 func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
@@ -189,15 +175,6 @@ func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
 }
 
 func (s S) TestPlatformRemove(c *check.C) {
-	platformRemoveCalls := 0
-	callCounter := func(PlatformOptions, string) error {
-		platformRemoveCalls++
-		return nil
-	}
-	callCounterWithError := func(PlatformOptions, string) error {
-		platformRemoveCalls++
-		return errors.New("something is wrong")
-	}
 	b1 := customPlatformBuilder{
 		customBehavior: callCounterWithError,
 	}
@@ -210,26 +187,25 @@ func (s S) TestPlatformRemove(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
+	platformOpCalls = 0
 	err := PlatformRemove("platform-name")
+	c.Assert(platformOpCalls, check.Equals, 3)
 	c.Assert(err, check.IsNil)
-	c.Assert(platformRemoveCalls, check.Equals, 3)
-	platformRemoveCalls = 0
-	delete(builders, "builder3")
-	err = PlatformRemove("platform-name")
-	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
-	c.Assert(platformRemoveCalls, check.Equals, 2)
 }
 
 func (s S) TestPlatformRemoveError(c *check.C) {
-	errMsg := "error removing platform"
-	var b1 = customPlatformBuilder{
-		customBehavior: func(PlatformOptions, string) error {
-			return fmt.Errorf(errMsg)
-		},
+	b1 := customPlatformBuilder{
+		customBehavior: callCounterWithError,
 	}
-	Register("builder", &b1)
+	b2 := customPlatformBuilder{
+		customBehavior: callCounterWithError,
+	}
+	Register("builder1", &b1)
+	Register("builder2", &b2)
+	platformOpCalls = 0
 	err := PlatformRemove("platform-name")
-	c.Assert(err, check.ErrorMatches, errMsg)
+	c.Assert(platformOpCalls, check.Equals, 2)
+	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
 }
 
 func (s S) TestPlatformRemoveNoBuilder(c *check.C) {
