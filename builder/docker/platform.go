@@ -69,10 +69,16 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	for _, p := range provisioners {
 		if provisioner, ok := p.(provision.BuilderDeploy); ok {
 			client, err = provisioner.GetDockerClient(nil)
-			if err != nil {
-				return err
+			if client != nil && err == nil {
+				break
 			}
 		}
+	}
+	if client == nil {
+		if err != nil {
+			return err
+		}
+		return errors.New("No Docker nodes available")
 	}
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
