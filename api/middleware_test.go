@@ -153,6 +153,18 @@ func (s *S) TestErrorHandlingMiddlewareWithHTTPError(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, 403)
 }
 
+func (s *S) TestErrorHandlingMiddlewareWithValidationError(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	h, log := doHandler()
+	context.AddRequestError(request, &errors.ValidationError{Message: "invalid request"})
+	errorHandlingMiddleware(recorder, request, h)
+	c.Assert(log.called, check.Equals, true)
+	c.Assert(recorder.Code, check.Equals, 400)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid request\n")
+}
+
 func (s *S) TestAuthTokenMiddlewareWithoutToken(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)

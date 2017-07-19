@@ -104,8 +104,11 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	err := context.GetRequestError(r)
 	if err != nil {
 		code := http.StatusInternalServerError
-		if e, ok := err.(*tsuruErrors.HTTP); ok {
-			code = e.Code
+		switch t := err.(type) {
+		case *tsuruErrors.ValidationError:
+			code = http.StatusBadRequest
+		case *tsuruErrors.HTTP:
+			code = t.Code
 		}
 		flushing, ok := w.(*io.FlushingWriter)
 		if ok && flushing.Wrote() {
