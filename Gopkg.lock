@@ -494,8 +494,8 @@
 
 [[projects]]
   name = "golang.org/x/crypto"
-  packages = ["bcrypt","blowfish","ssh","ssh/terminal"]
-  revision = "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+  packages = ["bcrypt","blowfish","curve25519","ed25519","ed25519/internal/edwards25519","ssh","ssh/terminal"]
+  revision = "5ef0053f77724838734b6945dd364d3847e5de1d"
 
 [[projects]]
   branch = "master"
@@ -511,7 +511,7 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["windows","windows/registry"]
+  packages = ["unix","windows","windows/registry"]
   revision = "4ed4d404df456f81e878683a0363ed3013a59003"
 
 [[projects]]
@@ -609,6 +609,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "891be588818c018713b369d23b050c57b2fc9885644112ce2726b96895a8771b"
+  inputs-digest = "bc3c6718631c94c63512b89ed51626295c570f6b8152c80a62aee01ce9090e62"
   solver-name = "gps-cdcl"
   solver-version = 1
