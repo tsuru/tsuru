@@ -53,12 +53,6 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	defer func() { evt.Done(err) }()
 	err = plan.Save()
-	if _, ok := err.(app.PlanValidationError); ok {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
 	if err == app.ErrPlanAlreadyExists {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,

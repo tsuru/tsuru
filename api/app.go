@@ -331,9 +331,6 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
-		if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Message}
-		}
 		if _, ok := err.(app.NoTeamsError); ok {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,

@@ -1161,9 +1161,8 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err := resetPassword(recorder, request)
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
+	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, check.Equals, "invalid email")
 }
 

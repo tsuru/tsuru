@@ -217,8 +217,6 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	if err != nil {
 		if err == auth.ErrUserNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		} else if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
 		}
 		return err
 	}

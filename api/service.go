@@ -11,7 +11,6 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
@@ -113,14 +112,10 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	defer func() { evt.Done(err) }()
 	err = s.Create()
 	if err != nil {
-		if vErr, ok := err.(*tsuruErrors.ValidationError); ok {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: vErr.Message}
-		}
-		httpError := http.StatusInternalServerError
 		if err == service.ErrServiceAlreadyExists {
-			httpError = http.StatusConflict
+			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 		}
-		return &errors.HTTP{Code: httpError, Message: err.Error()}
+		return err
 	}
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, "success")
@@ -169,13 +164,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
-	if err := s.Update(); err != nil {
-		if vErr, ok := err.(*tsuruErrors.ValidationError); ok {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: vErr.Message}
-		}
-		return err
-	}
-	return nil
+	return s.Update()
 }
 
 // title: service delete

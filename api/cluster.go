@@ -59,12 +59,6 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	defer func() { evt.Done(err) }()
 	err = provCluster.Save()
 	if err != nil {
-		if _, ok := errors.Cause(err).(*tsuruErrors.ValidationError); ok {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
 		return errors.WithStack(err)
 	}
 	w.WriteHeader(http.StatusOK)
