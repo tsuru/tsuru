@@ -7,7 +7,6 @@ package service
 import (
 	"encoding/json"
 	"io"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -32,7 +32,6 @@ var (
 	ErrUnitAlreadyBound          = errors.New("unit is already bound to this service instance")
 	ErrUnitNotBound              = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound      = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
-	instanceNameRegexp           = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -304,7 +303,7 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 }
 
 func validateServiceInstanceName(service string, instance string) error {
-	if !instanceNameRegexp.MatchString(instance) {
+	if !validation.ValidateName(instance) {
 		return ErrInvalidInstanceName
 	}
 	conn, err := db.Conn()

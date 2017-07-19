@@ -464,13 +464,12 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 		err   error
 	}{
 		{"my-service", nil},
-		{"my_service", nil},
-		{"my_service_123", nil},
-		{"My_service_123", nil},
+		{"my_service", ErrInvalidInstanceName},
+		{"MyService", ErrInvalidInstanceName},
 		{"a1", nil},
 		{"--app", ErrInvalidInstanceName},
 		{"123servico", ErrInvalidInstanceName},
-		{"a", ErrInvalidInstanceName},
+		{"a", nil},
 		{"a@123", ErrInvalidInstanceName},
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
