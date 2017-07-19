@@ -170,6 +170,9 @@ func createVolumeForApp(client *clusterClient, app provision.App, v *volume.Volu
 			Labels: labelSet.ToLabels(),
 		},
 		Spec: apiv1.PersistentVolumeClaimSpec{
+			Resources: apiv1.ResourceRequirements{
+				Requests: pvSpec.Capacity,
+			},
 			AccessModes:      pvSpec.AccessModes,
 			Selector:         selector,
 			VolumeName:       volName,

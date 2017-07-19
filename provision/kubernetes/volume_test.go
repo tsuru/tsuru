@@ -101,6 +101,11 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			},
 			VolumeName:       volumeName(v.Name),
 			StorageClassName: nil,
+			Resources: apiv1.ResourceRequirements{
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceStorage: expectedCap,
+				},
+			},
 		},
 	})
 	volumes, mounts, err = createVolumesForApp(s.client.clusterClient, a)
@@ -146,6 +151,8 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	_, err = s.client.Core().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.ErrorMatches, "persistentvolumes \"v1-tsuru\" not found")
 	expectedClass := "my-class"
+	expectedCap, err := resource.ParseQuantity("20Gi")
+	c.Assert(err, check.IsNil)
 	pvc, err := s.client.Core().PersistentVolumeClaims(s.client.Namespace()).Get(volumeClaimName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pvc, check.DeepEquals, &apiv1.PersistentVolumeClaim{
@@ -163,6 +170,11 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 		Spec: apiv1.PersistentVolumeClaimSpec{
 			AccessModes:      []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteMany},
 			StorageClassName: &expectedClass,
+			Resources: apiv1.ResourceRequirements{
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceStorage: expectedCap,
+				},
+			},
 		},
 	})
 	volumes, mounts, err = createVolumesForApp(s.client.clusterClient, a)
