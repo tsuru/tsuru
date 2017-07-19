@@ -144,7 +144,8 @@
 [[projects]]
   name = "github.com/docker/machine"
   packages = ["commands/mcndirs","drivers/amazonec2","drivers/azure","drivers/azure/azureutil","drivers/azure/logutil","drivers/digitalocean","drivers/driverutil","drivers/errdriver","drivers/exoscale","drivers/fakedriver","drivers/generic","drivers/google","drivers/hyperv","drivers/none","drivers/openstack","drivers/rackspace","drivers/softlayer","drivers/virtualbox","drivers/vmwarefusion","drivers/vmwarevcloudair","drivers/vmwarevsphere","libmachine","libmachine/auth","libmachine/cert","libmachine/check","libmachine/drivers","libmachine/drivers/plugin","libmachine/drivers/plugin/localbinary","libmachine/drivers/rpc","libmachine/engine","libmachine/host","libmachine/log","libmachine/mcndockerclient","libmachine/mcnerror","libmachine/mcnflag","libmachine/mcnutils","libmachine/persist","libmachine/persist/persisttest","libmachine/provision","libmachine/provision/pkgaction","libmachine/provision/serviceaction","libmachine/ssh","libmachine/state","libmachine/swarm","libmachine/version","libmachine/versioncmp","version"]
-  revision = "e65117bf969f9b5fd0c9cc380d0c75e9f925a297"
+  revision = "937160559e02cc430fe176991beb9a6ffbfe3de0"
+  version = "v0.12.2"
 
 [[projects]]
   name = "github.com/docker/spdystream"
@@ -608,6 +609,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4a79498005a559324be52c0a625a1a57570196e38c50b4bc32e6f993c608c43b"
+  inputs-digest = "891be588818c018713b369d23b050c57b2fc9885644112ce2726b96895a8771b"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -6,6 +6,7 @@ package vmwarevsphere
 
 import (
 	"archive/tar"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -61,6 +62,8 @@ type Driver struct {
 	Datacenter string
 	Pool       string
 	HostSystem string
+	CfgParams  []string
+	CloudInit  string
 
 	SSHPassword string
 }
@@ -145,7 +148,17 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			EnvVar: "VSPHERE_HOSTSYSTEM",
 			Name:   "vmwarevsphere-hostsystem",
-			Usage:  "vSphere compute resource where the docker VM will be instantiated (use <cluster>/* or <cluster>/<host> if using a cluster)",
+			Usage:  "vSphere compute resource where the docker VM will be instantiated. This can be omitted if using a cluster with DRS.",
+		},
+		mcnflag.StringSliceFlag{
+			EnvVar: "VSPHERE_CFGPARAM",
+			Name:   "vmwarevsphere-cfgparam",
+			Usage:  "vSphere vm configuration parameters (used for guestinfo)",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VSPHERE_CLOUDINIT",
+			Name:   "vmwarevsphere-cloudinit",
+			Usage:  "vSphere cloud-init file or url to set in the guestinfo",
 		},
 	}
 }
@@ -198,6 +211,8 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Datacenter = flags.String("vmwarevsphere-datacenter")
 	d.Pool = flags.String("vmwarevsphere-pool")
 	d.HostSystem = flags.String("vmwarevsphere-hostsystem")
+	d.CfgParams = flags.StringSlice("vmwarevsphere-cfgparam")
+	d.CloudInit = flags.String("vmwarevsphere-cloudinit")
 	d.SetSwarmConfigFromFlags(flags)
 
 	d.ISO = d.ResolveStorePath(isoFilename)
@@ -329,9 +344,13 @@ func (d *Driver) PreCreateCheck() error {
 		return err
 	}
 
-	hs, err := f.HostSystemOrDefault(ctx, d.HostSystem)
-	if err != nil {
-		return err
+	var hs *object.HostSystem
+	if d.HostSystem != "" {
+		var err error
+		hs, err = f.HostSystemOrDefault(ctx, d.HostSystem)
+		if err != nil {
+			return err
+		}
 	}
 
 	// ResourcePool
@@ -340,9 +359,14 @@ func (d *Driver) PreCreateCheck() error {
 		if _, err := f.ResourcePool(ctx, d.Pool); err != nil {
 			return err
 		}
-	} else {
+	} else if hs != nil {
 		// Pick default Resource Pool for Host System
 		if _, err := hs.ResourcePool(ctx); err != nil {
+			return err
+		}
+	} else {
+		// Pick the default Resource Pool for the Datacenter.
+		if _, err := f.DefaultResourcePool(ctx); err != nil {
 			return err
 		}
 	}
@@ -396,9 +420,13 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	hs, err := f.HostSystemOrDefault(ctx, d.HostSystem)
-	if err != nil {
-		return err
+	var hs *object.HostSystem
+	if d.HostSystem != "" {
+		var err error
+		hs, err = f.HostSystemOrDefault(ctx, d.HostSystem)
+		if err != nil {
+			return err
+		}
 	}
 
 	var rp *object.ResourcePool
@@ -408,9 +436,15 @@ func (d *Driver) Create() error {
 		if err != nil {
 			return err
 		}
-	} else {
+	} else if d.HostSystem != "" {
 		// Pick default Resource Pool for Host System
 		rp, err = hs.ResourcePool(ctx)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Pick the default Resource Pool for the Datacenter.
+		rp, err = f.DefaultResourcePool(ctx)
 		if err != nil {
 			return err
 		}
@@ -506,6 +540,54 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	// Adding some guestinfo data
+	var opts []types.BaseOptionValue
+	for _, param := range d.CfgParams {
+		v := strings.SplitN(param, "=", 2)
+		key := v[0]
+		value := ""
+		if len(v) > 1 {
+			value = v[1]
+		}
+		fmt.Printf("Setting %s to %s\n", key, value)
+		opts = append(opts, &types.OptionValue{
+			Key:   key,
+			Value: value,
+		})
+	}
+	if d.CloudInit != "" {
+		if _, err := url.ParseRequestURI(d.CloudInit); err == nil {
+			log.Infof("setting guestinfo.cloud-init.data.url to %s\n", d.CloudInit)
+			opts = append(opts, &types.OptionValue{
+				Key:   "guestinfo.cloud-init.config.url",
+				Value: d.CloudInit,
+			})
+		} else {
+			if _, err := os.Stat(d.CloudInit); err == nil {
+				if value, err := ioutil.ReadFile(d.CloudInit); err == nil {
+					log.Infof("setting guestinfo.cloud-init.data to encoded content of %s\n", d.CloudInit)
+					encoded := base64.StdEncoding.EncodeToString(value)
+					opts = append(opts, &types.OptionValue{
+						Key:   "guestinfo.cloud-init.config.data",
+						Value: encoded,
+					})
+					opts = append(opts, &types.OptionValue{
+						Key:   "guestinfo.cloud-init.data.encoding",
+						Value: "base64",
+					})
+				}
+			}
+		}
+	}
+
+	task, err = vm.Reconfigure(ctx, types.VirtualMachineConfigSpec{
+		ExtraConfig: opts,
+	})
+	if err != nil {
+		return err
+	}
+	task.Wait(ctx)
+
 	if err := d.Start(); err != nil {
 		return err
 	}
@@ -556,7 +638,7 @@ func (d *Driver) Create() error {
 	var env []string
 	guestspec := types.GuestProgramSpec{
 		ProgramPath:      "/usr/bin/sudo",
-		Arguments:        "/usr/bin/sudo /bin/sh -c \"tar xvf userdata.tar -C /home/docker > /var/log/userdata.log 2>&1 && chown -R docker:staff /home/docker\"",
+		Arguments:        "/usr/bin/sudo /bin/sh -c \"tar xvf /home/docker/userdata.tar -C /home/docker > /var/log/userdata.log 2>&1 && chown -R docker:staff /home/docker\"",
 		WorkingDirectory: "",
 		EnvVariables:     env,
 	}
