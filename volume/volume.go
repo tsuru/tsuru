@@ -46,6 +46,7 @@ type Volume struct {
 	Plan      VolumePlan
 	TeamOwner string
 	Status    string
+	Binds     []VolumeBind      `bson:"-"`
 	Opts      map[string]string `bson:",omitempty"`
 }
 
@@ -137,7 +138,10 @@ func (v *Volume) UnbindApp(appName, mountPoint string) error {
 	return errors.WithStack(err)
 }
 
-func (v *Volume) Binds() ([]VolumeBind, error) {
+func (v *Volume) LoadBinds() ([]VolumeBind, error) {
+	if v.Binds != nil {
+		return v.Binds, nil
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -148,6 +152,7 @@ func (v *Volume) Binds() ([]VolumeBind, error) {
 	if err != nil {
 		return nil, err
 	}
+	v.Binds = binds
 	return binds, nil
 }
 
@@ -168,6 +173,68 @@ func ListByApp(appName string) ([]Volume, error) {
 		return nil, errors.WithStack(err)
 	}
 	return volumes, nil
+}
+
+type Filter struct {
+	Teams []string
+	Pools []string
+	Names []string
+}
+
+func ListByFilter(f *Filter) ([]Volume, error) {
+	query := bson.M{}
+	if f != nil {
+		query["$or"] = []bson.M{
+			{"_id": bson.M{"$in": f.Names}},
+			{"pool": bson.M{"$in": f.Pools}},
+			{"teamowner": bson.M{"$in": f.Teams}},
+		}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer conn.Close()
+	var volumes []Volume
+	err = conn.Volumes().Find(query).All(&volumes)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	for i := range volumes {
+		_, err = volumes[i].LoadBinds()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return volumes, nil
+}
+
+func ListPlans() (map[string][]VolumePlan, error) {
+	plans := map[string][]VolumePlan{}
+	plansRaw, err := config.Get("volume-plans")
+	if err != nil {
+		return plans, nil
+	}
+	plansMap := asMapStringInterface(internalConfig.ConvertEntries(plansRaw))
+	for planName, planProvsRaw := range plansMap {
+		for prov, provDataRaw := range asMapStringInterface(planProvsRaw) {
+			plans[prov] = append(plans[prov], VolumePlan{
+				Name: planName,
+				Opts: asMapStringInterface(provDataRaw),
+			})
+		}
+	}
+	return plans, nil
+}
+
+func asMapStringInterface(val interface{}) map[string]interface{} {
+	if val == nil {
+		return nil
+	}
+	if mapVal, ok := val.(map[string]interface{}); ok {
+		return mapVal
+	}
+	return nil
 }
 
 func Load(name string) (*Volume, error) {

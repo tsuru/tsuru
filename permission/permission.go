@@ -53,6 +53,7 @@ var (
 	CtxIaaS            = contextType("iaas")
 	CtxService         = contextType("service")
 	CtxServiceInstance = contextType("service-instance")
+	CtxVolume          = contextType("volume")
 
 	ContextTypes = []contextType{
 		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxService, CtxServiceInstance,

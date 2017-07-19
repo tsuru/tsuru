@@ -195,4 +195,12 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"cluster.read.events",
 	"cluster.update",
 	"cluster.delete",
+).addWithCtx(
+	"volume", []contextType{CtxVolume, CtxTeam, CtxPool},
+).addWithCtx(
+	"volume.create", []contextType{CtxTeam, CtxPool},
+).add(
+	"volume.read.events",
+	"volume.update",
+	"volume.delete",
 )

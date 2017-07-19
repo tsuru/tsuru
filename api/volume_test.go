@@ -1,0 +1,323 @@
+// Copyright 2017 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package api
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/permission/permissiontest"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/volume"
+	"gopkg.in/check.v1"
+)
+
+func (s *S) TestVolumeList(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
+	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result []volume.Volume
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, []volume.Volume{{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin":       "nfs",
+				"capacity":     "20Gi",
+				"access-modes": "ReadWriteMany",
+			},
+		},
+	}})
+}
+
+func (s *S) TestVolumeListPermissions(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	err := provision.AddPool(provision.AddPoolOptions{Name: "otherpool", Public: true})
+	c.Assert(err, check.IsNil)
+	err = s.conn.Teams().Insert(auth.Team{Name: "otherteam"})
+	c.Assert(err, check.IsNil)
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Save()
+	c.Assert(err, check.IsNil)
+	v2 := volume.Volume{Name: "v2", Pool: "otherpool", TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v2.Save()
+	c.Assert(err, check.IsNil)
+	token1 := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermVolumeRead,
+		Context: permission.Context(permission.CtxPool, "otherpool"),
+	})
+	_, token2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "majortom2", permission.Permission{
+		Scheme:  permission.PermVolumeRead,
+		Context: permission.Context(permission.CtxTeam, "otherteam"),
+	})
+	url := fmt.Sprintf("/1.4/volumes")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token1.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result []volume.Volume
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].Name, check.Equals, "v2")
+	request, err = http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token2.GetValue())
+	recorder = httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].Name, check.Equals, "v1")
+}
+
+func (s *S) TestVolumeListBinded(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
+	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
+	defer config.Unset("volume-plans")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Save()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt2", true)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result []volume.Volume
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, []volume.Volume{{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Binds: []volume.VolumeBind{
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt",
+					Volume:     "v1",
+				},
+				ReadOnly: false,
+			},
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt2",
+					Volume:     "v1",
+				},
+				ReadOnly: true,
+			},
+		},
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin":       "nfs",
+				"capacity":     "20Gi",
+				"access-modes": "ReadWriteMany",
+			},
+		},
+	}})
+}
+
+func (s *S) TestVolumeInfo(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result volume.Volume
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, volume.Volume{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin": "nfs",
+			},
+		},
+	})
+}
+
+func (s *S) TestVolumeInfoNotFound(c *check.C) {
+	url := fmt.Sprintf("/1.4/volumes/v1")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestVolumeCreate(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=b`)
+	url := fmt.Sprintf("/1.4/volumes")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	volumes, err := volume.ListByFilter(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Opts:      map[string]string{"a": "b"},
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin": "nfs",
+			},
+		},
+	}})
+}
+
+func (s *S) TestVolumeCreateConflict(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored`)
+	url := fmt.Sprintf("/1.4/volumes")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+}
+
+func (s *S) TestVolumeUpdate(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}, Opts: map[string]string{"a": "b"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
+	url := fmt.Sprintf("/1.4/volumes/v1")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	volumes, err := volume.ListByFilter(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Opts:      map[string]string{"a": "c"},
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin": "nfs",
+			},
+		},
+	}})
+}
+
+func (s *S) TestVolumeUpdateNotFound(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
+	url := fmt.Sprintf("/1.4/volumes/v1")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestVolumePlanList(c *check.C) {
+	config.Set("volume-plans:nfs1:fake:plugin", "nfs")
+	config.Set("volume-plans:other:fake:storage-class", "ebs")
+	config.Set("volume-plans:nfs1:otherprov:opts", "-t=nfs")
+	defer config.Unset("volume-plans")
+	url := fmt.Sprintf("/1.4/volumeplans")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result map[string][]volume.VolumePlan
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string][]volume.VolumePlan{
+		"fake": {
+			{Name: "nfs1", Opts: map[string]interface{}{"plugin": "nfs"}},
+			{Name: "other", Opts: map[string]interface{}{"storage-class": "ebs"}},
+		},
+		"otherprov": {
+			{Name: "nfs1", Opts: map[string]interface{}{"opts": "-t=nfs"}},
+		},
+	})
+}

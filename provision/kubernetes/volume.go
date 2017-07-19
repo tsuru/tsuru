@@ -50,7 +50,7 @@ func createVolumesForApp(client *clusterClient, app provision.App) ([]apiv1.Volu
 func bindsForVolume(v *volume.Volume) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
 	var kubeVolumes []apiv1.Volume
 	var kubeMounts []apiv1.VolumeMount
-	binds, err := v.Binds()
+	binds, err := v.LoadBinds()
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}

@@ -195,4 +195,10 @@ var (
 	PermUserUpdateQuota                  = PermissionRegistry.get("user.update.quota")                   // [global user]
 	PermUserUpdateReset                  = PermissionRegistry.get("user.update.reset")                   // [global user]
 	PermUserUpdateToken                  = PermissionRegistry.get("user.update.token")                   // [global user]
+	PermVolume                           = PermissionRegistry.get("volume")                              // [global volume team pool]
+	PermVolumeCreate                     = PermissionRegistry.get("volume.create")                       // [global team pool]
+	PermVolumeDelete                     = PermissionRegistry.get("volume.delete")                       // [global volume team pool]
+	PermVolumeRead                       = PermissionRegistry.get("volume.read")                         // [global volume team pool]
+	PermVolumeReadEvents                 = PermissionRegistry.get("volume.read.events")                  // [global volume team pool]
+	PermVolumeUpdate                     = PermissionRegistry.get("volume.update")                       // [global volume team pool]
 )

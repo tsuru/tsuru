@@ -317,6 +317,12 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", "GET", "/provisioner/clusters", AuthorizationRequiredHandler(listClusters))
 	m.Add("1.3", "DELETE", "/provisioner/clusters/{name}", AuthorizationRequiredHandler(deleteCluster))
 
+	m.Add("1.4", "GET", "/volumes", AuthorizationRequiredHandler(volumesList))
+	m.Add("1.4", "GET", "/volumes/{name}", AuthorizationRequiredHandler(volumeInfo))
+	m.Add("1.4", "POST", "/volumes", AuthorizationRequiredHandler(volumeCreate))
+	m.Add("1.4", "POST", "/volumes/{name}", AuthorizationRequiredHandler(volumeUpdate))
+	m.Add("1.4", "GET", "/volumeplans", AuthorizationRequiredHandler(volumePlansList))
+
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.0", "GET", "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
 	m.Add("1.0", "GET", "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))

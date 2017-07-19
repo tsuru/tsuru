@@ -74,6 +74,7 @@ var (
 	TargetTypeInstallHost     = TargetType("install-host")
 	TargetTypeEventBlock      = TargetType("event-block")
 	TargetTypeCluster         = TargetType("cluster")
+	TargetTypeVolume          = TargetType("volume")
 )
 
 const (
