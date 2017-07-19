@@ -134,18 +134,9 @@ func getDockerClient() (*docker.Client, error) {
 }
 
 func (b *dockerBuilder) PlatformRemove(name string) error {
-	provisioners, err := provision.Registry()
+	client, err := getDockerClient()
 	if err != nil {
 		return err
-	}
-	var client *docker.Client
-	for _, p := range provisioners {
-		if provisioner, ok := p.(provision.BuilderDeploy); ok {
-			client, err = provisioner.GetDockerClient(nil)
-			if err != nil {
-				return err
-			}
-		}
 	}
 	img, err := client.InspectImage(image.PlatformImageName(name))
 	if err != nil {

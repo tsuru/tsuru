@@ -172,6 +172,40 @@ func (s *S) TestPlatformRemove(c *check.C) {
 	c.Assert(requests[3].URL.Path, check.Matches, "/images/[^/]+")
 }
 
+func (s *S) TestPlatformRemoveProvisionerError(c *check.C) {
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	var b dockerBuilder
+	err = b.PlatformRemove("test")
+	c.Assert(err, check.ErrorMatches, "No node found")
+}
+
+func (s *S) TestPlatformRemoveNoProvisioner(c *check.C) {
+	provision.Unregister("fake")
+	defer func() {
+		provision.Register("fake", func() (provision.Provisioner, error) {
+			return provisiontest.ProvisionerInstance, nil
+		})
+	}()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	var b dockerBuilder
+	err = b.PlatformRemove("test")
+	c.Assert(err, check.ErrorMatches, "No Docker nodes available")
+}
+
 func (s *S) TestPlatformRemoveNoSuchImage(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
