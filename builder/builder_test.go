@@ -109,7 +109,7 @@ func (s S) TestPlatformAdd(c *check.C) {
 	Register("default-builder", &b3)
 	err := PlatformAdd(PlatformOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(platformAddCalls, check.Equals, 3)
+	c.Assert(platformAddCalls, check.Equals, 1)
 }
 
 func (s S) TestPlatformAddError(c *check.C) {
@@ -149,7 +149,7 @@ func (s S) TestPlatformUpdate(c *check.C) {
 	Register("default-builder", &b3)
 	err := PlatformUpdate(PlatformOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(platformUpdateCalls, check.Equals, 3)
+	c.Assert(platformUpdateCalls, check.Equals, 1)
 }
 
 func (s S) TestPlatformUpdateError(c *check.C) {
@@ -189,7 +189,7 @@ func (s S) TestPlatformRemove(c *check.C) {
 	Register("default-builder", &b3)
 	err := PlatformRemove("platform-name")
 	c.Assert(err, check.IsNil)
-	c.Assert(platformRemoveCalls, check.Equals, 3)
+	c.Assert(platformRemoveCalls, check.Equals, 1)
 }
 
 func (s S) TestPlatformRemoveError(c *check.C) {

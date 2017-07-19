@@ -83,20 +83,12 @@ func PlatformAdd(opts PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	built := false
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformAdd(opts)
-			if err != nil {
-				return err
-			}
-			built = true
+			return platformBuilder.PlatformAdd(opts)
 		}
 	}
-	if !built {
-		return errors.New("No builder available")
-	}
-	return nil
+	return errors.New("No builder available")
 }
 
 func PlatformUpdate(opts PlatformOptions) error {
@@ -104,20 +96,12 @@ func PlatformUpdate(opts PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	built := false
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformUpdate(opts)
-			if err != nil {
-				return err
-			}
-			built = true
+			return platformBuilder.PlatformUpdate(opts)
 		}
 	}
-	if !built {
-		return errors.New("No builder available")
-	}
-	return nil
+	return errors.New("No builder available")
 }
 
 func PlatformRemove(name string) error {
@@ -125,18 +109,10 @@ func PlatformRemove(name string) error {
 	if err != nil {
 		return err
 	}
-	built := false
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformRemove(name)
-			if err != nil {
-				return err
-			}
-			built = true
+			return platformBuilder.PlatformRemove(name)
 		}
 	}
-	if !built {
-		return errors.New("No builder available")
-	}
-	return nil
+	return errors.New("No builder available")
 }
