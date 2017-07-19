@@ -8,6 +8,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -66,17 +68,20 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		return err
 	}
 	var client *docker.Client
+	multiErr := tsuruErrors.NewMultiError()
 	for _, p := range provisioners {
 		if provisioner, ok := p.(provision.BuilderDeploy); ok {
 			client, err = provisioner.GetDockerClient(nil)
-			if client != nil && err == nil {
+			if err != nil {
+				multiErr.Add(err)
+			} else if client != nil {
 				break
 			}
 		}
 	}
 	if client == nil {
-		if err != nil {
-			return err
+		if multiErr.Len() > 0 {
+			return fmt.Errorf("%s", multiErr)
 		}
 		return errors.New("No Docker nodes available")
 	}
