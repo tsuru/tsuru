@@ -124,6 +124,11 @@ func (s S) TestPlatformAddError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, errMsg)
 }
 
+func (s S) TestPlatformAddNoBuilder(c *check.C) {
+	err := PlatformAdd(PlatformOptions{})
+	c.Assert(err, check.ErrorMatches, "No builder available")
+}
+
 func (s S) TestPlatformUpdate(c *check.C) {
 	platformUpdateCalls := 0
 	callCounter := func(PlatformOptions, string) error {
@@ -159,6 +164,11 @@ func (s S) TestPlatformUpdateError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, errMsg)
 }
 
+func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
+	err := PlatformUpdate(PlatformOptions{})
+	c.Assert(err, check.ErrorMatches, "No builder available")
+}
+
 func (s S) TestPlatformRemove(c *check.C) {
 	platformRemoveCalls := 0
 	callCounter := func(PlatformOptions, string) error {
@@ -192,4 +202,9 @@ func (s S) TestPlatformRemoveError(c *check.C) {
 	Register("my-builder", &b1)
 	err := PlatformRemove("platform-name")
 	c.Assert(err, check.ErrorMatches, errMsg)
+}
+
+func (s S) TestPlatformRemoveNoBuilder(c *check.C) {
+	err := PlatformRemove("platform-name")
+	c.Assert(err, check.ErrorMatches, "No builder available")
 }
