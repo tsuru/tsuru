@@ -91,6 +91,7 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 	s.p.cluster, err = cluster.New(nil, s.p.storage, "",
 		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
+	c.Assert(err, check.IsNil)
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
 	err = dbtest.ClearAllCollections(coll.Database)
