@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/fsouza/go-dockerclient/testing"
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
@@ -43,6 +44,8 @@ type HandlersSuite struct {
 	token       auth.Token
 	team        *auth.Team
 	clusterSess *mgo.Session
+	p           *dockerProvisioner
+	server      *dtesting.DockerServer
 }
 
 var _ = check.Suite(&HandlersSuite{})
@@ -79,9 +82,15 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 	queue.ResetQueue()
 	err := clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &dockerProvisioner{}
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
+	mainDockerProvisioner = s.p
 	err = mainDockerProvisioner.Initialize()
 	c.Assert(err, check.IsNil)
+	s.p.cluster, err = cluster.New(nil, s.p.storage, "",
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
+	)
 	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
 	err = dbtest.ClearAllCollections(coll.Database)
@@ -90,6 +99,10 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 		Scheme:  permission.PermAll,
 		Context: permission.PermissionContext{CtxType: permission.CtxGlobal},
 	})
+}
+
+func (s *HandlersSuite) TearDownTest(c *check.C) {
+	s.server.Stop()
 }
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
@@ -285,12 +298,14 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartNoApps(c *check.C)
 	})
 }
 
-func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
+func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 	appPools := [][]string{{"app1", "pool1"}, {"app2", "pool2"}, {"app3", "pool2"}}
+	storage, err := db.Conn()
+	c.Assert(err, check.IsNil)
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
 		provision.AddPool(opts)
-		err := s.newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
+		err := newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
 		appStruct := &app.App{
@@ -299,7 +314,8 @@ func (s *S) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.C) {
 			Pool:     opts.Name,
 			Router:   "fake",
 		}
-		err = s.storage.Apps().Insert(appStruct)
+
+		err = storage.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
 		err = s.p.Provision(appStruct)
 		c.Assert(err, check.IsNil)

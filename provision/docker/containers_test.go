@@ -29,7 +29,7 @@ import (
 func (s *S) TestMoveContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -82,7 +82,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -124,7 +124,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 func (s *S) TestMoveContainer(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -182,7 +182,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 func (s *S) TestMoveContainerStopped(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
@@ -214,7 +214,7 @@ func (s *S) TestMoveContainerStopped(c *check.C) {
 func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
@@ -248,7 +248,7 @@ func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(appInstance)
@@ -282,7 +282,7 @@ func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 func (s *S) TestRebalanceContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -331,7 +331,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -385,7 +385,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -471,9 +471,9 @@ func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-otherapp", nil)
+	err = newFakeImage(p, "tsuru/app-otherapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -526,7 +526,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 func (s *S) TestRebalanceContainersDry(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	err = newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)

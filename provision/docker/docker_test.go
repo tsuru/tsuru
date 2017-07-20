@@ -68,7 +68,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		}
 		container.SetStatus(p, provision.Status(opts.Status), false)
 	}
-	err := s.newFakeImage(p, imageName, customData)
+	err := newFakeImage(p, imageName, customData)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if err != nil {
 		return nil, err
 	}
-	err = s.newFakeImage(p, imageID, nil)
+	err = newFakeImage(p, imageID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (s *S) removeTestContainer(c *container.Container) error {
 	return c.Remove(s.p)
 }
 
-func (s *S) newFakeImage(p *dockerProvisioner, repo string, customData map[string]interface{}) error {
+func newFakeImage(p *dockerProvisioner, repo string, customData map[string]interface{}) error {
 	if customData == nil {
 		customData = map[string]interface{}{
 			"processes": map[string]interface{}{
@@ -215,7 +215,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 }
 
 func (s *S) TestStart(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	err := newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID := image.GetBuildImage(app)
@@ -234,7 +234,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	cont.Status = provision.StatusStopped.String()
-	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	err = newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageID := image.GetBuildImage(app)
@@ -278,7 +278,7 @@ func (s *S) TestPushImage(c *check.C) {
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
+	err = newFakeImage(&p, "localhost:3030/base/img", nil)
 	c.Assert(err, check.IsNil)
 	err = p.PushImage("localhost:3030/base/img", "")
 	c.Assert(err, check.IsNil)
@@ -287,7 +287,7 @@ func (s *S) TestPushImage(c *check.C) {
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/base/img/json")
 	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/base/img/push")
 	c.Assert(requests[2].URL.RawQuery, check.Equals, "")
-	err = s.newFakeImage(&p, "localhost:3030/base/img:v2", nil)
+	err = newFakeImage(&p, "localhost:3030/base/img:v2", nil)
 	c.Assert(err, check.IsNil)
 	err = p.PushImage("localhost:3030/base/img", "v2")
 	c.Assert(err, check.IsNil)
@@ -316,7 +316,7 @@ func (s *S) TestPushImageAuth(c *check.C) {
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
+	err = newFakeImage(&p, "localhost:3030/base/img", nil)
 	c.Assert(err, check.IsNil)
 	err = p.PushImage("localhost:3030/base/img", "")
 	c.Assert(err, check.IsNil)
@@ -405,7 +405,7 @@ func (s *S) TestGetDockerClientNoSuchNode(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test-docker-client"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	err = newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "myapp",
@@ -435,7 +435,7 @@ func (s *S) TestGetDockerClientWithApp(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test-docker-client"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	err = newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "myapp",

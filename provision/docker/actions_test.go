@@ -177,7 +177,7 @@ func (s *S) TestCreateContainerName(c *check.C) {
 func (s *S) TestCreateContainerForward(c *check.C) {
 	config.Set("docker:user", "ubuntu")
 	defer config.Unset("docker:user")
-	err := s.newFakeImage(s.p, "tsuru/python", nil)
+	err := newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
@@ -231,7 +231,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 func (s *S) TestCreateContainerBackward(c *check.C) {
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/python", nil)
+	err = newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	defer dcli.RemoveImage("tsuru/python")
 	conta, err := s.newContainer(nil, nil)
@@ -729,7 +729,7 @@ func (s *S) TestStartContainerForward(c *check.C) {
 func (s *S) TestStartContainerBackward(c *check.C) {
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/python", nil)
+	err = newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	defer dcli.RemoveImage("tsuru/python")
 	conta, err := s.newContainer(nil, nil)
@@ -763,7 +763,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	imageID, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, imageID, nil)
+	err = newFakeImage(p, imageID, nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -794,7 +794,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	defer coll.Close()
 	imageID, err := image.AppNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, imageID, nil)
+	err = newFakeImage(p, imageID, nil)
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -821,7 +821,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 }
 
 func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python", nil)
+	err := newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp-xxx-1", "python", 0)
 	defer s.p.Destroy(app)
@@ -905,7 +905,7 @@ func (s *S) TestFollowLogsAndCommitName(c *check.C) {
 }
 
 func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python", nil)
+	err := newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := image.AppNewImageName(app.GetName())
@@ -939,7 +939,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 }
 
 func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python", nil)
+	err := newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
@@ -964,7 +964,7 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	s.server.PrepareFailure("failed to wait for the container", "/containers/.*/wait")
 	defer s.server.ResetFailure("failed to wait for the container")
-	err := s.newFakeImage(s.p, "tsuru/python", nil)
+	err := newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container.Container{Container: types.Container{AppName: "mightyapp"}}
@@ -1012,7 +1012,7 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 			"worker": "python myworker.py",
 		},
 	}
-	err := s.newFakeImage(s.p, "tsuru/app-"+appName, customData)
+	err := newFakeImage(s.p, "tsuru/app-"+appName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	s.p.Provision(fakeApp)
@@ -1065,7 +1065,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = s.newFakeImage(s.p, imageName, customData)
+	err = newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
@@ -1122,7 +1122,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = s.newFakeImage(s.p, imageName, customData)
+	err = newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
@@ -1179,7 +1179,7 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 			"web": "python start_app.py",
 		},
 	}
-	err = s.newFakeImage(s.p, imageName, customData)
+	err = newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
@@ -1229,7 +1229,7 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 			"web": "python myapp.py",
 		},
 	}
-	err = s.newFakeImage(s.p, imageName, customData)
+	err = newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
@@ -1256,7 +1256,7 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 
 func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
 	appName := "my-fake-app"
-	err := s.newFakeImage(s.p, "tsuru/app-"+appName, nil)
+	err := newFakeImage(s.p, "tsuru/app-"+appName, nil)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	s.p.Provision(fakeApp)

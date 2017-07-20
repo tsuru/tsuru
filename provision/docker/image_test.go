@@ -106,9 +106,9 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	app2 := app.App{Name: "app2"}
 	err = s.storage.Apps().Insert(app1, app2)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/tsuru/app1", nil)
+	err = newFakeImage(&p, "localhost:3030/tsuru/app1", nil)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/tsuru/app2", nil)
+	err = newFakeImage(&p, "localhost:3030/tsuru/app2", nil)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &p
 	err = MigrateImages()
