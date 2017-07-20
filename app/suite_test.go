@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -91,6 +93,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("routers:fake-tls:type", "fake-tls")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
