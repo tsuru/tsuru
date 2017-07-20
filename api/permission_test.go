@@ -829,7 +829,6 @@ func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
 		c.Assert(err, check.IsNil)
 	}
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
 	c.StartTimer()
 	for i := 0; i < c.N; i++ {
 		b := bytes.NewBufferString(body)
@@ -837,7 +836,7 @@ func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
 		c.Assert(err, check.IsNil)
 		request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 	}
 	c.StopTimer()
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

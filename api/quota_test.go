@@ -26,9 +26,10 @@ import (
 )
 
 type QuotaSuite struct {
-	team  *auth.Team
-	user  *auth.User
-	token auth.Token
+	team       *auth.Team
+	user       *auth.User
+	token      auth.Token
+	testServer http.Handler
 }
 
 var _ = check.Suite(&QuotaSuite{})
@@ -38,6 +39,7 @@ func (s *QuotaSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_api_quota_test")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+	s.testServer = RunServer(true)
 }
 
 func (s *QuotaSuite) SetUpTest(c *check.C) {
@@ -83,8 +85,7 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var qt quota.Quota

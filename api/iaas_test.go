@@ -50,8 +50,7 @@ func (s *S) TestMachinesList(c *check.C) {
 	request, err := http.NewRequest("GET", "/iaas/machines", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var machines []iaas.Machine
@@ -81,8 +80,7 @@ func (s *S) TestMachinesDestroy(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/iaas/machines/myid1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeIaas, Value: "test-iaas"},
@@ -99,8 +97,7 @@ func (s *S) TestMachinesDestroyError(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/iaas/machines/myid1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "machine not found\n")
 }
@@ -134,8 +131,7 @@ func (s *S) TestTemplateList(c *check.C) {
 	request, err := http.NewRequest("GET", "/iaas/templates", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var templates []iaas.Template
@@ -174,8 +170,7 @@ func (s *S) TestTemplateCreate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
@@ -229,8 +224,7 @@ func (s *S) TestTemplateCreateAlreadyExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, "template name \"my-tpl\" already used\n")
 }
@@ -241,8 +235,7 @@ func (s *S) TestTemplateCreateBadRequest(c *check.C) {
 	request, err := http.NewRequest("POST", "/iaas/templates", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -263,8 +256,7 @@ func (s *S) TestTemplateDestroy(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/iaas/templates/tpl1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
@@ -306,8 +298,7 @@ func (s *S) TestTemplateUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
@@ -352,8 +343,7 @@ func (s *S) TestTemplateUpdateNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "template not found\n")
 }
@@ -364,8 +354,7 @@ func (s *S) TestTemplateUpdateBadRequest(c *check.C) {
 	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -395,8 +384,7 @@ func (s *S) TestTemplateUpdateIaasName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
@@ -444,7 +432,6 @@ func (s *S) TestTemplateUpdateNotRegistered(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "IaaS provider \"not-registered\" based on \"not-registered\" not registered\n")
 }

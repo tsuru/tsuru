@@ -28,8 +28,7 @@ func (s *S) TestAddPoolNameIsRequired(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, provision.ErrPoolNameIsRequired.Error()+"\n")
 }
@@ -41,8 +40,7 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
 	c.Assert(eventtest.EventDesc{
@@ -64,12 +62,10 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	rec = httptest.NewRecorder()
-	m = RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, provision.ErrPoolAlreadyExists.Error()+"\n")
 	c.Assert(eventtest.EventDesc{
@@ -90,8 +86,7 @@ func (s *S) TestAddPool(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	c.Assert(err, check.IsNil)
 	_, err = provision.GetPoolByName("pool1")
@@ -102,7 +97,7 @@ func (s *S) TestAddPool(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec = httptest.NewRecorder()
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	pool, err := provision.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
@@ -133,8 +128,7 @@ func (s *S) TestRemovePoolNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -148,8 +142,7 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	_, err = provision.GetPoolByName("pool1")
 	c.Assert(err, check.Equals, provision.ErrPoolNotFound)
@@ -179,9 +172,8 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
 	expectedError := "This pool has apps, you need to migrate or remove them before removing the pool\n"
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
 	c.Assert(rec.Body.String(), check.Equals, expectedError)
 }
@@ -208,9 +200,8 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
 	expectedError := "This pool has apps, you need to migrate or remove them before removing the pool\n"
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
 	c.Assert(rec.Body.String(), check.Equals, expectedError)
 }
@@ -226,8 +217,7 @@ func (s *S) TestAddTeamsToPoolWithoutTeam(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -242,8 +232,7 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -276,8 +265,7 @@ func (s *S) TestAddTeamsToPoolWithPoolContextPermission(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	p, err := provision.GetPoolByName("pool1")
 	c.Assert(err, check.IsNil)
@@ -293,8 +281,7 @@ func (s *S) TestAddTeamsToPoolNotFound(c *check.C) {
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -303,8 +290,7 @@ func (s *S) TestRemoveTeamsToPoolNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -319,8 +305,7 @@ func (s *S) TestRemoveTeamsToPoolWithoutTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
 }
 
@@ -339,8 +324,7 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	var p provision.Pool
 	err = s.conn.Pools().FindId(pool.Name).One(&p)
@@ -378,8 +362,7 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	var p provision.Pool
 	err = s.conn.Pools().FindId(pool.Name).One(&p)
@@ -461,8 +444,7 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "b "+token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusNoContent)
 }
 
@@ -571,8 +553,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 	teams, err := p.GetTeams()
@@ -600,8 +581,7 @@ func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 	p, err := provision.GetPoolByName("pool1")
@@ -623,8 +603,7 @@ func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	p, err := provision.GetPoolByName("pool2")
 	c.Assert(err, check.IsNil)
@@ -645,8 +624,7 @@ func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, provision.ErrDefaultPoolAlreadyExists.Error()+"\n")
 }
@@ -662,8 +640,7 @@ func (s *S) TestPoolUpdateProvisioner(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 	p, err := provision.GetPoolByName("pool1")
@@ -689,8 +666,7 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -708,8 +684,7 @@ func (s *S) TestPoolConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, request)
+	s.testServer.ServeHTTP(rec, request)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	var constraints []provision.PoolConstraint
 	err = json.NewDecoder(rec.Body).Decode(&constraints)
@@ -724,8 +699,7 @@ func (s *S) TestPoolConstraintListEmpty(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
@@ -743,8 +717,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*provision.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
@@ -782,8 +755,7 @@ func (s *S) TestPoolConstraintSetAppend(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	expected := []*provision.PoolConstraint{
 		{PoolExpr: "test1", Field: "team", Values: []string{"*"}},
@@ -813,8 +785,7 @@ func (s *S) TestPoolConstraintSetRequiresPoolExpr(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(rec.Body.String(), check.Equals, "You must provide a Pool Expression\n")
 }

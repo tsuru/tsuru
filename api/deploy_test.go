@@ -44,6 +44,7 @@ type DeploySuite struct {
 	team        *auth.Team
 	provisioner *provisiontest.FakeProvisioner
 	builder     *fake.FakeBuilder
+	testServer  http.Handler
 }
 
 var _ = check.Suite(&DeploySuite{})
@@ -78,6 +79,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.builder = fake.NewFakeBuilder()
 	builder.Register("fake", s.builder)
+	s.testServer = RunServer(true)
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
@@ -1195,8 +1197,7 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "Saving the difference between the old and new code\n")
 	err = evt.Done(nil)
@@ -1243,8 +1244,7 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := `Saving the difference between the old and new code
 `

@@ -5,6 +5,7 @@
 package api
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/gorilla/context"
@@ -36,6 +37,7 @@ type S struct {
 	token       auth.Token
 	provisioner *provisiontest.FakeProvisioner
 	Pool        string
+	testServer  http.Handler
 }
 
 var _ = check.Suite(&S{})
@@ -85,6 +87,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_base_test")
+	s.testServer = RunServer(true)
 }
 
 func (s *S) SetUpTest(c *check.C) {

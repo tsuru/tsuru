@@ -27,8 +27,7 @@ func (s *S) TestInstallHostAdd(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	defer s.conn.InstallHosts().RemoveAll(nil)
 	var hosts []install.Host
@@ -48,8 +47,7 @@ func (s *S) TestInstallHostReturnsForbiddenIfNoPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
 	var hosts []install.Host
@@ -72,8 +70,7 @@ func (s *S) TestInstallHostInfo(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	host := &install.Host{}
@@ -89,8 +86,7 @@ func (s *S) TestInstallHostInfoReturnsForbiddenIfNoPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
 }
@@ -105,8 +101,7 @@ func (s *S) TestInstallHostInfoReturnsNotFoundWhenHostDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Host unknown-host not found.\n")
 }
@@ -128,8 +123,7 @@ func (s *S) TestInstallHostList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	hosts := []install.Host{}
@@ -145,8 +139,7 @@ func (s *S) TestInstallHostListReturnsForbiddenIfNoPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
 }

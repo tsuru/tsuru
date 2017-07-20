@@ -24,8 +24,7 @@ func (s *S) TestPlanAdd(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	defer s.conn.Plans().RemoveAll(nil)
 	var plans []app.Plan
@@ -54,8 +53,7 @@ func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	defer s.conn.Plans().RemoveAll(nil)
 	var plans []app.Plan
@@ -73,8 +71,7 @@ func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	defer s.conn.Plans().RemoveAll(nil)
 	var plans []app.Plan
@@ -92,8 +89,7 @@ func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	defer s.conn.Plans().RemoveAll(nil)
 	var plans []app.Plan
@@ -112,8 +108,7 @@ func (s *S) TestPlanAddWithNoPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -124,8 +119,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	defer s.conn.Plans().RemoveAll(nil)
 	var plans []app.Plan
@@ -140,8 +134,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m = RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
@@ -162,8 +155,7 @@ func (s *S) TestPlanListEmpty(c *check.C) {
 	request, err := http.NewRequest("GET", "/plans", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
@@ -181,8 +173,7 @@ func (s *S) TestPlanList(c *check.C) {
 	request, err := http.NewRequest("GET", "/plans", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var plans []app.Plan
@@ -205,8 +196,7 @@ func (s *S) TestPlanRemove(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/plans/plan1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var plans []app.Plan
 	err = s.conn.Plans().Find(nil).All(&plans)
@@ -234,8 +224,7 @@ func (s *S) TestPlanRemoveNoPermission(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/plans/"+plan.Name, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -244,7 +233,6 @@ func (s *S) TestPlanRemoveInvalid(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/plans/plan999", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }

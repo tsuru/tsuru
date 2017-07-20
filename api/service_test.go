@@ -29,11 +29,11 @@ import (
 )
 
 type ProvisionSuite struct {
-	conn  *db.Storage
-	team  *auth.Team
-	user  *auth.User
-	token auth.Token
-	m     http.Handler
+	conn       *db.Storage
+	team       *auth.Team
+	user       *auth.User
+	token      auth.Token
+	testServer http.Handler
 }
 
 var _ = check.Suite(&ProvisionSuite{})
@@ -50,7 +50,7 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
-	s.m = RunServer(true)
+	s.testServer = RunServer(true)
 }
 
 func (s *ProvisionSuite) TearDownTest(c *check.C) {
@@ -94,7 +94,7 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 	c.Assert(err, check.IsNil)
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	services := make([]service.ServiceModel, 1)
 	err = json.Unmarshal(recorder.Body.Bytes(), &services)
@@ -113,7 +113,7 @@ func (s *ProvisionSuite) TestServiceListGetAllServicesFromUsersTeam(c *check.C) 
 func (s *ProvisionSuite) TestServiceListEmptyList(c *check.C) {
 	recorder, request := s.makeRequestToServicesHandler(c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
@@ -139,7 +139,7 @@ func (s *ProvisionSuite) makeRequest(method, url, body string, c *check.C) (*htt
 
 func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 	recorder, request := s.makeRequestToCreateHandler(c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	query := bson.M{"_id": "some-service"}
 	var rService service.Service
@@ -165,10 +165,10 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 
 func (s *ProvisionSuite) TestServiceCreateNameExists(c *check.C) {
 	recorder, request := s.makeRequestToCreateHandler(c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	recorder, request = s.makeRequestToCreateHandler(c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, "Service already exists.\n")
 }
@@ -181,7 +181,7 @@ func (s *ProvisionSuite) ServiceTestCreateWithoutTeam(c *check.C) {
 	v.Set("endpoint", "someservices.com")
 	recorder, request := s.makeRequest("POST", "/service", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": "some-service"}
 	var rService service.Service
@@ -211,7 +211,7 @@ func (s *ProvisionSuite) TestCreateHandlerWithoutTeamUserWithMultiplePermissions
 		},
 	)
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide a team responsible for this service in the manifest file.\n")
 }
@@ -222,7 +222,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHa
 	v.Set("password", "xxxx")
 	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service production endpoint is required\n")
 }
@@ -233,7 +233,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestWithoutPassword(c *ch
 	v.Set("team", "tsuruteam")
 	v.Set("endpoint", "someservice.com")
 	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service id is required\n")
 }
@@ -245,7 +245,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestWithoutId(c *check.C)
 	v.Set("endpoint", "someservice.com")
 	recorder, request := s.makeRequest("POST", "/services", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service id is required\n")
 }
@@ -265,7 +265,7 @@ func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
 	v.Set("endpoint", "mysqlapi.com")
 	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(err, check.IsNil)
@@ -297,7 +297,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutPassword(c *ch
 	v.Set("team", "tsuruteam")
 	v.Set("endpoint", "someservice.com")
 	recorder, request := s.makeRequest("PUT", "/services/some-service", v.Encode(), c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service password is required\n")
 }
@@ -316,7 +316,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutProductionEndp
 	v.Set("password", "zzzz")
 	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service production endpoint is required\n")
 }
@@ -329,7 +329,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c
 	v.Set("endpoint", "mysqlapi.com")
 	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
 }
@@ -349,7 +349,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTe
 	v.Set("endpoint", "mysqlapi.com")
 	recorder, request := s.makeRequest("PUT", "/services/mysqlapi", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -363,7 +363,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 	se.Create()
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": se.Name}
 	count, err := s.conn.Services().Find(query).Count()
@@ -382,7 +382,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *check.C) {
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *check.C) {
 	u := fmt.Sprintf("/services/%s", "mongodb")
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
 }
@@ -397,7 +397,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTe
 	se.Create()
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -415,7 +415,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.\n")
 }
@@ -447,7 +447,7 @@ func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
 	c.Assert(recorder.Body.String(), check.Equals, "a message")
@@ -496,7 +496,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	request.Header.Set("X-Custom", "my request header")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
 	c.Assert(recorder.Body.String(), check.Equals, "a message")
@@ -555,7 +555,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	request.Header.Set("X-Custom", "my request header")
 	request.Header.Set("Content-Type", "text/plain")
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
 	c.Assert(recorder.Body.String(), check.Equals, "a message")
@@ -596,7 +596,7 @@ func (s *ProvisionSuite) TestServiceProxyNoContent(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
@@ -620,7 +620,7 @@ func (s *ProvisionSuite) TestServiceProxyError(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.String(), check.Equals, "some error")
 }
@@ -632,7 +632,7 @@ func (s *ProvisionSuite) TestServiceProxyNotFound(c *check.C) {
 	reqAuth := "bearer " + s.token.GetValue()
 	request.Header.Set("Authorization", reqAuth)
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
 }
@@ -659,7 +659,7 @@ func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
 	request.Header.Set("Authorization", reqAuth)
 	request.Header.Set("X-Custom", "my request header")
 	recorder := &closeNotifierResponseRecorder{httptest.NewRecorder()}
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(proxyedRequest, check.IsNil)
 }
@@ -677,7 +677,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = se.Get()
 	c.Assert(err, check.IsNil)
@@ -696,7 +696,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 func (s *ProvisionSuite) TestGrantAccessToTeamServiceNotFound(c *check.C) {
 	u := fmt.Sprintf("/services/nononono/team/%s", s.team.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
 }
@@ -707,7 +707,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamNoAccess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -722,7 +722,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnNotFoundIfTheTeamDoes
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/nonono", se.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Team not found\n")
 }
@@ -739,7 +739,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamAlreadyAccess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
 	recorder, request := s.makeRequest("PUT", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
 
@@ -755,7 +755,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = se.Get()
 	c.Assert(err, check.IsNil)
@@ -774,7 +774,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *check.C) {
 	u := fmt.Sprintf("/services/nonono/team/%s", s.team.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
 }
@@ -792,7 +792,7 @@ func (s *ProvisionSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheGivenUserD
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -808,7 +808,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheTeam
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/nonono", se.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Team not found\n")
 }
@@ -825,7 +825,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, s.team.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned\n")
 }
@@ -844,7 +844,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 	c.Assert(err, check.IsNil)
 	u := fmt.Sprintf("/services/%s/team/%s", se.Name, t.Name)
 	recorder, request := s.makeRequest("DELETE", u, "", c)
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
 
@@ -853,7 +853,7 @@ func (s *ProvisionSuite) TestAddDocServiceDoesNotExist(c *check.C) {
 	v.Set("doc", "doc")
 	recorder, request := s.makeRequest("PUT", "/services/mongodb/doc", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -869,7 +869,7 @@ func (s *ProvisionSuite) TestAddDoc(c *check.C) {
 	v.Set("doc", "doc")
 	recorder, request := s.makeRequest("PUT", "/services/some-service/doc", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	query := bson.M{"_id": "some-service"}
 	var serv service.Service
@@ -894,6 +894,6 @@ func (s *ProvisionSuite) TestAddDocUserHasNoAccess(c *check.C) {
 	v.Set("doc", "doc")
 	recorder, request := s.makeRequest("PUT", "/services/mysql/doc", v.Encode(), c)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }

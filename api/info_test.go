@@ -17,8 +17,7 @@ func (s *S) TestInfo(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/info", nil)
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	expected := map[string]interface{}{

@@ -7,6 +7,7 @@ package api
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"sort"
@@ -25,10 +26,11 @@ import (
 )
 
 type LogSuite struct {
-	conn    *db.Storage
-	logConn *db.LogStorage
-	token   auth.Token
-	team    *auth.Team
+	conn       *db.Storage
+	logConn    *db.LogStorage
+	token      auth.Token
+	team       *auth.Team
+	testServer http.Handler
 }
 
 var _ = check.Suite(&LogSuite{})
@@ -49,6 +51,7 @@ func (s *LogSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_log_api_tests")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+	s.testServer = RunServer(true)
 }
 
 func (s *LogSuite) SetUpTest(c *check.C) {
@@ -109,8 +112,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	`
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	srv := httptest.NewServer(m)
+	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
 	testServerURL, err := url.Parse(srv.URL)
 	c.Assert(err, check.IsNil)
@@ -177,8 +179,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	`
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	srv := httptest.NewServer(m)
+	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
 	testServerURL, err := url.Parse(srv.URL)
 	c.Assert(err, check.IsNil)
@@ -224,8 +225,7 @@ loop:
 }
 
 func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
-	m := RunServer(true)
-	srv := httptest.NewServer(m)
+	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
 	testServerURL, err := url.Parse(srv.URL)
 	c.Assert(err, check.IsNil)

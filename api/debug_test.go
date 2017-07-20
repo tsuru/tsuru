@@ -16,8 +16,7 @@ func (s *S) TestDumpGoroutines(c *check.C) {
 	request, err := http.NewRequest("GET", "/debug/goroutines", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Matches, `(?s)goroutine \d+ \[running\]:.*`)
 }

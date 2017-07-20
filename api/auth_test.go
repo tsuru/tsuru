@@ -38,11 +38,12 @@ import (
 )
 
 type AuthSuite struct {
-	team   *auth.Team
-	team2  *auth.Team
-	user   *auth.User
-	token  auth.Token
-	server *authtest.SMTPServer
+	team       *auth.Team
+	team2      *auth.Team
+	user       *auth.User
+	token      auth.Token
+	server     *authtest.SMTPServer
+	testServer http.Handler
 }
 
 var _ = check.Suite(&AuthSuite{})
@@ -63,6 +64,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("smtp:password", "123456")
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
+	s.testServer = RunServer(true)
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
@@ -112,8 +114,7 @@ func (s *AuthSuite) TestCreateUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
@@ -133,8 +134,7 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
@@ -148,8 +148,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.IsNil)
@@ -165,8 +164,7 @@ func (s *AuthSuite) TestCreateUserEmailAlreadyExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Matches, "this email is already registered\n")
 }
@@ -177,22 +175,20 @@ func (s *AuthSuite) TestCreateUserEmailIsNotValid(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "invalid email\n")
 }
 
 func (s *AuthSuite) TestCreateUserPasswordHasLessThan6CharactersOrMoreThan50Characters(c *check.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
-	m := RunServer(true)
 	for _, password := range passwords {
 		b := strings.NewReader("email=nobody@noboy.com&password=" + password)
 		request, err := http.NewRequest("POST", "/users", b)
 		c.Assert(err, check.IsNil)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		errMsg := "password length should be least 6 characters and at most 50 characters\n"
 		c.Assert(recorder.Body.String(), check.Equals, errMsg)
@@ -208,8 +204,7 @@ func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys("nobody@me.myself")
 	c.Assert(err, check.IsNil)
@@ -225,8 +220,7 @@ func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabled(c *check.C) {
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", oldUserRegistration)
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), check.Equals, createDisabledErr.Error()+"\n")
 }
@@ -247,8 +241,7 @@ func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *c
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", oldUserRegistration)
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), check.Equals, createDisabledErr.Error()+"\n")
 }
@@ -264,8 +257,7 @@ func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *c
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", oldUserRegistration)
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 }
 
@@ -276,8 +268,7 @@ func (s *AuthSuite) TestCreateUserRollsbackAfterRepositoryError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 	_, err = auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, check.NotNil)
@@ -292,8 +283,7 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var user auth.User
 	conn, _ := db.Conn()
@@ -313,8 +303,7 @@ func (s *AuthSuite) TestLoginPasswordMissing(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Matches, "^you must provide a password to login\n$")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
@@ -325,8 +314,7 @@ func (s *AuthSuite) TestLoginUserDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Matches, "^user not found\n$")
 }
@@ -340,8 +328,7 @@ func (s *AuthSuite) TestLoginPasswordDoesNotMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), check.Matches, "^Authentication failed, wrong password.\n$")
 }
@@ -352,8 +339,7 @@ func (s *AuthSuite) TestLoginEmailIsNotValid(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, native.ErrInvalidEmail.Error()+"\n")
 }
@@ -366,14 +352,13 @@ func (s *AuthSuite) TestLoginPasswordIsInvalid(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	m := RunServer(true)
 	for _, password := range passwords {
 		b := strings.NewReader("password=" + password)
 		request, err := http.NewRequest("POST", "/users/me@globo.com/tokens", b)
 		c.Assert(err, check.IsNil)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Matches, "Password.*\n")
 	}
@@ -398,8 +383,7 @@ func (s *AuthSuite) TestCreateTeam(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	t := new(auth.Team)
 	conn, _ := db.Conn()
@@ -424,8 +408,7 @@ func (s *AuthSuite) TestCreateTeamNameIsEmpty(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, auth.ErrInvalidTeamName.Error()+"\n")
 }
@@ -442,8 +425,7 @@ func (s *AuthSuite) TestCreateTeamAlreadyExists(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, "team already exists\n")
 }
@@ -484,8 +466,7 @@ func (s *AuthSuite) TestRemoveTeamAsAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
 	c.Assert(err, check.IsNil)
@@ -681,8 +662,7 @@ func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	s.user, err = auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
@@ -735,8 +715,7 @@ func (s *AuthSuite) TestAddKeyToUserKeyManagerDisabled(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "key management is disabled\n")
 }
@@ -757,8 +736,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *c
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Equals, "user already have this key\n")
 }
@@ -779,8 +757,7 @@ func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
@@ -802,8 +779,7 @@ func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+t.GetValue())
 	repository.Manager().RemoveUser(u.Email)
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "user not found\n")
 }
@@ -815,14 +791,13 @@ func (s *AuthSuite) TestRemoveKey(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	request, err = http.NewRequest("DELETE", "/users/keys/the-key", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(s.token.GetUserName()),
@@ -842,8 +817,7 @@ func (s *AuthSuite) TestRemoveKeyNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -854,8 +828,7 @@ func (s *AuthSuite) TestRemoveKeyFromUserKeyManagerDisabled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "key management is disabled\n")
 }
@@ -969,8 +942,7 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, check.IsNil)
@@ -1020,8 +992,7 @@ func (s *AuthSuite) TestChangePassword(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	otherUser, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
@@ -1049,8 +1020,7 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	msg := "password length should be least 6 characters and at most 50 characters\n"
 	c.Check(recorder.Body.String(), check.Equals, msg)
@@ -1072,8 +1042,7 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordAndConfirmPasswordD
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	msg := "New password and password confirmation didn't match.\n"
 	c.Check(recorder.Body.String(), check.Equals, msg)
@@ -1086,8 +1055,7 @@ func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *check
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	msg := "the given password didn't match the user's current password\n"
 	c.Assert(recorder.Body.String(), check.Equals, msg)
@@ -1095,7 +1063,6 @@ func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *check
 
 func (s *AuthSuite) TestChangePasswordInvalidPasswords(c *check.C) {
 	bodies := []string{"old=something", "new=something", "{}", "null"}
-	m := RunServer(true)
 	for _, body := range bodies {
 		b := strings.NewReader(body)
 		request, err := http.NewRequest("PUT", "/users/password", b)
@@ -1103,7 +1070,7 @@ func (s *AuthSuite) TestChangePasswordInvalidPasswords(c *check.C) {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "Both the old and the new passwords are required.\n")
 	}
@@ -1236,8 +1203,7 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 	request, err := http.NewRequest("GET", "/auth/scheme", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var parsed map[string]interface{}
@@ -1261,8 +1227,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got string
@@ -1364,8 +1329,7 @@ func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got string
@@ -1436,8 +1400,7 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var users []apiUser
@@ -1462,8 +1425,7 @@ func (s *AuthSuite) TestListUsersFilterByUserEmail(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
@@ -1487,8 +1449,7 @@ func (s *AuthSuite) TestListUsersFilterByRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
@@ -1519,8 +1480,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
@@ -1551,8 +1511,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	var users []apiUser
 	c.Assert(recorder.Body.String(), check.Equals, "Wrong context being passed.\n")
@@ -1570,8 +1529,7 @@ func (s *AuthSuite) TestListUsersLimitedUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
@@ -1596,8 +1554,7 @@ func (s *AuthSuite) TestListUsersLimitedUserWithMoreRoles(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
@@ -1736,10 +1693,9 @@ func (s *AuthSuite) BenchmarkListUsersManyUsers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
 	c.StartTimer()
 	for i := 0; i < c.N; i++ {
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 	}
 	c.StopTimer()
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -1771,8 +1727,7 @@ func (s *AuthSuite) TestUserListWithoutPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var users []apiUser

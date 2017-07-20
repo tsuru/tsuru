@@ -112,8 +112,7 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps := []app.App{}
@@ -147,8 +146,7 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps := []app.App{}
@@ -186,8 +184,7 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps := []app.App{}
@@ -223,8 +220,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps := []app.App{}
@@ -238,8 +234,7 @@ func (s *S) TestAppListFilteringByTags(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder = httptest.NewRecorder()
-	m = RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps = []app.App{}
@@ -270,8 +265,7 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps := []app.App{}
@@ -310,8 +304,7 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	apps := []app.App{}
@@ -332,7 +325,6 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -341,12 +333,12 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err = app.CreateApp(&app2, s.user)
@@ -356,7 +348,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app3, s.user)
@@ -366,8 +358,7 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
-	m = RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	apps := []app.App{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
@@ -387,7 +378,6 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 
 func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -396,11 +386,11 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag"}}
 	err = app.CreateApp(&app2, s.user)
@@ -410,15 +400,14 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	request, err = http.NewRequest("GET", "/apps?status=invalid&status=started", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
-	m = RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	apps := []app.App{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
@@ -473,8 +462,7 @@ func (s *S) TestAppList(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var apps []app.App
@@ -506,8 +494,7 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var apps []struct {
@@ -543,8 +530,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var apps []app.App
@@ -560,8 +546,7 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
@@ -586,8 +571,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.user.AddRole("deleter", myApp.Name)
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
@@ -614,8 +598,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheA
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -624,8 +607,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
@@ -644,8 +626,7 @@ func (s *S) TestDeleteAdminAuthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
@@ -665,8 +646,7 @@ func (s *S) TestAppInfo(c *check.C) {
 	err = role.AddPermissions("app.read")
 	c.Assert(err, check.IsNil)
 	s.user.AddRole("reader", expectedApp.Name)
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	err = json.Unmarshal(recorder.Body.Bytes(), &myApp)
@@ -687,8 +667,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *c
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -699,8 +678,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App SomeApp not found.\n")
 }
@@ -729,8 +707,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	defer conn.Close()
 	err = conn.Roles().RemoveId(role.Name)
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
@@ -774,8 +751,7 @@ func (s *S) TestCreateApp(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -819,8 +795,7 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -876,8 +851,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
@@ -918,8 +892,7 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
@@ -971,8 +944,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -1016,8 +988,7 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
@@ -1059,8 +1030,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":someapp.git"
 	var obtained map[string]string
@@ -1105,8 +1075,7 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + appName + ".git"
 	var obtained map[string]string
@@ -1150,8 +1119,7 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
@@ -1183,8 +1151,7 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
@@ -1220,8 +1187,7 @@ func (s *S) TestCreateAppTwoTeams(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide a team to execute this action.\n")
 }
@@ -1243,8 +1209,7 @@ func (s *S) TestCreateAppQuotaExceeded(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "Quota exceeded\n")
 	c.Assert(eventtest.EventDesc{
@@ -1270,8 +1235,7 @@ func (s *S) TestCreateAppInvalidName(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	msg := "Invalid app name, your app should have at most 63 " +
 		"characters, containing only lower case letters, numbers " +
@@ -1297,8 +1261,7 @@ func (s *S) TestCreateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
 }
@@ -1317,8 +1280,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Matches, "tsuru failed to create the app \"plainsofdawn\": there is already an app with this name\n")
 }
@@ -1341,8 +1303,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
@@ -1387,8 +1348,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
 		Context: permission.Context(permission.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid platform\n")
 }
@@ -1407,8 +1367,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var gotApp app.App
@@ -1440,8 +1399,7 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var gotApp app.App
@@ -1474,8 +1432,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	fmt.Printf("msg %s\n", recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
@@ -1508,8 +1465,7 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	fmt.Printf("msg %s\n", recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
@@ -1524,8 +1480,7 @@ func (s *S) TestUpdateAppWithRouterOnly(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
@@ -1550,8 +1505,7 @@ func (s *S) TestUpdateAppRouterOpts(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&gotApp)
@@ -1569,8 +1523,7 @@ func (s *S) TestUpdateAppImageReset(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&dbApp)
@@ -1588,8 +1541,7 @@ func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	expectedErr := &router.ErrRouterNotFound{Name: "invalid-router"}
 	c.Check(recorder.Body.String(), check.Equals, expectedErr.Error()+"\n")
@@ -1610,8 +1562,7 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
@@ -1632,8 +1583,7 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -1644,8 +1594,7 @@ func (s *S) TestUpdateAppPoolWhenAppDoesNotExist(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Matches, "^App not found.\n$")
 }
@@ -1670,8 +1619,7 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1692,8 +1640,7 @@ func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, app.ErrPlanNotFound.Error()+"\n")
 }
@@ -1712,8 +1659,7 @@ func (s *S) TestUpdateAppWithoutFlag(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	errorMessage := "Neither the description, plan, pool, router, team owner or platform were set. You must define at least one.\n"
 	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Check(recorder.Body.String(), check.Equals, errorMessage)
@@ -1730,8 +1676,7 @@ func (s *S) TestUpdateAppReturnsUnauthorizedIfNoPermissions(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, 403)
 }
 
@@ -1754,8 +1699,7 @@ func (s *S) TestUpdateAppWithTeamOwnerOnly(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
 	c.Assert(a.TeamOwner, check.Equals, team.Name)
@@ -1779,8 +1723,7 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusForbidden)
 	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
 	c.Assert(a.TeamOwner, check.Equals, s.team.Name)
@@ -1805,8 +1748,7 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 	req.Header.Set("Authorization", "bearer "+token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
+	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
 	c.Assert(a.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
@@ -1822,8 +1764,7 @@ func (s *S) TestAddUnits(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -1846,8 +1787,7 @@ func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App armorandsword not found.\n")
 }
@@ -1866,8 +1806,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -1940,8 +1879,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, `Quota exceeded. Available: 2. Requested: 3.`+"\n")
 	c.Assert(eventtest.EventDesc{
 		Target:          appTarget("armorandsword"),
@@ -1961,8 +1899,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName(a.Name)
@@ -2088,8 +2025,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
@@ -2158,8 +2094,7 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
@@ -2196,8 +2131,7 @@ func (s *S) TestSetNodeStatus(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	units, err = a.Units()
@@ -2246,8 +2180,7 @@ func (s *S) TestSetNodeStatusNotFound(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -2258,8 +2191,7 @@ func (s *S) TestSetNodeStatusNonInternalToken(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -2595,8 +2527,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of files"}`+"\n")
@@ -2629,8 +2560,7 @@ func (s *S) TestRun(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of\nfiles"}`+"\n")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -2661,8 +2591,7 @@ func (s *S) TestRunIsolated(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"lots of files"}`+"\n")
@@ -2696,8 +2625,7 @@ func (s *S) TestRunReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	expected := `{"Message":"failure output"}` + "\n" +
 		`{"Message":"","Error":"something went wrong"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Equals, expected)
@@ -2725,8 +2653,7 @@ func (s *S) TestRunReturnsBadRequestIfTheCommandIsMissing(c *check.C) {
 		request.Header.Set("content-type", "application/x-www-form-urlencoded")
 		request.Header.Set("authorization", "b "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
-		m := RunServer(true)
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "You must provide the command to run\n")
 	}
@@ -2738,8 +2665,7 @@ func (s *S) TestRunAppDoesNotExist(c *check.C) {
 	request.Header.Set("content-type", "application/x-www-form-urlencoded")
 	request.Header.Set("authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
@@ -2758,8 +2684,7 @@ func (s *S) TestRunUserDoesNotHaveAccessToTheApp(c *check.C) {
 	request.Header.Set("content-type", "application/x-www-form-urlencoded")
 	request.Header.Set("authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -2780,8 +2705,7 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := []bind.EnvVar{
 		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -2826,8 +2750,7 @@ func (s *S) TestGetEnv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := []map[string]interface{}{{
 		"name":   "DATABASE_HOST",
@@ -2859,8 +2782,7 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
 	expected := []map[string]interface{}{
@@ -2878,8 +2800,7 @@ func (s *S) TestGetEnvAppDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
@@ -2897,8 +2818,7 @@ func (s *S) TestGetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -2923,8 +2843,7 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	expected := []map[string]interface{}{{
 		"name":   "DATABASE_HOST",
@@ -2958,8 +2877,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("black-dog")
@@ -3003,8 +2921,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("black-dog")
@@ -3048,8 +2965,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	d = types.Envs{
@@ -3067,7 +2983,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("black-dog")
@@ -3112,8 +3028,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("vigil")
@@ -3166,8 +3081,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("losers")
@@ -3207,8 +3121,7 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("black-dog")
@@ -3241,8 +3154,7 @@ func (s *S) TestSetEnvMissingFormBody(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	msg := "missing form body\n"
 	c.Assert(recorder.Body.String(), check.Equals, msg)
@@ -3257,8 +3169,7 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	msg := "You must provide the list of environment variables\n"
 	c.Assert(recorder.Body.String(), check.Equals, msg)
@@ -3271,8 +3182,7 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
@@ -3301,8 +3211,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -3326,8 +3235,7 @@ func (s *S) TestUnsetEnv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("swift")
@@ -3368,8 +3276,7 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("swift")
@@ -3408,8 +3315,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("let-it-be")
@@ -3452,8 +3358,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	app, err := app.GetByName("letitbe")
@@ -3485,8 +3390,7 @@ func (s *S) TestUnsetEnvVariablesMissing(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide the list of environment variables.\n")
 }
@@ -3496,8 +3400,7 @@ func (s *S) TestUnsetEnvAppDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
 }
@@ -3517,8 +3420,7 @@ func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -3533,8 +3435,7 @@ func (s *S) TestAddCName(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -3561,8 +3462,7 @@ func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -3589,8 +3489,7 @@ func (s *S) TestAddCNameErrsOnInvalidCName(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
 	c.Assert(eventtest.EventDesc{
@@ -3614,8 +3513,7 @@ func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsEmpty(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Invalid cname\n")
 	c.Assert(eventtest.EventDesc{
@@ -3641,8 +3539,7 @@ func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissing(c *check.C) {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		request.Header.Set("Authorization", "b "+s.token.GetValue())
 		recorder := httptest.NewRecorder()
-		m := RunServer(true)
-		m.ServeHTTP(recorder, request)
+		s.testServer.ServeHTTP(recorder, request)
 		c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Check(recorder.Body.String(), check.Equals, "You must provide the cname.\n")
 	}
@@ -3655,8 +3552,7 @@ func (s *S) TestAddCNameHandlerUnknownApp(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -3675,8 +3571,7 @@ func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -3695,8 +3590,7 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -3729,8 +3623,7 @@ func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -3751,8 +3644,7 @@ func (s *S) TestRemoveCNameUnknownApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -3772,8 +3664,7 @@ func (s *S) TestRemoveCNameHandlerUserWithoutAccessToTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -4139,8 +4030,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 	errRegex := `Failed to bind app "painkiller" to service instance "mysql/my-mysql":.*`
 	c.Assert(recorder.Body.String(), check.Matches, errRegex+"\n")
@@ -4190,8 +4080,7 @@ func (s *S) TestBindHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
@@ -4260,8 +4149,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.provisioner.PrepareOutput([]byte("exported"))
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
@@ -4418,8 +4306,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	s.provisioner.PrepareOutput([]byte("exported"))
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var result service.ServiceInstance
@@ -4811,8 +4698,7 @@ func (s *S) TestRestartHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"---- Restarting the app \\\"stress\\\" ----\\n\"}\n{\"Message\":\"restarting app\"}\n")
@@ -4843,8 +4729,7 @@ func (s *S) TestRestartHandlerSingleProcess(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"---- Restarting process \\\"web\\\" ----\\n\"}\n{\"Message\":\"restarting app\"}\n")
@@ -4910,8 +4795,7 @@ func (s *S) TestSleepHandler(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Putting the app \\\"stress\\\" to sleep\\n\"}\n")
@@ -5008,11 +4892,10 @@ func (s *S) TestAddLog(c *check.C) {
 	withSourceRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	withSourceRequest.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	recorder = httptest.NewRecorder()
-	m.ServeHTTP(recorder, withSourceRequest)
+	s.testServer.ServeHTTP(recorder, withSourceRequest)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	want := []string{
 		"message 1",
@@ -5065,8 +4948,7 @@ func (s *S) TestSwap(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
@@ -5110,8 +4992,7 @@ func (s *S) TestSwapCnameOnly(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
@@ -5157,8 +5038,7 @@ func (s *S) TestSwapApp1Locked(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Matches, "app1: App locked by x, running /test. Acquired in .*\n")
 }
@@ -5178,8 +5058,7 @@ func (s *S) TestSwapApp2Locked(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(recorder.Body.String(), check.Matches, "app2: App locked by x, running /test. Acquired in .*\n")
 }
@@ -5201,8 +5080,7 @@ func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
 	c.Assert(recorder.Body.String(), check.Equals, "platforms don't match\n")
 	c.Assert(eventtest.EventDesc{
@@ -5247,8 +5125,7 @@ func (s *S) TestSwapIncompatibleUnits(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
 	c.Assert(recorder.Body.String(), check.Equals, "number of units doesn't match\n")
 }
@@ -5266,8 +5143,7 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "")
 }
@@ -5289,8 +5165,7 @@ func (s *S) TestStartHandler(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Starting the process \\\"web\\\"\\n\"}\n")
@@ -5320,8 +5195,7 @@ func (s *S) TestStopHandler(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"\\n ---\\u003e Stopping the process \\\"web\\\"\\n\"}\n")
@@ -5348,8 +5222,7 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "")
 	var dbApp app.App
@@ -5375,8 +5248,7 @@ func (s *S) TestForceDeleteLockOnlyWithPermission(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
@@ -5405,8 +5277,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	result := []map[string]interface{}{}
@@ -5440,8 +5311,7 @@ func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "unit \"invalid-unit-host\" not found\n")
 }
@@ -5470,8 +5340,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	result := []map[string]interface{}{}
@@ -5509,8 +5378,7 @@ func (s *S) TestMetricEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), check.Equals, "{\"METRICS_BACKEND\":\"fake\"}\n")
 }
@@ -5527,8 +5395,7 @@ func (s *S) TestMetricEnvsWhenUserDoesNotHaveAccess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
@@ -5537,8 +5404,7 @@ func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
 }
@@ -5552,8 +5418,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var parsed rebuild.RebuildRoutesResult
 	json.Unmarshal(recorder.Body.Bytes(), &parsed)
@@ -5574,8 +5439,7 @@ func (s *S) TestSetCertificate(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5603,8 +5467,7 @@ func (s *S) TestSetCertificateInvalidCname(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "invalid name\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
@@ -5623,8 +5486,7 @@ func (s *S) TestSetCertificateInvalidCertificate(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "x509: certificate is valid for app.io, not myapp.io\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
@@ -5643,8 +5505,7 @@ func (s *S) TestSetCertificateNonSupportedRouter(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "router does not support tls\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
@@ -5660,8 +5521,7 @@ func (s *S) TestUnsetCertificate(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5685,8 +5545,7 @@ func (s *S) TestUnsetCertificateWithoutCName(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide a cname.\n")
 }
@@ -5702,8 +5561,7 @@ func (s *S) TestUnsetCertificateInvalidCName(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "invalid name\n")
 }
@@ -5718,8 +5576,7 @@ func (s *S) TestListCertificates(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	certs := make(map[string]string)
 	err = json.Unmarshal(recorder.Body.Bytes(), &certs)

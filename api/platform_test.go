@@ -31,8 +31,9 @@ import (
 )
 
 type PlatformSuite struct {
-	conn    *db.Storage
-	builder *fake.FakeBuilder
+	conn       *db.Storage
+	builder    *fake.FakeBuilder
+	testServer http.Handler
 }
 
 var _ = check.Suite(&PlatformSuite{})
@@ -56,6 +57,7 @@ func createToken(c *check.C) auth.Token {
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	s.builder = fake.NewFakeBuilder()
 	builder.Register("fake", s.builder)
+	s.testServer = RunServer(true)
 }
 
 func (s *PlatformSuite) SetUpTest(c *check.C) {
@@ -143,8 +145,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
@@ -174,8 +175,7 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	request.Header.Add("Authorization", "b "+token.GetValue())
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var msg io.SimpleJsonMessage
@@ -258,7 +258,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
-func (*PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
 	var buf bytes.Buffer
 	dockerfileURL := "http://localhost/Dockerfile"
 	writer := multipart.NewWriter(&buf)
@@ -269,19 +269,17 @@ func (*PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
-func (*PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
+func (s *PlatformSuite) TestPlatformRemoveNotFound(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/platforms/not-found", nil)
 	c.Assert(err, check.IsNil)
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
@@ -319,8 +317,7 @@ func (s *PlatformSuite) TestPlatformList(c *check.C) {
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got []app.Platform
@@ -348,8 +345,7 @@ func (s *PlatformSuite) TestPlatformListGetDisabledPlatforms(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got []app.Platform
@@ -381,8 +377,7 @@ func (s *PlatformSuite) TestPlatformListUserList(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var got []app.Platform
@@ -397,7 +392,6 @@ func (s *PlatformSuite) TestPlatformListNoContent(c *check.C) {
 	token := createToken(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }

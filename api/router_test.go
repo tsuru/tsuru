@@ -24,8 +24,7 @@ func (s *S) TestRoutersListNoContent(c *check.C) {
 	request, err := http.NewRequest("GET", "/plans/routers", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
@@ -44,8 +43,7 @@ func (s *S) TestRoutersList(c *check.C) {
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var routers []router.PlanRouter
@@ -69,8 +67,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
+	s.testServer.ServeHTTP(recorder, request)
 	var routers []router.PlanRouter
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
