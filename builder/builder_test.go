@@ -24,14 +24,11 @@ var _ = check.Suite(S{})
 var _ PlatformBuilder = &customPlatformBuilder{}
 var _ Builder = &customPlatformBuilder{}
 
-var platformOpCalls = 0
-
 func callCounter(PlatformOptions, string) error {
-	platformOpCalls++
 	return nil
 }
+
 func callCounterWithError(PlatformOptions, string) error {
-	platformOpCalls++
 	return errors.New("something is wrong")
 }
 
@@ -109,9 +106,7 @@ func (s S) TestPlatformAdd(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	platformOpCalls = 0
 	err := PlatformAdd(PlatformOptions{})
-	c.Assert(platformOpCalls, check.Equals, 1)
 	c.Assert(err, check.IsNil)
 }
 
@@ -124,9 +119,7 @@ func (s S) TestPlatformAddError(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	platformOpCalls = 0
 	err := PlatformAdd(PlatformOptions{})
-	c.Assert(platformOpCalls, check.Equals, 2)
 	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
 }
 
@@ -144,9 +137,7 @@ func (s S) TestPlatformUpdate(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	platformOpCalls = 0
 	err := PlatformUpdate(PlatformOptions{})
-	c.Assert(platformOpCalls, check.Equals, 2)
 	c.Assert(err, check.IsNil)
 }
 
@@ -163,9 +154,7 @@ func (s S) TestPlatformUpdateError(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
-	platformOpCalls = 0
 	err := PlatformUpdate(PlatformOptions{})
-	c.Assert(platformOpCalls, check.Equals, 3)
 	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong something is wrong")
 }
 
@@ -187,9 +176,7 @@ func (s S) TestPlatformRemove(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
-	platformOpCalls = 0
 	err := PlatformRemove("platform-name")
-	c.Assert(platformOpCalls, check.Equals, 3)
 	c.Assert(err, check.IsNil)
 }
 
@@ -202,9 +189,7 @@ func (s S) TestPlatformRemoveError(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	platformOpCalls = 0
 	err := PlatformRemove("platform-name")
-	c.Assert(platformOpCalls, check.Equals, 2)
 	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
 }
 
