@@ -34,6 +34,7 @@ var (
 	PermAppRunShell                      = PermissionRegistry.get("app.run.shell")                       // [global app team pool]
 	PermAppUpdate                        = PermissionRegistry.get("app.update")                          // [global app team pool]
 	PermAppUpdateBind                    = PermissionRegistry.get("app.update.bind")                     // [global app team pool]
+	PermAppUpdateBindVolume              = PermissionRegistry.get("app.update.bind-volume")              // [global app team pool]
 	PermAppUpdateCertificate             = PermissionRegistry.get("app.update.certificate")              // [global app team pool]
 	PermAppUpdateCertificateSet          = PermissionRegistry.get("app.update.certificate.set")          // [global app team pool]
 	PermAppUpdateCertificateUnset        = PermissionRegistry.get("app.update.certificate.unset")        // [global app team pool]
@@ -62,6 +63,7 @@ var (
 	PermAppUpdateTags                    = PermissionRegistry.get("app.update.tags")                     // [global app team pool]
 	PermAppUpdateTeamowner               = PermissionRegistry.get("app.update.teamowner")                // [global app team pool]
 	PermAppUpdateUnbind                  = PermissionRegistry.get("app.update.unbind")                   // [global app team pool]
+	PermAppUpdateUnbindVolume            = PermissionRegistry.get("app.update.unbind-volume")            // [global app team pool]
 	PermAppUpdateUnit                    = PermissionRegistry.get("app.update.unit")                     // [global app team pool]
 	PermAppUpdateUnitAdd                 = PermissionRegistry.get("app.update.unit.add")                 // [global app team pool]
 	PermAppUpdateUnitRegister            = PermissionRegistry.get("app.update.unit.register")            // [global app team pool]
@@ -201,4 +203,6 @@ var (
 	PermVolumeRead                       = PermissionRegistry.get("volume.read")                         // [global volume team pool]
 	PermVolumeReadEvents                 = PermissionRegistry.get("volume.read.events")                  // [global volume team pool]
 	PermVolumeUpdate                     = PermissionRegistry.get("volume.update")                       // [global volume team pool]
+	PermVolumeUpdateBind                 = PermissionRegistry.get("volume.update.bind")                  // [global volume team pool]
+	PermVolumeUpdateUnbind               = PermissionRegistry.get("volume.update.unbind")                // [global volume team pool]
 )

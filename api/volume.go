@@ -131,7 +131,15 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	dec.DecodeValues(&inputVolume, r.Form)
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
-	canUpdate := permission.Check(t, permission.PermVolumeCreate, contextsForVolume(&inputVolume)...)
+	inputVolume.Name = r.URL.Query().Get(":name")
+	dbVolume, err := volume.Load(inputVolume.Name)
+	if err != nil {
+		if err == volume.ErrVolumeNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	canUpdate := permission.Check(t, permission.PermVolumeUpdate, contextsForVolume(dbVolume)...)
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
@@ -140,19 +148,12 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Kind:       permission.PermVolumeUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(r.Form),
-		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(&inputVolume)...),
+		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	_, err = volume.Load(inputVolume.Name)
-	if err != nil {
-		if err == volume.ErrVolumeNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
-		return err
-	}
 	return inputVolume.Save()
 }
 
@@ -171,4 +172,124 @@ func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(plansProvisioners)
+}
+
+func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	volumeName := r.URL.Query().Get(":name")
+	dbVolume, err := volume.Load(volumeName)
+	if err != nil {
+		if err == volume.ErrVolumeNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	canDelete := permission.Check(t, permission.PermVolumeDelete, contextsForVolume(dbVolume)...)
+	if !canDelete {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeVolume, Value: volumeName},
+		Kind:       permission.PermVolumeDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	return dbVolume.Delete()
+}
+
+func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	var bindInfo struct {
+		App        string
+		MountPoint string
+		ReadOnly   bool
+	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	dec.DecodeValues(&bindInfo, r.Form)
+	dbVolume, err := volume.Load(r.URL.Query().Get(":name"))
+	if err != nil {
+		if err == volume.ErrVolumeNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	canBindVolume := permission.Check(t, permission.PermVolumeUpdateBind, contextsForVolume(dbVolume)...)
+	if !canBindVolume {
+		return permission.ErrUnauthorized
+	}
+	a, err := getAppFromContext(bindInfo.App, r)
+	if err != nil {
+		return err
+	}
+	canBindApp := permission.Check(t, permission.PermAppUpdateBindVolume, contextsForApp(&a)...)
+	if !canBindApp {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
+		Kind:       permission.PermVolumeUpdateBind,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	return dbVolume.BindApp(bindInfo.App, bindInfo.MountPoint, bindInfo.ReadOnly)
+}
+
+func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := r.ParseForm()
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	var bindInfo struct {
+		App        string
+		MountPoint string
+	}
+	dec := form.NewDecoder(nil)
+	dec.IgnoreCase(true)
+	dec.IgnoreUnknownKeys(true)
+	dec.DecodeValues(&bindInfo, r.Form)
+	dbVolume, err := volume.Load(r.URL.Query().Get(":name"))
+	if err != nil {
+		if err == volume.ErrVolumeNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	canUnbind := permission.Check(t, permission.PermVolumeUpdateUnbind, contextsForVolume(dbVolume)...)
+	if !canUnbind {
+		return permission.ErrUnauthorized
+	}
+	a, err := getAppFromContext(bindInfo.App, r)
+	if err != nil {
+		return err
+	}
+	canUnbindApp := permission.Check(t, permission.PermAppUpdateUnbindVolume, contextsForApp(&a)...)
+	if !canUnbindApp {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
+		Kind:       permission.PermVolumeUpdateUnbind,
+		Owner:      t,
+		CustomData: event.FormToCustomData(r.Form),
+		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	return dbVolume.UnbindApp(bindInfo.App, bindInfo.MountPoint)
 }

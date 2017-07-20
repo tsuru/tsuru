@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -311,6 +312,9 @@ func (s *S) TestVolumePlanList(c *check.C) {
 	var result map[string][]volume.VolumePlan
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
+	for key := range result {
+		sort.Slice(result[key], func(i, j int) bool { return result[key][i].Name < result[key][j].Name })
+	}
 	c.Assert(result, check.DeepEquals, map[string][]volume.VolumePlan{
 		"fake": {
 			{Name: "nfs1", Opts: map[string]interface{}{"plugin": "nfs"}},
@@ -320,4 +324,129 @@ func (s *S) TestVolumePlanList(c *check.C) {
 			{Name: "nfs1", Opts: map[string]interface{}{"opts": "-t=nfs"}},
 		},
 	})
+}
+
+func (s *S) TestVolumeDelete(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1")
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	volumes, err := volume.ListByFilter(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.HasLen, 0)
+}
+
+func (s *S) TestVolumeBind(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1/bind")
+	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false`)
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body = strings.NewReader(`app=myapp&mountpoint=/mnt2&readonly=true`)
+	request, err = http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	volumes, err := volume.ListByFilter(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Binds: []volume.VolumeBind{
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt1",
+					Volume:     "v1",
+				},
+				ReadOnly: false,
+			},
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt2",
+					Volume:     "v1",
+				},
+				ReadOnly: true,
+			},
+		},
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin": "nfs",
+			},
+		},
+	}})
+}
+
+func (s *S) TestVolumeUnbind(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Save()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt1", false)
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt2", true)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt2")
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	volumes, err := volume.ListByFilter(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+		Name:      "v1",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Binds: []volume.VolumeBind{
+			{
+				ID: volume.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt1",
+					Volume:     "v1",
+				},
+				ReadOnly: false,
+			},
+		},
+		Plan: volume.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"plugin": "nfs",
+			},
+		},
+	}})
 }

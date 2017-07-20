@@ -36,9 +36,11 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.router",
 	"app.update.router-opts",
 	"app.update.bind",
+	"app.update.bind-volume",
 	"app.update.image-reset",
 	"app.update.events",
 	"app.update.unbind",
+	"app.update.unbind-volume",
 	"app.update.certificate.set",
 	"app.update.certificate.unset",
 	"app.deploy",
@@ -201,6 +203,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"volume.create", []contextType{CtxTeam, CtxPool},
 ).add(
 	"volume.read.events",
-	"volume.update",
+	"volume.update.bind",
+	"volume.update.unbind",
 	"volume.delete",
 )

@@ -74,8 +74,14 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	team := &auth.Team{Name: "myteam"}
-	err = conn.Teams().Insert(team)
+	err = provision.AddPool(provision.AddPoolOptions{
+		Name:        "otherpool",
+		Provisioner: "fake",
+	})
+	c.Assert(err, check.IsNil)
+	err = conn.Teams().Insert(&auth.Team{Name: "myteam"})
+	c.Assert(err, check.IsNil)
+	err = conn.Teams().Insert(&auth.Team{Name: "otherteam"})
 	c.Assert(err, check.IsNil)
 	updateConfig(baseConfig)
 }
@@ -358,4 +364,69 @@ func (s *S) TestListByApp(c *check.C) {
 	appVolumes, err = ListByApp("app4")
 	c.Assert(err, check.IsNil)
 	c.Assert(appVolumes, check.IsNil)
+}
+
+func (s *S) TestVolumeDelete(c *check.C) {
+	v := Volume{
+		Name:      "v1",
+		Plan:      VolumePlan{Name: "p1"},
+		Pool:      "mypool",
+		TeamOwner: "myteam",
+	}
+	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.Delete()
+	c.Assert(err, check.IsNil)
+	_, err = Load(v.Name)
+	c.Assert(err, check.Equals, ErrVolumeNotFound)
+}
+
+func (s *S) TestListByFilter(c *check.C) {
+	volumes := []Volume{
+		{
+			Name:      "v1",
+			Plan:      VolumePlan{Name: "p1"},
+			Pool:      "mypool",
+			TeamOwner: "myteam",
+		},
+		{
+			Name:      "v2",
+			Plan:      VolumePlan{Name: "p1"},
+			Pool:      "otherpool",
+			TeamOwner: "myteam",
+		},
+		{
+			Name:      "v3",
+			Plan:      VolumePlan{Name: "p1"},
+			Pool:      "mypool",
+			TeamOwner: "otherteam",
+		},
+	}
+	for i, v := range volumes {
+		err := v.Save()
+		c.Assert(err, check.IsNil)
+		volumes[i].Plan.Opts = map[string]interface{}{
+			"driver": "local",
+			"opt": map[string]interface{}{
+				"type": "nfs",
+			},
+		}
+	}
+	tests := []struct {
+		filter   *Filter
+		expected []Volume
+	}{
+		{filter: nil, expected: volumes},
+		{filter: &Filter{Names: []string{"v1", "v2"}}, expected: volumes[:2]},
+		{filter: &Filter{Names: []string{"v1", "vx"}}, expected: volumes[:1]},
+		{filter: &Filter{Names: []string{"v1", "vx"}, Teams: []string{"myteam"}}, expected: volumes[:2]},
+		{filter: &Filter{Names: []string{"v1", "vx"}, Pools: []string{"otherpool"}}, expected: volumes[:2]},
+		{filter: &Filter{Pools: []string{"otherpool", "mypool"}}, expected: volumes},
+	}
+	for _, tt := range tests {
+		vols, err := ListByFilter(tt.filter)
+		c.Assert(err, check.IsNil)
+		sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
+		c.Assert(vols, check.DeepEquals, tt.expected)
+	}
 }

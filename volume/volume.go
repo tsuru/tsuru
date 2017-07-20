@@ -150,10 +150,26 @@ func (v *Volume) LoadBinds() ([]VolumeBind, error) {
 	var binds []VolumeBind
 	err = conn.VolumeBinds().Find(bson.M{"_id.volume": v.Name}).All(&binds)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	v.Binds = binds
 	return binds, nil
+}
+
+func (v *Volume) Delete() error {
+	binds, err := v.LoadBinds()
+	if err != nil {
+		return err
+	}
+	if len(binds) > 0 {
+		return errors.New("cannot delete volume with existing binds")
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer conn.Close()
+	return conn.Volumes().RemoveId(v.Name)
 }
 
 func ListByApp(appName string) ([]Volume, error) {
@@ -165,7 +181,7 @@ func ListByApp(appName string) ([]Volume, error) {
 	var volumeNames []string
 	err = conn.VolumeBinds().Find(bson.M{"_id.app": appName}).Distinct("_id.volume", &volumeNames)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	var volumes []Volume
 	err = conn.Volumes().Find(bson.M{"_id": bson.M{"$in": volumeNames}}).All(&volumes)

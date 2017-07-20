@@ -319,8 +319,11 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("1.4", "GET", "/volumes", AuthorizationRequiredHandler(volumesList))
 	m.Add("1.4", "GET", "/volumes/{name}", AuthorizationRequiredHandler(volumeInfo))
+	m.Add("1.4", "DELETE", "/volumes/{name}", AuthorizationRequiredHandler(volumeDelete))
 	m.Add("1.4", "POST", "/volumes", AuthorizationRequiredHandler(volumeCreate))
 	m.Add("1.4", "POST", "/volumes/{name}", AuthorizationRequiredHandler(volumeUpdate))
+	m.Add("1.4", "POST", "/volumes/{name}/bind", AuthorizationRequiredHandler(volumeBind))
+	m.Add("1.4", "DELETE", "/volumes/{name}/bind", AuthorizationRequiredHandler(volumeUnbind))
 	m.Add("1.4", "GET", "/volumeplans", AuthorizationRequiredHandler(volumePlansList))
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
