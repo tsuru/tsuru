@@ -11,6 +11,8 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/ajg/form"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -58,7 +60,7 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_events_api_tests")
-	config.Set("auth:hash-cost", 4)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

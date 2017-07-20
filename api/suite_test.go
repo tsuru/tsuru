@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"testing"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/gorilla/context"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -87,6 +89,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_base_test")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.testServer = RunServer(true)
 }
 

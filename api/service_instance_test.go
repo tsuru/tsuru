@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -56,7 +58,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_consumption_test")
-	config.Set("auth:hash-cost", 4)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	config.Set("docker:router", "fake")
 	var err error

@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -37,7 +39,7 @@ var _ = check.Suite(&QuotaSuite{})
 func (s *QuotaSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_quota_test")
-	config.Set("auth:hash-cost", 4)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	s.testServer = RunServer(true)
 }

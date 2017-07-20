@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -71,7 +72,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
-	config.Set("auth:hash-cost", 4)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -53,7 +55,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("auth:user-registration", true)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
-	config.Set("auth:hash-cost", 4)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	config.Set("docker:router", "fake")
 	config.Set("routers:fake:type", "fake")

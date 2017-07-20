@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
 )
@@ -49,7 +50,7 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 func (s *LogSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_log_api_tests")
-	config.Set("auth:hash-cost", 4)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	s.testServer = RunServer(true)
 }
