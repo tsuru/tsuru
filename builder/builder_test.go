@@ -70,7 +70,7 @@ func (s S) SetUpTest(c *check.C) {
 
 func (s S) TestRegisterAndGetBuilder(c *check.C) {
 	var b Builder
-	Register("builder", b)
+	Register("my-builder", b)
 	got, err := Get("my-builder")
 	c.Assert(err, check.IsNil)
 	c.Check(got, check.DeepEquals, b)
@@ -83,8 +83,8 @@ func (s S) TestRegisterAndGetBuilder(c *check.C) {
 func (s S) TestGetDefaultBuilder(c *check.C) {
 	var b1, b2 Builder
 	DefaultBuilder = "default-builder"
-	Register("builder1", b1)
-	Register("builder2", b2)
+	Register("default-builder", b1)
+	Register("other-builder", b2)
 	got, err := GetDefault()
 	c.Check(err, check.IsNil)
 	c.Check(got, check.DeepEquals, b1)
