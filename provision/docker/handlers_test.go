@@ -305,7 +305,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	for _, appPool := range appPools {
 		opts := provision.AddPoolOptions{Name: appPool[1]}
 		provision.AddPool(opts)
-		err := newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
+		err = newFakeImage(s.p, "tsuru/app-"+appPool[0], nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
 		appStruct := &app.App{
