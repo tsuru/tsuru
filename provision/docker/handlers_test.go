@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/fsouza/go-dockerclient/testing"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -65,6 +67,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
 	config.Set("routers:fake:type", "fake")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
