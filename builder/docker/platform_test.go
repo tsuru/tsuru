@@ -115,7 +115,7 @@ func (s *S) TestPlatformAddProvisionerError(c *check.C) {
 		Args:   args,
 		Output: ioutil.Discard,
 	})
-	c.Assert(err, check.ErrorMatches, "No node found")
+	c.Assert(err, check.ErrorMatches, "(?m).*No node found.*")
 }
 
 func (s *S) TestPlatformAddNoProvisioner(c *check.C) {
@@ -183,7 +183,7 @@ func (s *S) TestPlatformRemoveProvisionerError(c *check.C) {
 	defer server.Stop()
 	var b dockerBuilder
 	err = b.PlatformRemove("test")
-	c.Assert(err, check.ErrorMatches, "No node found")
+	c.Assert(err, check.ErrorMatches, "(?m).*No node found.*")
 }
 
 func (s *S) TestPlatformRemoveNoProvisioner(c *check.C) {

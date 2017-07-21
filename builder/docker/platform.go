@@ -8,7 +8,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -128,7 +127,7 @@ func getDockerClient() (*docker.Client, error) {
 		}
 	}
 	if multiErr.Len() > 0 {
-		return nil, fmt.Errorf("%s", multiErr)
+		return nil, multiErr
 	}
 	return nil, errors.New("No Docker nodes available")
 }

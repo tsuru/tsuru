@@ -5,7 +5,6 @@
 package builder
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -96,7 +95,7 @@ func PlatformAdd(opts PlatformOptions) error {
 		}
 	}
 	if multiErr.Len() > 0 {
-		return fmt.Errorf("%s", multiErr)
+		return multiErr
 	}
 	return errors.New("No builder available")
 }
@@ -117,7 +116,7 @@ func PlatformUpdate(opts PlatformOptions) error {
 		}
 	}
 	if multiErr.Len() > 0 {
-		return fmt.Errorf("%s", multiErr)
+		return multiErr
 	}
 	return errors.New("No builder available")
 }
@@ -138,7 +137,7 @@ func PlatformRemove(name string) error {
 		}
 	}
 	if multiErr.Len() > 0 {
-		return fmt.Errorf("%s", multiErr)
+		return multiErr
 	}
 	return errors.New("No builder available")
 }

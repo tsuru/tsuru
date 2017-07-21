@@ -120,7 +120,7 @@ func (s S) TestPlatformAddError(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	err := PlatformAdd(PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
+	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformAddNoBuilder(c *check.C) {
@@ -155,7 +155,7 @@ func (s S) TestPlatformUpdateError(c *check.C) {
 	Register("builder2", &b2)
 	Register("builder3", &b3)
 	err := PlatformUpdate(PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong something is wrong")
+	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformUpdateNoBuilder(c *check.C) {
@@ -190,7 +190,7 @@ func (s S) TestPlatformRemoveError(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	err := PlatformRemove("platform-name")
-	c.Assert(err, check.ErrorMatches, "something is wrong something is wrong")
+	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformRemoveNoBuilder(c *check.C) {
