@@ -64,8 +64,8 @@ func (t *Table) Reverse() {
 	sort.Sort(sort.Reverse(t.rows))
 }
 
-func (t *Table) SortByColumn(column int) {
-	sort.Sort(rowSliceByColumn{rowSlice: t.rows, column: column})
+func (t *Table) SortByColumn(columns ...int) {
+	sort.Sort(rowSliceByColumn{rowSlice: t.rows, columns: columns})
 }
 
 func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
@@ -310,7 +310,7 @@ type rowSlice []Row
 
 type rowSliceByColumn struct {
 	rowSlice
-	column int
+	columns []int
 }
 
 func (l rowSliceByColumn) Len() int {
@@ -318,7 +318,14 @@ func (l rowSliceByColumn) Len() int {
 }
 
 func (l rowSliceByColumn) Less(i, j int) bool {
-	return strings.ToLower(l.rowSlice[i][l.column]) < strings.ToLower(l.rowSlice[j][l.column])
+	for _, c := range l.columns {
+		v1, v2 := strings.ToLower(l.rowSlice[i][c]), strings.ToLower(l.rowSlice[j][c])
+		if v1 == v2 {
+			continue
+		}
+		return v1 < v2
+	}
+	return false
 }
 
 func (l rowSliceByColumn) Swap(i, j int) {
