@@ -119,10 +119,11 @@ func installerTest() ExecFlow {
 		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
 		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
 		certsDir := fmt.Sprintf("%s/.tsuru/installs/%s/certs", os.Getenv("HOME"), installerName(env))
-		if len(allParts) > len(provisioners) {
-			allParts = allParts[1:]
-		}
-		for _, parts = range allParts {
+		for i, parts := range allParts {
+			if i == 0 && len(provisioners) == 0 {
+				// Keep the first node when there's no provisioner
+				continue
+			}
 			c.Assert(parts, check.HasLen, 2)
 			env.Add("nodeopts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
 			env.Add("installernodes", parts[1])
@@ -274,8 +275,6 @@ func poolAdd() ExecFlow {
 			}
 			res = T("event-list").Run(env)
 			c.Assert(res, ResultOk)
-			nodeopts := env.All("nodeopts")
-			env.Set("nodeopts", append(nodeopts[1:], nodeopts[0])...)
 			for _, ip := range nodeIPs {
 				regex = regexp.MustCompile(`node.update.*?node:\s+` + ip)
 				c.Assert(regex.MatchString(res.Stdout.String()), check.Equals, true)

@@ -11,13 +11,10 @@ import (
 )
 
 func (s *S) getInstallerConfig() string {
-	// if Docker provisioner is not set, add an extra host, so Tsuru can build platforms
-	hosts := len(provisioners) + 1
-	for _, provisioner := range provisioners {
-		if provisioner == "docker" {
-			hosts--
-			break
-		}
+	// if no provisioner is set, add an extra host, so Tsuru can build platforms
+	hosts := len(provisioners)
+	if hosts == 0 {
+		hosts = 1
 	}
 	return fmt.Sprintf(`driver:
   name: virtualbox
