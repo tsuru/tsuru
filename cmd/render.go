@@ -194,25 +194,25 @@ func redistributeColors(parts [][]rune) string {
 	return strings.TrimRight(result, "\n")
 }
 
-func (t *Table) resizeLastColumn(ttyWidth int) []int {
+func (t *Table) resizeLargestColumn(ttyWidth int) []int {
 	sizes := t.columnsSize()
 	if ttyWidth == 0 {
 		return sizes
 	}
 	fullSize := 0
-	toLastSize := 0
+	maxIdx, maxVal := -1, -1
 	for i, sz := range sizes {
 		fullSize += sz
-		if i != len(sizes)-1 {
-			toLastSize += sz
+		if sz > maxVal {
+			maxVal = sz
+			maxIdx = i
 		}
 	}
 	fullSize += len(sizes)*3 + 1
-	toLastSize += (len(sizes)-1)*3 + 4
-	available := ttyWidth - toLastSize
+	available := ttyWidth - (fullSize - maxVal)
 	if fullSize > ttyWidth && available > 1 {
 		for _, row := range t.rows {
-			row[len(sizes)-1] = splitJoinEvery(row[len(sizes)-1], available)
+			row[maxIdx] = splitJoinEvery(row[maxIdx], available)
 		}
 	}
 	return t.columnsSize()
@@ -230,7 +230,7 @@ func (t *Table) String() string {
 	if terminal.IsTerminal(terminalFd) {
 		ttyWidth, _, _ = terminal.GetSize(terminalFd)
 	}
-	sizes := t.resizeLastColumn(ttyWidth)
+	sizes := t.resizeLargestColumn(ttyWidth)
 	result := t.separator()
 	if t.Headers != nil {
 		for column, header := range t.Headers {

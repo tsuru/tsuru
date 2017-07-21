@@ -260,11 +260,11 @@ func (s *S) TestColorBoldYellowGreenBG(c *check.C) {
 	c.Assert(output, check.Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
 }
 
-func (s *S) TestResizeLastColumn(c *check.C) {
+func (s *S) TestResizeLargestColumn(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcdefghijk"})
 	t.AddRow(Row{"2", "1234567890"})
-	sizes := t.resizeLastColumn(11)
+	sizes := t.resizeLargestColumn(11)
 	c.Assert(sizes, check.DeepEquals, []int{1, 3})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `ab↵
 cd↵
@@ -279,30 +279,49 @@ k`})
 90`})
 }
 
-func (s *S) TestResizeLastColumnNoTTYSize(c *check.C) {
+func (s *S) TestResizeLargestColumnOnMiddle(c *check.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "abcdefghijk", "x"})
+	t.AddRow(Row{"2", "1234567890", "y"})
+	sizes := t.resizeLargestColumn(15)
+	c.Assert(sizes, check.DeepEquals, []int{1, 3, 1})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `ab↵
+cd↵
+ef↵
+gh↵
+ij↵
+k`, "x"})
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", `12↵
+34↵
+56↵
+78↵
+90`, "y"})
+}
+
+func (s *S) TestResizeLargestColumnNoTTYSize(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcdefghijk"})
 	t.AddRow(Row{"2", "1234567890"})
-	sizes := t.resizeLastColumn(0)
+	sizes := t.resizeLargestColumn(0)
 	c.Assert(sizes, check.DeepEquals, []int{1, 11})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", "abcdefghijk"})
 	c.Assert(t.rows[1], check.DeepEquals, Row{"2", "1234567890"})
 }
 
-func (s *S) TestResizeLastColumnNotEnoughSpace(c *check.C) {
+func (s *S) TestResizeLargestColumnNotEnoughSpace(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcdefghijk"})
 	t.AddRow(Row{"2", "1234567890"})
-	sizes := t.resizeLastColumn(9)
+	sizes := t.resizeLargestColumn(9)
 	c.Assert(sizes, check.DeepEquals, []int{1, 11})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", "abcdefghijk"})
 	c.Assert(t.rows[1], check.DeepEquals, Row{"2", "1234567890"})
 }
 
-func (s *S) TestResizeLastColumnWithLineBreaks(c *check.C) {
+func (s *S) TestResizeLargestColumnWithLineBreaks(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcde\nfgh\ni\njklm"})
-	sizes := t.resizeLastColumn(12)
+	sizes := t.resizeLargestColumn(12)
 	c.Assert(sizes, check.DeepEquals, []int{1, 4})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
 de
@@ -312,7 +331,7 @@ jkl↵
 m`})
 }
 
-func (s *S) TestResizeLastColumnWithColors(c *check.C) {
+func (s *S) TestResizeLargestColumnWithColors(c *check.C) {
 	t := NewTable()
 	color1 := Colorfy("abcdefghijk", "red", "", "")
 	color2 := Colorfy("1234567890", "red", "", "")
@@ -320,7 +339,7 @@ func (s *S) TestResizeLastColumnWithColors(c *check.C) {
 	t.AddRow(Row{"1", color1})
 	t.AddRow(Row{"2", color2})
 	t.AddRow(Row{"3", color3})
-	sizes := t.resizeLastColumn(11)
+	sizes := t.resizeLargestColumn(11)
 	c.Assert(sizes, check.DeepEquals, []int{1, 3})
 	redInit := "\033[0;31;10m"
 	colorReset := "\033[0m"
@@ -344,11 +363,11 @@ func (s *S) TestResizeLastColumnWithColors(c *check.C) {
 		"12"})
 }
 
-func (s *S) TestResizeLastColumnUnicode(c *check.C) {
+func (s *S) TestResizeLargestColumnUnicode(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "åß∂¬ƒ˚©“œ¡™"})
 	t.AddRow(Row{"2", "åß∂¬ƒ˚©“œ¡"})
-	sizes := t.resizeLastColumn(11)
+	sizes := t.resizeLargestColumn(11)
 	c.Assert(sizes, check.DeepEquals, []int{1, 3})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `åß↵
 ∂¬↵
@@ -379,12 +398,12 @@ func (s *S) TestColoredString(c *check.C) {
 	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestResizeLastColumnOnWhitespace(c *check.C) {
+func (s *S) TestResizeLargestColumnOnWhitespace(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abc def ghi jk"})
 	t.AddRow(Row{"2", "12 3 456 7890"})
 	t.AddRow(Row{"3", "1 2 3 4"})
-	sizes := t.resizeLastColumn(12)
+	sizes := t.resizeLargestColumn(12)
 	c.Assert(sizes, check.DeepEquals, []int{1, 4})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
 def↵
@@ -399,7 +418,7 @@ jk`})
 3 4`})
 }
 
-func (s *S) TestResizeLastColumnOnAnyWithBreakAny(c *check.C) {
+func (s *S) TestResizeLargestColumnOnAnyWithBreakAny(c *check.C) {
 	err := os.Setenv("TSURU_BREAK_ANY", "1")
 	c.Assert(err, check.IsNil)
 	defer os.Unsetenv("TSURU_BREAK_ANY")
@@ -407,7 +426,7 @@ func (s *S) TestResizeLastColumnOnAnyWithBreakAny(c *check.C) {
 	t.AddRow(Row{"1", "abc def ghi jk"})
 	t.AddRow(Row{"2", "12 3 456 7890"})
 	t.AddRow(Row{"3", "1 2 3 4"})
-	sizes := t.resizeLastColumn(12)
+	sizes := t.resizeLargestColumn(12)
 	c.Assert(sizes, check.DeepEquals, []int{1, 4})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
  de↵
@@ -424,12 +443,12 @@ jk`})
 4`})
 }
 
-func (s *S) TestResizeLastColumnOnBreakableChars(c *check.C) {
+func (s *S) TestResizeLargestColumnOnBreakableChars(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abc:def ghi jk"})
 	t.AddRow(Row{"2", "12:3 456 7890"})
 	t.AddRow(Row{"3", "1 2 3: 4"})
-	sizes := t.resizeLastColumn(12)
+	sizes := t.resizeLargestColumn(12)
 	c.Assert(sizes, check.DeepEquals, []int{1, 4})
 	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
 :de↵
