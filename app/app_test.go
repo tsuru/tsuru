@@ -39,6 +39,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/tsurutest"
+	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -181,6 +182,35 @@ func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
 	err = Delete(&a, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
+}
+
+func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
+	a := App{
+		Name:      "ritual",
+		Platform:  "ruby",
+		Owner:     s.user.Email,
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Save()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt", false)
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt2", false)
+	c.Assert(err, check.IsNil)
+	app, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	err = Delete(app, nil)
+	c.Assert(err, check.IsNil)
+	dbV, err := volume.Load(v1.Name)
+	c.Assert(err, check.IsNil)
+	binds, err := dbV.LoadBinds()
+	c.Assert(err, check.IsNil)
+	c.Assert(binds, check.IsNil)
 }
 
 func (s *S) TestCreateApp(c *check.C) {

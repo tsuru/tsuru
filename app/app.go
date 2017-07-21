@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/validation"
+	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -504,6 +505,27 @@ func (app *App) unbind() error {
 	return nil
 }
 
+func (app *App) unbindVolumes() error {
+	volumes, err := volume.ListByApp(app.Name)
+	if err != nil {
+		return errors.Wrap(err, "Unable to list volumes for unbind")
+	}
+	for _, v := range volumes {
+		var binds []volume.VolumeBind
+		binds, err = v.LoadBinds()
+		if err != nil {
+			return errors.Wrap(err, "Unable to list volume binds for unbind")
+		}
+		for _, b := range binds {
+			err = v.UnbindApp(app.Name, b.ID.MountPoint)
+			if err != nil {
+				return errors.Wrapf(err, "Unable to unbind volume %q in %q", app.Name, b.ID.MountPoint)
+			}
+		}
+	}
+	return nil
+}
+
 // Delete deletes an app.
 func Delete(app *App, w io.Writer) error {
 	isSwapped, swappedWith, err := router.IsSwapped(app.GetName())
@@ -558,6 +580,10 @@ func Delete(app *App, w io.Writer) error {
 	err = app.unbind()
 	if err != nil {
 		logErr("Unable to unbind app", err)
+	}
+	err = app.unbindVolumes()
+	if err != nil {
+		logErr("Unable to unbind volumes", err)
 	}
 	err = repository.Manager().RemoveRepository(appName)
 	if err != nil {
