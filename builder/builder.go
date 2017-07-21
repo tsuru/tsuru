@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 )
@@ -83,15 +84,20 @@ func PlatformAdd(opts PlatformOptions) error {
 	if err != nil {
 		return err
 	}
+	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
 			err = platformBuilder.PlatformAdd(opts)
-			if err != nil {
-				return err
+			if err == nil {
+				return nil
 			}
+			multiErr.Add(err)
 		}
 	}
-	return nil
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	return errors.New("No builder available")
 }
 
 func PlatformUpdate(opts PlatformOptions) error {
@@ -99,15 +105,20 @@ func PlatformUpdate(opts PlatformOptions) error {
 	if err != nil {
 		return err
 	}
+	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
 			err = platformBuilder.PlatformUpdate(opts)
-			if err != nil {
-				return err
+			if err == nil {
+				return nil
 			}
+			multiErr.Add(err)
 		}
 	}
-	return nil
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	return errors.New("No builder available")
 }
 
 func PlatformRemove(name string) error {
@@ -115,13 +126,18 @@ func PlatformRemove(name string) error {
 	if err != nil {
 		return err
 	}
+	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
 			err = platformBuilder.PlatformRemove(name)
-			if err != nil {
-				return err
+			if err == nil {
+				return nil
 			}
+			multiErr.Add(err)
 		}
 	}
-	return nil
+	if multiErr.Len() > 0 {
+		return multiErr
+	}
+	return errors.New("No builder available")
 }

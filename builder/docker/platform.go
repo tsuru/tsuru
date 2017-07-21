@@ -16,6 +16,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -61,18 +62,9 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 		}
 	}
 	imageName := image.PlatformImageName(name)
-	provisioners, err := provision.Registry()
+	client, err := getDockerClient()
 	if err != nil {
 		return err
-	}
-	var client *docker.Client
-	for _, p := range provisioners {
-		if provisioner, ok := p.(provision.BuilderDeploy); ok {
-			client, err = provisioner.GetDockerClient(nil)
-			if err != nil {
-				return err
-			}
-		}
 	}
 	buildOptions := docker.BuildImageOptions{
 		Name:              imageName,
@@ -117,19 +109,33 @@ func (b *dockerBuilder) buildPlatform(name string, args map[string]string, w io.
 	return nil
 }
 
-func (b *dockerBuilder) PlatformRemove(name string) error {
+func getDockerClient() (*docker.Client, error) {
 	provisioners, err := provision.Registry()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var client *docker.Client
+	multiErr := tsuruErrors.NewMultiError()
 	for _, p := range provisioners {
 		if provisioner, ok := p.(provision.BuilderDeploy); ok {
 			client, err = provisioner.GetDockerClient(nil)
 			if err != nil {
-				return err
+				multiErr.Add(err)
+			} else if client != nil {
+				return client, nil
 			}
 		}
+	}
+	if multiErr.Len() > 0 {
+		return nil, multiErr
+	}
+	return nil, errors.New("No Docker nodes available")
+}
+
+func (b *dockerBuilder) PlatformRemove(name string) error {
+	client, err := getDockerClient()
+	if err != nil {
+		return err
 	}
 	img, err := client.InspectImage(image.PlatformImageName(name))
 	if err != nil {
