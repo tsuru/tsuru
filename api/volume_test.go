@@ -362,6 +362,8 @@ func (s *S) TestVolumeBind(c *check.C) {
 	recorder = httptest.NewRecorder()
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*restarting app.*`)
 	volumes, err := volume.ListByFilter(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
@@ -395,6 +397,28 @@ func (s *S) TestVolumeBind(c *check.C) {
 	}})
 }
 
+func (s *S) TestVolumeBindNoRestart(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1/bind")
+	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false&norestart=true`)
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "")
+}
+
 func (s *S) TestVolumeUnbind(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
@@ -416,6 +440,8 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Matches, `(?s).*restarting app.*`)
 	volumes, err := volume.ListByFilter(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
@@ -439,4 +465,45 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 			},
 		},
 	}})
+}
+
+func (s *S) TestVolumeUnbindNotFound(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Save()
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1")
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err = v1.Save()
+	c.Assert(err, check.IsNil)
+	err = v1.BindApp(a.Name, "/mnt1", false)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1&norestart=true")
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "")
 }

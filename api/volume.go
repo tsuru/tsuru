@@ -7,11 +7,13 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/volume"
 )
@@ -265,6 +267,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		App        string
 		MountPoint string
 		ReadOnly   bool
+		NoRestart  bool
 	}
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
@@ -300,7 +303,15 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return dbVolume.BindApp(bindInfo.App, bindInfo.MountPoint, bindInfo.ReadOnly)
+	err = dbVolume.BindApp(bindInfo.App, bindInfo.MountPoint, bindInfo.ReadOnly)
+	if err != nil || bindInfo.NoRestart {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	return a.Restart("", writer)
 }
 
 // title: volume unbind
@@ -319,6 +330,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var bindInfo struct {
 		App        string
 		MountPoint string
+		NoRestart  bool
 	}
 	dec := form.NewDecoder(nil)
 	dec.IgnoreCase(true)
@@ -354,5 +366,16 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return dbVolume.UnbindApp(bindInfo.App, bindInfo.MountPoint)
+	err = dbVolume.UnbindApp(bindInfo.App, bindInfo.MountPoint)
+	if err != nil || bindInfo.NoRestart {
+		if err == volume.ErrVolumeBindNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	return a.Restart("", writer)
 }
