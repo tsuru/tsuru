@@ -258,6 +258,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Volume binded
 //   401: Unauthorized
 //   404: Volume not found
+//   409: Volume bind already exists
 func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	err := r.ParseForm()
 	if err != nil {
@@ -305,6 +306,9 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer func() { evt.Done(err) }()
 	err = dbVolume.BindApp(bindInfo.App, bindInfo.MountPoint, bindInfo.ReadOnly)
 	if err != nil || bindInfo.NoRestart {
+		if err == volume.ErrVolumeAlreadyBound {
+			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
+		}
 		return err
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")

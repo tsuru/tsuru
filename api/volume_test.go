@@ -397,6 +397,35 @@ func (s *S) TestVolumeBind(c *check.C) {
 	}})
 }
 
+func (s *S) TestVolumeBindConflict(c *check.C) {
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
+	err := v1.Save()
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.4/volumes/v1/bind")
+	body := strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=false`)
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body = strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=true`)
+	request, err = http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+}
+
 func (s *S) TestVolumeBindNoRestart(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
