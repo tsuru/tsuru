@@ -173,10 +173,9 @@ func (s *Storage) SAMLRequests() *storage.Collection {
 }
 
 var logCappedInfo = mgo.CollectionInfo{
-	Capped:       true,
-	MaxBytes:     200 * 5000,
-	MaxDocs:      5000,
-	ForceIdIndex: true,
+	Capped:   true,
+	MaxBytes: 200 * 5000,
+	MaxDocs:  5000,
 }
 
 // Logs returns the logs collection for one app from MongoDB.
