@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/volume"
 	"gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -181,4 +182,34 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, expectedVolume)
 	c.Assert(mounts, check.DeepEquals, expectedMount)
+}
+
+func (s *S) TestDeleteVolume(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	v := volume.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"path":         "/exports",
+			"server":       "192.168.1.1",
+			"capacity":     "20Gi",
+			"access-modes": string(apiv1.ReadWriteMany),
+		},
+		Plan:      volume.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err := v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.BindApp(a.GetName(), "/mnt", false)
+	c.Assert(err, check.IsNil)
+	_, _, err = createVolumesForApp(s.client.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	err = deleteVolume(s.client.clusterClient, "v1")
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Core().PersistentVolumes().Get(volumeName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	_, err = s.client.Core().PersistentVolumeClaims(s.client.Namespace()).Get(volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 }

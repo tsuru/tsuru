@@ -53,6 +53,7 @@ var (
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	_ provision.ImageDeployer            = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	// _ provision.ArchiveDeployer          = &kubernetesProvisioner{}
 	// _ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	// _ provision.RollbackableDeployer     = &kubernetesProvisioner{}
@@ -849,4 +850,12 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 
 func (p *kubernetesProvisioner) Sleep(a provision.App, process string) error {
 	return changeState(a, process, servicecommon.ProcessState{Stop: true, Sleep: true}, nil)
+}
+
+func (p *kubernetesProvisioner) DeleteVolume(volumeName, pool string) error {
+	client, err := clusterForPool(pool)
+	if err != nil {
+		return err
+	}
+	return deleteVolume(client, volumeName)
 }
