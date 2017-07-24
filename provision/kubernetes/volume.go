@@ -111,6 +111,22 @@ func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 	return &opts, nil
 }
 
+func deleteVolume(client *clusterClient, name string) error {
+	err := client.Core().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	err = client.Core().PersistentVolumeClaims(client.Namespace()).Delete(volumeClaimName(name), &metav1.DeleteOptions{
+		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+	})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func createVolumeForApp(client *clusterClient, app provision.App, v *volume.Volume) error {
 	opts, err := validateVolume(v)
 	if err != nil {
