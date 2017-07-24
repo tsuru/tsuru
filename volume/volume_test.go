@@ -55,6 +55,22 @@ func (p *otherProvisioner) GetName() string {
 	return "other"
 }
 
+type volumeProvisioner struct {
+	*provisiontest.FakeProvisioner
+	deleteCallVolume string
+	deleteCallPool   string
+}
+
+func (p *volumeProvisioner) GetName() string {
+	return "volumeprov"
+}
+
+func (p *volumeProvisioner) DeleteVolume(volName, pool string) error {
+	p.deleteCallVolume = volName
+	p.deleteCallPool = pool
+	return nil
+}
+
 func (s *S) SetUpSuite(c *check.C) {
 	otherProv := otherProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
 	provision.Register("other", func() (provision.Provisioner, error) {
@@ -377,6 +393,39 @@ func (s *S) TestVolumeDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.Delete()
 	c.Assert(err, check.IsNil)
+	_, err = Load(v.Name)
+	c.Assert(err, check.Equals, ErrVolumeNotFound)
+}
+
+func (s *S) TestVolumeDeleteWithVolumeProvisioner(c *check.C) {
+	updateConfig(`
+volume-plans:
+  p1:
+    volumeprov:
+       driver: local
+`)
+	volumeProv := volumeProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("volumeprov", func() (provision.Provisioner, error) {
+		return &volumeProv, nil
+	})
+	defer provision.Unregister("volumeprov")
+	err := provision.AddPool(provision.AddPoolOptions{
+		Name:        "volumepool",
+		Provisioner: "volumeprov",
+	})
+	c.Assert(err, check.IsNil)
+	v := Volume{
+		Name:      "v1",
+		Plan:      VolumePlan{Name: "p1"},
+		Pool:      "volumepool",
+		TeamOwner: "myteam",
+	}
+	err = v.Save()
+	c.Assert(err, check.IsNil)
+	err = v.Delete()
+	c.Assert(err, check.IsNil)
+	c.Assert(volumeProv.deleteCallVolume, check.Equals, "v1")
+	c.Assert(volumeProv.deleteCallPool, check.Equals, "volumepool")
 	_, err = Load(v.Name)
 	c.Assert(err, check.Equals, ErrVolumeNotFound)
 }
