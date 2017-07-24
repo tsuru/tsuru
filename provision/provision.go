@@ -463,6 +463,10 @@ type AppFilterProvisioner interface {
 	FilterAppsByUnitStatus([]App, []string) ([]App, error)
 }
 
+type VolumeProvisioner interface {
+	DeleteVolume(volumeName, pool string) error
+}
+
 type Node interface {
 	Pool() string
 	Address() string

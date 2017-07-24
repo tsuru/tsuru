@@ -164,6 +164,20 @@ func (v *Volume) Delete() error {
 	if len(binds) > 0 {
 		return errors.New("cannot delete volume with existing binds")
 	}
+	pool, err := provision.GetPoolByName(v.Pool)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	prov, err := pool.GetProvisioner()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if volProv, ok := prov.(provision.VolumeProvisioner); ok {
+		err = volProv.DeleteVolume(v.Name, v.Pool)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return errors.WithStack(err)
