@@ -159,6 +159,71 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
+	c.ExpectFailure("demonstrate bug removing wrong env vars from app, to be fixed in next commits")
+	var calls int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if atomic.AddInt32(&calls, 1) == 1 {
+			w.Write([]byte(`{"SRV1":"val1"}`))
+		} else {
+			w.Write([]byte(`{"SRV2":"val2"}`))
+		}
+	}))
+	defer ts.Close()
+	srvc1 := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err := srvc1.Create()
+	c.Assert(err, check.IsNil)
+	srvc2 := service.Service{Name: "postgres", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t"}
+	err = srvc2.Create()
+	c.Assert(err, check.IsNil)
+	instance1 := service.ServiceInstance{
+		Name:        "my-db",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = instance1.Create()
+	c.Assert(err, check.IsNil)
+	instance2 := service.ServiceInstance{
+		Name:        "my-db",
+		ServiceName: "postgres",
+		Teams:       []string{s.team.Name},
+	}
+	err = instance2.Create()
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
+	err = app.CreateApp(a, &s.user)
+	c.Assert(err, check.IsNil)
+	err = instance1.BindApp(a, true, nil)
+	c.Assert(err, check.IsNil)
+	err = instance2.BindApp(a, true, nil)
+	c.Assert(err, check.IsNil)
+	envs := a.Envs()
+	c.Assert(envs["SRV1"], check.DeepEquals, bind.EnvVar{
+		Name:         "SRV1",
+		Value:        "val1",
+		Public:       false,
+		InstanceName: "my-db",
+	})
+	c.Assert(envs["SRV2"], check.DeepEquals, bind.EnvVar{
+		Name:         "SRV2",
+		Value:        "val2",
+		Public:       false,
+		InstanceName: "my-db",
+	})
+	dbI1, err := service.GetServiceInstance(instance1.ServiceName, instance1.Name)
+	c.Assert(err, check.IsNil)
+	err = dbI1.UnbindApp(a, true, nil)
+	c.Assert(err, check.IsNil)
+	envs = a.Envs()
+	c.Assert(envs["SRV1"], check.DeepEquals, bind.EnvVar{})
+	c.Assert(envs["SRV2"], check.DeepEquals, bind.EnvVar{
+		Name:         "SRV2",
+		Value:        "val2",
+		Public:       false,
+		InstanceName: "my-db",
+	})
+}
+
 func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
