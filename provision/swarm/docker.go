@@ -313,6 +313,10 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 	var healthConfig *container.HealthConfig
 	port := provision.WebProcessDefaultPort()
 	portInt, _ := strconv.Atoi(port)
+	mounts, err := mountsForApp(opts.app)
+	if err != nil {
+		return nil, err
+	}
 	if !opts.isDeploy && !opts.isIsolatedRun {
 		endpointSpec = &swarm.EndpointSpec{
 			Mode: swarm.ResolutionModeVIP,
@@ -372,6 +376,7 @@ func serviceSpecForApp(opts tsuruServiceOpts) (*swarm.ServiceSpec, error) {
 				Command:     cmds,
 				User:        user,
 				Healthcheck: healthConfig,
+				Mounts:      mounts,
 			},
 			Networks: networks,
 			RestartPolicy: &swarm.RestartPolicy{
