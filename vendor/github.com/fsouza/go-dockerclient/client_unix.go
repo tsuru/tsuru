@@ -1,7 +1,8 @@
-// +build !windows
 // Copyright 2016 go-dockerclient authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
+// +build !windows
 
 package docker
 
@@ -22,7 +23,7 @@ func (c *Client) initializeNativeClient() {
 	socketPath := c.endpointURL.Path
 	tr := cleanhttp.DefaultTransport()
 	tr.Dial = func(network, addr string) (net.Conn, error) {
-		return c.Dialer.Dial(network, addr)
+		return c.Dialer.Dial(unixProtocol, socketPath)
 	}
 	tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		return c.Dialer.Dial(unixProtocol, socketPath)
