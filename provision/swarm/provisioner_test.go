@@ -2094,4 +2094,6 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	vols, err = client.ListVolumes(docker.ListVolumesOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(vols), check.Equals, 0)
+	err = s.p.DeleteVolume("myvol", "pool")
+	c.Assert(err, check.IsNil)
 }
