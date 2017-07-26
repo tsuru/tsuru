@@ -2075,3 +2075,23 @@ func (s *S) TestCleanImage(c *check.C) {
 		c.Assert(imgs, check.HasLen, 1)
 	}
 }
+
+func (s *S) TestDeleteVolume(c *check.C) {
+	srv, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer srv.Stop()
+	err = s.p.AddNode(provision.AddNodeOptions{Address: srv.URL()})
+	c.Assert(err, check.IsNil)
+	client, err := docker.NewClient(srv.URL())
+	c.Assert(err, check.IsNil)
+	_, err = client.CreateVolume(docker.CreateVolumeOptions{Name: "myvol"})
+	c.Assert(err, check.IsNil)
+	vols, err := client.ListVolumes(docker.ListVolumesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(vols), check.Equals, 1)
+	err = s.p.DeleteVolume("myvol", "pool")
+	c.Assert(err, check.IsNil)
+	vols, err = client.ListVolumes(docker.ListVolumesOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(vols), check.Equals, 0)
+}

@@ -47,6 +47,7 @@ var (
 	_ provision.NodeContainerProvisioner = &swarmProvisioner{}
 	_ provision.SleepableProvisioner     = &swarmProvisioner{}
 	_ provision.BuilderDeploy            = &swarmProvisioner{}
+	_ provision.VolumeProvisioner        = &swarmProvisioner{}
 	// _ provision.RollbackableDeployer     = &swarmProvisioner{}
 	// _ provision.RebuildableDeployer      = &swarmProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &swarmProvisioner{}
@@ -840,6 +841,20 @@ func (p *swarmProvisioner) StartupMessage() (string, error) {
 		out += fmt.Sprintf("    Swarm node: %s [%s] [%s]\n", l.NodeAddr(), node.Status.State, node.Spec.Role)
 	}
 	return out, nil
+}
+
+func (p *swarmProvisioner) DeleteVolume(volumeName, pool string) error {
+	client, err := chooseDBSwarmNode()
+	if err != nil {
+		if errors.Cause(err) != errNoSwarmNode {
+			return nil
+		}
+		return err
+	}
+	if err := client.RemoveVolume(volumeName); err != docker.ErrNoSuchVolume {
+		return err
+	}
+	return nil
 }
 
 func deployProcesses(a provision.App, newImg string, updateSpec servicecommon.ProcessSpec) error {
