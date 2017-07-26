@@ -169,9 +169,10 @@
   version = "1.0.1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = [".","testing"]
-  revision = "122f334aa9063dcf87814c33c7331fccf1d88988"
+  revision = "68f3019f17ada90d8603730d0c15eb1b7f0ebd06"
 
 [[projects]]
   name = "github.com/gambol99/go-marathon"
@@ -609,6 +610,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bc3c6718631c94c63512b89ed51626295c570f6b8152c80a62aee01ce9090e62"
+  inputs-digest = "8990c418ccdb669c3a6d36955701971ac0ccbdbca1c0b4231b7dddb2678c13c5"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -21,7 +21,7 @@
 
 [[constraint]]
   name = "github.com/fsouza/go-dockerclient"
-  revision = "122f334aa9063dcf87814c33c7331fccf1d88988"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/gorilla/mux"

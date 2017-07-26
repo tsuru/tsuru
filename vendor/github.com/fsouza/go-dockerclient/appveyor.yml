@@ -6,7 +6,8 @@ environment:
   GOPATH: c:\gopath
   matrix:
     - GOVERSION: 1.7.5
-    - GOVERSION: 1.8.1
+    - GOVERSION: 1.8.3
+    - GOVERSION: 1.9rc1
 install:
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
   - rmdir c:\go /s /q
@@ -15,6 +16,6 @@ install:
 build_script:
   - go get -d -t ./...
 test_script:
-  - go test -v ./...
+  - go test ./...
 matrix:
   fast_finish: true

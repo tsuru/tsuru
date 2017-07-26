@@ -204,7 +204,7 @@ func (s *State) StateString() string {
 // PortBinding represents the host/container port mapping as returned in the
 // `docker inspect` json
 type PortBinding struct {
-	HostIP   string `json:"HostIP,omitempty" yaml:"HostIP,omitempty" toml:"HostIP,omitempty"`
+	HostIP   string `json:"HostIp,omitempty" yaml:"HostIp,omitempty" toml:"HostIp,omitempty"`
 	HostPort string `json:"HostPort,omitempty" yaml:"HostPort,omitempty" toml:"HostPort,omitempty"`
 }
 
@@ -214,15 +214,16 @@ type PortMapping map[string]string
 
 // ContainerNetwork represents the networking settings of a container per network.
 type ContainerNetwork struct {
-	MacAddress          string `json:"MacAddress,omitempty" yaml:"MacAddress,omitempty" toml:"MacAddress,omitempty"`
-	GlobalIPv6PrefixLen int    `json:"GlobalIPv6PrefixLen,omitempty" yaml:"GlobalIPv6PrefixLen,omitempty" toml:"GlobalIPv6PrefixLen,omitempty"`
-	GlobalIPv6Address   string `json:"GlobalIPv6Address,omitempty" yaml:"GlobalIPv6Address,omitempty" toml:"GlobalIPv6Address,omitempty"`
-	IPv6Gateway         string `json:"IPv6Gateway,omitempty" yaml:"IPv6Gateway,omitempty" toml:"IPv6Gateway,omitempty"`
-	IPPrefixLen         int    `json:"IPPrefixLen,omitempty" yaml:"IPPrefixLen,omitempty" toml:"IPPrefixLen,omitempty"`
-	IPAddress           string `json:"IPAddress,omitempty" yaml:"IPAddress,omitempty" toml:"IPAddress,omitempty"`
-	Gateway             string `json:"Gateway,omitempty" yaml:"Gateway,omitempty" toml:"Gateway,omitempty"`
-	EndpointID          string `json:"EndpointID,omitempty" yaml:"EndpointID,omitempty" toml:"EndpointID,omitempty"`
-	NetworkID           string `json:"NetworkID,omitempty" yaml:"NetworkID,omitempty" toml:"NetworkID,omitempty"`
+	Aliases             []string `json:"Aliases,omitempty" yaml:"Aliases,omitempty" toml:"Aliases,omitempty"`
+	MacAddress          string   `json:"MacAddress,omitempty" yaml:"MacAddress,omitempty" toml:"MacAddress,omitempty"`
+	GlobalIPv6PrefixLen int      `json:"GlobalIPv6PrefixLen,omitempty" yaml:"GlobalIPv6PrefixLen,omitempty" toml:"GlobalIPv6PrefixLen,omitempty"`
+	GlobalIPv6Address   string   `json:"GlobalIPv6Address,omitempty" yaml:"GlobalIPv6Address,omitempty" toml:"GlobalIPv6Address,omitempty"`
+	IPv6Gateway         string   `json:"IPv6Gateway,omitempty" yaml:"IPv6Gateway,omitempty" toml:"IPv6Gateway,omitempty"`
+	IPPrefixLen         int      `json:"IPPrefixLen,omitempty" yaml:"IPPrefixLen,omitempty" toml:"IPPrefixLen,omitempty"`
+	IPAddress           string   `json:"IPAddress,omitempty" yaml:"IPAddress,omitempty" toml:"IPAddress,omitempty"`
+	Gateway             string   `json:"Gateway,omitempty" yaml:"Gateway,omitempty" toml:"Gateway,omitempty"`
+	EndpointID          string   `json:"EndpointID,omitempty" yaml:"EndpointID,omitempty" toml:"EndpointID,omitempty"`
+	NetworkID           string   `json:"NetworkID,omitempty" yaml:"NetworkID,omitempty" toml:"NetworkID,omitempty"`
 }
 
 // NetworkSettings contains network-related information about a container
@@ -707,7 +708,7 @@ type HostConfig struct {
 	MemoryReservation    int64                  `json:"MemoryReservation,omitempty" yaml:"MemoryReservation,omitempty" toml:"MemoryReservation,omitempty"`
 	KernelMemory         int64                  `json:"KernelMemory,omitempty" yaml:"KernelMemory,omitempty" toml:"KernelMemory,omitempty"`
 	MemorySwap           int64                  `json:"MemorySwap,omitempty" yaml:"MemorySwap,omitempty" toml:"MemorySwap,omitempty"`
-	MemorySwappiness     int64                  `json:"MemorySwappiness,omitempty" yaml:"MemorySwappiness,omitempty" toml:"MemorySwappiness,omitempty"`
+	MemorySwappiness     int64                  `json:"MemorySwappiness" yaml:"MemorySwappiness" toml:"MemorySwappiness"`
 	CPUShares            int64                  `json:"CpuShares,omitempty" yaml:"CpuShares,omitempty" toml:"CpuShares,omitempty"`
 	CPUSet               string                 `json:"Cpuset,omitempty" yaml:"Cpuset,omitempty" toml:"Cpuset,omitempty"`
 	CPUSetCPUs           string                 `json:"CpusetCpus,omitempty" yaml:"CpusetCpus,omitempty" toml:"CpusetCpus,omitempty"`
@@ -735,6 +736,10 @@ type HostConfig struct {
 	AutoRemove           bool                   `json:"AutoRemove,omitempty" yaml:"AutoRemove,omitempty" toml:"AutoRemove,omitempty"`
 	StorageOpt           map[string]string      `json:"StorageOpt,omitempty" yaml:"StorageOpt,omitempty" toml:"StorageOpt,omitempty"`
 	Sysctls              map[string]string      `json:"Sysctls,omitempty" yaml:"Sysctls,omitempty" toml:"Sysctls,omitempty"`
+	CPUCount             int64                  `json:"CpuCount,omitempty" yaml:"CpuCount,omitempty"`
+	CPUPercent           int64                  `json:"CpuPercent,omitempty" yaml:"CpuPercent,omitempty"`
+	IOMaximumBandwidth   int64                  `json:"IOMaximumBandwidth,omitempty" yaml:"IOMaximumBandwidth,omitempty"`
+	IOMaximumIOps        int64                  `json:"IOMaximumIOps,omitempty" yaml:"IOMaximumIOps,omitempty"`
 }
 
 // NetworkingConfig represents the container's networking configuration for each of its interfaces
@@ -1051,6 +1056,7 @@ func (c *Client) Stats(opts StatsOptions) (retErr error) {
 		}
 	}()
 
+	reqSent := make(chan struct{})
 	go func() {
 		err := c.stream("GET", fmt.Sprintf("/containers/%s/stats?stream=%v", opts.ID, opts.Stream), streamOptions{
 			rawJSONStream:     true,
@@ -1059,6 +1065,7 @@ func (c *Client) Stats(opts StatsOptions) (retErr error) {
 			timeout:           opts.Timeout,
 			inactivityTimeout: opts.InactivityTimeout,
 			context:           opts.Context,
+			reqSent:           reqSent,
 		})
 		if err != nil {
 			dockerError, ok := err.(*Error)
@@ -1089,6 +1096,7 @@ func (c *Client) Stats(opts StatsOptions) (retErr error) {
 
 	decoder := json.NewDecoder(readCloser)
 	stats := new(Stats)
+	<-reqSent
 	for err := decoder.Decode(stats); err != io.EOF; err = decoder.Decode(stats) {
 		if err != nil {
 			return err
@@ -1293,7 +1301,8 @@ type CommitContainerOptions struct {
 	Tag        string
 	Message    string `qs:"comment"`
 	Author     string
-	Run        *Config `qs:"-"`
+	Changes    []string `qs:"changes"`
+	Run        *Config  `qs:"-"`
 	Context    context.Context
 }
 
