@@ -49,6 +49,19 @@ type Block struct {
 	Active    bool
 }
 
+func (b *Block) Blocks(e *Event) bool {
+	if !(strings.HasPrefix(e.Kind.Name, b.KindName) || b.KindName == "") {
+		return false
+	}
+	if !(e.Owner.Name == b.OwnerName || b.OwnerName == "") {
+		return false
+	}
+	if !(e.Target == b.Target || b.Target == Target{} || (b.Target.Type == e.Target.Type && b.Target.Value == "")) {
+		return false
+	}
+	return true
+}
+
 func (b *Block) String() string {
 	kind := b.KindName
 	if kind == "" {
@@ -122,16 +135,9 @@ func checkIsBlocked(evt *Event) error {
 		return err
 	}
 	for _, b := range blocks {
-		if !(strings.HasPrefix(evt.Kind.Name, b.KindName) || b.KindName == "") {
-			continue
+		if b.Blocks(evt) {
+			return &ErrEventBlocked{event: evt, block: &b}
 		}
-		if !(evt.Owner.Name == b.OwnerName || b.OwnerName == "") {
-			continue
-		}
-		if !(evt.Target == b.Target || b.Target == Target{} || (b.Target.Type == evt.Target.Type && b.Target.Value == "")) {
-			continue
-		}
-		return &ErrEventBlocked{event: evt, block: &b}
 	}
 	return nil
 }
