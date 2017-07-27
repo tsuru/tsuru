@@ -128,7 +128,7 @@ func checkIsBlocked(evt *Event) error {
 		if !(evt.Owner.Name == b.OwnerName || b.OwnerName == "") {
 			continue
 		}
-		if !(evt.Target == b.Target || b.Target == Target{} || b.Target.Type == evt.Target.Type && b.Target.Value == "") {
+		if !(evt.Target == b.Target || b.Target == Target{} || (b.Target.Type == evt.Target.Type && b.Target.Value == "")) {
 			continue
 		}
 		return &ErrEventBlocked{event: evt, block: &b}
