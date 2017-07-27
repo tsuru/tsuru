@@ -220,7 +220,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	return event.AddBlock(&block)
 }
 
-// title: event block list
+// title: remove event block
 // path: /events/blocks/{uuid}
 // method: DELETE
 // responses:
