@@ -117,26 +117,21 @@ func checkIsBlocked(evt *Event) error {
 	if evt.Target.Type == TargetTypeEventBlock {
 		return nil
 	}
-	parts := strings.Split(evt.Kind.Name, ".")
-	kindQuery := []bson.M{{"kindname": ""}}
-	for i := range parts {
-		kindQuery = append(kindQuery, bson.M{"kindname": strings.Join(parts[:i+1], ".")})
-	}
-	query := bson.M{"$and": []bson.M{
-		{"active": true},
-		{"$or": kindQuery},
-		{"$or": []bson.M{{"ownername": evt.Owner.Name}, {"ownername": ""}}},
-		{"$or": []bson.M{
-			{"target": evt.Target},
-			{"target": bson.M{"$exists": false}},
-			{"target.type": evt.Target.Type, "target.value": ""}}},
-	}}
-	blocks, err := listBlocks(query)
+	blocks, err := listBlocks(bson.M{"active": true})
 	if err != nil {
 		return err
 	}
-	if len(blocks) > 0 {
-		return &ErrEventBlocked{event: evt, block: &blocks[0]}
+	for _, b := range blocks {
+		if !(strings.HasPrefix(evt.Kind.Name, b.KindName) || b.KindName == "") {
+			continue
+		}
+		if !(evt.Owner.Name == b.OwnerName || b.OwnerName == "") {
+			continue
+		}
+		if !(evt.Target == b.Target || b.Target == Target{} || b.Target.Type == evt.Target.Type && b.Target.Value == "") {
+			continue
+		}
+		return &ErrEventBlocked{event: evt, block: &b}
 	}
 	return nil
 }
