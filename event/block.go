@@ -6,6 +6,7 @@ package event
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -116,9 +117,14 @@ func checkIsBlocked(evt *Event) error {
 	if evt.Target.Type == TargetTypeEventBlock {
 		return nil
 	}
+	parts := strings.Split(evt.Kind.Name, ".")
+	kindQuery := []bson.M{{"kindname": ""}}
+	for i := range parts {
+		kindQuery = append(kindQuery, bson.M{"kindname": strings.Join(parts[:i+1], ".")})
+	}
 	query := bson.M{"$and": []bson.M{
 		{"active": true},
-		{"$or": []bson.M{{"kindname": evt.Kind.Name}, {"kindname": ""}}},
+		{"$or": kindQuery},
 		{"$or": []bson.M{{"ownername": evt.Owner.Name}, {"ownername": ""}}},
 		{"$or": []bson.M{
 			{"target": evt.Target},

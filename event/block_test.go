@@ -76,10 +76,11 @@ func (s *S) TestListBlocks(c *check.C) {
 
 func (s *S) TestCheckIsBlocked(c *check.C) {
 	blocks := map[string]*Block{
-		"blockApp":        {Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
-		"blockAllDeploys": {KindName: "app.deploy", Reason: "maintenance"},
-		"blockAllNodes":   {Target: Target{Type: TargetTypeNode}},
-		"blockUser":       {OwnerName: "blocked-user"},
+		"blockApp":             {Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
+		"blockAllDeploys":      {KindName: "app.deploy", Reason: "maintenance"},
+		"blockAllNodes":        {Target: Target{Type: TargetTypeNode}},
+		"blockUser":            {OwnerName: "blocked-user"},
+		"blockMachineTemplate": {KindName: "machine.template"},
 	}
 	for _, b := range blocks {
 		err := AddBlock(b)
@@ -97,11 +98,17 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Owner: Owner{Type: OwnerTypeUser, Name: "blocked-user"}}}, blocks["blockUser"]},
 		{&Event{eventData: eventData{Kind: Kind{Name: "node.update"}, Target: Target{Type: TargetTypeNode, Value: "my-node"}}}, blocks["blockAllNodes"]},
 		{&Event{eventData: eventData{Target: Target{Type: TargetTypeEventBlock}, Owner: Owner{Type: OwnerTypeUser, Name: "blocked-user"}}}, nil},
+		{&Event{eventData: eventData{Kind: Kind{Name: "machine.template"}}}, blocks["blockMachineTemplate"]},
+		{&Event{eventData: eventData{Kind: Kind{Name: "machine.template.create"}}}, blocks["blockMachineTemplate"]},
+		{&Event{eventData: eventData{Kind: Kind{Name: "machine.create"}}}, nil},
 	}
 	for i, t := range tt {
 		errBlock := checkIsBlocked(t.event)
 		var expectedErr error
 		if t.blockedBy != nil {
+			if errBlock == nil {
+				c.Fatalf("(%d) Expected %#+v. Got nil", i, t.blockedBy)
+			}
 			errBlock.(*ErrEventBlocked).block.StartTime = t.blockedBy.StartTime
 			expectedErr = &ErrEventBlocked{event: t.event, block: t.blockedBy}
 		}
