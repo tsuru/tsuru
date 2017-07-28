@@ -44,6 +44,7 @@ after_success:
   - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
   - git clean -dfx
   - test -n "$TRAVIS_TAG" && curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash
+  - ./misc/trigger-integration.sh
 notifications:
   email:
     on_success: change
