@@ -51,6 +51,8 @@ jobs:
         - CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
         - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
     - script: if [ -n "$TRAVIS_TAG" ]; then curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | PACKAGE_NAME=tsuru-server bash; fi
+    - stage: integration-check
+      script: ./misc/trigger-integration.sh
 notifications:
   email:
     on_success: change
