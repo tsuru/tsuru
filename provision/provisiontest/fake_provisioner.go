@@ -61,8 +61,8 @@ type FakeApp struct {
 	env            map[string]bind.EnvVar
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
-	instances      map[string][]bind.ServiceInstance
-	instancesLock  sync.Mutex
+	serviceEnvs    []bind.ServiceEnvVar
+	serviceLock    sync.Mutex
 	Pool           string
 	UpdatePlatform bool
 	TeamOwner      string
@@ -72,12 +72,11 @@ type FakeApp struct {
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
 	app := FakeApp{
-		name:      name,
-		platform:  platform,
-		units:     make([]provision.Unit, units),
-		instances: make(map[string][]bind.ServiceInstance),
-		Quota:     quota.Unlimited,
-		Pool:      "test-default",
+		name:     name,
+		platform: platform,
+		units:    make([]provision.Unit, units),
+		Quota:    quota.Unlimited,
+		Pool:     "test-default",
 	}
 	routertest.FakeRouter.AddBackend(name)
 	namefmt := "%s-%d"
@@ -168,44 +167,38 @@ func (a *FakeApp) GetCname() []string {
 	return a.cname
 }
 
-func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
-	a.instancesLock.Lock()
-	defer a.instancesLock.Unlock()
-	return a.instances[serviceName]
+func (a *FakeApp) GetServiceEnvs() []bind.ServiceEnvVar {
+	a.serviceLock.Lock()
+	defer a.serviceLock.Unlock()
+	return a.serviceEnvs
 }
 
-func (a *FakeApp) AddInstance(instanceApp bind.InstanceApp, w io.Writer) error {
-	a.instancesLock.Lock()
-	defer a.instancesLock.Unlock()
-	instances := a.instances[instanceApp.ServiceName]
-	instances = append(instances, instanceApp.Instance)
-	a.instances[instanceApp.ServiceName] = instances
-	if w != nil {
-		w.Write([]byte("add instance"))
+func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
+	a.serviceLock.Lock()
+	defer a.serviceLock.Unlock()
+	a.serviceEnvs = append(a.serviceEnvs, instanceArgs.Envs...)
+	if instanceArgs.Writer != nil {
+		instanceArgs.Writer.Write([]byte("add instance"))
 	}
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(instanceApp bind.InstanceApp, w io.Writer) error {
-	a.instancesLock.Lock()
-	defer a.instancesLock.Unlock()
-	instances := a.instances[instanceApp.ServiceName]
-	index := -1
-	for i, inst := range instances {
-		if inst.Name == instanceApp.Instance.Name {
-			index = i
-			break
+func (a *FakeApp) RemoveInstance(instanceArgs bind.RemoveInstanceArgs) error {
+	a.serviceLock.Lock()
+	defer a.serviceLock.Unlock()
+	lenBefore := len(a.serviceEnvs)
+	for i := 0; i < len(a.serviceEnvs); i++ {
+		se := a.serviceEnvs[i]
+		if se.ServiceName == instanceArgs.ServiceName && se.InstanceName == instanceArgs.InstanceName {
+			a.serviceEnvs = append(a.serviceEnvs[:i], a.serviceEnvs[i+1:]...)
+			i--
 		}
 	}
-	if index < 0 {
+	if len(a.serviceEnvs) == lenBefore {
 		return errors.New("instance not found")
 	}
-	for i := index; i < len(instances)-1; i++ {
-		instances[i] = instances[i+1]
-	}
-	a.instances[instanceApp.ServiceName] = instances[:len(instances)-1]
-	if w != nil {
-		w.Write([]byte("remove instance"))
+	if instanceArgs.Writer != nil {
+		instanceArgs.Writer.Write([]byte("remove instance"))
 	}
 	return nil
 }
@@ -274,14 +267,14 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
-func (a *FakeApp) SetEnvs(setEnvs bind.SetEnvApp, w io.Writer) error {
+func (a *FakeApp) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	for _, env := range setEnvs.Envs {
 		a.SetEnv(env)
 	}
 	return nil
 }
 
-func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvApp, w io.Writer) error {
+func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 	for _, env := range unsetEnvs.VariableNames {
 		delete(a.env, env)
 	}
@@ -304,20 +297,8 @@ func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
 	return units, nil
 }
 
-func (a *FakeApp) InstanceEnv(env string) map[string]bind.EnvVar {
-	return nil
-}
-
-// Env returns app.Env
 func (a *FakeApp) Envs() map[string]bind.EnvVar {
 	return a.env
-}
-
-func (a *FakeApp) SerializeEnvVars() error {
-	a.commMut.Lock()
-	a.Commands = append(a.Commands, "serialize")
-	a.commMut.Unlock()
-	return nil
 }
 
 func (a *FakeApp) Run(cmd string, w io.Writer, args provision.RunArgs) error {

@@ -165,7 +165,7 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	c.Assert(result, check.Equals, nil)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	appEnv := gotApp.InstanceEnv("")
+	appEnv := gotApp.Envs()
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, check.Not(check.Equals), "")

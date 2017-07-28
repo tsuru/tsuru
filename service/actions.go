@@ -179,26 +179,34 @@ var setBoundEnvsAction = &action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
-		instance := bind.ServiceInstance{
-			Name: args.serviceInstance.Name,
-			Envs: ctx.Previous.(map[string]string),
+		envMap := ctx.Previous.(map[string]string)
+		envs := make([]bind.ServiceEnvVar, 0, len(envMap))
+		for k, v := range envMap {
+			envs = append(envs, bind.ServiceEnvVar{
+				ServiceName:  args.serviceInstance.ServiceName,
+				InstanceName: args.serviceInstance.Name,
+				EnvVar: bind.EnvVar{
+					Public: false,
+					Name:   k,
+					Value:  v,
+				},
+			})
 		}
-		return instance, args.app.AddInstance(
-			bind.InstanceApp{
-				ServiceName:   args.serviceInstance.ServiceName,
-				Instance:      instance,
-				ShouldRestart: args.shouldRestart,
-			}, args.writer)
+		addArgs := bind.AddInstanceArgs{
+			Envs:          envs,
+			ShouldRestart: args.shouldRestart,
+			Writer:        args.writer,
+		}
+		return addArgs, args.app.AddInstance(addArgs)
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		instance := ctx.FWResult.(bind.ServiceInstance)
-		err := args.app.RemoveInstance(
-			bind.InstanceApp{
-				ServiceName:   args.serviceInstance.ServiceName,
-				Instance:      instance,
-				ShouldRestart: args.shouldRestart,
-			}, args.writer)
+		err := args.app.RemoveInstance(bind.RemoveInstanceArgs{
+			ServiceName:   args.serviceInstance.ServiceName,
+			InstanceName:  args.serviceInstance.Name,
+			ShouldRestart: args.shouldRestart,
+			Writer:        args.writer,
+		})
 		if err != nil {
 			log.Errorf("[set-bound-envs backward] failed to remove instance: %s", err)
 		}
@@ -363,16 +371,12 @@ var removeBoundEnvs = action.Action{
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		si := args.serviceInstance
-		instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
-		for k, envVar := range args.app.InstanceEnv(si.Name) {
-			instance.Envs[k] = envVar.Value
-		}
-		return nil, args.app.RemoveInstance(
-			bind.InstanceApp{
-				ServiceName:   si.ServiceName,
-				Instance:      instance,
-				ShouldRestart: args.shouldRestart,
-			}, args.writer)
+		return nil, args.app.RemoveInstance(bind.RemoveInstanceArgs{
+			ServiceName:   si.ServiceName,
+			InstanceName:  si.Name,
+			ShouldRestart: args.shouldRestart,
+			Writer:        args.writer,
+		})
 	},
 	Backward: func(ctx action.BWContext) {
 	},

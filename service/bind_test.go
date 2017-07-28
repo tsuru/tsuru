@@ -5,7 +5,6 @@
 package service_test
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -160,7 +159,6 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 }
 
 func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
-	c.ExpectFailure("demonstrate bug removing wrong env vars from app, to be fixed in next commits")
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if atomic.AddInt32(&calls, 1) == 1 {
@@ -199,16 +197,14 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bind.EnvVar{
-		Name:         "SRV1",
-		Value:        "val1",
-		Public:       false,
-		InstanceName: "my-db",
+		Name:   "SRV1",
+		Value:  "val1",
+		Public: false,
 	})
 	c.Assert(envs["SRV2"], check.DeepEquals, bind.EnvVar{
-		Name:         "SRV2",
-		Value:        "val2",
-		Public:       false,
-		InstanceName: "my-db",
+		Name:   "SRV2",
+		Value:  "val2",
+		Public: false,
 	})
 	dbI1, err := service.GetServiceInstance(instance1.ServiceName, instance1.Name)
 	c.Assert(err, check.IsNil)
@@ -217,10 +213,9 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	envs = a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bind.EnvVar{})
 	c.Assert(envs["SRV2"], check.DeepEquals, bind.EnvVar{
-		Name:         "SRV2",
-		Value:        "val2",
-		Public:       false,
-		InstanceName: "my-db",
+		Name:   "SRV2",
+		Value:  "val2",
+		Public: false,
 	})
 }
 
@@ -266,16 +261,14 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["DATABASE_USER"], check.DeepEquals, bind.EnvVar{
-		Name:         "DATABASE_USER",
-		Value:        "root",
-		Public:       false,
-		InstanceName: "my-mysql",
+		Name:   "DATABASE_USER",
+		Value:  "root",
+		Public: false,
 	})
 	c.Assert(envs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{
-		Name:         "DATABASE_PASSWORD",
-		Value:        "s3cr3t",
-		Public:       false,
-		InstanceName: "my-mysql",
+		Name:   "DATABASE_PASSWORD",
+		Value:  "s3cr3t",
+		Public: false,
 	})
 }
 
@@ -329,12 +322,12 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(2, "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      bind.ServiceInstance{Name: "my-mysql"},
-			ShouldRestart: true,
-		}, ioutil.Discard)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -353,7 +346,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
-	c.Assert(envs, check.IsNil)
+	c.Assert(envs, check.DeepEquals, map[string]bind.EnvVar{"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{}"}})
 }
 
 func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
@@ -374,12 +367,12 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(a, &s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      bind.ServiceInstance{Name: "my-mysql"},
-			ShouldRestart: true,
-		}, ioutil.Discard)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	err = instance.UnbindApp(a, true, nil)
 	c.Assert(err, check.IsNil)
@@ -403,12 +396,12 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(
-		bind.InstanceApp{
-			ServiceName:   "mysql",
-			Instance:      bind.ServiceInstance{Name: "my-mysql"},
-			ShouldRestart: true,
-		}, ioutil.Discard)
+	err = a.AddInstance(bind.AddInstanceArgs{
+		Envs: []bind.ServiceEnvVar{
+			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+		ShouldRestart: true,
+	})
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
