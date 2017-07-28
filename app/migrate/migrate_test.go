@@ -5,13 +5,16 @@
 package migrate
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
-
 	check "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,6 +26,8 @@ type S struct {
 func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *S) SetUpSuite(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_app_migrate_test")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -31,6 +36,10 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Apps().Database.DropDatabase()
 	s.conn.Close()
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 var _ = check.Suite(&S{})
@@ -65,4 +74,179 @@ func (s *S) TestMigrateAppPlanRouterToRouter(c *check.C) {
 func (s *S) TestMigrateAppPlanRouterToRouterWithoutDefaultRouter(c *check.C) {
 	err := MigrateAppPlanRouterToRouter()
 	c.Assert(err, check.DeepEquals, router.ErrDefaultRouterNotFound)
+}
+
+func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
+	tests := []struct {
+		app                 app.App
+		expected            []bind.ServiceEnvVar
+		expectedAllEnvs     map[string]bind.EnvVar
+		expectedServicesEnv string
+	}{
+		{
+			app:             app.App{},
+			expected:        []bind.ServiceEnvVar{},
+			expectedAllEnvs: map[string]bind.EnvVar{},
+		},
+		{
+			app: app.App{
+				Env: map[string]bind.EnvVar{
+					"TSURU_SERVICES": {
+						Name: "TSURU_SERVICES",
+						Value: `{
+							"srv1": [
+								{"instance_name": "myinst","envs": {"ENV1": "val1"}},
+								{"instance_name": "myinst2","envs": {"ENV1": "val2"}},
+								{"instance_name": "myinst3","envs": {"ENV1": "val3"}}
+							]
+						}`,
+					},
+				},
+			},
+			expected: []bind.ServiceEnvVar{
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					ServiceName:  "srv1",
+					InstanceName: "myinst",
+				},
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val2"},
+					ServiceName:  "srv1",
+					InstanceName: "myinst2",
+				},
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val3"},
+					ServiceName:  "srv1",
+					InstanceName: "myinst3",
+				},
+			},
+			expectedAllEnvs: map[string]bind.EnvVar{
+				"ENV1": {Name: "ENV1", Value: "val3"},
+			},
+		},
+		{
+			app: app.App{
+				Env: map[string]bind.EnvVar{
+					"TSURU_SERVICES": {
+						Name:  "TSURU_SERVICES",
+						Value: `{"srv1": [{"instance_name": "myinst","envs": {"ENV1": "val1"}}]}`,
+					},
+				},
+				ServiceEnvs: []bind.ServiceEnvVar{
+					{
+						EnvVar:       bind.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
+						ServiceName:  "srv2",
+						InstanceName: "myinst",
+					},
+				},
+			},
+			expected: []bind.ServiceEnvVar{
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					ServiceName:  "srv1",
+					InstanceName: "myinst",
+				},
+				{
+					EnvVar:       bind.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
+					ServiceName:  "srv2",
+					InstanceName: "myinst",
+				},
+			},
+			expectedAllEnvs: map[string]bind.EnvVar{
+				"ENV1":             {Name: "ENV1", Value: "val1"},
+				"NO_MIGRATION_VAR": {Name: "NO_MIGRATION_VAR", Value: "valx"},
+			},
+			expectedServicesEnv: `{"srv1":[{"instance_name": "myinst","envs": {"ENV1": "val1"}}], "srv2":[{"instance_name": "myinst","envs": {"NO_MIGRATION_VAR": "valx"}}]}`,
+		},
+		{
+			app: app.App{
+				Env: map[string]bind.EnvVar{
+					"OTHER_VAR": {
+						Name:  "OTHER_VAR",
+						Value: "otherval",
+					},
+					"ENV1": {
+						Name:  "ENV1",
+						Value: "val1",
+					},
+					"TSURU_SERVICES": {
+						Name: "TSURU_SERVICES",
+						Value: `{
+							"srv1": [{"instance_name": "myinst","envs": {"ENV1": "val1"}}],
+							"srv2": [{"instance_name": "myinst","envs": {"ENV2": "val2"}}],
+							"srv3": [{"instance_name": "myinst2","envs": {"ENV3": "val3"}}]
+						}`,
+					},
+				},
+			},
+			expected: []bind.ServiceEnvVar{
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					ServiceName:  "srv1",
+					InstanceName: "myinst",
+				},
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV2", Value: "val2"},
+					ServiceName:  "srv2",
+					InstanceName: "myinst",
+				},
+				{
+					EnvVar:       bind.EnvVar{Name: "ENV3", Value: "val3"},
+					ServiceName:  "srv3",
+					InstanceName: "myinst2",
+				},
+			},
+			expectedAllEnvs: map[string]bind.EnvVar{
+				"ENV1":      {Name: "ENV1", Value: "val1"},
+				"ENV2":      {Name: "ENV2", Value: "val2"},
+				"ENV3":      {Name: "ENV3", Value: "val3"},
+				"OTHER_VAR": {Name: "OTHER_VAR", Value: "otherval"},
+			},
+		},
+	}
+	for i := range tests {
+		tests[i].app.Name = fmt.Sprintf("app-%d", i)
+		err := s.conn.Apps().Insert(tests[i].app)
+		c.Assert(err, check.IsNil)
+	}
+	err := MigrateAppTsuruServicesVarToServiceEnvs()
+	c.Assert(err, check.IsNil)
+	var resultApps []app.App
+	var dbApp *app.App
+	for _, tt := range tests {
+		dbApp, err = app.GetByName(tt.app.Name)
+		c.Assert(err, check.IsNil)
+		resultApps = append(resultApps, *dbApp)
+		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
+		_, hasSpecialEnv := dbApp.Env[app.TsuruServicesEnvVar]
+		c.Assert(hasSpecialEnv, check.Equals, false)
+		allEnvs := dbApp.Envs()
+		if tt.expectedServicesEnv == "" {
+			tt.expectedServicesEnv = tt.app.Env[app.TsuruServicesEnvVar].Value
+		}
+		if tt.expectedServicesEnv != "" {
+			var oldServicesEnvVar map[string]interface{}
+			var newServicesEnvVar map[string]interface{}
+			err = json.Unmarshal([]byte(tt.expectedServicesEnv), &oldServicesEnvVar)
+			c.Assert(err, check.IsNil)
+			err = json.Unmarshal([]byte(allEnvs[app.TsuruServicesEnvVar].Value), &newServicesEnvVar)
+			c.Assert(err, check.IsNil)
+			c.Assert(oldServicesEnvVar, check.DeepEquals, newServicesEnvVar)
+		}
+		delete(allEnvs, app.TsuruServicesEnvVar)
+		c.Assert(allEnvs, check.DeepEquals, tt.expectedAllEnvs)
+	}
+	// Running again should change nothing
+	err = MigrateAppTsuruServicesVarToServiceEnvs()
+	c.Assert(err, check.IsNil)
+	for i, tt := range tests {
+		dbApp, err = app.GetByName(tt.app.Name)
+		c.Assert(err, check.IsNil)
+		c.Assert(dbApp, check.DeepEquals, &resultApps[i])
+	}
+}
+
+func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvsNothingToDo(c *check.C) {
+	err := MigrateAppTsuruServicesVarToServiceEnvs()
+	c.Assert(err, check.IsNil)
 }
