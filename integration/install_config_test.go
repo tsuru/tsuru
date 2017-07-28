@@ -27,6 +27,7 @@ hosts:
   apps:
     size: %d
 components:
+  tsuru-image: tsuru/api:latest
   install-dashboard: false
 `, hosts)
 }
