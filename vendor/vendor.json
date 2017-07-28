@@ -1790,24 +1790,46 @@
 			"revisionTime": "2016-05-18T14:33:22+02:00"
 		},
 		{
+			"checksumSHA1": "UWjVYmoHlIfHzVIskELHiJQtMOI=",
 			"path": "golang.org/x/crypto/bcrypt",
-			"revision": "1fbbd62cfec66bd39d91e97749579579d4d3037e",
-			"revisionTime": "2014-12-09T13:38:15+11:00"
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
 		},
 		{
+			"checksumSHA1": "oVPHWesOmZ02vLq2fglGvf+AMgk=",
 			"path": "golang.org/x/crypto/blowfish",
-			"revision": "1fbbd62cfec66bd39d91e97749579579d4d3037e",
-			"revisionTime": "2014-12-09T13:38:15+11:00"
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
 		},
 		{
+			"checksumSHA1": "MlEHIE/60sB86Lmf0MPTIXHzKzE=",
+			"path": "golang.org/x/crypto/curve25519",
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
+		},
+		{
+			"checksumSHA1": "i3dNaI+oCYeDGIsNj7LwecTsIAs=",
+			"path": "golang.org/x/crypto/ed25519",
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
+		},
+		{
+			"checksumSHA1": "LXFcVx8I587SnWmKycSDEq9yvK8=",
+			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
+		},
+		{
+			"checksumSHA1": "+cJ5DMdWg6q//21EKgxcaQ5vZaI=",
 			"path": "golang.org/x/crypto/ssh",
-			"revision": "1fbbd62cfec66bd39d91e97749579579d4d3037e",
-			"revisionTime": "2014-12-09T13:38:15+11:00"
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
 		},
 		{
+			"checksumSHA1": "+WzOFwhDdPcz5PYt7imWl71ekZY=",
 			"path": "golang.org/x/crypto/ssh/terminal",
-			"revision": "1fbbd62cfec66bd39d91e97749579579d4d3037e",
-			"revisionTime": "2014-12-09T13:38:15+11:00"
+			"revision": "558b6879de74bc843225cde5686419267ff707ca",
+			"revisionTime": "2017-07-28T12:36:07Z"
 		},
 		{
 			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
@@ -1890,6 +1912,12 @@
 			"path": "golang.org/x/oauth2/jwt",
 			"revision": "442624c9ec9243441e83b374a9e22ac549b5c51d",
 			"revisionTime": "2015-11-16T13:49:40-08:00"
+		},
+		{
+			"checksumSHA1": "rE620LTXvIR3d0WFYYU7fPthpUQ=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "0f826bdd13b500be0f1d4004938ad978fcc6031e",
+			"revisionTime": "2017-07-27T15:10:50Z"
 		},
 		{
 			"checksumSHA1": "42L+GOKH+OoRYqVyIohUcj8bLzI=",
